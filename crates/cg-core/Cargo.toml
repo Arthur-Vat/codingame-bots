@@ -1,0 +1,16 @@
+[package]
+name = "cg-core"
+description = "Code shared by bots: CodinGame input reading and a seeded random generator. Standard library only."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+# No dependencies: the bundler copies this crate into bots, and CodinGame
+# offers no crates.
+
+[lints]
+workspace = true
