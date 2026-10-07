@@ -38,7 +38,7 @@ Phases 4 and 5 can overlap.
 - [x] `random` bot built on `cg-core`
 - [x] `cg-bundler` and `scripts/bundle-bots.sh`; CI bundles every bot, compiles the bundles on their own and plays 1,000 games between them
 - [x] CI green on the Phase 1 pull request
-- [ ] The bundled `random` bot pasted into CodinGame and plays a full game (owner)
+- [x] The bundled `random` bot pasted into CodinGame and plays a full game (owner, 2026-10-07)
 
 ## Risks
 
