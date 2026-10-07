@@ -11,7 +11,7 @@ elo: +49.6 [+25.5, +74.3] at 20 ms
 pairs: 303
 full_time: +73.3 [+55.8, +91.2] over 500 pairs, no fault
 decision: promoted
-cg_rank: pending
+cg_rank: Legend, 175 of the league (2026-10-07), up from 182 with v001
 ---
 
 Kept visits are modest: a few hundred to a few thousand per turn at
