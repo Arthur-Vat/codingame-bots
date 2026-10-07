@@ -1,0 +1,22 @@
+[package]
+name = "uttt-engine"
+description = "Fast Ultimate Tic-Tac-Toe rules for bots: bitboards, move generation, random playouts. Standard library only."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+# Only workspace crates: the bundler copies this crate into bots.
+[dependencies]
+cg-core.workspace = true
+
+# Used by the parity tests only; never part of a bot.
+[dev-dependencies]
+cg-arena.workspace = true
+uttt-referee.workspace = true
+
+[lints]
+workspace = true

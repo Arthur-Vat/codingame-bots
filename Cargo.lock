@@ -261,6 +261,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "uttt-bot-rules-check"
+version = "0.0.0"
+dependencies = [
+ "cg-core",
+ "uttt-engine",
+]
+
+[[package]]
+name = "uttt-bot-wood"
+version = "0.0.0"
+dependencies = [
+ "cg-core",
+ "uttt-engine",
+]
+
+[[package]]
+name = "uttt-engine"
+version = "0.0.0"
+dependencies = [
+ "cg-arena",
+ "cg-core",
+ "uttt-referee",
+]
+
+[[package]]
 name = "uttt-referee"
 version = "0.0.0"
 dependencies = [

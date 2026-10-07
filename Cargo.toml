@@ -3,6 +3,7 @@
 resolver = "3"
 members = [
     "crates/*",
+    "games/*/engine",
     "games/*/referee",
     "games/*/arena",
     "games/*/bots/*",
@@ -24,6 +25,7 @@ rust-version = "1.90"
 # Workspace crates.
 cg-arena = { path = "crates/cg-arena" }
 cg-core = { path = "crates/cg-core" }
+uttt-engine = { path = "games/uttt/engine" }
 uttt-referee = { path = "games/uttt/referee" }
 # Tools only. Nothing that ends up in a bot may depend on these.
 clap = { version = "4.5", features = ["derive"] }

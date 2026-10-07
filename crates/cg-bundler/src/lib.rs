@@ -54,7 +54,8 @@ pub fn bundle(plan: &Plan, format: bool) -> Result<String, String> {
 
     for library in &plan.libraries {
         let source = expand::expand_crate(&library.root)?;
-        out.push_str("\n#[allow(dead_code)]\n");
+        // A bot rarely uses all of a library.
+        out.push_str("\n#[allow(dead_code, unused_imports)]\n");
         out.push_str(&format!("mod {} {{\n", library.name));
         out.push_str(&rewrite::rewrite(&source, Some(&library.name), &libraries));
         out.push_str("}\n");

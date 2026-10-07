@@ -60,6 +60,22 @@ jobs:
             --bot random=target/cg/bin/uttt-random \
             --bot random-again=target/cg/bin/uttt-random \
             --pairs 500 --expect-no-faults --out target/cg/uttt-smoke.jsonl
+      - name: Play every other bundled bot against random
+        env:
+          # The rules-check bot exits on any disagreement with the referee.
+          CG_RULES_CHECK_STRICT: "1"
+        run: |
+          for bot in target/cg/bin/uttt-*; do
+            name="$(basename "$bot")"
+            [ "$name" = uttt-random ] && continue
+            target/release/uttt-arena \
+              --bot "$name=$bot" --bot random=target/cg/bin/uttt-random \
+              --pairs 100 --expect-no-faults
+          done
+      - name: Engine speed
+        run: |
+          cargo run --release --locked -p uttt-engine --example speed -- 3 \
+            | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Publish the paste-ready files
         uses: actions/upload-artifact@v7
         with:
