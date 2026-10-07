@@ -1,7 +1,7 @@
 ---
 id: E003
 date: 2026-10-07
-pull_request: pending
+pull_request: "#12"
 parent: uttt-v002
 hypothesis: Proving wins and losses in the tree (MCTS-Solver) adds strength, mostly in endgames, where random playouts misjudge forced lines and searches waste time on decided positions.
 change: Terminal positions are proven won or lost; a node is lost for its mover when the opponent has a proven win, and won when every answer is proven lost. Iterations stop at proven nodes, selection skips proven losses, a proven win at the root is played at once, and the search stops when the root is proven. Draws are not proven.
