@@ -11,7 +11,7 @@ Seven phases build the framework before the first real bot. Reaching Legend is t
 | 4. First real bot | MCTS `uttt-v001`, then the weekly experiment loop | v001 pasted and ranked; 3 experiments run end to end | In progress |
 | 5. Autonomy | Hub, project skills, weekly routine, notifications | One full loop without opening GitHub | Not started |
 | 6. Second game | A game with an official referee; `new-game` skill | Phase 3 gates met, changes mostly inside the game folder | Not started |
-| Ongoing | Iterate every game toward Legend | | |
+| Ongoing | Iterate every game toward Legend, then up the Legend ranking | | Ultimate Tic-Tac-Toe: Legend since 2026-10-07 (`uttt-v001`, 182 of 443) |
 
 Phases 4 and 5 can overlap.
 
@@ -73,9 +73,10 @@ Phases 4 and 5 can overlap.
 - [x] `uttt-engine` implements the trait; the speed example also measures MCTS iterations
 - [x] `mcts` bot: searches each turn from scratch with random playouts; exploration constant 0.5, measured about 160 Elo above 1.0
 - [x] Time limits revisited with MCTS: 20 ms plus 5 ms of tolerance in evaluations, full-time calibration once the bot is strong ([ADR 0013](adr/0013-evaluation-time-limits.md))
-- [ ] Release `uttt-v001` through the SPRT (first experiment, E001)
-- [ ] v001 pasted into CodinGame and ranked (owner)
-- [ ] Two more experiments run end to end
+- [x] Release `uttt-v001` through the SPRT (first experiment, E001): accepted against `greedy`, 60 wins in 60 games
+- [x] v001 pasted into CodinGame and ranked (owner, 2026-10-07): promoted from Bronze to Legend on its own, 182 of 443 in Legend
+- [x] Full-time confirmation of accepted candidates, set off by reaching Gold ([ADR 0014](adr/0014-full-time-confirmation.md))
+- [ ] Two more experiments run end to end (planned: E002 tree reuse, E003 proven wins and losses, E004 faster search)
 - [ ] Opening length checked with MCTS (ADR 0012)
 
 ## Risks

@@ -74,14 +74,15 @@ Seven tiers protect every change; only the SPRT decides whether a bot is stronge
 | 3. CodinGame compatibility | Bundle, size, standalone compile with Rust 1.90.0, 1,000 games between bundled bots, every bundled bot against random | Every push | Compiles, stays under 100 kB, no faults |
 | 4. Smoke | Candidate release against the random bot, 100 pairs with openings | Pull requests adding a release, before the SPRT | No faults, at least 99% of the points |
 | 5. Speed | Simulations per second on fixed positions | Every bot change (Phase 4) | No drop over 5% against the parent version (proposed) |
-| 6. SPRT | Candidate release against the previous release | Pull requests adding a release | The test accepts the candidate as stronger |
+| 6. SPRT | Candidate release against the previous release, at 20 ms per move | Pull requests adding a release | The test accepts the candidate as stronger |
+| 6b. Full-time confirmation | The accepted candidate against the previous release, 500 pairs at CodinGame's exact limits ([ADR 0014](adr/0014-full-time-confirmation.md)) | After the SPRT accepts | Not clearly weaker, no faults; the Elo measured is recorded |
 | 7. League | Every release and the baseline bots | After each release, and on demand | Ratings published |
 
 - **Openings and pairs:** Ultimate Tic-Tac-Toe has no random map, so the referee imposes a few random moves at the start of each pair, drawn from the pair's seed, and the pair plays them twice with seats swapped.
 - **SPRT:** scored on game pairs, which handles draws; bounds of 0 and 10 Elo; 5% error rates; no verdict before 30 pairs; capped at 10,000 pairs (20,000 games). Bounds tighten as the bot matures.
 - **Sanity checks of the pipeline itself:** on every push, CI runs an SPRT of a bot against a copy of itself (A/A test, must not be accepted), of a weaker bot against a stronger one (must be rejected) and the reverse (must be accepted), with fixed seeds.
 - **Ratings:** Bradley-Terry maximum likelihood with 95% intervals, the random bot anchored at 0.
-- **Timing noise:** matches run one game per CPU core, with time limits scaled down to keep tests affordable (0.2) plus a 5 ms tolerance, not told to bots, that absorbs the machine's delays ([ADR 0013](adr/0013-evaluation-time-limits.md)). Once the bot is strong, releases are also measured at CodinGame's full limits.
+- **Timing noise:** matches run one game per CPU core, with time limits scaled down to keep tests affordable (0.2) plus a 5 ms tolerance, not told to bots, that absorbs the machine's delays ([ADR 0013](adr/0013-evaluation-time-limits.md)). Since the first release reached Legend, every accepted candidate is also confirmed at CodinGame's full limits.
 
 ## Journal and versioning
 

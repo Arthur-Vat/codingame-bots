@@ -10,7 +10,7 @@ sprt: accepted
 elo: no estimate from a sweep; 60 wins in 60 games put v001 at least about 500 Elo above greedy (95% lower bound)
 pairs: 30, the minimum
 decision: promoted
-cg_rank: pending
+cg_rank: Legend, 182 of 443 (2026-10-07)
 ---
 
 The bot and the choice of the exploration constant are described in
@@ -29,4 +29,11 @@ tolerance, 4-ply openings, seed 1):
   a bound of 2.94 after 30 pairs: accepted.
 
 A sweep gives no Elo estimate; the League rates v001 against random and
-greedy once merged. Next: paste v001 into CodinGame and record its rank.
+greedy once merged.
+
+On CodinGame (2026-10-07, reported by the owner): submitted in Bronze, it
+won 219 of 220 games with no timeout, the one loss being an ordinary game
+against another strong bot. It was promoted to Silver, then on its own to
+Gold and Legend within the hour, and ranked 182 of 443 in Legend once its
+games were played. Reaching Gold set off the full-time confirmations of
+ADR 0013 and 0014 for the next releases.

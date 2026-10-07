@@ -148,6 +148,17 @@ impl Summary {
     }
 }
 
+impl Summary {
+    /// Whether the first bot is clearly weaker: the 95% interval of its Elo
+    /// advantage lies entirely below 0, or it lost every game.
+    pub fn is_clearly_worse(&self) -> bool {
+        match self.elo() {
+            Some(estimate) => estimate.high < 0.0,
+            None => self.score() == Some(0.0),
+        }
+    }
+}
+
 /// The Elo difference that gives an expected score of `score`.
 pub fn elo_from_score(score: f64) -> f64 {
     -400.0 * (1.0 / score - 1.0).log10()

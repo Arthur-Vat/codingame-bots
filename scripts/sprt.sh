@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests whether a candidate bot is stronger than a baseline, with the game's
-# evaluation settings (games/<game>/evaluation.env, ADR 0012).
+# evaluation settings (games/<game>/evaluation.env, ADR 0012 to 0014).
 #
 # Usage: scripts/sprt.sh GAME CANDIDATE.rs [BASELINE.rs]
 #
@@ -8,10 +8,14 @@
 # and named after their file. Without BASELINE.rs, the baseline is the
 # newest release older than the candidate, or else the bundle of the game's
 # BASELINE_BOT. The candidate first plays the random bot (smoke test), then
-# the SPRT runs against the baseline. Games are written to target/sprt/.
+# the SPRT runs against the baseline. If the SPRT accepts the candidate, it
+# plays CONFIRM_PAIRS pairs against the baseline at CodinGame's exact time
+# limits (confirmation), and is rejected if it is clearly weaker there or
+# faults. Games are written to target/sprt/.
 #
-# Exit status: 0 when the candidate is accepted; 1 when the smoke test
-# fails or the SPRT does not accept the candidate; 2 on errors.
+# Exit status: 0 when the candidate is accepted and confirmed; 1 when the
+# smoke test fails, the SPRT does not accept the candidate or the
+# confirmation fails; 2 on errors.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -72,4 +76,19 @@ status=0
   --candidate "$cand=$dir/bin/$cand" --baseline "$base=$dir/bin/$base" \
   --elo0 "$SPRT_ELO0" --elo1 "$SPRT_ELO1" --alpha "$SPRT_ALPHA" --beta "$SPRT_BETA" \
   --max-pairs "$SPRT_MAX_PAIRS" --out "$dir/$cand-sprt.jsonl" || status=$?
-exit "$status"
+if ((status != 0 || CONFIRM_PAIRS == 0)); then
+  exit "$status"
+fi
+
+echo
+echo "Confirmation against $base at CodinGame's limits (time scale 1, no tolerance):"
+if ! "$arena" match --seed "$SEED" --opening-plies "$OPENING_PLIES" \
+  --time-scale 1 --time-tolerance-ms 0 --expect-no-faults --expect-not-worse \
+  --bot "$cand=$dir/bin/$cand" --bot "$base=$dir/bin/$base" \
+  --pairs "$CONFIRM_PAIRS" --out "$dir/$cand-confirmation.jsonl"; then
+  echo
+  echo "Final verdict: REJECTED at full time ($cand is clearly weaker than $base there, or faulted)"
+  exit 1
+fi
+echo
+echo "Final verdict: ACCEPTED (SPRT at time scale $TIME_SCALE, confirmed at full time)"
