@@ -15,4 +15,4 @@ One entry per experiment, failures included, so that ideas are not retried blind
 | [E002](E002-tree-reuse.md) | 2026-10-07 | Keeping the search tree between turns adds strength (`uttt-v002`) | Accepted, +49.6 Elo at 20 ms, +73.3 at full time | Promoted: `uttt-v002` |
 | [E003](E003-solver.md) | 2026-10-07 | Proving wins and losses in the tree adds strength (`uttt-v003`) | Accepted, +31.6 Elo at 20 ms, +13.6 at full time | Promoted: `uttt-v003` |
 | [E004](E004-faster-search.md) | 2026-10-07 | A faster search plays better in the same time (`uttt-v004`) | Accepted, +87.5 Elo at 20 ms, +74.4 at full time | Promoted: `uttt-v004` |
-| [E005](E005-decisive-playouts.md) | 2026-10-07 | Playouts that take a game-winning move judge positions better (`uttt-v005`) | pending | pending |
+| [E005](E005-decisive-playouts.md) | 2026-10-07 | Playouts that take a game-winning move judge positions better (`uttt-v005`) | Accepted, +109.5 Elo at 20 ms, +78.4 at full time | Promoted: `uttt-v005` |

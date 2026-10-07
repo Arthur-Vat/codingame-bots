@@ -1,16 +1,16 @@
 ---
 id: E005
 date: 2026-10-07
-pull_request: pending
+pull_request: "#14"
 parent: uttt-v004
 hypothesis: Playouts that take a game-winning move when there is one ("decisive moves") judge positions better than uniformly random ones, for almost no speed, since random playouts often miss a win in one and so misjudge positions with threats.
 change: A table of the cells that complete a line finds, in a few lookups, the small boards where the player to move would win the game with a line of small boards; playouts play such a move when there is one, and the same random move as before otherwise. Wins on points, when the last open board closes, are not looked for.
 release: uttt-v005
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +109.5 [+70.9, +151.0] at 20 ms
+pairs: 154
+full_time: +78.4 [+59.4, +98.0] over 500 pairs, no fault, slowest answer 87.0 ms
+decision: promoted
 cg_rank: pending
 ---
 
@@ -44,3 +44,16 @@ Tests check that a decisive move is a game-winning move whenever one
 exists, against trying every legal move, and that it is otherwise the
 same random move, drawn from the same random numbers, as a plain random
 playout would play.
+
+Before the test, the frozen release against v004, locally at 20 ms per
+move (same settings, 100 pairs): +113.3 Elo [+68.4, +162.2].
+
+Result, from the SPRT comment on #14: smoke test 200 wins in 200 games;
+SPRT accepted after 154 pairs (176 wins, 50 draws, 82 losses), LLR
+2.98; confirmation at CodinGame's limits 529 wins, 164 draws, 307
+losses, no fault.
+
+The gain holds at full time (+78.4, interval from +59.4 to +98.0). Draws
+fell from 273 in 1,000 games in E004's confirmation to 164 here: the
+stronger side now converts more of its threats. The slowest answer,
+87.0 ms, is in line with v004's 86.8 ms in the same run.
