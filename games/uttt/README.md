@@ -52,14 +52,16 @@ With the settings of [evaluation.env](evaluation.env):
 
 `cargo run --release -p uttt-engine --example speed` plays random games from the start position for a few seconds, then runs 100 ms MCTS searches from there. CI runs it on every push and shows the table in the job summary of the "CodinGame compatibility" job.
 
-Baseline, measured on 2026-10-07 on one thread of an Intel Xeon at 2.8 GHz (this shared machine varies by about 10% between runs):
+Baseline, measured on 2026-10-07 on one thread of an Intel Xeon at 2.8 GHz (this shared machine varies by about 10% between runs), after E004 made playouts pick their moves without listing them:
 
 | Engine benchmark | Result |
 | --- | --- |
-| Random playouts from the start | 441,681 per second |
+| Random playouts from the start | about 985,000 per second (973,623 to 998,613 over three runs) |
 | Moves per playout | 58.9 |
-| Moves per second | 26,020,079 |
-| MCTS iterations from the start, 100 ms searches | about 350,000 per second (338,262 to 379,579 over three runs) |
+| Moves per second | about 58,000,000 |
+| MCTS iterations from the start, 100 ms searches | about 578,000 per second (571,798 to 584,219) |
+
+Before E004: 441,681 playouts and about 350,000 MCTS iterations per second.
 
 ## Checking the rules on CodinGame
 
