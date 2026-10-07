@@ -36,8 +36,8 @@ codingame-bots/
 │     ├─ RULES.md           the rules in our own words, with sources
 │     ├─ referee/           readable reference rules, implements Referee
 │     ├─ arena/             uttt-arena binary
-│     ├─ engine/            Phase 2: fast rules for bots, checked against the referee
-│     ├─ bots/              first-valid/, random/; mcts/ ... later
+│     ├─ engine/            fast rules for bots, checked against the referee
+│     ├─ bots/              first-valid/, random/, wood/, rules-check/; mcts/ ... later
 │     ├─ releases/          Phase 3: frozen paste-ready file per version
 │     ├─ openings/          Phase 3: opening positions for fair matches
 │     └─ journal/           Phase 3: one entry per experiment
@@ -49,7 +49,7 @@ codingame-bots/
 
 - **`Referee` trait (`cg-arena`):** a game's rules as the arena sees them, in CodinGame's text protocol: which seats act this turn, the input to send each one, the time limits, and whether their answers are valid. Several seats may act in one turn, so simultaneous-move games fit too ([ADR 0011](adr/0011-framework-structure.md)).
 - **Referee (per game):** a readable implementation of `RULES.md`, written to be obviously correct rather than fast. It is the reference that faster engines are checked against.
-- **Engine (per game, Phase 2):** a fast implementation of the same rules for search inside bots, std-only so it can be bundled. Parity tests compare it with the referee on many random games.
+- **Engine (per game):** a fast implementation of the same rules for search inside bots, std-only so it can be bundled. Parity tests compare it with the referee on many random games, and a `rules-check` bot compares it with CodinGame's own valid actions during real games.
 - **Arena:** each game has a tiny binary (`uttt-arena`) that hands its referee to the shared command line of `cg-arena`. Bots run as separate processes and receive their input on stdin, exactly as on CodinGame; a bot that exceeds its time limit, exits, or answers invalidly loses the game. Games run in parallel, in seat-swapped pairs, and each one is written as a JSON line: seed, bots by seat, winner, end reason, turns and answer times.
 - **Bot:** an ordinary binary reading stdin and writing stdout. The arena gives each bot a reproducible seed in `CG_SEED`; on CodinGame it is absent and bots seed from the clock. Later, an optional `CG_FIXED_ITERS` will replace the time budget by a fixed iteration count for deterministic tests.
 - **`cg-core`:** what every bot needs, std-only: a line-based reader for the referee's input and a seeded xoshiro256++ generator.

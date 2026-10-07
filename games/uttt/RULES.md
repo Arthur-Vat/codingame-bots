@@ -44,4 +44,6 @@ The SDK source uses 10 s and 1 s instead; CodinGame staff have said that the SDK
 
 ## Wood league
 
-The lowest league is plain tic-tac-toe on a single 3×3 board: coordinates 0 to 2, the same protocol, at most 9 moves. Three in a line wins; a full board without a line is a draw. Our referee implements only the Ultimate rules above.
+The lowest league is plain tic-tac-toe on a single 3×3 board: coordinates 0 to 2, the same protocol, at most 9 moves. Three in a line wins; a full board without a line is a draw. The Ultimate rules above start in the next league.
+
+In the game's source, the boss of this league picks a uniformly random valid action every turn (`config/Boss.java`). Our referee implements only the Ultimate rules; the `wood` bot is meant for this league.
