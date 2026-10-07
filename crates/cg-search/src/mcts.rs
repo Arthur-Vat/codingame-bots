@@ -8,8 +8,11 @@
 //! order. The move played is the root child tried most often, except that
 //! a move winning the game at once is played without searching.
 //!
-//! The tree lives in one vector, children of a node next to each other, and
-//! is rebuilt for every search.
+//! The tree lives in one vector, children of a node next to each other. It
+//! is kept from one search to the next: when the new position is one or two
+//! moves below the previous root (the bot's move, then the opponent's), the
+//! subtree of that position becomes the new tree, with the visits it
+//! already has; otherwise the search starts afresh.
 
 use cg_core::rng::Rng;
 
@@ -17,7 +20,7 @@ use crate::budget::Budget;
 use crate::game::Game;
 
 /// One position of the tree, reached by `mv`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 struct Node<M> {
     /// The move that leads here; unused at the root.
     mv: M,
@@ -38,8 +41,10 @@ struct Node<M> {
 pub struct SearchResult<M> {
     /// The root move tried most often.
     pub best: M,
-    /// Iterations run.
+    /// Iterations run by this search.
     pub iterations: u64,
+    /// Visits the root already had from earlier searches.
+    pub reused: u64,
     /// The average score of `best` for the player to move, from 0 to 1.
     pub expected_score: f64,
     /// Nodes in the tree.
@@ -53,6 +58,12 @@ pub struct Mcts<G: Game> {
     pub exploration: f64,
     rng: Rng,
     nodes: Vec<Node<G::Move>>,
+    /// The position at the root of `nodes`, once a search has run.
+    root: Option<G>,
+    /// Spare storage for moving a subtree to the front, kept to avoid
+    /// allocating every turn.
+    spare: Vec<Node<G::Move>>,
+    origin: Vec<u32>,
     moves: Vec<G::Move>,
     path: Vec<u32>,
 }
@@ -63,6 +74,9 @@ impl<G: Game> Mcts<G> {
             exploration,
             rng: Rng::new(seed),
             nodes: Vec::new(),
+            root: None,
+            spare: Vec::new(),
+            origin: Vec::new(),
             moves: Vec::new(),
             path: Vec::new(),
         }
@@ -70,8 +84,9 @@ impl<G: Game> Mcts<G> {
 
     /// Searches `root` and returns the best of `candidates`, which must be
     /// legal there (CodinGame's list, for example). Returns a candidate that
-    /// wins at once without searching; otherwise runs at least one
-    /// iteration per candidate, then until `budget` is spent.
+    /// wins at once without searching; otherwise keeps what earlier
+    /// searches learned about `root`, runs at least one iteration per
+    /// candidate, then runs until `budget` is spent.
     ///
     /// # Panics
     ///
@@ -92,17 +107,45 @@ impl<G: Game> Mcts<G> {
                 return SearchResult {
                     best: mv,
                     iterations: 0,
+                    reused: 0,
                     expected_score: 1.0,
-                    nodes: 0,
+                    nodes: self.nodes.len(),
                 };
             }
         }
 
+        if !self.reuse(root, candidates) {
+            self.start(root, candidates);
+        }
+        self.root = Some(root.clone());
+        let reused = u64::from(self.nodes[0].visits);
+
+        let mut iterations = 0;
+        while (iterations as usize) < candidates.len() || !budget.is_spent(iterations) {
+            self.iterate(root);
+            iterations += 1;
+        }
+
+        let best = self
+            .children(0)
+            .map(|index| &self.nodes[index])
+            .max_by_key(|child| child.visits)
+            .expect("the root has children");
+        SearchResult {
+            best: best.mv,
+            iterations,
+            reused,
+            expected_score: best.total / f64::from(best.visits.max(1)),
+            nodes: self.nodes.len(),
+        }
+    }
+
+    /// A fresh tree: the root and one child per candidate.
+    fn start(&mut self, root: &G, candidates: &[G::Move]) {
         self.nodes.clear();
-        let mover = (1 - root.to_move()) as u8;
         self.nodes.push(Node {
             mv: candidates[0],
-            mover,
+            mover: (1 - root.to_move()) as u8,
             expanded: false,
             first_child: 0,
             children: 0,
@@ -112,25 +155,88 @@ impl<G: Game> Mcts<G> {
         self.moves.clear();
         self.moves.extend_from_slice(candidates);
         self.expand(0, root.to_move());
+    }
 
-        let mut iterations = 0;
-        while (iterations as usize) < candidates.len() || !budget.is_spent(iterations) {
-            self.iterate(root);
-            iterations += 1;
+    /// Makes the node of `root`, if the tree holds it within two moves of
+    /// its current root, the new root, and drops the rest of the tree.
+    /// Returns whether it did. The kept root must offer exactly
+    /// `candidates`.
+    fn reuse(&mut self, root: &G, candidates: &[G::Move]) -> bool {
+        let Some(node) = self.find(root) else {
+            return false;
+        };
+        let kept = &self.nodes[node];
+        let same_moves = kept.expanded
+            && kept.children as usize == candidates.len()
+            && self
+                .children(node)
+                .all(|child| candidates.contains(&self.nodes[child].mv));
+        if !same_moves {
+            return false;
         }
+        if node != 0 {
+            self.keep_subtree(node);
+        }
+        true
+    }
 
-        let root_node = &self.nodes[0];
-        let children = root_node.first_child..root_node.first_child + root_node.children;
-        let best = children
-            .map(|index| &self.nodes[index as usize])
-            .max_by_key(|child| child.visits)
-            .expect("the root has children");
-        SearchResult {
-            best: best.mv,
-            iterations,
-            expected_score: best.total / f64::from(best.visits.max(1)),
-            nodes: self.nodes.len(),
+    /// The node holding `position`: the root or a node one or two moves
+    /// below it.
+    fn find(&self, position: &G) -> Option<usize> {
+        let previous = self.root.as_ref()?;
+        if previous == position {
+            return Some(0);
         }
+        for child in self.children(0) {
+            let mut after_one = previous.clone();
+            after_one.play(self.nodes[child].mv);
+            if &after_one == position {
+                return Some(child);
+            }
+            for grandchild in self.children(child) {
+                let mut after_two = after_one.clone();
+                after_two.play(self.nodes[grandchild].mv);
+                if &after_two == position {
+                    return Some(grandchild);
+                }
+            }
+        }
+        None
+    }
+
+    /// Moves the subtree of `node` to the front of the tree, `node` first,
+    /// and drops every other node.
+    fn keep_subtree(&mut self, node: usize) {
+        self.spare.clear();
+        self.origin.clear();
+        self.spare.push(self.nodes[node]);
+        self.origin.push(node as u32);
+        let mut next = 0;
+        while next < self.spare.len() {
+            let old = self.nodes[self.origin[next] as usize];
+            if old.expanded {
+                self.spare[next].first_child = self.spare.len() as u32;
+                for child in old.first_child..old.first_child + old.children {
+                    self.spare.push(self.nodes[child as usize]);
+                    self.origin.push(child);
+                }
+            }
+            next += 1;
+        }
+        std::mem::swap(&mut self.nodes, &mut self.spare);
+    }
+
+    /// The indices of the children of `node`.
+    fn children(&self, node: usize) -> std::ops::Range<usize> {
+        let node = &self.nodes[node];
+        let first = node.first_child as usize;
+        first
+            ..first
+                + if node.expanded {
+                    node.children as usize
+                } else {
+                    0
+                }
     }
 
     /// One iteration: selection, expansion, playout, backpropagation.

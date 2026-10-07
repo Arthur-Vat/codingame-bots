@@ -12,3 +12,4 @@ One entry per experiment, failures included, so that ideas are not retried blind
 | Entry | Date | Hypothesis | SPRT | Decision |
 | --- | --- | --- | --- | --- |
 | [E001](E001-mcts.md) | 2026-10-07 | MCTS plays far better than greedy (first release, `uttt-v001`) | Accepted, 60–0 after 30 pairs | Promoted: `uttt-v001` |
+| [E002](E002-tree-reuse.md) | 2026-10-07 | Keeping the search tree between turns adds strength (`uttt-v002`) | pending | pending |
