@@ -1,6 +1,6 @@
 # 0012. Evaluation: SPRT on game pairs, seeded openings, frozen releases
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-07
 
 ## Context
@@ -19,8 +19,8 @@ Phase 3 decides how the framework says "this bot is stronger" and what happens t
 
 ### The conditions
 
-6. **Seeded random openings of 4 plies.** The referee imposes 4 random moves at the start of each pair, drawn from the pair's seed, by offering a single valid action on those turns. This replaces a folder of opening positions: no files to maintain, endless variety, reproducible from the seed. Bots must pick from the valid actions they receive, as they must on CodinGame anyway. An opening never ends the game.
-7. **Time limits scaled by 0.2, provisionally:** 200 ms for the first answer and 20 ms afterwards, instead of 1,000 and 100. Bots read the factor from `CG_TIME_SCALE` and scale their budget. Full limits would make an average test take hours; Phase 4 revisits this value with the first real bot, using its timeouts and its strength at 0.2 against 1.0.
+6. **Seeded random openings of 4 plies.** The referee imposes 4 random moves at the start of each pair, drawn from the pair's seed, by offering a single valid action on those turns. This replaces a folder of opening positions: no files to maintain, endless variety, reproducible from the seed. Some random openings favor one side, but each pair plays its opening from both seats, so the imbalance cancels, and fewer even games make pair results more informative: chess engine testing chooses unbalanced openings on purpose for that reason. Bots must pick from the valid actions they receive, as they must on CodinGame anyway. An opening never ends the game. Phase 4 checks the number of plies with the MCTS bot.
+7. **Time limits scaled by 0.2, provisionally:** 200 ms for the first answer and 20 ms afterwards, instead of 1,000 and 100. Bots read the factor from `CG_TIME_SCALE` and scale their budget. Full limits would make an average test take hours. The owner accepted this value for now, to be revisited with the MCTS bot in Phase 4, using its timeouts and its strength at 0.2 against 1.0.
 8. **Settings live in `games/<game>/evaluation.env`,** read by `scripts/sprt.sh` and `scripts/league.sh`, so a run on CI and a run on a laptop use the same ones.
 
 ### Versions
