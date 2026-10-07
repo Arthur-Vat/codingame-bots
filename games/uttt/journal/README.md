@@ -11,4 +11,4 @@ One entry per experiment, failures included, so that ideas are not retried blind
 
 | Entry | Date | Hypothesis | SPRT | Decision |
 | --- | --- | --- | --- | --- |
-| | | No experiment yet: the first one is the MCTS bot of Phase 4. | | |
+| [E001](E001-mcts.md) | 2026-10-07 | MCTS plays far better than greedy (first release, `uttt-v001`) | pending | pending |
