@@ -30,8 +30,11 @@ const LIMIT: Duration = Duration::from_millis(100);
 const SHARE: f64 = 0.9;
 /// Time kept for reading, writing and timing noise.
 const RESERVE: Duration = Duration::from_millis(2);
-/// The exploration constant of UCB1.
-const EXPLORATION: f64 = 1.0;
+/// The exploration constant of UCB1, from matches on 2026-10-07 (time
+/// scale 0.2, 200 pairs each): 0.5 beat 1.0 by 164 Elo, 0.7 beat 1.0 by
+/// 116, 1.4 lost to 1.0 by 108, and 0.4 and 0.3 lost to 0.5 by 28 and 116.
+/// At full time, 0.5 beat 1.0 by 162.
+const EXPLORATION: f64 = 0.5;
 
 fn main() {
     let seed = seed_from_env_or_clock();
