@@ -11,7 +11,8 @@
 # the SPRT runs against the baseline. If the SPRT accepts the candidate, it
 # plays CONFIRM_PAIRS pairs against the baseline at CodinGame's exact time
 # limits (confirmation), and is rejected if it is clearly weaker there or
-# faults. Games are written to target/sprt/.
+# faults. Only the candidate's faults fail a step: a fault of its opponent
+# just loses that game. Games are written to target/sprt/.
 #
 # Exit status: 0 when the candidate is accepted and confirmed; 1 when the
 # smoke test fails, the SPRT does not accept the candidate or the
@@ -60,7 +61,7 @@ echo "Settings: $(describe_settings)."
 echo
 if ((SMOKE_PAIRS > 0)); then
   echo "Smoke test against $game-random:"
-  if ! "$arena" match "${options[@]}" --expect-no-faults \
+  if ! "$arena" match "${options[@]}" --expect-no-faults-from "$cand" \
     --bot "$cand=$dir/bin/$cand" --bot "random=$dir/bin/$game-random" \
     --pairs "$SMOKE_PAIRS" --min-score "$SMOKE_MIN_SCORE" \
     --out "$dir/$cand-smoke.jsonl"; then
@@ -72,7 +73,7 @@ if ((SMOKE_PAIRS > 0)); then
 fi
 echo "SPRT against $base:"
 status=0
-"$arena" sprt "${options[@]}" --expect-no-faults \
+"$arena" sprt "${options[@]}" --expect-no-faults-from "$cand" \
   --candidate "$cand=$dir/bin/$cand" --baseline "$base=$dir/bin/$base" \
   --elo0 "$SPRT_ELO0" --elo1 "$SPRT_ELO1" --alpha "$SPRT_ALPHA" --beta "$SPRT_BETA" \
   --max-pairs "$SPRT_MAX_PAIRS" --out "$dir/$cand-sprt.jsonl" || status=$?
@@ -83,7 +84,7 @@ fi
 echo
 echo "Confirmation against $base at CodinGame's limits (time scale 1, no tolerance):"
 if ! "$arena" match --seed "$SEED" --opening-plies "$OPENING_PLIES" \
-  --time-scale 1 --time-tolerance-ms 0 --expect-no-faults --expect-not-worse \
+  --time-scale 1 --time-tolerance-ms 0 --expect-no-faults-from "$cand" --expect-not-worse \
   --bot "$cand=$dir/bin/$cand" --bot "$base=$dir/bin/$base" \
   --pairs "$CONFIRM_PAIRS" --out "$dir/$cand-confirmation.jsonl"; then
   echo

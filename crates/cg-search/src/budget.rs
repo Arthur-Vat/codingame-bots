@@ -22,9 +22,11 @@ impl Budget {
     /// `limit` per answer on CodinGame.
     ///
     /// With `CG_FIXED_ITERS` set, a fixed number of iterations. Otherwise
-    /// the search uses `share` of the limit, scaled by the arena's time
-    /// factor ([`time_scale`]), minus `reserve` for reading, writing and
-    /// timing noise.
+    /// the search uses `share` of the limit minus `reserve` (kept for
+    /// reading, writing and timing noise on CodinGame), all scaled by the
+    /// arena's time factor ([`time_scale`]). Scaling the reserve too keeps
+    /// scaled games proportional to real ones; the arena absorbs the noise
+    /// of its own machine with a tolerance of its own (ADR 0013).
     pub fn for_turn(start: Instant, limit: Duration, share: f64, reserve: Duration) -> Budget {
         match fixed_iterations(std::env::var(FIXED_ITERATIONS_ENV).ok().as_deref()) {
             Some(iterations) => Budget::Iterations(iterations),
@@ -42,10 +44,10 @@ impl Budget {
     }
 }
 
-/// The search time for a turn: `share` of the scaled limit minus `reserve`,
-/// and never negative.
+/// The search time for a turn: `share` of the limit minus `reserve`, times
+/// `scale`, and never negative.
 fn search_time(limit: Duration, scale: f64, share: f64, reserve: Duration) -> Duration {
-    limit.mul_f64(scale * share).saturating_sub(reserve)
+    limit.mul_f64(share).saturating_sub(reserve).mul_f64(scale)
 }
 
 fn fixed_iterations(value: Option<&str>) -> Option<u64> {

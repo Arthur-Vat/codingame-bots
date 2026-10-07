@@ -76,7 +76,8 @@ Phases 4 and 5 can overlap.
 - [x] Release `uttt-v001` through the SPRT (first experiment, E001): accepted against `greedy`, 60 wins in 60 games
 - [x] v001 pasted into CodinGame and ranked (owner, 2026-10-07): promoted from Bronze to Legend on its own, 182 of 443 in Legend
 - [x] Full-time confirmation of accepted candidates, set off by reaching Gold ([ADR 0014](adr/0014-full-time-confirmation.md))
-- [ ] Two more experiments run end to end (planned: E002 tree reuse, E003 proven wins and losses, E004 faster search)
+- [x] E002, keeping the search tree between turns: accepted, +49.6 Elo at 20 ms and +73.3 at full time (`uttt-v002`)
+- [ ] One more experiment run end to end (planned: E003 proven wins and losses, then E004 faster search)
 - [ ] Opening length checked with MCTS (ADR 0012)
 
 ## Risks
