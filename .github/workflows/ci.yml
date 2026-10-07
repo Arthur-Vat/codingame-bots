@@ -81,9 +81,16 @@ jobs:
           for bot in target/cg/bin/uttt-*; do
             name="$(basename "$bot")"
             [ "$name" = uttt-random ] && continue
-            target/release/uttt-arena match \
+            if ! out="$(target/release/uttt-arena match \
               --bot "$name=$bot" --bot random=target/cg/bin/uttt-random \
-              --pairs 100 --expect-no-faults
+              --pairs 100 --expect-no-faults 2>&1)"; then
+              echo "$out"
+              # Job logs are hard to read from outside GitHub; an annotation
+              # carries the summary to the check run.
+              echo "::error title=$name against random::$(grep -E 'score|faults|slowest|error' <<<"$out" | tr '\n' ' ')"
+              exit 1
+            fi
+            echo "$out"
           done
       - name: The evaluation tells bots apart (controls and A/A test)
         run: |
@@ -95,8 +102,11 @@ jobs:
             shift
             out="$(target/release/uttt-arena sprt "$@" --opening-plies 4 --seed 1)" || true
             echo "$out"
-            grep -q "^Verdict: $verdict" <<<"$out"
-            [ "$(grep -c '0 timeouts, 0 crashes, 0 invalid answers' <<<"$out")" = 2 ]
+            if ! grep -q "^Verdict: $verdict" <<<"$out" ||
+              [ "$(grep -c '0 timeouts, 0 crashes, 0 invalid answers' <<<"$out")" != 2 ]; then
+              echo "::error title=Evaluation control::expected $verdict; got $(grep -E '^Verdict|faults' <<<"$out" | tr '\n' ' ')"
+              return 1
+            fi
           }
           expect ACCEPTED --candidate greedy=$bin/uttt-greedy --baseline random=$bin/uttt-random
           expect REJECTED --candidate random=$bin/uttt-random --baseline greedy=$bin/uttt-greedy
