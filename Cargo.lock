@@ -254,6 +254,14 @@ name = "uttt-bot-first-valid"
 version = "0.0.0"
 
 [[package]]
+name = "uttt-bot-greedy"
+version = "0.0.0"
+dependencies = [
+ "cg-core",
+ "uttt-engine",
+]
+
+[[package]]
 name = "uttt-bot-random"
 version = "0.0.0"
 dependencies = [

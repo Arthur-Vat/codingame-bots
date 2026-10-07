@@ -1,0 +1,37 @@
+name: Release
+
+# Publishes a GitHub release, tagged with the version, for every release
+# file on main that has none yet, with the paste-ready file attached.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "games/*/releases/**"
+
+permissions:
+  contents: write # to create tags and releases
+
+jobs:
+  release:
+    name: GitHub release of each new version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create the missing releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          for file in games/*/releases/*.rs; do
+            tag="$(basename "$file" .rs)"
+            if gh release view "$tag" >/dev/null 2>&1; then
+              continue
+            fi
+            game="$(cut -d/ -f2 <<<"$file")"
+            entry="$(grep -rlx -- "release: $tag" "games/$game/journal/" | head -n 1 || true)"
+            notes="Paste-ready bot $tag: copy the attached file into the CodinGame IDE."
+            if [ -n "$entry" ]; then
+              notes="$notes Journal: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$GITHUB_SHA/$entry"
+            fi
+            gh release create "$tag" "$file" --target "$GITHUB_SHA" --title "$tag" --notes "$notes"
+          done

@@ -209,6 +209,22 @@ fn bots_receive_a_seed_derived_from_the_match_seed() {
 }
 
 #[test]
+fn bots_receive_the_time_scale() {
+    // The bot wins only if CG_TIME_SCALE holds the factor.
+    let a = shell(
+        "a",
+        "read seat; read turn; [ \"$CG_TIME_SCALE\" = '0.25' ] && echo win",
+    );
+    let b = shell("b", POLITE);
+    let options = MatchOptions {
+        time_scale: 0.25,
+        ..MatchOptions::default()
+    };
+    let record = run_match(&mut Countdown::new(6), [&a, &b], 7, &options).unwrap();
+    assert_eq!(record.winner, Some(0), "{record:?}");
+}
+
+#[test]
 fn a_missing_program_is_an_error_not_a_crash() {
     let missing = BotSpec::parse("ghost=/definitely/not/here").unwrap();
     let b = shell("b", POLITE);

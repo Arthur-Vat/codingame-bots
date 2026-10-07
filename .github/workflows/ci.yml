@@ -42,6 +42,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The parent commit, to see which release files a pull request adds.
+          fetch-depth: 2
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.CG_RUST }}
@@ -53,10 +56,14 @@ jobs:
         env:
           CG_BIN_DIR: target/cg/bin
         run: scripts/cg-check.sh target/cg/*.rs
+      - name: New releases match their sources; released files are frozen
+        if: github.event_name == 'pull_request'
+        # In a pull request, HEAD is the merge commit and HEAD^1 the base.
+        run: scripts/check-releases.sh HEAD^1
       - name: Play 1,000 games between the bundled random bots
         run: |
           cargo build --release --locked -p uttt-arena
-          target/release/uttt-arena \
+          target/release/uttt-arena match \
             --bot random=target/cg/bin/uttt-random \
             --bot random-again=target/cg/bin/uttt-random \
             --pairs 500 --expect-no-faults --out target/cg/uttt-smoke.jsonl
@@ -68,10 +75,30 @@ jobs:
           for bot in target/cg/bin/uttt-*; do
             name="$(basename "$bot")"
             [ "$name" = uttt-random ] && continue
-            target/release/uttt-arena \
+            target/release/uttt-arena match \
               --bot "$name=$bot" --bot random=target/cg/bin/uttt-random \
               --pairs 100 --expect-no-faults
           done
+      - name: The evaluation tells bots apart (controls and A/A test)
+        run: |
+          bin=target/cg/bin
+          # Runs an SPRT with fixed seeds and checks its verdict and faults.
+          # The bots never look at the clock, so the outcome is reproducible.
+          expect() {
+            local verdict="$1" out
+            shift
+            out="$(target/release/uttt-arena sprt "$@" --opening-plies 4 --seed 1)" || true
+            echo "$out"
+            grep -q "^Verdict: $verdict" <<<"$out"
+            [ "$(grep -c '0 timeouts, 0 crashes, 0 invalid answers' <<<"$out")" = 2 ]
+          }
+          expect ACCEPTED --candidate greedy=$bin/uttt-greedy --baseline random=$bin/uttt-random
+          expect REJECTED --candidate random=$bin/uttt-random --baseline greedy=$bin/uttt-greedy
+          expect REJECTED --candidate greedy=$bin/uttt-greedy --baseline greedy-again=$bin/uttt-greedy
+          target/release/uttt-arena league --pairs 50 --opening-plies 4 --expect-no-faults \
+            --bot first-valid=$bin/uttt-first-valid --bot random=$bin/uttt-random \
+            --bot greedy=$bin/uttt-greedy --anchor random | tee target/cg/league.txt
+          grep -q '^  1\. greedy ' target/cg/league.txt
       - name: Engine speed
         run: |
           cargo run --release --locked -p uttt-engine --example speed -- 3 \

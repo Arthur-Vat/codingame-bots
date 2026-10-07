@@ -1,0 +1,54 @@
+name: League
+
+# Rates every release of every game, with its baseline bots (ADR 0012).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "games/*/releases/**"
+      - "games/*/evaluation.env"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: league
+  cancel-in-progress: true
+
+env:
+  # CodinGame's Rust compiler (docs/CODINGAME.md, ADR 0010).
+  CG_RUST: "1.90.0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  league:
+    name: Elo ratings of every release
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Play each game's league
+        run: |
+          for settings in games/*/evaluation.env; do
+            game="$(basename "$(dirname "$settings")")"
+            scripts/league.sh "$game" | tee "target/league-$game.txt"
+            {
+              echo "## League: $game"
+              echo '```'
+              cat "target/league-$game.txt"
+              echo '```'
+            } >>"$GITHUB_STEP_SUMMARY"
+          done
+      - name: Publish the games and ratings
+        uses: actions/upload-artifact@v7
+        with:
+          name: league
+          path: |
+            target/league-*.txt
+            target/league/*.jsonl

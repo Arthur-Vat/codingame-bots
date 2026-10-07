@@ -242,3 +242,63 @@ fn random_games_always_end_consistently() {
     assert!(results[0] > 600 && results[1] > 600, "{results:?}");
     assert!(results[2] > 0, "{results:?}");
 }
+
+#[test]
+fn an_opening_imposes_its_actions_then_frees_the_game() {
+    let mut game = UtttReferee::with_opening(42, 4);
+    let opening = game.opening().to_vec();
+    assert_eq!(opening.len(), 4);
+    for &cell in &opening {
+        assert_eq!(game.valid_actions(), [cell]);
+        let line = format!("{} {}", cell.0, cell.1);
+        let seat = game.to_move();
+        game.play(&answer(seat, &line)).unwrap();
+    }
+    // Afterwards the list is the full one again.
+    let mut free = UtttReferee::new(1);
+    for &cell in &opening {
+        free.play_cell(cell).unwrap();
+    }
+    assert_eq!(sorted(game.valid_actions()), sorted(free.valid_actions()));
+    assert!(game.valid_actions().len() > 1);
+}
+
+#[test]
+fn an_opening_depends_only_on_the_seed() {
+    assert_eq!(
+        UtttReferee::with_opening(7, 6).opening(),
+        UtttReferee::with_opening(7, 6).opening()
+    );
+    assert_ne!(
+        UtttReferee::with_opening(7, 6).opening(),
+        UtttReferee::with_opening(8, 6).opening()
+    );
+    assert!(UtttReferee::with_opening(7, 0).opening().is_empty());
+    // A longer opening extends a shorter one.
+    assert_eq!(
+        UtttReferee::with_opening(7, 10).opening()[..6],
+        *UtttReferee::with_opening(7, 6).opening()
+    );
+}
+
+#[test]
+fn an_opening_never_ends_the_game() {
+    for seed in 0..50 {
+        let mut game = UtttReferee::with_opening(seed, 81);
+        let opening = game.opening().to_vec();
+        assert!(!opening.is_empty());
+        for cell in opening {
+            game.play_cell(cell).unwrap();
+            assert!(game.result().is_none(), "seed {seed}");
+        }
+    }
+}
+
+#[test]
+fn an_action_outside_the_opening_is_invalid() {
+    let mut game = UtttReferee::with_opening(3, 2);
+    let imposed = game.opening()[0];
+    let other = if imposed == (4, 4) { (0, 0) } else { (4, 4) };
+    assert!(game.play_cell(other).is_err());
+    assert!(game.play_cell(imposed).is_ok());
+}
