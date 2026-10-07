@@ -1,8 +1,9 @@
 name: SPRT
 
-# Tests every release file a pull request adds (ADR 0012): a smoke test
-# against the random bot, then a sequential probability ratio test against
-# the previous release. The check fails unless the candidate is accepted.
+# Tests every release file a pull request adds (ADR 0012 to 0014): a smoke
+# test against the random bot, a sequential probability ratio test against
+# the previous release, then, if accepted, a confirmation match at
+# CodinGame's exact time limits. The check fails unless all three pass.
 on:
   pull_request:
 
