@@ -40,6 +40,6 @@ for file in "${files[@]}"; do
   # Names drop the game prefix: random, greedy, v001, ...
   args+=(--bot "${name#"$game"-}=$dir/bin/$name")
 done
-echo "Settings: time scale $TIME_SCALE, opening plies $OPENING_PLIES, seed $SEED, $LEAGUE_PAIRS pairs per matchup."
+echo "Settings: $(describe_settings), $LEAGUE_PAIRS pairs per matchup."
 "target/release/$game-arena" league "${options[@]}" "${args[@]}" \
   --pairs "$LEAGUE_PAIRS" --anchor "$LEAGUE_ANCHOR" --out "$dir/$game.jsonl"

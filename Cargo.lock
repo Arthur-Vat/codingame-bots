@@ -76,6 +76,13 @@ name = "cg-core"
 version = "0.0.0"
 
 [[package]]
+name = "cg-search"
+version = "0.0.0"
+dependencies = [
+ "cg-core",
+]
+
+[[package]]
 name = "clap"
 version = "4.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -262,6 +269,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "uttt-bot-mcts"
+version = "0.0.0"
+dependencies = [
+ "cg-core",
+ "cg-search",
+ "uttt-engine",
+]
+
+[[package]]
 name = "uttt-bot-random"
 version = "0.0.0"
 dependencies = [
@@ -290,6 +306,7 @@ version = "0.0.0"
 dependencies = [
  "cg-arena",
  "cg-core",
+ "cg-search",
  "uttt-referee",
 ]
 

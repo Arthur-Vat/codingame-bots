@@ -1,5 +1,6 @@
 //! Measures the engine's speed with random playouts from the start position,
-//! the core of Monte Carlo tree search.
+//! the core of Monte Carlo tree search, then the speed of that search
+//! (`cg-search`) from the same position.
 //!
 //! ```sh
 //! cargo run --release -p uttt-engine --example speed -- [SECONDS]
@@ -10,7 +11,13 @@
 use std::time::{Duration, Instant};
 
 use cg_core::rng::Rng;
+use cg_search::{Budget, Mcts};
 use uttt_engine::{Board, MoveList, Status};
+
+/// The exploration constant of the MCTS bot.
+const EXPLORATION: f64 = 0.5;
+/// The length of each measured search: CodinGame's limit after the first turn.
+const SEARCH: Duration = Duration::from_millis(100);
 
 fn main() {
     let seconds: f64 = std::env::args()
@@ -40,10 +47,33 @@ fn main() {
         "| Moves per second | {} |",
         thousands(played as f64 / elapsed.as_secs_f64())
     );
+    let (searches, iterations, search_time) = measure_search(budget);
     println!(
-        "| Measured for | {:.1} s, one thread |",
+        "| MCTS iterations from the start, {} ms searches | {} per second |",
+        SEARCH.as_millis(),
+        thousands(iterations as f64 / search_time.as_secs_f64())
+    );
+    println!(
+        "| Measured for | {:.1} s of playouts and {searches} searches, one thread |",
         elapsed.as_secs_f64()
     );
+}
+
+/// Runs searches of `SEARCH` from the start for about `budget`; returns
+/// searches, iterations and time taken.
+fn measure_search(budget: Duration) -> (u64, u64, Duration) {
+    let mut mcts = Mcts::new(EXPLORATION, 1);
+    let board = Board::new();
+    let mut moves = MoveList::new();
+    board.legal_moves(&mut moves);
+    let start = Instant::now();
+    let (mut searches, mut iterations) = (0u64, 0u64);
+    while searches == 0 || start.elapsed() < budget {
+        let result = mcts.search(&board, &moves, Budget::Until(Instant::now() + SEARCH));
+        searches += 1;
+        iterations += result.iterations;
+    }
+    (searches, iterations, start.elapsed())
 }
 
 /// Plays random games for `budget`; returns games, moves and time taken.

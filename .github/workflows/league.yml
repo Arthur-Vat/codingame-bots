@@ -17,6 +17,13 @@ on:
       - "scripts/league.sh"
       - "scripts/lib/evaluation.sh"
   workflow_dispatch:
+    inputs:
+      time_scale:
+        description: "Time scale; 1 plays CodinGame's limits (default: each game's evaluation.env)"
+        required: false
+      time_tolerance_ms:
+        description: "Milliseconds added to every limit (default: each game's evaluation.env)"
+        required: false
 
 permissions:
   contents: read
@@ -49,6 +56,11 @@ jobs:
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
       - name: Play each game's league
+        env:
+          # Empty unless given when starting the workflow by hand; empty
+          # values leave each game's settings in place.
+          TIME_SCALE: ${{ inputs.time_scale }}
+          TIME_TOLERANCE_MS: ${{ inputs.time_tolerance_ms }}
         run: |
           # A fresh runner has no target folder yet; tee needs it.
           mkdir -p target

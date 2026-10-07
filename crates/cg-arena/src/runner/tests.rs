@@ -149,6 +149,28 @@ fn time_scale_stretches_the_limits() {
 }
 
 #[test]
+fn the_tolerance_extends_the_limits_without_telling_bots() {
+    // Its second answer takes 400 ms, over the 300 ms limit; it wins only
+    // if CG_TIME_SCALE is unset: the tolerance is not a time scale.
+    let script = "read seat; read turn; echo ok; read turn; sleep 0.4; \
+                  [ -z \"$CG_TIME_SCALE\" ] && echo win";
+    let slow = shell("slow", script);
+    let b = shell("b", POLITE);
+    let tolerant = MatchOptions {
+        time_tolerance: Duration::from_millis(500),
+        ..MatchOptions::default()
+    };
+    let record = run_match(&mut Countdown::new(6), [&b, &slow], 7, &tolerant).unwrap();
+    assert_eq!(record.winner, Some(1), "{record:?}");
+    let strict = MatchOptions::default();
+    let record = run_match(&mut Countdown::new(6), [&b, &slow], 7, &strict).unwrap();
+    assert!(
+        matches!(record.end, EndReason::Timeout { seat: 1, .. }),
+        "{record:?}"
+    );
+}
+
+#[test]
 fn a_crash_loses_and_reports_the_exit_status() {
     let b = shell("b", POLITE);
     let crash = shell("crash", "read seat; exit 3");

@@ -6,6 +6,7 @@ use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::thread;
+use std::time::Duration;
 
 use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 
@@ -54,6 +55,12 @@ pub struct CommonArgs {
     /// CG_TIME_SCALE to scale their own budget.
     #[arg(long, default_value_t = 1.0)]
     pub time_scale: f64,
+
+    /// Milliseconds added to every scaled time limit, without telling the
+    /// bots, to absorb the delays of a busy machine. 0 keeps CodinGame's
+    /// limits.
+    #[arg(long, value_name = "MS", default_value_t = 0)]
+    pub time_tolerance_ms: u64,
 
     /// Moves the referee imposes at the start of each game, to vary the
     /// positions. 0 plays exactly as on CodinGame.
@@ -356,6 +363,7 @@ fn tournament(bots: [BotSpec; 2], pairs: u32, common: &CommonArgs) -> Result<Tou
             .unwrap_or_else(|| thread::available_parallelism().map_or(1, usize::from)),
         options: MatchOptions {
             time_scale: common.time_scale,
+            time_tolerance: Duration::from_millis(common.time_tolerance_ms),
             show_bot_stderr: common.show_bot_stderr,
             ..MatchOptions::default()
         },

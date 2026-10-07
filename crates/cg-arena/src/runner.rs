@@ -53,6 +53,10 @@ pub struct MatchOptions {
     /// limits. Bots receive the factor in `CG_TIME_SCALE` so they can scale
     /// their own budget.
     pub time_scale: f64,
+    /// Added to every scaled time limit, and not told to bots: it absorbs
+    /// the scheduling delays of a busy machine, which do not shrink with
+    /// the time scale. Zero reproduces CodinGame's limits.
+    pub time_tolerance: Duration,
     /// Turns after which the arena stops the game. It only guards against
     /// referee bugs; real games end long before.
     pub max_turns: u32,
@@ -64,6 +68,7 @@ impl Default for MatchOptions {
     fn default() -> Self {
         MatchOptions {
             time_scale: 1.0,
+            time_tolerance: Duration::ZERO,
             max_turns: 10_000,
             show_bot_stderr: false,
         }
@@ -159,7 +164,7 @@ pub fn run_match(
     }
 
     let limits = referee.time_limits();
-    let scale = |limit: Duration| limit.mul_f64(options.time_scale);
+    let scale = |limit: Duration| limit.mul_f64(options.time_scale) + options.time_tolerance;
     let mut turns = 0;
     let (outcome, end) = 'game: loop {
         if let Some(outcome) = referee.outcome() {

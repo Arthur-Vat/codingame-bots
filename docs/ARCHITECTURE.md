@@ -33,7 +33,7 @@ codingame-bots/
 │  ├─ cg-core/              bot side: CodinGame input reading, seeded RNG, time scale
 │  ├─ cg-arena/             Referee trait, match runner, tournaments, summary, SPRT, ratings, CLI
 │  ├─ cg-bundler/           bot + its workspace crates -> one paste-ready .rs file
-│  └─ cg-search/            Phase 4: reusable search (MCTS first)
+│  └─ cg-search/            bot side: game trait, MCTS, time budgets
 ├─ games/
 │  └─ uttt/
 │     ├─ README.md          layout, bots, how to play matches
@@ -42,7 +42,7 @@ codingame-bots/
 │     ├─ referee/           readable reference rules, implements Referee
 │     ├─ arena/             uttt-arena binary
 │     ├─ engine/            fast rules for bots, checked against the referee
-│     ├─ bots/              first-valid/, random/, greedy/, wood/, rules-check/; mcts/ in Phase 4
+│     ├─ bots/              first-valid/, random/, greedy/, wood/, rules-check/, mcts/
 │     ├─ releases/          frozen paste-ready file per version, from the first release
 │     └─ journal/           one entry per experiment
 ├─ .claude/                 Phase 5: skills, agents, settings
@@ -55,8 +55,9 @@ codingame-bots/
 - **Referee (per game):** a readable implementation of `RULES.md`, written to be obviously correct rather than fast. It is the reference that faster engines are checked against.
 - **Engine (per game):** a fast implementation of the same rules for search inside bots, std-only so it can be bundled. Parity tests compare it with the referee on many random games, and a `rules-check` bot compares it with CodinGame's own valid actions during real games.
 - **Arena:** each game has a tiny binary (`uttt-arena`) that hands its referee to the shared command line of `cg-arena`, with three commands: `match` (two bots), `sprt` (does a candidate beat a baseline?) and `league` (Elo ratings of several bots). Bots run as separate processes and receive their input on stdin, exactly as on CodinGame; a bot that exceeds its time limit, exits, or answers invalidly loses the game. Games run in parallel, in seat-swapped pairs, and each one is written as a JSON line: seed, bots by seat, winner, end reason, turns and answer times.
-- **Bot:** an ordinary binary reading stdin and writing stdout. The arena gives each bot a reproducible seed in `CG_SEED`; on CodinGame it is absent and bots seed from the clock. When the arena scales the time limits, it passes the factor in `CG_TIME_SCALE` so that bots scale their budget too. Later, an optional `CG_FIXED_ITERS` will replace the time budget by a fixed iteration count for deterministic tests.
+- **Bot:** an ordinary binary reading stdin and writing stdout. The arena gives each bot a reproducible seed in `CG_SEED`; on CodinGame it is absent and bots seed from the clock. When the arena scales the time limits, it passes the factor in `CG_TIME_SCALE` so that bots scale their budget too; `CG_FIXED_ITERS` replaces the time budget by a fixed iteration count for deterministic tests.
 - **`cg-core`:** what every bot needs, std-only: a line-based reader for the referee's input, a seeded xoshiro256++ generator, and the arena's time scale.
+- **`cg-search`:** game-independent search, std-only: a `Game` trait for two-player games where players take turns, Monte Carlo tree search (UCT) over it, and time budgets derived from a turn's CodinGame limit. Each game's engine implements the trait.
 - **Bundler:** flattens a bot and the workspace crates it uses into one file formatted by rustfmt. It works on text so the result keeps its comments, and relies on conventions listed in its crate documentation: modules in files declared with `mod name;`, tests in separate files, other crates referred to by name, no crates.io dependencies on the bot side.
 - **Versions:** `releases/` keeps the exact file pasted for each version. The arena compiles old versions from these files with `rustc` alone, so history never rebuilds differently.
 
@@ -80,7 +81,7 @@ Seven tiers protect every change; only the SPRT decides whether a bot is stronge
 - **SPRT:** scored on game pairs, which handles draws; bounds of 0 and 10 Elo; 5% error rates; no verdict before 30 pairs; capped at 10,000 pairs (20,000 games). Bounds tighten as the bot matures.
 - **Sanity checks of the pipeline itself:** on every push, CI runs an SPRT of a bot against a copy of itself (A/A test, must not be accepted), of a weaker bot against a stronger one (must be rejected) and the reverse (must be accepted), with fixed seeds.
 - **Ratings:** Bradley-Terry maximum likelihood with 95% intervals, the random bot anchored at 0.
-- **Timing noise:** shared runners are noisy, so matches run one game per CPU core. Strength is always measured under real time limits, scaled down to keep tests affordable (0.2, provisional).
+- **Timing noise:** matches run one game per CPU core, with time limits scaled down to keep tests affordable (0.2) plus a 5 ms tolerance, not told to bots, that absorbs the machine's delays ([ADR 0013](adr/0013-evaluation-time-limits.md)). Once the bot is strong, releases are also measured at CodinGame's full limits.
 
 ## Journal and versioning
 

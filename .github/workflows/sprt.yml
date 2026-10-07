@@ -45,25 +45,30 @@ jobs:
           fi
           # A result is kept for the exact code and settings it was obtained
           # with: editing only Markdown (the journal) does not run it again.
+          # Re-running the job on GitHub does (see the next step).
           key="$(git ls-tree -r HEAD -- Cargo.toml Cargo.lock crates games scripts | grep -v '\.md$' | sha256sum | cut -c 1-20)"
           echo "key=sprt-$key" >>"$GITHUB_OUTPUT"
-      - name: Reuse the result of an earlier run on the same code
+      - name: Reuse the latest result on the same code
         id: cache
-        if: steps.find.outputs.candidates != ''
+        # A re-run of this job (attempt 2 or more) always tests again, for
+        # example after a timeout caused by the machine. Each test posts its
+        # result, so retries stay visible.
+        if: steps.find.outputs.candidates != '' && github.run_attempt == '1'
         uses: actions/cache/restore@v6
         with:
           path: target/sprt-result
-          key: ${{ steps.find.outputs.key }}
+          key: ${{ steps.find.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ${{ steps.find.outputs.key }}-
       - uses: dtolnay/rust-toolchain@master
-        if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-hit != 'true'
+        if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-matched-key == ''
         with:
           toolchain: ${{ env.CG_RUST }}
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
-        if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-hit != 'true'
+        if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-matched-key == ''
       - name: Smoke test and SPRT
         id: run
-        if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-hit != 'true'
+        if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-matched-key == ''
         env:
           CANDIDATES: ${{ steps.find.outputs.candidates }}
         run: |
@@ -85,11 +90,11 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: target/sprt-result
-          key: ${{ steps.find.outputs.key }}
+          key: ${{ steps.find.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Report
         if: steps.find.outputs.candidates != ''
         env:
-          REUSED: ${{ steps.cache.outputs.cache-hit }}
+          REUSED: ${{ steps.cache.outputs.cache-matched-key != '' }}
         run: |
           {
             echo "## SPRT"
