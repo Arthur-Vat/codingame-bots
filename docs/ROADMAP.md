@@ -8,7 +8,7 @@ Seven phases build the framework before the first real bot. Reaching Legend is t
 | 1. Framework core | `Referee` trait, arena, bundler, `cg-core`; UTTT `RULES.md`, reference referee, random bot | 1,000 random-vs-random games in CI; a bundled bot plays on CodinGame | Done (2026-10-07) |
 | 2. UTTT engine | Fast engine for bots, property tests, parity with the referee, rules checked against real CodinGame games | Parity on 10,000 random games; speed baseline recorded | Done (2026-10-07) |
 | 3. Evaluation | Openings, smoke tests, SPRT, ratings, league, journal, releases | A/A test passes; a weakened bot is rejected by the SPRT | Done (2026-10-07) |
-| 4. First real bot | MCTS `uttt-v001`, then the weekly experiment loop | v001 pasted and ranked; 3 experiments run end to end | Not started |
+| 4. First real bot | MCTS `uttt-v001`, then the weekly experiment loop | v001 pasted and ranked; 3 experiments run end to end | In progress |
 | 5. Autonomy | Hub, project skills, weekly routine, notifications | One full loop without opening GitHub | Not started |
 | 6. Second game | A game with an official referee; `new-game` skill | Phase 3 gates met, changes mostly inside the game folder | Not started |
 | Ongoing | Iterate every game toward Legend | | |
@@ -66,6 +66,17 @@ Phases 4 and 5 can overlap.
 - [x] Gate, weaker bot rejected: `random` against `greedy`, in CI on every push
 - [x] CI green on the Phase 3 pull request
 - [x] [ADR 0012](adr/0012-evaluation.md) accepted by the owner (2026-10-07); time scale and opening length to be revisited with the MCTS bot
+
+## Phase 4: first real bot
+
+- [x] `cg-search`: `Game` trait, UCT Monte Carlo tree search, time budgets from the scaled CodinGame limit or `CG_FIXED_ITERS`
+- [x] `uttt-engine` implements the trait; the speed example also measures MCTS iterations
+- [x] `mcts` bot: searches each turn from scratch with random playouts; exploration constant 0.5, measured about 160 Elo above 1.0
+- [x] Time limits revisited with MCTS: 20 ms plus 5 ms of tolerance in evaluations, full-time calibration once the bot is strong ([ADR 0013](adr/0013-evaluation-time-limits.md))
+- [ ] Release `uttt-v001` through the SPRT (first experiment, E001)
+- [ ] v001 pasted into CodinGame and ranked (owner)
+- [ ] Two more experiments run end to end
+- [ ] Opening length checked with MCTS (ADR 0012)
 
 ## Risks
 

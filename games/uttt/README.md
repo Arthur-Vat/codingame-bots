@@ -2,7 +2,7 @@
 
 CodinGame's [Ultimate Tic-Tac-Toe](https://www.codingame.com/multiplayer/bot-programming/tic-tac-toe) is the first game of this framework ([ADR 0005](../../docs/adr/0005-first-game-uttt.md)). The rules, protocol and time limits are in [RULES.md](RULES.md).
 
-**Status:** Phase 3. The reference referee, the fast engine (checked against it), the arena with its evaluation tools, and five utility bots exist. No release yet: the first real bot, MCTS, comes in Phase 4.
+**Status:** Phase 4. The reference referee, the fast engine (checked against it), the arena with its evaluation tools, five utility bots and the first real bot, MCTS, exist. No release yet.
 
 ## Layout
 
@@ -24,6 +24,7 @@ CodinGame's [Ultimate Tic-Tac-Toe](https://www.codingame.com/multiplayer/bot-pro
 | [first-valid](bots/first-valid/) | Plays the first valid action listed. CodinGame shuffles that list, so this plays randomly there. | Proved the paste-to-CodinGame path (Phase 0, 2026-10-07) |
 | [random](bots/random/) | Plays a uniformly random valid action, seeded | Baseline for every rating; first bot built from shared crates |
 | [greedy](bots/greedy/) | Looks one move ahead: wins the game or a small board when it can, avoids handing the opponent either, or a free choice; random among equals | Fixed baseline about 500 Elo above random: the first release's opponent, and the arena's controls in CI |
+| [mcts](bots/mcts/) | Monte Carlo tree search (UCT, random playouts) for 90% of the turn's limit minus 2 ms, from scratch every turn; plays a forced or game-winning action at once | The first real bot, to be released as `uttt-v001` |
 | [wood](bots/wood/) | Perfect 3×3 tic-tac-toe; among moves that never lose, the one that wins most against random play | Promotion out of Wood league, whose boss plays randomly. Expected score against random play: 99.7% moving first, 95.8% moving second. On the 9×9 board it plays randomly. |
 | [rules-check](bots/rules-check/) | Plays randomly; every turn, compares CodinGame's valid actions with the engine's | Checking the engine against real CodinGame games, from Bronze league |
 
@@ -43,21 +44,22 @@ Each pair plays the same seed twice with seats swapped; `--opening-plies 4` star
 
 With the settings of [evaluation.env](evaluation.env):
 
-- `scripts/sprt.sh uttt CANDIDATE.rs [BASELINE.rs]`: smoke test against random, then SPRT against the baseline (by default the newest release older than the candidate, or `greedy`).
+- `scripts/sprt.sh uttt CANDIDATE.rs [BASELINE.rs]`: smoke test against random, then SPRT against the baseline (by default the newest release older than the candidate, or `greedy`). Settings can be overridden from the environment, for example `TIME_SCALE=1 TIME_TOLERANCE_MS=0` for CodinGame's full limits.
 - `scripts/league.sh uttt`: ratings of every release with `random` and `greedy`.
 - `scripts/new-release.sh uttt BOT`: freezes a bot as the next release. The whole experiment flow is in [docs/WORKFLOW.md](../../docs/WORKFLOW.md).
 
 ## Engine speed
 
-`cargo run --release -p uttt-engine --example speed` plays random games from the start position for a few seconds. CI runs it on every push and shows the table in the job summary of the "CodinGame compatibility" job.
+`cargo run --release -p uttt-engine --example speed` plays random games from the start position for a few seconds, then runs 100 ms MCTS searches from there. CI runs it on every push and shows the table in the job summary of the "CodinGame compatibility" job.
 
-Baseline, measured on 2026-10-07 on one thread of an Intel Xeon at 2.8 GHz:
+Baseline, measured on 2026-10-07 on one thread of an Intel Xeon at 2.8 GHz (this shared machine varies by about 10% between runs):
 
 | Engine benchmark | Result |
 | --- | --- |
 | Random playouts from the start | 441,681 per second |
 | Moves per playout | 58.9 |
 | Moves per second | 26,020,079 |
+| MCTS iterations from the start, 100 ms searches | about 350,000 per second (338,262 to 379,579 over three runs) |
 
 ## Checking the rules on CodinGame
 
