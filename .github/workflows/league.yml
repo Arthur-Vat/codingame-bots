@@ -1,20 +1,35 @@
 name: League
 
 # Rates every release of every game, with its baseline bots (ADR 0012).
+# Pull requests that change the league itself run it too.
 on:
   push:
     branches: [main]
     paths:
       - "games/*/releases/**"
       - "games/*/evaluation.env"
+      - ".github/workflows/league.yml"
+      - "scripts/league.sh"
+      - "scripts/lib/evaluation.sh"
+  pull_request:
+    paths:
+      - ".github/workflows/league.yml"
+      - "scripts/league.sh"
+      - "scripts/lib/evaluation.sh"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: league
+  group: league-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    # Unlike GitHub's default, fails a step when any command of a pipeline
+    # fails, not only the last one.
+    shell: bash
 
 env:
   # CodinGame's Rust compiler (docs/CODINGAME.md, ADR 0010).
@@ -35,6 +50,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Play each game's league
         run: |
+          # A fresh runner has no target folder yet; tee needs it.
+          mkdir -p target
           for settings in games/*/evaluation.env; do
             game="$(basename "$(dirname "$settings")")"
             scripts/league.sh "$game" | tee "target/league-$game.txt"

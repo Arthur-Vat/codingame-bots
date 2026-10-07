@@ -11,6 +11,12 @@ on:
 permissions:
   contents: write # to create tags and releases
 
+defaults:
+  run:
+    # Unlike GitHub's default, fails a step when any command of a pipeline
+    # fails, not only the last one.
+    shell: bash
+
 jobs:
   release:
     name: GitHub release of each new version
