@@ -1,0 +1,16 @@
+[package]
+name = "uttt-bot-random"
+description = "Ultimate Tic-Tac-Toe bot that plays a uniformly random valid action."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+cg-core.workspace = true
+
+[lints]
+workspace = true

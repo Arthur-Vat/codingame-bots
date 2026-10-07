@@ -1,0 +1,17 @@
+[package]
+name = "uttt-arena"
+description = "Plays Ultimate Tic-Tac-Toe bots against each other under the reference referee."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+cg-arena.workspace = true
+uttt-referee.workspace = true
+
+[lints]
+workspace = true
