@@ -1,6 +1,7 @@
 //! Measures the engine's speed with random playouts from the start position,
-//! the core of Monte Carlo tree search, then the speed of that search
-//! (`cg-search`) from the same position.
+//! then with the decisive playouts that the search uses (a move that wins
+//! the game when there is one), then the speed of that search (`cg-search`)
+//! from the same position.
 //!
 //! ```sh
 //! cargo run --release -p uttt-engine --example speed -- [SECONDS]
@@ -12,7 +13,7 @@ use std::time::{Duration, Instant};
 
 use cg_core::rng::Rng;
 use cg_search::{Budget, Mcts};
-use uttt_engine::{Board, MoveList, Status};
+use uttt_engine::{Board, Move, MoveList, Status};
 
 /// The exploration constant of the MCTS bot.
 const EXPLORATION: f64 = 0.5;
@@ -28,8 +29,10 @@ fn main() {
     let mut rng = Rng::new(1);
 
     // Warm up caches and CPU frequency before measuring.
-    measure(&mut rng, Duration::from_millis(200));
-    let (playouts, played, elapsed) = measure(&mut rng, budget);
+    measure(&mut rng, Duration::from_millis(200), Board::random_move);
+    let (playouts, played, elapsed) = measure(&mut rng, budget, Board::random_move);
+    let (decisive, decisive_played, decisive_time) =
+        measure(&mut rng, budget, Board::decisive_move);
 
     let per_second = playouts as f64 / elapsed.as_secs_f64();
     println!("| Engine benchmark | Result |");
@@ -46,6 +49,11 @@ fn main() {
         "| Moves per second | {} |",
         thousands(played as f64 / elapsed.as_secs_f64())
     );
+    println!(
+        "| Decisive playouts from the start | {} per second, {:.1} moves each |",
+        thousands(decisive as f64 / decisive_time.as_secs_f64()),
+        decisive_played as f64 / decisive as f64
+    );
     let (searches, iterations, search_time) = measure_search(budget);
     println!(
         "| MCTS iterations from the start, {} ms searches | {} per second |",
@@ -54,7 +62,7 @@ fn main() {
     );
     println!(
         "| Measured for | {:.1} s of playouts and {searches} searches, one thread |",
-        elapsed.as_secs_f64()
+        (elapsed + decisive_time).as_secs_f64()
     );
 }
 
@@ -75,16 +83,20 @@ fn measure_search(budget: Duration) -> (u64, u64, Duration) {
     (searches, iterations, start.elapsed())
 }
 
-/// Plays random games for `budget`, the way playouts do; returns games,
-/// moves and time taken.
-fn measure(rng: &mut Rng, budget: Duration) -> (u64, u64, Duration) {
+/// Plays games from the start with `policy` for `budget`, the way playouts
+/// do; returns games, moves and time taken.
+fn measure(
+    rng: &mut Rng,
+    budget: Duration,
+    policy: fn(&Board, &mut Rng) -> Move,
+) -> (u64, u64, Duration) {
     let start = Instant::now();
     let (mut playouts, mut played) = (0u64, 0u64);
     while start.elapsed() < budget {
         for _ in 0..1000 {
             let mut board = Board::new();
             while board.status() == Status::Ongoing {
-                board.play(board.random_move(rng));
+                board.play(policy(&board, rng));
                 played += 1;
             }
             playouts += 1;
