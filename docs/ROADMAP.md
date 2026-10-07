@@ -6,7 +6,7 @@ Seven phases build the framework before the first real bot. Reaching Legend is t
 | --- | --- | --- | --- |
 | 0. Foundations | Repository, licenses, ADRs, `CLAUDE.md`, CI skeleton, compiler target | CI green; a hello-world bot runs on CodinGame | Done (2026-10-07) |
 | 1. Framework core | `Referee` trait, arena, bundler, `cg-core`; UTTT `RULES.md`, reference referee, random bot | 1,000 random-vs-random games in CI; a bundled bot plays on CodinGame | Done (2026-10-07) |
-| 2. UTTT engine | Fast engine for bots, property tests, parity with the referee, rules checked against real CodinGame games | Parity on 10,000 random games; speed baseline recorded | In progress |
+| 2. UTTT engine | Fast engine for bots, property tests, parity with the referee, rules checked against real CodinGame games | Parity on 10,000 random games; speed baseline recorded | Done (2026-10-07) |
 | 3. Evaluation | Openings, smoke tests, SPRT, ratings, league, journal, releases | A/A test passes; a weakened bot is rejected by the SPRT | Not started |
 | 4. First real bot | MCTS `uttt-v001`, then the weekly experiment loop | v001 pasted and ranked; 3 experiments run end to end | Not started |
 | 5. Autonomy | Hub, project skills, weekly routine, notifications | One full loop without opening GitHub | Not started |
@@ -49,8 +49,8 @@ Phases 4 and 5 can overlap.
 - [x] `wood` bot: perfect 3×3 tic-tac-toe, to leave Wood league, where Ultimate is not played yet
 - [x] `rules-check` bot: compares CodinGame's valid actions with the engine's every turn
 - [x] CI green on the Phase 2 pull request
-- [ ] Promoted out of Wood league with the `wood` bot (owner)
-- [ ] A few games with `rules-check` in Bronze show no difference (owner)
+- [x] Promoted out of Wood league with the `wood` bot (owner, 2026-10-07)
+- [x] `rules-check` in Bronze: CodinGame's valid actions matched the engine's on every turn checked (owner, 2026-10-07)
 
 ## Risks
 

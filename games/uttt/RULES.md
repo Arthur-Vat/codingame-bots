@@ -1,6 +1,8 @@
 # Ultimate Tic-Tac-Toe rules on CodinGame
 
-These are the rules our referee implements, written in our own words. They come from the game's statement and from its source code, which the statement links to: [dreignier/game-ultimate-tictactoe](https://github.com/dreignier/game-ultimate-tictactoe) (CodinGame SDK, 2018). That repository has no license, so it is read for facts only; no code is copied from it. Phase 2 checks these rules against real CodinGame games.
+These are the rules our referee implements, written in our own words. They come from the game's statement and from its source code, which the statement links to: [dreignier/game-ultimate-tictactoe](https://github.com/dreignier/game-ultimate-tictactoe) (CodinGame SDK, 2018). That repository has no license, so it is read for facts only; no code is copied from it.
+
+**Checked on CodinGame:** on 2026-10-07, in Bronze league, the `rules-check` bot found CodinGame's valid actions identical to our engine's on every turn it checked. The end-of-game result (including the tiebreak) has not been compared yet; `rules-check` prints the expected result when its own move ends a game.
 
 ## Board and players
 
