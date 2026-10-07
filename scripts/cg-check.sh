@@ -9,6 +9,7 @@
 #
 # Set CG_RUST to require an exact compiler version. CI sets CG_RUST=1.90.0,
 # CodinGame's version (see docs/CODINGAME.md).
+# Set CG_BIN_DIR to keep the compiled bots there, named after each file.
 set -euo pipefail
 
 # Players report a strict 100 kB limit on submitted code.
@@ -26,8 +27,10 @@ if [[ -n "${CG_RUST:-}" && "$version" != "rustc ${CG_RUST} "* ]]; then
   exit 1
 fi
 
-out_dir="$(mktemp -d)"
-trap 'rm -rf "$out_dir"' EXIT
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT
+out_dir="${CG_BIN_DIR:-$tmp_dir}"
+mkdir -p "$out_dir"
 
 status=0
 for file in "$@"; do
@@ -37,7 +40,8 @@ for file in "$@"; do
     status=1
     continue
   fi
-  if rustc --edition 2021 -C opt-level=3 --crate-type bin -o "$out_dir/bot" "$file"; then
+  if rustc --edition 2021 -C opt-level=3 --crate-type bin \
+    -o "$out_dir/$(basename "$file" .rs)" "$file"; then
     echo "ok   $file ($bytes bytes)"
   else
     echo "FAIL $file: does not compile on its own" >&2

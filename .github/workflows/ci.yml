@@ -45,10 +45,27 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.CG_RUST }}
-      # Every bot is a single file until Phase 1 adds the bundler; the bundler's
-      # output then replaces this list.
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Bundle every bot into one paste-ready file
+        run: scripts/bundle-bots.sh
       - name: Size and standalone build of each paste-ready file
-        run: scripts/cg-check.sh games/*/bots/*/src/main.rs
+        env:
+          CG_BIN_DIR: target/cg/bin
+        run: scripts/cg-check.sh target/cg/*.rs
+      - name: Play 1,000 games between the bundled random bots
+        run: |
+          cargo build --release --locked -p uttt-arena
+          target/release/uttt-arena \
+            --bot random=target/cg/bin/uttt-random \
+            --bot random-again=target/cg/bin/uttt-random \
+            --pairs 500 --expect-no-faults --out target/cg/uttt-smoke.jsonl
+      - name: Publish the paste-ready files
+        uses: actions/upload-artifact@v7
+        with:
+          name: paste-ready-bots
+          path: target/cg/*.rs
+          if-no-files-found: error
 
   licenses:
     name: Dependency licenses and sources
