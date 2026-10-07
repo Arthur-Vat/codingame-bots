@@ -1,15 +1,15 @@
 ---
 id: E001
 date: 2026-10-07
-pull_request: pending
+pull_request: "#8"
 parent: greedy (no release yet)
 hypothesis: Monte Carlo tree search with random playouts plays far better than the one-move-lookahead greedy bot.
 change: First release, the mcts bot - UCT with exploration constant 0.5, random playouts, a fresh tree every turn, 88 ms per move on CodinGame.
 release: uttt-v001
-sprt: pending
-elo: pending
-pairs: pending
-decision: pending
+sprt: accepted
+elo: not measurable, a sweep (above 600 Elo over greedy, which is about 500 over random)
+pairs: 30, the minimum
+decision: promoted
 cg_rank: pending
 ---
 
@@ -19,3 +19,14 @@ The bot and the choice of the exploration constant are described in
 
 Expected: accepted against `greedy` after the minimum 30 pairs. The
 rehearsal in a 2-core sandbox won 60 games out of 60.
+
+Result, from the SPRT comment on #8 (20 ms per move plus 5 ms of
+tolerance, 4-ply openings, seed 1):
+
+- Smoke test against random: 200 wins in 200 games, no fault; slowest
+  answer 20.2 ms, within the tolerance.
+- SPRT against greedy: 60 wins in 60 games, no fault; LLR 3403.5 against
+  a bound of 2.94 after 30 pairs: accepted.
+
+A sweep gives no Elo estimate; the League rates v001 against random and
+greedy once merged. Next: paste v001 into CodinGame and record its rank.
