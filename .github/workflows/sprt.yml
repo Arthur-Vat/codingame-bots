@@ -86,6 +86,8 @@ jobs:
             if [ "$code" -ne 0 ]; then status=1; fi
           done
           echo "$status" >target/sprt-result/status
+          # Identifies this result in the comment that posts it.
+          echo "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >target/sprt-result/origin
       - name: Keep the result
         if: steps.run.outcome == 'success'
         uses: actions/cache/save@v6
@@ -107,21 +109,46 @@ jobs:
             echo '```'
           } >>"$GITHUB_STEP_SUMMARY"
       - name: Post the result on the pull request
-        if: steps.run.outcome == 'success' && github.event.pull_request.head.repo.full_name == github.repository
+        # Posted once per result, also when an earlier run produced it. A
+        # failure to post does not change the verdict: the result is in the
+        # job summary too.
+        if: >-
+          !cancelled() && steps.find.outputs.candidates != ''
+          && (steps.run.outcome == 'success' || steps.cache.outputs.cache-matched-key != '')
+          && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REUSED_KEY: ${{ steps.cache.outputs.cache-matched-key }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          origin="$(cat target/sprt-result/origin 2>/dev/null || echo "$REUSED_KEY")"
+          marker="<!-- sprt-result $origin -->"
+          comments="$(gh api --paginate "repos/$REPO/issues/$PR/comments" --jq '.[].body')"
+          if grep -qF "$marker" <<<"$comments"; then
+            echo "This result is already on the pull request."
+            exit 0
+          fi
           {
+            echo "$marker"
             echo "### SPRT result for ${HEAD_SHA:0:7}"
+            if [ -n "$REUSED_KEY" ]; then
+              echo "From an earlier run on the same code and settings."
+            fi
             echo '```'
             cat target/sprt-result/report.txt
             echo '```'
             echo "[Run]($RUN_URL)"
           } >target/sprt-comment.md
-          gh pr comment "$PR" --body-file target/sprt-comment.md
+          if ! gh pr comment "$PR" --body-file target/sprt-comment.md; then
+            echo "::warning title=SPRT comment::the result could not be posted; it is in the job summary"
+            exit 1
+          fi
       - name: Verdict
-        if: steps.find.outputs.candidates != ''
+        if: >-
+          !cancelled() && steps.find.outputs.candidates != ''
+          && (steps.run.outcome == 'success' || steps.cache.outputs.cache-matched-key != '')
         run: exit "$(cat target/sprt-result/status)"

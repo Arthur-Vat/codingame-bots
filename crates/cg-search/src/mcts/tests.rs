@@ -204,3 +204,40 @@ fn a_whole_game_with_a_kept_tree_finds_the_winning_moves() {
         assert!(reused > 0);
     }
 }
+
+#[test]
+fn proves_wins_and_losses_and_stops_early() {
+    // Proving 13 and 12 stones takes a few hundred iterations, 18 a few
+    // thousand; without proofs, 18 stones was solved 3 times in 10.
+    for (pile, expected) in [(13, Some(true)), (12, Some(false)), (18, Some(true))] {
+        let result = search(&nim(pile), &[1, 2, 3], 50_000, 1);
+        assert_eq!(result.proven, expected, "pile {pile}: {result:?}");
+        assert!(
+            result.iterations < 50_000,
+            "stopped once proven: {result:?}"
+        );
+        if expected == Some(true) {
+            assert_eq!(result.best, pile % 4);
+            assert_eq!(result.expected_score, 1.0);
+        }
+    }
+}
+
+#[test]
+fn a_proven_root_needs_no_more_iterations() {
+    let mut mcts = Mcts::new(1.0, 2);
+    let first = mcts.search(&nim(9), &[1, 2, 3], Budget::Iterations(50_000));
+    assert_eq!((first.best, first.proven), (1, Some(true)));
+    // The same position again: the kept root is already proven.
+    let again = mcts.search(&nim(9), &[1, 2, 3], Budget::Iterations(50_000));
+    assert_eq!(
+        (again.best, again.proven, again.iterations),
+        (1, Some(true), 0)
+    );
+}
+
+#[test]
+fn unproven_searches_report_no_proof() {
+    let result = search(&nim(30), &[1, 2, 3], 1_000, 1);
+    assert_eq!(result.proven, None);
+}
