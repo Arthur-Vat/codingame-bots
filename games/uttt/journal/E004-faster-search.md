@@ -41,10 +41,11 @@ Unlike E003, the gain holds at full time (+74.4, interval from +56.7 to
 +92.5): more iterations still pay off with five times the time.
 
 To watch: v004's slowest answer at full time was 90.0 ms, against 86.7
-for v003, with the same 82 ms budget. The bot checks its deadline after
-every iteration, from the moment it reads its first line, so the extra
-time is either one slow iteration or time the bot's clock does not see.
-A suspect, not yet measured: the tree's node array grows by doubling,
-and the iteration that crosses a size copies the whole array, which is
-larger now that the search is faster. There is no fault in 1,000 games,
-but the margin to CodinGame's 100 ms is 10 ms.
+for v003, with the same 82 ms budget. Locally at full time (15 pairs of
+v004 against v003, one game at a time), the bots' own clocks, which
+start when they read their first line, showed 87 and 89 ms on 2 of
+1,496 searched turns, and at most 83 ms on the others: the delay is
+inside the search, a gap of several milliseconds between two deadline
+checks, from the machine pausing the bot or from one slow iteration.
+Both versions show it, and it caused no fault in 1,000 games at full
+time, but the margin to CodinGame's 100 ms is 10 ms.
