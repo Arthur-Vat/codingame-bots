@@ -7,7 +7,7 @@ hypothesis: Monte Carlo tree search with random playouts plays far better than t
 change: First release, the mcts bot - UCT with exploration constant 0.5, random playouts, a fresh tree every turn, 88 ms per move on CodinGame.
 release: uttt-v001
 sprt: accepted
-elo: not measurable, a sweep (above 600 Elo over greedy, which is about 500 over random)
+elo: no estimate from a sweep; 60 wins in 60 games put v001 at least about 500 Elo above greedy (95% lower bound)
 pairs: 30, the minimum
 decision: promoted
 cg_rank: pending
