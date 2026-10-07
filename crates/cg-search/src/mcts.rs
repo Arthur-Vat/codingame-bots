@@ -13,19 +13,39 @@
 //! moves below the previous root (the bot's move, then the opponent's), the
 //! subtree of that position becomes the new tree, with the visits it
 //! already has; otherwise the search starts afresh.
+//!
+//! The search also proves wins and losses (MCTS-Solver): a position where
+//! the game is won or lost is proven, a node is lost for the player who
+//! moved into it when the opponent has a proven winning answer, and won
+//! when every answer is proven lost. Iterations that reach a proven node
+//! use its exact result, selection never picks an answer proven lost when
+//! another exists, a proven win at the root is played at once, and the
+//! search stops when the root is proven. Draws are not proven.
 
 use cg_core::rng::Rng;
 
 use crate::budget::Budget;
 use crate::game::Game;
 
+/// What is proven about a node, for the player who moved into it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Proof {
+    Unknown,
+    /// The mover wins whatever the opponent does.
+    MoverWins,
+    /// The opponent has a winning answer.
+    MoverLoses,
+}
+
 /// One position of the tree, reached by `mv`.
 #[derive(Clone, Copy, Debug)]
 struct Node<M> {
     /// The move that leads here; unused at the root.
     mv: M,
-    /// The player who played `mv`, whose point of view `total` takes.
+    /// The player who played `mv`, whose point of view `total` and
+    /// `proof` take.
     mover: u8,
+    proof: Proof,
     /// Whether the children have been created; a node of a finished game
     /// has none.
     expanded: bool,
@@ -45,6 +65,9 @@ pub struct SearchResult<M> {
     pub iterations: u64,
     /// Visits the root already had from earlier searches.
     pub reused: u64,
+    /// `Some(true)` when the player to move is proven to win, `Some(false)`
+    /// when proven to lose, `None` when not proven.
+    pub proven: Option<bool>,
     /// The average score of `best` for the player to move, from 0 to 1.
     pub expected_score: f64,
     /// Nodes in the tree.
@@ -108,6 +131,7 @@ impl<G: Game> Mcts<G> {
                     best: mv,
                     iterations: 0,
                     reused: 0,
+                    proven: Some(true),
                     expected_score: 1.0,
                     nodes: self.nodes.len(),
                 };
@@ -121,21 +145,41 @@ impl<G: Game> Mcts<G> {
         let reused = u64::from(self.nodes[0].visits);
 
         let mut iterations = 0;
-        while (iterations as usize) < candidates.len() || !budget.is_spent(iterations) {
+        while self.nodes[0].proof == Proof::Unknown
+            && ((iterations as usize) < candidates.len() || !budget.is_spent(iterations))
+        {
             self.iterate(root);
             iterations += 1;
         }
 
-        let best = self
-            .children(0)
-            .map(|index| &self.nodes[index])
-            .max_by_key(|child| child.visits)
+        // A proven win, else the most tried answer not proven lost.
+        let children = || self.children(0).map(|index| &self.nodes[index]);
+        let best = children()
+            .find(|child| child.proof == Proof::MoverWins)
+            .or_else(|| {
+                children()
+                    .filter(|child| child.proof != Proof::MoverLoses)
+                    .max_by_key(|child| child.visits)
+            })
+            .or_else(|| children().max_by_key(|child| child.visits))
             .expect("the root has children");
+        let proven = match self.nodes[0].proof {
+            Proof::Unknown => None,
+            // The root's mover is the opponent of the player to move.
+            Proof::MoverWins => Some(false),
+            Proof::MoverLoses => Some(true),
+        };
+        let expected_score = match best.proof {
+            Proof::MoverWins => 1.0,
+            Proof::MoverLoses => 0.0,
+            Proof::Unknown => best.total / f64::from(best.visits.max(1)),
+        };
         SearchResult {
             best: best.mv,
             iterations,
             reused,
-            expected_score: best.total / f64::from(best.visits.max(1)),
+            proven,
+            expected_score,
             nodes: self.nodes.len(),
         }
     }
@@ -146,6 +190,7 @@ impl<G: Game> Mcts<G> {
         self.nodes.push(Node {
             mv: candidates[0],
             mover: (1 - root.to_move()) as u8,
+            proof: Proof::Unknown,
             expanded: false,
             first_child: 0,
             children: 0,
@@ -239,17 +284,41 @@ impl<G: Game> Mcts<G> {
                 }
     }
 
-    /// One iteration: selection, expansion, playout, backpropagation.
+    /// One iteration: selection, expansion, playout, backpropagation, and
+    /// proofs.
     fn iterate(&mut self, root: &G) {
         let mut state = root.clone();
         let mut node = 0;
+        let mut proved = false;
         self.path.clear();
         self.path.push(0);
         let score = loop {
+            let current = self.nodes[node];
+            let mover_score = |wins: bool| {
+                if wins == (current.mover == 0) {
+                    1.0
+                } else {
+                    0.0
+                }
+            };
+            match current.proof {
+                Proof::MoverWins => break mover_score(true),
+                Proof::MoverLoses => break mover_score(false),
+                Proof::Unknown => {}
+            }
             if let Some(score) = state.score() {
+                if node != 0 && score != 0.5 {
+                    let wins = score == mover_score(true);
+                    self.nodes[node].proof = if wins {
+                        Proof::MoverWins
+                    } else {
+                        Proof::MoverLoses
+                    };
+                    proved = true;
+                }
                 break score;
             }
-            if !self.nodes[node].expanded {
+            if !current.expanded {
                 if self.nodes[node].visits == 0 {
                     // A new leaf: estimate it with one playout.
                     break state.playout(&mut self.rng);
@@ -266,6 +335,38 @@ impl<G: Game> Mcts<G> {
             node.visits += 1;
             node.total += if node.mover == 0 { score } else { 1.0 - score };
         }
+        if proved {
+            self.prove_ancestors();
+        }
+    }
+
+    /// Proves the nodes on the current path, from the leaf up, as far as
+    /// their children allow: a node whose opponent has a proven winning
+    /// answer is lost for its mover, and one whose answers are all proven
+    /// lost is won.
+    fn prove_ancestors(&mut self) {
+        for depth in (0..self.path.len() - 1).rev() {
+            let node = self.path[depth] as usize;
+            let mut all_lost = true;
+            let mut proof = Proof::Unknown;
+            for child in self.children(node) {
+                match self.nodes[child].proof {
+                    Proof::MoverWins => {
+                        proof = Proof::MoverLoses;
+                        break;
+                    }
+                    Proof::MoverLoses => {}
+                    Proof::Unknown => all_lost = false,
+                }
+            }
+            if proof == Proof::Unknown && all_lost {
+                proof = Proof::MoverWins;
+            }
+            if proof == Proof::Unknown {
+                return;
+            }
+            self.nodes[node].proof = proof;
+        }
     }
 
     /// Gives `node` one child per move in `self.moves`, in random order.
@@ -276,6 +377,7 @@ impl<G: Game> Mcts<G> {
             self.nodes.push(Node {
                 mv,
                 mover: to_move as u8,
+                proof: Proof::Unknown,
                 expanded: false,
                 first_child: 0,
                 children: 0,
@@ -289,8 +391,9 @@ impl<G: Game> Mcts<G> {
         parent.children = self.moves.len() as u32;
     }
 
-    /// The child of `node` with the highest UCB1 bound; an untried child
-    /// first.
+    /// The child of `node` with the highest UCB1 bound, an untried child
+    /// first, never a child proven lost for the player choosing unless all
+    /// are.
     fn select(&self, node: usize) -> usize {
         let parent = &self.nodes[node];
         let first = parent.first_child as usize;
@@ -299,6 +402,11 @@ impl<G: Game> Mcts<G> {
         let mut best = 0;
         let mut best_bound = f64::NEG_INFINITY;
         for (offset, child) in children.iter().enumerate() {
+            match child.proof {
+                Proof::MoverLoses => continue,
+                Proof::MoverWins => return first + offset,
+                Proof::Unknown => {}
+            }
             if child.visits == 0 {
                 return first + offset;
             }

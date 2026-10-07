@@ -63,3 +63,79 @@ fn mcts_takes_a_winning_move() {
         assert_eq!(next.status(), Status::Win(board.to_move()), "{result:?}");
     }
 }
+
+/// The exact value of `board` for the player to move: 1 for a win, 0 for
+/// a draw, -1 for a loss, by trying every line of play.
+fn minimax(board: &Board) -> i32 {
+    match board.status() {
+        Status::Win(seat) if seat == board.to_move() => 1,
+        Status::Win(_) => -1,
+        Status::Draw => 0,
+        Status::Ongoing => {
+            let mut moves = MoveList::new();
+            Board::legal_moves(board, &mut moves);
+            let mut best = -1;
+            for &mv in moves.iter() {
+                let mut next = *board;
+                next.play(mv);
+                best = best.max(-minimax(&next));
+                if best == 1 {
+                    break;
+                }
+            }
+            best
+        }
+    }
+}
+
+/// Empty cells left in small boards that are still open.
+fn empty_open_cells(board: &Board) -> usize {
+    (0..9)
+        .filter(|&small| !board.is_closed(small))
+        .map(|small| {
+            (0..9)
+                .filter(|&cell| board.mark(Move::new(small, cell)).is_none())
+                .count()
+        })
+        .sum()
+}
+
+#[test]
+fn proofs_agree_with_exhaustive_search_in_endgames() {
+    let mut list = MoveList::new();
+    let (mut checked, mut proven) = (0, 0);
+    for seed in 0..400 {
+        let mut rng = Rng::new(seed);
+        let mut board = Board::new();
+        while board.status() == Status::Ongoing && empty_open_cells(&board) > 7 {
+            Board::legal_moves(&board, &mut list);
+            board.play(*rng.pick(&list).unwrap());
+        }
+        if board.status() != Status::Ongoing {
+            continue;
+        }
+        Board::legal_moves(&board, &mut list);
+        let exact = minimax(&board);
+        let result = Mcts::new(1.0, seed).search(&board, &list, Budget::Iterations(20_000));
+        checked += 1;
+        match exact {
+            1 => {
+                // A win is proven, and the move played keeps it.
+                assert_eq!(result.proven, Some(true), "seed {seed}: {result:?}");
+                let mut next = board;
+                next.play(result.best);
+                assert_eq!(minimax(&next), -1, "seed {seed}: {result:?}");
+                proven += 1;
+            }
+            -1 => {
+                assert_eq!(result.proven, Some(false), "seed {seed}: {result:?}");
+                proven += 1;
+            }
+            _ => assert_eq!(result.proven, None, "seed {seed}: draws are not proven"),
+        }
+    }
+    assert!(
+        checked > 100 && proven > 50,
+        "{checked} checked, {proven} proven"
+    );
+}
