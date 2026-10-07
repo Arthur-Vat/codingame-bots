@@ -249,3 +249,56 @@ fn a_random_move_is_the_listed_move_the_same_draw_would_pick() {
         }
     }
 }
+
+/// Whether `mv` wins the game for the player to move with a line of small
+/// boards.
+fn wins_by_line(board: &Board, mv: Move) -> bool {
+    let seat = board.to_move();
+    let mut next = *board;
+    next.play(mv);
+    grid::has_line(next.won[seat])
+}
+
+#[test]
+fn a_decisive_move_wins_when_it_can_and_is_random_otherwise() {
+    let (mut wins, mut plain) = (0, 0);
+    for seed in 0..300 {
+        let mut game_rng = Rng::new(seed);
+        let mut board = Board::new();
+        while board.status() == Status::Ongoing {
+            let moves = legal(&board);
+            let mut draw = game_rng.clone();
+            let chosen = board.decisive_move(&mut draw);
+            assert!(moves.contains(&chosen), "{chosen} in {board:?}");
+            let winning: Vec<Move> = moves
+                .iter()
+                .copied()
+                .filter(|&mv| wins_by_line(&board, mv))
+                .collect();
+            if winning.is_empty() {
+                let mut same = game_rng.clone();
+                assert_eq!(chosen, board.random_move(&mut same));
+                assert_eq!(draw.next_u64(), same.next_u64(), "same draws");
+                plain += 1;
+            } else {
+                assert!(winning.contains(&chosen), "{chosen} in {board:?}");
+                wins += 1;
+            }
+            board.play(*game_rng.pick(&moves).unwrap());
+        }
+    }
+    assert!(wins > 500 && plain > 5000, "{wins} wins, {plain} plain");
+}
+
+#[test]
+fn decisive_playouts_end_and_are_reproducible() {
+    let mut first = Rng::new(9);
+    let mut second = Rng::new(9);
+    for _ in 0..100 {
+        let (mut a, mut b) = (Board::new(), Board::new());
+        let result = a.decisive_playout(&mut first);
+        assert_ne!(result, Status::Ongoing);
+        assert_eq!(result, b.decisive_playout(&mut second));
+        assert_eq!(a, b);
+    }
+}

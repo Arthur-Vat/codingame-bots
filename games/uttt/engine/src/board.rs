@@ -199,6 +199,54 @@ impl Board {
         }
         self.status
     }
+
+    /// The small boards among `boards` where `seat` could win the whole
+    /// game at once: open boards that would complete a line of small boards
+    /// for `seat`, with a free cell that completes a line of cells there.
+    /// Whether `seat` may play there is up to the caller.
+    #[inline]
+    fn game_winning_boards(&self, seat: usize, boards: u16) -> u16 {
+        let candidates = grid::completing_cells(self.won[seat]) & boards & !self.closed;
+        let mut winning = 0;
+        for board in grid::cells(candidates) {
+            if grid::completing_cells(self.marks[seat][board]) & self.empty_cells(board) != 0 {
+                winning |= 1 << board;
+            }
+        }
+        winning
+    }
+
+    /// A move for playouts that looks one move ahead ("decisive moves"): a
+    /// move that wins the game with a line of small boards if there is one,
+    /// else the same uniformly random move as
+    /// [`random_move`](Board::random_move). Wins on points, when the last
+    /// open board closes, are not looked for. The game must go on.
+    #[inline]
+    pub fn decisive_move(&self, rng: &mut Rng) -> Move {
+        let seat = self.to_move();
+        let allowed = if self.target == ANY_BOARD {
+            FULL
+        } else {
+            1 << self.target
+        };
+        let winning = self.game_winning_boards(seat, allowed);
+        if winning != 0 {
+            let board = winning.trailing_zeros() as usize;
+            let cells = grid::completing_cells(self.marks[seat][board]) & self.empty_cells(board);
+            return Move::new_unchecked(board, cells.trailing_zeros() as usize);
+        }
+        self.random_move(rng)
+    }
+
+    /// Plays [`decisive_move`](Board::decisive_move)s until the game ends,
+    /// and returns how it ended.
+    pub fn decisive_playout(&mut self, rng: &mut Rng) -> Status {
+        while self.status == Status::Ongoing {
+            let mv = self.decisive_move(rng);
+            self.play(mv);
+        }
+        self.status
+    }
 }
 
 #[cfg(test)]
