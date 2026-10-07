@@ -4,7 +4,7 @@ A Rust framework to build, test, rate and improve bots for two-player [CodinGame
 
 Every bot change is judged by CI: unit tests, a check that the bot compiles on CodinGame, and later statistical matches against the previous champion. Every released bot is a single readable file you paste into the CodinGame editor.
 
-**Status:** Phase 0 (foundations). See the [roadmap](docs/ROADMAP.md).
+**Status:** Phase 1 (framework core). See the [roadmap](docs/ROADMAP.md).
 
 ## Documentation
 
@@ -22,8 +22,11 @@ The workspace targets Rust 1.90.0 with the 2021 edition, the compiler CodinGame 
 cargo fmt --all
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-scripts/cg-check.sh games/*/bots/*/src/main.rs   # size and standalone compile
+scripts/bundle-bots.sh                 # every bot -> target/cg/<game>-<bot>.rs
+scripts/cg-check.sh target/cg/*.rs     # size and standalone compile of each bundle
 ```
+
+To play bots against each other locally, see [games/uttt/README.md](games/uttt/README.md).
 
 ## License
 
