@@ -1,19 +1,19 @@
 use super::*;
 
 #[test]
-fn search_time_scales_the_limit_and_keeps_a_reserve() {
+fn search_time_keeps_a_reserve_and_scales_everything() {
     let limit = Duration::from_millis(100);
-    let reserve = Duration::from_millis(2);
+    let reserve = Duration::from_millis(8);
     assert_eq!(
         search_time(limit, 1.0, 0.9, reserve),
-        Duration::from_millis(88)
+        Duration::from_millis(82)
     );
-    assert_eq!(
-        search_time(limit, 0.2, 0.9, reserve),
-        Duration::from_millis(16)
-    );
+    // A fifth of the time: a fifth of the same budget.
+    let scaled = search_time(limit, 0.2, 0.9, reserve);
+    assert!((scaled.as_secs_f64() - 0.0164).abs() < 1e-9, "{scaled:?}");
     // A reserve larger than the share leaves no time rather than panicking.
-    assert_eq!(search_time(limit, 0.01, 0.9, reserve), Duration::ZERO);
+    let large = Duration::from_millis(95);
+    assert_eq!(search_time(limit, 1.0, 0.9, large), Duration::ZERO);
 }
 
 #[test]
