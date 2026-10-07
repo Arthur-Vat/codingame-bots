@@ -10,8 +10,10 @@ Run all of these before saying work is done, and paste their summary lines in th
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
-scripts/cg-check.sh games/*/bots/*/src/main.rs
+scripts/bundle-bots.sh && scripts/cg-check.sh target/cg/*.rs
 ```
+
+For bot or engine changes, also play the bundled bots against each other with the game's arena (for example `target/release/uttt-arena --help`) and report the summary.
 
 ## Hard rules
 
@@ -28,11 +30,12 @@ scripts/cg-check.sh games/*/bots/*/src/main.rs
 - Any code that ends up inside a bot uses the standard library only: no crates.io dependencies. Tools (arena, bundler) may use dependencies allowed by `deny.toml`.
 - A paste-ready bot is one file under 100,000 bytes that compiles with `rustc --edition 2021` alone.
 - No `unsafe` (workspace lint). Proposing an exception needs an ADR.
+- Crates that end up in a bot follow the bundler's conventions (`crates/cg-bundler/src/lib.rs`): modules in files declared with `mod name;` on their own line, tests in separate files (`#[cfg(test)]` then `mod tests;`), other workspace crates referred to by name (`cg_core::`), no `#[path]`.
 - Bots must flush stdout after every move and print debug output to stderr only.
 
 ## Conventions
 
 - Commits follow Conventional Commits: `feat:`, `fix:`, `docs:`, `test:`, `ci:`, `refactor:`, `chore:`, with a scope when useful (`feat(uttt): ...`).
 - New crates join the workspace in the root `Cargo.toml` and inherit `[workspace.package]` fields and `[lints] workspace = true`.
-- Game-specific facts go in `games/<game>/README.md` with a source; platform facts in `docs/CODINGAME.md`.
+- Game rules go in `games/<game>/RULES.md`, in our own words, with a source for every rule; other game facts in `games/<game>/README.md`; platform facts in `docs/CODINGAME.md`.
 - Keep `docs/ROADMAP.md` status in sync when a phase item is done.

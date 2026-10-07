@@ -1,7 +1,12 @@
 [workspace]
-resolver = "2"
-# Phase 1 adds crates/* (cg-core, cg-arena, cg-bundler) and the game engines.
-members = ["games/uttt/bots/*"]
+# Resolver 3 picks dependency versions that support `rust-version`.
+resolver = "3"
+members = [
+    "crates/*",
+    "games/*/referee",
+    "games/*/arena",
+    "games/*/bots/*",
+]
 
 [workspace.package]
 version = "0.0.0"
@@ -14,6 +19,16 @@ publish = false
 # exactly 1.90.0. See docs/adr/0010-codingame-rust-toolchain.md.
 edition = "2021"
 rust-version = "1.90"
+
+[workspace.dependencies]
+# Workspace crates.
+cg-arena = { path = "crates/cg-arena" }
+cg-core = { path = "crates/cg-core" }
+uttt-referee = { path = "games/uttt/referee" }
+# Tools only. Nothing that ends up in a bot may depend on these.
+clap = { version = "4.5", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

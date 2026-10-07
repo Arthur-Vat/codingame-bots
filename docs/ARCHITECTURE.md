@@ -1,6 +1,6 @@
 # Architecture
 
-A reusable Rust framework that takes a two-player CodinGame game from rules to a Legend-level bot. Each game plugs into generic crates through one `Game` trait; every bot ships as a single file pasted into CodinGame. Claude writes the code, CI judges the results, and the owner makes the decisions.
+A reusable Rust framework that takes a two-player CodinGame game from rules to a Legend-level bot. Each game plugs into the arena through one `Referee` trait; every bot ships as a single file pasted into CodinGame. Claude writes the code, CI judges the results, and the owner makes the decisions.
 
 This document describes the target design. [ROADMAP.md](ROADMAP.md) says which parts exist today.
 
@@ -22,19 +22,22 @@ codingame-bots/
 ├─ CLAUDE.md                rules for every Claude session
 ├─ deny.toml                dependency license and source policy
 ├─ docs/                    this file, ROADMAP, WORKFLOW, CODINGAME, adr/
-├─ scripts/cg-check.sh      size and standalone-build check of paste-ready files
-├─ crates/                  Phase 1
-│  ├─ cg-core/              Game trait, CodinGame protocol I/O, time budget, RNG
-│  ├─ cg-arena/             match runner, tournaments, SPRT, ratings
-│  ├─ cg-bundler/           bot + its crates -> one paste-ready .rs file
-│  └─ cg-search/            reusable search (MCTS first), once a second game needs it
+├─ scripts/
+│  ├─ bundle-bots.sh        every bot -> target/cg/<game>-<bot>.rs
+│  └─ cg-check.sh           size and standalone build of paste-ready files
+├─ crates/
+│  ├─ cg-core/              bot side: CodinGame input reading, seeded RNG
+│  ├─ cg-arena/             Referee trait, match runner, tournaments, summary, CLI
+│  ├─ cg-bundler/           bot + its workspace crates -> one paste-ready .rs file
+│  └─ cg-search/            Phase 4: reusable search (MCTS first)
 ├─ games/
 │  └─ uttt/
-│     ├─ README.md          protocol, known rules, bots
-│     ├─ RULES.md           Phase 2: the rules in our own words
-│     ├─ engine/            Phase 2: rules and fast state, used by referee and bots
-│     ├─ referee/           Phase 2: CodinGame-protocol referee binary
-│     ├─ bots/              first-valid/ today; random/, mcts/ ... later
+│     ├─ README.md          layout, bots, how to play matches
+│     ├─ RULES.md           the rules in our own words, with sources
+│     ├─ referee/           readable reference rules, implements Referee
+│     ├─ arena/             uttt-arena binary
+│     ├─ engine/            Phase 2: fast rules for bots, checked against the referee
+│     ├─ bots/              first-valid/, random/; mcts/ ... later
 │     ├─ releases/          Phase 3: frozen paste-ready file per version
 │     ├─ openings/          Phase 3: opening positions for fair matches
 │     └─ journal/           Phase 3: one entry per experiment
@@ -44,14 +47,16 @@ codingame-bots/
 
 ## Components
 
-- **`Game` trait (`cg-core`):** state, moves, legal-move generation, applying a move, outcome, player to move, and how a turn is written to and read from the CodinGame protocol. Each game implements it once.
-- **Referee:** one binary per game, built on its engine. It talks to two bot processes exactly as CodinGame does and enforces the game's time limits.
-- **Arena:** runs many referee matches in parallel, from openings, in both seat orders. It writes one JSON line per game: bots, opening, result, per-turn times, crashes and timeouts.
-- **Bot:** an ordinary binary reading stdin and writing stdout. An optional `CG_FIXED_ITERS` environment variable replaces the time budget by a fixed iteration count for reproducible tests; CodinGame never sets it.
-- **Bundler:** flattens a bot and the workspace crates it uses into one formatted file. Crates that end up in a bot use the standard library only.
-- **Versions:** `releases/` keeps the exact file pasted for each version. The arena compiles old versions from these files, so history never rebuilds differently.
+- **`Referee` trait (`cg-arena`):** a game's rules as the arena sees them, in CodinGame's text protocol: which seats act this turn, the input to send each one, the time limits, and whether their answers are valid. Several seats may act in one turn, so simultaneous-move games fit too ([ADR 0011](adr/0011-framework-structure.md)).
+- **Referee (per game):** a readable implementation of `RULES.md`, written to be obviously correct rather than fast. It is the reference that faster engines are checked against.
+- **Engine (per game, Phase 2):** a fast implementation of the same rules for search inside bots, std-only so it can be bundled. Parity tests compare it with the referee on many random games.
+- **Arena:** each game has a tiny binary (`uttt-arena`) that hands its referee to the shared command line of `cg-arena`. Bots run as separate processes and receive their input on stdin, exactly as on CodinGame; a bot that exceeds its time limit, exits, or answers invalidly loses the game. Games run in parallel, in seat-swapped pairs, and each one is written as a JSON line: seed, bots by seat, winner, end reason, turns and answer times.
+- **Bot:** an ordinary binary reading stdin and writing stdout. The arena gives each bot a reproducible seed in `CG_SEED`; on CodinGame it is absent and bots seed from the clock. Later, an optional `CG_FIXED_ITERS` will replace the time budget by a fixed iteration count for deterministic tests.
+- **`cg-core`:** what every bot needs, std-only: a line-based reader for the referee's input and a seeded xoshiro256++ generator.
+- **Bundler:** flattens a bot and the workspace crates it uses into one file formatted by rustfmt. It works on text so the result keeps its comments, and relies on conventions listed in its crate documentation: modules in files declared with `mod name;`, tests in separate files, other crates referred to by name, no crates.io dependencies on the bot side.
+- **Versions (Phase 3):** `releases/` keeps the exact file pasted for each version. The arena compiles old versions from these files, so history never rebuilds differently.
 
-Because the referee and the bots share one engine, a rules bug would be invisible in local matches: both sides would agree on the wrong rule. The parity tests against an independent reference exist to catch exactly that.
+Because the referee and the engine are written by the same hands, they could agree on a misread rule. Two checks guard against that: `RULES.md` cites the game's official source for every rule, and Phase 2 compares the referee with real CodinGame games.
 
 ## Evaluation pipeline
 
@@ -60,8 +65,8 @@ Seven tiers protect every change; only the SPRT decides whether a bot is stronge
 | Tier | Checks | Runs on | Passes when |
 | --- | --- | --- | --- |
 | 1. Static | Format, lints, unit tests, property tests of engine invariants | Every push | All green |
-| 2. Parity | Our referee against an independent reference on random games | Engine or referee changes | Identical states and results |
-| 3. CodinGame compatibility | Bundle, size, standalone compile with Rust 1.90.0 | Every bot change | Compiles and stays under 100 kB |
+| 2. Parity | The fast engine against the reference referee on random games | Engine or referee changes | Identical valid actions and results |
+| 3. CodinGame compatibility | Bundle, size, standalone compile with Rust 1.90.0, 1,000 games between bundled bots | Every push | Compiles, stays under 100 kB, no faults |
 | 4. Smoke | Bot against a random bot, both seats, many openings | Every bot change | 0 crashes, 0 timeouts, 0 illegal moves, at least 99% wins (proposed) |
 | 5. Speed | Simulations per second on fixed positions | Every bot change | No drop over 5% against the parent version (proposed) |
 | 6. SPRT | Candidate against the current champion | Candidate pull requests | The test accepts the candidate as stronger |
@@ -109,7 +114,7 @@ GitHub Actions on free standard runners. `main` only accepts changes whose check
 
 | Workflow | Trigger | Does | Exists |
 | --- | --- | --- | --- |
-| `ci.yml` | Every push and pull request | Format, lint, tests, CodinGame compatibility, dependency policy; later smoke and speed | Yes |
+| `ci.yml` | Every push and pull request | Format, lint, tests; bundles every bot, checks and plays the bundles; dependency policy; later smoke and speed | Yes |
 | `parity.yml` | Pull requests touching an engine or referee | Tier 2 | Phase 2 |
 | `sprt.yml` | Pull requests labelled `candidate` | Tier 6, verdict as a PR comment and a required check | Phase 3 |
 | `release.yml` | Merge of a candidate pull request | Tag, paste-ready file, GitHub release, journal entry, dashboard | Phase 3 |

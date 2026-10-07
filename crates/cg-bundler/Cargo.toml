@@ -1,0 +1,18 @@
+[package]
+name = "cg-bundler"
+description = "Bundles a bot and the workspace crates it uses into one Rust file that CodinGame accepts."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

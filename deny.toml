@@ -11,7 +11,9 @@ yanked = "deny"
 [licenses]
 # Dependencies must be compatible with distributing this repo under
 # MIT OR Apache-2.0 (ADR 0001). Widen this list only in a PR that says why.
-allow = ["MIT", "Apache-2.0"]
+# - Unicode-3.0: the Unicode data in unicode-ident, used by the proc-macros
+#   behind clap and serde (tools only). Permissive and compatible.
+allow = ["MIT", "Apache-2.0", "Unicode-3.0"]
 confidence-threshold = 0.9
 
 [bans]

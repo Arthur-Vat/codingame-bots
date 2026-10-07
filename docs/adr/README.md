@@ -16,3 +16,4 @@ Use [template.md](template.md) for new records. Number them in order.
 | [0008](0008-claude-hub.md) | A Claude conversation is the hub | Accepted |
 | [0009](0009-manual-submission.md) | Manual submission to CodinGame | Accepted |
 | [0010](0010-codingame-rust-toolchain.md) | Target CodinGame's Rust: 1.90.0, edition 2021 | Accepted |
+| [0011](0011-framework-structure.md) | Framework structure: text-protocol referees, reference rules, textual bundler | Accepted |

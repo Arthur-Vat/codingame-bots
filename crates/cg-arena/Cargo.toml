@@ -1,0 +1,19 @@
+[package]
+name = "cg-arena"
+description = "Plays bots against each other through a game's referee, the way CodinGame does, and summarizes the results."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+cg-core.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
