@@ -3,7 +3,7 @@ use super::*;
 /// Nim with one pile: take 1 to 3 stones; taking the last one wins. The
 /// player to move wins exactly when the pile is not a multiple of 4, by
 /// leaving one.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 struct Nim {
     pile: u32,
     to_move: usize,
@@ -123,5 +123,84 @@ fn default_playouts_reach_the_end() {
     for pile in 1..30 {
         let score = nim(pile).playout(&mut rng);
         assert!(score == 0.0 || score == 1.0);
+    }
+}
+
+fn after(game: &Nim, takes: &[u32]) -> Nim {
+    let mut next = game.clone();
+    for &take in takes {
+        next.play(take);
+    }
+    next
+}
+
+// Searches stay reliable on piles up to about 13 with a few thousand
+// iterations; deeper Nim needs far more.
+
+#[test]
+fn keeps_the_subtree_of_the_new_position() {
+    let mut mcts = Mcts::new(1.0, 3);
+    let first = mcts.search(&nim(13), &[1, 2, 3], Budget::Iterations(20_000));
+    assert_eq!((first.best, first.reused), (1, 0));
+    // Our move, then the opponent's: two moves below the previous root.
+    let position = after(&nim(13), &[1, 1]);
+    let second = mcts.search(&position, &[1, 2, 3], Budget::Iterations(100));
+    assert!(second.reused > 100, "{second:?}");
+    assert!(second.nodes < first.nodes, "{second:?} after {first:?}");
+    assert_eq!(second.best, 3, "11 stones: take 3. {second:?}");
+    // Searching the same position again keeps the whole tree.
+    let third = mcts.search(&position, &[1, 2, 3], Budget::Iterations(100));
+    assert_eq!(third.reused, second.reused + second.iterations);
+}
+
+#[test]
+fn keeps_the_subtree_one_move_below() {
+    let mut mcts = Mcts::new(1.0, 4);
+    mcts.search(&nim(30), &[1, 2, 3], Budget::Iterations(5_000));
+    let result = mcts.search(&after(&nim(30), &[1]), &[1, 2, 3], Budget::Iterations(10));
+    assert!(result.reused > 0, "{result:?}");
+}
+
+#[test]
+fn starts_afresh_on_an_unrelated_position() {
+    let mut mcts = Mcts::new(1.0, 5);
+    mcts.search(&nim(30), &[1, 2, 3], Budget::Iterations(5_000));
+    // 21 stones with player 1 to move is three moves below 30: out of reach.
+    let far = after(&nim(30), &[3, 3, 3]);
+    let result = mcts.search(&far, &[1, 2, 3], Budget::Iterations(10));
+    assert_eq!(result.reused, 0);
+    let other = mcts.search(&nim(13), &[1, 2, 3], Budget::Iterations(10));
+    assert_eq!(other.reused, 0);
+}
+
+#[test]
+fn starts_afresh_when_the_candidates_differ() {
+    let mut mcts = Mcts::new(1.0, 6);
+    let first = mcts.search(&nim(30), &[1, 2, 3], Budget::Iterations(5_000));
+    let position = after(&nim(30), &[first.best, 1]);
+    // Only two of the three legal moves are offered.
+    let result = mcts.search(&position, &[1, 2], Budget::Iterations(10));
+    assert_eq!(result.reused, 0);
+    assert!([1, 2].contains(&result.best));
+}
+
+#[test]
+fn a_whole_game_with_a_kept_tree_finds_the_winning_moves() {
+    for seed in 0..10 {
+        let mut mcts = Mcts::new(1.0, seed);
+        let mut game = nim(13);
+        let mut reused = 0;
+        while game.score().is_none() {
+            let mut moves = Vec::new();
+            game.legal_moves(&mut moves);
+            let result = mcts.search(&game, &moves, Budget::Iterations(3_000));
+            if game.to_move() == 0 {
+                assert_eq!(result.best, game.pile % 4, "pile {}: {result:?}", game.pile);
+            }
+            reused += result.reused;
+            game.play(result.best);
+        }
+        assert_eq!(game.score(), Some(1.0));
+        assert!(reused > 0);
     }
 }

@@ -1,14 +1,16 @@
 //! Monte Carlo tree search Ultimate Tic-Tac-Toe bot.
 //!
-//! Every turn it searches the current position from scratch with UCT and
-//! uniformly random playouts (`cg-search`, `uttt-engine`), for most of the
-//! turn's time limit, then plays the move it tried most often. A move that
-//! wins the game at once is played without searching, and so is the only
-//! action offered.
+//! Every turn it searches the current position with UCT and uniformly
+//! random playouts (`cg-search`, `uttt-engine`), for most of the turn's time
+//! limit, then plays the move it tried most often. The search keeps the
+//! part of its tree under the moves played since its previous search. A
+//! move that wins the game at once is played without searching, and so is
+//! the only action offered.
 //!
 //! It tracks the position from the opponent's moves but only plays actions
 //! from the list it receives. Each turn it prints one line to stderr:
-//! iterations, the expected score of its move, and the time it took.
+//! iterations, visits kept from earlier searches, the expected score of its
+//! move, and the time it took.
 //!
 //! The seed comes from `CG_SEED` when the arena sets it, otherwise from the
 //! clock. The arena may scale time limits with `CG_TIME_SCALE`, and
@@ -108,8 +110,9 @@ fn play(
                     let result = mcts.search(&position, &moves, budget(start, limit));
                     writeln!(
                         log,
-                        "mcts: {} iterations, expected score {:.3}, {} ms",
+                        "mcts: {} iterations, {} kept, expected score {:.3}, {} ms",
                         result.iterations,
+                        result.reused,
                         result.expected_score,
                         start.elapsed().as_millis()
                     )

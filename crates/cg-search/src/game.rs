@@ -5,8 +5,9 @@ use cg_core::rng::Rng;
 /// A two-player game of perfect information in which players take turns.
 ///
 /// The position is cloned at every search iteration, so it should be small
-/// and cheap to copy.
-pub trait Game: Clone {
+/// and cheap to copy. Positions are compared to find the current one in the
+/// tree of an earlier search.
+pub trait Game: Clone + PartialEq {
     type Move: Copy + PartialEq + std::fmt::Debug;
 
     /// The player to move: 0 or 1.
