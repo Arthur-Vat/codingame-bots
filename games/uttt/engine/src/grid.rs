@@ -41,6 +41,34 @@ pub fn has_line(mask: u16) -> bool {
     HAS_LINE[usize::from(mask & FULL)]
 }
 
+const fn completing_table() -> [u16; 512] {
+    let table = line_table();
+    let mut completing = [0; 512];
+    let mut mask = 0;
+    while mask < 512 {
+        let mut cell = 0;
+        while cell < 9 {
+            let with = mask | (1 << cell);
+            if with != mask && table[with] {
+                completing[mask] |= 1 << cell;
+            }
+            cell += 1;
+        }
+        mask += 1;
+    }
+    completing
+}
+
+/// `COMPLETING[mask]`: the cells outside `mask` that would give it a line.
+static COMPLETING: [u16; 512] = completing_table();
+
+/// The cells outside `mask` that, added to it, would make a whole line.
+/// Whether those cells are free is up to the caller.
+#[inline]
+pub fn completing_cells(mask: u16) -> u16 {
+    COMPLETING[usize::from(mask & FULL)]
+}
+
 const fn cell_tables() -> ([u8; 512], [[u8; 9]; 512]) {
     let mut counts = [0; 512];
     let mut nth = [[0; 9]; 512];

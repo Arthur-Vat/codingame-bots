@@ -28,6 +28,20 @@ fn has_line_matches_a_direct_check() {
 }
 
 #[test]
+fn completing_cells_are_the_cells_that_make_a_line() {
+    for mask in 0..512u16 {
+        let direct = (0..9)
+            .filter(|&cell| mask & (1 << cell) == 0 && has_line(mask | (1 << cell)))
+            .fold(0, |cells, cell| cells | (1 << cell));
+        assert_eq!(completing_cells(mask), direct, "{mask:09b}");
+    }
+    // Cells 0, 1 and 4: the top row needs 2, the middle column 7, the
+    // diagonal 8.
+    assert_eq!(completing_cells(0b000_010_011), 0b110_000_100);
+    assert_eq!(completing_cells(0), 0);
+}
+
+#[test]
 fn iterates_cells_in_order() {
     assert_eq!(cells(0).count(), 0);
     assert_eq!(cells(0b100_010_001).collect::<Vec<_>>(), vec![0, 4, 8]);

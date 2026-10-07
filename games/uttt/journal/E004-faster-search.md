@@ -11,7 +11,7 @@ elo: +87.5 [+53.8, +123.0] at 20 ms
 pairs: 154
 full_time: +74.4 [+56.7, +92.5] over 500 pairs, no fault, slowest answer 90.0 ms
 decision: promoted
-cg_rank: pending
+cg_rank: Legend, 89 (2026-10-07), up from 133 with v003; no game lost on time
 ---
 
 Where the time went, measured with callgrind on the bundled bot: listing

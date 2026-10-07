@@ -1,8 +1,9 @@
 //! Monte Carlo tree search Ultimate Tic-Tac-Toe bot.
 //!
-//! Every turn it searches the current position with UCT and uniformly
-//! random playouts (`cg-search`, `uttt-engine`), for most of the turn's time
-//! limit, then plays the move it tried most often. The search keeps the
+//! Every turn it searches the current position with UCT and random
+//! playouts that take a game-winning move whenever there is one
+//! (`cg-search`, `uttt-engine`), for most of the turn's time limit, then
+//! plays the move it tried most often. The search keeps the
 //! part of its tree under the moves played since its previous search, and
 //! proves wins and losses near the end of the game: it plays a proven win,
 //! avoids proven losses, and stops searching once the position is proven.

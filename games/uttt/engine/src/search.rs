@@ -29,7 +29,7 @@ impl Game for Board {
     }
 
     fn playout(&mut self, rng: &mut Rng) -> f64 {
-        score(self.random_playout(rng)).expect("a playout ends the game")
+        score(self.decisive_playout(rng)).expect("a playout ends the game")
     }
 }
 

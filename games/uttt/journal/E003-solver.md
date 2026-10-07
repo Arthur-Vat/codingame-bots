@@ -11,7 +11,7 @@ elo: +31.6 [+13.0, +50.4] at 20 ms
 pairs: 479
 full_time: +13.6 [-4.7, +31.9] over 500 pairs, no fault, slowest answer 87.5 ms
 decision: promoted
-cg_rank: pending
+cg_rank: Legend, 133 (2026-10-07), up from 162 with v002
 ---
 
 v003 also carries the safer time budget of #11: 82 ms of the 100 allowed
