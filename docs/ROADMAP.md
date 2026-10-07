@@ -25,7 +25,7 @@ Phases 4 and 5 can overlap.
 - [x] Cargo workspace targeting Rust 1.90.0 and the 2021 edition ([ADR 0010](adr/0010-codingame-rust-toolchain.md))
 - [x] Hello-world bot `games/uttt/bots/first-valid` with tests
 - [x] CI: format, lint, test, CodinGame compatibility, dependency policy
-- [ ] CI green on the Phase 0 pull request
+- [x] CI green on the Phase 0 pull request
 - [ ] Ruleset on `main`: require the CI checks, block direct pushes (owner, in GitHub settings)
 - [ ] `first-valid` pasted into CodinGame and plays a full game (owner)
 
