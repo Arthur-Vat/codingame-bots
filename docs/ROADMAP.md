@@ -27,7 +27,7 @@ Phases 4 and 5 can overlap.
 - [x] CI: format, lint, test, CodinGame compatibility, dependency policy
 - [x] CI green on the Phase 0 pull request
 - [ ] Ruleset on `main`: require the CI checks, block direct pushes (owner, in GitHub settings)
-- [ ] `first-valid` pasted into CodinGame and plays a full game (owner)
+- [x] `first-valid` pasted into CodinGame and plays a full game (owner, 2026-10-07)
 
 ## Risks
 

@@ -32,7 +32,7 @@ The tiebreak differs from common Ultimate Tic-Tac-Toe rules, so it gets dedicate
 
 | Bot | Strategy | Purpose |
 | --- | --- | --- |
-| [first-valid](bots/first-valid/) | Plays the first valid action listed | Proves the paste-to-CodinGame path (Phase 0 gate) |
+| [first-valid](bots/first-valid/) | Plays the first valid action listed | Proves the paste-to-CodinGame path (Phase 0 gate). Compiled and played a full game on CodinGame on 2026-10-07. |
 
 ## Putting a bot on CodinGame
 
