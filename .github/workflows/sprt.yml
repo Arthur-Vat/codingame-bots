@@ -1,0 +1,115 @@
+name: SPRT
+
+# Tests every release file a pull request adds (ADR 0012): a smoke test
+# against the random bot, then a sequential probability ratio test against
+# the previous release. The check fails unless the candidate is accepted.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write # to post the result as a comment
+
+concurrency:
+  group: sprt-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # CodinGame's Rust compiler (docs/CODINGAME.md, ADR 0010).
+  CG_RUST: "1.90.0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  sprt:
+    name: SPRT of new releases
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - name: Find new releases
+        id: find
+        run: |
+          # In a pull request, HEAD is the merge commit and HEAD^1 the base.
+          candidates="$(git diff --name-only --diff-filter=A HEAD^1 HEAD -- 'games/*/releases/*.rs' | tr '\n' ' ')"
+          echo "candidates=$candidates" >>"$GITHUB_OUTPUT"
+          if [ -z "$candidates" ]; then
+            echo "No new release in this pull request: nothing to test." | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          # A result is kept for the exact code and settings it was obtained
+          # with: editing only Markdown (the journal) does not run it again.
+          key="$(git ls-tree -r HEAD -- Cargo.toml Cargo.lock crates games scripts | grep -v '\.md$' | sha256sum | cut -c 1-20)"
+          echo "key=sprt-$key" >>"$GITHUB_OUTPUT"
+      - name: Reuse the result of an earlier run on the same code
+        id: cache
+        if: steps.find.outputs.candidates != ''
+        uses: actions/cache/restore@v6
+        with:
+          path: target/sprt-result
+          key: ${{ steps.find.outputs.key }}
+      - uses: dtolnay/rust-toolchain@master
+        if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-hit != 'true'
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-hit != 'true'
+      - name: Smoke test and SPRT
+        id: run
+        if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-hit != 'true'
+        env:
+          CANDIDATES: ${{ steps.find.outputs.candidates }}
+        run: |
+          mkdir -p target/sprt-result
+          status=0
+          for candidate in $CANDIDATES; do
+            game="$(cut -d/ -f2 <<<"$candidate")"
+            set +e
+            scripts/sprt.sh "$game" "$candidate" | tee -a target/sprt-result/report.txt
+            code="${PIPESTATUS[0]}"
+            set -e
+            # Status 2 is an error, not a verdict: keep no result.
+            if [ "$code" -ge 2 ]; then exit "$code"; fi
+            if [ "$code" -ne 0 ]; then status=1; fi
+          done
+          echo "$status" >target/sprt-result/status
+      - name: Keep the result
+        if: steps.run.outcome == 'success'
+        uses: actions/cache/save@v6
+        with:
+          path: target/sprt-result
+          key: ${{ steps.find.outputs.key }}
+      - name: Report
+        if: steps.find.outputs.candidates != ''
+        env:
+          REUSED: ${{ steps.cache.outputs.cache-hit }}
+        run: |
+          {
+            echo "## SPRT"
+            if [ "$REUSED" = true ]; then
+              echo "Result of an earlier run on the same code and settings."
+            fi
+            echo '```'
+            cat target/sprt-result/report.txt
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+      - name: Post the result on the pull request
+        if: steps.run.outcome == 'success' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "### SPRT result for ${HEAD_SHA:0:7}"
+            echo '```'
+            cat target/sprt-result/report.txt
+            echo '```'
+            echo "[Run]($RUN_URL)"
+          } >target/sprt-comment.md
+          gh pr comment "$PR" --body-file target/sprt-comment.md
+      - name: Verdict
+        if: steps.find.outputs.candidates != ''
+        run: exit "$(cat target/sprt-result/status)"
