@@ -8,6 +8,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use cg_core::rng::{Rng, SEED_ENV};
+use cg_core::time::TIME_SCALE_ENV;
 use serde::Serialize;
 
 use crate::referee::{Answer, Outcome, Referee, SEATS};
@@ -48,7 +49,9 @@ impl BotSpec {
 #[derive(Clone, Debug)]
 pub struct MatchOptions {
     /// Multiplies the game's time limits. Above 1 tolerates slow or noisy
-    /// machines; 1 reproduces CodinGame's limits.
+    /// machines; below 1 plays faster games; 1 reproduces CodinGame's
+    /// limits. Bots receive the factor in `CG_TIME_SCALE` so they can scale
+    /// their own budget.
     pub time_scale: f64,
     /// Turns after which the arena stops the game. It only guards against
     /// referee bugs; real games end long before.
@@ -146,15 +149,12 @@ pub fn run_match(
 ) -> Result<MatchRecord, ArenaError> {
     let mut processes = Vec::with_capacity(SEATS);
     for (seat, spec) in bots.iter().enumerate() {
-        let process = BotProcess::spawn(
-            spec,
-            bot_seed(seed, seat, &spec.name),
-            options.show_bot_stderr,
-        )
-        .map_err(|error| ArenaError::Spawn {
-            bot: spec.name.clone(),
-            error,
-        })?;
+        let process = BotProcess::spawn(spec, bot_seed(seed, seat, &spec.name), options).map_err(
+            |error| ArenaError::Spawn {
+                bot: spec.name.clone(),
+                error,
+            },
+        )?;
         processes.push(process);
     }
 
@@ -252,18 +252,22 @@ struct BotProcess {
 }
 
 impl BotProcess {
-    fn spawn(spec: &BotSpec, seed: u64, show_stderr: bool) -> io::Result<BotProcess> {
-        let mut child = Command::new(&spec.program)
+    fn spawn(spec: &BotSpec, seed: u64, options: &MatchOptions) -> io::Result<BotProcess> {
+        let mut command = Command::new(&spec.program);
+        command
             .args(&spec.args)
             .env(SEED_ENV, seed.to_string())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(if show_stderr {
+            .stderr(if options.show_bot_stderr {
                 Stdio::inherit()
             } else {
                 Stdio::null()
-            })
-            .spawn()?;
+            });
+        if options.time_scale != 1.0 {
+            command.env(TIME_SCALE_ENV, options.time_scale.to_string());
+        }
+        let mut child = command.spawn()?;
         let stdin = child.stdin.take();
         let stdout = child.stdout.take().expect("stdout is piped");
         let (sender, lines) = mpsc::channel();

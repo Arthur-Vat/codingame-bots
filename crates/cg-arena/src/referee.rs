@@ -9,6 +9,22 @@ use std::time::Duration;
 /// Number of seats. Seat 0 moves first in turn-based games.
 pub const SEATS: usize = 2;
 
+/// What a referee needs to set up one game.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GameSetup {
+    /// Seed for everything random in the game: map, shuffles, opening.
+    pub seed: u64,
+    /// Moves the referee imposes at the start of the game, to vary the
+    /// positions bots face. 0 plays the game exactly as on CodinGame. Each
+    /// game decides how it imposes them; games without openings ignore it.
+    pub opening_plies: u32,
+}
+
+/// Builds the referee of a new game. Shared by the arena's worker threads.
+pub trait RefereeFactory: Fn(&GameSetup) -> Box<dyn Referee> + Sync {}
+
+impl<F: Fn(&GameSetup) -> Box<dyn Referee> + Sync> RefereeFactory for F {}
+
 /// How a finished game ended for the players.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Outcome {

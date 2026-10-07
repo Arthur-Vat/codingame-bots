@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use super::*;
-use crate::referee::{Answer, InvalidAnswer, Outcome, TimeLimits};
+use crate::referee::{Answer, GameSetup, InvalidAnswer, Outcome, Referee, TimeLimits};
 
 /// Seat 0 wins when the seed is even, seat 1 when it is odd, after one turn.
 struct SeedDecides {
@@ -52,14 +52,15 @@ fn tournament(pairs: u32, jobs: usize) -> Tournament {
         bots: [echo_bot("a"), echo_bot("b")],
         pairs,
         seed: 3,
+        opening_plies: 0,
         jobs,
         options: MatchOptions::default(),
     }
 }
 
-fn new_referee(seed: u64) -> Box<dyn Referee> {
+fn new_referee(setup: &GameSetup) -> Box<dyn Referee> {
     Box::new(SeedDecides {
-        seed,
+        seed: setup.seed,
         played: false,
     })
 }
@@ -68,7 +69,8 @@ fn new_referee(seed: u64) -> Box<dyn Referee> {
 fn plays_every_pair_twice_with_seats_swapped() {
     let mut games = Vec::new();
     run(&tournament(5, 3), &new_referee, |game| {
-        games.push(game.clone())
+        games.push(game.clone());
+        Flow::Continue
     })
     .unwrap();
     assert_eq!(games.len(), 10);
@@ -91,9 +93,44 @@ fn stops_at_the_first_error() {
     let mut broken = tournament(50, 2);
     broken.bots[1] = BotSpec::parse("ghost=/definitely/not/here").unwrap();
     let mut played = 0;
-    let error = run(&broken, &new_referee, |_| played += 1).unwrap_err();
+    let error = run(&broken, &new_referee, |_| {
+        played += 1;
+        Flow::Continue
+    })
+    .unwrap_err();
     assert!(error.to_string().contains("ghost"), "{error}");
     assert!(played < 100);
+}
+
+#[test]
+fn stop_ends_the_tournament_early() {
+    let mut reported = 0;
+    run(&tournament(500, 4), &new_referee, |_| {
+        reported += 1;
+        if reported == 3 {
+            Flow::Stop
+        } else {
+            Flow::Continue
+        }
+    })
+    .unwrap();
+    assert_eq!(reported, 3, "no game is reported after Stop");
+}
+
+#[test]
+fn passes_the_opening_to_the_referee() {
+    let mut with_opening = tournament(2, 1);
+    with_opening.opening_plies = 7;
+    let seen = std::sync::Mutex::new(Vec::new());
+    let factory = |setup: &GameSetup| -> Box<dyn Referee> {
+        seen.lock().unwrap().push(*setup);
+        new_referee(setup)
+    };
+    run(&with_opening, &factory, |_| Flow::Continue).unwrap();
+    let seen = seen.into_inner().unwrap();
+    assert_eq!(seen.len(), 4);
+    assert!(seen.iter().all(|setup| setup.opening_plies == 7));
+    assert_eq!(seen[0].seed, pair_seed(3, 0));
 }
 
 #[test]
