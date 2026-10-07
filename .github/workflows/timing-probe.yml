@@ -1,0 +1,62 @@
+name: Timing probe (temporary)
+
+# Measures how often the MCTS bot times out on GitHub's runners under
+# several time settings, to choose the evaluation settings with data.
+# Results are posted as notices (annotations). Remove before merging.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CG_RUST: "1.90.0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  probe:
+    name: Timing probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Build the bots and the arena
+        run: |
+          scripts/bundle-bots.sh
+          CG_BIN_DIR=target/cg/bin scripts/cg-check.sh target/cg/uttt-mcts.rs target/cg/uttt-greedy.rs
+          cargo build --release --locked -p uttt-arena
+          echo "::notice title=probe cpus::$(nproc) CPUs, $(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2)"
+      - name: Play under each setting
+        run: |
+          cat >target/probe.py <<'PY'
+          import json, sys
+          name = sys.argv[1]
+          games = [json.loads(line) for line in open(f"target/{name}.jsonl")]
+          seat = lambda g: 1 if g["swapped"] else 0
+          timeouts = sum(1 for g in games if g["end"].get("kind") == "timeout" and g["end"]["seat"] == seat(g))
+          slowest = sorted(g["max_answer_ms"][seat(g)] for g in games)
+          q = lambda p: slowest[min(len(slowest) - 1, int(p * len(slowest)))]
+          print(f"::notice title=probe {name}::{timeouts} timeouts in {len(games)} games; "
+                f"slowest MCTS answer per game: p50 {q(0.5):.1f}, p90 {q(0.9):.1f}, p99 {q(0.99):.1f}, max {slowest[-1]:.1f} ms")
+          PY
+          probe() {
+            name="$1"
+            pairs="$2"
+            shift 2
+            target/release/uttt-arena match \
+              --bot mcts=target/cg/bin/uttt-mcts --bot greedy=target/cg/bin/uttt-greedy \
+              --pairs "$pairs" --opening-plies 4 --seed 5 --out "target/$name.jsonl" "$@" >/dev/null 2>&1 || true
+            python3 target/probe.py "$name"
+          }
+          cpus="$(nproc)"
+          probe "scale-0.2-jobs-$cpus" 500 --time-scale 0.2
+          probe "scale-0.2-jobs-$((cpus - 1))" 500 --time-scale 0.2 --jobs "$((cpus - 1))"
+          probe "scale-0.2-jobs-$cpus-tolerance-5" 500 --time-scale 0.2 --time-tolerance-ms 5
+          probe "scale-0.2-jobs-$cpus-tolerance-10" 500 --time-scale 0.2 --time-tolerance-ms 10
+          probe "scale-0.5-jobs-$cpus" 500 --time-scale 0.5
+          probe "scale-1.0-jobs-$cpus" 200 --time-scale 1.0
