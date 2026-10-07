@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+# Phase 1 adds crates/* (cg-core, cg-arena, cg-bundler) and the game engines.
+members = ["games/uttt/bots/*"]
+
+[workspace.package]
+version = "0.0.0"
+authors = ["Arthur-V"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Arthur-Vat/codingame-bots"
+publish = false
+# CodinGame compiles Rust 1.90.0 with the 2021 edition (checked 2026-10-06).
+# `rust-version` makes clippy reject std APIs newer than that; CI builds with
+# exactly 1.90.0. See docs/adr/0010-codingame-rust-toolchain.md.
+edition = "2021"
+rust-version = "1.90"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[profile.release]
+opt-level = 3
