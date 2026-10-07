@@ -1,0 +1,13 @@
+[package]
+name = "uttt-bot-first-valid"
+description = "Hello-world Ultimate Tic-Tac-Toe bot: plays the first valid action."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
