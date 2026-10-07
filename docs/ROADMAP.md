@@ -8,7 +8,7 @@ Seven phases build the framework before the first real bot. Reaching Legend is t
 | 1. Framework core | `Referee` trait, arena, bundler, `cg-core`; UTTT `RULES.md`, reference referee, random bot | 1,000 random-vs-random games in CI; a bundled bot plays on CodinGame | Done (2026-10-07) |
 | 2. UTTT engine | Fast engine for bots, property tests, parity with the referee, rules checked against real CodinGame games | Parity on 10,000 random games; speed baseline recorded | Done (2026-10-07) |
 | 3. Evaluation | Openings, smoke tests, SPRT, ratings, league, journal, releases | A/A test passes; a weakened bot is rejected by the SPRT | Done (2026-10-07) |
-| 4. First real bot | MCTS `uttt-v001`, then the weekly experiment loop | v001 pasted and ranked; 3 experiments run end to end | In progress |
+| 4. First real bot | MCTS `uttt-v001`, then the weekly experiment loop | v001 pasted and ranked; 3 experiments run end to end | Done (2026-10-07) |
 | 5. Autonomy | Hub, project skills, weekly routine, notifications | One full loop without opening GitHub | Not started |
 | 6. Second game | A game with an official referee; `new-game` skill | Phase 3 gates met, changes mostly inside the game folder | Not started |
 | Ongoing | Iterate every game toward Legend, then up the Legend ranking | | Ultimate Tic-Tac-Toe: Legend since 2026-10-07 (`uttt-v001`, 182 of 443) |
@@ -77,8 +77,9 @@ Phases 4 and 5 can overlap.
 - [x] v001 pasted into CodinGame and ranked (owner, 2026-10-07): promoted from Bronze to Legend on its own, 182 of 443 in Legend
 - [x] Full-time confirmation of accepted candidates, set off by reaching Gold ([ADR 0014](adr/0014-full-time-confirmation.md))
 - [x] E002, keeping the search tree between turns: accepted, +49.6 Elo at 20 ms and +73.3 at full time (`uttt-v002`)
-- [ ] One more experiment run end to end (planned: E003 proven wins and losses, then E004 faster search)
-- [ ] Opening length checked with MCTS (ADR 0012)
+- [x] Safer time budget, 82 ms of 100, after a timeout at full time on CI; only the candidate's faults fail an evaluation
+- [x] E003, proving wins and losses in the tree: accepted, +31.6 Elo at 20 ms and +13.6 at full time (`uttt-v003`)
+- [ ] Opening length checked with MCTS (ADR 0012), carried into the experiment loop
 
 ## Risks
 
