@@ -276,6 +276,17 @@ impl<G: Game> Mcts<G> {
     /// Moves the subtree of `node` to the front of the tree, `node` first,
     /// and drops every other node.
     fn keep_subtree(&mut self, node: usize) {
+        // The two vectors take turns holding the tree. Giving the spare one
+        // the tree's capacity, in a fresh allocation, means that neither
+        // has to grow during a later search: growing copies the whole tree,
+        // a pause of several milliseconds once it holds a million nodes.
+        let capacity = self.nodes.capacity();
+        if self.spare.capacity() < capacity {
+            self.spare = Vec::with_capacity(capacity);
+        }
+        if self.origin.capacity() < capacity {
+            self.origin = Vec::with_capacity(capacity);
+        }
         self.spare.clear();
         self.origin.clear();
         self.spare.push(self.nodes[node]);
