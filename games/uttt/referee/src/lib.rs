@@ -50,7 +50,15 @@ pub struct UtttReferee {
     valid: Vec<Cell>,
     /// Shuffles the valid actions, like CodinGame does.
     rng: Rng,
+    /// Actions played so far.
+    moves: usize,
+    /// Actions imposed at the start of the game (see [`UtttReferee::with_opening`]).
+    opening: Vec<Cell>,
 }
+
+/// Mixed into the game seed to draw the opening, so the opening and the
+/// order of valid actions are independent.
+const OPENING_SALT: u64 = 0x0BE7_1736_0F3A_11CE;
 
 impl UtttReferee {
     /// A new game. `seed` only decides the order of the valid actions.
@@ -64,9 +72,52 @@ impl UtttReferee {
             last: None,
             valid: Vec::new(),
             rng: Rng::new(seed),
+            moves: 0,
+            opening: Vec::new(),
         };
         game.update_valid_actions();
         game
+    }
+
+    /// A new game whose first `plies` actions are drawn at random from
+    /// `seed`, to start the bots from varied positions. During those turns
+    /// the valid-action list holds only the imposed action, so a bot that
+    /// picks from the list plays it. Not a CodinGame rule: the arena uses it
+    /// to test bots on more positions.
+    ///
+    /// The same seed gives the same opening. An opening never ends the game:
+    /// it is cut short before an action that would.
+    pub fn with_opening(seed: u64, plies: u32) -> Self {
+        let mut rng = Rng::new(seed ^ OPENING_SALT);
+        let mut scratch = UtttReferee::new(seed ^ OPENING_SALT);
+        let mut opening = Vec::new();
+        for _ in 0..plies {
+            let quiet: Vec<Cell> = scratch
+                .valid
+                .iter()
+                .copied()
+                .filter(|&cell| {
+                    let mut next = scratch.clone();
+                    next.play_cell(cell).is_ok() && next.result().is_none()
+                })
+                .collect();
+            let Some(&cell) = rng.pick(&quiet) else {
+                break;
+            };
+            scratch
+                .play_cell(cell)
+                .expect("the opening plays valid actions");
+            opening.push(cell);
+        }
+        let mut game = UtttReferee::new(seed);
+        game.opening = opening;
+        game.update_valid_actions();
+        game
+    }
+
+    /// The actions imposed at the start of the game.
+    pub fn opening(&self) -> &[Cell] {
+        &self.opening
     }
 
     /// The valid actions for the player to move, in the order sent.
@@ -136,6 +187,7 @@ impl UtttReferee {
 
         self.last = Some(cell);
         self.to_move = 1 - seat;
+        self.moves += 1;
         self.update_valid_actions();
         Ok(())
     }
@@ -186,6 +238,10 @@ impl UtttReferee {
             }
         }
         self.rng.shuffle(&mut self.valid);
+        if let Some(&imposed) = self.opening.get(self.moves) {
+            debug_assert!(self.valid.contains(&imposed));
+            self.valid = vec![imposed];
+        }
     }
 }
 
