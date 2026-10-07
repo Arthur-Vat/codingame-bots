@@ -74,6 +74,11 @@ pub struct CommonArgs {
     /// Exit with status 1 if any bot times out, crashes or answers invalidly.
     #[arg(long)]
     pub expect_no_faults: bool,
+
+    /// Exit with status 1 if this bot times out, crashes or answers
+    /// invalidly; the other bots' faults only lose them their games.
+    #[arg(long, value_name = "NAME")]
+    pub expect_no_faults_from: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -182,6 +187,7 @@ pub fn main<F: RefereeFactory>(name: &'static str, new_referee: F) -> ExitCode {
 
 fn run_match<F: RefereeFactory>(args: MatchArgs, new_referee: &F) -> Result<bool, String> {
     let [first, second] = two_bots(&args.bots)?;
+    check_fault_name(&args.common, &[first.name.clone(), second.name.clone()])?;
     let tournament = tournament([first, second], args.pairs, &args.common)?;
     let mut output = Output::create(args.common.out.as_deref())?;
     let mut summary = Summary::new(tournament.bots.clone().map(|bot| bot.name));
@@ -220,6 +226,10 @@ fn run_sprt<F: RefereeFactory>(args: SprtArgs, new_referee: &F) -> Result<bool, 
     if candidate.name == baseline.name {
         return Err("the candidate and the baseline need different names".to_string());
     }
+    check_fault_name(
+        &args.common,
+        &[candidate.name.clone(), baseline.name.clone()],
+    )?;
     let tournament = tournament([candidate, baseline], args.max_pairs, &args.common)?;
     let mut output = Output::create(args.common.out.as_deref())?;
     let mut summary = Summary::new(tournament.bots.clone().map(|bot| bot.name));
@@ -274,6 +284,7 @@ fn run_league<F: RefereeFactory>(args: LeagueArgs, new_referee: &F) -> Result<bo
             return Err(format!("two bots are named {name:?}"));
         }
     }
+    check_fault_name(&args.common, &names)?;
     let anchor = match &args.anchor {
         Some(name) => names
             .iter()
@@ -284,7 +295,7 @@ fn run_league<F: RefereeFactory>(args: LeagueArgs, new_referee: &F) -> Result<bo
 
     let mut output = Output::create(args.common.out.as_deref())?;
     let mut results = Vec::new();
-    let mut faults = 0;
+    let mut faults = vec![0u32; bots.len()];
     let mut games = vec![0u32; bots.len()];
     for a in 0..bots.len() {
         for b in a + 1..bots.len() {
@@ -306,7 +317,8 @@ fn run_league<F: RefereeFactory>(args: LeagueArgs, new_referee: &F) -> Result<bo
                 summary.draws,
                 summary.losses
             );
-            faults += summary.total_faults();
+            faults[a] += summary.faults[0].total();
+            faults[b] += summary.faults[1].total();
             games[a] += summary.games();
             games[b] += summary.games();
             results.push(MatchupResult {
@@ -334,10 +346,28 @@ fn run_league<F: RefereeFactory>(args: LeagueArgs, new_referee: &F) -> Result<bo
             games[bot]
         );
     }
-    if faults > 0 {
-        println!("faults: {faults} games ended by a bot fault");
+    let mut passed = true;
+    for (name, &count) in names.iter().zip(&faults) {
+        if count > 0 {
+            println!("faults: {name} lost {count} games by a fault");
+            if args.common.expect_no_faults
+                || args.common.expect_no_faults_from.as_ref() == Some(name)
+            {
+                passed = false;
+            }
+        }
     }
-    Ok(!(args.common.expect_no_faults && faults > 0))
+    Ok(passed)
+}
+
+/// Checks that `--expect-no-faults-from` names one of `names`.
+fn check_fault_name(common: &CommonArgs, names: &[String]) -> Result<(), String> {
+    match &common.expect_no_faults_from {
+        Some(name) if !names.contains(name) => Err(format!(
+            "--expect-no-faults-from {name:?} is not one of the bots"
+        )),
+        _ => Ok(()),
+    }
 }
 
 /// Parses exactly two differently named bots.
@@ -407,14 +437,28 @@ fn play<F: RefereeFactory>(
 
 /// Whether the faults are acceptable; reports them otherwise.
 fn faults_ok(common: &CommonArgs, summary: &Summary) -> bool {
+    let mut ok = true;
     if common.expect_no_faults && summary.total_faults() > 0 {
         eprintln!(
             "error: {} games ended by a bot fault",
             summary.total_faults()
         );
-        return false;
+        ok = false;
     }
-    true
+    if let Some(name) = &common.expect_no_faults_from {
+        let faults: u32 = summary
+            .names
+            .iter()
+            .zip(&summary.faults)
+            .filter(|(bot, _)| *bot == name)
+            .map(|(_, faults)| faults.total())
+            .sum();
+        if faults > 0 {
+            eprintln!("error: {name} lost {faults} games by a fault");
+            ok = false;
+        }
+    }
+    ok
 }
 
 /// The optional JSON-lines file of game records.
