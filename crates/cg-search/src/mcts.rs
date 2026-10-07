@@ -42,8 +42,8 @@ enum Proof {
 struct Node<M> {
     /// The move that leads here; unused at the root.
     mv: M,
-    /// The player who played `mv`, whose point of view `total` and
-    /// `proof` take.
+    /// The player who played `mv`, whose point of view `value` and `proof`
+    /// take.
     mover: u8,
     proof: Proof,
     /// Whether the children have been created; a node of a finished game
@@ -52,8 +52,11 @@ struct Node<M> {
     first_child: u32,
     children: u32,
     visits: u32,
-    /// Sum of the mover's scores over the visits.
-    total: f64,
+    /// The mover's average score over the visits.
+    value: f32,
+    /// `1 / sqrt(visits)`, kept so that selection, which reads every child
+    /// of a node, needs no division or square root.
+    inv_sqrt_visits: f32,
 }
 
 /// What a search found.
@@ -172,7 +175,7 @@ impl<G: Game> Mcts<G> {
         let expected_score = match best.proof {
             Proof::MoverWins => 1.0,
             Proof::MoverLoses => 0.0,
-            Proof::Unknown => best.total / f64::from(best.visits.max(1)),
+            Proof::Unknown => f64::from(best.value),
         };
         SearchResult {
             best: best.mv,
@@ -195,7 +198,8 @@ impl<G: Game> Mcts<G> {
             first_child: 0,
             children: 0,
             visits: 0,
-            total: 0.0,
+            value: 0.0,
+            inv_sqrt_visits: 0.0,
         });
         self.moves.clear();
         self.moves.extend_from_slice(candidates);
@@ -333,7 +337,10 @@ impl<G: Game> Mcts<G> {
         for &index in &self.path {
             let node = &mut self.nodes[index as usize];
             node.visits += 1;
-            node.total += if node.mover == 0 { score } else { 1.0 - score };
+            let mover_score = if node.mover == 0 { score } else { 1.0 - score };
+            let visits = node.visits as f32;
+            node.value += (mover_score as f32 - node.value) / visits;
+            node.inv_sqrt_visits = visits.sqrt().recip();
         }
         if proved {
             self.prove_ancestors();
@@ -382,7 +389,8 @@ impl<G: Game> Mcts<G> {
                 first_child: 0,
                 children: 0,
                 visits: 0,
-                total: 0.0,
+                value: 0.0,
+                inv_sqrt_visits: 0.0,
             });
         }
         let parent = &mut self.nodes[node];
@@ -398,9 +406,10 @@ impl<G: Game> Mcts<G> {
         let parent = &self.nodes[node];
         let first = parent.first_child as usize;
         let children = &self.nodes[first..first + parent.children as usize];
-        let log_visits = f64::from(parent.visits.max(1)).ln();
+        // UCB1: value + c * sqrt(ln(parent visits) / visits).
+        let spread = (self.exploration * f64::from(parent.visits.max(1)).ln().sqrt()) as f32;
         let mut best = 0;
-        let mut best_bound = f64::NEG_INFINITY;
+        let mut best_bound = f32::NEG_INFINITY;
         for (offset, child) in children.iter().enumerate() {
             match child.proof {
                 Proof::MoverLoses => continue,
@@ -410,8 +419,7 @@ impl<G: Game> Mcts<G> {
             if child.visits == 0 {
                 return first + offset;
             }
-            let visits = f64::from(child.visits);
-            let bound = child.total / visits + self.exploration * (log_visits / visits).sqrt();
+            let bound = child.value + spread * child.inv_sqrt_visits;
             if bound > best_bound {
                 best_bound = bound;
                 best = offset;

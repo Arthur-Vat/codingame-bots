@@ -19,6 +19,14 @@ impl Move {
         Move((9 * board + cell) as u8)
     }
 
+    /// The move in cell `cell` of small board `board`, both from 0 to 8,
+    /// checked in debug builds only, for speed.
+    #[inline]
+    pub(crate) fn new_unchecked(board: usize, cell: usize) -> Move {
+        debug_assert!(board < 9 && cell < 9, "no cell {cell} in board {board}");
+        Move((9 * board + cell) as u8)
+    }
+
     /// The move at CodinGame coordinates `(row, col)`, or `None` outside the
     /// 9×9 board.
     pub fn from_row_col(row: usize, col: usize) -> Option<Move> {

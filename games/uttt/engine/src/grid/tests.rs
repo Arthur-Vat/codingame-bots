@@ -33,3 +33,20 @@ fn iterates_cells_in_order() {
     assert_eq!(cells(0b100_010_001).collect::<Vec<_>>(), vec![0, 4, 8]);
     assert_eq!(cells(FULL).count(), 9);
 }
+
+#[test]
+fn nth_cell_counts_set_bits_from_the_lowest() {
+    let mask = 0b1_0010_0110;
+    let all: Vec<usize> = cells(mask).collect();
+    for (n, &cell) in all.iter().enumerate() {
+        assert_eq!(nth_cell(mask, n as u32), cell);
+    }
+    assert_eq!(nth_cell(FULL, 8), 8);
+}
+
+#[test]
+fn count_matches_the_number_of_set_bits() {
+    for mask in 0..512u16 {
+        assert_eq!(count(mask), mask.count_ones(), "{mask:#b}");
+    }
+}

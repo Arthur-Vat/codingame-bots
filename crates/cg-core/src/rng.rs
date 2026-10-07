@@ -52,6 +52,7 @@ impl Rng {
     }
 
     /// The next 64 random bits.
+    #[inline]
     pub fn next_u64(&mut self) -> u64 {
         let [s0, s1, s2, s3] = &mut self.state;
         let result = s0.wrapping_add(*s3).rotate_left(23).wrapping_add(*s0);
@@ -70,6 +71,7 @@ impl Rng {
     /// # Panics
     ///
     /// If `n` is 0.
+    #[inline]
     pub fn below(&mut self, n: u64) -> u64 {
         assert!(n > 0, "Rng::below(0) has no possible value");
         let mut product = u128::from(self.next_u64()) * u128::from(n);

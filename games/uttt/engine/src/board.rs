@@ -161,13 +161,40 @@ impl Board {
         }
     }
 
+    /// A uniformly random legal move, chosen without listing the moves. It
+    /// draws the same number from `rng` as picking from
+    /// [`legal_moves`](Board::legal_moves), and picks the same move for it.
+    /// The game must go on.
+    #[inline]
+    pub fn random_move(&self, rng: &mut Rng) -> Move {
+        debug_assert_eq!(self.status, Status::Ongoing);
+        if self.target != ANY_BOARD {
+            let board = usize::from(self.target);
+            let empty = self.empty_cells(board);
+            let index = rng.below(u64::from(grid::count(empty))) as u32;
+            return Move::new_unchecked(board, grid::nth_cell(empty, index));
+        }
+        let open = !self.closed & FULL;
+        let total: u32 = grid::cells(open)
+            .map(|board| grid::count(self.empty_cells(board)))
+            .sum();
+        let mut index = rng.below(u64::from(total)) as u32;
+        for board in grid::cells(open) {
+            let empty = self.empty_cells(board);
+            let count = grid::count(empty);
+            if index < count {
+                return Move::new_unchecked(board, grid::nth_cell(empty, index));
+            }
+            index -= count;
+        }
+        unreachable!("a game that goes on has a legal move")
+    }
+
     /// Plays uniformly random legal moves until the game ends, and returns
     /// how it ended.
     pub fn random_playout(&mut self, rng: &mut Rng) -> Status {
-        let mut moves = MoveList::new();
         while self.status == Status::Ongoing {
-            self.legal_moves(&mut moves);
-            let mv = moves[rng.below(moves.len() as u64) as usize];
+            let mv = self.random_move(rng);
             self.play(mv);
         }
         self.status
