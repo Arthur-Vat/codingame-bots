@@ -54,6 +54,7 @@ SPRT accepted after 154 pairs (176 wins, 50 draws, 82 losses), LLR
 losses, no fault.
 
 The gain holds at full time (+78.4, interval from +59.4 to +98.0). Draws
-fell from 273 in 1,000 games in E004's confirmation to 164 here: the
-stronger side now converts more of its threats. The slowest answer,
+fell from 273 in 1,000 games in E004's confirmation to 164 here,
+perhaps because the search now sees wins in one at the end of its
+playouts and steers toward them; not measured. The slowest answer,
 87.0 ms, is in line with v004's 86.8 ms in the same run.
