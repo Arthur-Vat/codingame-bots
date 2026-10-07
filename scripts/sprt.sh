@@ -52,7 +52,7 @@ base="$(name "$baseline")"
 read -r -a options <<<"$(arena_options)"
 
 echo "Candidate: $cand. Baseline: $base."
-echo "Settings: time scale $TIME_SCALE, opening plies $OPENING_PLIES, seed $SEED."
+echo "Settings: $(describe_settings)."
 echo
 if ((SMOKE_PAIRS > 0)); then
   echo "Smoke test against $game-random:"
