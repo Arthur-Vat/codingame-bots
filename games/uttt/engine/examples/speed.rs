@@ -26,11 +26,10 @@ fn main() {
         .unwrap_or(2.0);
     let budget = Duration::from_secs_f64(seconds);
     let mut rng = Rng::new(1);
-    let mut moves = MoveList::new();
 
     // Warm up caches and CPU frequency before measuring.
-    measure(&mut rng, &mut moves, Duration::from_millis(200));
-    let (playouts, played, elapsed) = measure(&mut rng, &mut moves, budget);
+    measure(&mut rng, Duration::from_millis(200));
+    let (playouts, played, elapsed) = measure(&mut rng, budget);
 
     let per_second = playouts as f64 / elapsed.as_secs_f64();
     println!("| Engine benchmark | Result |");
@@ -76,16 +75,16 @@ fn measure_search(budget: Duration) -> (u64, u64, Duration) {
     (searches, iterations, start.elapsed())
 }
 
-/// Plays random games for `budget`; returns games, moves and time taken.
-fn measure(rng: &mut Rng, moves: &mut MoveList, budget: Duration) -> (u64, u64, Duration) {
+/// Plays random games for `budget`, the way playouts do; returns games,
+/// moves and time taken.
+fn measure(rng: &mut Rng, budget: Duration) -> (u64, u64, Duration) {
     let start = Instant::now();
     let (mut playouts, mut played) = (0u64, 0u64);
     while start.elapsed() < budget {
         for _ in 0..1000 {
             let mut board = Board::new();
             while board.status() == Status::Ongoing {
-                board.legal_moves(moves);
-                board.play(moves[rng.below(moves.len() as u64) as usize]);
+                board.play(board.random_move(rng));
                 played += 1;
             }
             playouts += 1;

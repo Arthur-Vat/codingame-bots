@@ -231,3 +231,21 @@ fn random_playouts_end_and_are_reproducible() {
         assert_eq!(a, b);
     }
 }
+
+#[test]
+fn a_random_move_is_the_listed_move_the_same_draw_would_pick() {
+    let mut moves = MoveList::new();
+    for seed in 0..300 {
+        let mut game_rng = Rng::new(seed);
+        let mut board = Board::new();
+        while board.status() == Status::Ongoing {
+            board.legal_moves(&mut moves);
+            let mut listed = game_rng.clone();
+            let mut direct = game_rng.clone();
+            let expected = moves[listed.below(moves.len() as u64) as usize];
+            assert_eq!(board.random_move(&mut direct), expected, "seed {seed}");
+            assert_eq!(listed.next_u64(), direct.next_u64(), "same draws");
+            board.play(*game_rng.pick(&moves).unwrap());
+        }
+    }
+}

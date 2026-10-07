@@ -41,6 +41,43 @@ pub fn has_line(mask: u16) -> bool {
     HAS_LINE[usize::from(mask & FULL)]
 }
 
+const fn cell_tables() -> ([u8; 512], [[u8; 9]; 512]) {
+    let mut counts = [0; 512];
+    let mut nth = [[0; 9]; 512];
+    let mut mask = 0;
+    while mask < 512 {
+        let mut cell = 0;
+        while cell < 9 {
+            if mask & (1 << cell) != 0 {
+                nth[mask][counts[mask] as usize] = cell as u8;
+                counts[mask] += 1;
+            }
+            cell += 1;
+        }
+        mask += 1;
+    }
+    (counts, nth)
+}
+
+/// `CELL_TABLES.0[mask]`: the cells in `mask`; `CELL_TABLES.1[mask][n]`:
+/// its `n`-th cell from the lowest. Tables, because CodinGame's compiler
+/// targets processors without a population-count instruction.
+static CELL_TABLES: ([u8; 512], [[u8; 9]; 512]) = cell_tables();
+
+/// The number of cells in `mask`.
+#[inline]
+pub fn count(mask: u16) -> u32 {
+    u32::from(CELL_TABLES.0[usize::from(mask & FULL)])
+}
+
+/// The `n`-th cell of `mask`, counting from the lowest and from 0. `mask`
+/// must have more than `n` cells.
+#[inline]
+pub fn nth_cell(mask: u16, n: u32) -> usize {
+    debug_assert!(n < count(mask), "fewer than {} cells", n + 1);
+    usize::from(CELL_TABLES.1[usize::from(mask & FULL)][n as usize])
+}
+
 /// Iterates over the cells set in `mask`, lowest first.
 #[inline]
 pub fn cells(mut mask: u16) -> impl Iterator<Item = usize> {
