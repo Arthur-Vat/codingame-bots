@@ -48,7 +48,7 @@ Phases 4 and 5 can overlap.
 - [x] Speed baseline: about 440,000 random playouts per second on one thread ([games/uttt/README.md](../games/uttt/README.md)); CI reports it on every push
 - [x] `wood` bot: perfect 3×3 tic-tac-toe, to leave Wood league, where Ultimate is not played yet
 - [x] `rules-check` bot: compares CodinGame's valid actions with the engine's every turn
-- [ ] CI green on the Phase 2 pull request
+- [x] CI green on the Phase 2 pull request
 - [ ] Promoted out of Wood league with the `wood` bot (owner)
 - [ ] A few games with `rules-check` in Bronze show no difference (owner)
 
