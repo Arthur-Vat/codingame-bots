@@ -91,6 +91,11 @@ pub struct MatchArgs {
     #[arg(long)]
     pub min_score: Option<f64>,
 
+    /// Exit with status 1 if the first bot is clearly weaker: the 95%
+    /// interval of its Elo advantage lies entirely below 0.
+    #[arg(long)]
+    pub expect_not_worse: bool,
+
     #[command(flatten)]
     pub common: CommonArgs,
 }
@@ -193,6 +198,11 @@ fn run_match<F: RefereeFactory>(args: MatchArgs, new_referee: &F) -> Result<bool
             eprintln!("error: score {score:.3} is below the minimum {minimum}");
             passed = false;
         }
+    }
+    if args.expect_not_worse && summary.is_clearly_worse() {
+        let [first, second] = &summary.names;
+        eprintln!("error: {first} is clearly weaker than {second}");
+        passed = false;
     }
     Ok(passed)
 }

@@ -83,6 +83,31 @@ fn elo_of_even_score_is_zero() {
 }
 
 #[test]
+fn clearly_worse_needs_the_whole_interval_below_zero() {
+    let mut even = summary();
+    even.pairs = [10, 10, 60, 10, 10];
+    even.wins = 50;
+    even.losses = 50;
+    assert!(!even.is_clearly_worse());
+
+    let mut weaker = summary();
+    weaker.pairs = [40, 20, 40, 0, 0];
+    weaker.wins = 40;
+    weaker.losses = 160;
+    assert!(weaker.is_clearly_worse());
+
+    let mut swept = summary();
+    swept.pairs = [5, 0, 0, 0, 0];
+    swept.losses = 10;
+    assert!(swept.is_clearly_worse());
+    let mut sweeping = summary();
+    sweeping.pairs = [0, 0, 0, 0, 5];
+    sweeping.wins = 10;
+    assert!(!sweeping.is_clearly_worse());
+    assert!(!summary().is_clearly_worse());
+}
+
+#[test]
 fn displays_a_readable_report() {
     let mut s = summary();
     s.add(&game(0, false, Some(0), EndReason::Finished));
