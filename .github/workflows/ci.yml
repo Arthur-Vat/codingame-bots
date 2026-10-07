@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # CodinGame's Rust compiler (docs/CODINGAME.md, ADR 0010).
+  # Keep in sync with `rust-version` in Cargo.toml.
+  CG_RUST: "1.90.0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Format, lint, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Lint
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Test
+        run: cargo test --workspace --locked
+
+  codingame:
+    name: CodinGame compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+      # Every bot is a single file until Phase 1 adds the bundler; the bundler's
+      # output then replaces this list.
+      - name: Size and standalone build of each paste-ready file
+        run: scripts/cg-check.sh games/*/bots/*/src/main.rs
+
+  licenses:
+    name: Dependency licenses and sources
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: EmbarkStudios/cargo-deny-action@v2
