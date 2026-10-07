@@ -9,7 +9,7 @@ use std::thread;
 
 use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 
-use crate::ratings::{elo_ratings, MatchupResult};
+use crate::ratings::{elo_margins, elo_ratings, MatchupResult};
 use crate::referee::RefereeFactory;
 use crate::runner::{BotSpec, MatchOptions};
 use crate::sprt::{SequentialTest, SprtSettings, Verdict};
@@ -303,15 +303,17 @@ fn run_league<F: RefereeFactory>(args: LeagueArgs, new_referee: &F) -> Result<bo
     output.finish()?;
 
     let ratings = elo_ratings(bots.len(), &results, anchor);
+    let margins = elo_margins(bots.len(), &results, anchor, &ratings);
     let mut order: Vec<usize> = (0..bots.len()).collect();
     order.sort_by(|&x, &y| ratings[y].total_cmp(&ratings[x]));
-    println!("\nElo ratings, {} at 0:", names[anchor]);
+    println!("\nElo ratings, {} at 0, with 95% intervals:", names[anchor]);
     for (rank, &bot) in order.iter().enumerate() {
         println!(
-            "{:>3}. {:<24} {:>+8.1}   ({} games)",
+            "{:>3}. {:<24} {:>+8.1} ± {:<6.1} ({} games)",
             rank + 1,
             names[bot],
             ratings[bot],
+            margins[bot],
             games[bot]
         );
     }

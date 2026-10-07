@@ -6,6 +6,11 @@
 //! explain the results are found with the classic minorization-maximization
 //! iteration. Every matchup gets one extra virtual draw, so a bot that won
 //! or lost everything still gets a finite rating.
+//!
+//! Confidence intervals come from the Fisher information of the same model,
+//! treating games as independent. Draws and seat-swapped pairs make real
+//! results a little less noisy than that, so the intervals are slightly
+//! conservative.
 
 /// The total result of one matchup.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -60,6 +65,102 @@ pub fn elo_ratings(count: usize, results: &[MatchupResult], anchor: usize) -> Ve
         .iter()
         .map(|s| 400.0 * (s / base).log10())
         .collect()
+}
+
+/// Half-widths of the 95% confidence intervals of `ratings` (from
+/// [`elo_ratings`] with the same arguments), in Elo, relative to the anchor:
+/// 0 for the anchor, infinite for a bot with no path of games to it.
+pub fn elo_margins(
+    count: usize,
+    results: &[MatchupResult],
+    anchor: usize,
+    ratings: &[f64],
+) -> Vec<f64> {
+    let per_elo = std::f64::consts::LN_10 / 400.0;
+    // Bots linked to the anchor by a chain of matchups; the others have no
+    // rating relative to it.
+    let mut linked = vec![false; count];
+    linked[anchor] = true;
+    let mut grew = true;
+    while grew {
+        grew = false;
+        for result in results {
+            if linked[result.a] != linked[result.b] {
+                linked[result.a] = true;
+                linked[result.b] = true;
+                grew = true;
+            }
+        }
+    }
+
+    // Fisher information of the natural strengths ln γ of the linked bots
+    // other than the anchor, which is fixed.
+    let others: Vec<usize> = (0..count)
+        .filter(|&bot| bot != anchor && linked[bot])
+        .collect();
+    let index = |bot: usize| others.iter().position(|&other| other == bot);
+    let mut information = vec![vec![0.0; others.len()]; others.len()];
+    for result in results.iter().filter(|result| linked[result.a]) {
+        let n = f64::from(result.games) + 1.0;
+        let p = 1.0 / (1.0 + ((ratings[result.b] - ratings[result.a]) * per_elo).exp());
+        let weight = n * p * (1.0 - p);
+        let (a, b) = (index(result.a), index(result.b));
+        for (i, j) in [(a, b), (b, a)] {
+            if let Some(i) = i {
+                information[i][i] += weight;
+                if let Some(j) = j {
+                    information[i][j] -= weight;
+                }
+            }
+        }
+    }
+    let covariance = invert(information);
+    (0..count)
+        .map(|bot| {
+            if bot == anchor {
+                return 0.0;
+            }
+            match (index(bot), &covariance) {
+                (Some(i), Some(covariance)) if covariance[i][i] > 0.0 => {
+                    1.96 * covariance[i][i].sqrt() / per_elo
+                }
+                _ => f64::INFINITY,
+            }
+        })
+        .collect()
+}
+
+/// The inverse of a square matrix by Gauss-Jordan elimination, or `None`
+/// when it is singular.
+fn invert(mut matrix: Vec<Vec<f64>>) -> Option<Vec<Vec<f64>>> {
+    let n = matrix.len();
+    let mut inverse: Vec<Vec<f64>> = (0..n)
+        .map(|i| (0..n).map(|j| if i == j { 1.0 } else { 0.0 }).collect())
+        .collect();
+    for column in 0..n {
+        let pivot = (column..n)
+            .max_by(|&x, &y| matrix[x][column].abs().total_cmp(&matrix[y][column].abs()))?;
+        if matrix[pivot][column].abs() < 1e-12 {
+            return None;
+        }
+        matrix.swap(column, pivot);
+        inverse.swap(column, pivot);
+        let scale = matrix[column][column];
+        for j in 0..n {
+            matrix[column][j] /= scale;
+            inverse[column][j] /= scale;
+        }
+        for row in 0..n {
+            if row != column {
+                let factor = matrix[row][column];
+                for j in 0..n {
+                    matrix[row][j] -= factor * matrix[column][j];
+                    inverse[row][j] -= factor * inverse[column][j];
+                }
+            }
+        }
+    }
+    Some(inverse)
 }
 
 #[cfg(test)]
