@@ -26,7 +26,7 @@ The rules are in [ADR 0012](adr/0012-evaluation.md).
 1. On a branch `claude/<game>-eNNN-<short-name>`, change the bot, then freeze it as the candidate: `scripts/new-release.sh <game> <bot>` writes `games/<game>/releases/<game>-vNNN.rs`.
 2. Start the journal entry `games/<game>/journal/ENNN-<short-name>.md` from the template: hypothesis, change, and the line `release: <game>-vNNN`. Open the pull request.
 3. CI checks the release, and the SPRT workflow runs the smoke test and the SPRT against the previous release, then posts the result on the pull request. Locally, `scripts/sprt.sh <game> <candidate.rs>` runs the same test.
-4. Claude copies the result into the entry. Only Markdown changes, so the SPRT workflow reuses its result instead of running again.
+4. Claude copies the result into the entry. Only Markdown changes, so the SPRT workflow reuses its result instead of running again. Re-running the SPRT job on GitHub does test again, for a failure caused by the machine; every test posts its result on the pull request.
 5. Accepted: the owner merges; the release workflow publishes the version and the league workflow updates the ratings. Rejected or inconclusive: Claude removes the release file and the bot change, sets `release: none` and `decision: dropped`, and the owner merges the entry.
 
 ## Rules for every change
