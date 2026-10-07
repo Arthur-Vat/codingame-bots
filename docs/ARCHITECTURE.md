@@ -24,23 +24,27 @@ codingame-bots/
 ├─ docs/                    this file, ROADMAP, WORKFLOW, CODINGAME, adr/
 ├─ scripts/
 │  ├─ bundle-bots.sh        every bot -> target/cg/<game>-<bot>.rs
-│  └─ cg-check.sh           size and standalone build of paste-ready files
+│  ├─ cg-check.sh           size and standalone build of paste-ready files
+│  ├─ new-release.sh        a bot -> games/<game>/releases/<game>-vNNN.rs
+│  ├─ check-releases.sh     releases frozen and true to their sources
+│  ├─ sprt.sh               smoke test and SPRT of a candidate file
+│  └─ league.sh             Elo ratings of every release
 ├─ crates/
-│  ├─ cg-core/              bot side: CodinGame input reading, seeded RNG
-│  ├─ cg-arena/             Referee trait, match runner, tournaments, summary, CLI
+│  ├─ cg-core/              bot side: CodinGame input reading, seeded RNG, time scale
+│  ├─ cg-arena/             Referee trait, match runner, tournaments, summary, SPRT, ratings, CLI
 │  ├─ cg-bundler/           bot + its workspace crates -> one paste-ready .rs file
 │  └─ cg-search/            Phase 4: reusable search (MCTS first)
 ├─ games/
 │  └─ uttt/
 │     ├─ README.md          layout, bots, how to play matches
 │     ├─ RULES.md           the rules in our own words, with sources
+│     ├─ evaluation.env     SPRT, league and arena settings
 │     ├─ referee/           readable reference rules, implements Referee
 │     ├─ arena/             uttt-arena binary
 │     ├─ engine/            fast rules for bots, checked against the referee
-│     ├─ bots/              first-valid/, random/, wood/, rules-check/; mcts/ ... later
-│     ├─ releases/          Phase 3: frozen paste-ready file per version
-│     ├─ openings/          Phase 3: opening positions for fair matches
-│     └─ journal/           Phase 3: one entry per experiment
+│     ├─ bots/              first-valid/, random/, greedy/, wood/, rules-check/; mcts/ in Phase 4
+│     ├─ releases/          frozen paste-ready file per version, from the first release
+│     └─ journal/           one entry per experiment
 ├─ .claude/                 Phase 5: skills, agents, settings
 └─ .github/                 CI workflow, dependabot, PR template
 ```
@@ -50,76 +54,57 @@ codingame-bots/
 - **`Referee` trait (`cg-arena`):** a game's rules as the arena sees them, in CodinGame's text protocol: which seats act this turn, the input to send each one, the time limits, and whether their answers are valid. Several seats may act in one turn, so simultaneous-move games fit too ([ADR 0011](adr/0011-framework-structure.md)).
 - **Referee (per game):** a readable implementation of `RULES.md`, written to be obviously correct rather than fast. It is the reference that faster engines are checked against.
 - **Engine (per game):** a fast implementation of the same rules for search inside bots, std-only so it can be bundled. Parity tests compare it with the referee on many random games, and a `rules-check` bot compares it with CodinGame's own valid actions during real games.
-- **Arena:** each game has a tiny binary (`uttt-arena`) that hands its referee to the shared command line of `cg-arena`. Bots run as separate processes and receive their input on stdin, exactly as on CodinGame; a bot that exceeds its time limit, exits, or answers invalidly loses the game. Games run in parallel, in seat-swapped pairs, and each one is written as a JSON line: seed, bots by seat, winner, end reason, turns and answer times.
-- **Bot:** an ordinary binary reading stdin and writing stdout. The arena gives each bot a reproducible seed in `CG_SEED`; on CodinGame it is absent and bots seed from the clock. Later, an optional `CG_FIXED_ITERS` will replace the time budget by a fixed iteration count for deterministic tests.
-- **`cg-core`:** what every bot needs, std-only: a line-based reader for the referee's input and a seeded xoshiro256++ generator.
+- **Arena:** each game has a tiny binary (`uttt-arena`) that hands its referee to the shared command line of `cg-arena`, with three commands: `match` (two bots), `sprt` (does a candidate beat a baseline?) and `league` (Elo ratings of several bots). Bots run as separate processes and receive their input on stdin, exactly as on CodinGame; a bot that exceeds its time limit, exits, or answers invalidly loses the game. Games run in parallel, in seat-swapped pairs, and each one is written as a JSON line: seed, bots by seat, winner, end reason, turns and answer times.
+- **Bot:** an ordinary binary reading stdin and writing stdout. The arena gives each bot a reproducible seed in `CG_SEED`; on CodinGame it is absent and bots seed from the clock. When the arena scales the time limits, it passes the factor in `CG_TIME_SCALE` so that bots scale their budget too. Later, an optional `CG_FIXED_ITERS` will replace the time budget by a fixed iteration count for deterministic tests.
+- **`cg-core`:** what every bot needs, std-only: a line-based reader for the referee's input, a seeded xoshiro256++ generator, and the arena's time scale.
 - **Bundler:** flattens a bot and the workspace crates it uses into one file formatted by rustfmt. It works on text so the result keeps its comments, and relies on conventions listed in its crate documentation: modules in files declared with `mod name;`, tests in separate files, other crates referred to by name, no crates.io dependencies on the bot side.
-- **Versions (Phase 3):** `releases/` keeps the exact file pasted for each version. The arena compiles old versions from these files, so history never rebuilds differently.
+- **Versions:** `releases/` keeps the exact file pasted for each version. The arena compiles old versions from these files with `rustc` alone, so history never rebuilds differently.
 
 Because the referee and the engine are written by the same hands, they could agree on a misread rule. Two checks guard against that: `RULES.md` cites the game's official source for every rule, and Phase 2 compares the referee with real CodinGame games.
 
 ## Evaluation pipeline
 
-Seven tiers protect every change; only the SPRT decides whether a bot is stronger. Values marked "proposed" are confirmed by an ADR in Phase 3.
+Seven tiers protect every change; only the SPRT decides whether a bot is stronger. The settings are in [ADR 0012](adr/0012-evaluation.md) and in each game's `evaluation.env`.
 
 | Tier | Checks | Runs on | Passes when |
 | --- | --- | --- | --- |
 | 1. Static | Format, lints, unit tests, property tests of engine invariants | Every push | All green |
-| 2. Parity | The fast engine against the reference referee on random games | Engine or referee changes | Identical valid actions and results |
-| 3. CodinGame compatibility | Bundle, size, standalone compile with Rust 1.90.0, 1,000 games between bundled bots | Every push | Compiles, stays under 100 kB, no faults |
-| 4. Smoke | Bot against a random bot, both seats, many openings | Every bot change | 0 crashes, 0 timeouts, 0 illegal moves, at least 99% wins (proposed) |
-| 5. Speed | Simulations per second on fixed positions | Every bot change | No drop over 5% against the parent version (proposed) |
-| 6. SPRT | Candidate against the current champion | Candidate pull requests | The test accepts the candidate as stronger |
-| 7. League | Round-robin of all released versions | Weekly and after each release | Ratings published |
+| 2. Parity | The fast engine against the reference referee on 10,000 random games | Every push (part of the tests) | Identical valid actions and results |
+| 3. CodinGame compatibility | Bundle, size, standalone compile with Rust 1.90.0, 1,000 games between bundled bots, every bundled bot against random | Every push | Compiles, stays under 100 kB, no faults |
+| 4. Smoke | Candidate release against the random bot, 100 pairs with openings | Pull requests adding a release, before the SPRT | No faults, at least 99% of the points |
+| 5. Speed | Simulations per second on fixed positions | Every bot change (Phase 4) | No drop over 5% against the parent version (proposed) |
+| 6. SPRT | Candidate release against the previous release | Pull requests adding a release | The test accepts the candidate as stronger |
+| 7. League | Every release and the baseline bots | After each release, and on demand | Ratings published |
 
-- **Openings and pairs:** Ultimate Tic-Tac-Toe has no random map, so each match starts from an opening (a few random moves) played twice with seats swapped.
-- **SPRT (proposed):** scored on game pairs, which handles draws; bounds of 0 and 10 Elo; 5% error rates; capped at 20,000 games. Bounds tighten as the bot matures.
-- **Sanity checks of the pipeline itself:** an A/A test (a bot against itself must not "win") and a deliberately weakened bot that must be rejected.
-- **Ratings:** Elo with 95% confidence intervals over all released versions, the random bot anchored at 0.
-- **Timing noise:** shared runners are noisy, so matches run one game per CPU core with a small tolerance on time limits. Fixed-iteration mode is only for deterministic tests; strength is always measured under real time limits.
+- **Openings and pairs:** Ultimate Tic-Tac-Toe has no random map, so the referee imposes a few random moves at the start of each pair, drawn from the pair's seed, and the pair plays them twice with seats swapped.
+- **SPRT:** scored on game pairs, which handles draws; bounds of 0 and 10 Elo; 5% error rates; no verdict before 30 pairs; capped at 10,000 pairs (20,000 games). Bounds tighten as the bot matures.
+- **Sanity checks of the pipeline itself:** on every push, CI runs an SPRT of a bot against a copy of itself (A/A test, must not be accepted), of a weaker bot against a stronger one (must be rejected) and the reverse (must be accepted), with fixed seeds.
+- **Ratings:** Bradley-Terry maximum likelihood with 95% intervals, the random bot anchored at 0.
+- **Timing noise:** shared runners are noisy, so matches run one game per CPU core. Strength is always measured under real time limits, scaled down to keep tests affordable (0.2, provisional).
 
 ## Journal and versioning
 
 Every experiment gets a journal entry, including failures; only experiments that pass the SPRT become versions.
 
-- **Versions:** git tags `uttt-v001`, `uttt-v002`, one per promoted champion.
-- **Release:** each version gets a GitHub release with the paste-ready file attached; the same file is committed under `releases/`.
-- **Entry:** one file per experiment in `games/<game>/journal/`. The pull request collects the hypothesis and the change, CI fills in the results, and the entry is committed when the pull request is merged or closed.
-- **Failed experiments stay** so that ideas are not retried blindly.
+- **Candidate:** a pull request that adds `games/<game>/releases/<game>-vNNN.rs`, made by `scripts/new-release.sh`. CI checks that it is the bundle of its bot, numbered right after the last release, and that released files never change.
+- **Entry:** one file per experiment in `games/<game>/journal/`, written in the experiment's pull request: the hypothesis and the change before the test, the SPRT result (posted as a comment on the pull request) after it.
+- **Accepted:** the pull request is merged; a workflow tags the version (`uttt-v001`, `uttt-v002`, ...) and publishes a GitHub release with the paste-ready file.
+- **Rejected or inconclusive:** the bot change and the release file are removed from the pull request and the entry is merged alone, so failed ideas stay on record.
 - **CodinGame rank:** after pasting a version, the owner reports the rank and it is recorded in that version's entry.
 
-Example entry (illustrative values):
-
-```markdown
----
-id: E007
-date: 2026-10-20
-parent: uttt-v003
-hypothesis: Reusing the search tree between turns adds strength at 100 ms.
-change: Keep the subtree of the played move instead of starting fresh.
-sprt: accepted
-elo: +38 ± 12
-games: 3,412
-speed: -1%
-decision: promoted
-version: uttt-v004
-cg_rank: 112 (Gold)
----
-Notes: gains come mostly from the first 20 moves.
-```
+The entry format is in each game's `journal/template.md`.
 
 ## CI/CD
 
 GitHub Actions on free standard runners. `main` only accepts changes whose checks are green.
 
-| Workflow | Trigger | Does | Exists |
-| --- | --- | --- | --- |
-| `ci.yml` | Every push and pull request | Format, lint, tests; bundles every bot, checks and plays the bundles; dependency policy; later smoke and speed | Yes |
-| `parity.yml` | Pull requests touching an engine or referee | Tier 2 | Phase 2 |
-| `sprt.yml` | Pull requests labelled `candidate` | Tier 6, verdict as a PR comment and a required check | Phase 3 |
-| `release.yml` | Merge of a candidate pull request | Tag, paste-ready file, GitHub release, journal entry, dashboard | Phase 3 |
-| `league.yml` | Weekly and after each release | Tier 7, ratings on GitHub Pages | Phase 3 |
+| Workflow | Trigger | Does |
+| --- | --- | --- |
+| `ci.yml` | Every push and pull request | Tiers 1 to 3: format, lint, tests (parity included); bundles every bot, checks and plays the bundles; checks new releases; evaluation sanity checks; engine speed; dependency policy |
+| `sprt.yml` | Every pull request | Tiers 4 and 6 for each release file the pull request adds, verdict as a check and a comment; passes at once when there is none |
+| `release.yml` | Push to `main` adding a release | Tag and GitHub release with the paste-ready file |
+| `league.yml` | Push to `main` adding a release, and on demand | Tier 7, ratings in the run summary |
 
 - **Compiler:** every job uses Rust 1.90.0, CodinGame's version ([ADR 0010](adr/0010-codingame-rust-toolchain.md)).
 - **Branch protection:** a ruleset on `main` requires the CI checks and blocks direct pushes, without requiring a GitHub review ([ADR 0006](adr/0006-human-approves-merges.md)).
-- **Compute:** standard runners only, which are free on public repositories. The SPRT is split across parallel jobs.
+- **Compute:** standard runners only, which are free on public repositories. The SPRT runs in one job on all of the runner's cores, which keeps it sequential.

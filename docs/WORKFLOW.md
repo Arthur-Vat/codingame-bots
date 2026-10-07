@@ -16,8 +16,18 @@ Once Phase 4 starts, a week looks like this (about one to two hours of the owner
 1. Read the weekly report: results since last week and two or three proposed experiments.
 2. Pick experiments or describe new ideas.
 3. Claude implements each experiment in its own pull request; CI runs the tests and the SPRT.
-4. Approve the merge of accepted candidates. Rejected ones are closed and keep their journal entry.
-5. When a new champion is released, paste its file into CodinGame and report the rank.
+4. Approve the merge of accepted candidates. A rejected one comes back reduced to its journal entry: merge that too, so the failure stays on record.
+5. When a new champion is released, paste its file (attached to its GitHub release) into CodinGame and report the rank.
+
+## An experiment, step by step
+
+The rules are in [ADR 0012](adr/0012-evaluation.md).
+
+1. On a branch `claude/<game>-eNNN-<short-name>`, change the bot, then freeze it as the candidate: `scripts/new-release.sh <game> <bot>` writes `games/<game>/releases/<game>-vNNN.rs`.
+2. Start the journal entry `games/<game>/journal/ENNN-<short-name>.md` from the template: hypothesis, change, and the line `release: <game>-vNNN`. Open the pull request.
+3. CI checks the release, and the SPRT workflow runs the smoke test and the SPRT against the previous release, then posts the result on the pull request. Locally, `scripts/sprt.sh <game> <candidate.rs>` runs the same test.
+4. Claude copies the result into the entry. Only Markdown changes, so the SPRT workflow reuses its result instead of running again.
+5. Accepted: the owner merges; the release workflow publishes the version and the league workflow updates the ratings. Rejected or inconclusive: Claude removes the release file and the bot change, sets `release: none` and `decision: dropped`, and the owner merges the entry.
 
 ## Rules for every change
 
