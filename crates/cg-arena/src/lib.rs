@@ -6,10 +6,14 @@
 //! - [`runner`]: one match between two bot processes.
 //! - [`tournament`]: many matches in parallel, in seat-swapped pairs.
 //! - [`summary`]: results from the first bot's point of view.
+//! - [`sprt`]: the sequential test deciding whether a candidate is stronger.
+//! - [`ratings`]: Elo ratings from many matchups.
 //! - [`cli`]: the command line every game's arena binary shares.
 
 pub mod cli;
+pub mod ratings;
 pub mod referee;
 pub mod runner;
+pub mod sprt;
 pub mod summary;
 pub mod tournament;
