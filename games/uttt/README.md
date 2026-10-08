@@ -10,7 +10,7 @@ CodinGame's [Ultimate Tic-Tac-Toe](https://www.codingame.com/multiplayer/bot-pro
 | --- | --- |
 | [RULES.md](RULES.md) | The rules in our own words, with sources |
 | [referee/](referee/) | Readable reference implementation of the rules, driven by the arena |
-| [engine/](engine/) | Fast implementation of the rules for bots: bitboards, no allocation, random, decisive and policy playouts |
+| [engine/](engine/) | Fast implementation of the rules for bots: bitboards, no allocation, random, decisive and policy playouts, and the value network's inputs and evaluation |
 | [arena/](arena/) | `uttt-arena`: plays bots against each other through the referee |
 | [trainer/](trainer/) | `uttt-trainer`: self-play data and training of the playout policy ([ADR 0016](../../docs/adr/0016-self-play-training.md)) |
 | [bots/](bots/) | One crate per bot |
@@ -53,6 +53,8 @@ With the settings of [evaluation.env](evaluation.env):
 
 Learned knowledge comes from self-play ([ADR 0016](../../docs/adr/0016-self-play-training.md)). The engine's playout policy draws each move with a weight that depends on its class: which of a few features it has (wins its small board, blocks the opponent's line, gives the opponent a free choice, sends it to a board it can win, takes the centre cell).
 
+The engine's value network (`uttt_engine::value`, [ADR 0017](../../docs/adr/0017-value-network.md)) gives the side to move's expected score from 217 inputs that describe the position from its view, through 64 and 16 hidden units. `search::ValueBoard` searches with it: a new leaf gets its estimate instead of a playout. Its weights come from the trainer as base64 text, 8 bits each with one scale per group, which `ValueNetwork::decode` reads.
+
 - `uttt-trainer selfplay --games N --iterations K --out FILE`: plays self-play games with the bot's search and records, for every searched position, how many visits each move got.
 - `uttt-trainer fit-policy --data FILE... --weights-out weights.rs --report-out report.md`: fits the class weights to those visits, holding a quarter of the positions out to check the fit, and writes them as Rust source with a report.
 - The [Train workflow](../../.github/workflows/train.yml), started by hand from the Actions tab, runs both on GitHub: self-play in up to 20 parallel jobs, then the fit, whose results it commits to a new branch `claude/train/<run id>`. Weights reach a bot only through an experiment and its SPRT.
@@ -75,7 +77,7 @@ Baseline, measured on 2026-10-08 on one thread of an Intel Xeon at 2.8 GHz (this
 
 Before E006 (after E005): about 925,000 random and 976,000 decisive playouts, and 620,000 MCTS iterations per second. After E004: about 985,000 random playouts and 578,000 MCTS iterations per second. Before E004: 441,681 playouts and about 350,000 MCTS iterations per second.
 
-`cargo run --release -p uttt-engine --example value_speed -- [SECONDS]` measures what a value network would cost the search, with untrained networks of several sizes against `uttt-v008`'s playouts: estimates per second, and iterations of 90 ms searches at several stages of the game. Results and their use are in [ADR 0017](../../docs/adr/0017-value-network.md).
+`cargo run --release -p uttt-engine --example value_speed -- [SECONDS]` measures what a value network would cost the search, with untrained networks of several sizes against `uttt-v008`'s playouts: estimates per second, and iterations of 90 ms searches at several stages of the game. Its last row is the engine's own network. Results and their use are in [ADR 0017](../../docs/adr/0017-value-network.md).
 
 ## Checking the rules on CodinGame
 

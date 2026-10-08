@@ -7,13 +7,14 @@
 //!
 //! The engine uses the standard library only, so the bundler can copy it
 //! into bots. [`search`] makes [`Board`] a game that `cg-search` can
-//! search. Its parity tests check it against the readable reference referee
+//! search, with playouts or with the value network of [`value`]. Its parity tests check it against the readable reference referee
 //! (`uttt-referee`) move by move.
 
 pub mod board;
 pub mod grid;
 pub mod moves;
 pub mod search;
+pub mod value;
 
 pub use board::{Board, PlayoutPolicy, Status};
 pub use moves::{Move, MoveList};
