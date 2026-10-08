@@ -41,10 +41,13 @@ releases() {
 # Arena options shared by every evaluation.
 arena_options() {
   echo --seed "$SEED" --time-scale "$TIME_SCALE" \
-    --time-tolerance-ms "$TIME_TOLERANCE_MS" --opening-plies "$OPENING_PLIES"
+    --time-tolerance-ms "$TIME_TOLERANCE_MS" --opening-plies "$OPENING_PLIES" \
+    --max-timeout-rate "$MAX_TIMEOUT_RATE"
 }
 
 # The arena settings in words.
 describe_settings() {
-  echo "time scale $TIME_SCALE, tolerance $TIME_TOLERANCE_MS ms, opening plies $OPENING_PLIES, seed $SEED"
+  local percent
+  percent="$(awk -v rate="$MAX_TIMEOUT_RATE" 'BEGIN { print rate * 100 }')"
+  echo "time scale $TIME_SCALE, tolerance $TIME_TOLERANCE_MS ms, opening plies $OPENING_PLIES, seed $SEED, timeouts allowed in up to $percent% of games"
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests whether a candidate bot is stronger than a baseline, with the game's
-# evaluation settings (games/<game>/evaluation.env, ADR 0012 to 0014).
+# evaluation settings (games/<game>/evaluation.env, ADR 0012 to 0015).
 #
 # Usage: scripts/sprt.sh GAME CANDIDATE.rs [BASELINE.rs]
 #
@@ -11,8 +11,10 @@
 # the SPRT runs against the baseline. If the SPRT accepts the candidate, it
 # plays CONFIRM_PAIRS pairs against the baseline at CodinGame's exact time
 # limits (confirmation), and is rejected if it is clearly weaker there or
-# faults. Only the candidate's faults fail a step: a fault of its opponent
-# just loses that game. Games are written to target/sprt/.
+# faults. Only the candidate's faults fail a step, and its timeouts only
+# beyond MAX_TIMEOUT_RATE of the step's games: below that, like any fault of
+# its opponent, a timeout just loses its game. Games are written to
+# target/sprt/.
 #
 # Exit status: 0 when the candidate is accepted and confirmed; 1 when the
 # smoke test fails, the SPRT does not accept the candidate or the
@@ -66,7 +68,7 @@ if ((SMOKE_PAIRS > 0)); then
     --pairs "$SMOKE_PAIRS" --min-score "$SMOKE_MIN_SCORE" \
     --out "$dir/$cand-smoke.jsonl"; then
     echo
-    echo "Verdict: SMOKE TEST FAILED (needs a score of $SMOKE_MIN_SCORE and no faults)"
+    echo "Verdict: SMOKE TEST FAILED (needs a score of $SMOKE_MIN_SCORE, no crash or invalid answer, and timeouts within MAX_TIMEOUT_RATE=$MAX_TIMEOUT_RATE)"
     exit 1
   fi
   echo
@@ -84,7 +86,8 @@ fi
 echo
 echo "Confirmation against $base at CodinGame's limits (time scale 1, no tolerance):"
 if ! "$arena" match --seed "$SEED" --opening-plies "$OPENING_PLIES" \
-  --time-scale 1 --time-tolerance-ms 0 --expect-no-faults-from "$cand" --expect-not-worse \
+  --time-scale 1 --time-tolerance-ms 0 --max-timeout-rate "$MAX_TIMEOUT_RATE" \
+  --expect-no-faults-from "$cand" --expect-not-worse \
   --bot "$cand=$dir/bin/$cand" --bot "$base=$dir/bin/$base" \
   --pairs "$CONFIRM_PAIRS" --out "$dir/$cand-confirmation.jsonl"; then
   echo
