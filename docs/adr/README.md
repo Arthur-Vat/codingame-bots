@@ -22,3 +22,4 @@ Use [template.md](template.md) for new records. Number them in order.
 | [0014](0014-full-time-confirmation.md) | Confirm accepted candidates at CodinGame's time limits | Accepted; part of decision 3 superseded by 0015 |
 | [0015](0015-tolerate-rare-timeouts.md) | Tolerate rare timeouts: up to 1% of games, counted as losses | Accepted |
 | [0016](0016-self-play-training.md) | Train from self-play on GitHub Actions, with a pure-Rust tool | Accepted |
+| [0017](0017-value-network.md) | Stage 2: a value network instead of playouts | Proposed |

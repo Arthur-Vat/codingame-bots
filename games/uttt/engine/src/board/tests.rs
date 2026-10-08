@@ -222,6 +222,20 @@ fn random_games_keep_every_invariant() {
             }
             for seat in 0..2 {
                 assert_eq!(board.threats[seat], threats_of(&board, seat), "{board:?}");
+                assert_eq!(board.threat_boards(seat), threats_of(&board, seat));
+            }
+            // The mask accessors agree with the one-at-a-time queries.
+            for small in 0..9 {
+                let bit = 1 << small;
+                assert_eq!(board.closed_boards() & bit != 0, board.is_closed(small));
+                for seat in 0..2 {
+                    let won = board.small_winner(small) == Some(seat);
+                    assert_eq!(board.won_boards(seat) & bit != 0, won);
+                    for cell in 0..9 {
+                        let marked = board.mark(Move::new(small, cell)) == Some(seat);
+                        assert_eq!(board.cells(seat, small) & (1 << cell) != 0, marked);
+                    }
+                }
             }
             let mv = moves[rng.below(moves.len() as u64) as usize];
             board.play(mv);
