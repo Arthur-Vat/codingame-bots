@@ -11,7 +11,7 @@ elo: +45.4 [+22.3, +68.8] at 20 ms
 pairs: 312
 full_time: +95.4 [+77.4, +114.0] over 500 pairs, no fault, 99.9% of answers within 92.0 ms
 decision: promoted
-cg_rank: pending
+cg_rank: Legend, 59 (2026-10-08), up from 89, the last rank recorded (v004)
 ---
 
 First stage of ADR 0016. The weights were fitted locally, with the
