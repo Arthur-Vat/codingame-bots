@@ -69,7 +69,8 @@ losses, no fault.
 
 At 20 ms the gain, +45.4, is close to the local screening's +53. At full
 time it doubles: +95.4, interval from +77.4 to +114.0, the largest
-confirmation so far, ahead of E005's +78.4. With five times the
-iterations, the search loses less to the policy's cost and keeps its
-better judgement. No timeout in 1,624 games; at full time 99.9% of
+confirmation so far, ahead of E005's +78.4. Why the gain grows with
+time is not measured; one guess is that better playouts matter more in
+the deeper trees a longer search builds. No timeout in 1,624 games; at
+full time 99.9% of
 answers came within 92.0 ms, as for v007.
