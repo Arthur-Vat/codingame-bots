@@ -319,6 +319,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "uttt-trainer"
+version = "0.0.0"
+dependencies = [
+ "cg-core",
+ "cg-search",
+ "clap",
+ "uttt-engine",
+]
+
+[[package]]
 name = "windows-link"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

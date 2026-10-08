@@ -6,6 +6,7 @@ members = [
     "games/*/engine",
     "games/*/referee",
     "games/*/arena",
+    "games/*/trainer",
     "games/*/bots/*",
 ]
 
