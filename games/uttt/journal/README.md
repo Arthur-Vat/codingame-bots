@@ -21,4 +21,5 @@ One entry per experiment, failures included, so that ideas are not retried blind
 | [E008](E008-exploration.md) | 2026-10-08 | Another exploration constant, or one for the late game, suits today's faster search | Not run: local screening found nothing better than 0.5 | Dropped |
 | [E009](E009-draw-proofs.md) | 2026-10-08 | Proving draws gives exact values in drawn endgames | Not run: no measurable gain in local screening | Dropped |
 | [E011](E011-playout-policy.md) | 2026-10-08 | Playouts whose first moves follow a learned policy judge positions better (`uttt-v008`) | Accepted, +45.4 Elo at 20 ms, +95.4 at full time | Promoted: `uttt-v008` |
+| [E012](E012-value-network.md) | 2026-10-08 | A value network trained on 800,000 self-play games makes the bot stronger | Not run: in local screening, -21 Elo at 20 ms and -96 at full time against v008 | Dropped |
 | [E013](E013-opening-book.md) | 2026-10-08 | An opening book of deeper searches for the first moves adds strength | Not run: 20 times more search on the first 4 moves is worth +4.8 Elo [-19.9, +29.6] | Dropped |
