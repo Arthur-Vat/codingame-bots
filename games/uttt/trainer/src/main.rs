@@ -11,7 +11,7 @@ use std::time::Instant;
 use cg_core::rng::Rng;
 use clap::{Parser, Subcommand};
 use uttt_engine::board::CLASSES;
-use uttt_engine::value::ValueNetwork;
+use uttt_engine::value::Network;
 use uttt_engine::PlayoutPolicy;
 use value_fit::Examples as _;
 
@@ -27,6 +27,17 @@ mod value_fit;
 struct Cli {
     #[command(subcommand)]
     command: Command,
+}
+
+/// The value network's hidden layers.
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+enum SizeArg {
+    /// 64 then 16 units, about 15,000 parameters.
+    #[value(name = "64-16")]
+    Small,
+    /// 128 then 32 units, about 32,000 parameters.
+    #[value(name = "128-32")]
+    Large,
 }
 
 /// What the value network learns.
@@ -170,17 +181,32 @@ enum Command {
         /// compared with playouts'.
         #[arg(long, default_value_t = 50_000)]
         compared_positions: usize,
-        /// Pairs of games between a search with the network and one with
-        /// the playouts, at equal iterations: the gate of ADR 0018. 0 for
-        /// none.
-        #[arg(long, default_value_t = 400)]
+        /// The network's hidden layers.
+        #[arg(long, value_enum, default_value_t = SizeArg::Small)]
+        size: SizeArg,
+        /// Pairs of games, for each share below, between a search with the
+        /// network and one with the playouts: the gate of ADRs 0018 and
+        /// 0019. 0 for none.
+        #[arg(long, default_value_t = 300)]
         duel_pairs: u32,
-        /// Iterations per move in those games.
-        #[arg(long, default_value_t = 3_000)]
-        duel_iterations: u64,
+        /// Milliseconds of search per move in those games, the bot's at
+        /// CodinGame's limits.
+        #[arg(long, default_value_t = 90)]
+        duel_ms: u64,
+        /// Milliseconds of search on each side's first move, the bot's
+        /// first turn.
+        #[arg(long, default_value_t = 900)]
+        duel_first_ms: u64,
+        /// Iterations per move instead of time, on every move.
+        #[arg(long)]
+        duel_iterations: Option<u64>,
+        /// The network's shares of a leaf's estimate to play, the rest
+        /// coming from a playout: 1 for the network alone.
+        #[arg(long, value_delimiter = ',', default_value = "1,0.5")]
+        duel_shares: Vec<f64>,
         /// The exploration constant of the search with the network in those
         /// games; the one with playouts keeps the bot's 0.5.
-        #[arg(long, default_value_t = 0.5)]
+        #[arg(long, default_value_t = 0.3)]
         duel_exploration: f64,
         /// Where to write the weights, as Rust source.
         #[arg(long)]
@@ -288,8 +314,12 @@ fn main() -> ExitCode {
             policy,
             policy_plies,
             compared_positions,
+            size,
             duel_pairs,
+            duel_ms,
+            duel_first_ms,
             duel_iterations,
+            duel_shares,
             duel_exploration,
             weights_out,
             report_out,
@@ -313,8 +343,19 @@ fn main() -> ExitCode {
             policy,
             policy_plies,
             compared_positions,
+            size,
             duel_pairs,
-            duel_iterations,
+            duel: match duel_iterations {
+                Some(count) => (
+                    duel::Limit::Iterations(count),
+                    duel::Limit::Iterations(count),
+                ),
+                None => (
+                    duel::Limit::Time(std::time::Duration::from_millis(duel_first_ms)),
+                    duel::Limit::Time(std::time::Duration::from_millis(duel_ms)),
+                ),
+            },
+            duel_shares,
             duel_exploration,
             weights_out,
             report_out,
@@ -501,8 +542,11 @@ struct ValueOptions {
     policy: PathBuf,
     policy_plies: u32,
     compared_positions: usize,
+    size: SizeArg,
     duel_pairs: u32,
-    duel_iterations: u64,
+    /// The budgets of each side's first move and of its later moves.
+    duel: (duel::Limit, duel::Limit),
+    duel_shares: Vec<f64>,
     duel_exploration: f64,
     weights_out: PathBuf,
     report_out: PathBuf,
@@ -510,6 +554,30 @@ struct ValueOptions {
 }
 
 fn fit_value(options: &ValueOptions) -> Result<(), String> {
+    match options.size {
+        SizeArg::Small => fit_value_sized::<64, 16>(options),
+        SizeArg::Large => fit_value_sized::<128, 32>(options),
+    }
+}
+
+/// How a duel's budgets read in the report.
+fn describe(limits: (duel::Limit, duel::Limit)) -> String {
+    let one = |limit: duel::Limit| match limit {
+        duel::Limit::Iterations(count) => format!("{count} iterations"),
+        duel::Limit::Time(time) => format!("{} ms", time.as_millis()),
+    };
+    if limits.0 == limits.1 {
+        format!("{} per move", one(limits.1))
+    } else {
+        format!(
+            "{} on each side's first move, then {} per move",
+            one(limits.0),
+            one(limits.1)
+        )
+    }
+}
+
+fn fit_value_sized<const H: usize, const H2: usize>(options: &ValueOptions) -> Result<(), String> {
     let start = Instant::now();
     let policy = load_policy(&options.policy, options.policy_plies)?;
     // File by file: only the compact positions stay in memory.
@@ -534,10 +602,10 @@ fn fit_value(options: &ValueOptions) -> Result<(), String> {
         held_out.len()
     );
 
-    let initial = value_fit::initial_parameters(settings.seed);
-    let initial_metrics = value_fit::measure(&initial, held_out, threads);
+    let initial = value_fit::initial_parameters::<H, H2>(settings.seed);
+    let initial_metrics = value_fit::measure::<H, H2>(&initial, held_out, threads);
     let mut epochs = Vec::new();
-    let parameters = value_fit::train(initial, fitted, held_out, settings, |epoch| {
+    let parameters = value_fit::train::<H, H2>(initial, fitted, held_out, settings, |epoch| {
         eprintln!(
             "epoch {}: fitted {:.4}, held out {:.4} nats, squared error {:.4}, {:.0} s",
             epoch.number,
@@ -548,10 +616,10 @@ fn fit_value(options: &ValueOptions) -> Result<(), String> {
         );
         epochs.push(*epoch);
     });
-    let (rounded, text) = value_fit::quantize(&parameters);
+    let (rounded, text) = value_fit::quantize::<H, H2>(&parameters);
     std::fs::write(
         &options.weights_out,
-        value_fit::weights_source(&text, &options.origin),
+        value_fit::weights_source(&text, &options.origin, (H, H2)),
     )
     .map_err(|err| format!("{}: {err}", options.weights_out.display()))?;
 
@@ -564,8 +632,8 @@ fn fit_value(options: &ValueOptions) -> Result<(), String> {
         counts[5]
     );
     let errors = value_fit::playout_errors(&compared, policy, &counts, settings.seed, threads);
-    let network = value_fit::measure(&parameters, &compared[..], threads);
-    let network_rounded = value_fit::measure(&rounded, &compared[..], threads);
+    let network = value_fit::measure::<H, H2>(&parameters, &compared[..], threads);
+    let network_rounded = value_fit::measure::<H, H2>(&rounded, &compared[..], threads);
     let average = (0..fitted.len())
         .map(|index| f64::from(fitted.result(index)))
         .sum::<f64>()
@@ -576,23 +644,37 @@ fn fit_value(options: &ValueOptions) -> Result<(), String> {
         .sum::<f64>()
         / compared.len() as f64;
     let worth = value_fit::worth_in_playouts(network_rounded.squared_error, &counts, &errors);
-    let held_out_rounded = value_fit::measure(&rounded, held_out, threads);
-    let duel = duel::Duel {
-        iterations: options.duel_iterations,
-        opening_plies: 6,
-        exploration: 0.5,
-        network_exploration: options.duel_exploration,
-    };
-    let duel_results = (options.duel_pairs > 0).then(|| {
-        eprintln!(
-            "duel: {} pairs at {} iterations per move",
-            options.duel_pairs, options.duel_iterations
-        );
-        let network: &'static ValueNetwork = Box::leak(Box::new(
-            ValueNetwork::from_parameters(&rounded).expect("the trainer's layout"),
-        ));
-        duel.play(network, policy, options.duel_pairs, settings.seed, threads)
-    });
+    let held_out_rounded = value_fit::measure::<H, H2>(&rounded, held_out, threads);
+    let network_rounded_weights: &'static Network<H, H2> = Box::leak(Box::new(
+        Network::<H, H2>::from_parameters(&rounded).expect("the trainer's layout"),
+    ));
+    let budgets = describe(options.duel);
+    let mut duels = Vec::new();
+    if options.duel_pairs > 0 {
+        for &share in &options.duel_shares {
+            let duel = duel::Duel {
+                first: options.duel.0,
+                later: options.duel.1,
+                opening_plies: 6,
+                exploration: 0.5,
+                network_exploration: options.duel_exploration,
+                network_share: share,
+            };
+            eprintln!(
+                "duel: network share {share}, {} pairs, {budgets}, {:.0} s",
+                options.duel_pairs,
+                start.elapsed().as_secs_f64()
+            );
+            let results = duel.play(
+                network_rounded_weights,
+                policy,
+                options.duel_pairs,
+                settings.seed,
+                threads,
+            );
+            duels.push((share, results));
+        }
+    }
 
     let mut report = String::new();
     let _ = writeln!(report, "# Value network fit\n");
@@ -605,8 +687,8 @@ fn fit_value(options: &ValueOptions) -> Result<(), String> {
     );
     let _ = writeln!(
         report,
-        "- Network: 217-64-16-1, {} parameters; weights rounded to 8 bits, {} characters of base64",
-        value_fit::PARAMETERS,
+        "- Network: 217-{H}-{H2}-1, {} parameters; weights rounded to 8 bits, {} characters of base64",
+        value_fit::Shape::<H, H2>::PARAMETERS,
         text.len()
     );
     let _ = writeln!(
@@ -631,47 +713,60 @@ fn fit_value(options: &ValueOptions) -> Result<(), String> {
         Some(elo) => format!("{:+.1} Elo [{:+.1}, {:+.1}]", elo.elo, elo.low, elo.high),
         None => "no Elo estimate".to_string(),
     };
-    match &duel_results {
-        Some(results) => {
-            let (verdict, why) = if results.not_clearly_weaker() {
-                ("passes", "not clearly weaker")
-            } else {
-                ("fails", "clearly weaker")
-            };
-            let _ = writeln!(
-                report,
-                "\n**Gate of ADR 0018: {verdict}.** At {} iterations per move, the network's search scored {} against the playouts' over {} pairs of games: {why}.",
-                duel.iterations,
-                elo(results),
-                options.duel_pairs
-            );
+    let variant = |share: f64| {
+        if share >= 1.0 {
+            "Network alone".to_string()
+        } else {
+            format!(
+                "{:.0}% network, {:.0}% playout",
+                100.0 * share,
+                100.0 * (1.0 - share)
+            )
         }
-        None => {
-            let _ = writeln!(
-                report,
-                "\n**Gate of ADR 0018: not measured**, no games played."
-            );
-        }
-    }
-    if let Some(results) = &duel_results {
+    };
+    if duels.is_empty() {
         let _ = writeln!(
             report,
-            "\n## Against the playouts, at equal iterations\n\nA search with the network (weights rounded, exploration {}) against one with the playouts above (exploration {}), {} iterations per move each, {} pairs of games from {} random opening moves: {} wins, {} draws, {} losses for the network, {}. Pairs by the network's points (0, ½, 1, 1½, 2): {:?}.",
-            duel.network_exploration,
-            duel.exploration,
-            duel.iterations,
-            options.duel_pairs,
-            duel.opening_plies,
-            results.wins,
-            results.draws,
-            results.losses,
-            elo(results),
-            results.pairs
+            "\n**Gate of ADR 0019: not measured**, no games played."
         );
+    } else {
+        let passing: Vec<String> = duels
+            .iter()
+            .filter(|(_, results)| results.not_clearly_weaker())
+            .map(|(share, _)| variant(*share).to_lowercase())
+            .collect();
+        let verdict = if passing.is_empty() {
+            "fails: every variant is clearly weaker".to_string()
+        } else {
+            format!("passes with {}", passing.join(" and "))
+        };
+        let _ = writeln!(report, "\n**Gate of ADR 0019: {verdict}.**");
+        let _ = writeln!(
+            report,
+            "\n## Against the playouts, at the bot's budgets\n\nA search with the network (weights rounded, exploration {}) against one with the playouts above (exploration 0.5), {budgets}, {} pairs of games from 6 random opening moves, {threads} games at a time:\n",
+            options.duel_exploration, options.duel_pairs
+        );
+        let _ = writeln!(
+            report,
+            "| Leaf estimate | Wins, draws, losses | Elo | Pairs by the network's points (0, ½, 1, 1½, 2) |"
+        );
+        let _ = writeln!(report, "| --- | --- | --- | --- |");
+        for (share, results) in &duels {
+            let _ = writeln!(
+                report,
+                "| {} | {}, {}, {} | {} | {:?} |",
+                variant(*share),
+                results.wins,
+                results.draws,
+                results.losses,
+                elo(results),
+                results.pairs
+            );
+        }
     }
     let _ = writeln!(
         report,
-        "\n## Predictions on held-out positions\n\nOn {} positions of held-out games, against the game's result for the side to move. Measured this way, the network with rounded weights is worth {worth}. A single playout's error is mostly its own noise, which a search averages away, so only the games above judge the network (ADR 0018).\n",
+        "\n## Predictions on held-out positions\n\nOn {} positions of held-out games, against the game's result for the side to move. Measured this way, the network with rounded weights is worth {worth}. A single playout's error is mostly its own noise, which a search averages away, so only the games above judge the network (ADRs 0018 and 0019).\n",
         compared.len()
     );
     let _ = writeln!(

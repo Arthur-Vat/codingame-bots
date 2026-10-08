@@ -1,8 +1,8 @@
-//! Trains the value network of ADR 0017 on self-play games, and measures
-//! it against `uttt-v008`'s playouts: the gate of the ADR's decision 5.
+//! Trains the value networks of ADR 0017 on self-play games: 217 inputs,
+//! then `H` and `H2` hidden units (64 and 16, or 128 and 32).
 //!
 //! The parameters are one flat vector, in the order of
-//! `uttt_engine::value::Network`. Training minimises the cross-entropy
+//! `uttt_engine::value::Network<H, H2>`. Training minimises the cross-entropy
 //! between the network's output and the game's result for the side to
 //! move (1, ½ or 0), with Adam on mini-batches spread over threads. Each
 //! position is shown in one of the board's 8 symmetries, drawn at random.
@@ -11,25 +11,27 @@ use std::fmt::Write as _;
 
 use cg_core::rng::Rng;
 use uttt_engine::value::{
-    active_inputs, ValueNetwork, CLOSED, INPUTS, MAX_ACTIVE, TARGET, THEIR_CELLS, THREATS,
+    active_inputs, Network, CLOSED, INPUTS, MAX_ACTIVE, TARGET, THEIR_CELLS, THREATS,
 };
 use uttt_engine::{Board, Move, PlayoutPolicy, Status};
 
 use crate::data::GameRecord;
 
-/// Units of the first hidden layer.
-const H: usize = 64;
-/// Units of the second hidden layer.
-const H2: usize = 16;
-/// Where each parameter group starts.
-const INPUT: usize = 0;
-const INPUT_BIAS: usize = INPUT + INPUTS * H;
-const HIDDEN: usize = INPUT_BIAS + H;
-const HIDDEN_BIAS: usize = HIDDEN + H2 * H;
-const OUTPUT: usize = HIDDEN_BIAS + H2;
-const OUTPUT_BIAS: usize = OUTPUT + H2;
-/// The number of parameters.
-pub const PARAMETERS: usize = OUTPUT_BIAS + 1;
+/// The layout of a network with `H` units in its first hidden layer and
+/// `H2` in its second: where each parameter group starts in the flat
+/// vector, as in `uttt_engine::value::Network<H, H2>`.
+pub struct Shape<const H: usize, const H2: usize>;
+
+impl<const H: usize, const H2: usize> Shape<H, H2> {
+    const INPUT: usize = 0;
+    const INPUT_BIAS: usize = INPUTS * H;
+    const HIDDEN: usize = Self::INPUT_BIAS + H;
+    const HIDDEN_BIAS: usize = Self::HIDDEN + H2 * H;
+    const OUTPUT: usize = Self::HIDDEN_BIAS + H2;
+    const OUTPUT_BIAS: usize = Self::OUTPUT + H2;
+    /// The number of parameters.
+    pub const PARAMETERS: usize = Self::OUTPUT_BIAS + 1;
+}
 
 /// One position to learn from.
 #[derive(Clone, Copy, Debug)]
@@ -242,7 +244,7 @@ pub fn input_symmetries() -> Vec<[u16; INPUTS]> {
 }
 
 /// Values of the network's layers for one position.
-struct Forward {
+struct Forward<const H: usize, const H2: usize> {
     first_pre: [f32; H],
     first: [f32; H],
     second_pre: [f32; H2],
@@ -269,20 +271,26 @@ fn dot(a: &[f32], b: &[f32]) -> f32 {
     lanes.iter().sum::<f32>() + tail
 }
 
-fn forward(parameters: &[f32], active: &[u16]) -> Forward {
-    let mut first_pre: [f32; H] = std::array::from_fn(|unit| parameters[INPUT_BIAS + unit]);
-    for &input in active {
-        let row = &parameters[INPUT + usize::from(input) * H..][..H];
+fn forward<const H: usize, const H2: usize>(parameters: &[f32], active: &[u16]) -> Forward<H, H2> {
+    let input = Shape::<H, H2>::INPUT;
+    let input_bias = Shape::<H, H2>::INPUT_BIAS;
+    let hidden = Shape::<H, H2>::HIDDEN;
+    let hidden_bias = Shape::<H, H2>::HIDDEN_BIAS;
+    let output = Shape::<H, H2>::OUTPUT;
+    let output_bias = Shape::<H, H2>::OUTPUT_BIAS;
+    let mut first_pre: [f32; H] = std::array::from_fn(|unit| parameters[input_bias + unit]);
+    for &active_input in active {
+        let row = &parameters[input + usize::from(active_input) * H..][..H];
         for (value, weight) in first_pre.iter_mut().zip(row) {
             *value += weight;
         }
     }
     let first = first_pre.map(|value| value.clamp(0.0, 1.0));
     let second_pre: [f32; H2] = std::array::from_fn(|unit| {
-        parameters[HIDDEN_BIAS + unit] + dot(&first, &parameters[HIDDEN + unit * H..][..H])
+        parameters[hidden_bias + unit] + dot(&first, &parameters[hidden + unit * H..][..H])
     });
     let second = second_pre.map(|value| value.clamp(0.0, 1.0));
-    let z = parameters[OUTPUT_BIAS] + dot(&second, &parameters[OUTPUT..][..H2]);
+    let z = parameters[output_bias] + dot(&second, &parameters[output..][..H2]);
     Forward {
         first_pre,
         first,
@@ -305,20 +313,31 @@ fn cross_entropy(z: f32, target: f32) -> f64 {
 
 /// Adds the gradient of the cross-entropy of one position to `gradient`,
 /// and returns the cross-entropy.
-fn accumulate(parameters: &[f32], active: &[u16], target: f32, gradient: &mut [f32]) -> f64 {
-    let values = forward(parameters, active);
+fn accumulate<const H: usize, const H2: usize>(
+    parameters: &[f32],
+    active: &[u16],
+    target: f32,
+    gradient: &mut [f32],
+) -> f64 {
+    let input = Shape::<H, H2>::INPUT;
+    let input_bias = Shape::<H, H2>::INPUT_BIAS;
+    let hidden = Shape::<H, H2>::HIDDEN;
+    let hidden_bias = Shape::<H, H2>::HIDDEN_BIAS;
+    let output = Shape::<H, H2>::OUTPUT;
+    let output_bias = Shape::<H, H2>::OUTPUT_BIAS;
+    let values = forward::<H, H2>(parameters, active);
     let dz = sigmoid(values.z) - target;
-    gradient[OUTPUT_BIAS] += dz;
+    gradient[output_bias] += dz;
     let mut d_first = [0.0f32; H];
     for unit in 0..H2 {
-        gradient[OUTPUT + unit] += dz * values.second[unit];
+        gradient[output + unit] += dz * values.second[unit];
         let pre = values.second_pre[unit];
         if pre <= 0.0 || pre >= 1.0 {
             continue;
         }
-        let d = dz * parameters[OUTPUT + unit];
-        gradient[HIDDEN_BIAS + unit] += d;
-        let row = HIDDEN + unit * H;
+        let d = dz * parameters[output + unit];
+        gradient[hidden_bias + unit] += d;
+        let row = hidden + unit * H;
         let weights = &parameters[row..][..H];
         let row_gradient = &mut gradient[row..][..H];
         for (((g, x), w), back) in row_gradient
@@ -336,13 +355,13 @@ fn accumulate(parameters: &[f32], active: &[u16], target: f32, gradient: &mut [f
             *back = 0.0;
         }
     }
-    for &input in active {
-        let row = &mut gradient[INPUT + usize::from(input) * H..][..H];
+    for &active_input in active {
+        let row = &mut gradient[input + usize::from(active_input) * H..][..H];
         for (g, back) in row.iter_mut().zip(&d_first) {
             *g += back;
         }
     }
-    for (g, back) in gradient[INPUT_BIAS..][..H].iter_mut().zip(&d_first) {
+    for (g, back) in gradient[input_bias..][..H].iter_mut().zip(&d_first) {
         *g += back;
     }
     cross_entropy(values.z, target)
@@ -377,7 +396,11 @@ fn shares(count: usize, threads: usize) -> Vec<std::ops::Range<usize>> {
 
 /// The metrics of `parameters` on `examples`, without symmetries, over
 /// `threads` threads.
-pub fn measure(parameters: &[f32], examples: &(impl Examples + ?Sized), threads: usize) -> Metrics {
+pub fn measure<const H: usize, const H2: usize>(
+    parameters: &[f32],
+    examples: &(impl Examples + ?Sized),
+    threads: usize,
+) -> Metrics {
     let sums: Vec<(f64, f64)> = std::thread::scope(|scope| {
         let handles: Vec<_> = shares(examples.len(), threads)
             .into_iter()
@@ -388,7 +411,7 @@ pub fn measure(parameters: &[f32], examples: &(impl Examples + ?Sized), threads:
                     for index in range {
                         let example = examples.get(index);
                         let count = active_inputs(&example.board, &mut list);
-                        let z = forward(parameters, &list[..count]).z;
+                        let z = forward::<H, H2>(parameters, &list[..count]).z;
                         entropy += cross_entropy(z, example.result);
                         squared += f64::from(sigmoid(z) - example.result).powi(2);
                     }
@@ -439,10 +462,10 @@ pub struct Epoch {
 
 /// Starting parameters: small random weights, biases that keep the hidden
 /// units between their bounds.
-pub fn initial_parameters(seed: u64) -> Vec<f32> {
+pub fn initial_parameters<const H: usize, const H2: usize>(seed: u64) -> Vec<f32> {
     let mut rng = Rng::new(seed);
     let mut uniform = |spread: f64| ((rng.unit() * 2.0 - 1.0) * spread) as f32;
-    let mut parameters = Vec::with_capacity(PARAMETERS);
+    let mut parameters = Vec::with_capacity(Shape::<H, H2>::PARAMETERS);
     // About 40 inputs are active in a position.
     parameters.extend((0..INPUTS * H).map(|_| uniform((3.0f64 / 40.0).sqrt())));
     parameters.extend([0.5; H]);
@@ -455,7 +478,7 @@ pub fn initial_parameters(seed: u64) -> Vec<f32> {
 
 /// Trains from `parameters` on `fitted`, measuring on `held_out` after each
 /// epoch, and calls `report` then.
-pub fn train(
+pub fn train<const H: usize, const H2: usize>(
     mut parameters: Vec<f32>,
     fitted: &(impl Examples + ?Sized),
     held_out: &(impl Examples + ?Sized),
@@ -465,12 +488,15 @@ pub fn train(
     let symmetries = input_symmetries();
     let threads = settings.threads.max(1);
     let mut rng = Rng::new(settings.seed);
-    let (mut first, mut second) = (vec![0.0f32; PARAMETERS], vec![0.0f32; PARAMETERS]);
+    let (mut first, mut second) = (
+        vec![0.0f32; Shape::<H, H2>::PARAMETERS],
+        vec![0.0f32; Shape::<H, H2>::PARAMETERS],
+    );
     let (beta1, beta2, epsilon) = (0.9f32, 0.999f32, 1e-8f32);
     let steps_per_epoch = fitted.len().div_ceil(settings.batch);
     let total_steps = (steps_per_epoch * settings.epochs as usize).max(1);
     let mut step: u32 = 0;
-    let mut gradients = vec![vec![0.0f32; PARAMETERS]; threads];
+    let mut gradients = vec![vec![0.0f32; Shape::<H, H2>::PARAMETERS]; threads];
     let mut order: Vec<u32> = (0..fitted.len() as u32).collect();
     for number in 1..=settings.epochs {
         rng.shuffle(&mut order);
@@ -496,7 +522,7 @@ pub fn train(
                                 let example = fitted.get(index as usize);
                                 let map = &symmetries[usize::from(view)];
                                 let count = symmetric_inputs(&example.board, map, &mut list);
-                                loss += accumulate(
+                                loss += accumulate::<H, H2>(
                                     parameters,
                                     &list[..count],
                                     settings.target.of(&example),
@@ -542,7 +568,7 @@ pub fn train(
         report(&Epoch {
             number,
             fitted: epoch_loss / fitted.len().max(1) as f64,
-            held_out: measure(&parameters, held_out, threads),
+            held_out: measure::<H, H2>(&parameters, held_out, threads),
         });
     }
     parameters
@@ -551,12 +577,12 @@ pub fn train(
 /// Rounds the parameters as the bot stores them: per group, a scale (the
 /// largest magnitude over 127) and one signed byte per parameter. Returns
 /// the rounded parameters, as the bot will use them, and the base64 text
-/// that `ValueNetwork::decode` reads.
-pub fn quantize(parameters: &[f32]) -> (Vec<f32>, String) {
-    let mut bytes = Vec::with_capacity(4 * ValueNetwork::GROUPS.len() + parameters.len());
+/// that `Network::<H, H2>::decode` reads.
+pub fn quantize<const H: usize, const H2: usize>(parameters: &[f32]) -> (Vec<f32>, String) {
+    let mut bytes = Vec::with_capacity(4 * Network::<H, H2>::GROUPS.len() + parameters.len());
     let mut rounded = Vec::with_capacity(parameters.len());
     let mut at = 0;
-    for count in ValueNetwork::GROUPS {
+    for count in Network::<H, H2>::GROUPS {
         let group = &parameters[at..at + count];
         at += count;
         let largest = group.iter().fold(0.0f32, |max, value| max.max(value.abs()));
@@ -670,9 +696,10 @@ pub fn worth_in_playouts(network: f64, counts: &[u32], errors: &[f64]) -> String
     format!("more than {} playouts", counts.last().copied().unwrap_or(0))
 }
 
-/// The weights as Rust source for the bot: base64 text in lines of 96
-/// characters, joined by the string's line continuations.
-pub fn weights_source(text: &str, origin: &str) -> String {
+/// The weights of a network with `hidden` units as Rust source for the
+/// bot: base64 text in lines of 96 characters, joined by the string's line
+/// continuations.
+pub fn weights_source(text: &str, origin: &str, hidden: (usize, usize)) -> String {
     let mut source = String::new();
     let _ = writeln!(
         source,
@@ -681,7 +708,8 @@ pub fn weights_source(text: &str, origin: &str) -> String {
     let _ = writeln!(source);
     let _ = writeln!(
         source,
-        "/// The value network's weights (ADR 0017), for\n/// `uttt_engine::value::ValueNetwork::decode`."
+        "/// The value network's weights (ADR 0017), 217-{}-{}-1, for\n/// `uttt_engine::value::Network::<{}, {}>::decode`.",
+        hidden.0, hidden.1, hidden.0, hidden.1
     );
     let _ = writeln!(source, "pub const VALUE_WEIGHTS: &str = \"\\");
     let lines: Vec<&str> = text
