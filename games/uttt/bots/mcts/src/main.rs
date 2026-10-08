@@ -4,7 +4,8 @@
 //! take a game-winning move whenever there is one and otherwise draw their
 //! first moves from a playout policy learned from self-play, then random
 //! moves (`cg-search`, `uttt-engine`), for most of the turn's time limit,
-//! then plays the move it tried most often. The search keeps the
+//! then plays the move it tried most often. The same policy orders each
+//! node's children, so that the most promising are tried first. The search keeps the
 //! part of its tree under the moves played since its previous search, and
 //! proves wins and losses near the end of the game: it plays a proven win,
 //! avoids proven losses, and stops searching once the position is proven.
@@ -56,6 +57,16 @@ const EXPLORATION: f64 = 0.5;
 /// moves and +48 for 8, flatter ones (2) -22 for 8.
 static POLICY: PlayoutPolicy = PlayoutPolicy::new(weights::PLAYOUT_WEIGHTS).for_plies(16);
 
+/// Whether the search also uses the playout policy's weights as priors in
+/// its tree: a node's children are tried in order of their weights, most
+/// promising first (E014).
+const PRIORS: bool = true;
+/// The weight of a bias toward the heavier children in selection, which
+/// fades as they are visited. Screened on 2026-10-08 against v008 at 20 ms
+/// (100 pairs each): no bias +50.7 and +50.7 (two seeds), 0.3 +29.6, 1.0
+/// +34.9; so none.
+const PRIOR_WEIGHT: f64 = 0.0;
+
 mod weights;
 
 fn main() {
@@ -63,6 +74,8 @@ fn main() {
     eprintln!("mcts: seed {seed}");
     let mut rng = Rng::new(seed);
     let mut mcts = Mcts::new(EXPLORATION, rng.next_u64());
+    mcts.priors = PRIORS;
+    mcts.prior_weight = PRIOR_WEIGHT;
     let stdin = io::stdin();
     let result = play(
         &mut mcts,

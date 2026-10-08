@@ -62,6 +62,10 @@ impl Game for PolicyBoard {
         score(self.board.status())
     }
 
+    fn priors(&self, moves: &[Move], weights: &mut Vec<f32>) {
+        self.board.move_weights(self.policy, moves, weights);
+    }
+
     fn playout(&mut self, rng: &mut Rng) -> f64 {
         score(self.board.policy_playout(self.policy, rng)).expect("a playout ends the game")
     }

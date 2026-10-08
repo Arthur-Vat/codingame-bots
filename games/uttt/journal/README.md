@@ -22,3 +22,4 @@ One entry per experiment, failures included, so that ideas are not retried blind
 | [E009](E009-draw-proofs.md) | 2026-10-08 | Proving draws gives exact values in drawn endgames | Not run: no measurable gain in local screening | Dropped |
 | [E011](E011-playout-policy.md) | 2026-10-08 | Playouts whose first moves follow a learned policy judge positions better (`uttt-v008`) | Accepted, +45.4 Elo at 20 ms, +95.4 at full time | Promoted: `uttt-v008` |
 | [E013](E013-opening-book.md) | 2026-10-08 | An opening book of deeper searches for the first moves adds strength | Not run: 20 times more search on the first 4 moves is worth +4.8 Elo [-19.9, +29.6] | Dropped |
+| [E014](E014-tree-priors.md) | 2026-10-08 | Trying children in the learned policy's order spends visits on better moves (`uttt-v009`) | Pending | Pending |

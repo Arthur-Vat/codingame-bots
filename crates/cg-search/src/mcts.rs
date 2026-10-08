@@ -21,6 +21,12 @@
 //! use its exact result, selection never picks an answer proven lost when
 //! another exists, a proven win at the root is played at once, and the
 //! search stops when the root is proven. Draws are not proven.
+//!
+//! A search may also use the game's priors ([`Game::priors`]): a node's
+//! children are then tried in order of their priors, most promising first,
+//! and selection adds `prior_weight · prior / (visits + 1)` to each
+//! child's bound, a bias that fades as the child is visited (progressive
+//! bias). Without priors, children are tried in random order.
 
 use std::sync::OnceLock;
 
@@ -74,6 +80,11 @@ struct Node<M> {
     /// `1 / sqrt(visits)`, kept so that selection, which reads every child
     /// of a node, needs no division or square root.
     inv_sqrt_visits: f32,
+    /// The share of the parent's priors that this move has; 0 without
+    /// priors, which leaves no bias.
+    prior: f32,
+    /// `prior_weight · prior / (visits + 1)`, kept for selection.
+    bias: f32,
 }
 
 /// What a search found.
@@ -99,6 +110,10 @@ pub struct Mcts<G: Game> {
     /// The exploration constant `c` of UCB1: a child's bound is its average
     /// score plus `c · sqrt(ln(parent visits) / visits)`.
     pub exploration: f64,
+    /// Whether to ask the game for priors when a node gets its children.
+    pub priors: bool,
+    /// The weight of the priors' bias in a child's bound; 0 for none.
+    pub prior_weight: f64,
     rng: Rng,
     nodes: Vec<Node<G::Move>>,
     /// The position at the root of `nodes`, once a search has run.
@@ -108,6 +123,9 @@ pub struct Mcts<G: Game> {
     spare: Vec<Node<G::Move>>,
     origin: Vec<u32>,
     moves: Vec<G::Move>,
+    /// The priors of `moves`, and the moves sorted by them.
+    weights: Vec<f32>,
+    ranked: Vec<(f32, G::Move)>,
     path: Vec<u32>,
     /// [`sqrt_ln_table`], shared by all searches.
     sqrt_ln: &'static [f64],
@@ -117,12 +135,16 @@ impl<G: Game> Mcts<G> {
     pub fn new(exploration: f64, seed: u64) -> Self {
         Mcts {
             exploration,
+            priors: false,
+            prior_weight: 0.0,
             rng: Rng::new(seed),
             nodes: Vec::new(),
             root: None,
             spare: Vec::new(),
             origin: Vec::new(),
             moves: Vec::new(),
+            weights: Vec::new(),
+            ranked: Vec::new(),
             path: Vec::new(),
             sqrt_ln: sqrt_ln_table(),
         }
@@ -233,10 +255,12 @@ impl<G: Game> Mcts<G> {
             visits: 0,
             value: 0.0,
             inv_sqrt_visits: 0.0,
+            prior: 0.0,
+            bias: 0.0,
         });
         self.moves.clear();
         self.moves.extend_from_slice(candidates);
-        self.expand(0, root.to_move());
+        self.expand(0, root);
     }
 
     /// Makes the node of `root`, if the tree holds it within two moves of
@@ -372,12 +396,13 @@ impl<G: Game> Mcts<G> {
                     break state.playout(&mut self.rng);
                 }
                 state.legal_moves(&mut self.moves);
-                self.expand(node, state.to_move());
+                self.expand(node, &state);
             }
             node = self.select(node);
             state.play(self.nodes[node].mv);
             self.path.push(node as u32);
         };
+        let prior_weight = self.prior_weight as f32;
         for &index in &self.path {
             let node = &mut self.nodes[index as usize];
             node.visits += 1;
@@ -385,6 +410,7 @@ impl<G: Game> Mcts<G> {
             let visits = node.visits as f32;
             node.value += (mover_score as f32 - node.value) / visits;
             node.inv_sqrt_visits = visits.sqrt().recip();
+            node.bias = prior_weight * node.prior / (visits + 1.0);
         }
         if proved {
             self.prove_ancestors();
@@ -420,14 +446,37 @@ impl<G: Game> Mcts<G> {
         }
     }
 
-    /// Gives `node` one child per move in `self.moves`, in random order.
-    fn expand(&mut self, node: usize, to_move: usize) {
+    /// Gives `node`, whose position is `state`, one child per move in
+    /// `self.moves`: in order of the game's priors when the search uses
+    /// them, otherwise in random order.
+    fn expand(&mut self, node: usize, state: &G) {
         self.rng.shuffle(&mut self.moves);
+        let count = self.moves.len();
+        self.weights.clear();
+        if self.priors {
+            state.priors(&self.moves, &mut self.weights);
+        }
+        let total: f32 = self.weights.iter().sum();
+        self.ranked.clear();
+        if self.weights.len() == count && total > 0.0 {
+            self.ranked.extend(
+                self.weights
+                    .iter()
+                    .zip(&self.moves)
+                    .map(|(&weight, &mv)| (weight / total, mv)),
+            );
+            // Most promising first; ties keep no particular order.
+            self.ranked.sort_unstable_by(|a, b| b.0.total_cmp(&a.0));
+        } else {
+            self.ranked.extend(self.moves.iter().map(|&mv| (0.0, mv)));
+        }
+        let to_move = state.to_move() as u8;
+        let prior_weight = self.prior_weight as f32;
         let first_child = self.nodes.len() as u32;
-        for &mv in &self.moves {
+        for &(prior, mv) in &self.ranked {
             self.nodes.push(Node {
                 mv,
-                mover: to_move as u8,
+                mover: to_move,
                 proof: Proof::Unknown,
                 expanded: false,
                 first_child: 0,
@@ -435,12 +484,14 @@ impl<G: Game> Mcts<G> {
                 visits: 0,
                 value: 0.0,
                 inv_sqrt_visits: 0.0,
+                prior,
+                bias: prior_weight * prior,
             });
         }
         let parent = &mut self.nodes[node];
         parent.expanded = true;
         parent.first_child = first_child;
-        parent.children = self.moves.len() as u32;
+        parent.children = count as u32;
     }
 
     /// The child of `node` with the highest UCB1 bound, an untried child
@@ -468,7 +519,7 @@ impl<G: Game> Mcts<G> {
             if child.visits == 0 {
                 return first + offset;
             }
-            let bound = child.value + spread * child.inv_sqrt_visits;
+            let bound = child.value + spread * child.inv_sqrt_visits + child.bias;
             if bound > best_bound {
                 best_bound = bound;
                 best = offset;

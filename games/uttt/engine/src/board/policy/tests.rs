@@ -189,3 +189,27 @@ fn a_policy_for_some_plies_still_ends_games() {
         assert_ne!(board.policy_playout(&policy, &mut rng), Status::Ongoing);
     }
 }
+
+#[test]
+fn move_weights_are_the_weights_of_the_move_classes() {
+    let weights: [u32; CLASSES] = std::array::from_fn(|class| 10 + class as u32);
+    let policy = PlayoutPolicy::new(weights);
+    let mut rng = Rng::new(12);
+    let mut moves = MoveList::new();
+    let mut out = Vec::new();
+    for _ in 0..50 {
+        let mut board = Board::new();
+        while board.status() == Status::Ongoing {
+            board.legal_moves(&mut moves);
+            let mut shuffled = moves.to_vec();
+            rng.shuffle(&mut shuffled);
+            board.move_weights(&policy, &shuffled, &mut out);
+            let expected: Vec<f32> = shuffled
+                .iter()
+                .map(|&mv| weights[board.move_class(mv)] as f32)
+                .collect();
+            assert_eq!(out, expected);
+            board.play(board.random_move(&mut rng));
+        }
+    }
+}

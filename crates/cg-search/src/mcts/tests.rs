@@ -273,3 +273,77 @@ fn root_visits_add_up_to_the_root_visits() {
     let most = visits.iter().max_by_key(|&&(_, count)| count).unwrap().0;
     assert_eq!(most, result.best);
 }
+
+/// A game of one move among three, always drawn, with priors 1, 2 and 7.
+#[derive(Clone, Debug, PartialEq)]
+struct Choice {
+    played: bool,
+}
+
+impl Game for Choice {
+    type Move = u32;
+
+    fn to_move(&self) -> usize {
+        usize::from(self.played)
+    }
+
+    fn legal_moves(&self, moves: &mut Vec<u32>) {
+        moves.clear();
+        if !self.played {
+            moves.extend([0, 1, 2]);
+        }
+    }
+
+    fn play(&mut self, _mv: u32) {
+        self.played = true;
+    }
+
+    fn score(&self) -> Option<f64> {
+        self.played.then_some(0.5)
+    }
+
+    fn priors(&self, moves: &[u32], weights: &mut Vec<f32>) {
+        weights.clear();
+        weights.extend(moves.iter().map(|&mv| [1.0, 2.0, 7.0][mv as usize]));
+    }
+}
+
+fn choice_visits(priors: bool, prior_weight: f64) -> Vec<(u32, u32)> {
+    let mut mcts = Mcts::new(0.5, 3);
+    mcts.priors = priors;
+    mcts.prior_weight = prior_weight;
+    mcts.search(
+        &Choice { played: false },
+        &[0, 1, 2],
+        Budget::Iterations(300),
+    );
+    mcts.root_visits().collect()
+}
+
+#[test]
+fn priors_order_the_children_and_bias_the_visits() {
+    // Without priors, the game's priors are not asked for: even visits.
+    let plain = choice_visits(false, 1.0);
+    let counts: Vec<u32> = plain.iter().map(|&(_, n)| n).collect();
+    assert!(counts.iter().all(|n| (99..=101).contains(n)), "{plain:?}");
+    // Priors without a bias only order the children.
+    let ordered = choice_visits(true, 0.0);
+    let moves: Vec<u32> = ordered.iter().map(|&(mv, _)| mv).collect();
+    assert_eq!(moves, vec![2, 1, 0]);
+    // With a bias, the most promising move gets the most visits.
+    let biased = choice_visits(true, 1.0);
+    let visits = |mv: u32| biased.iter().find(|&&(m, _)| m == mv).unwrap().1;
+    assert!(visits(2) > visits(1) && visits(1) > visits(0), "{biased:?}");
+    assert_eq!(visits(0) + visits(1) + visits(2), 300);
+}
+
+#[test]
+fn games_without_priors_search_as_before_when_priors_are_asked_for() {
+    // Nim gives no priors: asking for them changes nothing.
+    let plain = search(&nim(30), &[1, 2, 3], 2_000, 5);
+    let mut mcts = Mcts::new(1.0, 5);
+    mcts.priors = true;
+    mcts.prior_weight = 1.0;
+    let asked = mcts.search(&nim(30), &[1, 2, 3], Budget::Iterations(2_000));
+    assert_eq!(asked, plain);
+}
