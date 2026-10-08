@@ -150,3 +150,42 @@ fn zero_weights_fall_back_to_random_moves_and_playouts_end() {
         }
     }
 }
+
+#[test]
+fn draws_weigh_each_move_by_its_class() {
+    // The draw's weights, read back from the running totals, are those of
+    // each legal move's class.
+    let policy = PlayoutPolicy::new(std::array::from_fn(|class| 1 + class as u32 * 7));
+    for board in positions().into_iter().step_by(7) {
+        let threats = board.threats[1 - board.to_move()];
+        let boards = match board.target() {
+            Some(small) => vec![small],
+            None => (0..9).filter(|&small| !board.is_closed(small)).collect(),
+        };
+        for small in boards {
+            let cumulative = board.cumulative_weights(small, threats, &policy);
+            let mut before = 0;
+            for (cell, &sum) in cumulative.iter().enumerate() {
+                let weight = sum - before;
+                before = sum;
+                let mv = Move::new(small, cell);
+                let expected = if board.is_legal(mv) {
+                    policy.weights()[board.move_class(mv)]
+                } else {
+                    0
+                };
+                assert_eq!(weight, expected, "{mv} in {board:?}");
+            }
+        }
+    }
+}
+
+#[test]
+fn a_policy_for_some_plies_still_ends_games() {
+    let policy = PlayoutPolicy::uniform().for_plies(3);
+    let mut rng = Rng::new(8);
+    for _ in 0..100 {
+        let mut board = Board::new();
+        assert_ne!(board.policy_playout(&policy, &mut rng), Status::Ongoing);
+    }
+}

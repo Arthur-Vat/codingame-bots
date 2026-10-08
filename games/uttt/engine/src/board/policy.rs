@@ -44,17 +44,33 @@ pub const FEATURE_NAMES: [&str; FEATURES] = [
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PlayoutPolicy {
     weights: [u32; CLASSES],
+    /// Moves of each playout drawn by the policy; later ones are decisive
+    /// random moves, cheaper.
+    plies: u32,
 }
 
 impl PlayoutPolicy {
     /// A policy with these weights by class. Weights are kept below 2^20,
     /// so that the sum over 81 moves fits in a `u32`.
-    pub fn new(weights: [u32; CLASSES]) -> Self {
-        assert!(
-            weights.iter().all(|&weight| weight < 1 << 20),
-            "weights must stay below 2^20"
-        );
-        PlayoutPolicy { weights }
+    pub const fn new(weights: [u32; CLASSES]) -> Self {
+        let mut class = 0;
+        while class < CLASSES {
+            assert!(weights[class] < 1 << 20, "weights must stay below 2^20");
+            class += 1;
+        }
+        PlayoutPolicy {
+            weights,
+            plies: u32::MAX,
+        }
+    }
+
+    /// The same weights, used for the first `plies` moves of each playout
+    /// only.
+    pub const fn for_plies(self, plies: u32) -> Self {
+        PlayoutPolicy {
+            weights: self.weights,
+            plies,
+        }
     }
 
     /// Every move equally likely.
@@ -77,20 +93,6 @@ struct BoardFeatures {
 }
 
 impl Board {
-    /// The small boards where the opponent of the player to move could win
-    /// the small board with its next move, if sent there.
-    #[inline(always)]
-    fn opponent_threats(&self) -> u16 {
-        let opponent = 1 - self.to_move();
-        let mut threats = 0;
-        for board in grid::cells(!self.closed & FULL) {
-            if grid::completing_cells(self.marks[opponent][board]) & self.empty_cells(board) != 0 {
-                threats |= 1 << board;
-            }
-        }
-        threats
-    }
-
     #[inline(always)]
     fn board_features(&self, board: usize) -> BoardFeatures {
         let seat = self.to_move();
@@ -113,19 +115,17 @@ impl Board {
         }
     }
 
-    /// The class of `cell` given its board's features and the opponent's
-    /// threats.
+    /// The class of `cell` from its board's features and the opponent's
+    /// threats: the one definition of classes, for the policy's draws and
+    /// for training. A free choice is its own feature; "gives board" is for
+    /// a single target board.
     #[inline(always)]
     fn cell_class(features: &BoardFeatures, threats: u16, cell: usize) -> usize {
-        let bit = 1 << cell;
-        let has = |mask: u16| usize::from(mask & bit != 0);
-        let free = has(features.free);
-        // A free choice is its own feature; "gives board" is for a single
-        // target board.
+        let has = |mask: u16| usize::from((mask >> cell) & 1);
         has(features.wins)
             | has(features.blocks) << 1
-            | free << 2
-            | (has(threats) & (1 - free)) << 3
+            | has(features.free) << 2
+            | has(threats & !features.free) << 3
             | usize::from(cell == 4) << 4
     }
 
@@ -136,7 +136,7 @@ impl Board {
     pub fn move_class(&self, mv: Move) -> usize {
         debug_assert!(self.is_legal(mv), "illegal move {mv}");
         let features = self.board_features(mv.board());
-        Board::cell_class(&features, self.opponent_threats(), mv.cell())
+        Board::cell_class(&features, self.threats[1 - self.to_move()], mv.cell())
     }
 
     /// A move for playouts: a move that wins the game if there is one (as
@@ -149,36 +149,63 @@ impl Board {
         Move::new_unchecked(board, cell)
     }
 
+    /// Running totals of the policy weights of small board `board`'s
+    /// cells, cell 0 first, with 0 for occupied cells: the last is the
+    /// board's total. Branch-free, as draws are unpredictable.
+    #[inline(always)]
+    fn cumulative_weights(&self, board: usize, threats: u16, policy: &PlayoutPolicy) -> [u32; 9] {
+        let features = self.board_features(board);
+        let mut cumulative = [0u32; 9];
+        let mut total = 0;
+        for (cell, sum) in cumulative.iter_mut().enumerate() {
+            let class = Board::cell_class(&features, threats, cell);
+            let weight = policy.weights[class & (CLASSES - 1)];
+            total += weight * u32::from((features.empty >> cell) & 1);
+            *sum = total;
+        }
+        cumulative
+    }
+
+    /// The first cell whose running total exceeds `pick`.
+    #[inline(always)]
+    fn cell_at(cumulative: &[u32; 9], pick: u32) -> usize {
+        cumulative.iter().map(|&sum| usize::from(sum <= pick)).sum()
+    }
+
     #[inline(always)]
     fn policy_cell(&self, policy: &PlayoutPolicy, rng: &mut Rng) -> (usize, usize) {
         if let Some(winning) = self.game_winning_cell() {
             return winning;
         }
-        let threats = self.opponent_threats();
-        let boards = if self.target == ANY_BOARD {
-            !self.closed & FULL
-        } else {
-            1 << self.target
-        };
-        let mut total = 0;
-        for board in grid::cells(boards) {
-            let features = self.board_features(board);
-            for cell in grid::cells(features.empty) {
-                total += policy.weights[Board::cell_class(&features, threats, cell)];
+        let threats = self.threats[1 - self.to_move()];
+        if self.target != ANY_BOARD {
+            let board = usize::from(self.target);
+            let cumulative = self.cumulative_weights(board, threats, policy);
+            let total = cumulative[8];
+            if total == 0 {
+                return self.random_cell(rng);
             }
+            let pick = rng.below(u64::from(total)) as u32;
+            return (board, Board::cell_at(&cumulative, pick));
+        }
+        // A free choice: a board by its total weight, then a cell in it.
+        let mut boards = [[0u32; 9]; 9];
+        let mut totals = [0u32; 9];
+        let mut total = 0;
+        for board in grid::cells(!self.closed & FULL) {
+            boards[board] = self.cumulative_weights(board, threats, policy);
+            total += boards[board][8];
+            totals[board] = total;
         }
         if total == 0 {
             return self.random_cell(rng);
         }
-        let mut pick = rng.below(u64::from(total)) as u32;
-        for board in grid::cells(boards) {
-            let features = self.board_features(board);
-            for cell in grid::cells(features.empty) {
-                let weight = policy.weights[Board::cell_class(&features, threats, cell)];
-                if pick < weight {
-                    return (board, cell);
-                }
-                pick -= weight;
+        let pick = rng.below(u64::from(total)) as u32;
+        // Closed boards repeat the running total and are never picked.
+        for board in grid::cells(!self.closed & FULL) {
+            if pick < totals[board] {
+                let before = totals[board] - boards[board][8];
+                return (board, Board::cell_at(&boards[board], pick - before));
             }
         }
         unreachable!("the draw is below the total weight")
@@ -187,11 +214,13 @@ impl Board {
     /// Plays [`policy_move`](Board::policy_move)s until the game ends, and
     /// returns how it ended.
     pub fn policy_playout(&mut self, policy: &PlayoutPolicy, rng: &mut Rng) -> Status {
-        while self.status == Status::Ongoing {
+        let mut plies = 0;
+        while self.status == Status::Ongoing && plies < policy.plies {
             let (board, cell) = self.policy_cell(policy, rng);
             self.play_at(board, cell);
+            plies += 1;
         }
-        self.status
+        self.decisive_playout(rng)
     }
 }
 

@@ -33,6 +33,9 @@ pub struct Board {
     won: [u16; 2],
     /// Small boards that are won or full; no more moves there.
     closed: u16,
+    /// `threats[seat]`: the open small boards where `seat` has a free cell
+    /// that would win the board, kept up to date move by move.
+    threats: [u16; 2],
     /// The small board the player to move must play in, or `ANY_BOARD`.
     target: u8,
     to_move: u8,
@@ -52,6 +55,7 @@ impl Board {
             marks: [[0; 9]; 2],
             won: [0; 2],
             closed: 0,
+            threats: [0; 2],
             target: ANY_BOARD,
             to_move: 0,
             status: Status::Ongoing,
@@ -164,6 +168,17 @@ impl Board {
             }
         }
 
+        // Only this small board changed: the mover may have made a threat
+        // there, blocked the opponent's, or closed the board.
+        let bit = 1 << board;
+        let open = self.closed & bit == 0;
+        let other = self.marks[1 - seat][board];
+        let empty = !(marks | other) & FULL;
+        let mine = open && grid::completing_cells(marks) & empty != 0;
+        let theirs = open && grid::completing_cells(other) & empty != 0;
+        self.threats[seat] = (self.threats[seat] & !bit) | (u16::from(mine) << board);
+        self.threats[1 - seat] = (self.threats[1 - seat] & !bit) | (u16::from(theirs) << board);
+
         self.target = if self.is_closed(cell) {
             ANY_BOARD
         } else {
@@ -235,14 +250,7 @@ impl Board {
     /// Whether `seat` may play there is up to the caller.
     #[inline]
     fn game_winning_boards(&self, seat: usize, boards: u16) -> u16 {
-        let candidates = grid::completing_cells(self.won[seat]) & boards & !self.closed;
-        let mut winning = 0;
-        for board in grid::cells(candidates) {
-            if grid::completing_cells(self.marks[seat][board]) & self.empty_cells(board) != 0 {
-                winning |= 1 << board;
-            }
-        }
-        winning
+        grid::completing_cells(self.won[seat]) & boards & self.threats[seat]
     }
 
     /// A move for playouts that looks one move ahead ("decisive moves"): a

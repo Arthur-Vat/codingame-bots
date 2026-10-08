@@ -3,7 +3,7 @@
 use cg_core::rng::Rng;
 use cg_search::Game;
 
-use crate::board::{Board, Status};
+use crate::board::{Board, PlayoutPolicy, Status};
 use crate::moves::{Move, MoveList};
 
 impl Game for Board {
@@ -30,6 +30,39 @@ impl Game for Board {
 
     fn playout(&mut self, rng: &mut Rng) -> f64 {
         score(self.decisive_playout(rng)).expect("a playout ends the game")
+    }
+}
+
+/// A position searched with policy playouts: [`Board`]'s game, except that
+/// playouts follow `policy` ([`Board::policy_playout`]) instead of
+/// [`Board::decisive_playout`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PolicyBoard {
+    pub board: Board,
+    pub policy: &'static PlayoutPolicy,
+}
+
+impl Game for PolicyBoard {
+    type Move = Move;
+
+    fn to_move(&self) -> usize {
+        self.board.to_move()
+    }
+
+    fn legal_moves(&self, moves: &mut Vec<Move>) {
+        Game::legal_moves(&self.board, moves);
+    }
+
+    fn play(&mut self, mv: Move) {
+        self.board.play(mv);
+    }
+
+    fn score(&self) -> Option<f64> {
+        score(self.board.status())
+    }
+
+    fn playout(&mut self, rng: &mut Rng) -> f64 {
+        score(self.board.policy_playout(self.policy, rng)).expect("a playout ends the game")
     }
 }
 
