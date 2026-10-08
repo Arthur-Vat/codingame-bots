@@ -1,16 +1,16 @@
 ---
 id: E011
 date: 2026-10-08
-pull_request: pending
+pull_request: "#23"
 parent: uttt-v007
 hypothesis: Playouts whose first moves follow a policy learned from what longer searches prefer judge positions better than random ones, enough to pay for their cost; E005 showed that knowledge in playouts pays, and that rules picked by hand do not.
 change: After the game-winning check, the first 16 moves of each playout are drawn with weights by move class (wins its small board, blocks, gives a free choice, sends the opponent to a board it can win, takes the centre), fitted by `uttt-trainer` to 86,657 positions of 2,000 self-play games at 10,000 iterations per move and sharpened (temperature 0.5); later moves are decisive random moves, as before.
 release: uttt-v008
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +45.4 [+22.3, +68.8] at 20 ms
+pairs: 312
+full_time: +95.4 [+77.4, +114.0] over 500 pairs, no fault, 99.9% of answers within 92.0 ms
+decision: promoted
 cg_rank: pending
 ---
 
@@ -61,3 +61,15 @@ measures it afresh.
 
 The bundle grows to 79.6 kB of the 100 kB allowed: the engine now holds
 the policy, and comments make up much of the file.
+
+Result, from the SPRT comment on #23: smoke test 200 wins in 200 games;
+SPRT accepted after 312 pairs (276 wins, 153 draws, 195 losses), LLR
+2.95; confirmation at CodinGame's limits 499 wins, 270 draws, 231
+losses, no fault.
+
+At 20 ms the gain, +45.4, is close to the local screening's +53. At full
+time it doubles: +95.4, interval from +77.4 to +114.0, the largest
+confirmation so far, ahead of E005's +78.4. With five times the
+iterations, the search loses less to the policy's cost and keeps its
+better judgement. No timeout in 1,624 games; at full time 99.9% of
+answers came within 92.0 ms, as for v007.
