@@ -13,6 +13,7 @@ use clap::{Parser, Subcommand};
 use uttt_engine::board::CLASSES;
 use uttt_engine::value::ValueNetwork;
 use uttt_engine::PlayoutPolicy;
+use value_fit::Examples as _;
 
 mod data;
 mod duel;
@@ -303,14 +304,17 @@ struct FitOptions {
     origin: String,
 }
 
+/// The games of one data file.
+fn read_file(path: &Path) -> Result<Vec<data::GameRecord>, String> {
+    let file = File::open(path).map_err(|err| format!("{}: {err}", path.display()))?;
+    data::read_games(&mut BufReader::new(file)).map_err(|err| format!("{}: {err}", path.display()))
+}
+
 /// The games of every data file.
 fn read_data(paths: &[PathBuf]) -> Result<Vec<data::GameRecord>, String> {
     let mut games = Vec::new();
     for path in paths {
-        let file = File::open(path).map_err(|err| format!("{}: {err}", path.display()))?;
-        let mut read = data::read_games(&mut BufReader::new(file))
-            .map_err(|err| format!("{}: {err}", path.display()))?;
-        games.append(&mut read);
+        games.append(&mut read_file(path)?);
     }
     Ok(games)
 }
@@ -439,11 +443,14 @@ struct ValueOptions {
 fn fit_value(options: &ValueOptions) -> Result<(), String> {
     let start = Instant::now();
     let policy = load_policy(&options.policy, options.policy_plies)?;
-    let games = read_data(&options.data)?;
-    let game_count = games.len();
-    let (fitted, held_out) = value_fit::examples(&games);
-    drop(games);
-    if fitted.is_empty() || held_out.is_empty() {
+    // File by file: only the compact positions stay in memory.
+    let mut split = value_fit::Split::default();
+    for path in &options.data {
+        split.add(&read_file(path)?);
+    }
+    let game_count = split.games;
+    let (fitted, held_out) = (&split.fitted, &split.held_out);
+    if fitted.len() == 0 || held_out.len() == 0 {
         return Err(format!(
             "{} positions to fit and {} held out: not enough games",
             fitted.len(),
@@ -459,9 +466,9 @@ fn fit_value(options: &ValueOptions) -> Result<(), String> {
     );
 
     let initial = value_fit::initial_parameters(settings.seed);
-    let initial_metrics = value_fit::measure(&initial, &held_out, threads);
+    let initial_metrics = value_fit::measure(&initial, held_out, threads);
     let mut epochs = Vec::new();
-    let parameters = value_fit::train(initial, &fitted, &held_out, settings, |epoch| {
+    let parameters = value_fit::train(initial, fitted, held_out, settings, |epoch| {
         eprintln!(
             "epoch {}: fitted {:.4}, held out {:.4} nats, squared error {:.4}, {:.0} s",
             epoch.number,
@@ -480,7 +487,7 @@ fn fit_value(options: &ValueOptions) -> Result<(), String> {
     .map_err(|err| format!("{}: {err}", options.weights_out.display()))?;
 
     // The same held-out positions for every predictor.
-    let compared = value_fit::spread(&held_out, options.compared_positions);
+    let compared = value_fit::spread(held_out, options.compared_positions);
     let counts = [1, 2, 4, 8, 16, 32];
     eprintln!(
         "predictions: {} positions, up to {} playouts each",
@@ -488,16 +495,19 @@ fn fit_value(options: &ValueOptions) -> Result<(), String> {
         counts[5]
     );
     let errors = value_fit::playout_errors(&compared, policy, &counts, settings.seed, threads);
-    let network = value_fit::measure(&parameters, &compared, threads);
-    let network_rounded = value_fit::measure(&rounded, &compared, threads);
-    let average = fitted.iter().map(|e| f64::from(e.result)).sum::<f64>() / fitted.len() as f64;
+    let network = value_fit::measure(&parameters, &compared[..], threads);
+    let network_rounded = value_fit::measure(&rounded, &compared[..], threads);
+    let average = (0..fitted.len())
+        .map(|index| f64::from(fitted.result(index)))
+        .sum::<f64>()
+        / fitted.len() as f64;
     let constant = compared
         .iter()
         .map(|e| (average - f64::from(e.result)).powi(2))
         .sum::<f64>()
         / compared.len() as f64;
     let worth = value_fit::worth_in_playouts(network_rounded.squared_error, &counts, &errors);
-    let held_out_rounded = value_fit::measure(&rounded, &held_out, threads);
+    let held_out_rounded = value_fit::measure(&rounded, held_out, threads);
     let duel = duel::Duel {
         iterations: options.duel_iterations,
         opening_plies: 6,
