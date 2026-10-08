@@ -82,7 +82,11 @@ fn examples_count_classes_and_visit_shares() {
     }
     let game = GameRecord {
         moves: vec![Move::new(4, 0), Move::new(0, 4)],
-        searched: vec![Searched { ply: 1, visits }],
+        searched: vec![Searched {
+            ply: 1,
+            score: None,
+            visits,
+        }],
     };
     let examples = examples(&[game]);
     assert_eq!(examples.len(), 1);

@@ -55,11 +55,12 @@ Learned knowledge comes from self-play ([ADR 0016](../../docs/adr/0016-self-play
 
 The engine's value network (`uttt_engine::value`, [ADR 0017](../../docs/adr/0017-value-network.md)) gives the side to move's expected score from 217 inputs that describe the position from its view, through 64 and 16 hidden units. `search::ValueBoard` searches with it: a new leaf gets its estimate instead of a playout. Its weights come from the trainer as base64 text, 8 bits each with one scale per group, which `ValueNetwork::decode` reads.
 
-- `uttt-trainer selfplay --games N --iterations K --out FILE`: plays self-play games with the bot's search and records, for every searched position, how many visits each move got.
+- `uttt-trainer selfplay --games N --iterations K --out FILE`: plays self-play games with the bot's search and records, for every searched position, the root's average score and how many visits each move got. `--policy games/uttt/bots/mcts/src/weights.rs` searches with the bot's playouts instead of decisive ones, and `--no-visits` leaves the visits out.
 - `uttt-trainer fit-policy --data FILE... --weights-out weights.rs --report-out report.md`: fits the class weights to those visits, holding a quarter of the positions out to check the fit, and writes them as Rust source with a report.
-- The [Train workflow](../../.github/workflows/train.yml), started by hand from the Actions tab, runs both on GitHub: self-play in up to 20 parallel jobs, then the fit, whose results it commits to a new branch `claude/train/<run id>`. Weights reach a bot only through an experiment and its SPRT.
+- `uttt-trainer fit-value --data FILE... --policy games/uttt/bots/mcts/src/weights.rs --weights-out value_weights.rs --report-out report.md`: trains the value network on the games' results (or the root scores, `--target`), each position in a random symmetry, holding every 20th game out. The report plays pairs of games between a search with the network and one with the bot's playouts at equal iterations, the gate of [ADR 0018](../../docs/adr/0018-value-network-gate.md), and compares the network's predictions with averages of playouts on held-out positions.
+- The [Train workflow](../../.github/workflows/train.yml), started by hand from the Actions tab, runs these on GitHub: self-play in up to 20 parallel jobs, then the fit of the chosen stage, whose results it commits to a new branch `claude/train/<run id>`. Weights reach a bot only through an experiment and its SPRT.
 
-On one core, a game at 10,000 iterations per move takes about a quarter of a second and gives about 43 positions.
+On one core, a game at 10,000 iterations per move takes about a quarter of a second with decisive playouts (0.37 s with the bot's playouts, measured on a slower processor) and gives about 42 positions.
 
 ## Engine speed
 

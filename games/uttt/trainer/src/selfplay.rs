@@ -1,9 +1,11 @@
-//! Self-play games between two searches, recording each searched
-//! position's root visits: what a search longer than a turn's prefers.
+//! Self-play games between two searches, recording at each searched
+//! position what a search longer than a turn's found: its root score and,
+//! if wanted, the visits of each move.
 
 use cg_core::rng::Rng;
-use cg_search::{Budget, Mcts};
-use uttt_engine::{Board, MoveList, Status};
+use cg_search::{Budget, Game, Mcts};
+use uttt_engine::search::PolicyBoard;
+use uttt_engine::{Board, Move, PlayoutPolicy, Status};
 
 use crate::data::{GameRecord, Searched};
 
@@ -17,13 +19,31 @@ pub struct SelfPlay {
     pub opening_plies: u32,
     /// The search's exploration constant, as in the bot.
     pub exploration: f64,
+    /// The playout policy, as in the bot; decisive playouts when `None`.
+    pub policy: Option<&'static PlayoutPolicy>,
+    /// Whether to record the visits of each move, which the playout policy
+    /// is fitted to; the value network needs only the root's score.
+    pub record_visits: bool,
 }
 
 impl SelfPlay {
     /// Plays one game from `seed`. Each side keeps its own search tree
     /// from move to move, as the bot does. Positions with a move that wins
-    /// the game at once are not recorded: playouts play that move anyway.
+    /// the game at once are not recorded: the search plays that move
+    /// without searching.
     pub fn play(&self, seed: u64) -> GameRecord {
+        match self.policy {
+            Some(policy) => self.play_as(seed, |board| PolicyBoard { board, policy }),
+            None => self.play_as(seed, |board| board),
+        }
+    }
+
+    /// Plays one game, searching `position(board)` at each move.
+    fn play_as<G: Game<Move = Move>>(
+        &self,
+        seed: u64,
+        position: impl Fn(Board) -> G,
+    ) -> GameRecord {
         let mut rng = Rng::new(seed);
         let mut searches = [
             Mcts::new(self.exploration, rng.next_u64()),
@@ -31,18 +51,24 @@ impl SelfPlay {
         ];
         let mut board = Board::new();
         let mut record = GameRecord::default();
-        let mut moves = MoveList::new();
+        let mut moves = Vec::new();
         while board.status() == Status::Ongoing {
             let mv = if record.moves.len() < self.opening_plies as usize {
                 board.random_move(&mut rng)
             } else {
-                board.legal_moves(&mut moves);
+                let root = position(board);
+                root.legal_moves(&mut moves);
                 let search = &mut searches[board.to_move()];
-                let result = search.search(&board, &moves, Budget::Iterations(self.iterations));
+                let result = search.search(&root, &moves, Budget::Iterations(self.iterations));
                 if board.game_winning_move().is_none() && result.iterations > 0 {
                     record.searched.push(Searched {
                         ply: record.moves.len() as u8,
-                        visits: search.root_visits().collect(),
+                        score: Some(result.expected_score as f32),
+                        visits: if self.record_visits {
+                            search.root_visits().collect()
+                        } else {
+                            Vec::new()
+                        },
                     });
                 }
                 result.best
@@ -52,6 +78,31 @@ impl SelfPlay {
         }
         record
     }
+}
+
+/// Reads the playout weights from Rust source written by `uttt-trainer
+/// fit-policy`, such as the bot's `weights.rs`.
+pub fn read_policy_weights(source: &str) -> Result<[u32; uttt_engine::board::CLASSES], String> {
+    let start = source
+        .find("PLAYOUT_WEIGHTS")
+        .and_then(|at| source[at..].find("= [").map(|offset| at + offset + 3))
+        .ok_or("no `PLAYOUT_WEIGHTS = [` in the source")?;
+    let end = source[start..]
+        .find(']')
+        .ok_or("the weights' list does not end")?;
+    let weights = source[start..start + end]
+        .split(',')
+        .map(str::trim)
+        .filter(|item| !item.is_empty())
+        .map(|item| {
+            item.parse::<u32>()
+                .map_err(|err| format!("{item:?}: {err}"))
+        })
+        .collect::<Result<Vec<u32>, String>>()?;
+    let count = weights.len();
+    weights
+        .try_into()
+        .map_err(|_| format!("{count} weights instead of {}", uttt_engine::board::CLASSES))
 }
 
 #[cfg(test)]
