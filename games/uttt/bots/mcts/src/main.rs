@@ -43,8 +43,7 @@ const RESERVE: Duration = Duration::ZERO;
 /// The exploration constant of UCB1, from matches on 2026-10-07 (time
 /// scale 0.2, 200 pairs each): 0.5 beat 1.0 by 164 Elo, 0.7 beat 1.0 by
 /// 116, 1.4 lost to 1.0 by 108, and 0.4 and 0.3 lost to 0.5 by 28 and 116.
-/// At full time, 0.5 beat 1.0 by 162. Checked again with v007 (E008, 400
-/// pairs each): against 0.5, 0.4 scored -23 Elo, 0.6 +3 and 0.7 -34.
+/// At full time, 0.5 beat 1.0 by 162.
 const EXPLORATION: f64 = 0.5;
 
 fn main() {
