@@ -15,5 +15,5 @@ pub mod grid;
 pub mod moves;
 pub mod search;
 
-pub use board::{Board, Status};
+pub use board::{Board, PlayoutPolicy, Status};
 pub use moves::{Move, MoveList};

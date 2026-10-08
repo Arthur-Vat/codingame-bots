@@ -5,6 +5,13 @@ use cg_core::rng::Rng;
 use crate::grid::{self, FULL};
 use crate::moves::{Move, MoveList};
 
+mod policy;
+
+pub use policy::{
+    PlayoutPolicy, BLOCKS, CENTRE, CLASSES, FEATURES, FEATURE_NAMES, GIVES_BOARD,
+    GIVES_FREE_CHOICE, WINS_BOARD,
+};
+
 /// Whether the game goes on, and how it ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Status {
@@ -252,6 +259,23 @@ impl Board {
     /// [`decisive_move`](Board::decisive_move) as a small board and a cell.
     #[inline(always)]
     fn decisive_cell(&self, rng: &mut Rng) -> (usize, usize) {
+        match self.game_winning_cell() {
+            Some(winning) => winning,
+            None => self.random_cell(rng),
+        }
+    }
+
+    /// A legal move that wins the game at once with a line of small
+    /// boards, if there is one: the move playouts play first.
+    pub fn game_winning_move(&self) -> Option<Move> {
+        self.game_winning_cell()
+            .map(|(board, cell)| Move::new_unchecked(board, cell))
+    }
+
+    /// The first legal move, as a small board and a cell, that wins the game
+    /// with a line of small boards, if there is one.
+    #[inline(always)]
+    fn game_winning_cell(&self) -> Option<(usize, usize)> {
         let seat = self.to_move();
         let allowed = if self.target == ANY_BOARD {
             FULL
@@ -259,12 +283,12 @@ impl Board {
             1 << self.target
         };
         let winning = self.game_winning_boards(seat, allowed);
-        if winning != 0 {
-            let board = winning.trailing_zeros() as usize;
-            let cells = grid::completing_cells(self.marks[seat][board]) & self.empty_cells(board);
-            return (board, cells.trailing_zeros() as usize);
+        if winning == 0 {
+            return None;
         }
-        self.random_cell(rng)
+        let board = winning.trailing_zeros() as usize;
+        let cells = grid::completing_cells(self.marks[seat][board]) & self.empty_cells(board);
+        Some((board, cells.trailing_zeros() as usize))
     }
 
     /// Plays [`decisive_move`](Board::decisive_move)s until the game ends,
