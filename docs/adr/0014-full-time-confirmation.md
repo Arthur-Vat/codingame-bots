@@ -1,6 +1,6 @@
 # 0014. Confirm accepted candidates at CodinGame's time limits
 
-- Status: accepted
+- Status: accepted; the "faults" part of decision 3 superseded by [0015](0015-tolerate-rare-timeouts.md) for timeouts
 - Date: 2026-10-07
 - Puts in place: decision 3 of [ADR 0013](0013-evaluation-time-limits.md)
 

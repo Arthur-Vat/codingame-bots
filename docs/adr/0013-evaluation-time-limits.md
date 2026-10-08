@@ -1,6 +1,6 @@
 # 0013. Evaluation time limits: 20 ms plus 5 ms of tolerance, full time for strong bots
 
-- Status: accepted; decision 3 put in place by [0014](0014-full-time-confirmation.md)
+- Status: accepted; decision 3 put in place by [0014](0014-full-time-confirmation.md); the "no fault" part of decision 1 superseded by [0015](0015-tolerate-rare-timeouts.md)
 - Date: 2026-10-07
 - Supersedes: decision 7 of [ADR 0012](0012-evaluation.md)
 

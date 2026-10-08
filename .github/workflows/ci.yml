@@ -78,12 +78,14 @@ jobs:
           # The rules-check bot exits on any disagreement with the referee.
           CG_RULES_CHECK_STRICT: "1"
         run: |
+          # Bots that search may lose a few games on time (ADR 0015).
+          rate="$(sed -n 's/^MAX_TIMEOUT_RATE=//p' games/uttt/evaluation.env)"
           for bot in target/cg/bin/uttt-*; do
             name="$(basename "$bot")"
             [ "$name" = uttt-random ] && continue
             if ! out="$(target/release/uttt-arena match \
               --bot "$name=$bot" --bot random=target/cg/bin/uttt-random \
-              --pairs 100 --expect-no-faults 2>&1)"; then
+              --pairs 100 --expect-no-faults --max-timeout-rate "$rate" 2>&1)"; then
               echo "$out"
               # Job logs are hard to read from outside GitHub; an annotation
               # carries the summary to the check run.

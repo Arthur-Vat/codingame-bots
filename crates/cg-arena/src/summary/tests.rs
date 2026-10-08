@@ -14,6 +14,7 @@ fn game(pair: u32, swapped: bool, winner: Option<usize>, end: EndReason) -> Game
             turns: 10,
             max_answer_ms: [1.0, 2.0],
             mean_answer_ms: [0.5, 0.5],
+            later_answer_ms: Default::default(),
         },
     }
 }
@@ -115,6 +116,56 @@ fn displays_a_readable_report() {
     assert!(text.contains("a vs b: 1 games"), "{text}");
     assert!(
         text.contains("1 wins, 0 draws, 0 losses (score 100.0%)"),
+        "{text}"
+    );
+}
+
+#[test]
+fn allows_timeouts_up_to_a_share_of_the_games_rounded_down() {
+    assert_eq!(allowed_timeouts(1000, 0.01), 10);
+    assert_eq!(allowed_timeouts(200, 0.01), 2);
+    assert_eq!(allowed_timeouts(199, 0.01), 1);
+    assert_eq!(allowed_timeouts(99, 0.01), 0);
+    assert_eq!(allowed_timeouts(1000, 0.0), 0);
+    let timeouts = |timeouts| Faults {
+        timeouts,
+        ..Faults::default()
+    };
+    assert!(timeouts(10).within(1000, 0.01));
+    assert!(!timeouts(11).within(1000, 0.01));
+    assert!(!timeouts(1).within(1000, 0.0));
+    let crash = Faults {
+        crashes: 1,
+        ..Faults::default()
+    };
+    assert!(!crash.within(1000, 0.5), "crashes are never tolerated");
+    let invalid = Faults {
+        invalid: 1,
+        ..Faults::default()
+    };
+    assert!(!invalid.within(1000, 0.5), "nor invalid answers");
+}
+
+#[test]
+fn reports_percentiles_of_the_answers_after_the_first() {
+    let mut s = summary();
+    assert_eq!(s.answer_percentile(0, 0.5), None);
+    for pair in 0..10 {
+        let mut record = game(pair, false, None, EndReason::Finished);
+        // a sits in seat 0: answers of 1 to 100 ms over the ten games.
+        record.game.later_answer_ms = [
+            (1..=10).map(|k| (pair * 10 + k) as f32).collect(),
+            vec![50.0; 10],
+        ];
+        s.add(&record);
+    }
+    assert_eq!(s.answer_percentile(0, 0.5), Some(50.0));
+    assert_eq!(s.answer_percentile(0, 0.99), Some(99.0));
+    assert_eq!(s.answer_percentile(0, 0.999), Some(100.0));
+    assert_eq!(s.answer_percentile(1, 0.99), Some(50.0));
+    let text = s.to_string();
+    assert!(
+        text.contains("answers after the first (median, 99%, 99.9%): a 50.0, 99.0, 100.0 ms; b 50.0, 50.0, 50.0 ms"),
         "{text}"
     );
 }

@@ -71,11 +71,11 @@ Seven tiers protect every change; only the SPRT decides whether a bot is stronge
 | --- | --- | --- | --- |
 | 1. Static | Format, lints, unit tests, property tests of engine invariants | Every push | All green |
 | 2. Parity | The fast engine against the reference referee on 10,000 random games | Every push (part of the tests) | Identical valid actions and results |
-| 3. CodinGame compatibility | Bundle, size, standalone compile with Rust 1.90.0, 1,000 games between bundled bots, every bundled bot against random | Every push | Compiles, stays under 100 kB, no faults |
-| 4. Smoke | Candidate release against the random bot, 100 pairs with openings | Pull requests adding a release, before the SPRT | No faults, at least 99% of the points |
+| 3. CodinGame compatibility | Bundle, size, standalone compile with Rust 1.90.0, 1,000 games between bundled bots, every bundled bot against random | Every push | Compiles, stays under 100 kB, no faults except timeouts in up to 1% of games for bots that search ([ADR 0015](adr/0015-tolerate-rare-timeouts.md)) |
+| 4. Smoke | Candidate release against the random bot, 100 pairs with openings | Pull requests adding a release, before the SPRT | No crash or invalid answer, timeouts in at most 1% of games, at least 99% of the points |
 | 5. Speed | Simulations per second on fixed positions | Every bot change (Phase 4) | No drop over 5% against the parent version (proposed) |
-| 6. SPRT | Candidate release against the previous release, at 20 ms per move | Pull requests adding a release | The test accepts the candidate as stronger |
-| 6b. Full-time confirmation | The accepted candidate against the previous release, 500 pairs at CodinGame's exact limits ([ADR 0014](adr/0014-full-time-confirmation.md)) | After the SPRT accepts | Not clearly weaker, no faults; the Elo measured is recorded |
+| 6. SPRT | Candidate release against the previous release, at 20 ms per move | Pull requests adding a release | The test accepts the candidate as stronger, with no crash or invalid answer and timeouts in at most 1% of games |
+| 6b. Full-time confirmation | The accepted candidate against the previous release, 500 pairs at CodinGame's exact limits ([ADR 0014](adr/0014-full-time-confirmation.md)) | After the SPRT accepts | Not clearly weaker, no crash or invalid answer, timeouts in at most 1% of games; the Elo measured is recorded |
 | 7. League | Every release and the baseline bots | After each release, and on demand | Ratings published |
 
 - **Openings and pairs:** Ultimate Tic-Tac-Toe has no random map, so the referee imposes a few random moves at the start of each pair, drawn from the pair's seed, and the pair plays them twice with seats swapped.
