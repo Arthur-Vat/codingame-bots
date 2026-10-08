@@ -50,21 +50,19 @@ With the settings of [evaluation.env](evaluation.env):
 
 ## Engine speed
 
-`cargo run --release -p uttt-engine --example speed` plays random games from the start position for a few seconds, then decisive playouts (a move that wins the game when there is one, as the search plays them), then runs 100 ms MCTS searches from there. CI runs it on every push and shows the table in the job summary of the "CodinGame compatibility" job.
+`cargo run --release -p uttt-engine --example speed` runs random playouts from the start position for a few seconds, then decisive playouts (a move that wins the game when there is one, as the search plays them), then 100 ms MCTS searches from there. Moves per playout are averaged over 10,000 games played one move at a time. CI runs it on every push and shows the table in the job summary of the "CodinGame compatibility" job.
 
-Baseline, measured on 2026-10-07 on one thread of an Intel Xeon at 2.8 GHz (this shared machine varies by about 10% between runs), after E005 made playouts take a winning move when there is one:
+Baseline, measured on 2026-10-08 on one thread of an Intel Xeon at 2.8 GHz (this shared machine varies by about 10% between runs), after E006 sped up selection and playouts:
 
 | Engine benchmark | Result |
 | --- | --- |
-| Random playouts from the start | about 925,000 per second (915,819 to 935,661 over three runs) |
+| Random playouts from the start | about 1,190,000 per second (1,180,605 to 1,196,417 over three runs) |
 | Moves per playout | 58.9 |
-| Moves per second | about 54,000,000 |
-| Decisive playouts from the start | about 976,000 per second (946,885 to 991,444), 54.2 moves each |
-| MCTS iterations from the start, 100 ms searches | about 620,000 per second (609,767 to 633,933) |
+| Moves per second | about 70,000,000 |
+| Decisive playouts from the start | about 1,234,000 per second (1,214,458 to 1,247,103), 54.2 moves each |
+| MCTS iterations from the start, 100 ms searches | about 755,000 per second (719,982 to 803,399) |
 
-Random playouts did not change in E005; they measured about 985,000 per second just before it, so the machine ran about 6% slower for this baseline. Decisive playouts are shorter, which makes up for the check they add.
-
-After E004: about 985,000 random playouts and 578,000 MCTS iterations per second. Before E004: 441,681 playouts and about 350,000 MCTS iterations per second.
+Before E006 (after E005): about 925,000 random and 976,000 decisive playouts, and 620,000 MCTS iterations per second. After E004: about 985,000 random playouts and 578,000 MCTS iterations per second. Before E004: 441,681 playouts and about 350,000 MCTS iterations per second.
 
 ## Checking the rules on CodinGame
 

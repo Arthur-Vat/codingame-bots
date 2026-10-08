@@ -22,10 +22,27 @@
 //! another exists, a proven win at the root is played at once, and the
 //! search stops when the root is proven. Draws are not proven.
 
+use std::sync::OnceLock;
+
 use cg_core::rng::Rng;
 
 use crate::budget::Budget;
 use crate::game::Game;
+
+/// Visit counts below this have `sqrt(ln(visits))` in a table.
+const SQRT_LN_TABLE_LEN: usize = 1 << 16;
+
+/// `sqrt(ln(n))` for every `n` below `SQRT_LN_TABLE_LEN` (`n = 0` counts as
+/// 1), computed exactly as selection would, once for all searches: the
+/// logarithm was a large part of selection's time.
+fn sqrt_ln_table() -> &'static [f64] {
+    static TABLE: OnceLock<Vec<f64>> = OnceLock::new();
+    TABLE.get_or_init(|| {
+        (0..SQRT_LN_TABLE_LEN as u32)
+            .map(|n| f64::from(n.max(1)).ln().sqrt())
+            .collect()
+    })
+}
 
 /// What is proven about a node, for the player who moved into it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -92,6 +109,8 @@ pub struct Mcts<G: Game> {
     origin: Vec<u32>,
     moves: Vec<G::Move>,
     path: Vec<u32>,
+    /// [`sqrt_ln_table`], shared by all searches.
+    sqrt_ln: &'static [f64],
 }
 
 impl<G: Game> Mcts<G> {
@@ -105,6 +124,7 @@ impl<G: Game> Mcts<G> {
             origin: Vec::new(),
             moves: Vec::new(),
             path: Vec::new(),
+            sqrt_ln: sqrt_ln_table(),
         }
     }
 
@@ -256,6 +276,17 @@ impl<G: Game> Mcts<G> {
     /// Moves the subtree of `node` to the front of the tree, `node` first,
     /// and drops every other node.
     fn keep_subtree(&mut self, node: usize) {
+        // The two vectors take turns holding the tree. Giving the spare one
+        // the tree's capacity, in a fresh allocation, means that neither
+        // has to grow during a later search: growing copies the whole tree,
+        // a pause of several milliseconds once it holds a million nodes.
+        let capacity = self.nodes.capacity();
+        if self.spare.capacity() < capacity {
+            self.spare = Vec::with_capacity(capacity);
+        }
+        if self.origin.capacity() < capacity {
+            self.origin = Vec::with_capacity(capacity);
+        }
         self.spare.clear();
         self.origin.clear();
         self.spare.push(self.nodes[node]);
@@ -407,7 +438,12 @@ impl<G: Game> Mcts<G> {
         let first = parent.first_child as usize;
         let children = &self.nodes[first..first + parent.children as usize];
         // UCB1: value + c * sqrt(ln(parent visits) / visits).
-        let spread = (self.exploration * f64::from(parent.visits.max(1)).ln().sqrt()) as f32;
+        let visits = parent.visits.max(1);
+        let sqrt_ln = match self.sqrt_ln.get(visits as usize) {
+            Some(&value) => value,
+            None => f64::from(visits).ln().sqrt(),
+        };
+        let spread = (self.exploration * sqrt_ln) as f32;
         let mut best = 0;
         let mut best_bound = f32::NEG_INFINITY;
         for (offset, child) in children.iter().enumerate() {

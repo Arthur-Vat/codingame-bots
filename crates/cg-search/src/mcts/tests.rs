@@ -241,3 +241,19 @@ fn unproven_searches_report_no_proof() {
     let result = search(&nim(30), &[1, 2, 3], 1_000, 1);
     assert_eq!(result.proven, None);
 }
+
+#[test]
+fn the_sqrt_ln_table_holds_exactly_the_computed_values() {
+    let table = sqrt_ln_table();
+    assert_eq!(table.len(), SQRT_LN_TABLE_LEN);
+    assert_eq!(table[0], 0.0, "0 visits count as 1");
+    for n in (1..SQRT_LN_TABLE_LEN as u32)
+        .step_by(97)
+        .chain([1, 2, 65_535])
+    {
+        assert_eq!(
+            table[n as usize].to_bits(),
+            f64::from(n).ln().sqrt().to_bits()
+        );
+    }
+}

@@ -128,20 +128,33 @@ impl Board {
 
     /// Plays `mv` for the player to move. The move must be legal; this is
     /// checked in debug builds only, for speed.
+    #[inline(always)]
     pub fn play(&mut self, mv: Move) {
         debug_assert!(self.is_legal(mv), "illegal move {mv} in {self:?}");
-        let seat = usize::from(self.to_move);
-        let (board, cell) = (mv.board(), mv.cell());
-        self.marks[seat][board] |= 1 << cell;
+        self.play_at(mv.board(), mv.cell());
+    }
 
-        if grid::has_line(self.marks[seat][board]) {
+    /// Plays in `cell` of small board `board`: [`play`](Board::play)
+    /// without encoding the move, for playouts.
+    #[inline(always)]
+    fn play_at(&mut self, board: usize, cell: usize) {
+        let seat = usize::from(self.to_move);
+        let marks = self.marks[seat][board] | (1 << cell);
+        self.marks[seat][board] = marks;
+
+        if grid::has_line(marks) {
             self.won[seat] |= 1 << board;
             self.closed |= 1 << board;
             if grid::has_line(self.won[seat]) {
                 self.status = Status::Win(seat);
+            } else if self.closed == FULL {
+                self.status = self.status_on_points();
             }
-        } else if self.empty_cells(board) == 0 {
+        } else if marks | self.marks[1 - seat][board] == FULL {
             self.closed |= 1 << board;
+            if self.closed == FULL {
+                self.status = self.status_on_points();
+            }
         }
 
         self.target = if self.is_closed(cell) {
@@ -150,14 +163,16 @@ impl Board {
             cell as u8
         };
         self.to_move ^= 1;
+    }
 
-        if self.status == Status::Ongoing && self.closed == FULL {
-            let [zero, one] = self.points();
-            self.status = match zero.cmp(&one) {
-                std::cmp::Ordering::Greater => Status::Win(0),
-                std::cmp::Ordering::Less => Status::Win(1),
-                std::cmp::Ordering::Equal => Status::Draw,
-            };
+    /// How the game ends once every small board is closed with no line of
+    /// small boards: more small boards wins, equal is a draw.
+    fn status_on_points(&self) -> Status {
+        let [zero, one] = self.points();
+        match zero.cmp(&one) {
+            std::cmp::Ordering::Greater => Status::Win(0),
+            std::cmp::Ordering::Less => Status::Win(1),
+            std::cmp::Ordering::Equal => Status::Draw,
         }
     }
 
@@ -165,14 +180,21 @@ impl Board {
     /// draws the same number from `rng` as picking from
     /// [`legal_moves`](Board::legal_moves), and picks the same move for it.
     /// The game must go on.
-    #[inline]
+    #[inline(always)]
     pub fn random_move(&self, rng: &mut Rng) -> Move {
+        let (board, cell) = self.random_cell(rng);
+        Move::new_unchecked(board, cell)
+    }
+
+    /// [`random_move`](Board::random_move) as a small board and a cell.
+    #[inline(always)]
+    fn random_cell(&self, rng: &mut Rng) -> (usize, usize) {
         debug_assert_eq!(self.status, Status::Ongoing);
         if self.target != ANY_BOARD {
             let board = usize::from(self.target);
             let empty = self.empty_cells(board);
             let index = rng.below(u64::from(grid::count(empty))) as u32;
-            return Move::new_unchecked(board, grid::nth_cell(empty, index));
+            return (board, grid::nth_cell(empty, index));
         }
         let open = !self.closed & FULL;
         let total: u32 = grid::cells(open)
@@ -183,7 +205,7 @@ impl Board {
             let empty = self.empty_cells(board);
             let count = grid::count(empty);
             if index < count {
-                return Move::new_unchecked(board, grid::nth_cell(empty, index));
+                return (board, grid::nth_cell(empty, index));
             }
             index -= count;
         }
@@ -194,8 +216,8 @@ impl Board {
     /// how it ended.
     pub fn random_playout(&mut self, rng: &mut Rng) -> Status {
         while self.status == Status::Ongoing {
-            let mv = self.random_move(rng);
-            self.play(mv);
+            let (board, cell) = self.random_cell(rng);
+            self.play_at(board, cell);
         }
         self.status
     }
@@ -223,6 +245,13 @@ impl Board {
     /// open board closes, are not looked for. The game must go on.
     #[inline]
     pub fn decisive_move(&self, rng: &mut Rng) -> Move {
+        let (board, cell) = self.decisive_cell(rng);
+        Move::new_unchecked(board, cell)
+    }
+
+    /// [`decisive_move`](Board::decisive_move) as a small board and a cell.
+    #[inline(always)]
+    fn decisive_cell(&self, rng: &mut Rng) -> (usize, usize) {
         let seat = self.to_move();
         let allowed = if self.target == ANY_BOARD {
             FULL
@@ -233,17 +262,17 @@ impl Board {
         if winning != 0 {
             let board = winning.trailing_zeros() as usize;
             let cells = grid::completing_cells(self.marks[seat][board]) & self.empty_cells(board);
-            return Move::new_unchecked(board, cells.trailing_zeros() as usize);
+            return (board, cells.trailing_zeros() as usize);
         }
-        self.random_move(rng)
+        self.random_cell(rng)
     }
 
     /// Plays [`decisive_move`](Board::decisive_move)s until the game ends,
     /// and returns how it ended.
     pub fn decisive_playout(&mut self, rng: &mut Rng) -> Status {
         while self.status == Status::Ongoing {
-            let mv = self.decisive_move(rng);
-            self.play(mv);
+            let (board, cell) = self.decisive_cell(rng);
+            self.play_at(board, cell);
         }
         self.status
     }

@@ -29,10 +29,11 @@ fn main() {
     let mut rng = Rng::new(1);
 
     // Warm up caches and CPU frequency before measuring.
-    measure(&mut rng, Duration::from_millis(200), Board::random_move);
-    let (playouts, played, elapsed) = measure(&mut rng, budget, Board::random_move);
-    let (decisive, decisive_played, decisive_time) =
-        measure(&mut rng, budget, Board::decisive_move);
+    measure(&mut rng, Duration::from_millis(200), Board::random_playout);
+    let (playouts, elapsed) = measure(&mut rng, budget, Board::random_playout);
+    let moves = moves_per_playout(&mut rng, Board::random_move);
+    let (decisive, decisive_time) = measure(&mut rng, budget, Board::decisive_playout);
+    let decisive_moves = moves_per_playout(&mut rng, Board::decisive_move);
 
     let per_second = playouts as f64 / elapsed.as_secs_f64();
     println!("| Engine benchmark | Result |");
@@ -41,18 +42,11 @@ fn main() {
         "| Random playouts from the start | {} per second |",
         thousands(per_second)
     );
+    println!("| Moves per playout | {moves:.1} |");
+    println!("| Moves per second | {} |", thousands(per_second * moves));
     println!(
-        "| Moves per playout | {:.1} |",
-        played as f64 / playouts as f64
-    );
-    println!(
-        "| Moves per second | {} |",
-        thousands(played as f64 / elapsed.as_secs_f64())
-    );
-    println!(
-        "| Decisive playouts from the start | {} per second, {:.1} moves each |",
+        "| Decisive playouts from the start | {} per second, {decisive_moves:.1} moves each |",
         thousands(decisive as f64 / decisive_time.as_secs_f64()),
-        decisive_played as f64 / decisive as f64
     );
     let (searches, iterations, search_time) = measure_search(budget);
     println!(
@@ -83,26 +77,37 @@ fn measure_search(budget: Duration) -> (u64, u64, Duration) {
     (searches, iterations, start.elapsed())
 }
 
-/// Plays games from the start with `policy` for `budget`, the way playouts
-/// do; returns games, moves and time taken.
+/// Runs `playout` from the start for `budget`, as the search does; returns
+/// playouts and time taken.
 fn measure(
     rng: &mut Rng,
     budget: Duration,
-    policy: fn(&Board, &mut Rng) -> Move,
-) -> (u64, u64, Duration) {
+    playout: fn(&mut Board, &mut Rng) -> Status,
+) -> (u64, Duration) {
     let start = Instant::now();
-    let (mut playouts, mut played) = (0u64, 0u64);
+    let mut playouts = 0u64;
     while start.elapsed() < budget {
         for _ in 0..1000 {
             let mut board = Board::new();
-            while board.status() == Status::Ongoing {
-                board.play(policy(&board, rng));
-                played += 1;
-            }
+            playout(&mut board, rng);
             playouts += 1;
         }
     }
-    (playouts, played, start.elapsed())
+    (playouts, start.elapsed())
+}
+
+/// The average length of 10,000 games from the start, played one `policy`
+/// move at a time.
+fn moves_per_playout(rng: &mut Rng, policy: fn(&Board, &mut Rng) -> Move) -> f64 {
+    let mut played = 0u64;
+    for _ in 0..10_000 {
+        let mut board = Board::new();
+        while board.status() == Status::Ongoing {
+            board.play(policy(&board, rng));
+            played += 1;
+        }
+    }
+    played as f64 / 10_000.0
 }
 
 /// Formats a count with thousands separators: 1234567.8 -> "1,234,568".

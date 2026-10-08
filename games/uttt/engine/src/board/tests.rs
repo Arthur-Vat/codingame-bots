@@ -302,3 +302,27 @@ fn decisive_playouts_end_and_are_reproducible() {
         assert_eq!(a, b);
     }
 }
+
+#[test]
+fn playouts_play_the_moves_their_policy_picks() {
+    type Step = fn(&Board, &mut Rng) -> Move;
+    type Playout = fn(&mut Board, &mut Rng) -> Status;
+    let pairs: [(Step, Playout); 2] = [
+        (Board::random_move, Board::random_playout),
+        (Board::decisive_move, Board::decisive_playout),
+    ];
+    for (step, playout) in pairs {
+        for seed in 0..300 {
+            let (mut by_step, mut by_playout) = (Rng::new(seed), Rng::new(seed));
+            let mut stepped = Board::new();
+            while stepped.status() == Status::Ongoing {
+                let mv = step(&stepped, &mut by_step);
+                stepped.play(mv);
+            }
+            let mut played = Board::new();
+            assert_eq!(playout(&mut played, &mut by_playout), stepped.status());
+            assert_eq!(played, stepped, "seed {seed}");
+            assert_eq!(by_step.next_u64(), by_playout.next_u64(), "same draws");
+        }
+    }
+}
