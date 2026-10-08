@@ -209,18 +209,14 @@ fn a_whole_game_with_a_kept_tree_finds_the_winning_moves() {
 fn proves_wins_and_losses_and_stops_early() {
     // Proving 13 and 12 stones takes a few hundred iterations, 18 a few
     // thousand; without proofs, 18 stones was solved 3 times in 10.
-    for (pile, expected) in [
-        (13, Some(Outcome::Win)),
-        (12, Some(Outcome::Loss)),
-        (18, Some(Outcome::Win)),
-    ] {
+    for (pile, expected) in [(13, Some(true)), (12, Some(false)), (18, Some(true))] {
         let result = search(&nim(pile), &[1, 2, 3], 50_000, 1);
         assert_eq!(result.proven, expected, "pile {pile}: {result:?}");
         assert!(
             result.iterations < 50_000,
             "stopped once proven: {result:?}"
         );
-        if expected == Some(Outcome::Win) {
+        if expected == Some(true) {
             assert_eq!(result.best, pile % 4);
             assert_eq!(result.expected_score, 1.0);
         }
@@ -231,12 +227,12 @@ fn proves_wins_and_losses_and_stops_early() {
 fn a_proven_root_needs_no_more_iterations() {
     let mut mcts = Mcts::new(1.0, 2);
     let first = mcts.search(&nim(9), &[1, 2, 3], Budget::Iterations(50_000));
-    assert_eq!((first.best, first.proven), (1, Some(Outcome::Win)));
+    assert_eq!((first.best, first.proven), (1, Some(true)));
     // The same position again: the kept root is already proven.
     let again = mcts.search(&nim(9), &[1, 2, 3], Budget::Iterations(50_000));
     assert_eq!(
         (again.best, again.proven, again.iterations),
-        (1, Some(Outcome::Win), 0)
+        (1, Some(true), 0)
     );
 }
 
@@ -260,144 +256,4 @@ fn the_sqrt_ln_table_holds_exactly_the_computed_values() {
             f64::from(n).ln().sqrt().to_bits()
         );
     }
-}
-
-/// Tic-tac-toe, a game whose value with best play is a draw: cells 0 to 8,
-/// seat 0 plays first.
-#[derive(Clone, Debug, PartialEq)]
-struct TicTacToe {
-    marks: [u16; 2],
-    to_move: usize,
-}
-
-const LINES: [u16; 8] = [0o007, 0o070, 0o700, 0o111, 0o222, 0o444, 0o421, 0o124];
-
-impl TicTacToe {
-    fn from(moves: &[u8]) -> TicTacToe {
-        let mut game = TicTacToe {
-            marks: [0; 2],
-            to_move: 0,
-        };
-        for &cell in moves {
-            game.play(cell);
-        }
-        game
-    }
-
-    fn winner(&self) -> Option<usize> {
-        (0..2).find(|&seat| LINES.iter().any(|&line| self.marks[seat] & line == line))
-    }
-
-    /// The exact value for the player to move: 1, 0 or -1.
-    fn minimax(&self) -> i32 {
-        match self.score() {
-            Some(score) => {
-                let for_seat_0 = (score * 2.0) as i32 - 1;
-                if self.to_move == 0 {
-                    for_seat_0
-                } else {
-                    -for_seat_0
-                }
-            }
-            None => {
-                let mut moves = Vec::new();
-                self.legal_moves(&mut moves);
-                moves
-                    .iter()
-                    .map(|&cell| {
-                        let mut next = self.clone();
-                        next.play(cell);
-                        -next.minimax()
-                    })
-                    .max()
-                    .expect("a game that goes on has moves")
-            }
-        }
-    }
-}
-
-impl Game for TicTacToe {
-    type Move = u8;
-
-    fn to_move(&self) -> usize {
-        self.to_move
-    }
-
-    fn legal_moves(&self, moves: &mut Vec<u8>) {
-        moves.clear();
-        let taken = self.marks[0] | self.marks[1];
-        moves.extend((0..9).filter(|&cell| taken & (1 << cell) == 0));
-    }
-
-    fn play(&mut self, cell: u8) {
-        assert_eq!((self.marks[0] | self.marks[1]) & (1 << cell), 0);
-        self.marks[self.to_move] |= 1 << cell;
-        self.to_move = 1 - self.to_move;
-    }
-
-    fn score(&self) -> Option<f64> {
-        match self.winner() {
-            Some(0) => Some(1.0),
-            Some(_) => Some(0.0),
-            None if self.marks[0] | self.marks[1] == 0o777 => Some(0.5),
-            None => None,
-        }
-    }
-}
-
-#[test]
-fn proves_a_draw_and_stops() {
-    // X in the centre, O in a corner: a draw with best play.
-    let game = TicTacToe::from(&[4, 0]);
-    assert_eq!(game.minimax(), 0);
-    let mut moves = Vec::new();
-    game.legal_moves(&mut moves);
-    let result = Mcts::new(1.0, 3).search(&game, &moves, Budget::Iterations(200_000));
-    assert_eq!(result.proven, Some(Outcome::Draw), "{result:?}");
-    assert!(
-        result.iterations < 200_000,
-        "stopped once proven: {result:?}"
-    );
-    assert_eq!(result.expected_score, 0.5);
-    let mut next = game.clone();
-    next.play(result.best);
-    assert_eq!(
-        next.minimax(),
-        0,
-        "the move played keeps the draw: {result:?}"
-    );
-}
-
-#[test]
-fn proofs_agree_with_minimax_including_draws() {
-    let mut rng = Rng::new(5);
-    let mut counts = [0; 3];
-    for _ in 0..300 {
-        let mut game = TicTacToe::from(&[]);
-        let mut moves = Vec::new();
-        // Three or four random moves, then a search of what is left.
-        for _ in 0..3 + rng.below(2) {
-            game.legal_moves(&mut moves);
-            game.play(*rng.pick(&moves).unwrap());
-        }
-        if game.score().is_some() {
-            continue;
-        }
-        game.legal_moves(&mut moves);
-        let result =
-            Mcts::new(1.0, rng.next_u64()).search(&game, &moves, Budget::Iterations(100_000));
-        let expected = match game.minimax() {
-            1 => Outcome::Win,
-            0 => Outcome::Draw,
-            _ => Outcome::Loss,
-        };
-        assert_eq!(result.proven, Some(expected), "{game:?}: {result:?}");
-        if expected != Outcome::Loss {
-            let mut next = game.clone();
-            next.play(result.best);
-            assert_eq!(-next.minimax(), game.minimax(), "{game:?}: {result:?}");
-        }
-        counts[expected as usize] += 1;
-    }
-    assert!(counts.iter().all(|&count| count > 10), "{counts:?}");
 }

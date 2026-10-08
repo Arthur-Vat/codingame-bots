@@ -1,4 +1,4 @@
-use cg_search::{Budget, Mcts, Outcome};
+use cg_search::{Budget, Mcts};
 
 use super::*;
 
@@ -103,7 +103,7 @@ fn empty_open_cells(board: &Board) -> usize {
 #[test]
 fn proofs_agree_with_exhaustive_search_in_endgames() {
     let mut list = MoveList::new();
-    let (mut checked, mut proven, mut draws, mut proven_draws) = (0, 0, 0, 0);
+    let (mut checked, mut proven) = (0, 0);
     for seed in 0..400 {
         let mut rng = Rng::new(seed);
         let mut board = Board::new();
@@ -121,39 +121,21 @@ fn proofs_agree_with_exhaustive_search_in_endgames() {
         match exact {
             1 => {
                 // A win is proven, and the move played keeps it.
-                assert_eq!(result.proven, Some(Outcome::Win), "seed {seed}: {result:?}");
+                assert_eq!(result.proven, Some(true), "seed {seed}: {result:?}");
                 let mut next = board;
                 next.play(result.best);
                 assert_eq!(minimax(&next), -1, "seed {seed}: {result:?}");
                 proven += 1;
             }
             -1 => {
-                assert_eq!(
-                    result.proven,
-                    Some(Outcome::Loss),
-                    "seed {seed}: {result:?}"
-                );
+                assert_eq!(result.proven, Some(false), "seed {seed}: {result:?}");
                 proven += 1;
             }
-            _ => {
-                // A draw is proven only once every other answer is too,
-                // and a search starves those of visits next to a proven
-                // draw; when it is proven, it is right. The move played
-                // keeps the draw.
-                if let Some(outcome) = result.proven {
-                    assert_eq!(outcome, Outcome::Draw, "seed {seed}: {result:?}");
-                    proven_draws += 1;
-                }
-                let mut next = board;
-                next.play(result.best);
-                assert_eq!(minimax(&next), 0, "seed {seed}: {result:?}");
-                draws += 1;
-            }
+            _ => assert_eq!(result.proven, None, "seed {seed}: draws are not proven"),
         }
     }
-    eprintln!("{checked} checked, {proven} won or lost, {proven_draws} of {draws} draws proven");
     assert!(
-        checked > 100 && proven + draws == checked && draws > 5 && proven_draws > 0,
-        "{checked} checked, {proven} won or lost, {proven_draws} of {draws} draws proven"
+        checked > 100 && proven > 50,
+        "{checked} checked, {proven} proven"
     );
 }

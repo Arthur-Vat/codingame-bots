@@ -5,9 +5,8 @@
 //! (`cg-search`, `uttt-engine`), for most of the turn's time limit, then
 //! plays the move it tried most often. The search keeps the
 //! part of its tree under the moves played since its previous search, and
-//! proves wins, draws and losses near the end of the game: it plays a
-//! proven win, avoids proven losses, values a proven draw at exactly one
-//! half, and stops searching once the position is proven.
+//! proves wins and losses near the end of the game: it plays a proven win,
+//! avoids proven losses, and stops searching once the position is proven.
 //! A move that wins the game at once is played without searching, and so is
 //! the only action offered.
 //!
@@ -25,7 +24,7 @@ use std::time::{Duration, Instant};
 
 use cg_core::input::{Input, InputError};
 use cg_core::rng::{seed_from_env_or_clock, Rng};
-use cg_search::{Budget, Mcts, Outcome};
+use cg_search::{Budget, Mcts};
 use uttt_engine::{Board, Move};
 
 /// CodinGame's time limit for the first answer.
@@ -118,9 +117,8 @@ fn play(
                 } else {
                     let result = mcts.search(&position, &moves, budget(start, limit));
                     let outlook = match result.proven {
-                        Some(Outcome::Win) => "proven win".to_string(),
-                        Some(Outcome::Draw) => "proven draw".to_string(),
-                        Some(Outcome::Loss) => "proven loss".to_string(),
+                        Some(true) => "proven win".to_string(),
+                        Some(false) => "proven loss".to_string(),
                         None => format!("expected score {:.3}", result.expected_score),
                     };
                     writeln!(
