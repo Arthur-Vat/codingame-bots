@@ -1,6 +1,6 @@
 # 0017. Stage 2: a value network instead of playouts
 
-- Status: proposed
+- Status: accepted (owner, 2026-10-08)
 - Date: 2026-10-08
 
 ## Context
@@ -9,7 +9,7 @@
 
 Stage 1 (E011, `uttt-v008`) gave the largest gain so far, +95 Elo at CodinGame's limits, and reached 59th in Legend. Its fit also shows its limit. With 23 free parameters fitted to 65,000 positions, the cross-entropy is 1.773 nats on the fitted positions and 1.775 on held-out ones: the policy is limited by what its five features can express, not by data. More features in a playout cost time at every move of every playout. A value network is computed once per new leaf instead of a whole playout, so its parameters cost far less per use.
 
-Room: once bundles drop comments ([pull request #25](https://github.com/Arthur-Vat/codingame-bots/pull/25)), the MCTS bot is 33.9 kB of the 100 kB allowed.
+Room: since bundles drop comments ([pull request #25](https://github.com/Arthur-Vat/codingame-bots/pull/25)), the MCTS bot is 33.9 kB of the 100 kB allowed.
 
 Speed, measured with `cargo run --release -p uttt-engine --example value_speed -- 2` (two runs, one thread of a shared 2.1 GHz Intel Xeon). Untrained networks with random weights replace the playout at each new leaf. Positions are every position of 1,000 games of decisive moves:
 
