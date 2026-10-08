@@ -41,4 +41,6 @@ Tuned), would be different experiments.
 Both bots lost a few games on time in each run (2 to 21 of 800), as
 usual on this busy machine; the runs count them as losses for both.
 
-The bot's comment on its exploration constant records these numbers.
+The bot's comment on its exploration constant keeps the 2026-10-07
+measurements; this entry holds the new ones, so that release candidates
+in flight keep matching their source.
