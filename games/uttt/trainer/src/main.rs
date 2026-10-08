@@ -18,6 +18,7 @@ use value_fit::Examples as _;
 mod data;
 mod duel;
 mod fit;
+mod head_start;
 mod selfplay;
 mod value_fit;
 
@@ -95,6 +96,39 @@ enum Command {
         /// Where the data came from, for the generated files.
         #[arg(long, default_value = "local run")]
         origin: String,
+    },
+    /// Plays the bot's search against itself, one side searching longer
+    /// on its first moves: the most an opening book could bring (E013).
+    HeadStart {
+        /// Rust source holding the bot's playout weights.
+        #[arg(long)]
+        policy: PathBuf,
+        /// Moves of each playout drawn from the policy, as in the bot.
+        #[arg(long, default_value_t = 16)]
+        policy_plies: u32,
+        /// Pairs of games; each side plays first once per pair.
+        #[arg(long, default_value_t = 100)]
+        pairs: u32,
+        /// Iterations per move after the first, for both sides; about what
+        /// the bot runs in 90 ms.
+        #[arg(long, default_value_t = 60_000)]
+        iterations: u64,
+        /// Iterations of each side's first move, the first turn's longer
+        /// search.
+        #[arg(long, default_value_t = 600_000)]
+        first_iterations: u64,
+        /// How many times the usual iterations the head start gives.
+        #[arg(long, default_value_t = 20)]
+        boost: u64,
+        /// How many first moves get the head start.
+        #[arg(long, default_value_t = 4)]
+        moves: u32,
+        /// Seed of the games.
+        #[arg(long, default_value_t = 1)]
+        seed: u64,
+        /// Threads [default: one per core].
+        #[arg(long)]
+        threads: Option<usize>,
     },
     /// Trains the value network on self-play games and compares it with
     /// the bot's playouts (ADR 0017).
@@ -206,6 +240,41 @@ fn main() -> ExitCode {
             weights_out,
             report_out,
             origin,
+        }),
+        Command::HeadStart {
+            policy,
+            policy_plies,
+            pairs,
+            iterations,
+            first_iterations,
+            boost,
+            moves,
+            seed,
+            threads,
+        } => load_policy(&policy, policy_plies).map(|policy| {
+            let head_start = head_start::HeadStart {
+                iterations,
+                first_iterations,
+                boost,
+                moves,
+                exploration: 0.5,
+            };
+            let threads = threads
+                .unwrap_or_else(|| std::thread::available_parallelism().map_or(1, usize::from));
+            let start = Instant::now();
+            let results = head_start.play(policy, pairs, seed, threads);
+            let elo = match results.elo() {
+                Some(elo) => format!("{:+.1} Elo [{:+.1}, {:+.1}]", elo.elo, elo.low, elo.high),
+                None => "no Elo estimate".to_string(),
+            };
+            println!(
+                "head start of {boost}x on the first {moves} moves, {iterations} iterations per move, {first_iterations} on the first, {pairs} pairs, seed {seed}: {} wins, {} draws, {} losses, {elo}; pairs by points (0, 1/2, 1, 3/2, 2): {:?}; {:.0} s",
+                results.wins,
+                results.draws,
+                results.losses,
+                results.pairs,
+                start.elapsed().as_secs_f64()
+            );
         }),
         Command::FitValue {
             data,

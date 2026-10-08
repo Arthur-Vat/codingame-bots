@@ -23,7 +23,7 @@ pub struct Duel {
     pub network_exploration: f64,
 }
 
-/// Results from the network's side.
+/// Results from one side, the network's in a duel.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Results {
     pub wins: u32,
@@ -84,7 +84,8 @@ impl Results {
         }
     }
 
-    fn add(&mut self, other: &Results) {
+    /// Adds `other`'s games to these.
+    pub fn add(&mut self, other: &Results) {
         self.wins += other.wins;
         self.draws += other.draws;
         self.losses += other.losses;
