@@ -257,3 +257,19 @@ fn the_sqrt_ln_table_holds_exactly_the_computed_values() {
         );
     }
 }
+
+#[test]
+fn root_visits_add_up_to_the_root_visits() {
+    let mut mcts = Mcts::new(1.0, 7);
+    assert_eq!(mcts.root_visits().count(), 0);
+    let result = mcts.search(&nim(30), &[1, 2, 3], Budget::Iterations(1_000));
+    let visits: Vec<(u32, u32)> = mcts.root_visits().collect();
+    let mut moves: Vec<u32> = visits.iter().map(|&(mv, _)| mv).collect();
+    moves.sort_unstable();
+    assert_eq!(moves, vec![1, 2, 3]);
+    // A fresh root starts with its children, so every iteration visits one.
+    let total: u32 = visits.iter().map(|&(_, count)| count).sum();
+    assert_eq!(u64::from(total), result.iterations);
+    let most = visits.iter().max_by_key(|&&(_, count)| count).unwrap().0;
+    assert_eq!(most, result.best);
+}
