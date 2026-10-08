@@ -115,7 +115,11 @@ fn score_against_random(games: u64, iterations: u64) -> f64 {
         while board.status() == Status::Ongoing {
             board.legal_moves(&mut moves);
             let mv = if board.to_move() == mcts_seat {
-                mcts.search(&board, &moves, Budget::Iterations(iterations))
+                let root = PolicyBoard {
+                    board,
+                    policy: &POLICY,
+                };
+                mcts.search(&root, &moves, Budget::Iterations(iterations))
                     .best
             } else {
                 *rng.pick(&moves).unwrap()

@@ -1,9 +1,10 @@
 //! Monte Carlo tree search Ultimate Tic-Tac-Toe bot.
 //!
-//! Every turn it searches the current position with UCT and random
-//! playouts that take a game-winning move whenever there is one
-//! (`cg-search`, `uttt-engine`), for most of the turn's time limit, then
-//! plays the move it tried most often. The search keeps the
+//! Every turn it searches the current position with UCT and playouts that
+//! take a game-winning move whenever there is one and otherwise draw their
+//! first moves from a playout policy learned from self-play, then random
+//! moves (`cg-search`, `uttt-engine`), for most of the turn's time limit,
+//! then plays the move it tried most often. The search keeps the
 //! part of its tree under the moves played since its previous search, and
 //! proves wins and losses near the end of the game: it plays a proven win,
 //! avoids proven losses, and stops searching once the position is proven.
@@ -25,7 +26,8 @@ use std::time::{Duration, Instant};
 use cg_core::input::{Input, InputError};
 use cg_core::rng::{seed_from_env_or_clock, Rng};
 use cg_search::{Budget, Mcts};
-use uttt_engine::{Board, Move};
+use uttt_engine::search::PolicyBoard;
+use uttt_engine::{Board, Move, PlayoutPolicy};
 
 /// CodinGame's time limit for the first answer.
 const FIRST_LIMIT: Duration = Duration::from_millis(1000);
@@ -45,6 +47,16 @@ const RESERVE: Duration = Duration::ZERO;
 /// 116, 1.4 lost to 1.0 by 108, and 0.4 and 0.3 lost to 0.5 by 28 and 116.
 /// At full time, 0.5 beat 1.0 by 162.
 const EXPLORATION: f64 = 0.5;
+
+/// The playout policy: weights by move class, learned from self-play
+/// (ADR 0016), for the first 16 moves of each playout; decisive random
+/// moves after that, which are cheaper. Screened on 2026-10-08 against
+/// v007 at 20 ms (200 pairs each): the whole playout +1 Elo, 16 moves +18,
+/// 8 moves +30, 4 moves +22; sharper weights (temperature 0.5) +53 for 16
+/// moves and +48 for 8, flatter ones (2) -22 for 8.
+static POLICY: PlayoutPolicy = PlayoutPolicy::new(weights::PLAYOUT_WEIGHTS).for_plies(16);
+
+mod weights;
 
 fn main() {
     let seed = seed_from_env_or_clock();
@@ -72,7 +84,7 @@ fn main() {
 /// Plays turns until the input ends. `budget` gives the search budget of a
 /// turn from its start and CodinGame's limit for it.
 fn play(
-    mcts: &mut Mcts<Board>,
+    mcts: &mut Mcts<PolicyBoard>,
     rng: &mut Rng,
     mut input: Input<impl BufRead>,
     mut out: impl Write,
@@ -115,7 +127,11 @@ fn play(
                 let mv = if moves.len() == 1 {
                     moves[0]
                 } else {
-                    let result = mcts.search(&position, &moves, budget(start, limit));
+                    let root = PolicyBoard {
+                        board: position,
+                        policy: &POLICY,
+                    };
+                    let result = mcts.search(&root, &moves, budget(start, limit));
                     let outlook = match result.proven {
                         Some(true) => "proven win".to_string(),
                         Some(false) => "proven loss".to_string(),
