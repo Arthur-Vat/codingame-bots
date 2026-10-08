@@ -51,8 +51,9 @@ losses.
 
 The gain is about what the rate of E006 predicted (+11): +17.2 at 20 ms
 and +14.6 at full time. The full-time interval reaches just below 0
-(-1.8), so the confirmation alone would not prove a gain, but it rules
-out a loss, which is what ADR 0014 asks of it.
+(-1.8), so the confirmation alone would not prove a gain; it shows the
+candidate is not clearly weaker at full time, which is what ADR 0014
+asks of it.
 
 Timeouts on GitHub's runners: none in 1,946 games at 20 ms, where the
 candidate searched 18.0 ms against a limit of 25 (99.9% of answers
