@@ -14,4 +14,4 @@ pub mod mcts;
 
 pub use budget::Budget;
 pub use game::Game;
-pub use mcts::{Mcts, SearchResult};
+pub use mcts::{Mcts, Outcome, SearchResult};
