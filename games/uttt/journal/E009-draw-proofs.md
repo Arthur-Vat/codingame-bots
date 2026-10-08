@@ -4,7 +4,7 @@ date: 2026-10-08
 pull_request: pending
 parent: uttt-v007
 hypothesis: Proving draws as well as wins and losses gives the search exact values in drawn endgames, which matter more as draws grow common (38% of the games between v007 and v006 at full time).
-change: None released. The solver proved finished draws and nodes whose answers are all proven with a draw as the opponent's best, and selection valued a proven draw at exactly 0.5; the code is kept on branch claude/uttt-e009-draw-proofs (commit d3db1ae) and reverted.
+change: None released. The solver proved finished draws and nodes whose answers are all proven with a draw as the opponent's best, and selection valued a proven draw at exactly 0.5. The code stays in the history, commit d3db1ae, reverted in the same pull request.
 release: none
 sprt: not run, local screening only
 elo: none
