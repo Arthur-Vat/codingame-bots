@@ -33,12 +33,13 @@ const FIRST_LIMIT: Duration = Duration::from_millis(1000);
 const LIMIT: Duration = Duration::from_millis(100);
 /// Share of the limit the search may use.
 const SHARE: f64 = 0.9;
-/// Time kept for reading, writing and timing noise, at CodinGame's limits:
-/// the search gets 82 ms of 100. With 2 ms (88 ms), answers reached 95 ms
-/// on GitHub's runners and rarely went over 100 (about 1 game in 3,000 at
-/// full time); on a busy 2-core machine the bot's own clock read up to
-/// 97 ms. Scaled with the arena's time factor, like the limit.
-const RESERVE: Duration = Duration::from_millis(8);
+/// Time kept for reading, writing and timing noise beyond the share, at
+/// CodinGame's limits; scaled with the arena's time factor, like the limit.
+/// None since E007: the search gets 90 ms of 100. Up to E006 it kept 8 ms
+/// (82 ms of search) so that no game was lost on time; ADR 0015 tolerates
+/// rare timeouts, which cost far less than the search time they buy. In
+/// 100 local games at full time, 99.9% of answers took at most 94.1 ms.
+const RESERVE: Duration = Duration::ZERO;
 /// The exploration constant of UCB1, from matches on 2026-10-07 (time
 /// scale 0.2, 200 pairs each): 0.5 beat 1.0 by 164 Elo, 0.7 beat 1.0 by
 /// 116, 1.4 lost to 1.0 by 108, and 0.4 and 0.3 lost to 0.5 by 28 and 116.
