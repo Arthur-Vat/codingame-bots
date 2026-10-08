@@ -6,11 +6,11 @@ parent: uttt-v009
 hypothesis: A move policy with one learned weight per small-board pattern, cell and destination predicts the search's choices better than 32 move classes, so its playouts judge positions better and its order of children is better.
 change: Playouts draw their first 16 moves, and nodes order their children, with 26,275 learned weights (`PatternPolicy`, `search::PatternBoard`) instead of E011's 32 class weights; the weights travel in the bot as one base64 character each.
 release: uttt-v010
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +19.2 [+5.7, +32.7] at 20 ms
+pairs: 943
+full_time: +11.8 [-5.7, +29.4] over 500 pairs, no timeout in 1,000 games, 99.9% of answers within 92.1 ms
+decision: promoted
 cg_rank: pending
 ---
 
@@ -92,3 +92,39 @@ sharper weights play better, as with E011's classes.
 The candidate keeps temperature 0.33 and 16 policy moves: about +27 over
 its 500 pairs at 20 ms. The screens at one temperature disagree more than
 their intervals suggest (0.5: +44 then -26), so the SPRT decides.
+
+## More weights, tried offline
+
+Three richer destination kinds were fitted on the same data, without
+going into a bot. They add whether the destination board would win the
+whole game for the opponent, whether a free choice lets the opponent win
+the game at once, and whether the move's own board would win the game
+for either side:
+
+| Destination kinds | Weights | Held-out cross-entropy |
+| --- | --- | --- |
+| 5 (the candidate) | 26,275 | 1.7334 |
+| 7 | 36,785 | 1.7350 |
+| 14 | 73,570 | 1.7372 |
+| 28 | 147,140 | 1.7387 |
+
+None predicts better: with 8,000 games, the data, not the bytes, limits
+the model. Fitted on 3,000 and 6,000 of the games, the patterns' lead
+over the classes grew from 0.056 to 0.064 nats, so more games should
+help, and larger models may need many more. The encoded weights' entropy
+is 4.2 bits per weight: an entropy coder would shrink the 26,275
+characters to about 18,400 if bytes ever run short.
+
+## Result
+
+From the SPRT comment on #35: smoke test 200 wins in 200 games; SPRT
+accepted after 943 pairs (789 wins, 412 draws, 686 losses), LLR 3.00;
+confirmation at CodinGame's limits 377 wins, 280 draws, 343 losses, no
+timeout for either bot.
+
+At 20 ms the gain, +19.2, is below the local screening's +27 but its
+interval excludes 0. At full time it is +11.8, interval from -5.7 to
++29.4: v010 is not weaker, as ADR 0014 asks, and the estimate is a little
+above E014's +9.7 at the same limits. Answers took as long as v009's
+(99.9% within 92.1 ms, against 92.3), so the larger policy costs no
+search speed.
