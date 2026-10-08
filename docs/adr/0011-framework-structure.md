@@ -1,6 +1,6 @@
 # 0011. Framework structure: text-protocol referees, reference rules, textual bundler
 
-- Status: accepted
+- Status: accepted; the consequence that the bundle keeps every comment superseded by decision 4 of [0016](0016-self-play-training.md)
 - Date: 2026-10-07
 
 ## Context

@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use cg_bundler::{bundle_package, SIZE_LIMIT};
+use cg_bundler::{bundle_package, Options, SIZE_LIMIT};
 use clap::Parser;
 
 /// Bundles a bot package and the workspace crates it uses into one Rust file
@@ -26,15 +26,20 @@ struct Args {
     /// Skip formatting with rustfmt.
     #[arg(long)]
     no_format: bool,
+
+    /// Keep comments, indentation and blank lines, for a bundle that reads
+    /// like the sources.
+    #[arg(long)]
+    keep_comments: bool,
 }
 
 fn main() -> ExitCode {
     let args = Args::parse();
-    let bundle = match bundle_package(
-        &args.package,
-        args.manifest_path.as_deref(),
-        !args.no_format,
-    ) {
+    let options = Options {
+        format: !args.no_format,
+        strip: !args.keep_comments,
+    };
+    let bundle = match bundle_package(&args.package, args.manifest_path.as_deref(), options) {
         Ok(bundle) => bundle,
         Err(err) => {
             eprintln!("error: {err}");

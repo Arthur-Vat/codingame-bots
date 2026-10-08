@@ -6,8 +6,15 @@ use std::process::{Command, Stdio};
 
 #[test]
 fn the_bundled_random_bot_compiles_alone_and_plays() {
-    let bundle = cg_bundler::bundle_package("uttt-bot-random", None, true).unwrap();
+    let bundle =
+        cg_bundler::bundle_package("uttt-bot-random", None, cg_bundler::Options::default())
+            .unwrap();
     assert!(bundle.starts_with("// Bundled by cg-bundler from the `uttt-bot-random` package."));
+    let mut code = bundle.lines().skip_while(|line| line.starts_with("// "));
+    assert!(
+        code.all(|line| !line.is_empty() && !line.starts_with([' ', '/'])),
+        "comments, indentation and blank lines must be removed"
+    );
     assert!(bundle.contains("mod cg_core {"));
     assert!(
         bundle.contains("use crate::cg_core::rng::"),
@@ -53,5 +60,38 @@ fn the_bundled_random_bot_compiles_alone_and_plays() {
     assert!(
         ["4 4\n", "0 0\n", "8 8\n"].contains(&answer.as_str()),
         "{answer:?}"
+    );
+}
+
+#[test]
+fn keep_comments_gives_the_readable_bundle() {
+    let options = cg_bundler::Options {
+        format: true,
+        strip: false,
+    };
+    let readable = cg_bundler::bundle_package("uttt-bot-random", None, options).unwrap();
+    let stripped =
+        cg_bundler::bundle_package("uttt-bot-random", None, cg_bundler::Options::default())
+            .unwrap();
+    assert!(readable.contains("\n//! "), "doc comments are kept");
+    assert!(readable.contains("\n    "), "indentation is kept");
+    assert!(stripped.len() < readable.len());
+    let words = |text: &str| -> Vec<String> {
+        cg_bundler::minify::strip(text)
+            .split_whitespace()
+            .map(str::to_string)
+            .collect()
+    };
+    let header_lines = |text: &str| text.lines().take_while(|l| l.starts_with("// ")).count();
+    let body = |text: &str| -> String {
+        text.lines()
+            .skip(header_lines(text))
+            .flat_map(|line| [line, "\n"])
+            .collect()
+    };
+    assert_eq!(
+        words(&body(&readable)),
+        words(&body(&stripped)),
+        "the two bundles hold the same code"
     );
 }
