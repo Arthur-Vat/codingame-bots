@@ -17,4 +17,5 @@ One entry per experiment, failures included, so that ideas are not retried blind
 | [E004](E004-faster-search.md) | 2026-10-07 | A faster search plays better in the same time (`uttt-v004`) | Accepted, +87.5 Elo at 20 ms, +74.4 at full time | Promoted: `uttt-v004` |
 | [E005](E005-decisive-playouts.md) | 2026-10-07 | Playouts that take a game-winning move judge positions better (`uttt-v005`) | Accepted, +109.5 Elo at 20 ms, +78.4 at full time | Promoted: `uttt-v005` |
 | [E006](E006-faster-search-2.md) | 2026-10-08 | A faster search, again, plays better in the same time (`uttt-v006`) | Accepted, +39.7 Elo at 20 ms, +30.7 at full time | Promoted: `uttt-v006` |
-| [E007](E007-time-budget.md) | 2026-10-08 | Searching 90 ms of 100 instead of 82 is worth its rare timeouts (`uttt-v007`) | pending | pending |
+| [E007](E007-time-budget.md) | 2026-10-08 | Searching 90 ms of 100 instead of 82 is worth its rare timeouts (`uttt-v007`) | Accepted, +17.2 Elo at 20 ms, +14.6 at full time, 1 timeout in 1,000 games | Promoted: `uttt-v007` |
+| [E008](E008-exploration.md) | 2026-10-08 | Another exploration constant, or one for the late game, suits today's faster search | Not run: local screening found nothing better than 0.5 | Dropped |
