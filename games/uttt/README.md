@@ -10,8 +10,9 @@ CodinGame's [Ultimate Tic-Tac-Toe](https://www.codingame.com/multiplayer/bot-pro
 | --- | --- |
 | [RULES.md](RULES.md) | The rules in our own words, with sources |
 | [referee/](referee/) | Readable reference implementation of the rules, driven by the arena |
-| [engine/](engine/) | Fast implementation of the rules for bots: bitboards, no allocation, random playouts |
+| [engine/](engine/) | Fast implementation of the rules for bots: bitboards, no allocation, random, decisive and policy playouts |
 | [arena/](arena/) | `uttt-arena`: plays bots against each other through the referee |
+| [trainer/](trainer/) | `uttt-trainer`: self-play data and training of the playout policy ([ADR 0016](../../docs/adr/0016-self-play-training.md)) |
 | [bots/](bots/) | One crate per bot |
 | [evaluation.env](evaluation.env) | Settings of the SPRT, the league and the arena for evaluations ([ADR 0012](../../docs/adr/0012-evaluation.md)) |
 | `releases/` | Frozen paste-ready file of each version, from the first release on |
@@ -47,6 +48,16 @@ With the settings of [evaluation.env](evaluation.env):
 - `scripts/sprt.sh uttt CANDIDATE.rs [BASELINE.rs]`: smoke test against random, then SPRT against the baseline (by default the newest release older than the candidate, or `greedy`). Settings can be overridden from the environment, for example `TIME_SCALE=1 TIME_TOLERANCE_MS=0` for CodinGame's full limits.
 - `scripts/league.sh uttt`: ratings of every release with `random` and `greedy`.
 - `scripts/new-release.sh uttt BOT`: freezes a bot as the next release. The whole experiment flow is in [docs/WORKFLOW.md](../../docs/WORKFLOW.md).
+
+## Training
+
+Learned knowledge comes from self-play ([ADR 0016](../../docs/adr/0016-self-play-training.md)). The engine's playout policy draws each move with a weight that depends on its class: which of a few features it has (wins its small board, blocks the opponent's line, gives the opponent a free choice, sends it to a board it can win, takes the centre cell).
+
+- `uttt-trainer selfplay --games N --iterations K --out FILE`: plays self-play games with the bot's search and records, for every searched position, how many visits each move got.
+- `uttt-trainer fit-policy --data FILE... --weights-out weights.rs --report-out report.md`: fits the class weights to those visits, holding a quarter of the positions out to check the fit, and writes them as Rust source with a report.
+- The [Train workflow](../../.github/workflows/train.yml), started by hand from the Actions tab, runs both on GitHub: self-play in up to 20 parallel jobs, then the fit, whose results it commits to a new branch `claude/train/<run id>`. Weights reach a bot only through an experiment and its SPRT.
+
+On one core, a game at 10,000 iterations per move takes about a quarter of a second and gives about 43 positions.
 
 ## Engine speed
 
