@@ -75,6 +75,8 @@ Baseline, measured on 2026-10-08 on one thread of an Intel Xeon at 2.8 GHz (this
 
 Before E006 (after E005): about 925,000 random and 976,000 decisive playouts, and 620,000 MCTS iterations per second. After E004: about 985,000 random playouts and 578,000 MCTS iterations per second. Before E004: 441,681 playouts and about 350,000 MCTS iterations per second.
 
+`cargo run --release -p uttt-engine --example value_speed -- [SECONDS]` measures what a value network would cost the search, with untrained networks of several sizes against `uttt-v008`'s playouts: estimates per second, and iterations of 90 ms searches at several stages of the game. Results and their use are in [ADR 0017](../../docs/adr/0017-value-network.md).
+
 ## Checking the rules on CodinGame
 
 The parity tests prove the engine and the referee agree with each other, not that both agree with CodinGame. To check that, once in Bronze league or above:

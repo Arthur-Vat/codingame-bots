@@ -100,6 +100,31 @@ impl Board {
         self.closed & (1 << board) != 0
     }
 
+    /// The cells of small board `board` that `seat` marked, as a 9-bit mask.
+    #[inline]
+    pub fn cells(&self, seat: usize, board: usize) -> u16 {
+        self.marks[seat][board]
+    }
+
+    /// The small boards `seat` won, as a 9-bit mask.
+    #[inline]
+    pub fn won_boards(&self, seat: usize) -> u16 {
+        self.won[seat]
+    }
+
+    /// The small boards that are won or full, as a 9-bit mask.
+    #[inline]
+    pub fn closed_boards(&self) -> u16 {
+        self.closed
+    }
+
+    /// The open small boards where `seat` has a free cell that would win
+    /// the board, as a 9-bit mask.
+    #[inline]
+    pub fn threat_boards(&self, seat: usize) -> u16 {
+        self.threats[seat]
+    }
+
     /// Empty cells of `board`, as a 9-bit mask.
     #[inline]
     fn empty_cells(&self, board: usize) -> u16 {
