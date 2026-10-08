@@ -196,7 +196,8 @@ fn the_weights_source_holds_the_text_in_continued_lines() {
     assert!(source.lines().all(|line| line.len() <= 100));
 }
 
-/// A game record of a random game, with every position searched.
+/// A game record of a random game, with every position searched and
+/// root scores that vary.
 fn random_record(seed: u64) -> GameRecord {
     let mut rng = Rng::new(seed);
     let mut board = Board::new();
@@ -204,7 +205,7 @@ fn random_record(seed: u64) -> GameRecord {
     while board.status() == Status::Ongoing {
         record.searched.push(Searched {
             ply: record.moves.len() as u8,
-            score: Some(0.5),
+            score: Some(rng.unit() as f32),
             visits: Vec::new(),
         });
         let mv = board.random_move(&mut rng);
@@ -214,39 +215,56 @@ fn random_record(seed: u64) -> GameRecord {
     record
 }
 
+/// Every example of `examples`, built.
+fn all(examples: &impl Examples) -> Vec<Example> {
+    (0..examples.len())
+        .map(|index| examples.get(index))
+        .collect()
+}
+
 #[test]
-fn examples_hold_out_whole_games_and_score_the_side_to_move() {
+fn positions_hold_out_whole_games_and_score_the_side_to_move() {
     let games: Vec<GameRecord> = (0..40).map(random_record).collect();
-    let (fitted, held_out) = examples(&games);
-    let mut expected_held_out = 0;
+    let mut split = Split::default();
+    // Added in two parts, as from two files: game indices run on.
+    split.add(&games[..13]);
+    split.add(&games[13..]);
+    assert_eq!(split.games, 40);
+    let mut expected = (Vec::new(), Vec::new());
     for (index, game) in games.iter().enumerate() {
-        let kept: Vec<(Board, f32)> = game
-            .positions()
-            .filter(|(board, _)| board.game_winning_move().is_none())
-            .map(|(board, _)| {
-                let result = match game.status() {
-                    Status::Win(seat) if seat == board.to_move() => 1.0,
-                    Status::Win(_) => 0.0,
-                    _ => 0.5,
-                };
-                (board, result)
-            })
-            .collect();
-        if index % 20 == 19 {
-            expected_held_out += kept.len();
-        }
-        let set = if index % 20 == 19 { &held_out } else { &fitted };
-        for (board, result) in kept {
-            assert!(set
-                .iter()
-                .any(|example| example.board == board && example.result == result));
+        let set = if index % 20 == 19 {
+            &mut expected.1
+        } else {
+            &mut expected.0
+        };
+        for (board, searched) in game.positions() {
+            if board.game_winning_move().is_some() {
+                continue;
+            }
+            let result = match game.status() {
+                Status::Win(seat) if seat == board.to_move() => 1.0,
+                Status::Win(_) => 0.0,
+                _ => 0.5,
+            };
+            set.push((board, result, searched.score.unwrap()));
         }
     }
-    assert_eq!(held_out.len(), expected_held_out);
-    assert!(fitted
-        .iter()
-        .chain(&held_out)
-        .all(|e| e.board.game_winning_move().is_none()));
+    for (stored, expected) in [(&split.fitted, &expected.0), (&split.held_out, &expected.1)] {
+        let built = all(stored);
+        assert_eq!(built.len(), expected.len());
+        for (index, (example, (board, result, score))) in built.iter().zip(expected).enumerate() {
+            assert_eq!(example.board, *board);
+            assert_eq!(example.result, *result);
+            assert_eq!(stored.result(index), *result);
+            assert!(
+                (example.score - score).abs() < 1e-4,
+                "{} against {score}",
+                example.score
+            );
+        }
+    }
+    assert!(!split.held_out.entries.is_empty());
+    assert_eq!(std::mem::size_of::<Entry>(), 8);
 }
 
 #[test]
@@ -273,7 +291,7 @@ fn training_learns_a_simple_rule() {
     };
     let (fitted, held_out) = (make(10), make(11));
     let start = initial_parameters(12);
-    let before = measure(&start, &held_out, 2);
+    let before = measure(&start, &held_out[..], 2);
     let mut epochs = Vec::new();
     let settings = Training {
         epochs: 4,
@@ -284,10 +302,10 @@ fn training_learns_a_simple_rule() {
         threads: 2,
         seed: 13,
     };
-    let trained = train(start, &fitted, &held_out, &settings, |epoch| {
+    let trained = train(start, &fitted[..], &held_out[..], &settings, |epoch| {
         epochs.push(*epoch)
     });
-    let after = measure(&trained, &held_out, 2);
+    let after = measure(&trained, &held_out[..], 2);
     assert_eq!(epochs.len(), 4);
     assert_eq!(epochs[3].held_out, after);
     assert!(
@@ -304,8 +322,9 @@ fn more_playouts_predict_results_better() {
             .unwrap();
     let policy = PlayoutPolicy::new(weights).for_plies(16);
     let games: Vec<GameRecord> = (100..140).map(random_record).collect();
-    let (fitted, _) = examples(&games);
-    let positions = spread(&fitted, 300);
+    let mut split = Split::default();
+    split.add(&games);
+    let positions = spread(&split.fitted, 300);
     assert!(
         positions.len() > 150 && positions.len() <= 300,
         "{}",

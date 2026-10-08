@@ -13,7 +13,7 @@ use cg_core::rng::Rng;
 use uttt_engine::value::{
     active_inputs, ValueNetwork, CLOSED, INPUTS, MAX_ACTIVE, TARGET, THEIR_CELLS, THREATS,
 };
-use uttt_engine::{Board, PlayoutPolicy, Status};
+use uttt_engine::{Board, Move, PlayoutPolicy, Status};
 
 use crate::data::GameRecord;
 
@@ -63,48 +63,131 @@ impl Target {
     }
 }
 
-/// The examples of `games`, split into those to fit and those held out:
-/// every 20th game is held out whole, since positions of one game are
-/// alike. Positions where the side to move can win the game at once are
-/// left out: the search never asks the network there.
-pub fn examples(games: &[GameRecord]) -> (Vec<Example>, Vec<Example>) {
-    // Reserved at once: growing would hold two copies of a large vector.
-    let positions: usize = games.iter().map(|game| game.searched.len()).sum();
-    let (mut fitted, mut held_out) = (
-        Vec::with_capacity(positions - positions / 20),
-        Vec::with_capacity(positions / 20 + 64),
-    );
-    for (index, game) in games.iter().enumerate() {
-        let status = game.status();
-        if status == Status::Ongoing {
-            continue;
-        }
-        let set = if index % 20 == 19 {
-            &mut held_out
-        } else {
-            &mut fitted
-        };
+/// Examples, by index: stored compactly or as a plain list.
+pub trait Examples: Sync {
+    fn len(&self) -> usize;
+    fn get(&self, index: usize) -> Example;
+    /// The result of example `index`, without building its board.
+    fn result(&self, index: usize) -> f32 {
+        self.get(index).result
+    }
+}
+
+impl Examples for [Example] {
+    fn len(&self) -> usize {
+        <[Example]>::len(self)
+    }
+
+    fn get(&self, index: usize) -> Example {
+        self[index]
+    }
+}
+
+/// One stored position: 8 bytes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Entry {
+    game: u32,
+    /// The root score, from 0 to 65,535 for 0 to 1.
+    score: u16,
+    ply: u8,
+    /// The result in half points: 0, 1 or 2.
+    result: u8,
+}
+
+/// Positions stored compactly, about 9 bytes each: each game's moves once,
+/// and for each position its game, its ply, the result and the root score.
+/// A position's board is replayed from its game's moves when needed, so
+/// that hundreds of millions of positions fit in memory.
+#[derive(Clone, Debug, Default)]
+pub struct Positions {
+    moves: Vec<Move>,
+    /// Where each game's moves start in `moves`.
+    starts: Vec<u32>,
+    entries: Vec<Entry>,
+}
+
+impl Positions {
+    /// Adds the positions of `game`, which ended with `status`, that the
+    /// network is asked about: those without a move that wins the game at
+    /// once, which the search plays without asking.
+    fn add_game(&mut self, game: &GameRecord, status: Status) {
+        let index = self.starts.len() as u32;
+        self.starts.push(self.moves.len() as u32);
+        self.moves.extend_from_slice(&game.moves);
         for (board, searched) in game.positions() {
             if board.game_winning_move().is_some() {
                 continue;
             }
             let result = match status {
-                Status::Win(seat) if seat == board.to_move() => 1.0,
-                Status::Win(_) => 0.0,
-                _ => 0.5,
+                Status::Win(seat) if seat == board.to_move() => 2,
+                Status::Win(_) => 0,
+                _ => 1,
             };
             let score = searched
                 .score
                 .filter(|score| score.is_finite())
-                .unwrap_or(result);
-            set.push(Example {
-                board,
+                .unwrap_or(f32::from(result) / 2.0);
+            self.entries.push(Entry {
+                game: index,
+                score: (score.clamp(0.0, 1.0) * 65535.0).round() as u16,
+                ply: searched.ply,
                 result,
-                score,
             });
         }
     }
-    (fitted, held_out)
+}
+
+impl Examples for Positions {
+    fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    fn get(&self, index: usize) -> Example {
+        let entry = self.entries[index];
+        let start = self.starts[entry.game as usize] as usize;
+        let mut board = Board::new();
+        for &mv in &self.moves[start..start + usize::from(entry.ply)] {
+            board.play(mv);
+        }
+        Example {
+            board,
+            result: f32::from(entry.result) / 2.0,
+            score: f32::from(entry.score) / 65535.0,
+        }
+    }
+
+    fn result(&self, index: usize) -> f32 {
+        f32::from(self.entries[index].result) / 2.0
+    }
+}
+
+/// The positions of self-play games, split into those to fit and those
+/// held out: every 20th game is held out whole, since positions of one game
+/// are alike. Games are added file by file, so that their records need not
+/// all be in memory at once.
+#[derive(Clone, Debug, Default)]
+pub struct Split {
+    pub fitted: Positions,
+    pub held_out: Positions,
+    /// Games added, finished or not.
+    pub games: usize,
+}
+
+impl Split {
+    pub fn add(&mut self, games: &[GameRecord]) {
+        for game in games {
+            let status = game.status();
+            if status != Status::Ongoing {
+                let set = if self.games % 20 == 19 {
+                    &mut self.held_out
+                } else {
+                    &mut self.fitted
+                };
+                set.add_game(game, status);
+            }
+            self.games += 1;
+        }
+    }
 }
 
 /// The cell that `cell` (`3 * row + col`) becomes under symmetry `index`
@@ -283,18 +366,27 @@ pub struct Metrics {
     pub squared_error: f64,
 }
 
+/// The index ranges that split `count` items between `threads` threads.
+fn shares(count: usize, threads: usize) -> Vec<std::ops::Range<usize>> {
+    let chunk = count.div_ceil(threads.max(1)).max(1);
+    (0..count)
+        .step_by(chunk)
+        .map(|start| start..(start + chunk).min(count))
+        .collect()
+}
+
 /// The metrics of `parameters` on `examples`, without symmetries, over
 /// `threads` threads.
-pub fn measure(parameters: &[f32], examples: &[Example], threads: usize) -> Metrics {
-    let chunk = examples.len().div_ceil(threads.max(1)).max(1);
+pub fn measure(parameters: &[f32], examples: &(impl Examples + ?Sized), threads: usize) -> Metrics {
     let sums: Vec<(f64, f64)> = std::thread::scope(|scope| {
-        let handles: Vec<_> = examples
-            .chunks(chunk)
-            .map(|part| {
+        let handles: Vec<_> = shares(examples.len(), threads)
+            .into_iter()
+            .map(|range| {
                 scope.spawn(move || {
                     let mut list = [0; MAX_ACTIVE];
                     let (mut entropy, mut squared) = (0.0, 0.0);
-                    for example in part {
+                    for index in range {
+                        let example = examples.get(index);
                         let count = active_inputs(&example.board, &mut list);
                         let z = forward(parameters, &list[..count]).z;
                         entropy += cross_entropy(z, example.result);
@@ -365,8 +457,8 @@ pub fn initial_parameters(seed: u64) -> Vec<f32> {
 /// epoch, and calls `report` then.
 pub fn train(
     mut parameters: Vec<f32>,
-    fitted: &[Example],
-    held_out: &[Example],
+    fitted: &(impl Examples + ?Sized),
+    held_out: &(impl Examples + ?Sized),
     settings: &Training,
     mut report: impl FnMut(&Epoch),
 ) -> Vec<f32> {
@@ -401,13 +493,13 @@ pub fn train(
                             let mut list = [0; MAX_ACTIVE];
                             let mut loss = 0.0;
                             for &(index, view) in chunk {
-                                let example = &fitted[index as usize];
+                                let example = fitted.get(index as usize);
                                 let map = &symmetries[usize::from(view)];
                                 let count = symmetric_inputs(&example.board, map, &mut list);
                                 loss += accumulate(
                                     parameters,
                                     &list[..count],
-                                    settings.target.of(example),
+                                    settings.target.of(&example),
                                     gradient,
                                 );
                             }
@@ -500,10 +592,13 @@ pub fn base64(bytes: &[u8]) -> String {
     text
 }
 
-/// At most `count` of `examples`, spread evenly: the positions of the gate.
-pub fn spread(examples: &[Example], count: usize) -> Vec<Example> {
+/// At most `count` of `examples`, spread evenly.
+pub fn spread(examples: &(impl Examples + ?Sized), count: usize) -> Vec<Example> {
     let step = examples.len().div_ceil(count.max(1)).max(1);
-    examples.iter().step_by(step).copied().collect()
+    (0..examples.len())
+        .step_by(step)
+        .map(|index| examples.get(index))
+        .collect()
 }
 
 /// The squared error against the result of the average of the first `k`
