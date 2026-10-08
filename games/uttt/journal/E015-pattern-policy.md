@@ -1,7 +1,7 @@
 ---
 id: E015
 date: 2026-10-08
-pull_request: pending
+pull_request: "#35"
 parent: uttt-v009
 hypothesis: A move policy with one learned weight per small-board pattern, cell and destination predicts the search's choices better than 32 move classes, so its playouts judge positions better and its order of children is better.
 change: Playouts draw their first 16 moves, and nodes order their children, with 26,275 learned weights (`PatternPolicy`, `search::PatternBoard`) instead of E011's 32 class weights; the weights travel in the bot as one base64 character each.
