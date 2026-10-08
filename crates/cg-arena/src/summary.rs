@@ -18,6 +18,22 @@ impl Faults {
     pub fn total(&self) -> u32 {
         self.timeouts + self.crashes + self.invalid
     }
+
+    /// Whether these faults, over `games` games, stay within what a fault
+    /// check tolerates: no crash, no invalid answer, and at most
+    /// [`allowed_timeouts`] timeouts.
+    pub fn within(&self, games: u32, max_timeout_rate: f64) -> bool {
+        self.crashes == 0
+            && self.invalid == 0
+            && self.timeouts <= allowed_timeouts(games, max_timeout_rate)
+    }
+}
+
+/// The timeouts tolerated in `games` games at `max_timeout_rate`, a
+/// fraction of the games, rounded down: 10 in 1,000 games at 0.01.
+pub fn allowed_timeouts(games: u32, max_timeout_rate: f64) -> u32 {
+    // The small margin keeps 0.01 × 1,000 at 10 despite rounding.
+    (f64::from(games) * max_timeout_rate + 1e-9).floor() as u32
 }
 
 /// An Elo difference with its 95% confidence interval.
@@ -42,6 +58,8 @@ pub struct Summary {
     pub aborted: u32,
     /// Slowest answer seen, by bot, in milliseconds.
     pub max_answer_ms: [f64; 2],
+    /// Every answer after a game's first, by bot, in milliseconds.
+    answer_ms: [Vec<f32>; 2],
     /// Complete pairs by the first bot's points in the pair: 0, ½, 1, 1½, 2.
     pub pairs: [u32; 5],
     /// Points of pairs with one game played so far.
@@ -58,6 +76,7 @@ impl Summary {
             faults: [Faults::default(); 2],
             aborted: 0,
             max_answer_ms: [0.0; 2],
+            answer_ms: Default::default(),
             pairs: [0; 5],
             pending: HashMap::new(),
         }
@@ -93,6 +112,7 @@ impl Summary {
         for seat in 0..2 {
             let bot = bot_in_seat(seat);
             self.max_answer_ms[bot] = self.max_answer_ms[bot].max(game.max_answer_ms[seat]);
+            self.answer_ms[bot].extend_from_slice(&game.later_answer_ms[seat]);
         }
         if let Some(other) = self.pending.remove(&record.pair) {
             let pair_points = other + points;
@@ -110,6 +130,19 @@ impl Summary {
     pub fn score(&self) -> Option<f64> {
         let games = self.games();
         (games > 0).then(|| (f64::from(self.wins) + 0.5 * f64::from(self.draws)) / f64::from(games))
+    }
+
+    /// The time below which a fraction `share` of a bot's answers after
+    /// the first came (0.99 for the 99th percentile), in milliseconds;
+    /// `None` without such answers.
+    pub fn answer_percentile(&self, bot: usize, share: f64) -> Option<f32> {
+        let mut times = self.answer_ms[bot].clone();
+        if times.is_empty() {
+            return None;
+        }
+        times.sort_by(f32::total_cmp);
+        let rank = (share * times.len() as f64).ceil() as usize;
+        Some(times[rank.clamp(1, times.len()) - 1])
     }
 
     /// Faults of both bots.
@@ -203,6 +236,22 @@ impl fmt::Display for Summary {
         }
         if self.aborted > 0 {
             writeln!(f, "  aborted by the arena: {}", self.aborted)?;
+        }
+        let percentiles = |bot: usize| -> Option<String> {
+            let at = |share| self.answer_percentile(bot, share);
+            Some(format!(
+                "{} {:.1}, {:.1}, {:.1} ms",
+                self.names[bot],
+                at(0.5)?,
+                at(0.99)?,
+                at(0.999)?
+            ))
+        };
+        if let (Some(first), Some(second)) = (percentiles(0), percentiles(1)) {
+            writeln!(
+                f,
+                "  answers after the first (median, 99%, 99.9%): {first}; {second}"
+            )?;
         }
         write!(
             f,

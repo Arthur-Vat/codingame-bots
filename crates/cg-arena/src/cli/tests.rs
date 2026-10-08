@@ -91,3 +91,56 @@ fn rejects_a_non_positive_time_scale() {
     let bots = two_bots(&args.bots).unwrap();
     assert!(tournament(bots, 1, &args.common).is_err());
 }
+
+#[test]
+fn timeouts_within_the_allowed_rate_pass_the_fault_checks() {
+    let cli = Cli::try_parse_from([
+        "arena",
+        "match",
+        "--bot",
+        "a=x",
+        "--bot",
+        "b=y",
+        "--expect-no-faults",
+        "--max-timeout-rate",
+        "0.01",
+    ])
+    .unwrap();
+    let Command::Match(args) = cli.command else {
+        panic!("not a match")
+    };
+    let mut summary = Summary::new(["a".to_string(), "b".to_string()]);
+    summary.wins = 1000;
+    summary.faults[0].timeouts = 10;
+    assert!(
+        faults_ok(&args.common, &summary),
+        "10 timeouts in 1,000 games"
+    );
+    summary.faults[1].timeouts = 11;
+    assert!(!faults_ok(&args.common, &summary), "11 is too many");
+    summary.faults[1].timeouts = 0;
+    summary.faults[1].crashes = 1;
+    assert!(!faults_ok(&args.common, &summary), "a crash still fails");
+}
+
+#[test]
+fn rejects_a_timeout_rate_outside_zero_to_one() {
+    for rate in ["1", "1.5", "-0.1"] {
+        let cli = Cli::try_parse_from([
+            "arena",
+            "match",
+            "--bot",
+            "a=x",
+            "--bot",
+            "b=y",
+            "--max-timeout-rate",
+            rate,
+        ])
+        .unwrap();
+        let Command::Match(args) = cli.command else {
+            panic!("not a match")
+        };
+        let bots = two_bots(&args.bots).unwrap();
+        assert!(tournament(bots, 1, &args.common).is_err(), "{rate}");
+    }
+}

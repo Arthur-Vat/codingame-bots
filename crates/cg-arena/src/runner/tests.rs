@@ -94,6 +94,12 @@ fn plays_a_full_game() {
     assert_eq!(record.turns, 6);
     assert_eq!(record.seats, ["a".to_string(), "b".to_string()]);
     assert!(record.max_answer_ms[0] > 0.0 && record.mean_answer_ms[1] > 0.0);
+    // Three answers each; the first has its own limit and is left out.
+    assert_eq!(
+        record.later_answer_ms.clone().map(|times| times.len()),
+        [2, 2]
+    );
+    assert!(record.later_answer_ms[0].iter().all(|&ms| ms > 0.0));
 }
 
 #[test]

@@ -115,6 +115,10 @@ pub struct MatchRecord {
     pub turns: u32,
     pub max_answer_ms: [f64; SEATS],
     pub mean_answer_ms: [f64; SEATS],
+    /// Every answer after the first, in milliseconds, by seat: the first
+    /// answer has a longer limit. Not written to the JSON lines.
+    #[serde(skip)]
+    pub later_answer_ms: [Vec<f32>; SEATS],
 }
 
 /// The match could not be played at all.
@@ -225,9 +229,11 @@ pub fn run_match(
         turns,
         max_answer_ms: [0.0; SEATS],
         mean_answer_ms: [0.0; SEATS],
+        later_answer_ms: Default::default(),
     };
     for (seat, process) in processes.iter_mut().enumerate() {
         record.max_answer_ms[seat] = process.max_answer.as_secs_f64() * 1000.0;
+        record.later_answer_ms[seat] = std::mem::take(&mut process.later_answer_ms);
         if process.answers > 0 {
             record.mean_answer_ms[seat] =
                 process.total_answer.as_secs_f64() * 1000.0 / f64::from(process.answers);
@@ -254,6 +260,8 @@ struct BotProcess {
     answers: u32,
     max_answer: Duration,
     total_answer: Duration,
+    /// The time of every answer after the first, in milliseconds.
+    later_answer_ms: Vec<f32>,
 }
 
 impl BotProcess {
@@ -293,6 +301,7 @@ impl BotProcess {
             answers: 0,
             max_answer: Duration::ZERO,
             total_answer: Duration::ZERO,
+            later_answer_ms: Vec::new(),
         })
     }
 
@@ -315,6 +324,10 @@ impl BotProcess {
             }
         }
         let elapsed = start.elapsed();
+        if self.answers > 0 {
+            self.later_answer_ms
+                .push((elapsed.as_secs_f64() * 1000.0) as f32);
+        }
         self.answers += 1;
         self.max_answer = self.max_answer.max(elapsed);
         self.total_answer += elapsed;

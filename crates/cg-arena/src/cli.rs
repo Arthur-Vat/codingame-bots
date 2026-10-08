@@ -14,7 +14,7 @@ use crate::ratings::{elo_margins, elo_ratings, MatchupResult};
 use crate::referee::RefereeFactory;
 use crate::runner::{BotSpec, MatchOptions};
 use crate::sprt::{SequentialTest, SprtSettings, Verdict};
-use crate::summary::Summary;
+use crate::summary::{allowed_timeouts, Faults, Summary};
 use crate::tournament::{self, Flow, GameRecord, Tournament};
 
 /// Plays bots against each other as separate processes, the way CodinGame
@@ -79,6 +79,18 @@ pub struct CommonArgs {
     /// invalidly; the other bots' faults only lose them their games.
     #[arg(long, value_name = "NAME")]
     pub expect_no_faults_from: Option<String>,
+
+    /// Timeouts that `--expect-no-faults` and `--expect-no-faults-from`
+    /// tolerate, as a fraction of each bot's games, rounded down: 0.01
+    /// allows 10 in 1,000 games. A timeout still loses its game. Crashes
+    /// and invalid answers are never tolerated.
+    #[arg(
+        long,
+        value_name = "RATE",
+        default_value_t = 0.0,
+        allow_negative_numbers = true
+    )]
+    pub max_timeout_rate: f64,
 }
 
 #[derive(Debug, clap::Args)]
@@ -295,7 +307,7 @@ fn run_league<F: RefereeFactory>(args: LeagueArgs, new_referee: &F) -> Result<bo
 
     let mut output = Output::create(args.common.out.as_deref())?;
     let mut results = Vec::new();
-    let mut faults = vec![0u32; bots.len()];
+    let mut faults = vec![Faults::default(); bots.len()];
     let mut games = vec![0u32; bots.len()];
     for a in 0..bots.len() {
         for b in a + 1..bots.len() {
@@ -317,8 +329,11 @@ fn run_league<F: RefereeFactory>(args: LeagueArgs, new_referee: &F) -> Result<bo
                 summary.draws,
                 summary.losses
             );
-            faults[a] += summary.faults[0].total();
-            faults[b] += summary.faults[1].total();
+            for (bot, found) in [a, b].into_iter().zip(summary.faults) {
+                faults[bot].timeouts += found.timeouts;
+                faults[bot].crashes += found.crashes;
+                faults[bot].invalid += found.invalid;
+            }
             games[a] += summary.games();
             games[b] += summary.games();
             results.push(MatchupResult {
@@ -347,12 +362,12 @@ fn run_league<F: RefereeFactory>(args: LeagueArgs, new_referee: &F) -> Result<bo
         );
     }
     let mut passed = true;
-    for (name, &count) in names.iter().zip(&faults) {
-        if count > 0 {
-            println!("faults: {name} lost {count} games by a fault");
-            if args.common.expect_no_faults
-                || args.common.expect_no_faults_from.as_ref() == Some(name)
-            {
+    for ((name, found), &played) in names.iter().zip(&faults).zip(&games) {
+        if found.total() > 0 {
+            println!("faults: {name} lost {} games by a fault", found.total());
+            let checked = args.common.expect_no_faults
+                || args.common.expect_no_faults_from.as_ref() == Some(name);
+            if checked && !found.within(played, args.common.max_timeout_rate) {
                 passed = false;
             }
         }
@@ -392,6 +407,9 @@ fn two_bots(specs: &[String]) -> Result<[BotSpec; 2], String> {
 fn tournament(bots: [BotSpec; 2], pairs: u32, common: &CommonArgs) -> Result<Tournament, String> {
     if common.time_scale.is_nan() || common.time_scale <= 0.0 {
         return Err("--time-scale must be positive".to_string());
+    }
+    if !(0.0..1.0).contains(&common.max_timeout_rate) {
+        return Err("--max-timeout-rate must be at least 0 and below 1".to_string());
     }
     Ok(Tournament {
         bots,
@@ -435,26 +453,24 @@ fn play<F: RefereeFactory>(
     .map_err(|err| err.to_string())
 }
 
-/// Whether the faults are acceptable; reports them otherwise.
+/// Whether the checked bots' faults are acceptable: none, except timeouts
+/// within `--max-timeout-rate`. Reports them otherwise.
 fn faults_ok(common: &CommonArgs, summary: &Summary) -> bool {
+    let games = summary.games();
+    let allowed = allowed_timeouts(games, common.max_timeout_rate);
     let mut ok = true;
-    if common.expect_no_faults && summary.total_faults() > 0 {
-        eprintln!(
-            "error: {} games ended by a bot fault",
-            summary.total_faults()
-        );
-        ok = false;
-    }
-    if let Some(name) = &common.expect_no_faults_from {
-        let faults: u32 = summary
-            .names
-            .iter()
-            .zip(&summary.faults)
-            .filter(|(bot, _)| *bot == name)
-            .map(|(_, faults)| faults.total())
-            .sum();
-        if faults > 0 {
-            eprintln!("error: {name} lost {faults} games by a fault");
+    for (name, faults) in summary.names.iter().zip(&summary.faults) {
+        let checked =
+            common.expect_no_faults || common.expect_no_faults_from.as_ref() == Some(name);
+        if checked && !faults.within(games, common.max_timeout_rate) {
+            eprintln!(
+                "error: {name} lost {} games by a fault ({} timeouts, {} crashes, {} invalid \
+                 answers; {allowed} timeouts allowed in {games} games)",
+                faults.total(),
+                faults.timeouts,
+                faults.crashes,
+                faults.invalid
+            );
             ok = false;
         }
     }
