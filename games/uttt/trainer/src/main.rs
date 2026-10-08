@@ -131,13 +131,14 @@ enum Command {
         /// Moves of each playout drawn from the policy, as in the bot.
         #[arg(long, default_value_t = 16)]
         policy_plies: u32,
-        /// Held-out positions on which the network is compared with
-        /// playouts.
+        /// Held-out positions on which the network's predictions are
+        /// compared with playouts'.
         #[arg(long, default_value_t = 50_000)]
-        gate_positions: usize,
+        compared_positions: usize,
         /// Pairs of games between a search with the network and one with
-        /// the playouts, at equal iterations; 0 for none.
-        #[arg(long, default_value_t = 200)]
+        /// the playouts, at equal iterations: the gate of ADR 0018. 0 for
+        /// none.
+        #[arg(long, default_value_t = 400)]
         duel_pairs: u32,
         /// Iterations per move in those games.
         #[arg(long, default_value_t = 3_000)]
@@ -216,7 +217,7 @@ fn main() -> ExitCode {
             seed,
             policy,
             policy_plies,
-            gate_positions,
+            compared_positions,
             duel_pairs,
             duel_iterations,
             duel_exploration,
@@ -241,7 +242,7 @@ fn main() -> ExitCode {
             },
             policy,
             policy_plies,
-            gate_positions,
+            compared_positions,
             duel_pairs,
             duel_iterations,
             duel_exploration,
@@ -426,7 +427,7 @@ struct ValueOptions {
     training: value_fit::Training,
     policy: PathBuf,
     policy_plies: u32,
-    gate_positions: usize,
+    compared_positions: usize,
     duel_pairs: u32,
     duel_iterations: u64,
     duel_exploration: f64,
@@ -478,24 +479,23 @@ fn fit_value(options: &ValueOptions) -> Result<(), String> {
     )
     .map_err(|err| format!("{}: {err}", options.weights_out.display()))?;
 
-    // The gate: the same held-out positions for every predictor.
-    let gate = value_fit::spread(&held_out, options.gate_positions);
+    // The same held-out positions for every predictor.
+    let compared = value_fit::spread(&held_out, options.compared_positions);
     let counts = [1, 2, 4, 8, 16, 32];
     eprintln!(
-        "gate: {} positions, up to {} playouts each",
-        gate.len(),
+        "predictions: {} positions, up to {} playouts each",
+        compared.len(),
         counts[5]
     );
-    let errors = value_fit::playout_errors(&gate, policy, &counts, settings.seed, threads);
-    let network = value_fit::measure(&parameters, &gate, threads);
-    let network_rounded = value_fit::measure(&rounded, &gate, threads);
+    let errors = value_fit::playout_errors(&compared, policy, &counts, settings.seed, threads);
+    let network = value_fit::measure(&parameters, &compared, threads);
+    let network_rounded = value_fit::measure(&rounded, &compared, threads);
     let average = fitted.iter().map(|e| f64::from(e.result)).sum::<f64>() / fitted.len() as f64;
-    let constant = gate
+    let constant = compared
         .iter()
         .map(|e| (average - f64::from(e.result)).powi(2))
         .sum::<f64>()
-        / gate.len() as f64;
-    let passes = network_rounded.squared_error < errors[0];
+        / compared.len() as f64;
     let worth = value_fit::worth_in_playouts(network_rounded.squared_error, &counts, &errors);
     let held_out_rounded = value_fit::measure(&rounded, &held_out, threads);
     let duel = duel::Duel {
@@ -548,29 +548,61 @@ fn fit_value(options: &ValueOptions) -> Result<(), String> {
         options.policy.display(),
         options.policy_plies
     );
-    let verdict = if passes { "passes" } else { "fails" };
-    let _ = writeln!(
-        report,
-        "\n**Gate of ADR 0017, a squared error below one playout's: {verdict}.** On {} held-out positions, the network's squared error against the result, with its weights rounded, is {:.4}; that of one playout is {:.4}. The network is worth {worth}.",
-        gate.len(),
-        network_rounded.squared_error,
-        errors[0]
-    );
-    if constant < errors[0] {
+    let elo = |results: &duel::Results| match results.elo() {
+        Some(elo) => format!("{:+.1} Elo [{:+.1}, {:+.1}]", elo.elo, elo.low, elo.high),
+        None => "no Elo estimate".to_string(),
+    };
+    match &duel_results {
+        Some(results) => {
+            let (verdict, why) = if results.not_clearly_weaker() {
+                ("passes", "not clearly weaker")
+            } else {
+                ("fails", "clearly weaker")
+            };
+            let _ = writeln!(
+                report,
+                "\n**Gate of ADR 0018: {verdict}.** At {} iterations per move, the network's search scored {} against the playouts' over {} pairs of games: {why}.",
+                duel.iterations,
+                elo(results),
+                options.duel_pairs
+            );
+        }
+        None => {
+            let _ = writeln!(
+                report,
+                "\n**Gate of ADR 0018: not measured**, no games played."
+            );
+        }
+    }
+    if let Some(results) = &duel_results {
         let _ = writeln!(
             report,
-            "\nThe average result alone, a constant, has a squared error of {constant:.4} and would pass too: one playout's error is mostly its own noise, which a search averages away. The games at equal iterations below say more."
+            "\n## Against the playouts, at equal iterations\n\nA search with the network (weights rounded, exploration {}) against one with the playouts above (exploration {}), {} iterations per move each, {} pairs of games from {} random opening moves: {} wins, {} draws, {} losses for the network, {}. Pairs by the network's points (0, ½, 1, 1½, 2): {:?}.",
+            duel.network_exploration,
+            duel.exploration,
+            duel.iterations,
+            options.duel_pairs,
+            duel.opening_plies,
+            results.wins,
+            results.draws,
+            results.losses,
+            elo(results),
+            results.pairs
         );
     }
-    let _ = writeln!(report);
     let _ = writeln!(
         report,
-        "| Predictor, on the gate's positions | Squared error | Cross-entropy, nats |"
+        "\n## Predictions on held-out positions\n\nOn {} positions of held-out games, against the game's result for the side to move. Measured this way, the network with rounded weights is worth {worth}. A single playout's error is mostly its own noise, which a search averages away, so only the games above judge the network (ADR 0018).\n",
+        compared.len()
+    );
+    let _ = writeln!(
+        report,
+        "| Predictor | Squared error | Cross-entropy, nats |"
     );
     let _ = writeln!(report, "| --- | --- | --- |");
     let _ = writeln!(
         report,
-        "| The average result, {average:.3} | {constant:.4} | |"
+        "| The average result of fitted games, {average:.3} | {constant:.4} | |"
     );
     for (count, error) in counts.iter().zip(&errors) {
         let _ = writeln!(report, "| Average of {count} playouts | {error:.4} | |");
@@ -585,25 +617,6 @@ fn fit_value(options: &ValueOptions) -> Result<(), String> {
         "| Network, weights rounded | {:.4} | {:.4} |",
         network_rounded.squared_error, network_rounded.cross_entropy
     );
-    if let Some(results) = duel_results {
-        let elo = match results.elo() {
-            Some(elo) => format!("{:+.1} Elo [{:+.1}, {:+.1}]", elo.elo, elo.low, elo.high),
-            None => "no Elo estimate".to_string(),
-        };
-        let _ = writeln!(
-            report,
-            "\n## Against the playouts, at equal iterations\n\nA search with the network (weights rounded, exploration {}) against one with the playouts above (exploration {}), {} iterations per move each, {} pairs of games from {} random opening moves: {} wins, {} draws, {} losses for the network, {elo}. Pairs by the network's points (0, ½, 1, 1½, 2): {:?}.",
-            duel.network_exploration,
-            duel.exploration,
-            duel.iterations,
-            options.duel_pairs,
-            duel.opening_plies,
-            results.wins,
-            results.draws,
-            results.losses,
-            results.pairs
-        );
-    }
     let _ = writeln!(report, "\n## Training\n");
     let _ = writeln!(
         report,

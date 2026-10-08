@@ -71,6 +71,19 @@ impl Results {
         })
     }
 
+    /// The gate of ADR 0018: the network is not clearly weaker, that is
+    /// the 95% interval of its Elo advantage reaches 0 or above. Without an
+    /// interval, its score must be at least half the points.
+    pub fn not_clearly_weaker(&self) -> bool {
+        match self.elo() {
+            Some(elo) => elo.high >= 0.0,
+            None => {
+                let games = self.wins + self.draws + self.losses;
+                games > 0 && 2 * self.wins + self.draws >= games
+            }
+        }
+    }
+
     fn add(&mut self, other: &Results) {
         self.wins += other.wins;
         self.draws += other.draws;

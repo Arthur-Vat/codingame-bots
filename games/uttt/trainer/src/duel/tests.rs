@@ -30,6 +30,31 @@ fn elo_follows_the_pairs_scores() {
 }
 
 #[test]
+fn the_gate_passes_unless_the_network_is_clearly_weaker() {
+    let pairs = |pairs| Results {
+        pairs,
+        ..Results::default()
+    };
+    assert!(pairs([0, 0, 10, 0, 0]).not_clearly_weaker());
+    assert!(pairs([1, 3, 10, 2, 0]).not_clearly_weaker());
+    assert!(!pairs([20, 5, 5, 0, 0]).not_clearly_weaker());
+    // Without an interval: every point, or none.
+    let sweep = Results {
+        wins: 8,
+        pairs: [0, 0, 0, 0, 4],
+        ..Results::default()
+    };
+    assert!(sweep.not_clearly_weaker());
+    let shutout = Results {
+        losses: 8,
+        pairs: [4, 0, 0, 0, 0],
+        ..Results::default()
+    };
+    assert!(!shutout.not_clearly_weaker());
+    assert!(!Results::default().not_clearly_weaker());
+}
+
+#[test]
 fn duels_count_every_game_and_do_not_depend_on_threads() {
     let mut rng = Rng::new(31);
     let parameters: Vec<f32> = (0..ValueNetwork::PARAMETERS)

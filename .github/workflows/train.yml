@@ -32,10 +32,10 @@ on:
         default: "result"
       epochs:
         description: "Value: passes over the positions"
-        default: "4"
+        default: "8"
       duel_exploration:
         description: "Value: exploration of the network's search against the playouts'"
-        default: "0.2"
+        default: "0.1"
 
 permissions:
   contents: read

@@ -68,7 +68,12 @@ impl Target {
 /// alike. Positions where the side to move can win the game at once are
 /// left out: the search never asks the network there.
 pub fn examples(games: &[GameRecord]) -> (Vec<Example>, Vec<Example>) {
-    let (mut fitted, mut held_out) = (Vec::new(), Vec::new());
+    // Reserved at once: growing would hold two copies of a large vector.
+    let positions: usize = games.iter().map(|game| game.searched.len()).sum();
+    let (mut fitted, mut held_out) = (
+        Vec::with_capacity(positions - positions / 20),
+        Vec::with_capacity(positions / 20 + 64),
+    );
     for (index, game) in games.iter().enumerate() {
         let status = game.status();
         if status == Status::Ongoing {
