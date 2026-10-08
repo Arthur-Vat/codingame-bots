@@ -1,0 +1,144 @@
+name: Train
+
+# Self-play and training for Ultimate Tic-Tac-Toe (ADR 0016). Started by
+# hand only: self-play games run in parallel jobs, then one job fits the
+# playout policy and commits the weights and a report to a new branch
+# claude/train/<run id>.
+on:
+  workflow_dispatch:
+    inputs:
+      jobs:
+        description: "Self-play jobs run at the same time, 1 to 20"
+        default: "8"
+      games:
+        description: "Games per job (each job plays them on its 4 cores)"
+        default: "1000"
+      iterations:
+        description: "Search iterations per move"
+        default: "10000"
+      opening_plies:
+        description: "Random moves at the start of each game"
+        default: "6"
+      temperature:
+        description: "Above 1, flattens the fitted weights"
+        default: "1"
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Unlike GitHub's default, fails a step when any command of a pipeline
+    # fails, not only the last one.
+    shell: bash
+
+env:
+  CARGO_TERM_COLOR: always
+  CG_RUST: "1.90.0"
+
+jobs:
+  plan:
+    name: Plan the self-play jobs
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.shards.outputs.shards }}
+    steps:
+      - id: shards
+        env:
+          JOBS: ${{ inputs.jobs }}
+        run: |
+          if ! [[ $JOBS =~ ^[0-9]+$ ]] || ((JOBS < 1 || JOBS > 20)); then
+            echo "::error::jobs must be a number from 1 to 20, not '$JOBS'"
+            exit 1
+          fi
+          shards="$(seq -s, 0 $((JOBS - 1)))"
+          echo "shards=[$shards]" >> "$GITHUB_OUTPUT"
+
+  selfplay:
+    name: Self-play ${{ matrix.shard }}
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Build the trainer
+        run: cargo build --release --locked -p uttt-trainer
+      - name: Play
+        env:
+          GAMES: ${{ inputs.games }}
+          ITERATIONS: ${{ inputs.iterations }}
+          OPENING_PLIES: ${{ inputs.opening_plies }}
+          SHARD: ${{ matrix.shard }}
+        run: |
+          mkdir -p target/train
+          # One process per core, each with its own seed and share of games.
+          cores="$(nproc)"
+          for ((core = 0; core < cores; core++)); do
+            share=$(((GAMES + cores - 1 - core) / cores))
+            seed=$((GITHUB_RUN_ID * 1000 + SHARD * 10 + core))
+            target/release/uttt-trainer selfplay --games "$share" \
+              --iterations "$ITERATIONS" --opening-plies "$OPENING_PLIES" \
+              --seed "$seed" --out "target/train/selfplay-$SHARD-$core.bin" &
+          done
+          wait
+      - uses: actions/upload-artifact@v7
+        with:
+          name: selfplay-${{ matrix.shard }}
+          path: target/train/*.bin
+          retention-days: 7
+
+  fit:
+    name: Fit the playout policy
+    needs: selfplay
+    runs-on: ubuntu-latest
+    permissions:
+      # Only to push the claude/train/<run id> branch with the results.
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Build the trainer
+        run: cargo build --release --locked -p uttt-trainer
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: selfplay-*
+          path: target/train
+          merge-multiple: true
+      - name: Fit
+        env:
+          JOBS: ${{ inputs.jobs }}
+          GAMES: ${{ inputs.games }}
+          ITERATIONS: ${{ inputs.iterations }}
+          OPENING_PLIES: ${{ inputs.opening_plies }}
+          TEMPERATURE: ${{ inputs.temperature }}
+        run: |
+          out="games/uttt/training/runs/$GITHUB_RUN_ID"
+          mkdir -p "$out"
+          data=()
+          for file in target/train/*.bin; do
+            data+=(--data "$file")
+          done
+          origin="run $GITHUB_RUN_ID of commit $GITHUB_SHA, $JOBS jobs of $GAMES games at $ITERATIONS iterations, $OPENING_PLIES opening plies"
+          target/release/uttt-trainer fit-policy "${data[@]}" \
+            --temperature "$TEMPERATURE" --origin "$origin" \
+            --weights-out "$out/weights.rs" --report-out "$out/report.md"
+          cat "$out/report.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Commit the results to claude/train/${{ github.run_id }}
+        run: |
+          branch="claude/train/$GITHUB_RUN_ID"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add "games/uttt/training/runs/$GITHUB_RUN_ID"
+          git commit -m "chore(train): playout policy from run $GITHUB_RUN_ID"
+          git push origin "$branch"

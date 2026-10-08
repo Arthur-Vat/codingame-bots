@@ -5,6 +5,13 @@ use cg_core::rng::Rng;
 use crate::grid::{self, FULL};
 use crate::moves::{Move, MoveList};
 
+mod policy;
+
+pub use policy::{
+    PlayoutPolicy, BLOCKS, CENTRE, CLASSES, FEATURES, FEATURE_NAMES, GIVES_BOARD,
+    GIVES_FREE_CHOICE, WINS_BOARD,
+};
+
 /// Whether the game goes on, and how it ended.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Status {
@@ -26,6 +33,9 @@ pub struct Board {
     won: [u16; 2],
     /// Small boards that are won or full; no more moves there.
     closed: u16,
+    /// `threats[seat]`: the open small boards where `seat` has a free cell
+    /// that would win the board, kept up to date move by move.
+    threats: [u16; 2],
     /// The small board the player to move must play in, or `ANY_BOARD`.
     target: u8,
     to_move: u8,
@@ -45,6 +55,7 @@ impl Board {
             marks: [[0; 9]; 2],
             won: [0; 2],
             closed: 0,
+            threats: [0; 2],
             target: ANY_BOARD,
             to_move: 0,
             status: Status::Ongoing,
@@ -157,6 +168,17 @@ impl Board {
             }
         }
 
+        // Only this small board changed: the mover may have made a threat
+        // there, blocked the opponent's, or closed the board.
+        let bit = 1 << board;
+        let open = self.closed & bit == 0;
+        let other = self.marks[1 - seat][board];
+        let empty = !(marks | other) & FULL;
+        let mine = open && grid::completing_cells(marks) & empty != 0;
+        let theirs = open && grid::completing_cells(other) & empty != 0;
+        self.threats[seat] = (self.threats[seat] & !bit) | (u16::from(mine) << board);
+        self.threats[1 - seat] = (self.threats[1 - seat] & !bit) | (u16::from(theirs) << board);
+
         self.target = if self.is_closed(cell) {
             ANY_BOARD
         } else {
@@ -228,14 +250,7 @@ impl Board {
     /// Whether `seat` may play there is up to the caller.
     #[inline]
     fn game_winning_boards(&self, seat: usize, boards: u16) -> u16 {
-        let candidates = grid::completing_cells(self.won[seat]) & boards & !self.closed;
-        let mut winning = 0;
-        for board in grid::cells(candidates) {
-            if grid::completing_cells(self.marks[seat][board]) & self.empty_cells(board) != 0 {
-                winning |= 1 << board;
-            }
-        }
-        winning
+        grid::completing_cells(self.won[seat]) & boards & self.threats[seat]
     }
 
     /// A move for playouts that looks one move ahead ("decisive moves"): a
@@ -252,6 +267,23 @@ impl Board {
     /// [`decisive_move`](Board::decisive_move) as a small board and a cell.
     #[inline(always)]
     fn decisive_cell(&self, rng: &mut Rng) -> (usize, usize) {
+        match self.game_winning_cell() {
+            Some(winning) => winning,
+            None => self.random_cell(rng),
+        }
+    }
+
+    /// A legal move that wins the game at once with a line of small
+    /// boards, if there is one: the move playouts play first.
+    pub fn game_winning_move(&self) -> Option<Move> {
+        self.game_winning_cell()
+            .map(|(board, cell)| Move::new_unchecked(board, cell))
+    }
+
+    /// The first legal move, as a small board and a cell, that wins the game
+    /// with a line of small boards, if there is one.
+    #[inline(always)]
+    fn game_winning_cell(&self) -> Option<(usize, usize)> {
         let seat = self.to_move();
         let allowed = if self.target == ANY_BOARD {
             FULL
@@ -259,12 +291,12 @@ impl Board {
             1 << self.target
         };
         let winning = self.game_winning_boards(seat, allowed);
-        if winning != 0 {
-            let board = winning.trailing_zeros() as usize;
-            let cells = grid::completing_cells(self.marks[seat][board]) & self.empty_cells(board);
-            return (board, cells.trailing_zeros() as usize);
+        if winning == 0 {
+            return None;
         }
-        self.random_cell(rng)
+        let board = winning.trailing_zeros() as usize;
+        let cells = grid::completing_cells(self.marks[seat][board]) & self.empty_cells(board);
+        Some((board, cells.trailing_zeros() as usize))
     }
 
     /// Plays [`decisive_move`](Board::decisive_move)s until the game ends,

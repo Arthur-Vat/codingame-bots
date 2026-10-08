@@ -27,6 +27,9 @@ fn position(marks: &[(Move, usize)], to_move: usize, target: Option<usize>) -> B
             board.closed |= 1 << small;
         }
     }
+    for seat in 0..2 {
+        board.threats[seat] = threats_of(&board, seat);
+    }
     board.to_move = to_move as u8;
     board.target = match target {
         Some(small) if !board.is_closed(small) => small as u8,
@@ -45,6 +48,20 @@ fn position(marks: &[(Move, usize)], to_move: usize, target: Option<usize>) -> B
         Status::Ongoing
     };
     board
+}
+
+/// The open small boards where `seat` has a free cell that would win the
+/// board, computed from scratch.
+fn threats_of(board: &Board, seat: usize) -> u16 {
+    (0..9)
+        .filter(|&small| !board.is_closed(small))
+        .filter(|&small| {
+            (0..9).any(|cell| {
+                board.empty_cells(small) & (1 << cell) != 0
+                    && grid::has_line(board.marks[seat][small] | 1 << cell)
+            })
+        })
+        .fold(0, |mask, small| mask | 1 << small)
 }
 
 /// Marks winning small board `small` for `seat` with its top row.
@@ -202,6 +219,9 @@ fn random_games_keep_every_invariant() {
                 if let Some(target) = board.target() {
                     assert_eq!(mv.board(), target);
                 }
+            }
+            for seat in 0..2 {
+                assert_eq!(board.threats[seat], threats_of(&board, seat), "{board:?}");
             }
             let mv = moves[rng.below(moves.len() as u64) as usize];
             board.play(mv);

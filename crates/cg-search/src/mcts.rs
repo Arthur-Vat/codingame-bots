@@ -207,6 +207,19 @@ impl<G: Game> Mcts<G> {
         }
     }
 
+    /// The root's moves and their visits after the last search that ran
+    /// iterations, earlier searches' visits included; nothing before the
+    /// first search. A search that returns a winning move at once leaves
+    /// the tree as it was.
+    pub fn root_visits(&self) -> impl Iterator<Item = (G::Move, u32)> + '_ {
+        let children = if self.nodes.is_empty() {
+            0..0
+        } else {
+            self.children(0)
+        };
+        children.map(|index| (self.nodes[index].mv, self.nodes[index].visits))
+    }
+
     /// A fresh tree: the root and one child per candidate.
     fn start(&mut self, root: &G, candidates: &[G::Move]) {
         self.nodes.clear();
