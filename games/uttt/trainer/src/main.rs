@@ -19,6 +19,7 @@ mod data;
 mod duel;
 mod fit;
 mod head_start;
+mod patterns_fit;
 mod selfplay;
 mod value_fit;
 
@@ -87,6 +88,40 @@ enum Command {
         /// Gradient steps.
         #[arg(long, default_value_t = 2_000)]
         steps: u32,
+        /// Where to write the weights, as Rust source.
+        #[arg(long)]
+        weights_out: PathBuf,
+        /// Where to write the report, in Markdown.
+        #[arg(long)]
+        report_out: PathBuf,
+        /// Where the data came from, for the generated files.
+        #[arg(long, default_value = "local run")]
+        origin: String,
+    },
+    /// Fits the pattern policy (E015) to self-play data with visits, and
+    /// compares it with the playout policy's 32 classes fitted alike.
+    FitPatterns {
+        /// Data files written by `selfplay`, with visits.
+        #[arg(long = "data", required = true)]
+        data: Vec<PathBuf>,
+        /// Passes over the fitted positions.
+        #[arg(long, default_value_t = 4)]
+        epochs: u32,
+        /// Positions per step.
+        #[arg(long, default_value_t = 256)]
+        batch: usize,
+        /// Adam's step size.
+        #[arg(long, default_value_t = 0.01)]
+        rate: f32,
+        /// Weight of the penalty on the log-weights' squares.
+        #[arg(long, default_value_t = 1e-5)]
+        penalty: f32,
+        /// Below 1, sharpens the weights the bot gets.
+        #[arg(long, default_value_t = 1.0)]
+        temperature: f32,
+        /// Seed of the order of positions.
+        #[arg(long, default_value_t = 1)]
+        seed: u64,
         /// Where to write the weights, as Rust source.
         #[arg(long)]
         weights_out: PathBuf,
@@ -241,6 +276,31 @@ fn main() -> ExitCode {
             report_out,
             origin,
         }),
+        Command::FitPatterns {
+            data,
+            epochs,
+            batch,
+            rate,
+            penalty,
+            temperature,
+            seed,
+            weights_out,
+            report_out,
+            origin,
+        } => fit_patterns(
+            &data,
+            &patterns_fit::Fitting {
+                epochs,
+                batch,
+                rate,
+                penalty,
+                seed,
+            },
+            temperature,
+            &weights_out,
+            &report_out,
+            &origin,
+        ),
         Command::HeadStart {
             policy,
             policy_plies,
@@ -721,6 +781,130 @@ fn fit_value(options: &ValueOptions) -> Result<(), String> {
     );
     std::fs::write(&options.report_out, &report)
         .map_err(|err| format!("{}: {err}", options.report_out.display()))?;
+    print!("{report}");
+    Ok(())
+}
+
+fn fit_patterns(
+    data: &[PathBuf],
+    settings: &patterns_fit::Fitting,
+    temperature: f32,
+    weights_out: &Path,
+    report_out: &Path,
+    origin: &str,
+) -> Result<(), String> {
+    use patterns_fit::{Model, Split};
+    let start = Instant::now();
+    let mut split = Split::default();
+    for path in data {
+        split.add(&read_file(path)?);
+    }
+    let (fitted, held_out) = (&split.fitted, &split.held_out);
+    if fitted.positions() == 0 || held_out.positions() == 0 {
+        return Err("no searched positions with visits in the data".to_string());
+    }
+    eprintln!(
+        "{} positions to fit ({} moves), {} held out",
+        fitted.positions(),
+        fitted.moves(),
+        held_out.positions()
+    );
+    let uniform = patterns_fit::measure(Model::Classes, &[0.0; CLASSES], held_out);
+    let classes = patterns_fit::fit(Model::Classes, fitted, settings, |_, _| {});
+    let classes_metrics = patterns_fit::measure(Model::Classes, &classes, held_out);
+    let mut epochs = Vec::new();
+    let theta = patterns_fit::fit(Model::Patterns, fitted, settings, |epoch, theta| {
+        let metrics = patterns_fit::measure(Model::Patterns, theta, held_out);
+        eprintln!(
+            "epoch {epoch}: held out {:.4} nats, favourite move {:.3}, {:.0} s",
+            metrics.cross_entropy,
+            metrics.best_move,
+            start.elapsed().as_secs_f64()
+        );
+        epochs.push((epoch, metrics));
+    });
+    let patterns = epochs
+        .last()
+        .map(|&(_, metrics)| metrics)
+        .unwrap_or_default();
+    let rounded: Vec<f32> = theta
+        .iter()
+        .map(|&value| ((value * 4.0).round() / 4.0).clamp(-8.0, 7.75))
+        .collect();
+    let rounded_metrics = patterns_fit::measure(Model::Patterns, &rounded, held_out);
+    let sharpened: Vec<f32> = theta.iter().map(|&value| value / temperature).collect();
+    let text = uttt_engine::board::encode_pattern_weights(&sharpened);
+    std::fs::write(weights_out, patterns_fit::weights_source(&text, origin))
+        .map_err(|err| format!("{}: {err}", weights_out.display()))?;
+    let mut seen = vec![false; uttt_engine::board::PATTERN_FEATURES];
+    for &feature in &fitted.patterns {
+        seen[feature as usize] = true;
+    }
+    let seen = seen.iter().filter(|&&seen| seen).count();
+
+    let mut report = String::new();
+    let _ = writeln!(report, "# Pattern policy fit\n");
+    let _ = writeln!(report, "- Data: {origin}");
+    let _ = writeln!(
+        report,
+        "- Games: {}; positions: {} fitted ({} moves), {} held out (every 20th game, whole)",
+        fitted.games + held_out.games,
+        fitted.positions(),
+        fitted.moves(),
+        held_out.positions()
+    );
+    let _ = writeln!(
+        report,
+        "- Settings: {} epochs, batches of {} positions, Adam at {}, penalty {}, temperature {} for the bot, seed {}; {:.0} s in all",
+        settings.epochs,
+        settings.batch,
+        settings.rate,
+        settings.penalty,
+        temperature,
+        settings.seed,
+        start.elapsed().as_secs_f64()
+    );
+    let _ = writeln!(
+        report,
+        "- Features seen in the fitted positions: {seen} of {}\n",
+        uttt_engine::board::PATTERN_FEATURES
+    );
+    let _ = writeln!(
+        report,
+        "| Model, on held-out positions | Weights | Cross-entropy, nats per position | Probability of the search's favourite move |"
+    );
+    let _ = writeln!(report, "| --- | --- | --- | --- |");
+    let rows = [
+        ("Uniform", 0, uniform),
+        ("Move classes, fitted here", CLASSES, classes_metrics),
+        ("Patterns", uttt_engine::board::PATTERN_FEATURES, patterns),
+        (
+            "Patterns, rounded to quarters",
+            uttt_engine::board::PATTERN_FEATURES,
+            rounded_metrics,
+        ),
+    ];
+    for (name, weights, metrics) in rows {
+        let _ = writeln!(
+            report,
+            "| {name} | {weights} | {:.4} | {:.3} |",
+            metrics.cross_entropy, metrics.best_move
+        );
+    }
+    let _ = writeln!(
+        report,
+        "\n| Epoch | Held-out cross-entropy | Favourite move |"
+    );
+    let _ = writeln!(report, "| --- | --- | --- |");
+    for (epoch, metrics) in &epochs {
+        let _ = writeln!(
+            report,
+            "| {epoch} | {:.4} | {:.3} |",
+            metrics.cross_entropy, metrics.best_move
+        );
+    }
+    std::fs::write(report_out, &report)
+        .map_err(|err| format!("{}: {err}", report_out.display()))?;
     print!("{report}");
     Ok(())
 }
