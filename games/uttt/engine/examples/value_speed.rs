@@ -12,18 +12,20 @@
 //! cargo run --release -p uttt-engine --example value_speed -- [SECONDS]
 //! ```
 //!
-//! The network reads the position from the side to move's view: its marks
-//! and the opponent's in each open small board, who won each closed board,
-//! the board it is sent to, and each side's threats (open boards where it
-//! has a cell that wins the board). Hidden layers use clipped ReLU, the
-//! output a sigmoid: the side to move's expected score. Arithmetic is in
-//! `f32`, in loops the compiler vectorizes for the plain x86-64 target.
+//! The networks read the position as the engine's network does
+//! (`uttt_engine::value`): the side to move's marks and the opponent's in
+//! each open small board, who won each closed board, the board it is sent
+//! to, and each side's threats. Hidden layers use clipped ReLU, the output a
+//! sigmoid: the side to move's expected score. Sizes other than the
+//! engine's are written here; the last row times the engine's own
+//! `ValueNetwork`.
 
 use std::time::{Duration, Instant};
 
 use cg_core::rng::Rng;
 use cg_search::{Budget, Game, Mcts};
 use uttt_engine::search::PolicyBoard;
+use uttt_engine::value::{active_inputs, ValueNetwork, INPUTS, MAX_ACTIVE};
 use uttt_engine::{Board, Move, PlayoutPolicy, Status};
 
 /// `uttt-v008`'s playout policy (`games/uttt/bots/mcts/src/weights.rs`).
@@ -37,58 +39,6 @@ static POLICY: PlayoutPolicy = PlayoutPolicy::new([
 const EXPLORATION: f64 = 0.5;
 /// The bot's search time per turn at CodinGame's limits.
 const SEARCH: Duration = Duration::from_millis(90);
-
-/// Inputs: 81 cells for the side to move's marks, 81 for the opponent's
-/// (open boards only), 3 per small board for a closed board (won by the
-/// side to move, won by the opponent, full), 10 for the board the side to
-/// move is sent to (9 for any), 9 + 9 for each side's threats.
-const INPUTS: usize = 81 + 81 + 27 + 10 + 18;
-const STATUS: usize = 162;
-const TARGET: usize = STATUS + 27;
-const THREATS: usize = TARGET + 10;
-/// At most 81 cells, 9 boards, 1 target and 18 threats are active.
-const MAX_ACTIVE: usize = 128;
-
-/// The inputs that are 1 in `board`, from the side to move's view.
-fn active_inputs(board: &Board, list: &mut [u16; MAX_ACTIVE]) -> usize {
-    let me = board.to_move();
-    let them = 1 - me;
-    let mut count = 0;
-    let closed = board.closed_boards();
-    for small in 0..9 {
-        if closed & (1 << small) == 0 {
-            for (seat, offset) in [(me, 0), (them, 81)] {
-                let mut cells = board.cells(seat, small);
-                while cells != 0 {
-                    list[count] = (offset + small * 9 + cells.trailing_zeros() as usize) as u16;
-                    count += 1;
-                    cells &= cells - 1;
-                }
-            }
-        } else {
-            let status = if board.won_boards(me) & (1 << small) != 0 {
-                0
-            } else if board.won_boards(them) & (1 << small) != 0 {
-                1
-            } else {
-                2
-            };
-            list[count] = (STATUS + small * 3 + status) as u16;
-            count += 1;
-        }
-    }
-    list[count] = (TARGET + board.target().unwrap_or(9)) as u16;
-    count += 1;
-    for (seat, offset) in [(me, 0), (them, 9)] {
-        let mut threats = board.threat_boards(seat);
-        while threats != 0 {
-            list[count] = (THREATS + offset + threats.trailing_zeros() as usize) as u16;
-            count += 1;
-            threats &= threats - 1;
-        }
-    }
-    count
-}
 
 /// Evaluates positions for the side to move.
 trait Evaluator: Sync {
@@ -197,6 +147,21 @@ impl<const H: usize, const H2: usize> Evaluator for Network<H, H2> {
     }
 }
 
+/// The engine's network, as the bot will use it.
+impl Evaluator for ValueNetwork {
+    fn name(&self) -> String {
+        "217-64-16-1, the engine's".to_string()
+    }
+
+    fn parameters(&self) -> usize {
+        ValueNetwork::PARAMETERS
+    }
+
+    fn evaluate(&self, board: &Board) -> f32 {
+        ValueNetwork::evaluate(self, board)
+    }
+}
+
 /// A position searched with an evaluator at new leaves instead of a
 /// playout. A side to move with a game-winning move wins: exact, and
 /// cheap with the threats the board keeps.
@@ -259,6 +224,7 @@ fn main() {
         Box::leak(Box::new(Network::<64, 16>::random(&mut rng))),
         Box::leak(Box::new(Network::<128, 32>::random(&mut rng))),
         Box::leak(Box::new(Network::<256, 32>::random(&mut rng))),
+        Box::leak(Box::new(engine_network(&mut rng))),
     ];
 
     // Warm up caches and CPU frequency before measuring.
@@ -326,6 +292,17 @@ fn main() {
         }
         println!();
     }
+}
+
+/// The engine's network with random weights, drawn as for the others.
+fn engine_network(rng: &mut Rng) -> ValueNetwork {
+    let mut uniform = |scale: f64| ((rng.unit() * 2.0 - 1.0) * scale) as f32;
+    let mut parameters = Vec::with_capacity(ValueNetwork::PARAMETERS);
+    let scales = [0.15, 0.5, 1.0 / 8.0, 0.5, 1.0, 0.1];
+    for (count, scale) in ValueNetwork::GROUPS.into_iter().zip(scales) {
+        parameters.extend((0..count).map(|_| uniform(scale)));
+    }
+    ValueNetwork::from_parameters(&parameters).expect("the right number of parameters")
 }
 
 /// Every ongoing position of `games` games of decisive moves from the start.

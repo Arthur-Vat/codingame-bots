@@ -5,6 +5,7 @@ use cg_search::Game;
 
 use crate::board::{Board, PlayoutPolicy, Status};
 use crate::moves::{Move, MoveList};
+use crate::value::ValueNetwork;
 
 impl Game for Board {
     type Move = Move;
@@ -63,6 +64,64 @@ impl Game for PolicyBoard {
 
     fn playout(&mut self, rng: &mut Rng) -> f64 {
         score(self.board.policy_playout(self.policy, rng)).expect("a playout ends the game")
+    }
+}
+
+/// A position searched with a value network (ADR 0017): [`Board`]'s game,
+/// except that a new leaf gets an estimate instead of a playout. A side to
+/// move with a move that wins the game scores a win, exactly; otherwise
+/// the network judges the position.
+#[derive(Clone, Copy)]
+pub struct ValueBoard {
+    pub board: Board,
+    pub network: &'static ValueNetwork,
+}
+
+impl ValueBoard {
+    /// Seat 0's expected score in a position where the game goes on.
+    pub fn estimate(&self) -> f64 {
+        let value = if self.board.game_winning_move().is_some() {
+            1.0
+        } else {
+            f64::from(self.network.evaluate(&self.board))
+        };
+        if self.board.to_move() == 0 {
+            value
+        } else {
+            1.0 - value
+        }
+    }
+}
+
+/// Positions are equal when their boards are: a search compares them to
+/// find the current position in its tree.
+impl PartialEq for ValueBoard {
+    fn eq(&self, other: &Self) -> bool {
+        self.board == other.board
+    }
+}
+
+impl Game for ValueBoard {
+    type Move = Move;
+
+    fn to_move(&self) -> usize {
+        self.board.to_move()
+    }
+
+    fn legal_moves(&self, moves: &mut Vec<Move>) {
+        Game::legal_moves(&self.board, moves);
+    }
+
+    fn play(&mut self, mv: Move) {
+        self.board.play(mv);
+    }
+
+    fn score(&self) -> Option<f64> {
+        score(self.board.status())
+    }
+
+    fn playout(&mut self, _rng: &mut Rng) -> f64 {
+        self.estimate()
     }
 }
 

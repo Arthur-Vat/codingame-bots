@@ -139,3 +139,80 @@ fn proofs_agree_with_exhaustive_search_in_endgames() {
         "{checked} checked, {proven} proven"
     );
 }
+
+/// A network with random weights, for the searches below.
+fn random_network(seed: u64) -> &'static ValueNetwork {
+    let mut rng = Rng::new(seed);
+    let parameters: Vec<f32> = (0..ValueNetwork::PARAMETERS)
+        .map(|_| ((rng.unit() * 2.0 - 1.0) * 0.3) as f32)
+        .collect();
+    Box::leak(Box::new(
+        ValueNetwork::from_parameters(&parameters).unwrap(),
+    ))
+}
+
+#[test]
+fn value_boards_score_wins_in_one_and_ask_the_network_otherwise() {
+    let network = random_network(17);
+    // Wins on points, when the last open board closes, are left to the
+    // network, like any position without a line to complete.
+    let positions: Vec<Board> = positions_with_a_winning_move(20)
+        .into_iter()
+        .map(|(board, _)| board)
+        .filter(|board| board.game_winning_move().is_some())
+        .collect();
+    assert!(positions.len() > 10, "only {} positions", positions.len());
+    for board in positions {
+        let estimate = ValueBoard { board, network }.estimate();
+        assert_eq!(estimate, if board.to_move() == 0 { 1.0 } else { 0.0 });
+    }
+    let mut rng = Rng::new(4);
+    let mut list = MoveList::new();
+    let mut asked = 0;
+    for _ in 0..20 {
+        let mut board = Board::new();
+        while board.status() == Status::Ongoing {
+            if board.game_winning_move().is_none() {
+                let value = f64::from(network.evaluate(&board));
+                let seat_0 = if board.to_move() == 0 {
+                    value
+                } else {
+                    1.0 - value
+                };
+                let mut position = ValueBoard { board, network };
+                assert_eq!(position.estimate(), seat_0);
+                assert_eq!(Game::playout(&mut position, &mut rng), seat_0);
+                asked += 1;
+            }
+            Board::legal_moves(&board, &mut list);
+            board.play(*rng.pick(&list).unwrap());
+        }
+    }
+    assert!(asked > 500);
+}
+
+#[test]
+fn mcts_searches_value_boards() {
+    let network = random_network(23);
+    let mut mcts = Mcts::new(0.5, 1);
+    for (board, moves) in positions_with_a_winning_move(10) {
+        let result = mcts.search(
+            &ValueBoard { board, network },
+            &moves,
+            Budget::Iterations(500),
+        );
+        let mut next = board;
+        next.play(result.best);
+        assert_eq!(next.status(), Status::Win(board.to_move()), "{result:?}");
+    }
+    let board = Board::new();
+    let mut moves = Vec::new();
+    Game::legal_moves(&board, &mut moves);
+    let result = Mcts::new(0.5, 2).search(
+        &ValueBoard { board, network },
+        &moves,
+        Budget::Iterations(2_000),
+    );
+    assert_eq!(result.iterations, 2_000);
+    assert!(board.is_legal(result.best));
+}
