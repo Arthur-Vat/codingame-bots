@@ -2,11 +2,16 @@ name: Train
 
 # Self-play and training for Ultimate Tic-Tac-Toe (ADR 0016). Started by
 # hand only: self-play games run in parallel jobs, then one job fits the
-# playout policy and commits the weights and a report to a new branch
-# claude/train/<run id>.
+# playout policy (stage 1) or the value network (stage 2, ADR 0017) and
+# commits the weights and a report to a new branch claude/train/<run id>.
 on:
   workflow_dispatch:
     inputs:
+      stage:
+        description: "What to train: the playout policy or the value network"
+        type: choice
+        options: [policy, value]
+        default: policy
       jobs:
         description: "Self-play jobs run at the same time, 1 to 20"
         default: "8"
@@ -20,8 +25,17 @@ on:
         description: "Random moves at the start of each game"
         default: "6"
       temperature:
-        description: "Above 1, flattens the fitted weights"
+        description: "Policy: above 1, flattens the fitted weights"
         default: "1"
+      target:
+        description: "Value: what the network learns (result, score or mix)"
+        default: "result"
+      epochs:
+        description: "Value: passes over the positions"
+        default: "4"
+      duel_exploration:
+        description: "Value: exploration of the network's search against the playouts'"
+        default: "0.2"
 
 permissions:
   contents: read
@@ -72,12 +86,19 @@ jobs:
         run: cargo build --release --locked -p uttt-trainer
       - name: Play
         env:
+          STAGE: ${{ inputs.stage }}
           GAMES: ${{ inputs.games }}
           ITERATIONS: ${{ inputs.iterations }}
           OPENING_PLIES: ${{ inputs.opening_plies }}
           SHARD: ${{ matrix.shard }}
         run: |
           mkdir -p target/train
+          # The value network learns from games of the bot's own search,
+          # with its playouts; the policy, from searches' visits.
+          options=()
+          if [[ $STAGE == value ]]; then
+            options=(--policy games/uttt/bots/mcts/src/weights.rs --no-visits)
+          fi
           # One process per core, each with its own seed and share of games.
           cores="$(nproc)"
           for ((core = 0; core < cores; core++)); do
@@ -85,7 +106,8 @@ jobs:
             seed=$((GITHUB_RUN_ID * 1000 + SHARD * 10 + core))
             target/release/uttt-trainer selfplay --games "$share" \
               --iterations "$ITERATIONS" --opening-plies "$OPENING_PLIES" \
-              --seed "$seed" --out "target/train/selfplay-$SHARD-$core.bin" &
+              "${options[@]}" --seed "$seed" \
+              --out "target/train/selfplay-$SHARD-$core.bin" &
           done
           wait
       - uses: actions/upload-artifact@v7
@@ -95,7 +117,7 @@ jobs:
           retention-days: 7
 
   fit:
-    name: Fit the playout policy
+    name: Fit the ${{ inputs.stage == 'value' && 'value network' || 'playout policy' }}
     needs: selfplay
     runs-on: ubuntu-latest
     permissions:
@@ -116,11 +138,15 @@ jobs:
           merge-multiple: true
       - name: Fit
         env:
+          STAGE: ${{ inputs.stage }}
           JOBS: ${{ inputs.jobs }}
           GAMES: ${{ inputs.games }}
           ITERATIONS: ${{ inputs.iterations }}
           OPENING_PLIES: ${{ inputs.opening_plies }}
           TEMPERATURE: ${{ inputs.temperature }}
+          TARGET: ${{ inputs.target }}
+          EPOCHS: ${{ inputs.epochs }}
+          DUEL_EXPLORATION: ${{ inputs.duel_exploration }}
         run: |
           out="games/uttt/training/runs/$GITHUB_RUN_ID"
           mkdir -p "$out"
@@ -129,16 +155,28 @@ jobs:
             data+=(--data "$file")
           done
           origin="run $GITHUB_RUN_ID of commit $GITHUB_SHA, $JOBS jobs of $GAMES games at $ITERATIONS iterations, $OPENING_PLIES opening plies"
-          target/release/uttt-trainer fit-policy "${data[@]}" \
-            --temperature "$TEMPERATURE" --origin "$origin" \
-            --weights-out "$out/weights.rs" --report-out "$out/report.md"
+          if [[ $STAGE == value ]]; then
+            target/release/uttt-trainer fit-value "${data[@]}" \
+              --target "$TARGET" --epochs "$EPOCHS" \
+              --policy games/uttt/bots/mcts/src/weights.rs \
+              --duel-exploration "$DUEL_EXPLORATION" --origin "$origin" \
+              --weights-out "$out/value_weights.rs" --report-out "$out/report.md"
+          else
+            target/release/uttt-trainer fit-policy "${data[@]}" \
+              --temperature "$TEMPERATURE" --origin "$origin" \
+              --weights-out "$out/weights.rs" --report-out "$out/report.md"
+          fi
           cat "$out/report.md" >> "$GITHUB_STEP_SUMMARY"
       - name: Commit the results to claude/train/${{ github.run_id }}
+        env:
+          STAGE: ${{ inputs.stage }}
         run: |
           branch="claude/train/$GITHUB_RUN_ID"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
           git add "games/uttt/training/runs/$GITHUB_RUN_ID"
-          git commit -m "chore(train): playout policy from run $GITHUB_RUN_ID"
+          what="playout policy"
+          [[ $STAGE == value ]] && what="value network"
+          git commit -m "chore(train): $what from run $GITHUB_RUN_ID"
           git push origin "$branch"
