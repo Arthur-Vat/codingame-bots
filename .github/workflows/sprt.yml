@@ -1,9 +1,11 @@
 name: SPRT
 
-# Tests every release file a pull request adds (ADR 0012 to 0014): a smoke
-# test against the random bot, a sequential probability ratio test against
-# the previous release, then, if accepted, a confirmation match at
-# CodinGame's exact time limits. The check fails unless all three pass.
+# Tests every release file a pull request adds (ADR 0012 to 0015, 0020): a
+# smoke test against the random bot, a sequential probability ratio test
+# against the previous release, then, if accepted and the game asks for it,
+# a confirmation match at CodinGame's exact time limits. In Legend the SPRT
+# itself plays at those limits (scripts/sprt.sh, the game's
+# evaluation.env). The check fails unless every step passes.
 on:
   pull_request:
 

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Tests whether a candidate bot is stronger than a baseline, with the game's
-# evaluation settings (games/<game>/evaluation.env, ADR 0012 to 0015).
+# evaluation settings (games/<game>/evaluation.env, ADR 0012 to 0015, 0020).
+# The smoke test and the SPRT play at SPRT_TIME_SCALE and
+# SPRT_TIME_TOLERANCE_MS when the game sets them (CodinGame's exact limits
+# once its bot is in Legend), else at TIME_SCALE and TIME_TOLERANCE_MS.
 #
 # Usage: scripts/sprt.sh GAME CANDIDATE.rs [BASELINE.rs]
 #
@@ -33,6 +36,8 @@ game="$1"
 candidate="$2"
 baseline="${3:-}"
 load_settings "$game"
+TIME_SCALE="${SPRT_TIME_SCALE:-$TIME_SCALE}"
+TIME_TOLERANCE_MS="${SPRT_TIME_TOLERANCE_MS:-$TIME_TOLERANCE_MS}"
 build_tools "$game"
 
 dir=target/sprt
