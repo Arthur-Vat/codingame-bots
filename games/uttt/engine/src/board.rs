@@ -5,8 +5,13 @@ use cg_core::rng::Rng;
 use crate::grid::{self, FULL};
 use crate::moves::{Move, MoveList};
 
+mod patterns;
 mod policy;
 
+pub use patterns::{
+    encode_pattern_weights, symmetric_cell, PatternPolicy, DESTINATIONS, PATTERNS, PATTERN_CELLS,
+    PATTERN_FEATURES,
+};
 pub use policy::{
     PlayoutPolicy, BLOCKS, CENTRE, CLASSES, FEATURES, FEATURE_NAMES, GIVES_BOARD,
     GIVES_FREE_CHOICE, WINS_BOARD,

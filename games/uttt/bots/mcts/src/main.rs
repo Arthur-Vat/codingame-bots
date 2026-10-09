@@ -2,13 +2,14 @@
 //!
 //! Every turn it searches the current position with UCT and playouts that
 //! take a game-winning move whenever there is one and otherwise draw their
-//! first moves from a playout policy learned from self-play, then random
+//! first moves from a pattern policy learned from self-play, then random
 //! moves (`cg-search`, `uttt-engine`), for most of the turn's time limit,
 //! then plays the move it tried most often. The same policy orders each
-//! node's children, so that the most promising are tried first. The search keeps the
-//! part of its tree under the moves played since its previous search, and
-//! proves wins and losses near the end of the game: it plays a proven win,
-//! avoids proven losses, and stops searching once the position is proven.
+//! node's children, so that the most promising are tried first. The search
+//! keeps the part of its tree under the moves played since its previous
+//! search, and proves wins and losses near the end of the game: it plays a
+//! proven win, avoids proven losses, and stops searching once the position
+//! is proven.
 //! A move that wins the game at once is played without searching, and so is
 //! the only action offered.
 //!
@@ -22,13 +23,14 @@
 //! `CG_FIXED_ITERS` replaces the time budget by a number of iterations.
 
 use std::io::{self, BufRead, Write};
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use cg_core::input::{Input, InputError};
 use cg_core::rng::{seed_from_env_or_clock, Rng};
 use cg_search::{Budget, Mcts};
-use uttt_engine::search::PolicyBoard;
-use uttt_engine::{Board, Move, PlayoutPolicy};
+use uttt_engine::search::PatternBoard;
+use uttt_engine::{Board, Move, PatternPolicy};
 
 /// CodinGame's time limit for the first answer.
 const FIRST_LIMIT: Duration = Duration::from_millis(1000);
@@ -49,13 +51,28 @@ const RESERVE: Duration = Duration::ZERO;
 /// At full time, 0.5 beat 1.0 by 162.
 const EXPLORATION: f64 = 0.5;
 
-/// The playout policy: weights by move class, learned from self-play
-/// (ADR 0016), for the first 16 moves of each playout; decisive random
-/// moves after that, which are cheaper. Screened on 2026-10-08 against
-/// v007 at 20 ms (200 pairs each): the whole playout +1 Elo, 16 moves +18,
-/// 8 moves +30, 4 moves +22; sharper weights (temperature 0.5) +53 for 16
-/// moves and +48 for 8, flatter ones (2) -22 for 8.
-static POLICY: PlayoutPolicy = PlayoutPolicy::new(weights::PLAYOUT_WEIGHTS).for_plies(16);
+/// The pattern policy (E015): weights learned for every pattern of a small
+/// board, cell and destination, decoded once from their text. They draw the
+/// first moves of each playout, decisive random moves after that, and
+/// order each node's children.
+fn policy() -> &'static PatternPolicy {
+    static POLICY: OnceLock<PatternPolicy> = OnceLock::new();
+    POLICY.get_or_init(|| {
+        PatternPolicy::decode(pattern_weights::PATTERN_TEXT)
+            .expect("the pattern weights decode")
+            .for_plies(PLIES)
+    })
+}
+
+/// Moves of each playout drawn from the policy. With E011's 32 classes,
+/// screened on 2026-10-08 against v007 at 20 ms (200 pairs each): the whole
+/// playout +1 Elo, 16 moves +18, 8 moves +30, 4 moves +22; sharper weights
+/// (temperature 0.5) +53 for 16 moves and +48 for 8. With E015's patterns,
+/// against v009 at 20 ms (300 pairs, same openings): 8 moves +25, 16 moves
+/// +22, the whole playout +10.
+const PLIES: u32 = 16;
+
+mod pattern_weights;
 
 /// Whether the search also uses the playout policy's weights as priors in
 /// its tree: a node's children are tried in order of their weights, most
@@ -67,12 +84,12 @@ const PRIORS: bool = true;
 /// +34.9; so none.
 const PRIOR_WEIGHT: f64 = 0.0;
 
-mod weights;
-
 fn main() {
     let seed = seed_from_env_or_clock();
     eprintln!("mcts: seed {seed}");
     let mut rng = Rng::new(seed);
+    // Decoded before the first turn's clock starts, if the input waits.
+    policy();
     let mut mcts = Mcts::new(EXPLORATION, rng.next_u64());
     mcts.priors = PRIORS;
     mcts.prior_weight = PRIOR_WEIGHT;
@@ -97,7 +114,7 @@ fn main() {
 /// Plays turns until the input ends. `budget` gives the search budget of a
 /// turn from its start and CodinGame's limit for it.
 fn play(
-    mcts: &mut Mcts<PolicyBoard>,
+    mcts: &mut Mcts<PatternBoard>,
     rng: &mut Rng,
     mut input: Input<impl BufRead>,
     mut out: impl Write,
@@ -140,9 +157,9 @@ fn play(
                 let mv = if moves.len() == 1 {
                     moves[0]
                 } else {
-                    let root = PolicyBoard {
+                    let root = PatternBoard {
                         board: position,
-                        policy: &POLICY,
+                        policy: policy(),
                     };
                     let result = mcts.search(&root, &moves, budget(start, limit));
                     let outlook = match result.proven {

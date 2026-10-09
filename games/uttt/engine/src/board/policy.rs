@@ -86,16 +86,16 @@ impl PlayoutPolicy {
 /// Feature masks of the empty cells of one small board, for the player to
 /// move.
 #[derive(Clone, Copy)]
-struct BoardFeatures {
+pub(super) struct BoardFeatures {
     empty: u16,
     wins: u16,
     blocks: u16,
-    free: u16,
+    pub(super) free: u16,
 }
 
 impl Board {
     #[inline(always)]
-    fn board_features(&self, board: usize) -> BoardFeatures {
+    pub(super) fn board_features(&self, board: usize) -> BoardFeatures {
         let seat = self.to_move();
         let empty = self.empty_cells(board);
         let wins = grid::completing_cells(self.marks[seat][board]) & empty;
@@ -185,7 +185,7 @@ impl Board {
 
     /// The first cell whose running total exceeds `pick`.
     #[inline(always)]
-    fn cell_at(cumulative: &[u32; 9], pick: u32) -> usize {
+    pub(super) fn cell_at(cumulative: &[u32; 9], pick: u32) -> usize {
         cumulative.iter().map(|&sum| usize::from(sum <= pick)).sum()
     }
 
