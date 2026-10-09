@@ -16,6 +16,7 @@ A record writes down a decision the owner made. Propose it first (skill `ask-dec
 - Scope (ADR 0022): `framework`, or a game's folder name (`uttt`) when every decision binds that game only. A record with any decision that binds the framework is `framework`.
 - Context: the facts that force the decision, with sources and dates; what the owner asked. Decision: numbered, each one sentence in bold followed by the detail. Consequences: what becomes easier, what harder, what must now be done.
 - Plain, short English. Nothing about the owner beyond "the owner".
+- Write what was decided and why, not the repository's current state ("not yet", "today", counts, which checks are required): such facts change, and an accepted record cannot. Put them in the roadmap or the docs, and link there.
 
 ## The other files
 

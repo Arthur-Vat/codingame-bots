@@ -16,7 +16,7 @@ The owner wants to be asked before any heavy implementation starts (2026-10-09):
 Before any implementer starts:
 - Write the decision record (skill `write-adr`) and any naming or convention the work depends on.
 - Decide each pull request's title (ADR 0022) and branch (`claude/<topic>`).
-- For several pull requests that touch the same files (often `docs/ROADMAP.md` lines next to each other, the architecture's lists, `README.md`), decide the order now and stack them: each branch starts from the one below it and its pull request's base is that branch. Each pull request ticks its own roadmap line and updates the docs for its own change.
+- For several pull requests that touch the same files (often `docs/ROADMAP.md` lines next to each other, the architecture's lists, `README.md`), decide the order now and stack them: each branch starts from the one below it and its pull request's base is that branch. Each pull request ticks its own roadmap line and updates the docs for its own change. Bookkeeping that is not part of a change (a decision's date, a setting the owner made) rides with the next substantive pull request (skill `review-pr`, "Small bookkeeping").
 
 ## 2. Write each spec
 
@@ -37,9 +37,11 @@ Skill `review-pr`. One light review can cover a batch of documentation-only bran
 
 Skill `github-api`. The body says what and why (linking the roadmap item or decision record), what the review found and what changed, the check summary lines (`CLAUDE.md`'s commands), and for a stack: the order, "Create a merge commit, not squash", and that GitHub retargets each one when the one below merges. End with the attribution lines.
 
+Then ask the owner for approval in the conversation, ending with the exact reply that approves, such as `merge #50` (or `merge #50 to #52` for a stack), so that the approval names its pull requests (ADR 0023).
+
 ## 5. Merge
 
-Only what the owner approved in the conversation (ADR 0023): in stack order, each once its base is `main`, its head is the approved one and its required checks are green. Comment each approval on its pull request (skill `github-api`). Then update local `main`, delete local branches, and tick the roadmap if a pull request did not.
+Only what the owner approved in the conversation, naming its number (ADR 0023); if his answer does not name it, confirm with him before merging. In stack order, each once its base is `main`, its head is the approved one and its required checks are green. Comment each approval on its pull request (skill `github-api`). Then update local `main`, delete local branches, and tick the roadmap if a pull request did not.
 
 ## 6. Afterwards
 
