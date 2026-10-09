@@ -26,4 +26,4 @@ None.
 
 ## Usage
 
-- 2026-10-09 20:45 (Paris) | agent guard hook (#52), roadmap line (#53), session setup (#54), handoff (#55) | main session 45 steps (4.32M read), 3 agents (about 0.45M read)
+- 2026-10-09 20:55 (Paris) | agent guard hook (#52), roadmap line (#53), session setup (#54), handoff (#55) | main session 52 steps (5.28M read), 3 agents (0.45M read); the main session's context grew to 141k over a long conversation
