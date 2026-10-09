@@ -1,6 +1,6 @@
 # Roadmap
 
-Seven phases build the framework before the first real bot. Reaching Legend is the ongoing result of the experiment loop, not a phase. Each phase ends at a gate that CI or CodinGame can check. Game counts in the gates are proposed values.
+Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes Claude's work more autonomous, and phase 6 adds a second game. Reaching Legend is the ongoing result of the experiment loop, not a phase. Each phase ends at a gate that CI or CodinGame can check. Game counts in the gates are proposed values.
 
 | Phase | Scope | Gate | Status |
 | --- | --- | --- | --- |
@@ -9,11 +9,9 @@ Seven phases build the framework before the first real bot. Reaching Legend is t
 | 2. UTTT engine | Fast engine for bots, property tests, parity with the referee, rules checked against real CodinGame games | Parity on 10,000 random games; speed baseline recorded | Done (2026-10-07) |
 | 3. Evaluation | Openings, smoke tests, SPRT, ratings, league, journal, releases | A/A test passes; a weakened bot is rejected by the SPRT | Done (2026-10-07) |
 | 4. First real bot | MCTS `uttt-v001`, then the weekly experiment loop | v001 pasted and ranked; 3 experiments run end to end | Done (2026-10-07) |
-| 5. Autonomy | Hub, project skills, weekly routine, notifications | One full loop without opening GitHub | Not started |
+| 5. Autonomy and workflow | Conventions, CI checks, project agents and skills, merge policy, scheduled sessions within the owner's usage limits, arena and ratings | One week of scheduled sessions with the owner answering only decision issues | In progress (2026-10-09) |
 | 6. Second game | A game with an official referee; `new-game` skill | Phase 3 gates met, changes mostly inside the game folder | Not started |
-| Ongoing | Iterate every game toward Legend, then up the Legend ranking | | Ultimate Tic-Tac-Toe: Legend since 2026-10-07 (`uttt-v001`, 182 of 443); 59th with `uttt-v008` (2026-10-08) |
-
-Phases 4 and 5 can overlap.
+| Ongoing | Iterate every game toward Legend, then up the Legend ranking | | Ultimate Tic-Tac-Toe: Legend since 2026-10-07 (`uttt-v001`, 182 of 443); 59th with `uttt-v008` (2026-10-08); current release `uttt-v010`; strength work paused (2026-10-09) |
 
 ## Phase 0: foundations
 
@@ -82,14 +80,58 @@ Phases 4 and 5 can overlap.
 - [x] SPRT at CodinGame's exact limits for games in Legend, replacing the full-time confirmation ([ADR 0020](adr/0020-full-time-sprt-in-legend.md))
 - [ ] Opening length checked with MCTS (ADR 0012), carried into the experiment loop
 
+## Phase 5: autonomy and workflow
+
+Planned with the owner on 2026-10-09. Goal: the owner only arbitrates. Claude plans and reviews with a strong model, implements with cheaper ones, runs on a schedule within the owner's usage limits, and merges what the owner has delegated. Ultimate Tic-Tac-Toe strength work is paused meanwhile, and no training or league run is started by hand, at the owner's request; the League workflow's automatic triggers stay.
+
+Gate: one week of scheduled sessions in which Claude moves work forward on its own, the owner answers only decision issues, and nothing is merged outside the delegated classes.
+
+### A. Repository refresh and conventions
+
+- [x] Docs refreshed: READMEs, architecture, workflow and this roadmap describe the repository as it is
+- [x] Leftover class-policy weights moved out of the bot's sources
+- [x] Decision records carry a scope (`framework` or a game), and the index groups them by scope ([ADR 0022](adr/0022-scopes-and-names.md))
+- [ ] Pull request titles name their scope (a game, or a framework area); a workflow labels pull requests by the paths they change and checks titles
+- [ ] CI checks that indexes and status lines match the repository (releases, decision records, journal, training runs) and that relative links resolve; shellcheck and actionlint run in CI
+
+### B. Agents, skills and the review loop
+
+- [ ] Project agents in `.claude/agents/`: `implementer` (Sonnet 5.5) codes to a precise spec; `pr-reviewer` (Opus 5.5) reviews every pull request against the hard rules, decision records, tests, docs and privacy; `rules-reviewer` checks engine changes against the game's `RULES.md`. Claude's main session plans, splits the work and checks the results
+- [ ] Project skills in `.claude/skills/`: `run-experiment`, `training-run`, `write-adr`, `review-pr`, `pr-train` (stacked pull requests and merge order), `deliver-release`, `weekly-report`, `docs-refresh`, later `new-game`
+- [ ] Merge policy (a decision record superseding [ADR 0006](adr/0006-human-approves-merges.md)): Claude may merge docs, journal entries, dropped experiments, tooling that changes no bot, and releases accepted by the full-time SPRT, once required checks pass and `pr-reviewer` approves; the owner merges decision records, `CLAUDE.md`, workflows and permissions, and rules or referee changes
+- [ ] The SPRT is a required check, so that a rejected release cannot be merged (repository setting, by or with the owner)
+- [ ] Decisions reach the owner as issues labelled `decision`, each with options and a recommendation, and one push notification when one is waiting
+
+### C. Autonomous operation
+
+- [ ] Usage guard: each scheduled session first reads the 7-day usage of the owner's plan and stops at 90% or more; if that figure is not available to scheduled sessions, a pause switch the owner controls replaces it
+- [ ] Four scheduled sessions a day (for example 07:10, 12:10, 17:10 and 22:10, Paris time), each: guard, read answered decisions and CI results, advance one ready backlog item (issues labelled `ready`), review and merge what is delegated, open decision issues; a session with nothing to do ends at once
+- [ ] One week of trial, then frequency and merge classes adjusted with the owner
+
+### D. Arena and ratings
+
+Background runs stay off until the owner turns them on.
+
+- [ ] Decision record on the rating model: Bradley-Terry over all games for published ratings, and Glicko-2 uncertainty to choose the next matchups
+- [ ] Results kept across runs (per-pair summaries on a data branch outside `claude/`), with a leaderboard in the job summary and the game's README
+- [ ] Arena: leagues at CodinGame's limits, adaptive choice of pairs (close ratings, high uncertainty), optional outside or older opponents; scheduled runs, off by default
+
+### E. CI, fixed checks
+
+- [ ] Speed regression check (tier 5 of the evaluation pipeline): the pull request against `main` in the same job, to cancel the runner's noise
+- [ ] Documentation-only pull requests skip the heavy steps while still reporting the required checks
+- [ ] Agentic checks stay in Claude's sessions (owner's choice, 2026-10-09): no Claude job in GitHub Actions
+
+Order: A, then B, then C and E side by side, then D.
+
 ## Risks
 
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
 | CodinGame changes its Rust version | Code that builds locally fails on CodinGame | `rust-version` plus CI on 1.90.0 and the standalone compile; re-run the probe in [CODINGAME.md](CODINGAME.md) after language updates |
 | Our engine differs from CodinGame's | The bot wins locally and loses on CodinGame | Parity tests, checks against real CodinGame games, dedicated tiebreak tests |
-| Timing noise on shared runners | Timeouts and wrong SPRT verdicts | One game per core, A/A test in CI, time scale revisited with the first real bot ([ADR 0012](adr/0012-evaluation.md)) |
-| Claude plan usage limits | Slower iteration | Actions does all the compute; one weekly routine; smaller models for routine work |
+| Timing noise on shared runners | Timeouts and wrong SPRT verdicts | One game per core, A/A test in CI, time limits revisited with the first real bot ([ADR 0013](adr/0013-evaluation-time-limits.md)), CodinGame's exact limits for games in Legend ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)) |
+| Claude plan usage limits | Slower iteration | Actions does the compute; scheduled sessions stop at 90% of the plan's 7-day usage (phase 5); cheaper models implement |
 | CodinGame rules on outside help | Problems in prize contests | Multiplayer leaderboards only; read a contest's rules before entering it ([ADR 0009](adr/0009-manual-submission.md)) |
 | Projects beta not available | No single hub with an Overview | One long claude.ai conversation meanwhile ([ADR 0008](adr/0008-claude-hub.md)) |
 | Claude workspace cannot download Rust toolchains | Local checks run on a newer Rust than CodinGame | `rust-version` lints locally; CI on exactly 1.90.0 is the judge ([ADR 0010](adr/0010-codingame-rust-toolchain.md)) |

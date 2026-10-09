@@ -3,6 +3,7 @@
 - Status: accepted (owner, 2026-10-08); decision 1 (games at 3,000 iterations) superseded by [0019](0019-value-network-gate-at-time.md)
 - Date: 2026-10-08
 - Supersedes: decision 5 of [ADR 0017](0017-value-network.md)
+- Scope: uttt
 
 ## Context
 

@@ -28,7 +28,7 @@ use uttt_engine::search::PolicyBoard;
 use uttt_engine::value::{active_inputs, ValueNetwork, INPUTS, MAX_ACTIVE};
 use uttt_engine::{Board, Move, PlayoutPolicy, Status};
 
-/// `uttt-v008`'s playout policy (`games/uttt/bots/mcts/src/weights.rs`).
+/// `uttt-v008`'s playout policy (`games/uttt/training/class_weights.rs`).
 static POLICY: PlayoutPolicy = PlayoutPolicy::new([
     800, 10000, 7504, 2816, 60, 1026, 618, 2201, 313, 1891, 1815, 1727, 1070, 1070, 1070, 1070,
     460, 3859, 2582, 2999, 165, 1083, 841, 1668, 113, 756, 800, 828, 1070, 1070, 1070, 1070,

@@ -107,7 +107,7 @@ jobs:
           # policy, which also orders each node's children.
           options=()
           if [[ $STAGE == value ]]; then
-            options=(--policy games/uttt/bots/mcts/src/weights.rs --no-visits)
+            options=(--policy games/uttt/training/class_weights.rs --no-visits)
           elif [[ $STAGE == patterns ]]; then
             options=(--patterns games/uttt/bots/mcts/src/pattern_weights.rs)
           fi
@@ -182,7 +182,7 @@ jobs:
           if [[ $STAGE == value ]]; then
             target/release/uttt-trainer fit-value "${data[@]}" \
               --target "$TARGET" --epochs "$EPOCHS" --size "$SIZE" \
-              --policy games/uttt/bots/mcts/src/weights.rs \
+              --policy games/uttt/training/class_weights.rs \
               --duel-exploration "$DUEL_EXPLORATION" --origin "$origin" \
               --weights-out "$out/value_weights.rs" --report-out "$out/report.md"
           elif [[ $STAGE == patterns ]]; then

@@ -3,6 +3,7 @@
 - Status: accepted (owner, 2026-10-09)
 - Date: 2026-10-09
 - Supersedes: for games whose bot is in Legend, decision 1 of [ADR 0013](0013-evaluation-time-limits.md) for the smoke test and the SPRT, and [ADR 0014](0014-full-time-confirmation.md)
+- Scope: framework
 
 ## Context
 

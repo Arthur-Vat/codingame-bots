@@ -92,7 +92,7 @@ impl SelfPlay {
 }
 
 /// Reads the playout weights from Rust source written by `uttt-trainer
-/// fit-policy`, such as the bot's `weights.rs`.
+/// fit-policy`, such as `games/uttt/training/class_weights.rs`.
 pub fn read_policy_weights(source: &str) -> Result<[u32; uttt_engine::board::CLASSES], String> {
     let start = source
         .find("PLAYOUT_WEIGHTS")
