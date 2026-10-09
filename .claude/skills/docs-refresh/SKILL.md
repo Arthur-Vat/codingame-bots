@@ -5,7 +5,7 @@ description: Brings the repository's docs back in line with what the repository 
 
 # Refresh the docs
 
-`scripts/check-docs.sh` catches drift in indexes, current-release lines, decision records' scopes and relative links. Everything else is checked by reading.
+`scripts/check-docs.sh` catches drift in indexes, current-release lines, decision records' scopes, relative links, agents' headers, and the architecture's and README's lists of workflows and scripts. Everything else is checked by reading.
 
 ## Check
 

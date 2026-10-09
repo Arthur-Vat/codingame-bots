@@ -25,10 +25,11 @@
 #    (between `---` lines) with non-empty name:, description:, model: and
 #    tools: lines: without tools:, an agent gets every tool of the session,
 #    whose descriptions cost tokens on each of its steps.
-# h. Every workflow, .github/workflows/NAME.yml, is named (as NAME.yml) in
+# h. Every workflow, .github/workflows/NAME.yml or .yaml, is named (as NAME.yml) in
 #    docs/ARCHITECTURE.md and in README.md, and every script,
 #    scripts/NAME.sh and scripts/lib/NAME.sh, in docs/ARCHITECTURE.md. A name
-#    counts when it stands alone: `ci.yml` is not found in `pci.yml`.
+#    counts when it stands alone (`ci.yml` is not found in `pci.yml`), anywhere
+#    in the document, in prose as well as in a list.
 #
 # A link to a record or entry that does not exist is a broken link: check e
 # reports it, in the index like anywhere else.
@@ -524,7 +525,7 @@ listed_in() {
   grep -qE -- "$pattern" "$2"
 }
 workflows=0
-for file in .github/workflows/*.yml; do
+for file in .github/workflows/*.yml .github/workflows/*.yaml; do
   workflows=$((workflows + 1))
   for doc in docs/ARCHITECTURE.md README.md; do
     listed_in "$(basename "$file")" "$doc" || fail "$doc" "does not list the workflow $(basename "$file")"
