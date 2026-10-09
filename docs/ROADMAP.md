@@ -9,7 +9,7 @@ Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes 
 | 2. UTTT engine | Fast engine for bots, property tests, parity with the referee, rules checked against real CodinGame games | Parity on 10,000 random games; speed baseline recorded | Done (2026-10-07) |
 | 3. Evaluation | Openings, smoke tests, SPRT, ratings, league, journal, releases | A/A test passes; a weakened bot is rejected by the SPRT | Done (2026-10-07) |
 | 4. First real bot | MCTS `uttt-v001`, then the weekly experiment loop | v001 pasted and ranked; 3 experiments run end to end | Done (2026-10-07) |
-| 5. Autonomy and workflow | Conventions, CI checks, project agents and skills, merge policy, a daily scheduled session within the owner's usage limits, arena and ratings | One week of daily scheduled sessions with the owner answering only decisions | In progress (2026-10-09) |
+| 5. Autonomy and workflow | Conventions, CI checks, project agents and skills, merge policy, a daily scheduled session within the owner's usage limits, arena and ratings | Every item below done (the owner dropped the one-week trial on 2026-10-09) | In progress (2026-10-09) |
 | 6. Second game | A game with an official referee; `new-game` skill | Phase 3 gates met, changes mostly inside the game folder | Not started |
 | Ongoing | Iterate every game toward Legend, then up the Legend ranking | | Ultimate Tic-Tac-Toe: Legend since 2026-10-07 (`uttt-v001`, 182 of 443); 59th with `uttt-v008` (2026-10-08); current release `uttt-v010`; strength work paused (2026-10-09) |
 
@@ -84,7 +84,7 @@ Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes 
 
 Planned with the owner on 2026-10-09. Goal: the owner only arbitrates. Claude plans and reviews with a strong model, implements with cheaper ones, runs on a schedule within the owner's usage limits, and merges what the owner has delegated. Ultimate Tic-Tac-Toe strength work is paused meanwhile, and no training or league run is started by hand, at the owner's request; the League workflow's automatic triggers stay.
 
-Gate: one week of daily scheduled sessions in which Claude moves work forward on its own, the owner answers only decisions, and nothing is merged without the owner's approval or outside the delegated classes.
+Gate: every item below done. The one-week trial of daily scheduled sessions that was the gate is dropped (owner, 2026-10-09); the daily report keeps running.
 
 ### A. Repository refresh and conventions
 
@@ -105,7 +105,7 @@ Gate: one week of daily scheduled sessions in which Claude moves work forward on
 - [x] Skills carry the recipes that work in Claude's sessions: pull requests through GitHub's REST API, fetches with explicit refspecs (`github-api`)
 - [x] Project skills in `.claude/skills/`: `land-work` (plan, dispatch, stack and merge), `review-pr`, `github-api`, `ask-decision`, `write-adr`, `run-experiment`, `deliver-release`, `training-run`, `docs-refresh`, `daily-report`, `session-usage`; later `new-game`
 - [x] The owner approves merges in the conversation and Claude carries them out ([ADR 0023](adr/0023-chat-approved-merges.md))
-- [ ] Postponed by the owner until after step C's trial (2026-10-09). Merge policy (a decision record superseding [ADR 0006](adr/0006-human-approves-merges.md)): Claude may merge without asking docs, journal entries, dropped experiments, tooling that changes no bot, and releases accepted by the full-time SPRT, once required checks pass and `pr-reviewer` approves; the owner merges decision records, `CLAUDE.md`, workflows and permissions, and rules or referee changes
+- [x] No new merge policy (owner, 2026-10-09): the current one stands, with the owner approving merges in the conversation ([ADR 0006](adr/0006-human-approves-merges.md), [ADR 0023](adr/0023-chat-approved-merges.md))
 - [x] `Docs and scripts` and the SPRT are required checks, so that broken docs or a rejected release cannot be merged (set by the owner, 2026-10-09; Claude's sessions cannot edit rulesets)
 - [x] Decisions reach the owner in the conversation, each with options and a recommendation (`ask-decision`); when he is away, one push notification and the daily report say one is waiting. Answers count only in the conversation: GitHub issues were dropped after review, since Claude's sessions post under the owner's account
 
@@ -114,7 +114,7 @@ Gate: one week of daily scheduled sessions in which Claude moves work forward on
 - [x] Usage guard: the 7-day usage of the owner's plan is not readable from cloud sessions. The status line carries it (`rate_limits.seven_day.used_percentage`), but it does not run in them (tested 2026-10-09). The owner's pause switch replaces the guard: he pauses the scheduled task in the Claude app when his usage runs high, and the run is kept quick and read-only
 - [x] One quick scheduled session a day, reduced from four on 2026-10-09 to spare the owner's usage: every day at 06:45, Paris time, the daily report (`daily-report`) of the day's work, areas of improvement, and hot fixes and evolutions to propose (the owner's brief, 2026-10-09). Its final message reaches the owner's phone as a push notification. It changes nothing and never merges ([ADR 0023](adr/0023-chat-approved-merges.md)). Set up 2026-10-09 as the scheduled task "CodinGame bots: daily report", on Sonnet 5.5 at the owner's request
 - [x] Sessions hand work over through `HANDOFF.md` on the standing branch `claude/handoff` (owner, 2026-10-09, [ADR 0024](adr/0024-handoff-branch.md)): read at the start of every session and by the daily report, updated by the sessions, with one usage line per piece of work
-- [ ] One week of trial, from 2026-10-10, then the report's form, the frequency and the merge classes adjusted with the owner
+- [x] No trial period (owner, 2026-10-09): the daily report keeps running, and its form and frequency are adjusted with the owner as needs arise
 
 ### D. Arena and ratings
 
