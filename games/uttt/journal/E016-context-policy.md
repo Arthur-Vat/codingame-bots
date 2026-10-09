@@ -1,7 +1,7 @@
 ---
 id: E016
 date: 2026-10-09
-pull_request: pending
+pull_request: "#37"
 parent: uttt-v010
 hypothesis: The bytes v010 leaves free (about 24 KB of 100 KB) hold a larger move policy whose better predictions make playouts, and the order of children, better.
 change: None released. Larger move models were fitted on 400,000 games of v010's own search and compared offline; the cheapest that predicts better (E015's weights plus a weight for the destination board's pattern and role) was built into a bot and screened against v010.
