@@ -15,6 +15,11 @@
 #    `LATEST` in backquotes.
 # e. Every relative link [text](target) of every tracked Markdown file
 #    points to something that exists.
+# f. Every decision record has exactly one `- Scope:` line in its header (the
+#    lines before its first `## ` heading), with an allowed value: framework
+#    or the name of a folder under games/. Its row in docs/adr/README.md (a
+#    table row whose first link is the record) sits under the matching
+#    heading: `## Framework`, or a `## ` heading that ends with (`<game>`).
 #
 # A link to a record or entry that does not exist is a broken link: check e
 # reports it, in the index like anywhere else. Check e skips:
@@ -185,6 +190,96 @@ check_index() {
   done
 }
 
+# Checks f: the scope of each decision record, and where the index lists it.
+check_adr_scopes() {
+  local index=docs/adr/README.md record line value valid heading in_fence=0 path headings expected dir
+  local row_link='\]\(([^)]*)\)'
+  local -a allowed=(framework) scope_lines
+  local -A scope_of=() rows=() linked=()
+  for dir in games/*/; do
+    allowed+=("$(basename "$dir")")
+  done
+
+  # The scope line of each record's header.
+  for record in docs/adr/[0-9][0-9][0-9][0-9]-*.md; do
+    scope_lines=()
+    while IFS= read -r line; do
+      if [[ $line == '## '* ]]; then
+        break
+      fi
+      if [[ $line == '- Scope:'* ]]; then
+        value="${line#- Scope:}"
+        value="${value##+([[:space:]])}"
+        value="${value%%+([[:space:]])}"
+        scope_lines+=("$value")
+      fi
+    done <"$record"
+    if ((${#scope_lines[@]} == 0)); then
+      fail "$record" "no '- Scope:' line in the header"
+      continue
+    elif ((${#scope_lines[@]} > 1)); then
+      fail "$record" "${#scope_lines[@]} '- Scope:' lines in the header, expected one"
+      continue
+    fi
+    valid=0
+    for value in "${allowed[@]}"; do
+      if [[ $value == "${scope_lines[0]}" ]]; then
+        valid=1
+      fi
+    done
+    if ((valid)); then
+      scope_of["$record"]="${scope_lines[0]}"
+    else
+      fail "$record" "scope '${scope_lines[0]}' is not one of: ${allowed[*]}"
+    fi
+  done
+
+  # The heading each record's row sits under. Check a reports a missing index.
+  [[ -f $index ]] || return 0
+  heading=""
+  while IFS= read -r line; do
+    if [[ $line =~ ^[[:space:]]*(\`\`\`|~~~) ]]; then
+      in_fence=$((1 - in_fence))
+    elif ((in_fence)); then
+      continue
+    elif [[ $line == '## '* ]]; then
+      heading="${line:3}"
+      heading="${heading%%+([[:space:]])}"
+    elif [[ $line == '|'* && $line =~ $row_link ]]; then
+      path="$(normalize "${index%/*}/${BASH_REMATCH[1]%%#*}")"
+      rows["$path"]+="$heading"$'\n'
+    fi
+  done <"$index"
+  while IFS=$'\t' read -r _ path _; do
+    linked["$path"]=1
+  done < <(links_of "$index")
+
+  for record in docs/adr/[0-9][0-9][0-9][0-9]-*.md; do
+    [[ -n ${scope_of[$record]:-} ]] || continue
+    value="${scope_of[$record]}"
+    headings="${rows[$record]:-}"
+    if [[ $value == framework ]]; then
+      expected="'## Framework'"
+    else
+      expected="a '## ' heading ending with (\`$value\`)"
+    fi
+    if [[ -z $headings ]]; then
+      # A record not linked at all is check a's problem.
+      if [[ -n ${linked[$record]:-} ]]; then
+        fail "$index" "$record has no table row; with scope $value, it belongs under $expected"
+      fi
+      continue
+    fi
+    while IFS= read -r heading; do
+      if [[ $value == framework && $heading == Framework ]] ||
+        [[ $value != framework && $heading == *"(\`$value\`)" ]]; then
+        continue
+      fi
+      fail "$index" "$record has scope $value, so its row belongs under $expected, not under '## ${heading:-(no heading)}'"
+    done <<<"${headings%$'\n'}"
+  done
+}
+
 # a. Architecture decision records.
 check_index docs/adr/README.md "record" docs/adr/[0-9][0-9][0-9][0-9]-*.md
 
@@ -244,8 +339,11 @@ while IFS= read -r file; do
   done < <(links_of "$file")
 done < <(git ls-files '*.md')
 
+# f. Decision records' scopes and index groups.
+check_adr_scopes
+
 if ((problems > 0)); then
   echo "$problems problem(s) in the documentation" >&2
   exit 1
 fi
-echo "ok   documentation: $links relative links in $files Markdown files; indexes and status lines match"
+echo "ok   documentation: $links relative links in $files Markdown files; indexes, scopes and status lines match"
