@@ -148,6 +148,9 @@ jobs:
         if: ${{ !cancelled() }}
         # Preinstalled on ubuntu-latest.
         run: shellcheck scripts/*.sh scripts/lib/*.sh
+      - name: Test the agent guard
+        if: ${{ !cancelled() }}
+        run: scripts/tests/agent-guard-test.sh
       - name: Lint the workflows
         if: ${{ !cancelled() }}
         # The image is pinned; it includes shellcheck, which also lints the

@@ -34,6 +34,7 @@ codingame-bots/
 │  ├─ prune-branches.sh     deletes finished claude/ branches (ADR 0021)
 │  ├─ check-docs.sh         indexes, status lines and links match the repository; agents declare model and tools
 │  ├─ pr-hygiene.sh         pull request titles (ADR 0022) and labels from changed paths
+│  ├─ agent-guard.sh        hook of Claude's sessions: only the project's agents and the read-only built-in ones may start
 │  ├─ tests/                tests of the scripts
 │  └─ lib/evaluation.sh     settings and helpers of sprt.sh, league.sh and new-release.sh
 ├─ crates/
