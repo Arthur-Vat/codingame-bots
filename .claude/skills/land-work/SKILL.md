@@ -1,9 +1,9 @@
 ---
-name: pr-train
+name: land-work
 description: Plans and lands a piece of work as one or more pull requests - settle conventions first, write specs for implementer agents, plan the stack and merge order, review at the right depth, and merge on the owner's approval. Use for any work that needs more than one pull request or any implementer agent.
 ---
 
-# Plan, dispatch and land pull requests
+# Land a piece of work
 
 The main session plans, splits, checks and merges; `implementer` agents code; `pr-reviewer` reviews. Lessons of phase 5's step A are built in.
 
@@ -37,7 +37,7 @@ Skill `review-pr`. One light review can cover a batch of documentation-only bran
 
 Skill `github-api`. The body says what and why (linking the roadmap item or decision record), what the review found and what changed, the check summary lines (`CLAUDE.md`'s commands), and for a stack: the order, "Create a merge commit, not squash", and that GitHub retargets each one when the one below merges. End with the attribution lines.
 
-Then ask the owner for approval in the conversation, in two turns (owner, 2026-10-09):
+Then ask the owner for approval in the conversation, in two turns (owner, 2026-10-09), and only once every pull request of the work is written: opened, its required checks green and its review handled (skill `review-pr`). Never ask about a pull request still being written.
 
 1. The full brief, for each pull request: what it changes, its checks, its review and what was fixed, its risks and the head it would merge at. End the message by asking, in plain text, whether he wants to consider merging. No form in this turn: a form opens before the message can be read.
 2. Once he says yes, a form (the question tool) whose options name the pull requests (ADR 0023): merge them as they are, such as `Merge #50, #51`, or, when the order matters (a stack, shared lines, one building on another), merge them in order, such as `Merge #50, then #51`, with the reason in the option's description; recommend one of the two. Add an option to hold. A choice in the form is an answer in the conversation.

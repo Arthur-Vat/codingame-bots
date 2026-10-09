@@ -16,7 +16,7 @@ The steps and rules are in `docs/WORKFLOW.md` ("An experiment, step by step") an
 ## Steps
 
 1. **Journal entry first:** `games/<game>/journal/ENNN-<short-name>.md` from `template.md`, with the hypothesis and the change, and its row in the journal's index.
-2. **Change the bot** (an `implementer` agent can do it from a spec, skill `pr-train`). Run `CLAUDE.md`'s checks; the bundle must stay under 100,000 bytes.
+2. **Change the bot** (an `implementer` agent can do it from a spec, skill `land-work`). Run `CLAUDE.md`'s checks; the bundle must stay under 100,000 bytes.
 3. **Screen locally** before spending an SPRT: play the candidate against the current release with the game's arena (`target/release/<game>-arena --help`). Twenty-millisecond moves are allowed for screening (ADR 0020); say in the entry what was played. If it is clearly weaker, stop here: drop it (step 7) without a release.
 4. **Freeze the candidate:** `scripts/new-release.sh <game> <bot>`. In the same commit, point the game README's `**Current release:**` line and the root README's games table to the new release: `scripts/check-docs.sh` requires them.
 5. **Open the pull request** (`feat(<game>): ENNN, <what changed>`), review at the bot tier (skill `review-pr`). The SPRT workflow plays the smoke test and the SPRT: at CodinGame's exact limits for a game in Legend, up to about 4 hours.

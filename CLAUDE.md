@@ -18,7 +18,7 @@ For bot or engine changes, also play the bundled bots against each other with th
 
 For a bot strength experiment, follow "An experiment, step by step" in `docs/WORKFLOW.md`: `scripts/new-release.sh` makes the candidate, `scripts/sprt.sh` runs the test locally, and the SPRT workflow judges it.
 
-Procedures that repeat are project skills in `.claude/skills/`, and the agents they use are in `.claude/agents/`: start with `pr-train` for work that needs pull requests or implementers, `review-pr` before asking the owner to approve, `ask-decision` for choices that are his (in the conversation only), `handoff` to pick up and pass on work between sessions, and `github-api` before any GitHub operation.
+Procedures that repeat are project skills in `.claude/skills/`, and the agents they use are in `.claude/agents/`: start with `land-work` for work that needs pull requests or implementers, `review-pr` before asking the owner to approve, `ask-decision` for choices that are his (in the conversation only), `handoff` to pick up and pass on work between sessions, and `github-api` before any GitHub operation.
 
 ## Hard rules
 
