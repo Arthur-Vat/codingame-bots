@@ -3,7 +3,7 @@
 use cg_core::rng::Rng;
 use cg_search::Game;
 
-use crate::board::{Board, PatternPolicy, PlayoutPolicy, Status};
+use crate::board::{Board, ContextPolicy, PatternPolicy, PlayoutPolicy, Status};
 use crate::moves::{Move, MoveList};
 use crate::value::Network;
 
@@ -224,6 +224,43 @@ impl Game for PatternBoard {
 
     fn playout(&mut self, rng: &mut Rng) -> f64 {
         score(self.board.pattern_playout(self.policy, rng)).expect("a playout ends the game")
+    }
+}
+
+/// A position searched with a context policy (E016): its weights order a
+/// node's children, when the search uses priors, and draw the playouts'
+/// first moves ([`Board::context_playout`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ContextBoard {
+    pub board: Board,
+    pub policy: &'static ContextPolicy,
+}
+
+impl Game for ContextBoard {
+    type Move = Move;
+
+    fn to_move(&self) -> usize {
+        self.board.to_move()
+    }
+
+    fn legal_moves(&self, moves: &mut Vec<Move>) {
+        Game::legal_moves(&self.board, moves);
+    }
+
+    fn play(&mut self, mv: Move) {
+        self.board.play(mv);
+    }
+
+    fn score(&self) -> Option<f64> {
+        score(self.board.status())
+    }
+
+    fn priors(&self, moves: &[Move], weights: &mut Vec<f32>) {
+        self.board.context_move_weights(self.policy, moves, weights);
+    }
+
+    fn playout(&mut self, rng: &mut Rng) -> f64 {
+        score(self.board.context_playout(self.policy, rng)).expect("a playout ends the game")
     }
 }
 

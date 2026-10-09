@@ -5,12 +5,14 @@ use cg_core::rng::Rng;
 use crate::grid::{self, FULL};
 use crate::moves::{Move, MoveList};
 
+mod context;
 mod patterns;
 mod policy;
 
+pub use context::{ContextPolicy, DESTINATION_WEIGHTS, OPEN_PATTERNS, ROLES};
 pub use patterns::{
     encode_pattern_weights, symmetric_cell, PatternPolicy, DESTINATIONS, PATTERNS, PATTERN_CELLS,
-    PATTERN_FEATURES,
+    PATTERN_FEATURES, PHASE_MARKS,
 };
 pub use policy::{
     PlayoutPolicy, BLOCKS, CENTRE, CLASSES, FEATURES, FEATURE_NAMES, GIVES_BOARD,

@@ -16,5 +16,5 @@ pub mod moves;
 pub mod search;
 pub mod value;
 
-pub use board::{Board, PatternPolicy, PlayoutPolicy, Status};
+pub use board::{Board, ContextPolicy, PatternPolicy, PlayoutPolicy, Status};
 pub use moves::{Move, MoveList};

@@ -174,3 +174,49 @@ fn pattern_playouts_end_and_are_reproducible() {
         assert_eq!(a, b);
     }
 }
+
+#[test]
+fn packed_weights_with_two_phases_switch_at_the_phase_marks() {
+    let mut rng = Rng::new(14);
+    let quarters: Vec<u8> = (0..2 * PATTERN_FEATURES)
+        .map(|_| rng.below(64) as u8)
+        .collect();
+    let text = cg_core::packed::encode_strided(&quarters, DESTINATIONS);
+    let policy = PatternPolicy::decode_packed(&text).unwrap();
+    let log_weights: Vec<f32> = quarters
+        .iter()
+        .map(|&q| (f32::from(q) - 32.0) / 4.0)
+        .collect();
+    assert_eq!(
+        policy,
+        PatternPolicy::from_log_weights(&log_weights).unwrap()
+    );
+    assert!(PatternPolicy::decode_packed(&(text + "A")).is_err());
+    let mut weights = Vec::new();
+    let mut checked = [0; 2];
+    for _ in 0..30 {
+        let mut board = Board::new();
+        while board.status() == Status::Ongoing {
+            let moves = legal(&board);
+            board.pattern_move_weights(&policy, &moves, &mut weights);
+            let late = board.marks() >= PHASE_MARKS;
+            for (&mv, &weight) in moves.iter().zip(&weights) {
+                let feature = usize::from(late) * PATTERN_FEATURES + board.pattern_feature(mv);
+                assert_eq!(weight, policy.weights[feature] as f32);
+            }
+            checked[usize::from(late)] += 1;
+            let mv = board.random_move(&mut rng);
+            board.play(mv);
+        }
+    }
+    assert!(checked[0] > 100 && checked[1] > 100, "{checked:?}");
+    // Playouts track the marks along the way and end.
+    let policy = policy.for_plies(40);
+    for seed in 0..20 {
+        let mut board = Board::new();
+        assert_ne!(
+            board.pattern_playout(&policy, &mut Rng::new(seed)),
+            Status::Ongoing
+        );
+    }
+}

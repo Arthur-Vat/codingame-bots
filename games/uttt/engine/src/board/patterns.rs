@@ -31,12 +31,15 @@ pub const PATTERNS: usize = 19_683;
 pub const PATTERN_CELLS: usize = 5_255;
 /// Features, and so weights, of a pattern policy.
 pub const PATTERN_FEATURES: usize = PATTERN_CELLS * DESTINATIONS;
+/// Marks on the whole board from which a policy with two phases uses its
+/// second set of weights (E016).
+pub const PHASE_MARKS: u32 = 30;
 
 /// The 6-bit digits of the weights' text.
 const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /// `B3[mask]`: the base-3 number with a 1 for each cell of `mask`.
-const B3: [u16; 512] = {
+pub(super) const B3: [u16; 512] = {
     let mut table = [0u16; 512];
     let mut mask = 0;
     while mask < 512 {
@@ -74,7 +77,7 @@ pub fn symmetric_cell(symmetry: usize, cell: usize) -> usize {
 /// `ids[9 * pattern + cell]`: the number of the canonical pair of an open
 /// pattern and one of its empty cells, 0 to `PATTERN_CELLS - 1`, or 0 for
 /// other pairs, which never get a weight.
-fn pattern_ids() -> &'static [u16] {
+pub(super) fn pattern_ids() -> &'static [u16] {
     static IDS: OnceLock<Vec<u16>> = OnceLock::new();
     IDS.get_or_init(|| {
         let mut ids = vec![0u16; PATTERNS * 9];
@@ -120,7 +123,9 @@ fn pattern_ids() -> &'static [u16] {
     })
 }
 
-/// Learned weights by pattern, cell and destination.
+/// Learned weights by pattern, cell and destination, once or, for two
+/// phases of the game, twice: before the [`PHASE_MARKS`]th move and from
+/// it on (E016).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PatternPolicy {
     /// Integer weights, each below 2^24 so that 81 of them fit a `u32`.
@@ -132,11 +137,12 @@ pub struct PatternPolicy {
 
 impl PatternPolicy {
     /// The policy with these log-weights, one per feature (see
-    /// [`Board::pattern_feature`]), each from -8 to 7.75.
+    /// [`Board::pattern_feature`]) or one per feature and phase, each from
+    /// -8 to 7.75.
     pub fn from_log_weights(log_weights: &[f32]) -> Result<Self, String> {
-        if log_weights.len() != PATTERN_FEATURES {
+        if log_weights.len() != PATTERN_FEATURES && log_weights.len() != 2 * PATTERN_FEATURES {
             return Err(format!(
-                "{} weights instead of {PATTERN_FEATURES}",
+                "{} weights instead of {PATTERN_FEATURES} or twice as many",
                 log_weights.len()
             ));
         }
@@ -168,11 +174,36 @@ impl PatternPolicy {
         Self::from_log_weights(&log_weights)
     }
 
+    /// Decodes the trainer's packed text ([`cg_core::packed`]): the
+    /// weights as quarter steps `q` for `(q - 32) / 4`, in 5 segments by
+    /// kind of destination.
+    pub fn decode_packed(text: &str) -> Result<Self, String> {
+        let (quarters, rest) = cg_core::packed::decode_strided(text, DESTINATIONS)?;
+        if !rest.is_empty() {
+            return Err(format!("{} characters after the weights", rest.len()));
+        }
+        let log_weights: Vec<f32> = quarters
+            .iter()
+            .map(|&q| (f32::from(q) - 32.0) / 4.0)
+            .collect();
+        Self::from_log_weights(&log_weights)
+    }
+
     /// The same weights, used for the first `plies` moves of each playout
     /// only.
     pub fn for_plies(mut self, plies: u32) -> Self {
         self.plies = plies;
         self
+    }
+
+    /// The weights for a position with `marks` marks on the whole board.
+    #[inline]
+    fn for_marks(&self, marks: u32) -> &[u32] {
+        if self.weights.len() > PATTERN_FEATURES && marks >= PHASE_MARKS {
+            &self.weights[PATTERN_FEATURES..]
+        } else {
+            &self.weights[..PATTERN_FEATURES]
+        }
     }
 }
 
@@ -191,7 +222,7 @@ pub fn encode_pattern_weights(log_weights: &[f32]) -> String {
 impl Board {
     /// The pattern of small board `board` from the player to move's view.
     #[inline(always)]
-    fn pattern(&self, board: usize) -> usize {
+    pub(super) fn pattern(&self, board: usize) -> usize {
         let seat = self.to_move();
         usize::from(B3[usize::from(self.marks[seat][board])])
             + 2 * usize::from(B3[usize::from(self.marks[1 - seat][board])])
@@ -202,7 +233,7 @@ impl Board {
     /// plus 1 if the opponent could win the board it is sent to at once,
     /// plus 2 if the player could.
     #[inline(always)]
-    fn destinations(&self, board: usize) -> [usize; 9] {
+    pub(super) fn destinations(&self, board: usize) -> [usize; 9] {
         let seat = self.to_move();
         let free = self.board_features(board).free;
         let (theirs, mine) = (self.threats[1 - seat], self.threats[seat]);
@@ -229,18 +260,26 @@ impl Board {
         moves: &[Move],
         weights: &mut Vec<f32>,
     ) {
+        let by_feature = policy.for_marks(self.marks());
         weights.clear();
         weights.extend(
             moves
                 .iter()
-                .map(|&mv| policy.weights[self.pattern_feature(mv)] as f32),
+                .map(|&mv| by_feature[self.pattern_feature(mv)] as f32),
         );
+    }
+
+    /// Marks on the whole board: the moves played so far.
+    pub(super) fn marks(&self) -> u32 {
+        (0..9)
+            .map(|small| grid::count(self.marks[0][small]) + grid::count(self.marks[1][small]))
+            .sum()
     }
 
     /// Running totals of the weights of small board `board`'s cells, cell
     /// 0 first, with 0 for occupied cells. Branch-free.
     #[inline(always)]
-    fn pattern_cumulative(&self, board: usize, ids: &[u16], policy: &PatternPolicy) -> [u32; 9] {
+    fn pattern_cumulative(&self, board: usize, ids: &[u16], weights: &[u32]) -> [u32; 9] {
         let empty = self.empty_cells(board);
         let destinations = self.destinations(board);
         let row = &ids[9 * self.pattern(board)..][..9];
@@ -253,14 +292,14 @@ impl Board {
             .enumerate()
         {
             let feature = usize::from(id) * DESTINATIONS + destination;
-            total += policy.weights[feature] * u32::from((empty >> cell) & 1);
+            total += weights[feature] * u32::from((empty >> cell) & 1);
             *sum = total;
         }
         cumulative
     }
 
     #[inline(always)]
-    fn pattern_cell(&self, policy: &PatternPolicy, ids: &[u16], rng: &mut Rng) -> (usize, usize) {
+    fn pattern_cell(&self, policy: &[u32], ids: &[u16], rng: &mut Rng) -> (usize, usize) {
         if let Some(winning) = self.game_winning_cell() {
             return winning;
         }
@@ -291,7 +330,7 @@ impl Board {
     /// A move drawn from `policy`, after a game-winning move if there is
     /// one. The game must go on.
     pub fn pattern_move(&self, policy: &PatternPolicy, rng: &mut Rng) -> Move {
-        let (board, cell) = self.pattern_cell(policy, pattern_ids(), rng);
+        let (board, cell) = self.pattern_cell(policy.for_marks(self.marks()), pattern_ids(), rng);
         Move::new(board, cell)
     }
 
@@ -301,10 +340,13 @@ impl Board {
     pub fn pattern_playout(&mut self, policy: &PatternPolicy, rng: &mut Rng) -> Status {
         let ids = pattern_ids();
         let mut plies = 0;
+        let phases = policy.weights.len() > PATTERN_FEATURES;
+        let mut marks = if phases { self.marks() } else { 0 };
         while self.status == Status::Ongoing && plies < policy.plies {
-            let (board, cell) = self.pattern_cell(policy, ids, rng);
+            let (board, cell) = self.pattern_cell(policy.for_marks(marks), ids, rng);
             self.play_at(board, cell);
             plies += 1;
+            marks += 1;
         }
         self.decisive_playout(rng)
     }
