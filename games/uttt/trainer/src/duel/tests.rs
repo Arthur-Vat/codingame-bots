@@ -1,3 +1,5 @@
+use uttt_engine::value::ValueNetwork;
+
 use super::*;
 
 #[test]
@@ -69,10 +71,12 @@ fn duels_count_every_game_and_do_not_depend_on_threads() {
     let policy: &'static PlayoutPolicy =
         Box::leak(Box::new(PlayoutPolicy::new(weights).for_plies(16)));
     let duel = Duel {
-        iterations: 200,
+        first: Limit::Iterations(400),
+        later: Limit::Iterations(200),
         opening_plies: 4,
         exploration: 0.5,
         network_exploration: 0.3,
+        network_share: 1.0,
     };
     let results = duel.play(network, policy, 6, 9, 1);
     assert_eq!(results.wins + results.draws + results.losses, 12);
@@ -85,4 +89,26 @@ fn duels_count_every_game_and_do_not_depend_on_threads() {
         .sum();
     assert_eq!(points, 2 * results.wins + results.draws);
     assert_eq!(duel.play(network, policy, 6, 9, 3), results);
+}
+
+#[test]
+fn mixed_and_timed_duels_count_every_game() {
+    let mut rng = Rng::new(32);
+    let parameters: Vec<f32> = (0..Network::<128, 32>::PARAMETERS)
+        .map(|_| ((rng.unit() * 2.0 - 1.0) * 0.2) as f32)
+        .collect();
+    let network: &'static Network<128, 32> =
+        Box::leak(Box::new(Network::from_parameters(&parameters).unwrap()));
+    let policy: &'static PlayoutPolicy = Box::leak(Box::new(PlayoutPolicy::uniform()));
+    let duel = Duel {
+        first: Limit::Time(Duration::from_millis(4)),
+        later: Limit::Time(Duration::from_millis(1)),
+        opening_plies: 6,
+        exploration: 0.5,
+        network_exploration: 0.3,
+        network_share: 0.5,
+    };
+    let results = duel.play(network, policy, 2, 5, 2);
+    assert_eq!(results.wins + results.draws + results.losses, 4);
+    assert_eq!(results.pairs.iter().sum::<u32>(), 2);
 }

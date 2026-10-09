@@ -35,7 +35,10 @@ on:
         default: "8"
       duel_exploration:
         description: "Value: exploration of the network's search against the playouts'"
-        default: "0.1"
+        default: "0.3"
+      size:
+        description: "Value: the network's hidden layers (64-16 or 128-32)"
+        default: "64-16"
 
 permissions:
   contents: read
@@ -147,6 +150,7 @@ jobs:
           TARGET: ${{ inputs.target }}
           EPOCHS: ${{ inputs.epochs }}
           DUEL_EXPLORATION: ${{ inputs.duel_exploration }}
+          SIZE: ${{ inputs.size }}
         run: |
           out="games/uttt/training/runs/$GITHUB_RUN_ID"
           mkdir -p "$out"
@@ -157,7 +161,7 @@ jobs:
           origin="run $GITHUB_RUN_ID of commit $GITHUB_SHA, $JOBS jobs of $GAMES games at $ITERATIONS iterations, $OPENING_PLIES opening plies"
           if [[ $STAGE == value ]]; then
             target/release/uttt-trainer fit-value "${data[@]}" \
-              --target "$TARGET" --epochs "$EPOCHS" \
+              --target "$TARGET" --epochs "$EPOCHS" --size "$SIZE" \
               --policy games/uttt/bots/mcts/src/weights.rs \
               --duel-exploration "$DUEL_EXPLORATION" --origin "$origin" \
               --weights-out "$out/value_weights.rs" --report-out "$out/report.md"
