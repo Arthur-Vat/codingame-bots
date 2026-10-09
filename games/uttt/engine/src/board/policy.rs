@@ -85,6 +85,7 @@ impl PlayoutPolicy {
 
 /// Feature masks of the empty cells of one small board, for the player to
 /// move.
+#[derive(Clone, Copy)]
 struct BoardFeatures {
     empty: u16,
     wins: u16,
@@ -137,6 +138,22 @@ impl Board {
         debug_assert!(self.is_legal(mv), "illegal move {mv}");
         let features = self.board_features(mv.board());
         Board::cell_class(&features, self.threats[1 - self.to_move()], mv.cell())
+    }
+
+    /// The weight `policy` gives each of `moves`, which must be legal, in
+    /// order, written into `weights`: the search's priors (E014). Each
+    /// small board's features are computed once.
+    pub fn move_weights(&self, policy: &PlayoutPolicy, moves: &[Move], weights: &mut Vec<f32>) {
+        let threats = self.threats[1 - self.to_move()];
+        let mut features: [Option<BoardFeatures>; 9] = [None; 9];
+        weights.clear();
+        for &mv in moves {
+            debug_assert!(self.is_legal(mv), "illegal move {mv}");
+            let board = mv.board();
+            let board_features = *features[board].get_or_insert_with(|| self.board_features(board));
+            let class = Board::cell_class(&board_features, threats, mv.cell());
+            weights.push(policy.weights[class] as f32);
+        }
     }
 
     /// A move for playouts: a move that wins the game if there is one (as

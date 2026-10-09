@@ -24,6 +24,15 @@ pub trait Game: Clone + PartialEq {
     /// 0 for a loss. `None` while the game goes on.
     fn score(&self) -> Option<f64>;
 
+    /// How promising each of `moves`, legal here, looks: non-negative
+    /// weights in the same order, written into `weights`. A search told to
+    /// use priors tries the most promising moves first and favours them a
+    /// little. The default leaves `weights` empty: no priors.
+    fn priors(&self, moves: &[Self::Move], weights: &mut Vec<f32>) {
+        let _ = moves;
+        weights.clear();
+    }
+
     /// Plays to the end and returns player 0's score. The default plays
     /// uniformly random legal moves; games may provide a faster or smarter
     /// version.
