@@ -42,7 +42,15 @@ git push origin "$commit:refs/heads/claude/handoff"
 
 ## Suggest a fresh session
 
-Every step of a session re-reads its whole context, so a long conversation costs more on each step. At the end of a piece of work, once this file is up to date, if the main session's context is above about 100k tokens (skill `session-usage` shows it), tell the owner in one line that it is a good time to start a new session: the file carries the state over.
+Every step of a session re-reads its whole context from the cache, so a long conversation costs more on each step. A new session is not free either: it starts at about 65k tokens (system prompt, tools, skills) and writes that, plus `CLAUDE.md`, the roadmap and this file, to the cache again. Measured on 2026-10-09, a session at 106k saves only 30k to 40k of reads per step; since a cache write costs far more than a read, the owner and Claude estimated about 30 further steps to repay the cold start (the owner's question, 2026-10-09).
+
+At the end of a piece of work, once this file is up to date, tell the owner in one line that it is a good time to start a new session only when one of these holds:
+
+- the main session's context (skill `session-usage` shows it) is above about 150k tokens and more work is waiting;
+- the next work is unrelated to the conversation;
+- the owner will be away for over an hour (the cache expires after an hour idle).
+
+Finishing a pull request is not a reason by itself. The file carries the state over.
 
 ## The file
 
