@@ -50,7 +50,7 @@ codingame-bots/
 │     ├─ bots/              first-valid/, random/, greedy/, wood/, rules-check/, mcts/
 │     ├─ releases/          frozen paste-ready file per version
 │     ├─ journal/           one entry per experiment, with an index
-│     └─ training/          reports of the training runs used
+│     └─ training/          reports of the training runs used, E011's class weights
 ├─ .claude/                 Phase 5: skills, agents, settings
 └─ .github/
    ├─ workflows/            ci, sprt, league, release, train, prune-branches

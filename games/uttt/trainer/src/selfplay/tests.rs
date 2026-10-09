@@ -37,12 +37,12 @@ fn games_are_reproducible_and_record_searched_positions() {
     }
 }
 
-/// `uttt-v008`'s weights, as the Train workflow reads them.
-const BOT_WEIGHTS: &str = include_str!("../../../bots/mcts/src/weights.rs");
+/// E011's class weights (`uttt-v008`), as the Train workflow reads them.
+const CLASS_WEIGHTS: &str = include_str!("../../../training/class_weights.rs");
 
 #[test]
-fn the_bot_weights_are_read_from_its_source() {
-    let weights = read_policy_weights(BOT_WEIGHTS).unwrap();
+fn class_weights_are_read_from_their_source() {
+    let weights = read_policy_weights(CLASS_WEIGHTS).unwrap();
     assert_eq!(weights[0], 800);
     assert_eq!(weights[1], 10_000);
     assert_eq!(weights[31], 1070);
@@ -55,8 +55,8 @@ fn the_bot_weights_are_read_from_its_source() {
 }
 
 #[test]
-fn games_with_the_bots_playouts_can_skip_visits() {
-    let weights = read_policy_weights(BOT_WEIGHTS).unwrap();
+fn games_with_class_policy_playouts_can_skip_visits() {
+    let weights = read_policy_weights(CLASS_WEIGHTS).unwrap();
     let policy: &'static PlayoutPolicy =
         Box::leak(Box::new(PlayoutPolicy::new(weights).for_plies(16)));
     let settings = SelfPlay {

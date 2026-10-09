@@ -66,9 +66,10 @@ enum Command {
         /// The search's exploration constant.
         #[arg(long, default_value_t = 0.5)]
         exploration: f64,
-        /// Rust source holding the bot's playout weights (`PLAYOUT_WEIGHTS`),
-        /// such as `games/uttt/bots/mcts/src/weights.rs`, for the bot's
-        /// playouts; decisive playouts without it.
+        /// Rust source holding the class policy's playout weights
+        /// (`PLAYOUT_WEIGHTS`), such as `games/uttt/training/class_weights.rs`
+        /// (E011's, the bot's until E015), for its playouts; decisive playouts
+        /// without it.
         #[arg(long)]
         policy: Option<PathBuf>,
         /// Rust source holding a pattern policy's text (`PATTERN_TEXT`), such
@@ -159,7 +160,8 @@ enum Command {
     /// Plays the bot's search against itself, one side searching longer
     /// on its first moves: the most an opening book could bring (E013).
     HeadStart {
-        /// Rust source holding the bot's playout weights.
+        /// Rust source holding the class policy's playout weights, such as
+        /// `games/uttt/training/class_weights.rs`.
         #[arg(long)]
         policy: PathBuf,
         /// Moves of each playout drawn from the policy, as in the bot.
@@ -218,8 +220,9 @@ enum Command {
         /// playouts.
         #[arg(long, default_value_t = 1)]
         seed: u64,
-        /// Rust source holding the bot's playout weights, whose playouts the
-        /// network must beat.
+        /// Rust source holding the class policy's playout weights, such as
+        /// `games/uttt/training/class_weights.rs`, whose playouts the network
+        /// must beat.
         #[arg(long)]
         policy: PathBuf,
         /// Moves of each playout drawn from the policy, as in the bot.

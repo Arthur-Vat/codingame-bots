@@ -66,7 +66,7 @@ fn duels_count_every_game_and_do_not_depend_on_threads() {
         ValueNetwork::from_parameters(&parameters).unwrap(),
     ));
     let weights =
-        crate::selfplay::read_policy_weights(include_str!("../../../bots/mcts/src/weights.rs"))
+        crate::selfplay::read_policy_weights(include_str!("../../../training/class_weights.rs"))
             .unwrap();
     let policy: &'static PlayoutPolicy =
         Box::leak(Box::new(PlayoutPolicy::new(weights).for_plies(16)));
