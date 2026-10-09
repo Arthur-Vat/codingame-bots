@@ -1,2 +1,4 @@
 /target/
 **/*.rs.bk
+# Working copies of Claude's subagents
+/.claude/worktrees/
