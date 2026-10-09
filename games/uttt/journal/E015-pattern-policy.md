@@ -6,11 +6,11 @@ parent: uttt-v009
 hypothesis: A move policy with one learned weight per small-board pattern, cell and destination predicts the search's choices better than 32 move classes, so its playouts judge positions better and its order of children is better.
 change: Playouts draw their first 16 moves, and nodes order their children, with 26,275 learned weights (`PatternPolicy`, `search::PatternBoard`) instead of E011's 32 class weights; the weights travel in the bot as one base64 character each.
 release: uttt-v010
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +12.8 [+2.7, +23.0] at 20 ms
+pairs: 1746
+full_time: +5.6 [-11.1, +22.3] over 500 pairs, no timeout in 1,000 games, 99.9% of answers within 92.1 ms
+decision: promoted
 cg_rank: pending
 ---
 
@@ -134,3 +134,19 @@ first. Merging it here put its engine code into the bundle, unused by
 this bot: 77,026 bytes instead of 75,677. The release was rebuilt from
 the merged sources, as the release check requires, and the SPRT runs
 again on it.
+
+## Result
+
+From the SPRT comment on #35 for the rebuilt release (commit db57afe):
+smoke test 200 wins in 200 games; SPRT accepted after 1,746 pairs (1,455
+wins, 711 draws, 1,326 losses), LLR 2.95; confirmation at CodinGame's
+limits 353 wins, 310 draws, 337 losses, no timeout for either bot, one
+timeout for v010 in the SPRT's 3,492 games.
+
+The bot plays the same moves as in the first run; only unused code was
+added. The two runs differ by their chance: +19.2 then +12.8 at 20 ms,
++11.8 then +5.6 at full time. Together, the 1,000 full-time pairs put the
+gain near +9 Elo, within an interval that still reaches 0. As with E014,
+the gain at 20 ms shrinks at CodinGame's limits, where a better playout
+policy matters less against more iterations; this pair of results is one
+reason to test at full time in Legend.
