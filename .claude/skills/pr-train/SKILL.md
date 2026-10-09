@@ -37,7 +37,7 @@ Skill `review-pr`. One light review can cover a batch of documentation-only bran
 
 Skill `github-api`. The body says what and why (linking the roadmap item or decision record), what the review found and what changed, the check summary lines (`CLAUDE.md`'s commands), and for a stack: the order, "Create a merge commit, not squash", and that GitHub retargets each one when the one below merges. End with the attribution lines.
 
-Then ask the owner for approval in the conversation, ending with the exact reply that approves, such as `merge #50` (or `merge #50 to #52` for a stack), so that the approval names its pull requests (ADR 0023).
+Then ask the owner for approval in the conversation, in two parts (owner, 2026-10-09). First the full brief in the message: for each pull request, what it changes, its checks, its review and what was fixed, its risks and the head it would merge at. Then a form (the question tool), with one option per pull request or stack that names its number, such as `Merge #50` or `Merge #50 to #52`, and an option to hold, so that the approval names its pull requests (ADR 0023). A choice in the form is an answer in the conversation. Without the question tool, end with the exact reply that approves, such as `merge #50`.
 
 ## 5. Merge
 

@@ -23,7 +23,9 @@ It reads only this session's logs: the main session's steps, then each agent sta
 
 One line in the summary to the owner, for example: "Usage: main session 26 steps (10.1M read), 2 agents (0.8M read)." Add a cause when a figure stands out: a long conversation, an agent with many steps, or an agent that starts high.
 
+Add the same line to the Usage section of `HANDOFF.md` (skill `handoff`), so that the daily report can sum up what each session cost. The daily scheduled session reports its own line in the report instead.
+
 ## Limits
 
 - The figures are tokens, not the plan's percentage, which sessions cannot read (`docs/ROADMAP.md`, phase 5, step C).
-- A scheduled session sees only its own logs, so the daily report cannot measure other sessions.
+- A scheduled session sees only its own logs: the daily report learns what other sessions cost from their lines in `HANDOFF.md`.

@@ -37,6 +37,6 @@ Keep reviews cheap, since they draw on the owner's usage:
 - Fix blockers and real issues; fix cheap nits; for the rest, say in the pull request why they stay.
 - A finding that needs a decision goes to the owner (skill `ask-decision`), not into a guess.
 - Put a short "Review" section in the pull request body: the verdict, what was fixed (with commit SHAs) and what was kept.
-- Then ask the owner to approve, ending with the exact reply, such as `merge #50` (skill `pr-train`, step 4).
+- Then ask the owner to approve: the full brief first, then a form naming each pull request (skill `pr-train`, step 4).
 
 Do not re-run the full review after small fixes; re-run it only if the fixes changed the design.

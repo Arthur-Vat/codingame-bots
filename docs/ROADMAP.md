@@ -113,6 +113,7 @@ Gate: one week of daily scheduled sessions in which Claude moves work forward on
 
 - [x] Usage guard: the 7-day usage of the owner's plan is not readable from cloud sessions. The status line carries it (`rate_limits.seven_day.used_percentage`), but it does not run in them (tested 2026-10-09). The owner's pause switch replaces the guard: he pauses the scheduled task in the Claude app when his usage runs high, and the run is kept quick and read-only
 - [x] One quick scheduled session a day, reduced from four on 2026-10-09 to spare the owner's usage: every day at 06:45, Paris time, the daily report (`daily-report`) of the day's work, areas of improvement, and hot fixes and evolutions to propose (the owner's brief, 2026-10-09). Its final message reaches the owner's phone as a push notification. It changes nothing and never merges ([ADR 0023](adr/0023-chat-approved-merges.md)). Set up 2026-10-09 as the scheduled task "CodinGame bots: daily report", on Sonnet 5.5 at the owner's request
+- [x] Sessions hand work over through `HANDOFF.md` on the standing branch `claude/handoff` (owner, 2026-10-09, [ADR 0024](adr/0024-handoff-branch.md)): read at the start of every session and by the daily report, updated by the sessions, with one usage line per piece of work
 - [ ] One week of trial, from 2026-10-10, then the report's form, the frequency and the merge classes adjusted with the owner
 
 ### D. Arena and ratings
