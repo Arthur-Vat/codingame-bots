@@ -3,6 +3,7 @@
 - Status: accepted (owner, 2026-10-08)
 - Date: 2026-10-08
 - Supersedes: decision 1 of [ADR 0018](0018-value-network-gate.md)
+- Scope: uttt
 
 ## Context
 
