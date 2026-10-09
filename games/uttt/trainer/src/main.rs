@@ -140,7 +140,8 @@ enum Command {
         #[arg(long, default_value_t = 1)]
         seed: u64,
         /// The models to fit, by name, or `all`: classes, patterns,
-        /// destinations-7, phases-2, destination-patterns, rich.
+        /// destinations-7, phases-2, destination-patterns, rich, large,
+        /// destination-roles, phases-destinations.
         #[arg(long, value_delimiter = ',', default_value = "classes,patterns")]
         models: Vec<String>,
         /// Where to write each model's weights, as Rust source named after
