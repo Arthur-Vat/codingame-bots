@@ -46,7 +46,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 scripts/bundle-bots.sh                 # every bot -> target/cg/<game>-<bot>.rs
 scripts/cg-check.sh target/cg/*.rs     # size and standalone compile of each bundle
-scripts/check-docs.sh                  # indexes, status lines and links of the docs
+scripts/check-docs.sh                  # indexes, status lines, links, and lists of workflows and scripts
 ```
 
 To play bots against each other locally, see [games/uttt/README.md](games/uttt/README.md).
