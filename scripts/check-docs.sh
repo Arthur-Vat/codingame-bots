@@ -501,9 +501,14 @@ check_adr_scopes
 agents=0
 for file in .claude/agents/*.md; do
   agents=$((agents + 1))
-  header="$(awk 'NR == 1 { if ($0 != "---") exit; next } $0 == "---" { exit } { print }' "$file")"
+  # The header's lines, then CLOSED once its closing --- line is found.
+  header="$(awk '{ sub(/\r$/, "") } NR == 1 { if ($0 != "---") exit; next } $0 == "---" { print "CLOSED"; exit } { print }' "$file")"
+  if [[ $header != *CLOSED ]]; then
+    fail "$file" "no header between two '---' lines"
+    continue
+  fi
   for key in name description model tools; do
-    grep -q "^$key: *[^ ]" <<<"$header" || fail "$file" "no '$key:' line in the header"
+    grep -q "^$key:[[:space:]]*[^[:space:]]" <<<"$header" || fail "$file" "no '$key:' line in the header"
   done
 done
 
