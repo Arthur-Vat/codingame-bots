@@ -13,7 +13,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0003](0003-rust.md) | Rust for engines, bots and tools | Accepted |
 | [0004](0004-monorepo.md) | One repository, one Cargo workspace | Accepted |
 | [0005](0005-first-game-uttt.md) | Ultimate Tic-Tac-Toe as the first game | Accepted |
-| [0006](0006-human-approves-merges.md) | A human approves every merge | Accepted |
+| [0006](0006-human-approves-merges.md) | A human approves every merge | Accepted; completed by 0023 |
 | [0007](0007-english.md) | English for all artifacts | Accepted |
 | [0008](0008-claude-hub.md) | A Claude conversation is the hub | Accepted |
 | [0009](0009-manual-submission.md) | Manual submission to CodinGame | Accepted |
@@ -27,6 +27,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0020](0020-full-time-sprt-in-legend.md) | In Legend, the SPRT plays at CodinGame's time limits | Accepted |
 | [0021](0021-prune-finished-branches.md) | Delete finished branches, keeping their content | Accepted |
 | [0022](0022-scopes-and-names.md) | Scopes for decision records and pull requests | Accepted |
+| [0023](0023-chat-approved-merges.md) | The owner approves merges in the conversation; Claude carries them out | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 

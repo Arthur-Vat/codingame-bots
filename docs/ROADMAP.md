@@ -98,7 +98,8 @@ Gate: one week of scheduled sessions in which Claude moves work forward on its o
 
 - [ ] Project agents in `.claude/agents/`: `implementer` (Sonnet 5.5) codes to a precise spec; `pr-reviewer` (Opus 5.5) reviews every pull request against the hard rules, decision records, tests, docs and privacy; `rules-reviewer` checks engine changes against the game's `RULES.md`. Claude's main session plans, splits the work and checks the results
 - [ ] Project skills in `.claude/skills/`: `run-experiment`, `training-run`, `write-adr`, `review-pr`, `pr-train` (stacked pull requests and merge order), `deliver-release`, `weekly-report`, `docs-refresh`, later `new-game`
-- [ ] Merge policy (a decision record superseding [ADR 0006](adr/0006-human-approves-merges.md)): Claude may merge docs, journal entries, dropped experiments, tooling that changes no bot, and releases accepted by the full-time SPRT, once required checks pass and `pr-reviewer` approves; the owner merges decision records, `CLAUDE.md`, workflows and permissions, and rules or referee changes
+- [x] The owner approves merges in the conversation and Claude carries them out ([ADR 0023](adr/0023-chat-approved-merges.md))
+- [ ] Merge policy (a decision record superseding [ADR 0006](adr/0006-human-approves-merges.md)): Claude may merge without asking docs, journal entries, dropped experiments, tooling that changes no bot, and releases accepted by the full-time SPRT, once required checks pass and `pr-reviewer` approves; the owner merges decision records, `CLAUDE.md`, workflows and permissions, and rules or referee changes
 - [ ] The SPRT is a required check, so that a rejected release cannot be merged (repository setting, by or with the owner)
 - [ ] Decisions reach the owner as issues labelled `decision`, each with options and a recommendation, and one push notification when one is waiting
 
