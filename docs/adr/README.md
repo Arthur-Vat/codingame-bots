@@ -28,6 +28,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0021](0021-prune-finished-branches.md) | Delete finished branches, keeping their content | Accepted |
 | [0022](0022-scopes-and-names.md) | Scopes for decision records and pull requests | Accepted |
 | [0023](0023-chat-approved-merges.md) | The owner approves merges in the conversation; Claude carries them out | Accepted |
+| [0024](0024-handoff-branch.md) | A handoff file on a standing branch carries state between sessions | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 
