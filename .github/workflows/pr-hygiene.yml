@@ -1,8 +1,9 @@
 name: Pull request hygiene
 
 # Labels each pull request by the paths it changes and checks its title
-# (ADR 0022, scripts/pr-hygiene.sh). The token of a pull request from a fork,
-# or opened by Dependabot, cannot write: there only the title is checked.
+# (ADR 0022, scripts/pr-hygiene.sh). The token of a pull request from a fork
+# cannot write: there only the title is checked. Dependabot's pull requests
+# are neither labelled nor checked: their titles are generated.
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
@@ -24,19 +25,18 @@ jobs:
     name: Pull request title and labels
     runs-on: ubuntu-latest
     env:
-      # The token can write only when the head is in this repository and the
-      # run is not Dependabot's.
-      CAN_LABEL: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
+      FROM_DEPENDABOT: ${{ github.actor == 'dependabot[bot]' || github.event.pull_request.user.login == 'dependabot[bot]' }}
+      FROM_FORK: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
     steps:
       - uses: actions/checkout@v7
       - name: Label the pull request and check its title
-        if: env.CAN_LABEL == 'true'
+        if: env.FROM_DEPENDABOT != 'true' && env.FROM_FORK != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: scripts/pr-hygiene.sh pr ${{ github.event.pull_request.number }}
-      - name: Check the title (read-only token)
-        if: env.CAN_LABEL != 'true'
+      - name: Check the title of a pull request from a fork
+        if: env.FROM_DEPENDABOT != 'true' && env.FROM_FORK == 'true'
         env:
           # Through the environment, never in the script text: the title is
           # written by the author of the pull request.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Title (ADR 0022): type(scope): summary, at most 100 characters, no final period, scopes joined by commas.
-# Types and scopes: the lists "types" and "framework_scopes" below, and the game ids (directories of games/).
+# Details: docs/adr/0022-scopes-and-names.md. Scopes: the game ids (directories of games/) and "framework_scopes" below.
 #
 # Labels a pull request from the paths it changes and checks its title.
 #
@@ -36,7 +36,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 types=(feat fix docs test ci refactor perf chore build revert)
-framework_scopes=(core search arena bundler ci adr docs agents repo)
+# The crates (core, search, arena, bundler), .github/ (workflows), scripts/ (scripts), docs/adr/ (adr),
+# other documentation (docs), .claude/ (agents), workspace configuration (repo).
+framework_scopes=(core search arena bundler workflows scripts adr docs agents repo)
 max_length=100
 label_color=ededed
 games_dir="${GAMES_DIR:-games}"

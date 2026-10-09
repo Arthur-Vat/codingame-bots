@@ -56,20 +56,25 @@ same() { # same <what> <expected> <actual>
 # Titles that pass: the examples of the convention, every type, every scope.
 title_ok 'feat(uttt): pattern move policy (E015, uttt-v010)'
 title_ok 'docs(adr): 0020, in Legend the SPRT plays at full time'
-title_ok 'ci(ci,uttt): label pull requests by path'
+title_ok 'ci(workflows,uttt): label pull requests by path'
 for type in feat fix docs test ci refactor perf chore build revert; do
   title_ok "$type(uttt): a summary"
 done
-for scope in uttt core search arena bundler ci adr docs agents repo; do
+for scope in uttt core search arena bundler workflows scripts adr docs agents repo; do
   title_ok "fix($scope): a summary"
 done
-title_ok 'chore(core,search,arena,bundler,ci,adr,docs,agents,repo,uttt): every scope'
+title_ok 'chore(core,search,arena,bundler,workflows,scripts,adr,docs,agents,repo,uttt): every scope'
 title_ok "fix(uttt): $(printf 'a%.0s' {1..89})" # 100 characters
 
 # Titles that fail, and why.
 title_bad 'Update README' 'expected `type(scope): summary`'
 title_bad 'feat: no scope' 'the scope is required'
 title_bad 'feat(foo): unknown scope' 'unknown scope `foo`'
+# The scope ci is gone (the type stays), and so is a scope that names no folder.
+title_bad 'ci(ci): a summary' 'unknown scope `ci`'
+title_bad 'ci(ci,uttt): a summary' 'unknown scope `ci`'
+title_bad 'ci(train): a summary' 'unknown scope `train`'
+title_bad 'ci: a summary' 'the scope is required'
 title_bad 'feat(uttt,foo,bar): two unknown scopes' 'unknown scope `foo` `bar`'
 title_bad 'feat(uttt): ends with a period.' 'must not end with a period'
 title_bad 'feat(uttt): ...' 'must not end with a period'
@@ -259,7 +264,7 @@ same "invalid title: annotation" '::error title=Pull request title::expected `ty
 # Nothing to change: no call that writes. A label that differs in case from
 # the repository's is the same label.
 mkdir -p "$tmp_dir/steady"
-echo '{"number": 7, "title": "ci(ci): check titles"}' >"$tmp_dir/steady/pull.json"
+echo '{"number": 7, "title": "ci(scripts): check titles"}' >"$tmp_dir/steady/pull.json"
 echo '[{"filename": "scripts/pr-hygiene.sh", "status": "added"}]' >"$tmp_dir/steady/files.json"
 echo '[{"name": "CI"}, {"name": "bug"}]' >"$tmp_dir/steady/repo-labels.json"
 echo '[{"name": "CI"}, {"name": "bug"}]' >"$tmp_dir/steady/pr-labels.json"
