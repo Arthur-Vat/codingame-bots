@@ -35,7 +35,7 @@ The rules are in [ADR 0012](adr/0012-evaluation.md).
 - One topic per pull request; one experiment per candidate pull request.
 - A decision that is costly to reverse is proposed to the owner first, then recorded as an ADR.
 - Tests, the referee and CI checks are never weakened to make a change pass.
-- Pull request titles and decision records name their scope, a game or a framework area ([ADR 0022](adr/0022-scopes-and-names.md)); a workflow labels pull requests by the paths they change.
+- Pull request titles and commit subjects name a game or a framework area as their scope; decision records name a game or `framework` ([ADR 0022](adr/0022-scopes-and-names.md)). A workflow labels pull requests by the paths they change and checks their titles.
 - Finished branches are deleted ([ADR 0021](adr/0021-prune-finished-branches.md)): merged ones by GitHub on merge, the others by the weekly Prune branches workflow once their content is safe. When Claude reads a training run, it copies the run's `report.md` to `games/<game>/training/runs/<run>/` in the next pull request, so that the run's branch can go.
 
 ## Claude Code setup (Phase 5)
