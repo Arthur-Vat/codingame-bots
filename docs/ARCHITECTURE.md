@@ -32,7 +32,7 @@ codingame-bots/
 │  ├─ sprt.sh               smoke test and SPRT of a candidate file
 │  ├─ league.sh             Elo ratings of every release
 │  ├─ prune-branches.sh     deletes finished claude/ branches (ADR 0021)
-│  ├─ check-docs.sh         indexes, status lines and relative links match the repository
+│  ├─ check-docs.sh         indexes, status lines and links match the repository; agents declare model and tools
 │  ├─ pr-hygiene.sh         pull request titles (ADR 0022) and labels from changed paths
 │  ├─ tests/                tests of the scripts
 │  └─ lib/evaluation.sh     settings and helpers of sprt.sh, league.sh and new-release.sh

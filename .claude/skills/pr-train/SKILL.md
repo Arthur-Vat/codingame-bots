@@ -45,4 +45,4 @@ Only what the owner approved in the conversation, naming its number or approving
 
 ## 6. Afterwards
 
-Clean up scratch worktrees. Note what went wrong or cost too much for the next daily report.
+Clean up scratch worktrees. Measure the work's token use (skill `session-usage`) and give the owner its one line. Note what went wrong or cost too much for the next daily report.
