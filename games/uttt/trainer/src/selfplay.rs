@@ -4,8 +4,8 @@
 
 use cg_core::rng::Rng;
 use cg_search::{Budget, Game, Mcts};
-use uttt_engine::search::PolicyBoard;
-use uttt_engine::{Board, Move, PlayoutPolicy, Status};
+use uttt_engine::search::{PatternBoard, PolicyBoard};
+use uttt_engine::{Board, Move, PatternPolicy, PlayoutPolicy, Status};
 
 use crate::data::{GameRecord, Searched};
 
@@ -21,6 +21,9 @@ pub struct SelfPlay {
     pub exploration: f64,
     /// The playout policy, as in the bot; decisive playouts when `None`.
     pub policy: Option<&'static PlayoutPolicy>,
+    /// A pattern policy (E015) for the playouts and, as in the bot, the
+    /// order of each node's children; it replaces `policy` when set.
+    pub patterns: Option<&'static PatternPolicy>,
     /// Whether to record the visits of each move, which the playout policy
     /// is fitted to; the value network needs only the root's score.
     pub record_visits: bool,
@@ -32,16 +35,21 @@ impl SelfPlay {
     /// the game at once are not recorded: the search plays that move
     /// without searching.
     pub fn play(&self, seed: u64) -> GameRecord {
-        match self.policy {
-            Some(policy) => self.play_as(seed, |board| PolicyBoard { board, policy }),
-            None => self.play_as(seed, |board| board),
+        match (self.patterns, self.policy) {
+            (Some(policy), _) => self.play_as(seed, true, |board| PatternBoard { board, policy }),
+            (None, Some(policy)) => {
+                self.play_as(seed, false, |board| PolicyBoard { board, policy })
+            }
+            (None, None) => self.play_as(seed, false, |board| board),
         }
     }
 
-    /// Plays one game, searching `position(board)` at each move.
+    /// Plays one game, searching `position(board)` at each move, with the
+    /// game's priors if `priors`.
     fn play_as<G: Game<Move = Move>>(
         &self,
         seed: u64,
+        priors: bool,
         position: impl Fn(Board) -> G,
     ) -> GameRecord {
         let mut rng = Rng::new(seed);
@@ -49,6 +57,9 @@ impl SelfPlay {
             Mcts::new(self.exploration, rng.next_u64()),
             Mcts::new(self.exploration, rng.next_u64()),
         ];
+        for search in &mut searches {
+            search.priors = priors;
+        }
         let mut board = Board::new();
         let mut record = GameRecord::default();
         let mut moves = Vec::new();
@@ -103,6 +114,23 @@ pub fn read_policy_weights(source: &str) -> Result<[u32; uttt_engine::board::CLA
     weights
         .try_into()
         .map_err(|_| format!("{count} weights instead of {}", uttt_engine::board::CLASSES))
+}
+
+/// Reads the pattern weights' text from Rust source written by
+/// `uttt-trainer fit-patterns`, such as the bot's `pattern_weights.rs`:
+/// the string after `PATTERN_TEXT`, without its line continuations.
+pub fn read_pattern_text(source: &str) -> Result<String, String> {
+    let start = source
+        .find("PATTERN_TEXT: &str")
+        .and_then(|at| source[at..].find('"').map(|offset| at + offset + 1))
+        .ok_or("no `PATTERN_TEXT: &str` in the source")?;
+    let end = source[start..]
+        .find('"')
+        .ok_or("the weights' text does not end")?;
+    Ok(source[start..start + end]
+        .chars()
+        .filter(|c| !c.is_whitespace() && *c != '\\')
+        .collect())
 }
 
 #[cfg(test)]

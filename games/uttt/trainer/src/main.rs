@@ -12,7 +12,7 @@ use cg_core::rng::Rng;
 use clap::{Parser, Subcommand};
 use uttt_engine::board::CLASSES;
 use uttt_engine::value::Network;
-use uttt_engine::PlayoutPolicy;
+use uttt_engine::{PatternPolicy, PlayoutPolicy};
 use value_fit::Examples as _;
 
 mod data;
@@ -71,6 +71,11 @@ enum Command {
         /// playouts; decisive playouts without it.
         #[arg(long)]
         policy: Option<PathBuf>,
+        /// Rust source holding a pattern policy's text (`PATTERN_TEXT`), such
+        /// as `games/uttt/bots/mcts/src/pattern_weights.rs`, for the bot's
+        /// playouts and order of children since E015; replaces `--policy`.
+        #[arg(long)]
+        patterns: Option<PathBuf>,
         /// Moves of each playout drawn from the policy, as in the bot.
         #[arg(long, default_value_t = 16)]
         policy_plies: u32,
@@ -109,8 +114,9 @@ enum Command {
         #[arg(long, default_value = "local run")]
         origin: String,
     },
-    /// Fits the pattern policy (E015) to self-play data with visits, and
-    /// compares it with the playout policy's 32 classes fitted alike.
+    /// Fits move models to self-play data with visits and compares them:
+    /// the playout policy's 32 classes, E015's pattern policy, and larger
+    /// models (E016).
     FitPatterns {
         /// Data files written by `selfplay`, with visits.
         #[arg(long = "data", required = true)]
@@ -127,15 +133,22 @@ enum Command {
         /// Weight of the penalty on the log-weights' squares.
         #[arg(long, default_value_t = 1e-5)]
         penalty: f32,
-        /// Below 1, sharpens the weights the bot gets.
+        /// Below 1, sharpens the weights written for bots.
         #[arg(long, default_value_t = 1.0)]
         temperature: f32,
         /// Seed of the order of positions.
         #[arg(long, default_value_t = 1)]
         seed: u64,
-        /// Where to write the weights, as Rust source.
+        /// The models to fit, by name, or `all`: classes, patterns,
+        /// destinations-7, phases-2, destination-patterns, rich, large,
+        /// destination-roles, phases-destinations.
+        #[arg(long, value_delimiter = ',', default_value = "classes,patterns")]
+        models: Vec<String>,
+        /// Where to write each model's weights, as Rust source named after
+        /// the model (`patterns.rs` is the bot's format); the classes' are
+        /// not written.
         #[arg(long)]
-        weights_out: PathBuf,
+        weights_dir: PathBuf,
         /// Where to write the report, in Markdown.
         #[arg(long)]
         report_out: PathBuf,
@@ -263,28 +276,32 @@ fn main() -> ExitCode {
             opening_plies,
             exploration,
             policy,
+            patterns,
             policy_plies,
             no_visits,
             seed,
             out,
-        } => match policy
+        } => policy
             .map(|path| load_policy(&path, policy_plies))
             .transpose()
-        {
-            Ok(policy) => selfplay(
-                &selfplay::SelfPlay {
-                    iterations,
-                    opening_plies,
-                    exploration,
-                    policy,
-                    record_visits: !no_visits,
-                },
-                games,
-                seed,
-                &out,
-            ),
-            Err(message) => Err(message),
-        },
+            .and_then(|policy| {
+                let patterns = patterns
+                    .map(|path| load_patterns(&path, policy_plies))
+                    .transpose()?;
+                selfplay(
+                    &selfplay::SelfPlay {
+                        iterations,
+                        opening_plies,
+                        exploration,
+                        policy,
+                        patterns,
+                        record_visits: !no_visits,
+                    },
+                    games,
+                    seed,
+                    &out,
+                )
+            }),
         Command::FitPolicy {
             data,
             temperature,
@@ -310,23 +327,27 @@ fn main() -> ExitCode {
             penalty,
             temperature,
             seed,
-            weights_out,
+            models,
+            weights_dir,
             report_out,
             origin,
-        } => fit_patterns(
-            &data,
-            &patterns_fit::Fitting {
-                epochs,
-                batch,
-                rate,
-                penalty,
-                seed,
-            },
-            temperature,
-            &weights_out,
-            &report_out,
-            &origin,
-        ),
+        } => pattern_models(&models).and_then(|models| {
+            fit_patterns(
+                &data,
+                &patterns_fit::Fitting {
+                    epochs,
+                    batch,
+                    rate,
+                    penalty,
+                    seed,
+                },
+                temperature,
+                &models,
+                &weights_dir,
+                &report_out,
+                &origin,
+            )
+        }),
         Command::HeadStart {
             policy,
             policy_plies,
@@ -505,6 +526,17 @@ fn load_policy(path: &Path, plies: u32) -> Result<&'static PlayoutPolicy, String
     Ok(Box::leak(Box::new(
         PlayoutPolicy::new(weights).for_plies(plies),
     )))
+}
+
+/// The pattern policy whose text `path`'s Rust source holds, drawing
+/// `plies` moves of each playout.
+fn load_patterns(path: &Path, plies: u32) -> Result<&'static PatternPolicy, String> {
+    let source =
+        std::fs::read_to_string(path).map_err(|err| format!("{}: {err}", path.display()))?;
+    let policy = selfplay::read_pattern_text(&source)
+        .and_then(|text| PatternPolicy::decode(&text))
+        .map_err(|err| format!("{}: {err}", path.display()))?;
+    Ok(Box::leak(Box::new(policy.for_plies(plies))))
 }
 
 fn fit_policy(options: &FitOptions) -> Result<(), String> {
@@ -880,123 +912,174 @@ fn fit_value_sized<const H: usize, const H2: usize>(options: &ValueOptions) -> R
     Ok(())
 }
 
+/// The models named in `names`, `all` standing for every one.
+fn pattern_models(names: &[String]) -> Result<Vec<patterns_fit::Model>, String> {
+    let mut models = Vec::new();
+    for name in names {
+        if name == "all" {
+            models.extend(patterns_fit::ALL);
+        } else {
+            models.push(
+                patterns_fit::Model::from_name(name)
+                    .ok_or_else(|| format!("no model called {name:?}"))?,
+            );
+        }
+    }
+    models.dedup();
+    Ok(models)
+}
+
+/// One fitted model's results, for the report.
+struct PatternRow {
+    model: patterns_fit::Model,
+    seen: usize,
+    held_out: patterns_fit::Metrics,
+    rounded: patterns_fit::Metrics,
+    epochs: Vec<f64>,
+    characters: Option<(usize, usize)>,
+}
+
 fn fit_patterns(
     data: &[PathBuf],
     settings: &patterns_fit::Fitting,
     temperature: f32,
-    weights_out: &Path,
+    models: &[patterns_fit::Model],
+    weights_dir: &Path,
     report_out: &Path,
     origin: &str,
 ) -> Result<(), String> {
     use patterns_fit::{Model, Split};
     let start = Instant::now();
-    let mut split = Split::default();
-    for path in data {
-        split.add(&read_file(path)?);
-    }
-    let (fitted, held_out) = (&split.fitted, &split.held_out);
-    if fitted.positions() == 0 || held_out.positions() == 0 {
-        return Err("no searched positions with visits in the data".to_string());
-    }
+    let games = read_data(data)?;
     eprintln!(
-        "{} positions to fit ({} moves), {} held out",
-        fitted.positions(),
-        fitted.moves(),
-        held_out.positions()
+        "{} games read in {:.0} s",
+        games.len(),
+        start.elapsed().as_secs_f64()
     );
-    let uniform = patterns_fit::measure(Model::Classes, &[0.0; CLASSES], held_out);
-    let classes = patterns_fit::fit(Model::Classes, fitted, settings, |_, _| {});
-    let classes_metrics = patterns_fit::measure(Model::Classes, &classes, held_out);
-    let mut epochs = Vec::new();
-    let theta = patterns_fit::fit(Model::Patterns, fitted, settings, |epoch, theta| {
-        let metrics = patterns_fit::measure(Model::Patterns, theta, held_out);
+    std::fs::create_dir_all(weights_dir)
+        .map_err(|err| format!("{}: {err}", weights_dir.display()))?;
+    let mut rows = Vec::new();
+    let mut counts = None;
+    let mut uniform = None;
+    for &model in models {
+        let mut split = Split::new(model);
+        split.add(&games);
+        let (fitted, held_out) = (&split.fitted, &split.held_out);
+        if fitted.positions() == 0 || held_out.positions() == 0 {
+            return Err("no searched positions with visits in the data".to_string());
+        }
         eprintln!(
-            "epoch {epoch}: held out {:.4} nats, favourite move {:.3}, {:.0} s",
-            metrics.cross_entropy,
-            metrics.best_move,
+            "{}: {} positions to fit ({} moves), {} held out, {:.0} s",
+            model.name(),
+            fitted.positions(),
+            fitted.moves(),
+            held_out.positions(),
             start.elapsed().as_secs_f64()
         );
-        epochs.push((epoch, metrics));
-    });
-    let patterns = epochs
-        .last()
-        .map(|&(_, metrics)| metrics)
-        .unwrap_or_default();
-    let rounded: Vec<f32> = theta
-        .iter()
-        .map(|&value| ((value * 4.0).round() / 4.0).clamp(-8.0, 7.75))
-        .collect();
-    let rounded_metrics = patterns_fit::measure(Model::Patterns, &rounded, held_out);
-    let sharpened: Vec<f32> = theta.iter().map(|&value| value / temperature).collect();
-    let text = uttt_engine::board::encode_pattern_weights(&sharpened);
-    std::fs::write(weights_out, patterns_fit::weights_source(&text, origin))
-        .map_err(|err| format!("{}: {err}", weights_out.display()))?;
-    let mut seen = vec![false; uttt_engine::board::PATTERN_FEATURES];
-    for &feature in &fitted.patterns {
-        seen[feature as usize] = true;
+        let weights = model.weights();
+        uniform.get_or_insert_with(|| patterns_fit::measure(&vec![0.0; weights], held_out));
+        counts.get_or_insert((
+            fitted.games + held_out.games,
+            fitted.positions(),
+            fitted.moves(),
+            held_out.positions(),
+        ));
+        let mut epochs = Vec::new();
+        let theta = patterns_fit::fit(weights, fitted, settings, |epoch, theta| {
+            let metrics = patterns_fit::measure(theta, held_out);
+            eprintln!(
+                "{} epoch {epoch}: held out {:.4} nats, favourite move {:.3}, {:.0} s",
+                model.name(),
+                metrics.cross_entropy,
+                metrics.best_move,
+                start.elapsed().as_secs_f64()
+            );
+            epochs.push(metrics.cross_entropy);
+        });
+        let rounded: Vec<f32> = theta
+            .iter()
+            .map(|&value| ((value * 4.0).round() / 4.0).clamp(-8.0, 7.75))
+            .collect();
+        let mut seen = vec![false; weights];
+        for &feature in &fitted.features {
+            seen[feature as usize] = true;
+        }
+        let characters = (model != Model::Classes).then(|| {
+            let sharpened: Vec<f32> = theta.iter().map(|&value| value / temperature).collect();
+            let text = uttt_engine::board::encode_pattern_weights(&sharpened);
+            let source = patterns_fit::weights_source(model, &text, origin);
+            let path = weights_dir.join(format!("{}.rs", model.name()));
+            std::fs::write(&path, source)
+                .map(|()| (text.len(), patterns_fit::entropy_characters(&text)))
+                .map_err(|err| format!("{}: {err}", path.display()))
+        });
+        rows.push(PatternRow {
+            model,
+            seen: seen.iter().filter(|&&seen| seen).count(),
+            held_out: patterns_fit::measure(&theta, held_out),
+            rounded: patterns_fit::measure(&rounded, held_out),
+            epochs,
+            characters: characters.transpose()?,
+        });
     }
-    let seen = seen.iter().filter(|&&seen| seen).count();
+    let (games, fitted, moves, held_out) = counts.unwrap_or_default();
+    let uniform = uniform.unwrap_or_default();
 
     let mut report = String::new();
-    let _ = writeln!(report, "# Pattern policy fit\n");
+    let _ = writeln!(report, "# Move models fit\n");
     let _ = writeln!(report, "- Data: {origin}");
     let _ = writeln!(
         report,
-        "- Games: {}; positions: {} fitted ({} moves), {} held out (every 20th game, whole)",
-        fitted.games + held_out.games,
-        fitted.positions(),
-        fitted.moves(),
-        held_out.positions()
+        "- Games: {games}; positions: {fitted} fitted ({moves} moves), {held_out} held out (every 20th game, whole)"
     );
     let _ = writeln!(
         report,
-        "- Settings: {} epochs, batches of {} positions, Adam at {}, penalty {}, temperature {} for the bot, seed {}; {:.0} s in all",
+        "- Settings: {} epochs, batches of {} positions, Adam at {}, penalty {}, seed {}; weights written divided by temperature {}; {:.0} s in all\n",
         settings.epochs,
         settings.batch,
         settings.rate,
         settings.penalty,
-        temperature,
         settings.seed,
+        temperature,
         start.elapsed().as_secs_f64()
     );
     let _ = writeln!(
         report,
-        "- Features seen in the fitted positions: {seen} of {}\n",
-        uttt_engine::board::PATTERN_FEATURES
+        "| Model | Weights | Seen in fitted positions | Held-out cross-entropy, nats | Probability of the search's favourite move | Cross-entropy, weights rounded to quarters | Base64 characters | Entropy-coded, about |"
     );
+    let _ = writeln!(report, "| --- | --- | --- | --- | --- | --- | --- | --- |");
     let _ = writeln!(
         report,
-        "| Model, on held-out positions | Weights | Cross-entropy, nats per position | Probability of the search's favourite move |"
+        "| Uniform | 0 | | {:.4} | {:.3} | | | |",
+        uniform.cross_entropy, uniform.best_move
     );
-    let _ = writeln!(report, "| --- | --- | --- | --- |");
-    let rows = [
-        ("Uniform", 0, uniform),
-        ("Move classes, fitted here", CLASSES, classes_metrics),
-        ("Patterns", uttt_engine::board::PATTERN_FEATURES, patterns),
-        (
-            "Patterns, rounded to quarters",
-            uttt_engine::board::PATTERN_FEATURES,
-            rounded_metrics,
-        ),
-    ];
-    for (name, weights, metrics) in rows {
+    for row in &rows {
+        let (characters, coded) = row
+            .characters
+            .map_or((String::new(), String::new()), |(plain, coded)| {
+                (plain.to_string(), coded.to_string())
+            });
         let _ = writeln!(
             report,
-            "| {name} | {weights} | {:.4} | {:.3} |",
-            metrics.cross_entropy, metrics.best_move
+            "| {} | {} | {} | {:.4} | {:.3} | {:.4} | {characters} | {coded} |",
+            row.model.name(),
+            row.model.weights(),
+            row.seen,
+            row.held_out.cross_entropy,
+            row.held_out.best_move,
+            row.rounded.cross_entropy,
         );
     }
-    let _ = writeln!(
-        report,
-        "\n| Epoch | Held-out cross-entropy | Favourite move |"
-    );
-    let _ = writeln!(report, "| --- | --- | --- |");
-    for (epoch, metrics) in &epochs {
-        let _ = writeln!(
-            report,
-            "| {epoch} | {:.4} | {:.3} |",
-            metrics.cross_entropy, metrics.best_move
-        );
+    let _ = writeln!(report, "\n## Held-out cross-entropy by epoch\n");
+    let _ = writeln!(report, "| Model | By epoch |");
+    let _ = writeln!(report, "| --- | --- |");
+    for row in &rows {
+        let curve: Vec<String> = row
+            .epochs
+            .iter()
+            .map(|value| format!("{value:.4}"))
+            .collect();
+        let _ = writeln!(report, "| {} | {} |", row.model.name(), curve.join(", "));
     }
     std::fs::write(report_out, &report)
         .map_err(|err| format!("{}: {err}", report_out.display()))?;

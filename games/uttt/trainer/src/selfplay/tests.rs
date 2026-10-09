@@ -9,6 +9,7 @@ fn games_are_reproducible_and_record_searched_positions() {
         opening_plies: 4,
         exploration: 0.5,
         policy: None,
+        patterns: None,
         record_visits: true,
     };
     let game = settings.play(11);
@@ -63,6 +64,7 @@ fn games_with_the_bots_playouts_can_skip_visits() {
         opening_plies: 6,
         exploration: 0.5,
         policy: Some(policy),
+        patterns: None,
         record_visits: false,
     };
     let game = settings.play(3);
@@ -72,5 +74,45 @@ fn games_with_the_bots_playouts_can_skip_visits() {
     for searched in &game.searched {
         assert!(searched.visits.is_empty());
         assert!((0.0..=1.0).contains(&searched.score.unwrap()));
+    }
+}
+
+/// `uttt-v010`'s pattern weights, as the Train workflow reads them.
+const BOT_PATTERNS: &str = include_str!("../../../bots/mcts/src/pattern_weights.rs");
+
+#[test]
+fn the_bot_pattern_text_is_read_from_its_source() {
+    let text = read_pattern_text(BOT_PATTERNS).unwrap();
+    assert_eq!(text.len(), uttt_engine::board::PATTERN_FEATURES);
+    assert!(PatternPolicy::decode(&text).is_ok());
+    let short = "pub const PATTERN_TEXT: &str = \"\\\nAB\\\nC/\";";
+    assert_eq!(read_pattern_text(short).unwrap(), "ABC/");
+    assert!(read_pattern_text("no text here").is_err());
+}
+
+#[test]
+fn games_with_the_bots_patterns_record_visits_of_every_move() {
+    let text = read_pattern_text(BOT_PATTERNS).unwrap();
+    let policy: &'static PatternPolicy = Box::leak(Box::new(
+        PatternPolicy::decode(&text).unwrap().for_plies(16),
+    ));
+    let settings = SelfPlay {
+        iterations: 300,
+        opening_plies: 6,
+        exploration: 0.5,
+        policy: None,
+        patterns: Some(policy),
+        record_visits: true,
+    };
+    let game = settings.play(5);
+    assert_eq!(game, settings.play(5));
+    assert_ne!(game.status(), Status::Ongoing);
+    assert!(!game.searched.is_empty());
+    for (position, searched) in game.positions() {
+        let mut legal = MoveList::new();
+        position.legal_moves(&mut legal);
+        assert_eq!(searched.visits.len(), legal.len());
+        let best = searched.visits.iter().max_by_key(|(_, n)| *n).unwrap().0;
+        assert_eq!(best, game.moves[usize::from(searched.ply)]);
     }
 }

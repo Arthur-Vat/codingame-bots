@@ -1,28 +1,31 @@
-//! Fits the pattern policy's log-weights to the moves searches prefer
-//! (E015).
+//! Fits move models to the moves searches prefer: E015's pattern policy,
+//! and the larger models compared for E016 ([`models`]).
 //!
-//! The model gives a legal move the probability `e^θf / Σ e^θg`, where `f`
-//! is the move's feature (`Board::pattern_feature`) and the sum runs over
-//! the position's legal moves. θ minimises the cross-entropy against the
-//! share of the root's visits each move got, plus a small penalty on θ's
-//! size, by Adam on mini-batches of positions. The same code fits the 32
-//! move classes of the playout policy, for comparison.
+//! A model gives a legal move the probability `e^l / Σ e^m`, where `l` is
+//! the move's log-weight (the sum of its features' weights, one per table
+//! of the model) and the sum runs over the position's legal moves. The
+//! weights minimise the cross-entropy against the share of the root's
+//! visits each move got, plus a small penalty on their size, by Adam on
+//! mini-batches of positions.
 
 use std::fmt::Write as _;
 
 use cg_core::rng::Rng;
-use uttt_engine::board::{CLASSES, PATTERN_FEATURES};
 
 use crate::data::GameRecord;
 
+mod models;
+
+pub use models::{Model, ALL};
+
 /// Searched positions reduced to their legal moves' features and visit
-/// shares, stored flat.
-#[derive(Clone, Debug, Default, PartialEq)]
+/// shares, for one model, stored flat.
+#[derive(Clone, Debug, PartialEq)]
 pub struct Examples {
-    /// Each move's pattern feature.
-    pub patterns: Vec<u32>,
-    /// Each move's class in the playout policy.
-    pub classes: Vec<u8>,
+    /// Each move's features, `per_move` indices in a row.
+    pub features: Vec<u32>,
+    /// Features per move: the model's tables.
+    pub per_move: usize,
     /// Each move's share of its position's visits.
     pub shares: Vec<f32>,
     /// Where each position's moves start; one more entry than positions.
@@ -32,8 +35,18 @@ pub struct Examples {
 }
 
 impl Examples {
+    fn new(per_move: usize) -> Self {
+        Examples {
+            features: Vec::new(),
+            per_move,
+            shares: Vec::new(),
+            starts: vec![0],
+            games: 0,
+        }
+    }
+
     pub fn positions(&self) -> usize {
-        self.starts.len().saturating_sub(1)
+        self.starts.len() - 1
     }
 
     pub fn moves(&self) -> usize {
@@ -43,18 +56,34 @@ impl Examples {
     fn range(&self, position: usize) -> std::ops::Range<usize> {
         self.starts[position] as usize..self.starts[position + 1] as usize
     }
+
+    /// The features of move `index`.
+    fn of(&self, index: usize) -> &[u32] {
+        &self.features[index * self.per_move..][..self.per_move]
+    }
 }
 
-/// The fitted and held-out examples of self-play games: every 20th game is
-/// held out whole. Games are added file by file.
-#[derive(Clone, Debug, Default)]
+/// The fitted and held-out examples of self-play games for one model:
+/// every 20th game is held out whole. Games are added file by file.
+#[derive(Clone, Debug)]
 pub struct Split {
+    pub model: Model,
     pub fitted: Examples,
     pub held_out: Examples,
     games: usize,
 }
 
 impl Split {
+    pub fn new(model: Model) -> Self {
+        let per_move = model.tables().len();
+        Split {
+            model,
+            fitted: Examples::new(per_move),
+            held_out: Examples::new(per_move),
+            games: 0,
+        }
+    }
+
     /// Adds the searched positions of `games` that recorded visits and have
     /// no game-winning move, which playouts and the search play at once.
     pub fn add(&mut self, games: &[GameRecord]) {
@@ -71,41 +100,12 @@ impl Split {
                 if total == 0 || board.game_winning_move().is_some() {
                     continue;
                 }
-                if set.starts.is_empty() {
-                    set.starts.push(0);
-                }
                 for &(mv, visits) in &searched.visits {
-                    set.patterns.push(board.pattern_feature(mv) as u32);
-                    set.classes.push(board.move_class(mv) as u8);
+                    self.model.features(&board, mv, &mut set.features);
                     set.shares.push((f64::from(visits) / total as f64) as f32);
                 }
                 set.starts.push(set.shares.len() as u32);
             }
-        }
-    }
-}
-
-/// Which feature of a move a model weighs.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Model {
-    /// One weight per canonical pattern, cell and destination.
-    Patterns,
-    /// One weight per playout-policy class.
-    Classes,
-}
-
-impl Model {
-    pub fn features(self) -> usize {
-        match self {
-            Model::Patterns => PATTERN_FEATURES,
-            Model::Classes => CLASSES,
-        }
-    }
-
-    fn feature(self, examples: &Examples, index: usize) -> usize {
-        match self {
-            Model::Patterns => examples.patterns[index] as usize,
-            Model::Classes => usize::from(examples.classes[index]),
         }
     }
 }
@@ -120,10 +120,18 @@ pub struct Metrics {
     pub best_move: f64,
 }
 
+/// The log-weight `theta` gives move `index`.
+fn log_weight(theta: &[f32], examples: &Examples, index: usize) -> f32 {
+    examples
+        .of(index)
+        .iter()
+        .map(|&feature| theta[feature as usize])
+        .sum()
+}
+
 /// The probabilities `theta` gives the moves of position `position`,
 /// written into `probabilities`.
 fn probabilities(
-    model: Model,
     theta: &[f32],
     examples: &Examples,
     position: usize,
@@ -131,15 +139,18 @@ fn probabilities(
 ) {
     probabilities.clear();
     let range = examples.range(position);
-    let top = range
-        .clone()
-        .map(|index| theta[model.feature(examples, index)])
-        .fold(f32::NEG_INFINITY, f32::max);
     probabilities.extend(
         range
             .clone()
-            .map(|index| f64::from(theta[model.feature(examples, index)] - top).exp()),
+            .map(|index| f64::from(log_weight(theta, examples, index))),
     );
+    let top = probabilities
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max);
+    for value in probabilities.iter_mut() {
+        *value = (*value - top).exp();
+    }
     let total: f64 = probabilities.iter().sum();
     for value in probabilities.iter_mut() {
         *value /= total;
@@ -147,13 +158,12 @@ fn probabilities(
 }
 
 /// The metrics of `theta` on `examples`.
-pub fn measure(model: Model, theta: &[f32], examples: &Examples) -> Metrics {
+pub fn measure(theta: &[f32], examples: &Examples) -> Metrics {
     let mut sums = (0.0, 0.0);
     let mut p = Vec::new();
     for position in 0..examples.positions() {
-        probabilities(model, theta, examples, position, &mut p);
-        let range = examples.range(position);
-        let shares = &examples.shares[range];
+        probabilities(theta, examples, position, &mut p);
+        let shares = &examples.shares[examples.range(position)];
         sums.0 -= shares
             .iter()
             .zip(&p)
@@ -181,23 +191,22 @@ pub struct Fitting {
     pub batch: usize,
     /// Adam's step size.
     pub rate: f32,
-    /// Weight of the penalty on θ's squares, per position.
+    /// Weight of the penalty on the weights' squares, per position.
     pub penalty: f32,
     pub seed: u64,
 }
 
-/// Fits θ for `model` on `examples`, from 0; calls `report` with the
-/// epoch's number and θ after each epoch.
+/// Fits `weights` log-weights on `examples`, from 0; calls `report` with
+/// the epoch's number and the weights after each epoch.
 pub fn fit(
-    model: Model,
+    weights: usize,
     examples: &Examples,
     settings: &Fitting,
     mut report: impl FnMut(u32, &[f32]),
 ) -> Vec<f32> {
-    let features = model.features();
-    let mut theta = vec![0.0f32; features];
-    let (mut first, mut second) = (vec![0.0f32; features], vec![0.0f32; features]);
-    let mut gradient = vec![0.0f32; features];
+    let mut theta = vec![0.0f32; weights];
+    let (mut first, mut second) = (vec![0.0f32; weights], vec![0.0f32; weights]);
+    let mut gradient = vec![0.0f32; weights];
     let (beta1, beta2, epsilon) = (0.9f32, 0.999f32, 1e-8f32);
     let mut order: Vec<u32> = (0..examples.positions() as u32).collect();
     let mut rng = Rng::new(settings.seed);
@@ -209,10 +218,12 @@ pub fn fit(
             gradient.fill(0.0);
             for &position in batch {
                 let position = position as usize;
-                probabilities(model, &theta, examples, position, &mut p);
+                probabilities(&theta, examples, position, &mut p);
                 for (index, &prob) in examples.range(position).zip(&p) {
-                    let feature = model.feature(examples, index);
-                    gradient[feature] += prob as f32 - examples.shares[index];
+                    let error = prob as f32 - examples.shares[index];
+                    for &feature in examples.of(index) {
+                        gradient[feature as usize] += error;
+                    }
                 }
             }
             step += 1;
@@ -236,19 +247,45 @@ pub fn fit(
     theta
 }
 
-/// The pattern weights' text as Rust source for the bot: base64 digits in
-/// lines of 96, joined by the string's line continuations.
-pub fn weights_source(text: &str, origin: &str) -> String {
+/// Base64 characters an entropy coder would need for `text`, from the
+/// frequencies of its characters, without the coder's own tables.
+pub fn entropy_characters(text: &str) -> usize {
+    let mut counts = [0usize; 256];
+    for byte in text.bytes() {
+        counts[usize::from(byte)] += 1;
+    }
+    let total = text.len() as f64;
+    let bits: f64 = counts
+        .iter()
+        .filter(|&&count| count > 0)
+        .map(|&count| -(count as f64) * (count as f64 / total).log2())
+        .sum();
+    (bits / 6.0).ceil() as usize
+}
+
+/// The weights' text of `model` as Rust source: base64 digits in lines of
+/// 96, joined by the string's line continuations. For the bot when the
+/// model is [`Model::Patterns`]; for later experiments otherwise.
+pub fn weights_source(model: Model, text: &str, origin: &str) -> String {
     let mut source = String::new();
     let _ = writeln!(
         source,
         "//! Generated by `uttt-trainer fit-patterns`: {origin}."
     );
     let _ = writeln!(source);
-    let _ = writeln!(
-        source,
-        "/// The pattern policy's log-weights (E015), one base64 digit each, for\n/// `uttt_engine::PatternPolicy::decode`."
-    );
+    if model == Model::Patterns {
+        let _ = writeln!(
+            source,
+            "/// The pattern policy's log-weights (E015), one base64 digit each, for\n/// `uttt_engine::PatternPolicy::decode`."
+        );
+    } else {
+        let _ = writeln!(
+            source,
+            "/// The log-weights of the `{}` model of `uttt-trainer fit-patterns`, one\n/// base64 digit each, table after table: {:?} weights.",
+            model.name(),
+            model.tables()
+        );
+    }
     let _ = writeln!(source, "pub const PATTERN_TEXT: &str = \"\\");
     let lines: Vec<&str> = text
         .as_bytes()
