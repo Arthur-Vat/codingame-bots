@@ -4,6 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
+- [#57](https://github.com/Arthur-Vat/codingame-bots/pull/57): rename `pr-train` to `land-work`; merge approvals in two turns, asked only once the work is written. Approval to merge, brief given 2026-10-09.
 - Go for phase 5 step D (arena and ratings) and step E (CI, fixed checks). Ask before any heavy work.
 
 ## Open questions
