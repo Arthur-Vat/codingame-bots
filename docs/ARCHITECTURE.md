@@ -79,18 +79,18 @@ Seven tiers protect every change; only the SPRT decides whether a bot is stronge
 
 | Tier | Checks | Runs on | Passes when |
 | --- | --- | --- | --- |
-| 1. Static | Format, lints, unit tests, property tests of engine invariants | Every push | All green |
-| 2. Parity | The fast engine against the reference referee on 10,000 random games | Every push (part of the tests) | Identical valid actions and results |
-| 3. CodinGame compatibility | Bundle, size, standalone compile with Rust 1.90.0, 1,000 games between bundled bots, every bundled bot against random | Every push | Compiles, stays under 100 kB, no faults except timeouts in up to 1% of games for bots that search ([ADR 0015](adr/0015-tolerate-rare-timeouts.md)) |
+| 1. Static | Format, lints, unit tests, property tests of engine invariants | Every pull request and push to `main` | All green |
+| 2. Parity | The fast engine against the reference referee on 10,000 random games | Every pull request and push to `main` (part of the tests) | Identical valid actions and results |
+| 3. CodinGame compatibility | Bundle, size, standalone compile with Rust 1.90.0, 1,000 games between bundled bots, every bundled bot against random | Every pull request and push to `main` | Compiles, stays under 100 kB, no faults except timeouts in up to 1% of games for bots that search ([ADR 0015](adr/0015-tolerate-rare-timeouts.md)) |
 | 4. Smoke | Candidate release against the random bot, 100 pairs with openings, at the SPRT's time limits | Pull requests adding a release, before the SPRT | No crash or invalid answer, timeouts in at most 1% of games, at least 99% of the points |
-| 5. Speed | Simulations per second on fixed positions | Every bot change (Phase 4) | No drop over 5% against the parent version (proposed) |
+| 5. Speed | Simulations per second on fixed positions | Every bot change (planned in phase 5) | No drop over 5% against the parent version (proposed) |
 | 6. SPRT | Candidate release against the previous release: at CodinGame's exact limits once the game's bot is in Legend ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)), else at 20 ms per move | Pull requests adding a release | The test accepts the candidate as stronger, with no crash or invalid answer and timeouts in at most 1% of games |
 | 6b. Full-time confirmation | For games below Legend that ask for it: the accepted candidate against the previous release at CodinGame's exact limits ([ADR 0014](adr/0014-full-time-confirmation.md)) | After the SPRT accepts | Not clearly weaker, no crash or invalid answer, timeouts in at most 1% of games; the Elo measured is recorded |
-| 7. League | Every release and the baseline bots | After each release, and on demand | Ratings published |
+| 7. League | Every release and the baseline bots | After each release or change of evaluation settings, on pull requests that change the league, and on demand | Ratings published |
 
 - **Openings and pairs:** Ultimate Tic-Tac-Toe has no random map, so the referee imposes a few random moves at the start of each pair, drawn from the pair's seed, and the pair plays them twice with seats swapped.
 - **SPRT:** scored on game pairs, which handles draws; bounds of 0 and 10 Elo; 5% error rates; no verdict before 30 pairs; capped at 8,000 pairs for Ultimate Tic-Tac-Toe, which fits GitHub's 6-hour job limit at full time. Bounds tighten as the bot matures.
-- **Sanity checks of the pipeline itself:** on every push, CI runs an SPRT of a bot against a copy of itself (A/A test, must not be accepted), of a weaker bot against a stronger one (must be rejected) and the reverse (must be accepted), with fixed seeds.
+- **Sanity checks of the pipeline itself:** on every pull request and push to `main`, CI runs an SPRT of a bot against a copy of itself (A/A test, must not be accepted), of a weaker bot against a stronger one (must be rejected) and the reverse (must be accepted), with fixed seeds.
 - **Ratings:** Bradley-Terry maximum likelihood with 95% intervals, the random bot anchored at 0.
 - **Timing noise:** matches run one game per CPU core. Below Legend, time limits are scaled down to keep tests affordable (0.2) plus a 5 ms tolerance, not told to bots, that absorbs the machine's delays ([ADR 0013](adr/0013-evaluation-time-limits.md)). Once a game's bot is in Legend, its smoke test and SPRT play at CodinGame's exact limits ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)); the league keeps the scaled limits.
 
@@ -119,6 +119,6 @@ GitHub Actions on free standard runners. `main` only accepts changes whose check
 | `train.yml` | By hand | Self-play in up to 20 parallel jobs, then the fit of the playout policy, the value network or the move models; results and report go to a branch `claude/train/<run id>` ([ADR 0016](adr/0016-self-play-training.md)) |
 | `prune-branches.yml` | Weekly (Monday), and by hand | Deletes finished `claude/` branches once their content is safe; a run by hand only lists them unless asked to delete ([ADR 0021](adr/0021-prune-finished-branches.md)) |
 
-- **Compiler:** every job uses Rust 1.90.0, CodinGame's version ([ADR 0010](adr/0010-codingame-rust-toolchain.md)).
+- **Compiler:** every job that builds Rust uses 1.90.0, CodinGame's version ([ADR 0010](adr/0010-codingame-rust-toolchain.md)).
 - **Branch protection:** a ruleset on `main` requires the three checks of `ci.yml` (format, lint and test; CodinGame compatibility; dependency licenses and sources) and blocks direct pushes, without requiring a GitHub review ([ADR 0006](adr/0006-human-approves-merges.md)). The SPRT's check is not required yet: making it so is part of [phase 5](ROADMAP.md#phase-5-autonomy-and-workflow).
 - **Compute:** standard runners only, which are free on public repositories. The SPRT runs in one job on all of the runner's cores, which keeps it sequential; training spreads self-play over up to 20 jobs.

@@ -4,12 +4,12 @@ How the owner and Claude work together. The owner spends a few hours a week deci
 
 ## Where things happen
 
-- **Conversation:** the owner and Claude work in a claude.ai conversation, the hub ([ADR 0008](adr/0008-claude-hub.md)). The owner asks for work, reads results and decides there.
+- **Conversation:** the owner and Claude work in a claude.ai conversation, the hub, until Claude Code Projects is available on the owner's account, then in a project named "CodinGame Bot Lab" ([ADR 0008](adr/0008-claude-hub.md)). The owner asks for work, reads results and decides there.
 - **Repository:** the durable record. Decisions go into ADRs, plans into `docs/`, experiment results into the journal, reports of training runs into `games/<game>/training/`. Nothing important lives only in a conversation.
 - **GitHub:** Claude opens a pull request from a `claude/` branch for every change. CI and the SPRT workflow judge it; the owner merges it. The owner rarely needs to open GitHub for anything else; notifications for this repository are set to "Participating" to avoid duplicates.
 - **CodinGame:** the owner pastes released bots and reports their rank ([ADR 0009](adr/0009-manual-submission.md)). Claude records the rank in the release's journal entry.
 
-## The weekly loop
+## A round of work
 
 The owner starts each round in the conversation; scheduled sessions come with phase 5 (below). For bot strength, a round looks like this (about one to two hours of the owner's time):
 
@@ -40,7 +40,7 @@ The rules are in [ADR 0012](adr/0012-evaluation.md).
 
 ## Claude Code setup (Phase 5)
 
-Phase 5 is in progress since 2026-10-09; `.claude/` does not exist yet. Its goal is that the owner only arbitrates and Claude moves work forward between the owner's visits. The plan, with its checklist and gate, is in the [roadmap](ROADMAP.md#phase-5-autonomy-and-workflow). In short:
+Phase 5 has been in progress since 2026-10-09; `.claude/` does not exist yet. Its goal is that the owner only arbitrates and Claude moves work forward between the owner's visits. The plan, with its checklist and gate, is in the [roadmap](ROADMAP.md#phase-5-autonomy-and-workflow). In short:
 
 - **Instructions:** `CLAUDE.md` holds the rules for every session.
 - **Agents** in `.claude/agents/`: an implementer that codes to a precise spec, a pull request reviewer, and `rules-reviewer`, which checks every engine change against the game's `RULES.md`. Claude's main session plans, splits the work and checks the results.

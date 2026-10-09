@@ -68,7 +68,7 @@ On one core, a game at 10,000 iterations per move takes about a quarter of a sec
 
 ## Engine speed
 
-`cargo run --release -p uttt-engine --example speed` runs random playouts from the start position for a few seconds, then decisive playouts (a move that wins the game when there is one, as the search plays them), then 100 ms MCTS searches from there. Moves per playout are averaged over 10,000 games played one move at a time. CI runs it on every push and shows the table in the job summary of the "CodinGame compatibility" job.
+`cargo run --release -p uttt-engine --example speed` runs random playouts from the start position for a few seconds, then decisive playouts (a move that wins the game when there is one, as the search plays them), then 100 ms MCTS searches from there. Moves per playout are averaged over 10,000 games played one move at a time. CI runs it on every pull request and push to `main` and shows the table in the job summary of the "CodinGame compatibility" job.
 
 Baseline, measured on 2026-10-08 on one thread of an Intel Xeon at 2.8 GHz (this shared machine varies by about 10% between runs), after E006 sped up selection and playouts:
 
