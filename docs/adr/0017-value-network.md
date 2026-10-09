@@ -2,6 +2,7 @@
 
 - Status: accepted (owner, 2026-10-08); decision 5 (the gate) superseded by [0018](0018-value-network-gate.md)
 - Date: 2026-10-08
+- Scope: uttt
 
 ## Context
 
