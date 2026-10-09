@@ -66,6 +66,12 @@ done
 title_ok 'chore(core,search,arena,bundler,workflows,scripts,adr,docs,agents,repo,uttt): every scope'
 title_ok "fix(uttt): $(printf 'a%.0s' {1..89})" # 100 characters
 
+# Titles that GitHub's revert button writes are exempt, however they look.
+title_ok 'Revert "feat(uttt): pattern move policy"'
+title_ok 'Revert "Update README"'
+title_ok 'Revert "Revert "feat(uttt): pattern move policy""'
+title_ok "Revert \"$(printf 'a%.0s' {1..120})\"" # no length limit either
+
 # Titles that fail, and why.
 title_bad 'Update README' 'expected `type(scope): summary`'
 title_bad 'feat: no scope' 'the scope is required'
@@ -87,7 +93,18 @@ title_bad 'feat(uttt,): a summary' 'empty scope'
 title_bad 'feat(,uttt): a summary' 'empty scope'
 title_bad 'feat(uttt,,core): a summary' 'empty scope'
 title_bad 'feat(uttt):a summary' 'expected `type(scope): summary`'
-title_bad 'feat(uttt)!: a summary' 'expected `type(scope): summary`'
+title_bad 'feat(uttt)!: a summary' 'no `!` marker: say so in the description'
+title_bad 'feat!: a summary' 'no `!` marker'
+title_bad 'feat!: a summary' 'the scope is required'
+# Scopes are distinct.
+title_bad 'feat(uttt,uttt): a summary' 'scopes must be distinct, but `uttt` appears twice'
+title_bad 'feat(core,uttt,core): a summary' 'scopes must be distinct, but `core` appears twice'
+title_bad 'feat(uttt,foo,foo): a summary' 'unknown scope `foo` `foo`'
+# Only a revert that GitHub or git writes is exempt: Revert "...".
+title_bad 'Revert ""' 'expected `type(scope): summary`'
+title_bad 'Revert the change' 'expected `type(scope): summary`'
+title_bad 'Revert "feat(uttt): x" again' 'expected `type(scope): summary`'
+title_bad 'revert "feat(uttt): x"' 'expected `type(scope): summary`'
 title_bad 'feat(uttt): ' 'the summary is empty'
 title_bad 'feat(uttt):  two spaces' 'start or end with a space'
 title_bad "fix(uttt): $(printf 'a%.0s' {1..90})" 'the title has 101 characters, at most 100'
@@ -96,6 +113,20 @@ title_bad 'Merge pull request #40 from owner/claude/branch' 'expected `type(scop
 title_bad 'Wip(foo): x.' 'unknown type `Wip`'
 title_bad 'Wip(foo): x.' 'unknown scope `foo`'
 title_bad 'Wip(foo): x.' 'must not end with a period'
+
+# The limit counts characters, not bytes, in any locale. The titles below hold
+# 2-, 3- and 4-byte characters: e acute, the euro sign and a smiley.
+e_acute='\xc3\xa9'
+euro='\xe2\x82\xac'
+smiley='\xf0\x9f\x98\x80'
+# shellcheck disable=SC2059 # the byte escapes are in the variables
+accented_89="$(printf "${e_acute}%.0s" {1..40})$(printf "${euro}%.0s" {1..30})$(printf "${smiley}%.0s" {1..19})"
+for locale in C POSIX C.UTF-8; do
+  export LC_ALL="$locale"
+  title_ok "fix(uttt): $accented_89" # 100 characters, 257 bytes
+  title_bad "fix(uttt): ${accented_89}a" 'the title has 101 characters, at most 100'
+done
+unset LC_ALL
 
 # A scope is any directory of the games directory.
 mkdir -p "$tmp_dir/games/alpha"
@@ -119,11 +150,11 @@ labels_are ''
 labels_are 'game:uttt' games/uttt/bots/mcts/src/main.rs
 labels_are 'framework' crates/cg-core/src/lib.rs
 labels_are 'framework' ./crates/cg-core/src/lib.rs
-labels_are 'ci' .github/workflows/ci.yml scripts/league.sh
-labels_are 'ci' scripts/tests/pr-hygiene-test.sh
-labels_are 'adr docs-only' docs/adr/0022-pull-requests.md
-labels_are 'agents' .claude/settings.json
-labels_are 'agents docs-only' .claude/agents/reviewer.md
+labels_are 'framework ci' .github/workflows/ci.yml scripts/league.sh
+labels_are 'framework ci' scripts/tests/pr-hygiene-test.sh
+labels_are 'framework adr docs-only' docs/adr/0022-scopes-and-names.md
+labels_are 'framework agents' .claude/settings.json
+labels_are 'framework agents docs-only' .claude/agents/pr-reviewer.md
 labels_are 'game:uttt' games/uttt/releases/uttt-v011.rs
 labels_are 'game:uttt release' games/uttt/releases/uttt-v011.rs --added games/uttt/releases/uttt-v011.rs
 labels_are 'game:uttt release' --added games/uttt/releases/uttt-v011.rs
@@ -135,14 +166,26 @@ labels_are 'game:uttt' games/uttt/journal/Ex-new-idea.md games/uttt/other/E017-x
 labels_are 'game:uttt training' games/uttt/training/runs/run-1/weights.bin
 labels_are 'game:uttt training' games/uttt/trainer/src/main.rs
 labels_are 'game:uttt training docs-only' games/uttt/training/README.md
-labels_are 'ci training' .github/workflows/train.yml
-labels_are 'ci' .github/workflows/sprt.yml
-labels_are 'docs-only' README.md docs/ROADMAP.md
-labels_are 'docs-only' docs/adr-notes.md
-labels_are 'docs-only' games/README.md
-labels_are '' README.md Cargo.toml
-labels_are '' Cargo.toml deny.toml LICENSE-MIT
+labels_are 'framework ci training' .github/workflows/train.yml
+labels_are 'framework ci' .github/workflows/sprt.yml
+# Anything outside a game's folder is the framework's.
+labels_are 'framework docs-only' README.md docs/ROADMAP.md
+labels_are 'framework docs-only' docs/ARCHITECTURE.md
+labels_are 'framework docs-only' docs/adr-notes.md
+labels_are 'framework docs-only' games/README.md
+labels_are 'framework docs-only' CLAUDE.md
+labels_are 'framework' README.md Cargo.toml
+labels_are 'framework' Cargo.toml Cargo.lock
+labels_are 'framework' Cargo.toml deny.toml LICENSE-MIT
 labels_are 'game:c4 game:uttt' games/uttt/engine/src/lib.rs games/c4/RULES.md
+labels_are 'game:uttt framework docs-only' games/uttt/README.md docs/CODINGAME.md
+# The pull request's own examples.
+labels_are 'game:uttt experiment docs-only' games/uttt/journal/E017-x.md games/uttt/journal/README.md
+labels_are 'game:uttt release' --added games/uttt/releases/uttt-v011.rs
+# An incomplete list of files never gives docs-only.
+labels_are 'framework' docs/ARCHITECTURE.md --partial
+labels_are 'game:uttt experiment' --partial games/uttt/journal/E017-x.md
+labels_are 'game:uttt' games/uttt/bots/a.rs --partial
 labels_are 'game:uttt framework ci adr' crates/cg-search/src/lib.rs games/uttt/bots/a.rs \
   scripts/b.sh docs/adr/0001-license.md
 
@@ -223,7 +266,7 @@ run_pr() {
 # agents no longer apply; bug is not ours.
 mkdir -p "$tmp_dir/valid"
 cat >"$tmp_dir/valid/pull.json" <<'JSON'
-{"number": 7, "title": "feat(uttt): pattern move policy"}
+{"number": 7, "title": "feat(uttt): pattern move policy", "changed_files": 4}
 JSON
 cat >"$tmp_dir/valid/files.json" <<'JSON'
 [
@@ -245,7 +288,46 @@ create name=experiment color=ededed
 add labels[]=framework labels[]=release labels[]=experiment
 remove docs-only
 remove agents" "$calls"
-same "valid title: no annotation" "" "$(grep '^::error' <<<"$output" || true)"
+same "valid title: no annotation" "" "$(grep '^::' <<<"$output" || true)"
+
+# A file renamed into a releases folder is a new release, like an added one;
+# the one it comes from is a game's file too.
+mkdir -p "$tmp_dir/renamed"
+echo '{"number": 7, "title": "feat(uttt): promote the candidate", "changed_files": 1}' >"$tmp_dir/renamed/pull.json"
+cat >"$tmp_dir/renamed/files.json" <<'JSON'
+[{"filename": "games/uttt/releases/uttt-v012.rs", "previous_filename": "games/uttt/bots/mcts/candidate.rs", "status": "renamed"}]
+JSON
+echo '[]' >"$tmp_dir/renamed/repo-labels.json"
+echo '[]' >"$tmp_dir/renamed/pr-labels.json"
+run_pr renamed
+same "renamed release: status" 0 "$status"
+same "renamed release: changes" "create name=game:uttt color=ededed
+create name=release color=ededed
+add labels[]=game:uttt labels[]=release" "$calls"
+
+# GitHub lists 3000 files at most. This pull request has more than the files
+# listed: a warning, and no docs-only (it could change a Rust file).
+mkdir -p "$tmp_dir/large"
+echo '{"number": 7, "title": "docs(docs): rewrite the guides", "changed_files": 3001}' >"$tmp_dir/large/pull.json"
+echo '[{"filename": "docs/a.md", "status": "modified"}, {"filename": "docs/b.md", "status": "modified"}]' \
+  >"$tmp_dir/large/files.json"
+echo '[{"name": "framework"}, {"name": "docs-only"}]' >"$tmp_dir/large/repo-labels.json"
+echo '[{"name": "docs-only"}]' >"$tmp_dir/large/pr-labels.json"
+run_pr large
+same "large: status" 0 "$status"
+same "large: changes" "add labels[]=framework
+remove docs-only" "$calls"
+same "large: warning" '::warning title=Pull request files::read 2 of 3001 changed files (GitHub lists 3000 at most): docs-only is not given and other labels may be missing' \
+  "$(grep '^::' <<<"$output")"
+
+# The list is complete when it is as long as changed_files: docs-only is given.
+echo '{"number": 7, "title": "docs(docs): rewrite the guides", "changed_files": 2}' >"$tmp_dir/large/pull.json"
+echo '[{"name": "framework"}]' >"$tmp_dir/large/repo-labels.json"
+echo '[{"name": "framework"}]' >"$tmp_dir/large/pr-labels.json"
+run_pr large
+same "complete: changes" "create name=docs-only color=ededed
+add labels[]=docs-only" "$calls"
+same "complete: no warning" "" "$(grep '^::' <<<"$output" || true)"
 
 # An invalid title: the labels are still applied, then the annotation and exit 1.
 mkdir -p "$tmp_dir/invalid"
@@ -255,8 +337,9 @@ echo '[]' >"$tmp_dir/invalid/repo-labels.json"
 echo '[{"name": "bug"}, {"name": "game:uttt"}]' >"$tmp_dir/invalid/pr-labels.json"
 run_pr invalid
 same "invalid title: status" 1 "$status"
-same "invalid title: changes" "create name=docs-only color=ededed
-add labels[]=docs-only
+same "invalid title: changes" "create name=framework color=ededed
+create name=docs-only color=ededed
+add labels[]=framework labels[]=docs-only
 remove game%3Auttt" "$calls"
 same "invalid title: annotation" '::error title=Pull request title::expected `type(scope): summary`, for example `feat(uttt): pattern move policy`' \
   "$(grep '^::error' <<<"$output")"
@@ -264,19 +347,25 @@ same "invalid title: annotation" '::error title=Pull request title::expected `ty
 # Nothing to change: no call that writes. A label that differs in case from
 # the repository's is the same label.
 mkdir -p "$tmp_dir/steady"
-echo '{"number": 7, "title": "ci(scripts): check titles"}' >"$tmp_dir/steady/pull.json"
+echo '{"number": 7, "title": "ci(scripts): check titles", "changed_files": 1}' >"$tmp_dir/steady/pull.json"
 echo '[{"filename": "scripts/pr-hygiene.sh", "status": "added"}]' >"$tmp_dir/steady/files.json"
-echo '[{"name": "CI"}, {"name": "bug"}]' >"$tmp_dir/steady/repo-labels.json"
-echo '[{"name": "CI"}, {"name": "bug"}]' >"$tmp_dir/steady/pr-labels.json"
+echo '[{"name": "CI"}, {"name": "bug"}, {"name": "framework"}]' >"$tmp_dir/steady/repo-labels.json"
+echo '[{"name": "CI"}, {"name": "bug"}, {"name": "Framework"}]' >"$tmp_dir/steady/pr-labels.json"
 run_pr steady
 same "steady: status" 0 "$status"
 same "steady: changes" "" "$calls"
 
 # A label that exists in another case is added, not created.
-echo '[{"name": "Ci"}]' >"$tmp_dir/steady/repo-labels.json"
-echo '[{"name": "bug"}]' >"$tmp_dir/steady/pr-labels.json"
+echo '[{"name": "Ci"}, {"name": "framework"}]' >"$tmp_dir/steady/repo-labels.json"
+echo '[{"name": "bug"}, {"name": "framework"}]' >"$tmp_dir/steady/pr-labels.json"
 run_pr steady
 same "case: changes" "add labels[]=ci" "$calls"
+
+# A managed label added by hand does not stick; another label does.
+echo '[{"name": "agents"}, {"name": "bug"}, {"name": "framework"}, {"name": "ci"}]' >"$tmp_dir/steady/repo-labels.json"
+echo '[{"name": "bug"}, {"name": "framework"}, {"name": "ci"}, {"name": "agents"}]' >"$tmp_dir/steady/pr-labels.json"
+run_pr steady
+same "by hand: changes" "remove agents" "$calls"
 
 # The labelling fails: the title is checked all the same, and the status is 1.
 mkdir -p "$tmp_dir/refused"
