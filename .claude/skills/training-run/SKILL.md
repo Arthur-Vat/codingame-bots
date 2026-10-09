@@ -1,11 +1,11 @@
 ---
 name: training-run
-description: Starts a game's Train workflow on GitHub Actions with chosen inputs, follows it, and brings its report back into the repository. Use only when the owner has asked for a training run.
+description: Starts the Train workflow (Ultimate Tic-Tac-Toe's today) on GitHub Actions with chosen inputs, follows it, and brings its report back into the repository. Use only when the owner has asked for a training run.
 ---
 
 # Run a training run
 
-Training runs on GitHub Actions (ADR 0016) and writes its weights and report to a branch `claude/train/<run id>`; it never writes to `main`. Background compute is off until the owner turns it on, so start a run only when he asked for it.
+Training runs on GitHub Actions (ADR 0016); `.github/workflows/train.yml` trains Ultimate Tic-Tac-Toe only, and writes its weights and report to a branch `claude/train/<run id>`; it never writes to `main`. Background compute is off until the owner turns it on, so start a run only when he asked for it.
 
 ## Start
 

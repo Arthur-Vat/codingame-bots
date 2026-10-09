@@ -58,7 +58,6 @@ codingame-bots/
 └─ .github/
    ├─ workflows/            ci, sprt, league, release, train, prune-branches, pr-hygiene
    ├─ dependabot.yml        monthly updates of actions and crates
-   ├─ ISSUE_TEMPLATE/       decision.md: a choice for the owner
    └─ pull_request_template.md
 ```
 

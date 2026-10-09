@@ -104,7 +104,7 @@ Gate: one week of daily scheduled sessions in which Claude moves work forward on
 - [x] The owner approves merges in the conversation and Claude carries them out ([ADR 0023](adr/0023-chat-approved-merges.md))
 - [ ] Merge policy (a decision record superseding [ADR 0006](adr/0006-human-approves-merges.md)): Claude may merge without asking docs, journal entries, dropped experiments, tooling that changes no bot, and releases accepted by the full-time SPRT, once required checks pass and `pr-reviewer` approves; the owner merges decision records, `CLAUDE.md`, workflows and permissions, and rules or referee changes
 - [ ] `Docs and scripts` and the SPRT are required checks, so that broken docs or a rejected release cannot be merged (owner's decision, 2026-10-09; a repository setting the owner changes, since Claude's sessions cannot edit rulesets)
-- [x] Decisions reach the owner in the conversation, or, when he is away, as issues labelled `decision` (`.github/ISSUE_TEMPLATE/decision.md`), each with options and a recommendation, and one push notification when one is waiting (`ask-decision`)
+- [x] Decisions reach the owner in the conversation, each with options and a recommendation (`ask-decision`); when he is away, one push notification and the daily report say one is waiting. Answers count only in the conversation: GitHub issues were dropped after review, since Claude's sessions post under the owner's account
 
 ### C. Autonomous operation
 

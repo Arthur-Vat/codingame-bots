@@ -14,7 +14,7 @@ You implement one change in the CodinGame bots repository. The main session plan
 
 ## While you work
 
-- Work on the branch the spec names, in the working copy you were given. Never push to `main`, never force-push, never merge, never open or edit a pull request unless the spec says so.
+- Work on the branch the spec names, in the working copy you were given. Never push to `main`, never force-push, never merge. Do not open or edit a pull request unless the spec says so.
 - Stay inside the spec. Note anything else you notice in your report instead of fixing it.
 - Code that ends up in a bot: standard library only, Rust 1.90 and edition 2021, no `unsafe`, the bundler's module conventions (`CLAUDE.md`).
 - Released files (`games/*/releases/`) never change. Tests, the referee, CI checks and thresholds are never weakened.

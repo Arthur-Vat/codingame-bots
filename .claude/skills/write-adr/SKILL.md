@@ -12,7 +12,7 @@ A record writes down a decision the owner made. Propose it first (skill `ask-dec
 ## The record
 
 - Number: the next one after the highest in `docs/adr/`, four digits. File `docs/adr/NNNN-short-name.md`, the name matching the title.
-- Start from `docs/adr/template.md`. Header lines in this order: `Status: accepted (owner, YYYY-MM-DD)`, `Date`, then `Supersedes:`, `Completes:` or `Puts in place:` if any (naming the record and the decision numbers), then `Scope:`.
+- Start from `docs/adr/template.md`. Header lines, each starting with `- `, in this order: `- Status: accepted (owner, YYYY-MM-DD)`, `- Date: YYYY-MM-DD`, then `- Supersedes:`, `- Completes:` or `- Puts in place:` if any (naming the record and the decision numbers), then `- Scope:`.
 - Scope (ADR 0022): `framework`, or a game's folder name (`uttt`) when every decision binds that game only. A record with any decision that binds the framework is `framework`.
 - Context: the facts that force the decision, with sources and dates; what the owner asked. Decision: numbered, each one sentence in bold followed by the detail. Consequences: what becomes easier, what harder, what must now be done.
 - Plain, short English. Nothing about the owner beyond "the owner".

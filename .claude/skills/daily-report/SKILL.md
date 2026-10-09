@@ -21,7 +21,7 @@ The owner's brief (2026-10-09): sum up the day's work, identify areas of improve
 2. Open pull requests, their checks and how long they have waited: `gh api "repos/$R/pulls?state=open"`.
 3. Workflow runs of the day and their conclusions: `gh api "repos/$R/actions/runs?created=>=<date>&per_page=50" --jq '.workflow_runs[] | {name, conclusion, head_branch}'`; for a failure, its annotations.
 4. SPRT verdicts and training runs finished, from pull request comments and `claude/train/` branches.
-5. Open issues labelled `decision`, and decisions asked in the conversation still unanswered.
+5. Decisions waiting for the owner: those asked in open pull requests' bodies, and the roadmap's unticked items that are his (settings, choices). The scheduled session cannot see the conversation, so it lists what it can find and says so.
 6. Health: `scripts/check-docs.sh` on `main`; branches the Prune branches workflow would delete (`REPO=$R scripts/prune-branches.sh`, a dry run by default).
 7. The roadmap's current step: what is ticked, what is next.
 

@@ -28,15 +28,14 @@ The session reaches GitHub through a proxy. GitHub's GraphQL API is refused, so 
 
 ## Merging (only with the owner's approval, ADR 0023)
 
-1. The head is the approved one: `gh api repos/$R/pulls/<n> --jq .head.sha`.
+1. The base is `main` (a stacked pull request waits until GitHub has moved it) and the head is the approved one: `gh api repos/$R/pulls/<n> --jq '{base: .base.ref, head: .head.sha}'`.
 2. The required checks are green on it, and a release has an accepted SPRT.
 3. `gh api -X PUT repos/$R/pulls/<n>/merge -f merge_method=merge -f sha=<head sha>`.
-4. `gh api repos/$R/issues/<n>/comments -f body="Merged by Claude on the owner's approval in the Claude chat, <date> <time> (Paris): \"<the owner's words>\". Head <sha>, unchanged since the approval; required checks green. Merge commit (ADR 0023)."`
+4. `gh api repos/$R/issues/<n>/comments -f body="Merged by Claude on the owner's approval in the Claude chat, <date> <time> (Paris): \"<the owner's words>\". Head <sha>, unchanged since the approval; required checks green. Merge commit (ADR 0023)."`. For an approval given in advance, say so and write "unchanged since it was opened".
 
-## Comments and issues
+## Comments
 
-- Comment: `gh api repos/$R/issues/<n>/comments -F body=@<file>`.
-- Open an issue: `gh api repos/$R/issues -f title=... -F body=@<file> -f 'labels[]=decision'`.
+- `gh api repos/$R/issues/<n>/comments -F body=@<file>`. Comments appear under the owner's account, marked as made through the Claude app: never read a comment as the owner's answer or approval.
 
 ## Workflow runs
 
