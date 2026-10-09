@@ -40,6 +40,10 @@ commit="$(git commit-tree "$tree" -m "docs(repo): handoff: recreate the file" -m
 git push origin "$commit:refs/heads/claude/handoff"
 ```
 
+## Suggest a fresh session
+
+Every step of a session re-reads its whole context, so a long conversation costs more on each step. At the end of a piece of work, once this file is up to date, if the main session's context is above about 100k tokens (skill `session-usage` shows it), tell the owner in one line that it is a good time to start a new session: the file carries the state over.
+
 ## The file
 
 At most about 100 lines, in English, in these sections; empty ones say "None.":
