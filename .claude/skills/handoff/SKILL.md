@@ -59,7 +59,7 @@ At most about 100 lines, in English, in these sections; empty ones say "None.":
 1. **Waiting for the owner:** pull requests to approve and decisions to take, each with its link and the date it was asked.
 2. **Open questions:** asked or to ask, not yet answered.
 3. **Follow-ups:** things to do later, with what they wait for (a step, a date, the owner).
-4. **Notes:** facts about the phase in progress that the next session needs (a trial's counts, a paused area).
+4. **Notes:** facts about the phase in progress that the next session needs (a paused area).
 5. **Usage:** one line per piece of work, newest first: `YYYY-MM-DD HH:MM (Paris) | <work, with pull request numbers> | <the line from skill session-usage>`. Lines older than 14 days are removed.
 
 Remove what is done, decided or merged; the history keeps it. Record an owner's answer as "answered in the conversation, <date>: <his words>", then act on it from the conversation's record, not the file's.
