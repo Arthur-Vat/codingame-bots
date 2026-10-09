@@ -38,7 +38,7 @@ fn games_are_reproducible_and_record_searched_positions() {
 }
 
 /// `uttt-v008`'s weights, as the Train workflow reads them.
-const BOT_WEIGHTS: &str = include_str!("../../../bots/mcts/src/weights.rs");
+const BOT_WEIGHTS: &str = include_str!("../../../training/class_weights.rs");
 
 #[test]
 fn the_bot_weights_are_read_from_its_source() {

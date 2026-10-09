@@ -331,7 +331,7 @@ fn training_learns_a_simple_rule() {
 #[test]
 fn more_playouts_predict_results_better() {
     let weights =
-        crate::selfplay::read_policy_weights(include_str!("../../../bots/mcts/src/weights.rs"))
+        crate::selfplay::read_policy_weights(include_str!("../../../training/class_weights.rs"))
             .unwrap();
     let policy = PlayoutPolicy::new(weights).for_plies(16);
     let games: Vec<GameRecord> = (100..140).map(random_record).collect();

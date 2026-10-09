@@ -66,9 +66,10 @@ enum Command {
         /// The search's exploration constant.
         #[arg(long, default_value_t = 0.5)]
         exploration: f64,
-        /// Rust source holding the bot's playout weights (`PLAYOUT_WEIGHTS`),
-        /// such as `games/uttt/bots/mcts/src/weights.rs`, for the bot's
-        /// playouts; decisive playouts without it.
+        /// Rust source holding the class policy's playout weights
+        /// (`PLAYOUT_WEIGHTS`), such as `games/uttt/training/class_weights.rs`
+        /// (E011's, the bot's until E015), for its playouts; decisive playouts
+        /// without it.
         #[arg(long)]
         policy: Option<PathBuf>,
         /// Rust source holding a pattern policy's text (`PATTERN_TEXT`), such
