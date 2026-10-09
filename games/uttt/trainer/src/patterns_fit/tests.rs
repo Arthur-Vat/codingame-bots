@@ -166,18 +166,39 @@ fn the_weights_source_holds_the_text() {
     assert_eq!(read, text);
     let other = weights_source(Model::Rich, &text, "a test");
     assert!(other.contains("`rich` model"));
-    assert_eq!(crate::selfplay::read_pattern_text(&other).unwrap(), text);
+    assert!(other.contains("pub const PACKED_TEXT: &str"));
+    assert!(crate::selfplay::read_pattern_text(&other).is_err());
 }
 
 #[test]
-fn entropy_counts_fewer_characters_for_skewed_text() {
-    assert_eq!(entropy_characters(&"A".repeat(600)), 0);
-    // Two digits equally often: one bit each, six to a character.
-    assert_eq!(entropy_characters(&"AB".repeat(300)), 100);
-    let even: String = (0..640)
-        .map(|i| {
-            char::from(b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[i % 64])
-        })
-        .collect();
-    assert_eq!(entropy_characters(&even), 640);
+fn packed_weights_come_back_table_by_table() {
+    let mut rng = Rng::new(5);
+    for model in ALL {
+        let theta: Vec<f32> = (0..model.weights())
+            .map(|i| {
+                if i % 3 == 0 {
+                    (rng.below(40) as f32 - 20.0) / 4.0
+                } else {
+                    0.0
+                }
+            })
+            .collect();
+        let quantized = quantize(&theta, 0.5);
+        assert!(quantized.iter().all(|&q| q < 64));
+        let mut rest = packed_text(model, &quantized);
+        let mut decoded = Vec::new();
+        for (size, stride) in model.tables().into_iter().zip(model.strides()) {
+            let (table, after) = cg_core::packed::decode_strided(&rest, stride).unwrap();
+            assert_eq!(table.len(), size, "{model:?}");
+            decoded.extend(table);
+            rest = after.to_string();
+        }
+        assert_eq!(rest, "");
+        assert_eq!(decoded, quantized, "{model:?}");
+    }
+    // Twice the log-weight at half the temperature; the ends clamp.
+    assert_eq!(
+        quantize(&[1.0, -1.0, 100.0, -100.0], 0.5),
+        vec![40, 24, 63, 0]
+    );
 }

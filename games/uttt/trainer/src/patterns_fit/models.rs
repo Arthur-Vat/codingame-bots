@@ -110,6 +110,20 @@ impl Model {
         }
     }
 
+    /// For each table, how many interleaved kinds of weights it holds:
+    /// destination kinds or board roles, which spread differently and are
+    /// packed apart ([`cg_core::packed::encode_strided`]).
+    pub fn strides(self) -> Vec<usize> {
+        match self {
+            Model::Classes => vec![1],
+            Model::Patterns | Model::Phases2 => vec![DESTINATIONS],
+            Model::Destinations7 => vec![DESTINATIONS_7],
+            Model::DestinationPatterns => vec![DESTINATIONS, 1],
+            Model::Rich => vec![DESTINATIONS_7, 1, 1],
+            Model::Large => vec![DESTINATIONS_7, ROLES, ROLES],
+        }
+    }
+
     /// Weights of the model, all tables together.
     pub fn weights(self) -> usize {
         self.tables().iter().sum()

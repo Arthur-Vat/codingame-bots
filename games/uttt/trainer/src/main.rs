@@ -935,6 +935,7 @@ struct PatternRow {
     held_out: patterns_fit::Metrics,
     rounded: patterns_fit::Metrics,
     epochs: Vec<f64>,
+    /// Digits of the weights' text, one per weight and packed.
     characters: Option<(usize, usize)>,
 }
 
@@ -1004,12 +1005,18 @@ fn fit_patterns(
             seen[feature as usize] = true;
         }
         let characters = (model != Model::Classes).then(|| {
-            let sharpened: Vec<f32> = theta.iter().map(|&value| value / temperature).collect();
-            let text = uttt_engine::board::encode_pattern_weights(&sharpened);
+            let quantized = patterns_fit::quantize(&theta, temperature);
+            let packed = patterns_fit::packed_text(model, &quantized);
+            let text = if model == Model::Patterns {
+                let sharpened: Vec<f32> = theta.iter().map(|&value| value / temperature).collect();
+                uttt_engine::board::encode_pattern_weights(&sharpened)
+            } else {
+                packed.clone()
+            };
             let source = patterns_fit::weights_source(model, &text, origin);
             let path = weights_dir.join(format!("{}.rs", model.name()));
             std::fs::write(&path, source)
-                .map(|()| (text.len(), patterns_fit::entropy_characters(&text)))
+                .map(|()| (quantized.len(), packed.len()))
                 .map_err(|err| format!("{}: {err}", path.display()))
         });
         rows.push(PatternRow {
@@ -1044,7 +1051,7 @@ fn fit_patterns(
     );
     let _ = writeln!(
         report,
-        "| Model | Weights | Seen in fitted positions | Held-out cross-entropy, nats | Probability of the search's favourite move | Cross-entropy, weights rounded to quarters | Base64 characters | Entropy-coded, about |"
+        "| Model | Weights | Seen in fitted positions | Held-out cross-entropy, nats | Probability of the search's favourite move | Cross-entropy, weights rounded to quarters | One digit per weight | Packed digits |"
     );
     let _ = writeln!(report, "| --- | --- | --- | --- | --- | --- | --- | --- |");
     let _ = writeln!(
