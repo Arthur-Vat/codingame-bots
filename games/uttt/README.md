@@ -2,7 +2,7 @@
 
 CodinGame's [Ultimate Tic-Tac-Toe](https://www.codingame.com/multiplayer/bot-programming/tic-tac-toe) is the first game of this framework ([ADR 0005](../../docs/adr/0005-first-game-uttt.md)). The rules, protocol and time limits are in [RULES.md](RULES.md).
 
-**Status:** Phase 4. The reference referee, the fast engine (checked against it), the arena with its evaluation tools, five utility bots and the first real bot, MCTS, exist. No release yet.
+**Status:** Legend league on CodinGame since 2026-10-07; 59th with `uttt-v008` on 2026-10-08, the last rank recorded. **Current release:** [`uttt-v010`](releases/uttt-v010.rs) (E015, a pattern policy). Strength work is paused while phase 5 is built.
 
 ## Layout
 
@@ -10,13 +10,14 @@ CodinGame's [Ultimate Tic-Tac-Toe](https://www.codingame.com/multiplayer/bot-pro
 | --- | --- |
 | [RULES.md](RULES.md) | The rules in our own words, with sources |
 | [referee/](referee/) | Readable reference implementation of the rules, driven by the arena |
-| [engine/](engine/) | Fast implementation of the rules for bots: bitboards, no allocation, random, decisive and policy playouts, and the value network's inputs and evaluation |
+| [engine/](engine/) | Fast implementation of the rules for bots: bitboards, no allocation, random and decisive playouts, playouts guided by the class policy (32 move classes) or the pattern policy (E015), and the value network's inputs and evaluation |
 | [arena/](arena/) | `uttt-arena`: plays bots against each other through the referee |
-| [trainer/](trainer/) | `uttt-trainer`: self-play data and training of the playout policy ([ADR 0016](../../docs/adr/0016-self-play-training.md)) |
+| [trainer/](trainer/) | `uttt-trainer`: self-play data, and training of the playout policy, the value network and the move models ([ADR 0016](../../docs/adr/0016-self-play-training.md), [ADR 0017](../../docs/adr/0017-value-network.md)) |
 | [bots/](bots/) | One crate per bot |
 | [evaluation.env](evaluation.env) | Settings of the SPRT, the league and the arena for evaluations ([ADR 0012](../../docs/adr/0012-evaluation.md)) |
-| `releases/` | Frozen paste-ready file of each version, from the first release on |
-| [journal/](journal/) | One entry per experiment |
+| [releases/](releases/) | Frozen paste-ready file of each version |
+| [journal/](journal/) | One entry per experiment, with an index |
+| [training/](training/) | Reports of the training runs used, one folder per run ([ADR 0021](../../docs/adr/0021-prune-finished-branches.md)) |
 
 ## Bots
 

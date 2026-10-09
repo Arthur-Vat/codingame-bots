@@ -19,7 +19,9 @@ Items marked "Phase N" do not exist yet.
 ```text
 codingame-bots/
 ├─ Cargo.toml               workspace: edition 2021, rust-version 1.90
+├─ README.md                overview, the games, where things are
 ├─ CLAUDE.md                rules for every Claude session
+├─ LICENSE-MIT, LICENSE-APACHE
 ├─ deny.toml                dependency license and source policy
 ├─ docs/                    this file, ROADMAP, WORKFLOW, CODINGAME, adr/
 ├─ scripts/
@@ -28,7 +30,9 @@ codingame-bots/
 │  ├─ new-release.sh        a bot -> games/<game>/releases/<game>-vNNN.rs
 │  ├─ check-releases.sh     releases frozen and true to their sources
 │  ├─ sprt.sh               smoke test and SPRT of a candidate file
-│  └─ league.sh             Elo ratings of every release
+│  ├─ league.sh             Elo ratings of every release
+│  ├─ prune-branches.sh     deletes finished claude/ branches (ADR 0021)
+│  └─ lib/evaluation.sh     settings and helpers of sprt.sh, league.sh and new-release.sh
 ├─ crates/
 │  ├─ cg-core/              bot side: CodinGame input reading, seeded RNG, time scale
 │  ├─ cg-arena/             Referee trait, match runner, tournaments, summary, SPRT, ratings, CLI
@@ -42,11 +46,16 @@ codingame-bots/
 │     ├─ referee/           readable reference rules, implements Referee
 │     ├─ arena/             uttt-arena binary
 │     ├─ engine/            fast rules for bots, checked against the referee
+│     ├─ trainer/           uttt-trainer binary: self-play data, training of the playout policy, value network and move models
 │     ├─ bots/              first-valid/, random/, greedy/, wood/, rules-check/, mcts/
-│     ├─ releases/          frozen paste-ready file per version, from the first release
-│     └─ journal/           one entry per experiment
+│     ├─ releases/          frozen paste-ready file per version
+│     ├─ journal/           one entry per experiment, with an index
+│     └─ training/          reports of the training runs used
 ├─ .claude/                 Phase 5: skills, agents, settings
-└─ .github/                 CI workflow, dependabot, PR template
+└─ .github/
+   ├─ workflows/            ci, sprt, league, release, train, prune-branches
+   ├─ dependabot.yml        monthly updates of actions and crates
+   └─ pull_request_template.md
 ```
 
 ## Components
@@ -55,13 +64,14 @@ codingame-bots/
 - **Referee (per game):** a readable implementation of `RULES.md`, written to be obviously correct rather than fast. It is the reference that faster engines are checked against.
 - **Engine (per game):** a fast implementation of the same rules for search inside bots, std-only so it can be bundled. Parity tests compare it with the referee on many random games, and a `rules-check` bot compares it with CodinGame's own valid actions during real games.
 - **Arena:** each game has a tiny binary (`uttt-arena`) that hands its referee to the shared command line of `cg-arena`, with three commands: `match` (two bots), `sprt` (does a candidate beat a baseline?) and `league` (Elo ratings of several bots). Bots run as separate processes and receive their input on stdin, exactly as on CodinGame; a bot that exceeds its time limit, exits, or answers invalidly loses the game. Games run in parallel, in seat-swapped pairs, and each one is written as a JSON line: seed, bots by seat, winner, end reason, turns and answer times.
+- **Trainer (per game):** a tool, not part of any bot, that plays self-play games with the bot's search and fits what a bot can learn from them offline. For Ultimate Tic-Tac-Toe, `uttt-trainer` records the searched positions and fits the playout policy, the value network and the move models, in the Train workflow on GitHub's runners ([ADR 0016](adr/0016-self-play-training.md), [ADR 0017](adr/0017-value-network.md)). Its output is Rust source or text; it reaches a bot only through an experiment and its SPRT. Being a tool, it may use the crates.io dependencies `deny.toml` allows.
 - **Bot:** an ordinary binary reading stdin and writing stdout. The arena gives each bot a reproducible seed in `CG_SEED`; on CodinGame it is absent and bots seed from the clock. When the arena scales the time limits, it passes the factor in `CG_TIME_SCALE` so that bots scale their budget too; `CG_FIXED_ITERS` replaces the time budget by a fixed iteration count for deterministic tests.
 - **`cg-core`:** what every bot needs, std-only: a line-based reader for the referee's input, a seeded xoshiro256++ generator, and the arena's time scale.
 - **`cg-search`:** game-independent search, std-only: a `Game` trait for two-player games where players take turns, Monte Carlo tree search (UCT) over it, and time budgets derived from a turn's CodinGame limit. Each game's engine implements the trait.
 - **Bundler:** flattens a bot and the workspace crates it uses into one file, checked and formatted by rustfmt, then removes comments, indentation and blank lines to save room ([ADR 0016](adr/0016-self-play-training.md); `--keep-comments` gives a readable bundle). It works on text and relies on conventions listed in its crate documentation: modules in files declared with `mod name;`, tests in separate files, other crates referred to by name, no crates.io dependencies on the bot side.
 - **Versions:** `releases/` keeps the exact file pasted for each version. The arena compiles old versions from these files with `rustc` alone, so history never rebuilds differently.
 
-Because the referee and the engine are written by the same hands, they could agree on a misread rule. Two checks guard against that: `RULES.md` cites the game's official source for every rule, and Phase 2 compares the referee with real CodinGame games.
+Because the referee and the engine are written by the same hands, they could agree on a misread rule. Two checks guard against that: `RULES.md` cites the game's official source for every rule, and the `rules-check` bot compares the engine's valid actions with those of real CodinGame games (done for Ultimate Tic-Tac-Toe in Phase 2).
 
 ## Evaluation pipeline
 
@@ -102,11 +112,13 @@ GitHub Actions on free standard runners. `main` only accepts changes whose check
 
 | Workflow | Trigger | Does |
 | --- | --- | --- |
-| `ci.yml` | Every push and pull request | Tiers 1 to 3: format, lint, tests (parity included); bundles every bot, checks and plays the bundles; checks new releases; evaluation sanity checks; engine speed; dependency policy |
-| `sprt.yml` | Every pull request | Tiers 4 and 6 for each release file the pull request adds, verdict as a check and a comment; passes at once when there is none |
+| `ci.yml` | Pushes to `main`, every pull request, by hand | Tiers 1 to 3: format, lint, tests (parity included); bundles every bot, checks and plays the bundles; checks new releases; evaluation sanity checks; engine speed; dependency policy |
+| `sprt.yml` | Every pull request | Tiers 4 and 6 for each release file the pull request adds, verdict as a check and a comment; passes at once when there is none. For a game in Legend the SPRT plays at CodinGame's full time ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)) |
+| `league.yml` | Push to `main` changing releases or evaluation settings, pull requests changing the league itself, by hand | Tier 7, ratings of all releases in the run summary |
 | `release.yml` | Push to `main` adding a release | Tag and GitHub release with the paste-ready file |
-| `league.yml` | Push to `main` adding a release, and on demand | Tier 7, ratings in the run summary |
+| `train.yml` | By hand | Self-play in up to 20 parallel jobs, then the fit of the playout policy, the value network or the move models; results and report go to a branch `claude/train/<run id>` ([ADR 0016](adr/0016-self-play-training.md)) |
+| `prune-branches.yml` | Weekly (Monday), and by hand | Deletes finished `claude/` branches once their content is safe; a run by hand only lists them unless asked to delete ([ADR 0021](adr/0021-prune-finished-branches.md)) |
 
 - **Compiler:** every job uses Rust 1.90.0, CodinGame's version ([ADR 0010](adr/0010-codingame-rust-toolchain.md)).
-- **Branch protection:** a ruleset on `main` requires the CI checks and blocks direct pushes, without requiring a GitHub review ([ADR 0006](adr/0006-human-approves-merges.md)).
-- **Compute:** standard runners only, which are free on public repositories. The SPRT runs in one job on all of the runner's cores, which keeps it sequential.
+- **Branch protection:** a ruleset on `main` requires the three checks of `ci.yml` (format, lint and test; CodinGame compatibility; dependency licenses and sources) and blocks direct pushes, without requiring a GitHub review ([ADR 0006](adr/0006-human-approves-merges.md)). The SPRT's check is not required yet: making it so is part of [phase 5](ROADMAP.md#phase-5-autonomy-and-workflow).
+- **Compute:** standard runners only, which are free on public repositories. The SPRT runs in one job on all of the runner's cores, which keeps it sequential; training spreads self-play over up to 20 jobs.
