@@ -17,9 +17,9 @@ Every bot change is judged by CI: unit tests, a check that the bot compiles on C
 - [`crates/`](crates/): code shared by every game. `cg-core` reads CodinGame's input and gives bots a seeded random generator and the time scale. `cg-search` is a game trait with Monte Carlo tree search. `cg-arena` is the referee trait, the match runner, the SPRT, the ratings and the command line. `cg-bundler` turns a bot and the crates it uses into one paste-ready file.
 - [`games/<game>/`](games/): everything for one game. Its rules (`RULES.md`), a readable referee, a fast engine, an arena binary, a trainer, the bots, the frozen releases, the journal of experiments, the reports of training runs, and the settings of its evaluations.
 - [`docs/`](docs/): architecture, roadmap, workflow, CodinGame facts, and the decision records in `docs/adr/`.
-- [`scripts/`](scripts/): bundling and checking bots, making and checking releases, the SPRT, the league, and pruning finished branches.
+- [`scripts/`](scripts/): bundling and checking bots, making and checking releases, the SPRT, the league, pruning finished branches, and checking the docs.
 - [`.github/workflows/`](.github/workflows/):
-  - `ci.yml`: format, lint, tests, CodinGame compatibility, dependency licenses.
+  - `ci.yml`: format, lint, tests, CodinGame compatibility, dependency licenses, docs and scripts.
   - `sprt.yml`: smoke test and SPRT of each new release.
   - `league.yml`: ratings of all releases.
   - `release.yml`: a GitHub release for each new release file.
@@ -44,6 +44,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 scripts/bundle-bots.sh                 # every bot -> target/cg/<game>-<bot>.rs
 scripts/cg-check.sh target/cg/*.rs     # size and standalone compile of each bundle
+scripts/check-docs.sh                  # indexes, status lines and links of the docs
 ```
 
 To play bots against each other locally, see [games/uttt/README.md](games/uttt/README.md).
