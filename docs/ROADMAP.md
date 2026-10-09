@@ -1,6 +1,6 @@
 # Roadmap
 
-Seven phases build the framework before the first real bot. Reaching Legend is the ongoing result of the experiment loop, not a phase. Each phase ends at a gate that CI or CodinGame can check. Game counts in the gates are proposed values.
+Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes Claude's work more autonomous, and phase 6 adds a second game. Reaching Legend is the ongoing result of the experiment loop, not a phase. Each phase ends at a gate that CI or CodinGame can check. Game counts in the gates are proposed values.
 
 | Phase | Scope | Gate | Status |
 | --- | --- | --- | --- |
@@ -12,8 +12,6 @@ Seven phases build the framework before the first real bot. Reaching Legend is t
 | 5. Autonomy and workflow | Conventions, CI checks, project agents and skills, merge policy, scheduled sessions within the owner's usage limits, arena and ratings | One week of scheduled sessions with the owner answering only decision issues | In progress (2026-10-09) |
 | 6. Second game | A game with an official referee; `new-game` skill | Phase 3 gates met, changes mostly inside the game folder | Not started |
 | Ongoing | Iterate every game toward Legend, then up the Legend ranking | | Ultimate Tic-Tac-Toe: Legend since 2026-10-07 (`uttt-v001`, 182 of 443); 59th with `uttt-v008` (2026-10-08); current release `uttt-v010`; strength work paused (2026-10-09) |
-
-Phases 4 and 5 can overlap.
 
 ## Phase 0: foundations
 
