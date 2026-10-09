@@ -54,7 +54,7 @@ codingame-bots/
 │     ├─ releases/          frozen paste-ready file per version
 │     ├─ journal/           one entry per experiment, with an index
 │     └─ training/          reports of the training runs used, E011's class weights
-├─ .claude/                 Phase 5: skills, agents, settings
+├─ .claude/                 agents/ and skills/ of Claude's sessions; worktrees/ ignored
 └─ .github/
    ├─ workflows/            ci, sprt, league, release, train, prune-branches, pr-hygiene
    ├─ dependabot.yml        monthly updates of actions and crates

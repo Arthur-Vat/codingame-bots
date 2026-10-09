@@ -96,20 +96,20 @@ Gate: one week of daily scheduled sessions in which Claude moves work forward on
 
 ### B. Agents, skills and the review loop
 
-- [ ] Project agents in `.claude/agents/`: `implementer` (Sonnet 5.5) codes to a precise spec; `pr-reviewer` (Opus 5.5) reviews every pull request against the hard rules, decision records, tests, docs and privacy; `rules-reviewer` checks engine changes against the game's `RULES.md`. Claude's main session plans, splits the work and checks the results
-- [ ] Review depth matched to risk (after step A, 2026-10-09): documentation gets a quick check, or one light review per batch; workflows, permissions and scripts get a deep `pr-reviewer` review; bot changes get the SPRT and `rules-reviewer`. Reviewers get the diff and a checklist rather than exploring, and agents' reports stay under about 200 words
-- [ ] Planning before dispatch: decision records and names are settled before implementers start; each spec gives examples of inputs and expected outputs; the merge order of related pull requests (stacks, shared roadmap lines) is planned up front (`pr-train`)
-- [ ] Skills carry the recipes that work in Claude's sessions: pull requests through GitHub's REST API, fetches with explicit refspecs
-- [ ] Project skills in `.claude/skills/`: `run-experiment`, `training-run`, `write-adr`, `review-pr`, `pr-train` (stacked pull requests and merge order), `deliver-release`, `weekly-report`, `docs-refresh`, later `new-game`
+- [x] Project agents in `.claude/agents/`: `implementer` (Sonnet 5.5) codes to a precise spec; `pr-reviewer` (Opus 5.5) reviews every pull request against the hard rules, decision records, tests, docs and privacy; `rules-reviewer` checks engine changes against the game's `RULES.md`. Claude's main session plans, splits the work and checks the results
+- [x] Review depth matched to risk (after step A, 2026-10-09): documentation gets a quick check, or one light review per batch; workflows, permissions and scripts get a deep `pr-reviewer` review; bot changes get the SPRT and `rules-reviewer`. Reviewers get the diff and a checklist rather than exploring, and agents' reports stay under about 200 words
+- [x] Planning before dispatch: decision records and names are settled before implementers start; each spec gives examples of inputs and expected outputs; the merge order of related pull requests (stacks, shared roadmap lines) is planned up front (`pr-train`)
+- [x] Skills carry the recipes that work in Claude's sessions: pull requests through GitHub's REST API, fetches with explicit refspecs (`github-api`)
+- [x] Project skills in `.claude/skills/`: `pr-train` (plan, dispatch, stack and merge), `review-pr`, `github-api`, `ask-decision`, `write-adr`, `run-experiment`, `deliver-release`, `training-run`, `docs-refresh`, `daily-report`; later `new-game`
 - [x] The owner approves merges in the conversation and Claude carries them out ([ADR 0023](adr/0023-chat-approved-merges.md))
 - [ ] Merge policy (a decision record superseding [ADR 0006](adr/0006-human-approves-merges.md)): Claude may merge without asking docs, journal entries, dropped experiments, tooling that changes no bot, and releases accepted by the full-time SPRT, once required checks pass and `pr-reviewer` approves; the owner merges decision records, `CLAUDE.md`, workflows and permissions, and rules or referee changes
 - [ ] `Docs and scripts` and the SPRT are required checks, so that broken docs or a rejected release cannot be merged (owner's decision, 2026-10-09; a repository setting the owner changes, since Claude's sessions cannot edit rulesets)
-- [ ] Decisions reach the owner as issues labelled `decision`, each with options and a recommendation, and one push notification when one is waiting
+- [x] Decisions reach the owner in the conversation, each with options and a recommendation (`ask-decision`); when he is away, one push notification and the daily report say one is waiting. Answers count only in the conversation: GitHub issues were dropped after review, since Claude's sessions post under the owner's account
 
 ### C. Autonomous operation
 
 - [ ] Usage guard, verified before the scheduled session is set up: each scheduled session first reads the 7-day usage of the owner's plan and stops at 90% or more; if that figure is not available to scheduled sessions, a pause switch the owner controls replaces it
-- [ ] One quick scheduled session a day, reduced from four on 2026-10-09 to spare the owner's usage: guard, read CI results and what waits for the owner, post a daily report; it never merges ([ADR 0023](adr/0023-chat-approved-merges.md)). Its time, its work beyond the report, and where the report goes are chosen with the owner
+- [ ] One quick scheduled session a day, reduced from four on 2026-10-09 to spare the owner's usage: the guard, then the daily report (`daily-report`): the day's work, areas of improvement, hot fixes and evolutions to propose (the owner's brief, 2026-10-09). It changes nothing and never merges ([ADR 0023](adr/0023-chat-approved-merges.md)). Its time and where the report goes are chosen with the owner
 - [ ] One week of trial, then frequency and merge classes adjusted with the owner
 
 ### D. Arena and ratings

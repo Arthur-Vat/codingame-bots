@@ -18,6 +18,7 @@ Every bot change is judged by CI: unit tests, a check that the bot compiles on C
 - [`games/<game>/`](games/): everything for one game. Its rules (`RULES.md`), a readable referee, a fast engine, an arena binary, a trainer, the bots, the frozen releases, the journal of experiments, the reports of training runs, and the settings of its evaluations.
 - [`docs/`](docs/): architecture, roadmap, workflow, CodinGame facts, and the decision records in `docs/adr/`.
 - [`scripts/`](scripts/): bundling and checking bots, making and checking releases, the SPRT, the league, pruning finished branches, checking the docs, and labelling pull requests.
+- [`.claude/`](.claude/): Claude's project agents (implementer, reviewers) and skills (the procedures that repeat).
 - [`.github/workflows/`](.github/workflows/):
   - `ci.yml`: format, lint, tests, CodinGame compatibility, dependency licenses, docs and scripts.
   - `sprt.yml`: smoke test and SPRT of each new release.

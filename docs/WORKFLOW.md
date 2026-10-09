@@ -24,7 +24,7 @@ Other work, such as tooling, documentation or training runs, takes the same path
 
 The rules are in [ADR 0012](adr/0012-evaluation.md).
 
-1. On a branch `claude/<game>-eNNN-<short-name>`, change the bot, then freeze it as the candidate: `scripts/new-release.sh <game> <bot>` writes `games/<game>/releases/<game>-vNNN.rs`.
+1. On a branch `claude/<game>-eNNN-<short-name>`, change the bot and screen it locally against the current release with the game's arena (20 ms moves are enough to screen, [ADR 0020](adr/0020-full-time-sprt-in-legend.md)). Then freeze it as the candidate: `scripts/new-release.sh <game> <bot>` writes `games/<game>/releases/<game>-vNNN.rs`; point the game README's `**Current release:**` line and the root README's games table to it (`scripts/check-docs.sh` checks them).
 2. Start the journal entry `games/<game>/journal/ENNN-<short-name>.md` from the template: hypothesis, change, and the line `release: <game>-vNNN`. Open the pull request.
 3. CI checks the release, and the SPRT workflow runs the smoke test and the SPRT against the previous release, then posts the result on the pull request. Once the game's bot is in Legend, both play at CodinGame's exact time limits ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)); below Legend they play at 20 ms, and an accepted candidate is then confirmed at full time if the game asks for it. Locally, `scripts/sprt.sh <game> <candidate.rs>` runs the same test.
 4. Claude copies the result into the entry. Only Markdown changes, so the SPRT workflow reuses its result instead of running again. Re-running the SPRT job on GitHub does test again, for a failure caused by the machine; every test posts its result on the pull request.
@@ -41,11 +41,11 @@ The rules are in [ADR 0012](adr/0012-evaluation.md).
 
 ## Claude Code setup (Phase 5)
 
-Phase 5 has been in progress since 2026-10-09; `.claude/` does not exist yet. Its goal is that the owner only arbitrates and Claude moves work forward between the owner's visits. The plan, with its checklist and gate, is in the [roadmap](ROADMAP.md#phase-5-autonomy-and-workflow). In short:
+Phase 5 has been in progress since 2026-10-09. Its goal is that the owner only arbitrates and Claude moves work forward between the owner's visits. The plan, with its checklist and gate, is in the [roadmap](ROADMAP.md#phase-5-autonomy-and-workflow). In short:
 
 - **Instructions:** `CLAUDE.md` holds the rules for every session.
-- **Agents** in `.claude/agents/`: an implementer that codes to a precise spec, a pull request reviewer, and `rules-reviewer`, which checks every engine change against the game's `RULES.md`. Claude's main session plans, splits the work and checks the results.
-- **Skills** in `.claude/skills/`: the steps that repeat, such as running an experiment, a training run, writing an ADR, reviewing a pull request, delivering a release and the weekly report.
+- **Agents** in `.claude/agents/`: `implementer` (Sonnet) codes to a precise spec; `pr-reviewer` (Opus) reviews every pull request at a depth matched to its risk; `rules-reviewer` (Opus) checks engine and referee changes against the game's `RULES.md`. Claude's main session plans, splits the work, checks the results and merges what the owner approved.
+- **Skills** in `.claude/skills/`: the steps that repeat. `pr-train` plans and lands work across pull requests, `review-pr` chooses the review's depth, `github-api` has the recipes that work from Claude's sessions, `ask-decision` and `write-adr` bring decisions to the owner and record them; `run-experiment`, `deliver-release`, `training-run`, `docs-refresh` and `daily-report` cover the rest.
 - **Merge policy:** the owner approves every merge in the conversation and Claude carries it out ([ADR 0023](adr/0023-chat-approved-merges.md)). The plan lets Claude merge some classes of change without asking, in a later decision record, and keeps the rest with the owner.
-- **Decisions:** they reach the owner as issues labelled `decision`, each with options and a recommendation.
-- **Scheduled session:** one quick session a day, within the owner's usage limits, ending with a daily report; it never merges ([ADR 0023](adr/0023-chat-approved-merges.md)).
+- **Decisions:** asked in the conversation, each with options and a recommendation; when the owner is away, one push notification and the daily report say one is waiting. Only answers in the conversation count.
+- **Scheduled session:** one quick session a day, within the owner's usage limits: a daily report of the day's work, areas of improvement, and hot fixes and evolutions to propose; it changes nothing and never merges ([ADR 0023](adr/0023-chat-approved-merges.md)).

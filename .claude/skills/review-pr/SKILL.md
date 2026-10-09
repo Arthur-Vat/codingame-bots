@@ -1,0 +1,32 @@
+---
+name: review-pr
+description: Chooses the review depth a pull request needs, runs the independent reviewer agents, and handles their findings before the owner is asked to approve. Use for every pull request Claude opens.
+---
+
+# Review a pull request
+
+Every pull request gets an independent review before the owner is asked to approve it. The reviewer must not have seen the work: run it as a separate agent, never as the session that made the change.
+
+## Choose the tier
+
+| Change | Tier | Agents |
+| --- | --- | --- |
+| Documentation only: docs, journal entries, READMEs, training reports | light | `pr-reviewer` (light); one review may cover several such branches |
+| Workflows, scripts, permissions, `CLAUDE.md`, decision records, `.claude/` | deep | `pr-reviewer` (deep) |
+| Bots, engine, search, bundler, arena | bot | `pr-reviewer` (bot), plus `rules-reviewer` when `games/<game>/engine` or `games/<game>/referee` changes |
+| A candidate release | bot | as above; the SPRT judges strength |
+
+The tier sets depth, not whether to review. A change made only by a script (a regenerated index, for instance) may get the light tier even inside a deeper pull request.
+
+## Brief the reviewer
+
+Give the branch, the intent in two or three sentences (what the owner asked for, which decision record), the tier, and what is expected to fail and why (for a stacked pull request: what the branches below it provide). Do not pass your own reasoning or doubts: the review should be independent.
+
+## Handle the findings
+
+- Verify any finding that would change the design before acting on it.
+- Fix blockers and real issues; fix cheap nits; for the rest, say in the pull request why they stay.
+- A finding that needs a decision goes to the owner (skill `ask-decision`), not into a guess.
+- Put a short "Review" section in the pull request body: the verdict, what was fixed (with commit SHAs) and what was kept.
+
+Do not re-run the full review after small fixes; re-run it only if the fixes changed the design.
