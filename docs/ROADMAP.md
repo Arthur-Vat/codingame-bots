@@ -102,15 +102,15 @@ Gate: one week of daily scheduled sessions in which Claude moves work forward on
 - [x] Skills carry the recipes that work in Claude's sessions: pull requests through GitHub's REST API, fetches with explicit refspecs (`github-api`)
 - [x] Project skills in `.claude/skills/`: `pr-train` (plan, dispatch, stack and merge), `review-pr`, `github-api`, `ask-decision`, `write-adr`, `run-experiment`, `deliver-release`, `training-run`, `docs-refresh`, `daily-report`; later `new-game`
 - [x] The owner approves merges in the conversation and Claude carries them out ([ADR 0023](adr/0023-chat-approved-merges.md))
-- [ ] Merge policy (a decision record superseding [ADR 0006](adr/0006-human-approves-merges.md)): Claude may merge without asking docs, journal entries, dropped experiments, tooling that changes no bot, and releases accepted by the full-time SPRT, once required checks pass and `pr-reviewer` approves; the owner merges decision records, `CLAUDE.md`, workflows and permissions, and rules or referee changes
-- [ ] `Docs and scripts` and the SPRT are required checks, so that broken docs or a rejected release cannot be merged (owner's decision, 2026-10-09; a repository setting the owner changes, since Claude's sessions cannot edit rulesets)
+- [ ] Postponed by the owner until after step C's trial (2026-10-09). Merge policy (a decision record superseding [ADR 0006](adr/0006-human-approves-merges.md)): Claude may merge without asking docs, journal entries, dropped experiments, tooling that changes no bot, and releases accepted by the full-time SPRT, once required checks pass and `pr-reviewer` approves; the owner merges decision records, `CLAUDE.md`, workflows and permissions, and rules or referee changes
+- [x] `Docs and scripts` and the SPRT are required checks, so that broken docs or a rejected release cannot be merged (set by the owner, 2026-10-09; Claude's sessions cannot edit rulesets)
 - [x] Decisions reach the owner in the conversation, each with options and a recommendation (`ask-decision`); when he is away, one push notification and the daily report say one is waiting. Answers count only in the conversation: GitHub issues were dropped after review, since Claude's sessions post under the owner's account
 
 ### C. Autonomous operation
 
-- [ ] Usage guard, verified before the scheduled session is set up: each scheduled session first reads the 7-day usage of the owner's plan and stops at 90% or more; if that figure is not available to scheduled sessions, a pause switch the owner controls replaces it
-- [ ] One quick scheduled session a day, reduced from four on 2026-10-09 to spare the owner's usage: the guard, then the daily report (`daily-report`): the day's work, areas of improvement, hot fixes and evolutions to propose (the owner's brief, 2026-10-09). It changes nothing and never merges ([ADR 0023](adr/0023-chat-approved-merges.md)). Its time and where the report goes are chosen with the owner
-- [ ] One week of trial, then frequency and merge classes adjusted with the owner
+- [x] Usage guard: the 7-day usage of the owner's plan is not readable from cloud sessions. The status line carries it (`rate_limits.seven_day.used_percentage`), but it does not run in them (tested 2026-10-09). The owner's pause switch replaces the guard: he pauses the scheduled task in the Claude app when his usage runs high, and the run is kept quick and read-only
+- [x] One quick scheduled session a day, reduced from four on 2026-10-09 to spare the owner's usage: every day at 06:45, Paris time, the daily report (`daily-report`) of the day's work, areas of improvement, and hot fixes and evolutions to propose (the owner's brief, 2026-10-09). Its final message reaches the owner's phone as a push notification. It changes nothing and never merges ([ADR 0023](adr/0023-chat-approved-merges.md)). Set up 2026-10-09 as the scheduled task "CodinGame bots: daily report"
+- [ ] One week of trial, from 2026-10-10, then the report's form, the frequency and the merge classes adjusted with the owner
 
 ### D. Arena and ratings
 
@@ -137,7 +137,7 @@ Order: A, then B, then C and E side by side, then D.
 | CodinGame changes its Rust version | Code that builds locally fails on CodinGame | `rust-version` plus CI on 1.90.0 and the standalone compile; re-run the probe in [CODINGAME.md](CODINGAME.md) after language updates |
 | Our engine differs from CodinGame's | The bot wins locally and loses on CodinGame | Parity tests, checks against real CodinGame games, dedicated tiebreak tests |
 | Timing noise on shared runners | Timeouts and wrong SPRT verdicts | One game per core, A/A test in CI, time limits revisited with the first real bot ([ADR 0013](adr/0013-evaluation-time-limits.md)), CodinGame's exact limits for games in Legend ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)) |
-| Claude plan usage limits | Slower iteration | Actions does the compute; one daily scheduled session that stops at 90% of the plan's 7-day usage (phase 5); cheaper models implement |
+| Claude plan usage limits | Slower iteration | Actions does the compute; one quick daily scheduled session, which the owner pauses when his usage runs high (phase 5); cheaper models implement |
 | CodinGame rules on outside help | Problems in prize contests | Multiplayer leaderboards only; read a contest's rules before entering it ([ADR 0009](adr/0009-manual-submission.md)) |
 | Projects beta not available | No single hub with an Overview | One long claude.ai conversation meanwhile ([ADR 0008](adr/0008-claude-hub.md)) |
 | Claude workspace cannot download Rust toolchains | Local checks run on a newer Rust than CodinGame | `rust-version` lints locally; CI on exactly 1.90.0 is the judge ([ADR 0010](adr/0010-codingame-rust-toolchain.md)) |

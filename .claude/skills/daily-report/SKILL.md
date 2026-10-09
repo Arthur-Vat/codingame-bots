@@ -44,4 +44,4 @@ If nothing happened, the report is one line saying so and what is waiting.
 
 ## Deliver
 
-The report is the session's final message. Send one push notification with the headline and the number of items waiting for the owner. Phase 5's step C may add a destination.
+The report is the session's final message, headline first. In the daily scheduled session, the scheduled task sends it to the owner's phone as a push notification: send no other one. When the owner asks for a report in the conversation, the reply is the report.
