@@ -25,6 +25,10 @@
 #    (between `---` lines) with non-empty name:, description:, model: and
 #    tools: lines: without tools:, an agent gets every tool of the session,
 #    whose descriptions cost tokens on each of its steps.
+# h. Every workflow, .github/workflows/NAME.yml, is named (as NAME.yml) in
+#    docs/ARCHITECTURE.md and in README.md, and every script,
+#    scripts/NAME.sh and scripts/lib/NAME.sh, in docs/ARCHITECTURE.md. A name
+#    counts when it stands alone: `ci.yml` is not found in `pci.yml`.
 #
 # A link to a record or entry that does not exist is a broken link: check e
 # reports it, in the index like anywhere else.
@@ -512,8 +516,28 @@ for file in .claude/agents/*.md; do
   done
 done
 
+# h. Workflows and scripts are listed in the architecture (and workflows in
+# the README).
+listed_in() {
+  local pattern
+  pattern="(^|[^A-Za-z0-9_.-])${1//./\\.}($|[^A-Za-z0-9_-])"
+  grep -qE -- "$pattern" "$2"
+}
+workflows=0
+for file in .github/workflows/*.yml; do
+  workflows=$((workflows + 1))
+  for doc in docs/ARCHITECTURE.md README.md; do
+    listed_in "$(basename "$file")" "$doc" || fail "$doc" "does not list the workflow $(basename "$file")"
+  done
+done
+scripts=0
+for file in scripts/*.sh scripts/lib/*.sh; do
+  scripts=$((scripts + 1))
+  listed_in "$(basename "$file")" docs/ARCHITECTURE.md || fail docs/ARCHITECTURE.md "does not list the script $file"
+done
+
 if ((problems > 0)); then
   echo "$problems problem(s) in the documentation" >&2
   exit 1
 fi
-echo "ok   documentation: $links relative links in $files Markdown files; indexes, scopes and status lines match; $agents agents declare model and tools"
+echo "ok   documentation: $links relative links in $files Markdown files; indexes, scopes and status lines match; $agents agents declare model and tools; $workflows workflows and $scripts scripts are listed"

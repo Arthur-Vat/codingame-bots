@@ -129,7 +129,7 @@ Background runs stay off until the owner turns them on.
 - [ ] Speed regression check (tier 5 of the evaluation pipeline): the pull request against `main` in the same job, to cancel the runner's noise
 - [ ] Documentation-only pull requests skip the heavy steps while still reporting the required checks
 - [ ] Agentic checks stay in Claude's sessions (owner's choice, 2026-10-09): no Claude job in GitHub Actions
-- [ ] The docs check also verifies that the architecture and the README list every workflow and script
+- [x] The docs check also verifies that the architecture lists every workflow and script, and the README every workflow (the README names scripts by area)
 - [x] Shellcheck also lints the scripts' tests, `scripts/tests/*.sh` (owner, 2026-10-09)
 - [ ] Optional: commit subjects checked like pull request titles
 
