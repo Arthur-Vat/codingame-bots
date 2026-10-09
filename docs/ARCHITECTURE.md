@@ -8,7 +8,7 @@ This document describes the target design. [ROADMAP.md](ROADMAP.md) says which p
 
 - **Framework over one-shot.** Every game reuses the same arena, tests, rating and release machinery. A new game adds its rules, an engine and bots.
 - **Claude proposes, CI judges.** No bot counts as stronger until a sequential probability ratio test (SPRT) says so.
-- **The owner decides.** Claude never merges ([ADR 0006](adr/0006-human-approves-merges.md)); important choices become ADRs.
+- **The owner decides.** Claude merges only what the owner approved ([ADR 0006](adr/0006-human-approves-merges.md), [ADR 0023](adr/0023-chat-approved-merges.md)); important choices become ADRs.
 - **Free and reproducible.** Public repository, standard GitHub-hosted runners, pinned compiler, seeded games.
 - **Paste-ready output.** Every bot version ships as one readable `.rs` file.
 

@@ -1,6 +1,6 @@
 # 0006. A human approves every merge
 
-- Status: accepted
+- Status: accepted; completed by [0023](0023-chat-approved-merges.md) (Claude merges what the owner approved in the conversation)
 - Date: 2026-10-06
 - Scope: framework
 
