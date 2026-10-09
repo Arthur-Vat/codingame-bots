@@ -11,6 +11,7 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 scripts/bundle-bots.sh && scripts/cg-check.sh target/cg/*.rs
+scripts/check-docs.sh
 ```
 
 For bot or engine changes, also play the bundled bots against each other with the game's arena (for example `target/release/uttt-arena --help`) and report the summary. For engine changes, also report `cargo run --release -p uttt-engine --example speed` against the baseline in `games/uttt/README.md`.

@@ -2,7 +2,7 @@
 
 Each file records one decision: the context, what was decided and what follows from it. A decision is never edited away: to change it, add a new record that supersedes the old one and set the old one's status to "superseded by NNNN".
 
-Use [template.md](template.md) for new records. Number them in order, in one sequence for the whole repository. Each record names its scope on its `Scope:` line: `framework`, or the game it binds ([ADR 0022](0022-scopes-and-names.md)). The index groups them by scope.
+Use [template.md](template.md) for new records. Number them in order, in one sequence for the whole repository. Each record names its scope on its `Scope:` line: `framework`, or the game it binds ([ADR 0022](0022-scopes-and-names.md)). The index groups them by scope: framework records under "Framework", a game's records under a heading that ends with the game's identifier in code, such as "Ultimate Tic-Tac-Toe (`uttt`)". `scripts/check-docs.sh` checks both in CI.
 
 ## Framework
 
