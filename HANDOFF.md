@@ -4,7 +4,8 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- Go for phase 5 step D (arena and ratings) and step E (CI, fixed checks). Ask before any heavy work.
+- Pull requests #58 (shellcheck on the scripts' tests) and #59 (docs check lists workflows and scripts, stacked on #58): written, reviewed, required checks green; asked 2026-10-09. Merge #58 first.
+- Go for phase 5 step D (arena and ratings), asked 2026-10-09. Step E's light items are done in #58 and #59; the owner chose them on 2026-10-09 (answered in the conversation: "Step E, light items"). Left in E: speed regression check and docs-only PRs skipping heavy steps (heavier, ask first). Ask before any heavy work.
 
 ## Open questions
 
@@ -23,4 +24,5 @@ None.
 
 ## Usage
 
+- 2026-10-09 22:05 (Paris) | step E light items (#58, #59) | main session 22 steps (1.93M read), 1 agent (0.22M read)
 - 2026-10-09 21:50 (Paris) | agent guard hook (#52), roadmap line (#53), session setup (#54), handoff (#55), land-work and two-turn approvals (#57, #56 closed into it), all merged | main session 85 steps (10.79M read), 4 agents (0.49M read); the main session's context reached 185k over a long conversation
