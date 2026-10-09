@@ -4,7 +4,6 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- Pull request #61 (drop the phase 5 trial, keep the current merge policy; small bookkeeping, no separate review), head a48cd79: asked 2026-10-09; approval for the new head still to be given.
 - Go for phase 5 step D (arena and ratings), asked 2026-10-09. Step E's light items were merged on 2026-10-09 (#58, #59; owner approved in the conversation). Left in E: speed regression check and docs-only PRs skipping heavy steps (heavier, ask first). Ask before any heavy work.
 
 ## Open questions
