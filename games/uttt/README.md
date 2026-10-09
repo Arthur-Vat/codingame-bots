@@ -45,7 +45,7 @@ Each pair plays the same seed twice with seats swapped; `--opening-plies 4` star
 
 With the settings of [evaluation.env](evaluation.env):
 
-- `scripts/sprt.sh uttt CANDIDATE.rs [BASELINE.rs]`: smoke test against random, then SPRT against the baseline (by default the newest release older than the candidate, or `greedy`). Settings can be overridden from the environment, for example `TIME_SCALE=1 TIME_TOLERANCE_MS=0` for CodinGame's full limits.
+- `scripts/sprt.sh uttt CANDIDATE.rs [BASELINE.rs]`: smoke test against random, then SPRT against the baseline (by default the newest release older than the candidate, or `greedy`). Since the bot is in Legend, both play at CodinGame's exact limits ([ADR 0020](../../docs/adr/0020-full-time-sprt-in-legend.md)). Settings can be overridden from the environment, for example `SPRT_TIME_SCALE=0.2 SPRT_TIME_TOLERANCE_MS=5` for a quicker test at 20 ms, or a few milliseconds of `SPRT_TIME_TOLERANCE_MS` on a small or busy machine, where the exact limits cause timeouts that GitHub's runners do not.
 - `scripts/league.sh uttt`: ratings of every release with `random` and `greedy`.
 - `scripts/new-release.sh uttt BOT`: freezes a bot as the next release. The whole experiment flow is in [docs/WORKFLOW.md](../../docs/WORKFLOW.md).
 

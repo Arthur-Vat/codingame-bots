@@ -79,6 +79,7 @@ Phases 4 and 5 can overlap.
 - [x] E002, keeping the search tree between turns: accepted, +49.6 Elo at 20 ms and +73.3 at full time (`uttt-v002`)
 - [x] Safer time budget, 82 ms of 100, after a timeout at full time on CI; only the candidate's faults fail an evaluation
 - [x] E003, proving wins and losses in the tree: accepted, +31.6 Elo at 20 ms and +13.6 at full time (`uttt-v003`)
+- [x] SPRT at CodinGame's exact limits for games in Legend, replacing the full-time confirmation ([ADR 0020](adr/0020-full-time-sprt-in-legend.md))
 - [ ] Opening length checked with MCTS (ADR 0012), carried into the experiment loop
 
 ## Risks

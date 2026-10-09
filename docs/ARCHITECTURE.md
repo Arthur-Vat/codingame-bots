@@ -72,17 +72,17 @@ Seven tiers protect every change; only the SPRT decides whether a bot is stronge
 | 1. Static | Format, lints, unit tests, property tests of engine invariants | Every push | All green |
 | 2. Parity | The fast engine against the reference referee on 10,000 random games | Every push (part of the tests) | Identical valid actions and results |
 | 3. CodinGame compatibility | Bundle, size, standalone compile with Rust 1.90.0, 1,000 games between bundled bots, every bundled bot against random | Every push | Compiles, stays under 100 kB, no faults except timeouts in up to 1% of games for bots that search ([ADR 0015](adr/0015-tolerate-rare-timeouts.md)) |
-| 4. Smoke | Candidate release against the random bot, 100 pairs with openings | Pull requests adding a release, before the SPRT | No crash or invalid answer, timeouts in at most 1% of games, at least 99% of the points |
+| 4. Smoke | Candidate release against the random bot, 100 pairs with openings, at the SPRT's time limits | Pull requests adding a release, before the SPRT | No crash or invalid answer, timeouts in at most 1% of games, at least 99% of the points |
 | 5. Speed | Simulations per second on fixed positions | Every bot change (Phase 4) | No drop over 5% against the parent version (proposed) |
-| 6. SPRT | Candidate release against the previous release, at 20 ms per move | Pull requests adding a release | The test accepts the candidate as stronger, with no crash or invalid answer and timeouts in at most 1% of games |
-| 6b. Full-time confirmation | The accepted candidate against the previous release, 500 pairs at CodinGame's exact limits ([ADR 0014](adr/0014-full-time-confirmation.md)) | After the SPRT accepts | Not clearly weaker, no crash or invalid answer, timeouts in at most 1% of games; the Elo measured is recorded |
+| 6. SPRT | Candidate release against the previous release: at CodinGame's exact limits once the game's bot is in Legend ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)), else at 20 ms per move | Pull requests adding a release | The test accepts the candidate as stronger, with no crash or invalid answer and timeouts in at most 1% of games |
+| 6b. Full-time confirmation | For games below Legend that ask for it: the accepted candidate against the previous release at CodinGame's exact limits ([ADR 0014](adr/0014-full-time-confirmation.md)) | After the SPRT accepts | Not clearly weaker, no crash or invalid answer, timeouts in at most 1% of games; the Elo measured is recorded |
 | 7. League | Every release and the baseline bots | After each release, and on demand | Ratings published |
 
 - **Openings and pairs:** Ultimate Tic-Tac-Toe has no random map, so the referee imposes a few random moves at the start of each pair, drawn from the pair's seed, and the pair plays them twice with seats swapped.
-- **SPRT:** scored on game pairs, which handles draws; bounds of 0 and 10 Elo; 5% error rates; no verdict before 30 pairs; capped at 10,000 pairs (20,000 games). Bounds tighten as the bot matures.
+- **SPRT:** scored on game pairs, which handles draws; bounds of 0 and 10 Elo; 5% error rates; no verdict before 30 pairs; capped at 8,000 pairs for Ultimate Tic-Tac-Toe, which fits GitHub's 6-hour job limit at full time. Bounds tighten as the bot matures.
 - **Sanity checks of the pipeline itself:** on every push, CI runs an SPRT of a bot against a copy of itself (A/A test, must not be accepted), of a weaker bot against a stronger one (must be rejected) and the reverse (must be accepted), with fixed seeds.
 - **Ratings:** Bradley-Terry maximum likelihood with 95% intervals, the random bot anchored at 0.
-- **Timing noise:** matches run one game per CPU core, with time limits scaled down to keep tests affordable (0.2) plus a 5 ms tolerance, not told to bots, that absorbs the machine's delays ([ADR 0013](adr/0013-evaluation-time-limits.md)). Since the first release reached Legend, every accepted candidate is also confirmed at CodinGame's full limits.
+- **Timing noise:** matches run one game per CPU core. Below Legend, time limits are scaled down to keep tests affordable (0.2) plus a 5 ms tolerance, not told to bots, that absorbs the machine's delays ([ADR 0013](adr/0013-evaluation-time-limits.md)). Once a game's bot is in Legend, its smoke test and SPRT play at CodinGame's exact limits ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)); the league keeps the scaled limits.
 
 ## Journal and versioning
 
