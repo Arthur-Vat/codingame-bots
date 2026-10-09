@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- Pull request #61 (drop the phase 5 trial; small bookkeeping, no separate review): required checks green; asked 2026-10-09.
+- Pull request #61 (drop the phase 5 trial, keep the current merge policy; small bookkeeping, no separate review), head a48cd79: asked 2026-10-09; approval for the new head still to be given.
 - Go for phase 5 step D (arena and ratings), asked 2026-10-09. Step E's light items were merged on 2026-10-09 (#58, #59; owner approved in the conversation). Left in E: speed regression check and docs-only PRs skipping heavy steps (heavier, ask first). Ask before any heavy work.
 
 ## Open questions
@@ -13,8 +13,7 @@ None.
 
 ## Follow-ups
 
-- Merge-policy record (supersedes ADR 0006), no longer postponed: bring its options to the owner (skill `ask-decision`) and correct ADR 0023's line on the SPRT with it.
-- ADR 0023 still says the SPRT is not a required check, which is no longer true: correct it in the merge-policy record (phase 5, step B), postponed by the owner until after the trial.
+- ADR 0023 still says the SPRT is not a required check, which is no longer true. The owner keeps the current merge policy (2026-10-09) and wants no new record; the line stays as is unless he asks for a fix.
 - Record the CodinGame ranks of `uttt-v009` and `uttt-v010` when the owner reports them (skill `deliver-release`).
 
 ## Notes
