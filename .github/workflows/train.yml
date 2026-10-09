@@ -40,6 +40,9 @@ on:
       size:
         description: "Value: the network's hidden layers (64-16 or 128-32)"
         default: "64-16"
+      data_from_run:
+        description: "Fit only, on the self-play data of this earlier run (kept 7 days); empty plays new games"
+        default: ""
 
 permissions:
   contents: read
@@ -75,6 +78,7 @@ jobs:
   selfplay:
     name: Self-play ${{ matrix.shard }}
     needs: plan
+    if: inputs.data_from_run == ''
     runs-on: ubuntu-latest
     timeout-minutes: 350
     strategy:
@@ -127,10 +131,14 @@ jobs:
   fit:
     name: Fit the ${{ inputs.stage == 'value' && 'value network' || inputs.stage == 'patterns' && 'move models' || 'playout policy' }}
     needs: selfplay
+    # Also when self-play was skipped for an earlier run's data.
+    if: ${{ !cancelled() && (needs.selfplay.result == 'success' || needs.selfplay.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
-      # Only to push the claude/train/<run id> branch with the results.
+      # To push the claude/train/<run id> branch with the results.
       contents: write
+      # To read an earlier run's self-play data.
+      actions: read
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
@@ -144,6 +152,9 @@ jobs:
           pattern: selfplay-*
           path: target/train
           merge-multiple: true
+          # This run's artifacts, or those of `data_from_run`.
+          run-id: ${{ inputs.data_from_run || github.run_id }}
+          github-token: ${{ github.token }}
       - name: Fit
         env:
           STAGE: ${{ inputs.stage }}
@@ -156,6 +167,7 @@ jobs:
           EPOCHS: ${{ inputs.epochs }}
           DUEL_EXPLORATION: ${{ inputs.duel_exploration }}
           SIZE: ${{ inputs.size }}
+          DATA_FROM_RUN: ${{ inputs.data_from_run }}
         run: |
           out="games/uttt/training/runs/$GITHUB_RUN_ID"
           mkdir -p "$out"
@@ -164,6 +176,9 @@ jobs:
             data+=(--data "$file")
           done
           origin="run $GITHUB_RUN_ID of commit $GITHUB_SHA, $JOBS jobs of $GAMES games at $ITERATIONS iterations, $OPENING_PLIES opening plies"
+          if [[ -n $DATA_FROM_RUN ]]; then
+            origin="run $GITHUB_RUN_ID of commit $GITHUB_SHA, on the self-play data of run $DATA_FROM_RUN"
+          fi
           if [[ $STAGE == value ]]; then
             target/release/uttt-trainer fit-value "${data[@]}" \
               --target "$TARGET" --epochs "$EPOCHS" --size "$SIZE" \
