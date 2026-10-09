@@ -90,7 +90,7 @@ Gate: one week of scheduled sessions in which Claude moves work forward on its o
 
 - [x] Docs refreshed: READMEs, architecture, workflow and this roadmap describe the repository as it is
 - [ ] Leftover class-policy weights moved out of the bot's sources
-- [ ] Decision records carry a scope (`framework` or a game), and the index groups them by scope ([ADR 0022](adr/0022-scopes-and-names.md))
+- [x] Decision records carry a scope (`framework` or a game), and the index groups them by scope ([ADR 0022](adr/0022-scopes-and-names.md))
 - [ ] Pull request titles name their scope (a game, or a framework area); a workflow labels pull requests by the paths they change and checks titles
 - [ ] CI checks that indexes and status lines match the repository (releases, decision records, journal, training runs) and that relative links resolve; shellcheck and actionlint run in CI
 
