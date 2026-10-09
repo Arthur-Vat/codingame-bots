@@ -12,13 +12,13 @@ None.
 
 ## Follow-ups
 
+- Merge-policy record (supersedes ADR 0006), no longer postponed: bring its options to the owner (skill `ask-decision`) and correct ADR 0023's line on the SPRT with it.
 - ADR 0023 still says the SPRT is not a required check, which is no longer true: correct it in the merge-policy record (phase 5, step B), postponed by the owner until after the trial.
 - Record the CodinGame ranks of `uttt-v009` and `uttt-v010` when the owner reports them (skill `deliver-release`).
 
 ## Notes
 
-- Trial of phase 5, step C: one week from 2026-10-10. Daily report at 06:45 Paris time, on Sonnet 5.5.
-- During the trial, count the small changes that had to wait for the owner's approval (owner, 2026-10-09), as input for the merge-policy record. Count so far: 0 (the trial starts 2026-10-10).
+- Phase 5's one-week trial is dropped (owner, 2026-10-09); the daily report at 06:45 Paris time, on Sonnet 5.5, keeps running.
 - Ultimate Tic-Tac-Toe strength work stays paused; no training or league run by hand.
 
 ## Usage
