@@ -130,7 +130,7 @@ Background runs stay off until the owner turns them on.
 - [ ] Documentation-only pull requests skip the heavy steps while still reporting the required checks
 - [ ] Agentic checks stay in Claude's sessions (owner's choice, 2026-10-09): no Claude job in GitHub Actions
 - [ ] The docs check also verifies that the architecture and the README list every workflow and script
-- [ ] Shellcheck also lints the scripts' tests, `scripts/tests/*.sh` (owner, 2026-10-09; they pass it today)
+- [x] Shellcheck also lints the scripts' tests, `scripts/tests/*.sh` (owner, 2026-10-09)
 - [ ] Optional: commit subjects checked like pull request titles
 
 Order: A, then B, then C and E side by side, then D.

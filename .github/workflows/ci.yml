@@ -147,7 +147,7 @@ jobs:
       - name: Lint the shell scripts
         if: ${{ !cancelled() }}
         # Preinstalled on ubuntu-latest.
-        run: shellcheck scripts/*.sh scripts/lib/*.sh
+        run: shellcheck scripts/*.sh scripts/lib/*.sh scripts/tests/*.sh
       - name: Test the agent guard
         if: ${{ !cancelled() }}
         run: scripts/tests/agent-guard-test.sh
