@@ -9,7 +9,7 @@ Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes 
 | 2. UTTT engine | Fast engine for bots, property tests, parity with the referee, rules checked against real CodinGame games | Parity on 10,000 random games; speed baseline recorded | Done (2026-10-07) |
 | 3. Evaluation | Openings, smoke tests, SPRT, ratings, league, journal, releases | A/A test passes; a weakened bot is rejected by the SPRT | Done (2026-10-07) |
 | 4. First real bot | MCTS `uttt-v001`, then the weekly experiment loop | v001 pasted and ranked; 3 experiments run end to end | Done (2026-10-07) |
-| 5. Autonomy and workflow | Conventions, CI checks, project agents and skills, merge policy, scheduled sessions within the owner's usage limits, arena and ratings | One week of scheduled sessions with the owner answering only decision issues | In progress (2026-10-09) |
+| 5. Autonomy and workflow | Conventions, CI checks, project agents and skills, merge policy, a daily scheduled session within the owner's usage limits, arena and ratings | One week of daily scheduled sessions with the owner answering only decisions | In progress (2026-10-09) |
 | 6. Second game | A game with an official referee; `new-game` skill | Phase 3 gates met, changes mostly inside the game folder | Not started |
 | Ongoing | Iterate every game toward Legend, then up the Legend ranking | | Ultimate Tic-Tac-Toe: Legend since 2026-10-07 (`uttt-v001`, 182 of 443); 59th with `uttt-v008` (2026-10-08); current release `uttt-v010`; strength work paused (2026-10-09) |
 
@@ -84,7 +84,7 @@ Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes 
 
 Planned with the owner on 2026-10-09. Goal: the owner only arbitrates. Claude plans and reviews with a strong model, implements with cheaper ones, runs on a schedule within the owner's usage limits, and merges what the owner has delegated. Ultimate Tic-Tac-Toe strength work is paused meanwhile, and no training or league run is started by hand, at the owner's request; the League workflow's automatic triggers stay.
 
-Gate: one week of scheduled sessions in which Claude moves work forward on its own, the owner answers only decision issues, and nothing is merged outside the delegated classes.
+Gate: one week of daily scheduled sessions in which Claude moves work forward on its own, the owner answers only decisions, and nothing is merged without the owner's approval or outside the delegated classes.
 
 ### A. Repository refresh and conventions
 
@@ -97,16 +97,19 @@ Gate: one week of scheduled sessions in which Claude moves work forward on its o
 ### B. Agents, skills and the review loop
 
 - [ ] Project agents in `.claude/agents/`: `implementer` (Sonnet 5.5) codes to a precise spec; `pr-reviewer` (Opus 5.5) reviews every pull request against the hard rules, decision records, tests, docs and privacy; `rules-reviewer` checks engine changes against the game's `RULES.md`. Claude's main session plans, splits the work and checks the results
+- [ ] Review depth matched to risk (after step A, 2026-10-09): documentation gets a quick check, or one light review per batch; workflows, permissions and scripts get a deep `pr-reviewer` review; bot changes get the SPRT and `rules-reviewer`. Reviewers get the diff and a checklist rather than exploring, and agents' reports stay under about 200 words
+- [ ] Planning before dispatch: decision records and names are settled before implementers start; each spec gives examples of inputs and expected outputs; the merge order of related pull requests (stacks, shared roadmap lines) is planned up front (`pr-train`)
+- [ ] Skills carry the recipes that work in Claude's sessions: pull requests through GitHub's REST API, fetches with explicit refspecs
 - [ ] Project skills in `.claude/skills/`: `run-experiment`, `training-run`, `write-adr`, `review-pr`, `pr-train` (stacked pull requests and merge order), `deliver-release`, `weekly-report`, `docs-refresh`, later `new-game`
 - [x] The owner approves merges in the conversation and Claude carries them out ([ADR 0023](adr/0023-chat-approved-merges.md))
 - [ ] Merge policy (a decision record superseding [ADR 0006](adr/0006-human-approves-merges.md)): Claude may merge without asking docs, journal entries, dropped experiments, tooling that changes no bot, and releases accepted by the full-time SPRT, once required checks pass and `pr-reviewer` approves; the owner merges decision records, `CLAUDE.md`, workflows and permissions, and rules or referee changes
-- [ ] The SPRT is a required check, so that a rejected release cannot be merged (repository setting, by or with the owner)
+- [ ] `Docs and scripts` and the SPRT are required checks, so that broken docs or a rejected release cannot be merged (owner's decision, 2026-10-09; a repository setting the owner changes, since Claude's sessions cannot edit rulesets)
 - [ ] Decisions reach the owner as issues labelled `decision`, each with options and a recommendation, and one push notification when one is waiting
 
 ### C. Autonomous operation
 
-- [ ] Usage guard: each scheduled session first reads the 7-day usage of the owner's plan and stops at 90% or more; if that figure is not available to scheduled sessions, a pause switch the owner controls replaces it
-- [ ] Four scheduled sessions a day (for example 07:10, 12:10, 17:10 and 22:10, Paris time), each: guard, read answered decisions and CI results, advance one ready backlog item (issues labelled `ready`), review and merge what is delegated, open decision issues; a session with nothing to do ends at once
+- [ ] Usage guard, verified before the scheduled session is set up: each scheduled session first reads the 7-day usage of the owner's plan and stops at 90% or more; if that figure is not available to scheduled sessions, a pause switch the owner controls replaces it
+- [ ] One quick scheduled session a day, reduced from four on 2026-10-09 to spare the owner's usage: guard, read CI results and what waits for the owner, post a daily report; it never merges ([ADR 0023](adr/0023-chat-approved-merges.md)). Its time, its work beyond the report, and where the report goes are chosen with the owner
 - [ ] One week of trial, then frequency and merge classes adjusted with the owner
 
 ### D. Arena and ratings
@@ -122,6 +125,8 @@ Background runs stay off until the owner turns them on.
 - [ ] Speed regression check (tier 5 of the evaluation pipeline): the pull request against `main` in the same job, to cancel the runner's noise
 - [ ] Documentation-only pull requests skip the heavy steps while still reporting the required checks
 - [ ] Agentic checks stay in Claude's sessions (owner's choice, 2026-10-09): no Claude job in GitHub Actions
+- [ ] The docs check also verifies that the architecture and the README list every workflow and script
+- [ ] Optional: commit subjects checked like pull request titles
 
 Order: A, then B, then C and E side by side, then D.
 
@@ -132,7 +137,7 @@ Order: A, then B, then C and E side by side, then D.
 | CodinGame changes its Rust version | Code that builds locally fails on CodinGame | `rust-version` plus CI on 1.90.0 and the standalone compile; re-run the probe in [CODINGAME.md](CODINGAME.md) after language updates |
 | Our engine differs from CodinGame's | The bot wins locally and loses on CodinGame | Parity tests, checks against real CodinGame games, dedicated tiebreak tests |
 | Timing noise on shared runners | Timeouts and wrong SPRT verdicts | One game per core, A/A test in CI, time limits revisited with the first real bot ([ADR 0013](adr/0013-evaluation-time-limits.md)), CodinGame's exact limits for games in Legend ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)) |
-| Claude plan usage limits | Slower iteration | Actions does the compute; scheduled sessions stop at 90% of the plan's 7-day usage (phase 5); cheaper models implement |
+| Claude plan usage limits | Slower iteration | Actions does the compute; one daily scheduled session that stops at 90% of the plan's 7-day usage (phase 5); cheaper models implement |
 | CodinGame rules on outside help | Problems in prize contests | Multiplayer leaderboards only; read a contest's rules before entering it ([ADR 0009](adr/0009-manual-submission.md)) |
 | Projects beta not available | No single hub with an Overview | One long claude.ai conversation meanwhile ([ADR 0008](adr/0008-claude-hub.md)) |
 | Claude workspace cannot download Rust toolchains | Local checks run on a newer Rust than CodinGame | `rust-version` lints locally; CI on exactly 1.90.0 is the judge ([ADR 0010](adr/0010-codingame-rust-toolchain.md)) |

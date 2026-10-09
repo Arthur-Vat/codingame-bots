@@ -11,7 +11,7 @@ How the owner and Claude work together. The owner spends a few hours a week deci
 
 ## A round of work
 
-The owner starts each round in the conversation; scheduled sessions come with phase 5 (below). For bot strength, a round looks like this (about one to two hours of the owner's time):
+The owner starts each round in the conversation; a daily scheduled session comes with phase 5 (below). For bot strength, a round looks like this (about one to two hours of the owner's time):
 
 1. Claude reports the results since the last round and proposes two or three experiments, or the owner describes an idea.
 2. Claude implements each experiment in its own pull request; CI runs the tests and the SPRT workflow runs the smoke test and the SPRT.
@@ -48,4 +48,4 @@ Phase 5 has been in progress since 2026-10-09; `.claude/` does not exist yet. It
 - **Skills** in `.claude/skills/`: the steps that repeat, such as running an experiment, a training run, writing an ADR, reviewing a pull request, delivering a release and the weekly report.
 - **Merge policy:** the owner approves every merge in the conversation and Claude carries it out ([ADR 0023](adr/0023-chat-approved-merges.md)). The plan lets Claude merge some classes of change without asking, in a later decision record, and keeps the rest with the owner.
 - **Decisions:** they reach the owner as issues labelled `decision`, each with options and a recommendation.
-- **Scheduled sessions:** planned at four a day, within the owner's usage limits, each advancing one ready item.
+- **Scheduled session:** one quick session a day, within the owner's usage limits, ending with a daily report; it never merges ([ADR 0023](adr/0023-chat-approved-merges.md)).
