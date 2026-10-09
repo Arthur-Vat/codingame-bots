@@ -21,6 +21,10 @@
 #    or the name of a folder under games/. Its row in docs/adr/README.md (a
 #    table row whose first link is the record) sits under the matching
 #    heading: `## Framework`, or a `## ` heading that ends with (`<game>`).
+# g. Every agent of Claude's sessions, .claude/agents/*.md, has a header
+#    (between `---` lines) with non-empty name:, description:, model: and
+#    tools: lines: without tools:, an agent gets every tool of the session,
+#    whose descriptions cost tokens on each of its steps.
 #
 # A link to a record or entry that does not exist is a broken link: check e
 # reports it, in the index like anywhere else.
@@ -493,8 +497,18 @@ done
 # f. Decision records' scopes and index groups.
 check_adr_scopes
 
+# g. Agents declare their model and their tools.
+agents=0
+for file in .claude/agents/*.md; do
+  agents=$((agents + 1))
+  header="$(awk 'NR == 1 { if ($0 != "---") exit; next } $0 == "---" { exit } { print }' "$file")"
+  for key in name description model tools; do
+    grep -q "^$key: *[^ ]" <<<"$header" || fail "$file" "no '$key:' line in the header"
+  done
+done
+
 if ((problems > 0)); then
   echo "$problems problem(s) in the documentation" >&2
   exit 1
 fi
-echo "ok   documentation: $links relative links in $files Markdown files; indexes, scopes and status lines match"
+echo "ok   documentation: $links relative links in $files Markdown files; indexes, scopes and status lines match; $agents agents declare model and tools"
