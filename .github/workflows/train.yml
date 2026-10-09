@@ -195,6 +195,10 @@ jobs:
               --weights-out "$out/weights.rs" --report-out "$out/report.md"
           fi
           cat "$out/report.md" >> "$GITHUB_STEP_SUMMARY"
+          # The results' table, also as an annotation readable through the
+          # API.
+          table="$(grep '^| ' "$out/report.md" | head -n 14)"
+          echo "::notice title=Fit results::${table//$'\n'/ // }"
       - name: Commit the results to claude/train/${{ github.run_id }}
         env:
           STAGE: ${{ inputs.stage }}
@@ -208,4 +212,8 @@ jobs:
           [[ $STAGE == value ]] && what="value network"
           [[ $STAGE == patterns ]] && what="move models"
           git commit -m "chore(train): $what from run $GITHUB_RUN_ID"
-          git push origin "$branch"
+          # Job logs are not readable everywhere; an annotation is.
+          if ! output="$(git push origin "$branch" 2>&1)"; then
+            echo "::error title=Push failed::${output//$'\n'/ | }"
+            exit 1
+          fi
