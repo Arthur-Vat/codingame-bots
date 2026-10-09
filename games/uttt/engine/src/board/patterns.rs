@@ -31,9 +31,6 @@ pub const PATTERNS: usize = 19_683;
 pub const PATTERN_CELLS: usize = 5_255;
 /// Features, and so weights, of a pattern policy.
 pub const PATTERN_FEATURES: usize = PATTERN_CELLS * DESTINATIONS;
-/// Marks on the whole board from which a policy with two phases uses its
-/// second set of weights (E016).
-pub const PHASE_MARKS: u32 = 30;
 
 /// The 6-bit digits of the weights' text.
 const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -123,9 +120,7 @@ pub(super) fn pattern_ids() -> &'static [u16] {
     })
 }
 
-/// Learned weights by pattern, cell and destination, once or, for two
-/// phases of the game, twice: before the [`PHASE_MARKS`]th move and from
-/// it on (E016).
+/// Learned weights by pattern, cell and destination.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PatternPolicy {
     /// Integer weights, each below 2^24 so that 81 of them fit a `u32`.
@@ -137,12 +132,11 @@ pub struct PatternPolicy {
 
 impl PatternPolicy {
     /// The policy with these log-weights, one per feature (see
-    /// [`Board::pattern_feature`]) or one per feature and phase, each from
-    /// -8 to 7.75.
+    /// [`Board::pattern_feature`]), each from -8 to 7.75.
     pub fn from_log_weights(log_weights: &[f32]) -> Result<Self, String> {
-        if log_weights.len() != PATTERN_FEATURES && log_weights.len() != 2 * PATTERN_FEATURES {
+        if log_weights.len() != PATTERN_FEATURES {
             return Err(format!(
-                "{} weights instead of {PATTERN_FEATURES} or twice as many",
+                "{} weights instead of {PATTERN_FEATURES}",
                 log_weights.len()
             ));
         }
@@ -174,36 +168,11 @@ impl PatternPolicy {
         Self::from_log_weights(&log_weights)
     }
 
-    /// Decodes the trainer's packed text ([`cg_core::packed`]): the
-    /// weights as quarter steps `q` for `(q - 32) / 4`, in 5 segments by
-    /// kind of destination.
-    pub fn decode_packed(text: &str) -> Result<Self, String> {
-        let (quarters, rest) = cg_core::packed::decode_strided(text, DESTINATIONS)?;
-        if !rest.is_empty() {
-            return Err(format!("{} characters after the weights", rest.len()));
-        }
-        let log_weights: Vec<f32> = quarters
-            .iter()
-            .map(|&q| (f32::from(q) - 32.0) / 4.0)
-            .collect();
-        Self::from_log_weights(&log_weights)
-    }
-
     /// The same weights, used for the first `plies` moves of each playout
     /// only.
     pub fn for_plies(mut self, plies: u32) -> Self {
         self.plies = plies;
         self
-    }
-
-    /// The weights for a position with `marks` marks on the whole board.
-    #[inline]
-    fn for_marks(&self, marks: u32) -> &[u32] {
-        if self.weights.len() > PATTERN_FEATURES && marks >= PHASE_MARKS {
-            &self.weights[PATTERN_FEATURES..]
-        } else {
-            &self.weights[..PATTERN_FEATURES]
-        }
     }
 }
 
@@ -260,20 +229,12 @@ impl Board {
         moves: &[Move],
         weights: &mut Vec<f32>,
     ) {
-        let by_feature = policy.for_marks(self.marks());
         weights.clear();
         weights.extend(
             moves
                 .iter()
-                .map(|&mv| by_feature[self.pattern_feature(mv)] as f32),
+                .map(|&mv| policy.weights[self.pattern_feature(mv)] as f32),
         );
-    }
-
-    /// Marks on the whole board: the moves played so far.
-    pub(super) fn marks(&self) -> u32 {
-        (0..9)
-            .map(|small| grid::count(self.marks[0][small]) + grid::count(self.marks[1][small]))
-            .sum()
     }
 
     /// Running totals of the weights of small board `board`'s cells, cell
@@ -330,7 +291,7 @@ impl Board {
     /// A move drawn from `policy`, after a game-winning move if there is
     /// one. The game must go on.
     pub fn pattern_move(&self, policy: &PatternPolicy, rng: &mut Rng) -> Move {
-        let (board, cell) = self.pattern_cell(policy.for_marks(self.marks()), pattern_ids(), rng);
+        let (board, cell) = self.pattern_cell(&policy.weights, pattern_ids(), rng);
         Move::new(board, cell)
     }
 
@@ -340,13 +301,10 @@ impl Board {
     pub fn pattern_playout(&mut self, policy: &PatternPolicy, rng: &mut Rng) -> Status {
         let ids = pattern_ids();
         let mut plies = 0;
-        let phases = policy.weights.len() > PATTERN_FEATURES;
-        let mut marks = if phases { self.marks() } else { 0 };
         while self.status == Status::Ongoing && plies < policy.plies {
-            let (board, cell) = self.pattern_cell(policy.for_marks(marks), ids, rng);
+            let (board, cell) = self.pattern_cell(&policy.weights, ids, rng);
             self.play_at(board, cell);
             plies += 1;
-            marks += 1;
         }
         self.decisive_playout(rng)
     }

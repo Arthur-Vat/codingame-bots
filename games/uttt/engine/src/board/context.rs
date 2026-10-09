@@ -4,8 +4,6 @@
 //!
 //! 1. E015's: the canonical pattern and cell of the move's small board,
 //!    with one of 5 kinds of destination ([`Board::pattern_feature`]);
-//!    optionally one set of these before the [`PHASE_MARKS`]th move and
-//!    another from it on;
 //! 2. the destination's: the canonical pattern of the board the opponent
 //!    is sent to, seen by the opponent after the move, with that board's
 //!    role in the big board for the opponent (2 if winning it would win
@@ -27,7 +25,7 @@ use cg_core::packed;
 use cg_core::rng::Rng;
 
 use super::patterns::{pattern_ids, B3};
-use super::{Board, Status, ANY_BOARD, DESTINATIONS, PATTERN_FEATURES, PHASE_MARKS};
+use super::{Board, Status, ANY_BOARD, DESTINATIONS, PATTERN_FEATURES};
 use crate::grid::{self, FULL};
 use crate::moves::Move;
 
@@ -92,7 +90,7 @@ fn open_pattern_ids() -> &'static [u16] {
 /// Learned weights of the context policy, as quarter-step numbers.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ContextPolicy {
-    /// E015's weights, once or twice ([`PHASE_MARKS`]).
+    /// E015's weights.
     patterns: Vec<u8>,
     /// The destinations' weights.
     destinations: Vec<u8>,
@@ -103,9 +101,9 @@ pub struct ContextPolicy {
 
 impl ContextPolicy {
     /// The policy with these tables of numbers from 0 to 63: E015's
-    /// weights (once, or twice for two phases) and the destinations'.
+    /// weights and the destinations'.
     pub fn new(patterns: Vec<u8>, destinations: Vec<u8>) -> Result<Self, String> {
-        if patterns.len() != PATTERN_FEATURES && patterns.len() != 2 * PATTERN_FEATURES {
+        if patterns.len() != PATTERN_FEATURES {
             return Err(format!("{} pattern weights", patterns.len()));
         }
         if destinations.len() != DESTINATION_WEIGHTS {
@@ -140,35 +138,19 @@ impl ContextPolicy {
         self.plies = plies;
         self
     }
-
-    /// The offset of the pattern weights for a position with `marks`
-    /// marks.
-    #[inline]
-    fn phase(&self, marks: u32) -> usize {
-        if self.patterns.len() > PATTERN_FEATURES && marks >= PHASE_MARKS {
-            PATTERN_FEATURES
-        } else {
-            0
-        }
-    }
 }
 
-/// The destinations' weight (its `q`) for sending each side to each open
-/// small board, as the position stands, and the marks on the board: kept
-/// up to date along a playout.
+/// The destinations' weight (its `q`) for sending each side to each small
+/// board, as the position stands: kept up to date along a playout.
 #[derive(Clone, Copy, Debug)]
 struct Destinations {
     /// `q[seat][board]`: when `seat` is sent to `board`.
     q: [[u8; 9]; 2],
-    marks: u32,
 }
 
 impl Destinations {
     fn new(board: &Board, policy: &ContextPolicy) -> Self {
-        let mut cache = Destinations {
-            q: [[0; 9]; 2],
-            marks: board.marks(),
-        };
+        let mut cache = Destinations { q: [[0; 9]; 2] };
         cache.refresh(board, policy);
         cache
     }
@@ -205,7 +187,6 @@ impl Destinations {
     /// board's role may change when it closes.
     #[inline]
     fn update(&mut self, board: &Board, policy: &ContextPolicy, small: usize) {
-        self.marks += 1;
         if board.closed & (1 << small) != 0 {
             self.refresh(board, policy);
         } else {
@@ -241,12 +222,7 @@ impl Board {
     /// `cache`, the destinations' weights that do not change with the
     /// move come from it, as `usize::MAX - q`.
     #[inline]
-    fn context_indices(
-        &self,
-        policy: &ContextPolicy,
-        board: usize,
-        cache: Option<&Destinations>,
-    ) -> [[usize; 2]; 9] {
+    fn context_indices(&self, board: usize, cache: Option<&Destinations>) -> [[usize; 2]; 9] {
         let (me, opp) = (self.to_move(), 1 - self.to_move());
         let mine = self.marks[me][board];
         let empty = self.empty_cells(board);
@@ -264,13 +240,11 @@ impl Board {
             0
         };
         let free = (self.closed & !here) | (closes & here);
-        let marks = cache.map_or_else(|| self.marks(), |cache| cache.marks);
-        let offset = policy.phase(marks);
         let row = &pattern_ids()[9 * self.pattern(board)..][..9];
         let kinds = self.destinations(board);
         let mut indices = [[0usize; 2]; 9];
         for cell in grid::cells(empty) {
-            let first = offset + usize::from(row[cell]) * DESTINATIONS + kinds[cell];
+            let first = usize::from(row[cell]) * DESTINATIONS + kinds[cell];
             let other = self.marks[me][cell];
             let second = if (ends | free) & (1 << cell) != 0 {
                 0
@@ -291,11 +265,11 @@ impl Board {
         indices
     }
 
-    /// The table indices of legal move `mv` in `policy`, the first offset
-    /// by the phase if `policy` has two: for the trainer's checks.
-    pub fn context_features(&self, policy: &ContextPolicy, mv: Move) -> [usize; 2] {
+    /// The table indices of legal move `mv` in a context policy: for the
+    /// trainer's checks.
+    pub fn context_features(&self, mv: Move) -> [usize; 2] {
         debug_assert!(self.is_legal(mv), "illegal move {mv}");
-        self.context_indices(policy, mv.board(), None)[mv.cell()]
+        self.context_indices(mv.board(), None)[mv.cell()]
     }
 
     /// The weight `policy` gives each empty cell of small board `board`,
@@ -308,7 +282,7 @@ impl Board {
         cache: Option<&Destinations>,
     ) -> [f32; 9] {
         let weights = weights();
-        let indices = self.context_indices(policy, board, cache);
+        let indices = self.context_indices(board, cache);
         let mut result = [0f32; 9];
         for cell in grid::cells(self.empty_cells(board)) {
             let [first, second] = indices[cell];
@@ -357,7 +331,7 @@ impl Board {
         let wins = grid::completing_cells(self.marks[me][board]) & empty;
         let row = &pattern_ids()[9 * self.pattern(board)..][..9];
         let kinds = self.destinations(board);
-        let patterns = &policy.patterns[policy.phase(cache.marks)..];
+        let patterns = &policy.patterns;
         let mut by_cell = [0f32; 9];
         for (cell, ((weight, &pair), &kind)) in by_cell.iter_mut().zip(row).zip(&kinds).enumerate()
         {

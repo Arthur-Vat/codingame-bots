@@ -19,9 +19,8 @@ fn base3(mask: u16) -> usize {
 
 /// The features of `mv` computed the slow way, by playing it: the
 /// definition the masks and the cache must match.
-fn reference(board: &Board, mv: Move, phases: bool) -> [usize; 2] {
-    let late = phases && board.marks() >= PHASE_MARKS;
-    let first = usize::from(late) * PATTERN_FEATURES + board.pattern_feature(mv);
+fn reference(board: &Board, mv: Move) -> [usize; 2] {
+    let first = board.pattern_feature(mv);
     let mut after = *board;
     after.play(mv);
     let second = match after.target() {
@@ -42,11 +41,11 @@ fn reference(board: &Board, mv: Move, phases: bool) -> [usize; 2] {
     [first, second]
 }
 
-/// A policy with every weight drawn at random, with two phases or one.
-fn random_policy(seed: u64, phases: bool) -> ContextPolicy {
+/// A policy with every weight drawn at random.
+fn random_policy(seed: u64) -> ContextPolicy {
     let mut rng = Rng::new(seed);
     let mut table = |size: usize| (0..size).map(|_| rng.below(64) as u8).collect::<Vec<u8>>();
-    let patterns = table(PATTERN_FEATURES * if phases { 2 } else { 1 });
+    let patterns = table(PATTERN_FEATURES);
     ContextPolicy::new(patterns, table(DESTINATION_WEIGHTS)).unwrap()
 }
 
@@ -56,19 +55,14 @@ fn features_and_cached_weights_match_the_moves_played_out() {
     let mut checked = 0;
     let mut free = 0;
     for game in 0..300 {
-        let phases = game % 2 == 0;
-        let policy = random_policy(game, phases);
+        let policy = random_policy(game);
         let table = weights();
         let mut board = Board::new();
         let mut cache = Destinations::new(&board, &policy);
         while board.status() == Status::Ongoing {
             for mv in legal(&board) {
-                let features = board.context_features(&policy, mv);
-                assert_eq!(
-                    features,
-                    reference(&board, mv, phases),
-                    "move {mv} in {board:?}"
-                );
+                let features = board.context_features(mv);
+                assert_eq!(features, reference(&board, mv), "move {mv} in {board:?}");
                 assert!(features[0] < policy.patterns.len() && features[1] < DESTINATION_WEIGHTS);
                 free += usize::from(features[1] == 0);
                 checked += 1;
@@ -91,7 +85,7 @@ fn features_and_cached_weights_match_the_moves_played_out() {
                     );
                 }
                 for cell in grid::cells(board.empty_cells(small)) {
-                    let [first, second] = reference(&board, Move::new(small, cell), phases);
+                    let [first, second] = reference(&board, Move::new(small, cell));
                     let q = usize::from(policy.patterns[first])
                         + usize::from(policy.destinations[second]);
                     assert_eq!(fresh[cell], table[q]);
@@ -114,7 +108,6 @@ fn symmetric_moves_of_symmetric_games_have_the_same_features() {
             symmetric_cell(symmetry, mv.cell()),
         )
     };
-    let policy = random_policy(1, true);
     let mut rng = Rng::new(9);
     for game in 0..40 {
         let symmetry = game % 8;
@@ -122,8 +115,8 @@ fn symmetric_moves_of_symmetric_games_have_the_same_features() {
         while board.status() == Status::Ongoing {
             for mv in legal(&board) {
                 assert_eq!(
-                    board.context_features(&policy, mv),
-                    image.context_features(&policy, mirror(symmetry, mv))
+                    board.context_features(mv),
+                    image.context_features(mirror(symmetry, mv))
                 );
             }
             let mv = board.random_move(&mut rng);
@@ -135,13 +128,11 @@ fn symmetric_moves_of_symmetric_games_have_the_same_features() {
 
 #[test]
 fn packed_tables_decode_and_wrong_sizes_fail() {
-    for phases in [false, true] {
-        let policy = random_policy(3, phases);
-        let text = packed::encode_strided(&policy.patterns, DESTINATIONS)
-            + &packed::encode_strided(&policy.destinations, ROLES);
-        assert_eq!(ContextPolicy::decode(&text).unwrap(), policy);
-        assert!(ContextPolicy::decode(&(text.clone() + "A")).is_err());
-    }
+    let policy = random_policy(3);
+    let text = packed::encode_strided(&policy.patterns, DESTINATIONS)
+        + &packed::encode_strided(&policy.destinations, ROLES);
+    assert_eq!(ContextPolicy::decode(&text).unwrap(), policy);
+    assert!(ContextPolicy::decode(&(text.clone() + "A")).is_err());
     assert!(ContextPolicy::new(vec![32; 10], vec![32; DESTINATION_WEIGHTS]).is_err());
     assert!(ContextPolicy::new(vec![32; PATTERN_FEATURES], vec![32; 10]).is_err());
     assert!(ContextPolicy::new(vec![64; PATTERN_FEATURES], vec![32; DESTINATION_WEIGHTS]).is_err());
@@ -149,7 +140,7 @@ fn packed_tables_decode_and_wrong_sizes_fail() {
 
 #[test]
 fn draws_follow_the_weights_and_take_game_winning_moves() {
-    let policy = random_policy(5, false);
+    let policy = random_policy(5);
     let mut rng = Rng::new(17);
     let mut positions = 0;
     for _ in 0..40 {
@@ -189,7 +180,7 @@ fn draws_follow_the_weights_and_take_game_winning_moves() {
 
 #[test]
 fn playouts_end_and_are_reproducible() {
-    let policy = random_policy(6, true).for_plies(16);
+    let policy = random_policy(6).for_plies(16);
     for seed in 0..50 {
         let (mut first, mut second) = (Board::new(), Board::new());
         let a = first.context_playout(&policy, &mut Rng::new(seed));
@@ -201,7 +192,7 @@ fn playouts_end_and_are_reproducible() {
 
 #[test]
 fn playout_draws_follow_the_weights() {
-    let policy = random_policy(15, true);
+    let policy = random_policy(15);
     let mut rng = Rng::new(19);
     let mut positions = 0;
     for _ in 0..40 {

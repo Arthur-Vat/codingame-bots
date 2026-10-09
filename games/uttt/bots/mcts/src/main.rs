@@ -2,7 +2,7 @@
 //!
 //! Every turn it searches the current position with UCT and playouts that
 //! take a game-winning move whenever there is one and otherwise draw their
-//! first moves from a pattern policy learned from self-play, then random
+//! first moves from a context policy learned from self-play, then random
 //! moves (`cg-search`, `uttt-engine`), for most of the turn's time limit,
 //! then plays the move it tried most often. The same policy orders each
 //! node's children, so that the most promising are tried first. The search
@@ -29,8 +29,8 @@ use std::time::{Duration, Instant};
 use cg_core::input::{Input, InputError};
 use cg_core::rng::{seed_from_env_or_clock, Rng};
 use cg_search::{Budget, Mcts};
-use uttt_engine::search::PatternBoard;
-use uttt_engine::{Board, Move, PatternPolicy};
+use uttt_engine::search::ContextBoard;
+use uttt_engine::{Board, ContextPolicy, Move};
 
 /// CodinGame's time limit for the first answer.
 const FIRST_LIMIT: Duration = Duration::from_millis(1000);
@@ -51,14 +51,15 @@ const RESERVE: Duration = Duration::ZERO;
 /// At full time, 0.5 beat 1.0 by 162.
 const EXPLORATION: f64 = 0.5;
 
-/// The pattern policy (E015): weights learned for every pattern of a small
-/// board, cell and destination, decoded once from their text. They draw the
-/// first moves of each playout, decisive random moves after that, and
-/// order each node's children.
-fn policy() -> &'static PatternPolicy {
-    static POLICY: OnceLock<PatternPolicy> = OnceLock::new();
+/// The context policy (E016): E015's weights for every pattern of a small
+/// board, cell and kind of destination, plus a weight for the pattern and
+/// role of the board the opponent is sent to, decoded once from their
+/// packed text. They draw the first moves of each playout, decisive random
+/// moves after that, and order each node's children.
+fn policy() -> &'static ContextPolicy {
+    static POLICY: OnceLock<ContextPolicy> = OnceLock::new();
     POLICY.get_or_init(|| {
-        PatternPolicy::decode(pattern_weights::PATTERN_TEXT)
+        ContextPolicy::decode(context_weights::PACKED_TEXT)
             .expect("the pattern weights decode")
             .for_plies(PLIES)
     })
@@ -72,7 +73,7 @@ fn policy() -> &'static PatternPolicy {
 /// +22, the whole playout +10.
 const PLIES: u32 = 16;
 
-mod pattern_weights;
+mod context_weights;
 
 /// Whether the search also uses the playout policy's weights as priors in
 /// its tree: a node's children are tried in order of their weights, most
@@ -114,7 +115,7 @@ fn main() {
 /// Plays turns until the input ends. `budget` gives the search budget of a
 /// turn from its start and CodinGame's limit for it.
 fn play(
-    mcts: &mut Mcts<PatternBoard>,
+    mcts: &mut Mcts<ContextBoard>,
     rng: &mut Rng,
     mut input: Input<impl BufRead>,
     mut out: impl Write,
@@ -157,7 +158,7 @@ fn play(
                 let mv = if moves.len() == 1 {
                     moves[0]
                 } else {
-                    let root = PatternBoard {
+                    let root = ContextBoard {
                         board: position,
                         policy: policy(),
                     };

@@ -115,7 +115,7 @@ fn score_against_random(games: u64, iterations: u64) -> f64 {
         while board.status() == Status::Ongoing {
             board.legal_moves(&mut moves);
             let mv = if board.to_move() == mcts_seat {
-                let root = PatternBoard {
+                let root = ContextBoard {
                     board,
                     policy: policy(),
                 };

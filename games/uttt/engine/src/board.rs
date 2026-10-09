@@ -12,7 +12,7 @@ mod policy;
 pub use context::{ContextPolicy, DESTINATION_WEIGHTS, OPEN_PATTERNS, ROLES};
 pub use patterns::{
     encode_pattern_weights, symmetric_cell, PatternPolicy, DESTINATIONS, PATTERNS, PATTERN_CELLS,
-    PATTERN_FEATURES, PHASE_MARKS,
+    PATTERN_FEATURES,
 };
 pub use policy::{
     PlayoutPolicy, BLOCKS, CENTRE, CLASSES, FEATURES, FEATURE_NAMES, GIVES_BOARD,

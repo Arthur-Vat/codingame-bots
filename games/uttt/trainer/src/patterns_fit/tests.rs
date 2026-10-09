@@ -206,18 +206,10 @@ fn packed_weights_come_back_table_by_table() {
 #[test]
 fn the_destination_models_are_the_engines_context_policy() {
     use uttt_engine::board::DESTINATION_WEIGHTS;
-    use uttt_engine::ContextPolicy;
     assert_eq!(
         Model::DestinationRoles.tables(),
         vec![PATTERN_FEATURES, DESTINATION_WEIGHTS]
     );
-    let one =
-        ContextPolicy::new(vec![32; PATTERN_FEATURES], vec![32; DESTINATION_WEIGHTS]).unwrap();
-    let two = ContextPolicy::new(
-        vec![32; 2 * PATTERN_FEATURES],
-        vec![32; DESTINATION_WEIGHTS],
-    )
-    .unwrap();
     let mut rng = Rng::new(12);
     let mut moves = MoveList::new();
     let mut features = Vec::new();
@@ -226,16 +218,11 @@ fn the_destination_models_are_the_engines_context_policy() {
         while board.status() == Status::Ongoing {
             board.legal_moves(&mut moves);
             for &mv in moves.iter() {
-                for (model, policy, offset) in [
-                    (Model::DestinationRoles, &one, PATTERN_FEATURES),
-                    (Model::PhasesDestinations, &two, 2 * PATTERN_FEATURES),
-                ] {
-                    features.clear();
-                    model.features(&board, mv, &mut features);
-                    let [first, second] = board.context_features(policy, mv);
-                    let expected = vec![first as u32, (offset + second) as u32];
-                    assert_eq!(features, expected, "{model:?}, move {mv}");
-                }
+                features.clear();
+                Model::DestinationRoles.features(&board, mv, &mut features);
+                let [first, second] = board.context_features(mv);
+                let expected = vec![first as u32, (PATTERN_FEATURES + second) as u32];
+                assert_eq!(features, expected, "move {mv}");
             }
             let mv = *rng.pick(&moves).unwrap();
             board.play(mv);
