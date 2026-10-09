@@ -4,8 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- Pull requests #58 (shellcheck on the scripts' tests) and #59 (docs check lists workflows and scripts, stacked on #58): written, reviewed, required checks green; asked 2026-10-09. Merge #58 first.
-- Go for phase 5 step D (arena and ratings), asked 2026-10-09. Step E's light items are done in #58 and #59; the owner chose them on 2026-10-09 (answered in the conversation: "Step E, light items"). Left in E: speed regression check and docs-only PRs skipping heavy steps (heavier, ask first). Ask before any heavy work.
+- Go for phase 5 step D (arena and ratings), asked 2026-10-09. Step E's light items were merged on 2026-10-09 (#58, #59; owner approved in the conversation). Left in E: speed regression check and docs-only PRs skipping heavy steps (heavier, ask first). Ask before any heavy work.
 
 ## Open questions
 
