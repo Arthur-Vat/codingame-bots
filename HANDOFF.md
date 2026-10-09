@@ -4,7 +4,6 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- [#57](https://github.com/Arthur-Vat/codingame-bots/pull/57): rename `pr-train` to `land-work`; merge approvals in two turns, asked only once the work is written. Approval to merge, brief given 2026-10-09.
 - Go for phase 5 step D (arena and ratings) and step E (CI, fixed checks). Ask before any heavy work.
 
 ## Open questions
@@ -24,4 +23,4 @@ None.
 
 ## Usage
 
-- 2026-10-09 21:20 (Paris) | agent guard hook (#52), roadmap line (#53), session setup (#54), handoff (#55), all merged | main session 64 steps (7.12M read), 3 agents (0.45M read); the main session's context reached 163k over a long conversation
+- 2026-10-09 21:50 (Paris) | agent guard hook (#52), roadmap line (#53), session setup (#54), handoff (#55), land-work and two-turn approvals (#57, #56 closed into it), all merged | main session 85 steps (10.79M read), 4 agents (0.49M read); the main session's context reached 185k over a long conversation
