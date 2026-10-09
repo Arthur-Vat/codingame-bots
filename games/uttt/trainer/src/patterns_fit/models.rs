@@ -40,10 +40,16 @@ pub enum Model {
     /// board's role in the big board; and the move's pattern and cell with
     /// its own board's role: about 64,000 weights, to fill a bot's file.
     Large,
+    /// E015's features, plus the destination's pattern with that board's
+    /// role in the big board: a weight a playout can look up from a cache
+    /// of the boards, so nearly as fast as E015's.
+    DestinationRoles,
+    /// [`Model::Phases2`] plus the destination's pattern and role.
+    PhasesDestinations,
 }
 
 /// Every model, in the order of reports.
-pub const ALL: [Model; 7] = [
+pub const ALL: [Model; 9] = [
     Model::Classes,
     Model::Patterns,
     Model::Destinations7,
@@ -51,6 +57,8 @@ pub const ALL: [Model; 7] = [
     Model::DestinationPatterns,
     Model::Rich,
     Model::Large,
+    Model::DestinationRoles,
+    Model::PhasesDestinations,
 ];
 
 /// The move from which [`Model::Phases2`] uses its second set of weights:
@@ -80,6 +88,8 @@ impl Model {
             Model::DestinationPatterns => "destination-patterns",
             Model::Rich => "rich",
             Model::Large => "large",
+            Model::DestinationRoles => "destination-roles",
+            Model::PhasesDestinations => "phases-destinations",
         }
     }
 
@@ -107,6 +117,10 @@ impl Model {
                 1 + ROLES * destination_patterns(),
                 cells * ROLES,
             ],
+            Model::DestinationRoles => vec![PATTERN_FEATURES, 1 + ROLES * destination_patterns()],
+            Model::PhasesDestinations => {
+                vec![2 * PATTERN_FEATURES, 1 + ROLES * destination_patterns()]
+            }
         }
     }
 
@@ -147,6 +161,15 @@ impl Model {
                     first + second,
                     pair * ROLES + role(board, board.to_move(), mv.board()),
                 );
+            }
+            Model::DestinationRoles => {
+                push(0, board.pattern_feature(mv));
+                push(PATTERN_FEATURES, destination_pattern_role(board, mv));
+            }
+            Model::PhasesDestinations => {
+                let late = usize::from(marks(board) >= PHASE_PLY);
+                push(0, late * PATTERN_FEATURES + board.pattern_feature(mv));
+                push(2 * PATTERN_FEATURES, destination_pattern_role(board, mv));
             }
         }
     }
