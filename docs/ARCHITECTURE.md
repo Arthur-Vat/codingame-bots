@@ -33,6 +33,8 @@ codingame-bots/
 │  ├─ league.sh             Elo ratings of every release
 │  ├─ prune-branches.sh     deletes finished claude/ branches (ADR 0021)
 │  ├─ check-docs.sh         indexes, status lines and relative links match the repository
+│  ├─ pr-hygiene.sh         pull request titles (ADR 0022) and labels from changed paths
+│  ├─ tests/                tests of the scripts
 │  └─ lib/evaluation.sh     settings and helpers of sprt.sh, league.sh and new-release.sh
 ├─ crates/
 │  ├─ cg-core/              bot side: CodinGame input reading, seeded RNG, time scale
@@ -54,7 +56,7 @@ codingame-bots/
 │     └─ training/          reports of the training runs used, E011's class weights
 ├─ .claude/                 Phase 5: skills, agents, settings
 └─ .github/
-   ├─ workflows/            ci, sprt, league, release, train, prune-branches
+   ├─ workflows/            ci, sprt, league, release, train, prune-branches, pr-hygiene
    ├─ dependabot.yml        monthly updates of actions and crates
    └─ pull_request_template.md
 ```
@@ -119,6 +121,7 @@ GitHub Actions on free standard runners. `main` only accepts changes whose check
 | `release.yml` | Push to `main` adding a release | Tag and GitHub release with the paste-ready file |
 | `train.yml` | By hand | Self-play in up to 20 parallel jobs, then the fit of the playout policy, the value network or the move models; results and report go to a branch `claude/train/<run id>` ([ADR 0016](adr/0016-self-play-training.md)) |
 | `prune-branches.yml` | Weekly (Monday), and by hand | Deletes finished `claude/` branches once their content is safe; a run by hand only lists them unless asked to delete ([ADR 0021](adr/0021-prune-finished-branches.md)) |
+| `pr-hygiene.yml` | Every pull request: opened, edited, new commits | Labels it by the paths it changes and checks its title ([ADR 0022](adr/0022-scopes-and-names.md)); Dependabot's are skipped, forks get the title check only |
 
 - **Compiler:** every job that builds Rust uses 1.90.0, CodinGame's version ([ADR 0010](adr/0010-codingame-rust-toolchain.md)).
 - **Branch protection:** a ruleset on `main` requires the three checks of `ci.yml` (format, lint and test; CodinGame compatibility; dependency licenses and sources) and blocks direct pushes, without requiring a GitHub review ([ADR 0006](adr/0006-human-approves-merges.md)). The SPRT's check is not required yet: making it so is part of [phase 5](ROADMAP.md#phase-5-autonomy-and-workflow).
