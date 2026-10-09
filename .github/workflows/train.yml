@@ -2,15 +2,16 @@ name: Train
 
 # Self-play and training for Ultimate Tic-Tac-Toe (ADR 0016). Started by
 # hand only: self-play games run in parallel jobs, then one job fits the
-# playout policy (stage 1) or the value network (stage 2, ADR 0017) and
-# commits the weights and a report to a new branch claude/train/<run id>.
+# playout policy (stage 1), the value network (stage 2, ADR 0017) or the
+# move models of E015 and E016 (patterns), and commits the weights and a
+# report to a new branch claude/train/<run id>.
 on:
   workflow_dispatch:
     inputs:
       stage:
-        description: "What to train: the playout policy or the value network"
+        description: "What to train: the playout policy, the value network, or the move models (patterns)"
         type: choice
-        options: [policy, value]
+        options: [policy, value, patterns]
         default: policy
       jobs:
         description: "Self-play jobs run at the same time, 1 to 20"
@@ -25,13 +26,13 @@ on:
         description: "Random moves at the start of each game"
         default: "6"
       temperature:
-        description: "Policy: above 1, flattens the fitted weights"
+        description: "Policy and patterns: divides the fitted log-weights; below 1 sharpens them"
         default: "1"
       target:
         description: "Value: what the network learns (result, score or mix)"
         default: "result"
       epochs:
-        description: "Value: passes over the positions"
+        description: "Value and patterns: passes over the positions"
         default: "8"
       duel_exploration:
         description: "Value: exploration of the network's search against the playouts'"
@@ -97,10 +98,14 @@ jobs:
         run: |
           mkdir -p target/train
           # The value network learns from games of the bot's own search,
-          # with its playouts; the policy, from searches' visits.
+          # with its playouts; the policy, from searches' visits; the move
+          # models, from the visits of the bot's search with its pattern
+          # policy, which also orders each node's children.
           options=()
           if [[ $STAGE == value ]]; then
             options=(--policy games/uttt/bots/mcts/src/weights.rs --no-visits)
+          elif [[ $STAGE == patterns ]]; then
+            options=(--patterns games/uttt/bots/mcts/src/pattern_weights.rs)
           fi
           # One process per core, each with its own seed and share of games.
           cores="$(nproc)"
@@ -120,7 +125,7 @@ jobs:
           retention-days: 7
 
   fit:
-    name: Fit the ${{ inputs.stage == 'value' && 'value network' || 'playout policy' }}
+    name: Fit the ${{ inputs.stage == 'value' && 'value network' || inputs.stage == 'patterns' && 'move models' || 'playout policy' }}
     needs: selfplay
     runs-on: ubuntu-latest
     permissions:
@@ -165,6 +170,10 @@ jobs:
               --policy games/uttt/bots/mcts/src/weights.rs \
               --duel-exploration "$DUEL_EXPLORATION" --origin "$origin" \
               --weights-out "$out/value_weights.rs" --report-out "$out/report.md"
+          elif [[ $STAGE == patterns ]]; then
+            target/release/uttt-trainer fit-patterns "${data[@]}" \
+              --models all --epochs "$EPOCHS" --temperature "$TEMPERATURE" \
+              --origin "$origin" --weights-dir "$out" --report-out "$out/report.md"
           else
             target/release/uttt-trainer fit-policy "${data[@]}" \
               --temperature "$TEMPERATURE" --origin "$origin" \
@@ -182,5 +191,6 @@ jobs:
           git add "games/uttt/training/runs/$GITHUB_RUN_ID"
           what="playout policy"
           [[ $STAGE == value ]] && what="value network"
+          [[ $STAGE == patterns ]] && what="move models"
           git commit -m "chore(train): $what from run $GITHUB_RUN_ID"
           git push origin "$branch"
