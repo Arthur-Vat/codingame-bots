@@ -1,6 +1,6 @@
 # CodinGame platform facts
 
-Facts the code depends on, and where each one comes from. Re-check them when CodinGame announces a language update. Game-specific facts live in each game's README (for example [games/uttt/README.md](../games/uttt/README.md)).
+Facts the code depends on, and where each one comes from. Re-check them when CodinGame announces a language update. Game-specific facts live in each game's `RULES.md` (rules, protocol and time limits) and README (for example [games/uttt/README.md](../games/uttt/README.md)).
 
 ## Compilers
 
@@ -30,7 +30,7 @@ No crates are available: a bot is one file using the standard library only.
    }
    ```
 
-If the Rust version changes, update `CG_RUST` in `.github/workflows/ci.yml` and `rust-version` in `Cargo.toml` together, and record it in a new ADR that supersedes [ADR 0010](adr/0010-codingame-rust-toolchain.md).
+If the Rust version changes, update `CG_RUST` in every workflow of `.github/workflows/` that sets it (`grep -rn CG_RUST .github`) and `rust-version` in `Cargo.toml` together, and record it in a new ADR that supersedes [ADR 0010](adr/0010-codingame-rust-toolchain.md).
 
 ## Compilation mode
 
@@ -43,4 +43,4 @@ In the past, CodinGame compiled Rust in debug mode in the IDE and in release mod
 
 ## Timing
 
-CodinGame measures a turn from when it starts sending the turn's input until it reads the bot's output. Extra time before the first input exists in practice but is not guaranteed ([CodinGame staff on the forum](https://forum.codingame.com/t/timeouts-how-do-they-work/24504/4)). Most multiplayer games give 1 s on the first turn and 50 ms afterwards, but older games differ, so each game's README records its own limits.
+CodinGame measures a turn from when it starts sending the turn's input until it reads the bot's output. Extra time before the first input exists in practice but is not guaranteed ([CodinGame staff on the forum](https://forum.codingame.com/t/timeouts-how-do-they-work/24504/4)). Most multiplayer games give 1 s on the first turn and 50 ms afterwards, but older games differ, so each game's `RULES.md` records its own limits.

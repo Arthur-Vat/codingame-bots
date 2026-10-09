@@ -2,7 +2,7 @@
 
 CodinGame's [Ultimate Tic-Tac-Toe](https://www.codingame.com/multiplayer/bot-programming/tic-tac-toe) is the first game of this framework ([ADR 0005](../../docs/adr/0005-first-game-uttt.md)). The rules, protocol and time limits are in [RULES.md](RULES.md).
 
-**Status:** Phase 4. The reference referee, the fast engine (checked against it), the arena with its evaluation tools, five utility bots and the first real bot, MCTS, exist. No release yet.
+**Status:** Legend league on CodinGame since 2026-10-07; 59th with `uttt-v008` on 2026-10-08, the last rank recorded. **Current release:** [`uttt-v010`](releases/uttt-v010.rs) (E015, a pattern policy). Strength work is paused while phase 5 is built.
 
 ## Layout
 
@@ -10,13 +10,14 @@ CodinGame's [Ultimate Tic-Tac-Toe](https://www.codingame.com/multiplayer/bot-pro
 | --- | --- |
 | [RULES.md](RULES.md) | The rules in our own words, with sources |
 | [referee/](referee/) | Readable reference implementation of the rules, driven by the arena |
-| [engine/](engine/) | Fast implementation of the rules for bots: bitboards, no allocation, random, decisive and policy playouts, and the value network's inputs and evaluation |
+| [engine/](engine/) | Fast implementation of the rules for bots: bitboards, no allocation, random and decisive playouts, playouts guided by the class policy (32 move classes) or the pattern policy (E015), and the value network's inputs and evaluation |
 | [arena/](arena/) | `uttt-arena`: plays bots against each other through the referee |
-| [trainer/](trainer/) | `uttt-trainer`: self-play data and training of the playout policy ([ADR 0016](../../docs/adr/0016-self-play-training.md)) |
+| [trainer/](trainer/) | `uttt-trainer`: self-play data, and training of the playout policy, the value network and the move models ([ADR 0016](../../docs/adr/0016-self-play-training.md), [ADR 0017](../../docs/adr/0017-value-network.md)) |
 | [bots/](bots/) | One crate per bot |
 | [evaluation.env](evaluation.env) | Settings of the SPRT, the league and the arena for evaluations ([ADR 0012](../../docs/adr/0012-evaluation.md)) |
-| `releases/` | Frozen paste-ready file of each version, from the first release on |
-| [journal/](journal/) | One entry per experiment |
+| [releases/](releases/) | Frozen paste-ready file of each version |
+| [journal/](journal/) | One entry per experiment, with an index |
+| [training/](training/) | Reports of the training runs used, one folder per run ([ADR 0021](../../docs/adr/0021-prune-finished-branches.md)) |
 
 ## Bots
 
@@ -57,17 +58,17 @@ Since E015, the bot's policy is a pattern policy (`PatternPolicy`, `search::Patt
 
 The engine's value network (`uttt_engine::value`, [ADR 0017](../../docs/adr/0017-value-network.md)) gives the side to move's expected score from 217 inputs that describe the position from its view, through 64 and 16 hidden units. `search::ValueBoard` searches with it: a new leaf gets its estimate instead of a playout. Its weights come from the trainer as base64 text, 8 bits each with one scale per group, which `ValueNetwork::decode` reads.
 
-- `uttt-trainer selfplay --games N --iterations K --out FILE`: plays self-play games with the bot's search and records, for every searched position, the root's average score and how many visits each move got. `--policy games/uttt/bots/mcts/src/weights.rs` searches with the class policy's playouts instead of decisive ones, `--patterns games/uttt/bots/mcts/src/pattern_weights.rs` as the bot does since E015 (pattern playouts, and children ordered by the same policy), and `--no-visits` leaves the visits out.
+- `uttt-trainer selfplay --games N --iterations K --out FILE`: plays self-play games with the bot's search and records, for every searched position, the root's average score and how many visits each move got. `--policy games/uttt/training/class_weights.rs` searches with the class policy's playouts instead of decisive ones, `--patterns games/uttt/bots/mcts/src/pattern_weights.rs` as the bot does since E015 (pattern playouts, and children ordered by the same policy), and `--no-visits` leaves the visits out.
 - `uttt-trainer fit-policy --data FILE... --weights-out weights.rs --report-out report.md`: fits the class weights to those visits, holding a quarter of the positions out to check the fit, and writes them as Rust source with a report.
 - `uttt-trainer fit-patterns --data FILE... --models all --temperature T --weights-dir DIR --report-out report.md`: fits move models to the same visits, holding every 20th game out, and compares them in the report: the 32 classes, E015's patterns, and larger models for E016 (more kinds of destination, two game phases, the pattern of the board the opponent is sent to, the roles of both boards in the big board). Each model's weights are written divided by `T` (sharper below 1) to `DIR/<model>.rs`; `patterns.rs` is the bot's format. The report gives each model's size as base64 text and about what an entropy coder would make of it.
-- `uttt-trainer fit-value --data FILE... --policy games/uttt/bots/mcts/src/weights.rs --weights-out value_weights.rs --report-out report.md`: trains the value network (`--size 64-16` or `128-32`) on the games' results (or the root scores, `--target`), each position in a random symmetry, holding every 20th game out. The report plays pairs of games between a search with the network and one with the bot's playouts, at the bot's time budgets (900 ms on the first move, then 90 ms), for the network alone and half network, half playout: the gate of [ADR 0019](../../docs/adr/0019-value-network-gate-at-time.md). It also compares the network's predictions with averages of playouts on held-out positions.
+- `uttt-trainer fit-value --data FILE... --policy games/uttt/training/class_weights.rs --weights-out value_weights.rs --report-out report.md`: trains the value network (`--size 64-16` or `128-32`) on the games' results (or the root scores, `--target`), each position in a random symmetry, holding every 20th game out. The report plays pairs of games between a search with the network and one with the bot's playouts, at the bot's time budgets (900 ms on the first move, then 90 ms), for the network alone and half network, half playout: the gate of [ADR 0019](../../docs/adr/0019-value-network-gate-at-time.md). It also compares the network's predictions with averages of playouts on held-out positions.
 - The [Train workflow](../../.github/workflows/train.yml), started by hand from the Actions tab, runs these on GitHub: self-play in up to 20 parallel jobs, then the fit of the chosen stage (`policy`, `value` or `patterns`), whose results it commits to a new branch `claude/train/<run id>`. Weights reach a bot only through an experiment and its SPRT. Reports of the runs used are kept in [training/runs/](training/runs/), after which the Prune branches workflow deletes the run's branch ([ADR 0021](../../docs/adr/0021-prune-finished-branches.md)).
 
 On one core, a game at 10,000 iterations per move takes about a quarter of a second with decisive playouts (0.37 s with the bot's playouts, measured on a slower processor) and gives about 42 positions.
 
 ## Engine speed
 
-`cargo run --release -p uttt-engine --example speed` runs random playouts from the start position for a few seconds, then decisive playouts (a move that wins the game when there is one, as the search plays them), then 100 ms MCTS searches from there. Moves per playout are averaged over 10,000 games played one move at a time. CI runs it on every push and shows the table in the job summary of the "CodinGame compatibility" job.
+`cargo run --release -p uttt-engine --example speed` runs random playouts from the start position for a few seconds, then decisive playouts (a move that wins the game when there is one, as the search plays them), then 100 ms MCTS searches from there. Moves per playout are averaged over 10,000 games played one move at a time. CI runs it on every pull request and push to `main` and shows the table in the job summary of the "CodinGame compatibility" job.
 
 Baseline, measured on 2026-10-08 on one thread of an Intel Xeon at 2.8 GHz (this shared machine varies by about 10% between runs), after E006 sped up selection and playouts:
 

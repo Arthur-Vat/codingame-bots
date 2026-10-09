@@ -134,3 +134,22 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: EmbarkStudios/cargo-deny-action@v2
+
+  docs:
+    name: Docs and scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Indexes, status lines and links match the repository
+        run: scripts/check-docs.sh
+      # The next steps run even when an earlier one fails, so that one run
+      # reports every problem.
+      - name: Lint the shell scripts
+        if: ${{ !cancelled() }}
+        # Preinstalled on ubuntu-latest.
+        run: shellcheck scripts/*.sh scripts/lib/*.sh
+      - name: Lint the workflows
+        if: ${{ !cancelled() }}
+        # The image is pinned; it includes shellcheck, which also lints the
+        # `run` steps.
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color

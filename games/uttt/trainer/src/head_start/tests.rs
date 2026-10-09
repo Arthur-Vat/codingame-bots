@@ -29,7 +29,7 @@ fn the_head_start_covers_the_first_moves_only() {
 #[test]
 fn games_count_and_do_not_depend_on_threads() {
     let weights =
-        crate::selfplay::read_policy_weights(include_str!("../../../bots/mcts/src/weights.rs"))
+        crate::selfplay::read_policy_weights(include_str!("../../../training/class_weights.rs"))
             .unwrap();
     let policy: &'static PlayoutPolicy =
         Box::leak(Box::new(PlayoutPolicy::new(weights).for_plies(16)));
