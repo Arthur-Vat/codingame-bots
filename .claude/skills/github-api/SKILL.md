@@ -29,7 +29,7 @@ The session reaches GitHub through a proxy. GitHub's GraphQL API is refused, so 
 
 ## Merging (only with the owner's approval, ADR 0023)
 
-1. The owner's approval names this pull request's number; if it does not, confirm with him first.
+1. The owner's approval names this pull request's number, or approved it in advance for a stated purpose (ADR 0023); otherwise confirm with him first.
 2. The base is `main` (a stacked pull request waits until GitHub has moved it) and the head is the approved one: `gh api repos/$R/pulls/<n> --jq '{base: .base.ref, head: .head.sha}'`.
 3. The required checks are green on it, and a release has an accepted SPRT.
 4. `gh api -X PUT repos/$R/pulls/<n>/merge -f merge_method=merge -f sha=<head sha>`.

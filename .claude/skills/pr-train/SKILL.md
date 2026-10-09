@@ -41,7 +41,7 @@ Then ask the owner for approval in the conversation, ending with the exact reply
 
 ## 5. Merge
 
-Only what the owner approved in the conversation, naming its number (ADR 0023); if his answer does not name it, confirm with him before merging. In stack order, each once its base is `main`, its head is the approved one and its required checks are green. Comment each approval on its pull request (skill `github-api`). Then update local `main`, delete local branches, and tick the roadmap if a pull request did not.
+Only what the owner approved in the conversation, naming its number or approving it in advance for a stated purpose (ADR 0023); otherwise confirm with him before merging. In stack order, each once its base is `main`, its head is the approved one and its required checks are green. Comment each approval on its pull request (skill `github-api`). Then update local `main`, delete local branches, and tick the roadmap if a pull request did not.
 
 ## 6. Afterwards
 
