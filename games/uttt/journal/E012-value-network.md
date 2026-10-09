@@ -15,7 +15,7 @@ cg_rank: none
 ---
 
 Second stage of ADR 0016, first network. Train run 37795543128
-(branch `claude/train/37795543128`) played 800,000 self-play games of
+(report in `games/uttt/training/runs/37795543128/`) played 800,000 self-play games of
 v008's search at 10,000 iterations per move on 20 jobs. That gave 31.8
 million positions to fit and 1.7 million held out, from every 20th game.
 The 217-64-16-1 network trained for 8 epochs on the game results.

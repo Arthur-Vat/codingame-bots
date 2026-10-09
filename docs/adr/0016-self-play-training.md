@@ -1,6 +1,6 @@
 # 0016. Train from self-play on GitHub Actions, with a pure-Rust tool
 
-- Status: accepted
+- Status: accepted; decision 2 completed by [0021](0021-prune-finished-branches.md) (reports copied to `main`, branches deleted)
 - Date: 2026-10-08
 
 ## Context

@@ -1,0 +1,39 @@
+name: Prune branches
+
+# Deletes finished claude/ branches (ADR 0021, scripts/prune-branches.sh):
+# training results whose report is on main, and branches whose pull
+# requests are all closed, whose commits GitHub keeps. Merged branches are
+# deleted on merge by the repository's settings. Weekly, and by hand; a run
+# by hand only lists what it would delete unless dry_run is unchecked.
+on:
+  schedule:
+    # Mondays, early, off the hour.
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only list what would be deleted"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write # to delete branches
+  pull-requests: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  prune:
+    name: Delete finished branches
+    runs-on: ubuntu-latest
+    steps:
+      # main, to see which training reports it holds.
+      - uses: actions/checkout@v7
+      - name: Delete finished branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+        run: scripts/prune-branches.sh
