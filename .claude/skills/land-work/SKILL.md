@@ -39,8 +39,8 @@ Skill `github-api`. The body says what and why (linking the roadmap item or deci
 
 Then ask the owner for approval in the conversation, in two turns (owner, 2026-10-09), and only once every pull request of the work is written: opened, its required checks green and its review handled (skill `review-pr`). Never ask about a pull request still being written.
 
-1. The full brief, for each pull request: what it changes, its checks, its review and what was fixed, its risks and the head it would merge at. End the message by asking, in plain text, whether he wants to consider merging. No form in this turn: a form opens before the message can be read.
-2. Once he says yes, a form (the question tool) whose options name the pull requests (ADR 0023): merge them as they are, such as `Merge #50, #51`, or, when the order matters (a stack, shared lines, one building on another), merge them in order, such as `Merge #50, then #51`, with the reason in the option's description; recommend one of the two. Add an option to hold. A choice in the form is an answer in the conversation.
+1. The full brief, for each pull request: what it changes, its checks, its review and what was fixed, its risks and the head it would merge at. End the message by asking, in plain text, whether he wants to consider merging. No form in this turn: a form opens before the message can be read. His yes is not an approval: it names no pull request.
+2. Once he says yes, a form (the question tool) whose options name the pull requests (ADR 0023): merge them as they are, such as `Merge #50, #51`, and, only when the order matters (a stack, shared lines, one building on another), merge them in order, such as `Merge #50, then #51`, with the reason in the option's description. Recommend one option. Add an option to hold. A choice in the form is an answer in the conversation.
 
 Without the question tool, the second turn asks for the exact reply that approves, such as `merge #50`.
 

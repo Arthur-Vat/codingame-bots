@@ -21,7 +21,7 @@ The steps and rules are in `docs/WORKFLOW.md` ("An experiment, step by step") an
 4. **Freeze the candidate:** `scripts/new-release.sh <game> <bot>`. In the same commit, point the game README's `**Current release:**` line and the root README's games table to the new release: `scripts/check-docs.sh` requires them.
 5. **Open the pull request** (`feat(<game>): ENNN, <what changed>`), review at the bot tier (skill `review-pr`). The SPRT workflow plays the smoke test and the SPRT: at CodinGame's exact limits for a game in Legend, up to about 4 hours.
 6. **Record the result:** copy the SPRT comment's summary into the entry (`sprt`, `elo`, `pairs`, `full_time`, `decision`). Markdown-only commits reuse the SPRT's result.
-7. **Accepted:** ask the owner to approve the merge with `merge #<n>` (ADR 0023), then skill `deliver-release`. **Rejected or inconclusive:** remove the release file and the bot change, revert the README lines, set `release: none` and `decision: dropped`, explain in the entry what was learned, and ask the owner to approve merging the entry alone (`merge #<n>`).
+7. **Accepted:** ask the owner to approve the merge (skill `land-work`, step 4; ADR 0023), then skill `deliver-release`. **Rejected or inconclusive:** remove the release file and the bot change, revert the README lines, set `release: none` and `decision: dropped`, explain in the entry what was learned, and ask the owner to approve merging the entry alone (skill `land-work`, step 4).
 
 ## Keep
 
