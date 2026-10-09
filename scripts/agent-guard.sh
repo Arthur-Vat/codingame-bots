@@ -8,7 +8,9 @@
 #
 # Reads the hook's JSON from stdin. Exits 0 to allow; exits 2 with the reason
 # on stderr to refuse, which the session sees. It refuses too when it cannot
-# tell (no jq, unreadable input): a guard that fails open guards nothing.
+# tell (no jq, unreadable input): a guard that fails open guards nothing. It
+# cannot make a hook that does not run (script missing or not executable)
+# refuse: Claude Code lets the agent start unless a hook exits with 2.
 #
 # Usage: scripts/agent-guard.sh < hook-input.json
 set -euo pipefail
@@ -22,7 +24,9 @@ refuse() {
 
 command -v jq >/dev/null || refuse "jq is missing, so the agent type cannot be read"
 input="$(cat)"
-type="$(jq -r '.tool_input.subagent_type // ""' <<<"$input" 2>/dev/null)" || refuse "the hook input is not JSON"
+# The trailing x keeps newlines at the end of the type, which $(...) would strip.
+type="$(jq -j '((.tool_input.subagent_type // "") | tostring), "x"' <<<"$input" 2>/dev/null)" || refuse "the hook input is unreadable"
+type="${type%x}"
 [[ -n $type ]] || refuse "no subagent_type, which selects the general-purpose agent with every tool"
 for name in "${allowed[@]}"; do
   [[ $type == "$name" ]] && exit 0

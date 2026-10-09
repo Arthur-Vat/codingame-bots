@@ -36,7 +36,11 @@ check 2 "not on the list" '{"tool_input":{"subagent_type":"explore"}}'
 check 2 "no subagent_type" '{"tool_input":{"prompt":"x"}}'
 check 2 "no subagent_type" '{"tool_input":{"subagent_type":""}}'
 check 2 "no subagent_type" '{}'
-check 2 "not JSON" 'not json'
+check 2 "unreadable" 'not json'
+check 2 "unreadable" '{"tool_input":"implementer"}'
+check 2 "not on the list" '{"tool_input":{"subagent_type":"implementer\n"}}'
+check 2 "not on the list" '{"tool_input":{"subagent_type":" implementer"}}'
+check 2 "not on the list" '{"tool_input":{"subagent_type":["implementer"]}}'
 
 if ((failures > 0)); then
   echo "$failures of $checks checks failed" >&2
