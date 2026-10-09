@@ -2,6 +2,7 @@
 
 - Status: proposed | accepted | superseded by NNNN
 - Date: YYYY-MM-DD
+- Scope: framework | <game id, such as uttt>
 
 ## Context
 

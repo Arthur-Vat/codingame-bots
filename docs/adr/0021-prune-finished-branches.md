@@ -3,6 +3,7 @@
 - Status: accepted (owner, 2026-10-09)
 - Date: 2026-10-09
 - Completes: decision 2 of [ADR 0016](0016-self-play-training.md), on where training results end up
+- Scope: framework
 
 ## Context
 

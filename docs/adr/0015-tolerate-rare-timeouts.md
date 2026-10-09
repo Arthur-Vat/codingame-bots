@@ -3,6 +3,7 @@
 - Status: accepted
 - Date: 2026-10-08
 - Supersedes: the "no timeout" part of decision 5 of [ADR 0012](0012-evaluation.md) and of decision 1 of [ADR 0013](0013-evaluation-time-limits.md) (smoke test), and of decision 3 of [ADR 0014](0014-full-time-confirmation.md) (confirmation)
+- Scope: framework
 
 ## Context
 
