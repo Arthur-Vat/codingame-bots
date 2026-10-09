@@ -56,8 +56,8 @@ A playout draws each of its first 16 moves by weighing every free cell
 of the board it plays in. E015's weight is one lookup; the destination's
 pattern and role need the destination board's state after the move.
 Computed directly, a draw took 2 to 3 times as long as E015's. With a
-per-board cache along the playout and a branch-free loop (on the
-`claude/uttt-e016-large-patterns` branch), context playouts ran at 58%
+per-board cache along the playout and a branch-free loop (archived in
+#38), context playouts ran at 58%
 of E015's speed, and the bot searched about 20% fewer iterations per
 move (15,200 against 19,000 at 18 ms; 62,000 against 68,000 at 90 ms).
 
@@ -92,7 +92,8 @@ worth an SPRT. Iterations, not bytes, limit this kind of model.
   bot's own search), `fit-patterns --models` (the comparison above), and
   the Train workflow's `patterns` stage with fit-only runs on earlier
   data.
-- On the `claude/uttt-e016-large-patterns` branch only, so that bots do
-  not carry unused code: the context policy with its cache and tests,
-  checked move by move against the trainer's definitions, and
-  `cg_core::packed`, for a later model that earns its bytes.
+- Archived in #38, closed without merging so that bots do not carry
+  unused code (commit 3c22deb, `git fetch origin pull/38/head`): the
+  context policy with its cache and tests, checked move by move against
+  the trainer's definitions, and `cg_core::packed`, for a later model
+  that earns its bytes.
