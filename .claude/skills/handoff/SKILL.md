@@ -24,12 +24,21 @@ When an item is added, answered or done, and at the end of each piece of work. T
 W="$(mktemp -d)/handoff"
 git worktree add "$W" origin/claude/handoff   # a detached copy; the session's own branch is untouched
 # edit $W/HANDOFF.md
-git -C "$W" commit -am "docs(repo): handoff: <what changed>"
+git -C "$W" commit -am "docs(repo): handoff: <what changed>" -m "<the attribution lines of this session>"
 git -C "$W" push origin HEAD:claude/handoff
 git worktree remove "$W"
 ```
 
-Commit messages follow the usual conventions and attribution lines. If the push is rejected because another session pushed first: fetch as above, make the edit again on a fresh worktree, and push. Never force.
+Commit messages follow the usual conventions and end with the session's attribution lines. If the push is rejected because another session pushed first: fetch as above, make the edit again on a fresh worktree, and push. Never force.
+
+If the branch is missing (the fetch says "couldn't find remote ref"), tell the owner, then recreate it holding only `HANDOFF.md`, with the sections below:
+
+```sh
+blob="$(git hash-object -w HANDOFF.md)"   # a file written from the sections below
+tree="$(printf '100644 blob %s\tHANDOFF.md\n' "$blob" | git mktree)"
+commit="$(git commit-tree "$tree" -m "docs(repo): handoff: recreate the file" -m "<the attribution lines of this session>")"
+git push origin "$commit:refs/heads/claude/handoff"
+```
 
 ## The file
 
