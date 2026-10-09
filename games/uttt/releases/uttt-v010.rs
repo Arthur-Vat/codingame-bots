@@ -1919,7 +1919,7 @@ use crate::cg_core::rng::Rng;
 use crate::cg_search::Game;
 use crate::uttt_engine::board::{Board, PatternPolicy, PlayoutPolicy, Status};
 use crate::uttt_engine::moves::{Move, MoveList};
-use crate::uttt_engine::value::ValueNetwork;
+use crate::uttt_engine::value::Network;
 impl Game for Board {
 type Move = Move;
 fn to_move(&self) -> usize {
@@ -1968,30 +1968,36 @@ score(self.board.policy_playout(self.policy, rng)).expect("a playout ends the ga
 }
 }
 #[derive(Clone, Copy)]
-pub struct ValueBoard {
+pub struct ValueBoard<const H: usize = 64, const H2: usize = 16> {
 pub board: Board,
-pub network: &'static ValueNetwork,
+pub network: &'static Network<H, H2>,
 }
-impl ValueBoard {
+impl<const H: usize, const H2: usize> ValueBoard<H, H2> {
 pub fn estimate(&self) -> f64 {
-let value = if self.board.game_winning_move().is_some() {
+network_estimate(&self.board, self.network)
+}
+}
+fn network_estimate<const H: usize, const H2: usize>(
+board: &Board,
+network: &Network<H, H2>,
+) -> f64 {
+let value = if board.game_winning_move().is_some() {
 1.0
 } else {
-f64::from(self.network.evaluate(&self.board))
+f64::from(network.evaluate(board))
 };
-if self.board.to_move() == 0 {
+if board.to_move() == 0 {
 value
 } else {
 1.0 - value
 }
 }
-}
-impl PartialEq for ValueBoard {
+impl<const H: usize, const H2: usize> PartialEq for ValueBoard<H, H2> {
 fn eq(&self, other: &Self) -> bool {
 self.board == other.board
 }
 }
-impl Game for ValueBoard {
+impl<const H: usize, const H2: usize> Game for ValueBoard<H, H2> {
 type Move = Move;
 fn to_move(&self) -> usize {
 self.board.to_move()
@@ -2007,6 +2013,43 @@ score(self.board.status())
 }
 fn playout(&mut self, _rng: &mut Rng) -> f64 {
 self.estimate()
+}
+}
+#[derive(Clone, Copy)]
+pub struct MixBoard<const H: usize = 64, const H2: usize = 16> {
+pub board: Board,
+pub network: &'static Network<H, H2>,
+pub policy: &'static PlayoutPolicy,
+pub share: f64,
+}
+impl<const H: usize, const H2: usize> PartialEq for MixBoard<H, H2> {
+fn eq(&self, other: &Self) -> bool {
+self.board == other.board
+}
+}
+impl<const H: usize, const H2: usize> Game for MixBoard<H, H2> {
+type Move = Move;
+fn to_move(&self) -> usize {
+self.board.to_move()
+}
+fn legal_moves(&self, moves: &mut Vec<Move>) {
+Game::legal_moves(&self.board, moves);
+}
+fn play(&mut self, mv: Move) {
+self.board.play(mv);
+}
+fn score(&self) -> Option<f64> {
+score(self.board.status())
+}
+fn playout(&mut self, rng: &mut Rng) -> f64 {
+if self.board.game_winning_move().is_some() {
+return network_estimate(&self.board, self.network);
+}
+let estimate = network_estimate(&self.board, self.network);
+let mut board = self.board;
+let played =
+score(board.policy_playout(self.policy, rng)).expect("a playout ends the game");
+self.share * estimate + (1.0 - self.share) * played
 }
 }
 #[derive(Clone, Copy, Debug, PartialEq)]

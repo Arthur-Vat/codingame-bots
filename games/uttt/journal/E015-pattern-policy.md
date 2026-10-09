@@ -6,11 +6,11 @@ parent: uttt-v009
 hypothesis: A move policy with one learned weight per small-board pattern, cell and destination predicts the search's choices better than 32 move classes, so its playouts judge positions better and its order of children is better.
 change: Playouts draw their first 16 moves, and nodes order their children, with 26,275 learned weights (`PatternPolicy`, `search::PatternBoard`) instead of E011's 32 class weights; the weights travel in the bot as one base64 character each.
 release: uttt-v010
-sprt: accepted
-elo: +19.2 [+5.7, +32.7] at 20 ms
-pairs: 943
-full_time: +11.8 [-5.7, +29.4] over 500 pairs, no timeout in 1,000 games, 99.9% of answers within 92.1 ms
-decision: promoted
+sprt: pending
+elo: pending
+pairs: pending
+full_time: pending
+decision: pending
 cg_rank: pending
 ---
 
@@ -115,9 +115,9 @@ help, and larger models may need many more. The encoded weights' entropy
 is 4.2 bits per weight: an entropy coder would shrink the 26,275
 characters to about 18,400 if bytes ever run short.
 
-## Result
+## First result
 
-From the SPRT comment on #35: smoke test 200 wins in 200 games; SPRT
+From the first SPRT comment on #35 (commit 760697b): smoke test 200 wins in 200 games; SPRT
 accepted after 943 pairs (789 wins, 412 draws, 686 losses), LLR 3.00;
 confirmation at CodinGame's limits 377 wins, 280 draws, 343 losses, no
 timeout for either bot.
@@ -128,3 +128,9 @@ interval excludes 0. At full time it is +11.8, interval from -5.7 to
 above E014's +9.7 at the same limits. Answers took as long as v009's
 (99.9% within 92.1 ms, against 92.3), so the larger policy costs no
 search speed.
+
+#33 (the larger value network and `MixBoard`) was merged into `main`
+first. Merging it here put its engine code into the bundle, unused by
+this bot: 77,026 bytes instead of 75,677. The release was rebuilt from
+the merged sources, as the release check requires, and the SPRT runs
+again on it.

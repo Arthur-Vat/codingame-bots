@@ -1,19 +1,39 @@
 //! Games between a search with the value network and one with the bot's
-//! playouts, at the same number of iterations per move: whether the
-//! network's estimates make a better search, before the time they cost is
-//! weighed by an SPRT.
+//! playouts, with the same budget per move: whether the network makes a
+//! better search. ADR 0019 plays them at the bot's own time budgets.
+
+use std::time::{Duration, Instant};
 
 use cg_core::rng::Rng;
 use cg_search::{Budget, Game, Mcts};
-use uttt_engine::search::{PolicyBoard, ValueBoard};
-use uttt_engine::value::ValueNetwork;
+use uttt_engine::search::{MixBoard, PolicyBoard, ValueBoard};
+use uttt_engine::value::Network;
 use uttt_engine::{Board, Move, PlayoutPolicy, Status};
+
+/// A search's budget for one move.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Limit {
+    Iterations(u64),
+    Time(Duration),
+}
+
+impl Limit {
+    fn budget(self) -> Budget {
+        match self {
+            Limit::Iterations(count) => Budget::Iterations(count),
+            Limit::Time(time) => Budget::Until(Instant::now() + time),
+        }
+    }
+}
 
 /// How duel games are played.
 #[derive(Clone, Copy, Debug)]
 pub struct Duel {
-    /// Search iterations per move, for both sides.
-    pub iterations: u64,
+    /// Each side's budget for its first searched move, which on CodinGame
+    /// gets a longer time limit.
+    pub first: Limit,
+    /// Each side's budget for its later moves.
+    pub later: Limit,
     /// Random moves at the start of each pair's games.
     pub opening_plies: u32,
     /// The exploration constant of the search with playouts, as in the bot.
@@ -21,6 +41,9 @@ pub struct Duel {
     /// The exploration constant of the search with the network, whose
     /// estimates spread less than playout results.
     pub network_exploration: f64,
+    /// The network's share of each leaf's estimate, the rest coming from a
+    /// playout: 1 for the network alone.
+    pub network_share: f64,
 }
 
 /// Results from one side, the network's in a duel.
@@ -95,21 +118,32 @@ impl Results {
     }
 }
 
-/// One side of a game: a search over its own kind of position.
+/// One side of a game.
+trait Side {
+    fn choose(&mut self, board: &Board) -> Move;
+}
+
+/// A side that searches its own kind of position.
 struct Searcher<G: Game<Move = Move>, F: Fn(Board) -> G> {
     mcts: Mcts<G>,
     position: F,
-    iterations: u64,
+    first: Limit,
+    later: Limit,
+    searched: u32,
     moves: Vec<Move>,
 }
 
-impl<G: Game<Move = Move>, F: Fn(Board) -> G> Searcher<G, F> {
+impl<G: Game<Move = Move>, F: Fn(Board) -> G> Side for Searcher<G, F> {
     fn choose(&mut self, board: &Board) -> Move {
         let root = (self.position)(*board);
         root.legal_moves(&mut self.moves);
-        self.mcts
-            .search(&root, &self.moves, Budget::Iterations(self.iterations))
-            .best
+        let limit = if self.searched == 0 {
+            self.first
+        } else {
+            self.later
+        };
+        self.searched += 1;
+        self.mcts.search(&root, &self.moves, limit.budget()).best
     }
 }
 
@@ -117,9 +151,9 @@ impl Duel {
     /// Plays `pairs` pairs: in each, the two games start from the same
     /// random opening and the sides swap seats. Spread over `threads`
     /// threads; the same seed gives the same games.
-    pub fn play(
+    pub fn play<const H: usize, const H2: usize>(
         &self,
-        network: &'static ValueNetwork,
+        network: &'static Network<H, H2>,
         policy: &'static PlayoutPolicy,
         pairs: u32,
         seed: u64,
@@ -150,9 +184,9 @@ impl Duel {
         total
     }
 
-    fn play_pair(
+    fn play_pair<const H: usize, const H2: usize>(
         &self,
-        network: &'static ValueNetwork,
+        network: &'static Network<H, H2>,
         policy: &'static PlayoutPolicy,
         seed: u64,
         pair: u32,
@@ -168,16 +202,38 @@ impl Duel {
         let mut results = Results::default();
         let mut points = 0;
         for network_seat in 0..2 {
-            let mut with_network = Searcher {
-                mcts: Mcts::new(self.network_exploration, rng.next_u64()),
-                position: |board| ValueBoard { board, network },
-                iterations: self.iterations,
-                moves: Vec::new(),
+            let network_seed = rng.next_u64();
+            let mut with_network: Box<dyn Side> = if self.network_share >= 1.0 {
+                Box::new(Searcher {
+                    mcts: Mcts::new(self.network_exploration, network_seed),
+                    position: |board| ValueBoard { board, network },
+                    first: self.first,
+                    later: self.later,
+                    searched: 0,
+                    moves: Vec::new(),
+                })
+            } else {
+                let share = self.network_share;
+                Box::new(Searcher {
+                    mcts: Mcts::new(self.network_exploration, network_seed),
+                    position: move |board| MixBoard {
+                        board,
+                        network,
+                        policy,
+                        share,
+                    },
+                    first: self.first,
+                    later: self.later,
+                    searched: 0,
+                    moves: Vec::new(),
+                })
             };
             let mut with_playouts = Searcher {
                 mcts: Mcts::new(self.exploration, rng.next_u64()),
                 position: |board| PolicyBoard { board, policy },
-                iterations: self.iterations,
+                first: self.first,
+                later: self.later,
+                searched: 0,
                 moves: Vec::new(),
             };
             let mut board = opening;

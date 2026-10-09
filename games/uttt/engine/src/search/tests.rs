@@ -1,5 +1,7 @@
 use cg_search::{Budget, Mcts};
 
+use crate::value::ValueNetwork;
+
 use super::*;
 
 #[test]
@@ -215,4 +217,42 @@ fn mcts_searches_value_boards() {
     );
     assert_eq!(result.iterations, 2_000);
     assert!(board.is_legal(result.best));
+}
+
+#[test]
+fn mix_boards_weigh_the_network_and_a_playout() {
+    let network = random_network(29);
+    let policy: &'static PlayoutPolicy = Box::leak(Box::new(PlayoutPolicy::uniform()));
+    let mut rng = Rng::new(8);
+    let mut list = MoveList::new();
+    let mut checked = 0;
+    for _ in 0..10 {
+        let mut board = Board::new();
+        while board.status() == Status::Ongoing {
+            let estimate = ValueBoard { board, network }.estimate();
+            let mix = |share| MixBoard {
+                board,
+                network,
+                policy,
+                share,
+            };
+            if board.game_winning_move().is_some() {
+                assert_eq!(Game::playout(&mut mix(0.0), &mut rng), estimate);
+            } else {
+                assert_eq!(Game::playout(&mut mix(1.0), &mut rng), estimate);
+                let played = Game::playout(&mut mix(0.0), &mut rng);
+                assert!([0.0, 0.5, 1.0].contains(&played), "{played}");
+                let half = Game::playout(&mut mix(0.5), &mut rng);
+                let rest = half - 0.5 * estimate;
+                assert!(
+                    [0.0, 0.25, 0.5].iter().any(|&r| (rest - r).abs() < 1e-12),
+                    "{half} with {estimate}"
+                );
+                checked += 1;
+            }
+            Board::legal_moves(&board, &mut list);
+            board.play(*rng.pick(&list).unwrap());
+        }
+    }
+    assert!(checked > 200);
 }
