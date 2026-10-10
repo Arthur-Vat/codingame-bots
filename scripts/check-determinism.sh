@@ -13,12 +13,15 @@
 # each answer sent, the winner and how the game ended (times, which vary,
 # are ignored). The iteration rate is ITERS divided by the median time of
 # the answers of run 1, leaving out the first answer of each seat. Rates
-# depend on the machine. Records and binaries are kept in target/determinism/.
+# depend on the machine, and on ITERS: each answer has a fixed cost, which
+# weighs more at small counts, so rates are comparable only at the same ITERS
+# and are rough below a few thousand iterations. Records and binaries are
+# kept in target/determinism/.
 #
 # Needs jq (preinstalled on GitHub's Ubuntu runners).
 #
-# Exit status: 0 when every release replays identically; 1 when one does not
-# or a game has a fault; 2 on errors.
+# Exit status: 0 when every release replays identically, 1 when one differs,
+# 2 on usage errors, another non-zero status on other errors.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -59,7 +62,15 @@ arena="target/release/$game-arena"
 
 # What a record must keep from run to run: the lines of every answer, by
 # turn, the winner and how the game ended.
-readonly canon='{turns: [.turns[] | [.[] | .lines]], winner, end: .end.kind}'
+# A record without these fields is an error, never "identical".
+readonly canon='
+  if .format != 1 then error("unexpected record format")
+  elif (has("winner") | not) then error("record without winner")
+  else
+    {turns: [.turns[] | [.[] | (.lines // error("record without lines"))]],
+     winner,
+     end: (.end.kind // error("record without end kind"))}
+  end'
 
 # Where records $1 and $2 first differ: "turn N", "the winner" or "the end".
 first_difference() {
@@ -97,7 +108,9 @@ for file in "${files[@]}"; do
       problem="run 2 has no $base"
       break
     fi
-    if [[ "$(jq -c "$canon" "$first")" != "$(jq -c "$canon" "$second")" ]]; then
+    canon_first="$(jq -c "$canon" "$first")"
+    canon_second="$(jq -c "$canon" "$second")"
+    if [[ $canon_first != "$canon_second" ]]; then
       problem="run 2 differs from run 1 in $base at $(first_difference "$first" "$second")"
       break
     fi

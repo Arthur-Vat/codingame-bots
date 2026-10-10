@@ -88,7 +88,7 @@ Before E006 (after E005): about 925,000 random and 976,000 decisive playouts, an
 
 With a fixed seed and a fixed number of iterations (`CG_SEED`, `CG_FIXED_ITERS`), every release replays identically ([ADR 0025](../../docs/adr/0025-studio.md)). `scripts/check-determinism.sh uttt [ITERS] [RELEASE.rs...]` proves it: it compiles each release as CodinGame does, plays it against itself twice (2 pairs of games, seed 7, 500 iterations by default) with the arena's `--records`, and fails if the two runs differ in the lines answered, the winner or the way a game ended. It also prints the release's iteration rate: the iterations divided by the median time of its answers, leaving out each seat's first. CI runs it on the release a pull request adds.
 
-Measured on 2026-10-10 on the development machine (all ten releases identical; 500 iterations per answer, 4 games per run). Rates depend on the machine, and the studio measures them on the owner's computer:
+Measured on 2026-10-10 on the development machine (all ten releases identical; 500 iterations per answer, 4 games per run). Rates depend on the machine, and the studio measures them on the owner's computer. They also depend on the iteration count, because each answer has a fixed cost that weighs more at small counts (`uttt-v010` measured 574 per millisecond at 200 iterations, 789 at 500, 918 at 2,000 and 830 at 10,000): compare rates only at the same count, and take them as rough below a few thousand iterations:
 
 | Release | Iterations per millisecond | Median answer |
 | --- | --- | --- |
