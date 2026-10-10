@@ -1,7 +1,8 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { renderers } from '../registry';
+import { renderers, resultDetails } from '../registry';
+import type { RendererProps } from '../registry';
 import Board, { type BoardProps } from './Board';
 import type { Cell, UtttFrame } from './view';
 
@@ -120,5 +121,25 @@ describe('registry', () => {
       createElement(Renderer, { frame: { nope: true }, interactive: false, showCoordinates: true }),
     );
     expect(html).toBe('');
+  });
+});
+
+describe('registry actions and result detail', () => {
+  it('reports a clicked cell as the action {row, col}', () => {
+    const actions: unknown[] = [];
+    const Renderer = renderers['uttt']!;
+    const element = (Renderer as (props: RendererProps) => ReturnType<typeof createElement>)({
+      frame: frame(),
+      interactive: true,
+      showCoordinates: false,
+      onAction: (action) => actions.push(action),
+    }) as unknown as { props: BoardProps };
+    element.props.onCell?.(3, 5);
+    expect(actions).toEqual([{ row: 3, col: 5 }]);
+  });
+
+  it('writes the result detail from a frame, or nothing for an unreadable one', () => {
+    expect(resultDetails['uttt']?.(frame())).toBe('Small boards won: 0–1');
+    expect(resultDetails['uttt']?.({ nope: true })).toBeNull();
   });
 });

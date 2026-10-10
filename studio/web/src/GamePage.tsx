@@ -1,19 +1,38 @@
-import { useCallback, useState } from 'react';
-import { createSession, deleteSession, type GameSummary, type Session } from './api';
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react';
+import {
+  createSession,
+  deleteSession,
+  getRecord,
+  postEnd,
+  postMove,
+  postTakeback,
+  saveSession,
+  type GameSummary,
+  type Session,
+  type SessionRequest,
+} from './api';
+import { BoardOverlay } from './BoardOverlay';
 import { BoardSlot } from './BoardSlot';
+import { clockSeed } from './setup';
+import { renderers, resultDetails } from './games/registry';
+import { Controls, EndBlock, MoveList, PlayerStrip } from './GameTable';
 import type { GamesState } from './hooks';
 import { ServerNotice } from './HomePage';
-import { SeatMark } from './Marks';
+import {
+  canPlay,
+  controlsFor,
+  cursorAfterKey,
+  exportFileName,
+  findMoveIndex,
+  frameAfterTurn,
+  rematchRequest,
+  runningSeat,
+  sessionMode,
+  turnOfFrame,
+} from './play';
 import { SetupDialog, type SetupResult } from './SetupDialog';
 import { routeHash } from './route';
-import {
-  bottomSeat,
-  moveRows,
-  resultText,
-  seatMark,
-  sessionTitle,
-  statusText,
-} from './sessionView';
+import { bottomSeat, overlayFor, seatMark, sessionTitle, statusText } from './sessionView';
 import {
   buildSessionRequest,
   clockLabel,
@@ -23,6 +42,8 @@ import {
   type ClockSettings,
   type Mode,
 } from './setup';
+import { Toast, useToast } from './Toast';
+import { useClocks } from './useClocks';
 import { useSession } from './useSession';
 
 const LOBBY: { mode: Mode; hint: string }[] = [
@@ -101,98 +122,163 @@ function Row({ term, value }: { term: string; value: string }) {
   );
 }
 
-function PlayerStrip({ session, seat }: { session: Session | null; seat: number }) {
-  const info = session?.seats[seat];
-  const name = info?.name ?? `Player ${seat + 1}`;
-  const sub = info ? (info.kind === 'bot' ? thinkLabel(info.think_ms) : seatMark(seat)) : '';
+/** Whether a key press belongs to a text field or a menu, not to the board. */
+function typesText(target: EventTarget | null): boolean {
   return (
-    <div className="player" data-testid={`player-${seat}`}>
-      <div className="who">
-        <SeatMark seat={seat} className="chip" />
-        <b>{name}</b>
-        <small>{sub}</small>
-      </div>
-      <span className="clock" title="Clocks come later">
-        –
-      </span>
-    </div>
+    target instanceof HTMLElement &&
+    (target.isContentEditable || ['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName))
   );
 }
 
-function MoveList({
-  session,
-  problem,
-  lost,
-}: {
-  session: Session | null;
-  problem: string | null;
-  lost: boolean;
-}) {
-  if (problem !== null && session === null) {
-    return (
-      <div className="moves">
-        <div className="empty">{problem}</div>
-      </div>
-    );
-  }
-  if (session === null) {
-    return (
-      <div className="moves">
-        <div className="empty">Choose a mode on the left to start a game.</div>
-      </div>
-    );
-  }
-  const rows = moveRows(session.turns);
-  return (
-    <div className="moves" aria-label="Moves">
-      {rows.length === 0 && <div className="empty">{statusText(session)}</div>}
-      {rows.map((row) => (
-        <MoveRow key={row.number} number={row.number} moves={row.moves} />
-      ))}
-      {session.result && (
-        <div className="result">
-          <b>{resultText(session.result).headline}</b>
-          <span>{resultText(session.result).detail}</span>
-        </div>
-      )}
-      {lost && (
-        <div className="lost" role="status">
-          Connection lost — retrying
-        </div>
-      )}
-    </div>
-  );
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
-function MoveRow({ number, moves }: { number: number; moves: [string, string | null] }) {
-  return (
-    <>
-      <span className="n">{number}</span>
-      <span className="m">{moves[0]}</span>
-      {moves[1] === null ? <span /> : <span className="m">{moves[1]}</span>}
-    </>
-  );
+/** Downloads `data` as a JSON file. */
+function download(name: string, data: unknown): void {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Props) {
-  const { session, error } = useSession(sessionId);
+  const { session, error, apply } = useSession(sessionId);
   const [dialogMode, setDialogMode] = useState<Mode | null>(null);
   const [coordinates, setCoordinates] = useState(false);
+  // A request of ours is in flight: input and clocks wait for its answer.
+  const [pending, setPending] = useState(false);
+  const inFlight = useRef(false);
+  // The frame the user looks at while looking back; null follows the latest frame.
+  const [pinned, setPinned] = useState<{ sessionId: string | null; frame: number } | null>(null);
+  const toast = useToast();
 
   const game = gamesState.games?.find((candidate) => candidate.id === gameId) ?? null;
   const gameMissing = gamesState.games !== null && game === null;
   const closeDialog = useCallback(() => setDialogMode(null), []);
 
-  const start = async ({ form, seed }: SetupResult) => {
-    const request = buildSessionRequest(gameId, form, seed, Math.random);
+  const clocks = useClocks(session, clock, pending);
+  const running = clock === null ? null : runningSeat(session, pending);
+
+  const frames = session?.frames ?? [];
+  const latest = frames.length - 1;
+  const pinnedFrame = pinned !== null && pinned.sessionId === sessionId ? pinned.frame : null;
+  const shown = pinnedFrame === null ? latest : Math.min(pinnedFrame, latest);
+  const atLatest = shown === latest;
+  const shownTurn = session === null ? -1 : turnOfFrame(shown, session.opening_turns);
+
+  const launch = async (request: SessionRequest, newClock: ClockSettings | null) => {
     const id = await createSession(request);
     if (sessionId !== null) {
       // The old game is forgotten; if the server cannot do it, it drops the session itself.
       deleteSession(sessionId).catch(() => undefined);
     }
-    onStarted(id, clockOf(form));
+    onStarted(id, newClock);
     setDialogMode(null);
     window.location.hash = routeHash({ page: 'game', gameId, sessionId: id });
+  };
+
+  const start = ({ form, seed }: SetupResult) =>
+    launch(buildSessionRequest(gameId, form, seed, Math.random), clockOf(form));
+
+  /** Runs a request that answers with the session, one at a time. */
+  const run = async (job: (current: Session) => Promise<Session>) => {
+    if (session === null || inFlight.current) return;
+    inFlight.current = true;
+    setPending(true);
+    try {
+      apply(await job(session));
+    } catch (failure) {
+      toast.show(errorMessage(failure));
+    } finally {
+      inFlight.current = false;
+      setPending(false);
+    }
+  };
+
+  const playable = canPlay(session, pending, atLatest);
+  const onAction = (action: unknown) => {
+    if (session === null || !playable) return;
+    const index = findMoveIndex(session.human_moves, action);
+    const seat = session.to_act[0];
+    if (index === -1 || seat === undefined) return;
+    void run((current) => postMove(current.id, seat, index));
+  };
+
+  const controls = controlsFor(session, pending);
+  const takeback = () => {
+    const keep = controls.takebackTo;
+    if (keep === null) return;
+    setPinned(null);
+    void run((current) => postTakeback(current.id, keep));
+  };
+  const resign = () => {
+    const seat = controls.resignSeat;
+    if (seat === null) return;
+    void run((current) => postEnd(current.id, seat, 'resign'));
+  };
+
+  const save = async () => {
+    if (session === null) return;
+    try {
+      const { duplicate } = await saveSession(session.id);
+      toast.show(duplicate ? 'Already in your history' : 'Saved to your history');
+    } catch (failure) {
+      toast.show(errorMessage(failure));
+    }
+  };
+  const exportFile = async () => {
+    if (session === null) return;
+    try {
+      download(exportFileName(session.game, session.seed, new Date()), await getRecord(session.id));
+    } catch (failure) {
+      toast.show(errorMessage(failure));
+    }
+  };
+  const rematch = async () => {
+    if (session === null) return;
+    try {
+      await launch(rematchRequest(session, clockSeed(Date.now())), clock);
+    } catch (failure) {
+      toast.show(errorMessage(failure));
+    }
+  };
+
+  // A human clock that reaches zero ends the game; it fires once (see clock.ts).
+  const timedOutSeat = clocks?.expired ?? null;
+  const endOnTimeout = useEffectEvent((seat: number) => {
+    if (session?.status === 'waiting_human') {
+      void run((current) => postEnd(current.id, seat, 'timeout'));
+    }
+  });
+  useEffect(() => {
+    if (timedOutSeat !== null) endOnTimeout(timedOutSeat);
+  }, [timedOutSeat]);
+
+  // ← → Home End look back and forward, as on Lichess.
+  const onKey = useEffectEvent((event: KeyboardEvent) => {
+    if (dialogMode !== null || latest < 0 || typesText(event.target)) return;
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const next = cursorAfterKey(event.key, shown, latest);
+    if (next === undefined) return;
+    event.preventDefault();
+    setPinned(next === null ? null : { sessionId, frame: next });
+  });
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => onKey(event);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  const pickTurn = (turn: number) => {
+    if (session === null) return;
+    const frame = frameAfterTurn(turn, session.opening_turns);
+    setPinned(frame >= latest ? null : { sessionId, frame });
   };
 
   const bottom = bottomSeat(session);
@@ -201,6 +287,16 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
     : error && session === null
       ? error.message
       : null;
+
+  const Renderer = renderers[gameId];
+  const frame = frames[shown];
+  const finalFrame = frames[latest];
+  const detail =
+    session?.result?.end.kind === 'finished' && finalFrame !== undefined
+      ? (resultDetails[gameId]?.(finalFrame) ?? null)
+      : null;
+  const mode = session === null ? null : sessionMode(session);
+  const over = session?.status === 'over';
 
   return (
     <>
@@ -220,14 +316,14 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
           />
           <section className="panel lobby" aria-label="New game">
             <span className="label">New game</span>
-            {LOBBY.map(({ mode, hint }) => (
+            {LOBBY.map(({ mode: lobbyMode, hint }) => (
               <button
-                key={mode}
+                key={lobbyMode}
                 type="button"
                 disabled={game === null}
-                onClick={() => setDialogMode(mode)}
+                onClick={() => setDialogMode(lobbyMode)}
               >
-                <strong>{MODE_TITLES[mode]}</strong>
+                <strong>{MODE_TITLES[lobbyMode]}</strong>
                 <span>{hint}</span>
               </button>
             ))}
@@ -246,37 +342,68 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
               Heatmap of best moves
               <input type="checkbox" disabled />
             </label>
-            <p className="hint">Keys: ← → step, Home/End jump, Space play or pause.</p>
+            <p className="hint">Keys: ← → step, Home/End jump.</p>
           </section>
         </aside>
 
         <section className="board-col">
           <div className="board-row">
             <div className="evalbar off" title="Win / draw / loss" aria-hidden="true" />
-            <BoardSlot showCoordinates={coordinates} label={`${game?.name ?? gameId} board`} />
+            <BoardSlot
+              showCoordinates={coordinates}
+              label={`${game?.name ?? gameId} board`}
+              bare={Renderer !== undefined}
+              overlay={session === null ? null : <BoardOverlay overlay={overlayFor(session)} />}
+            >
+              {Renderer !== undefined && frame !== undefined ? (
+                <Renderer
+                  frame={frame}
+                  interactive={playable}
+                  onAction={onAction}
+                  showCoordinates={coordinates}
+                />
+              ) : undefined}
+            </BoardSlot>
           </div>
           <div className="playback" data-testid="playback-slot" hidden />
         </section>
 
         <aside className="side side-right">
           <section className="panel table">
-            <PlayerStrip session={session} seat={1 - bottom} />
+            <PlayerStrip session={session} seat={1 - bottom} clocks={clocks} running={running} />
             <MoveList
               session={session}
               problem={problem}
               lost={session !== null && error !== null}
+              shownTurn={shownTurn}
+              atLatest={atLatest}
+              detail={detail}
+              onPick={pickTurn}
             />
-            <div className="controls">
-              {['↶ Takeback', '⚑ Resign', 'Save', 'Export file'].map((label) => (
-                <button key={label} className="ctrl" type="button" disabled title="Coming later">
-                  {label}
-                </button>
-              ))}
-            </div>
-            <PlayerStrip session={session} seat={bottom} />
+            {session !== null && (
+              <Controls
+                showPlayControls={mode !== 'bots' && !over}
+                takebackTo={controls.takebackTo}
+                resignSeat={controls.resignSeat}
+                canSave={session.turns.length > 0}
+                onTakeback={takeback}
+                onResign={resign}
+                onSave={() => void save()}
+                onExport={() => void exportFile()}
+              />
+            )}
+            {over && mode !== null && (
+              <EndBlock
+                disabled={pending}
+                onRematch={() => void rematch()}
+                onNewGame={() => setDialogMode(mode)}
+              />
+            )}
+            <PlayerStrip session={session} seat={bottom} clocks={clocks} running={running} />
           </section>
         </aside>
       </main>
+      <Toast text={toast.text} />
       {dialogMode !== null && game !== null && (
         <SetupDialog
           key={dialogMode}

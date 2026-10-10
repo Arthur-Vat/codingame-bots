@@ -6,7 +6,7 @@ The decisions behind it are [ADR 0025](../docs/adr/0025-studio.md) (the studio),
 
 ## Status
 
-The front end's scaffold exists, in [`web/`](web/), and so does the app shell: the top bar, the home screen (one card per game from the server), the game page's layout (lobby, board settings, player strips, move list) and the three setup dialogs with their advanced mode. A game started from a dialog is created on the server and its turns are listed as they come. The interface a game implements for the studio is in [`game/`](game/), with Ultimate Tic-Tac-Toe's adapter, and the local server in [`server/`](server/): see "Running the server" below. There is no board yet (the game page holds a square slot for it), the clocks do not run, and the history page is a placeholder.
+The front end's scaffold exists, in [`web/`](web/), and so does the app shell: the top bar, the home screen (one card per game from the server), the game page's layout and the three setup dialogs with their advanced mode. Games are playable: Ultimate Tic-Tac-Toe's board is drawn from the server's frames, and the three modes work against the server: a friend on the same screen, a release with takebacks, and two releases playing each other. Human clocks (minutes plus increment) run in the front end, which ends the game on a timeout; a bot shows the time it has used. The move list and the keys ← → Home End look back at earlier positions, and input is accepted on the latest one only. A game that ends shows its result, with Rematch, New game, Save and Export file. The interface a game implements for the studio is in [`game/`](game/), with Ultimate Tic-Tac-Toe's adapter, and the local server in [`server/`](server/): see "Running the server" below. The review screen (playback speeds, analysis) and the history page's list are not there yet.
 
 ## Front end
 
@@ -65,7 +65,7 @@ A game adds an adapter crate, `games/<game>/studio`, that implements `studio_gam
 
 `studio_game::live_game` replays turns with a fresh referee into a `cg_arena::live::LiveGame`. The adapter's frame format is documented in its crate; `games/uttt/studio` is the first.
 
-A game's board renderer lives in `web/src/games/<game>/` and is registered in `web/src/games/registry.ts`, which maps the game's id to a React component that draws one frame.
+A game's board renderer lives in `web/src/games/<game>/` and is registered in `web/src/games/registry.ts`, which maps the game's id to a React component that draws one frame and reports a chosen action (`onAction`, the `action` of one of the session's `human_moves`), and may add a function that words how a finished game ended (`resultDetails`).
 
 ## Running the server
 
