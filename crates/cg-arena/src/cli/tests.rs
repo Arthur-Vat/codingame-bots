@@ -249,5 +249,13 @@ fn writes_parseable_record_files_in_a_new_directory() {
     assert_eq!(record.game, "uttt");
     assert_eq!(record.source, "arena match");
     assert_eq!(record.turns.len(), 1);
+    assert_eq!(record.players[0].command.as_deref(), Some("x"));
+
+    // A second run in the same directory must not overwrite the record.
+    let mut again = Records::create(&args.common, "uttt", "arena match").unwrap();
+    again.write(&tournament, &game(0, false));
+    let error = again.finish().unwrap_err();
+    assert!(error.contains("the file exists"), "{error}");
+    assert_eq!(fs::read_to_string(dir_arg.join(&names[0])).unwrap(), json);
     fs::remove_dir_all(&dir).unwrap();
 }

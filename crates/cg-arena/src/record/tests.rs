@@ -106,13 +106,23 @@ fn a_record_round_trips_through_json() {
         time_scale: 2.0,
         ..MatchOptions::default()
     };
+    let bots = [
+        BotSpec::parse("a=target/release/bot --fast 3").unwrap(),
+        BotSpec::parse("b=other").unwrap(),
+    ];
     let record = Record::from_match(
         "uttt",
         "arena match",
         4,
         &played(Some(0), EndReason::Finished),
         &options,
+        [&bots[0], &bots[1]],
     );
+    assert_eq!(
+        record.players[0].command.as_deref(),
+        Some("target/release/bot --fast 3")
+    );
+    assert_eq!(record.players[1].command.as_deref(), Some("other"));
     assert_eq!(record.format, 1);
     assert_eq!(RECORD_FORMAT, 1);
     assert_eq!(record.players[1].name, "b");

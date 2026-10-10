@@ -1,8 +1,8 @@
 //! The command line shared by every game's arena binary, with three
 //! commands: `match`, `sprt` and `league`.
 
-use std::fs::{self, File};
-use std::io::{BufWriter, Write};
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::thread;
@@ -56,13 +56,14 @@ pub struct CommonArgs {
     /// directory, created if missing. Files are named
     /// GAME-SEED-pPAIR-SWAPPED.json (SWAPPED is 1 for the second game of a
     /// pair). A league adds the number of the bots' matchup, as in
-    /// GAME-SEED-m0v1-p3-1.json.
+    /// GAME-SEED-m0v1-p3-1.json. Existing files are never overwritten: use a
+    /// new or empty directory.
     #[arg(long, value_name = "DIR")]
     pub records: Option<PathBuf>,
 
-    /// Keep about N games per bot pair, a mix of wins, draws and losses of
-    /// the first bot, plus every game lost by a fault. Without it,
-    /// --records keeps every game.
+    /// Keep about N games per pair of bots (each matchup of a league), a
+    /// mix of wins, draws and losses of the first bot, plus every game lost
+    /// by a fault. Without it, --records keeps every game.
     #[arg(long, value_name = "N", requires = "records")]
     pub records_sample: Option<usize>,
 
@@ -241,7 +242,7 @@ fn run_match<F: RefereeFactory>(
         },
     )?;
     output.finish()?;
-    records.finish()?;
+    let records_result = records.finish();
 
     println!("{summary}");
     let mut passed = faults_ok(&args.common, &summary);
@@ -256,7 +257,7 @@ fn run_match<F: RefereeFactory>(
         eprintln!("error: {first} is clearly weaker than {second}");
         passed = false;
     }
-    Ok(passed)
+    records_result.map(|()| passed)
 }
 
 fn run_sprt<F: RefereeFactory>(
@@ -299,7 +300,7 @@ fn run_sprt<F: RefereeFactory>(
         },
     )?;
     output.finish()?;
-    records.finish()?;
+    let records_result = records.finish();
 
     println!("{summary}");
     let (lower, upper) = settings.bounds();
@@ -324,7 +325,8 @@ fn run_sprt<F: RefereeFactory>(
             Verdict::Continue => format!("INCONCLUSIVE after {} pairs", args.max_pairs),
         }
     );
-    Ok(faults_ok(&args.common, &summary) && verdict == Verdict::Accepted)
+    let passed = faults_ok(&args.common, &summary) && verdict == Verdict::Accepted;
+    records_result.map(|()| passed)
 }
 
 fn run_league<F: RefereeFactory>(
@@ -403,7 +405,7 @@ fn run_league<F: RefereeFactory>(
         }
     }
     output.finish()?;
-    records.finish()?;
+    let records_result = records.finish();
 
     let ratings = elo_ratings(bots.len(), &results, anchor);
     let margins = elo_margins(bots.len(), &results, anchor, &ratings);
@@ -431,7 +433,7 @@ fn run_league<F: RefereeFactory>(
             }
         }
     }
-    Ok(passed)
+    records_result.map(|()| passed)
 }
 
 /// Checks that `--expect-no-faults-from` names one of `names`.
@@ -627,17 +629,24 @@ impl Records {
         if !self.sampler.keep(game) {
             return;
         }
+        let [first, second] = &tournament.bots;
+        let seat_bots = if game.swapped {
+            [second, first]
+        } else {
+            [first, second]
+        };
         let record = Record::from_match(
             &self.game,
             self.source,
             tournament.opening_plies,
             &game.game,
             &tournament.options,
+            seat_bots,
         );
         let path = dir.join(record_file_name(&self.stem, game));
         let written = serde_json::to_vec(&record)
             .map_err(|err| err.to_string())
-            .and_then(|json| fs::write(&path, json).map_err(|err| err.to_string()));
+            .and_then(|json| write_new_file(&path, &json));
         if let Err(err) = written {
             self.error
                 .get_or_insert(format!("{}: {err}", path.display()));
@@ -650,6 +659,23 @@ impl Records {
             None => Ok(()),
         }
     }
+}
+
+/// Writes `bytes` to a file that must not exist yet: a record is never
+/// overwritten.
+fn write_new_file(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .map_err(|err| {
+            if err.kind() == io::ErrorKind::AlreadyExists {
+                "the file exists; use a new or empty directory for --records".to_string()
+            } else {
+                err.to_string()
+            }
+        })?;
+    file.write_all(bytes).map_err(|err| err.to_string())
 }
 
 /// `STEM-pPAIR-0.json`, or `-1` for the swapped game of the pair.

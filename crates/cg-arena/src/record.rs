@@ -9,7 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 
 use crate::referee::SEATS;
-use crate::runner::{bot_seed, EndReason, MatchOptions, MatchRecord};
+use crate::runner::{bot_seed, BotSpec, EndReason, MatchOptions, MatchRecord};
 use crate::tournament::GameRecord;
 
 /// The version of the record format. A change to the format raises it.
@@ -45,6 +45,9 @@ pub struct Player {
     pub kind: PlayerKind,
     /// The `CG_SEED` the bot received; `None` for humans.
     pub bot_seed: Option<u64>,
+    /// How the bot was started: its program and arguments, joined with
+    /// single spaces; `None` for humans.
+    pub command: Option<String>,
     /// The factor applied to the game's time limits.
     pub time_scale: f64,
     /// The `CG_FIXED_ITERS` the bot inherited, if it is set to a number.
@@ -74,13 +77,15 @@ pub struct Record {
 }
 
 impl Record {
-    /// The record of a game the arena played, made now.
+    /// The record of a game the arena played, made now. `bots` are the
+    /// players by seat.
     pub fn from_match(
         game: &str,
         source: &str,
         opening_plies: u32,
         played: &MatchRecord,
         options: &MatchOptions,
+        bots: [&BotSpec; SEATS],
     ) -> Record {
         let fixed_iters = fixed_iters(std::env::var(FIXED_ITERS_ENV).ok().as_deref());
         let unix_time = SystemTime::now()
@@ -97,6 +102,7 @@ impl Record {
                 name: played.seats[seat].clone(),
                 kind: PlayerKind::Bot,
                 bot_seed: Some(bot_seed(played.seed, seat, &played.seats[seat])),
+                command: Some(command_line(bots[seat])),
                 time_scale: options.time_scale,
                 fixed_iters,
             }),
@@ -105,6 +111,13 @@ impl Record {
             winner: played.winner,
         }
     }
+}
+
+/// The program and arguments of `bot`, joined with single spaces.
+fn command_line(bot: &BotSpec) -> String {
+    let mut words = vec![bot.program.as_str()];
+    words.extend(bot.args.iter().map(String::as_str));
+    words.join(" ")
 }
 
 /// The iteration count in `CG_FIXED_ITERS`, read as the bots read it.
