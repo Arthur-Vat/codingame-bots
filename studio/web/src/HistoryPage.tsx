@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import {
   ApiError,
   deleteHistory,
@@ -74,6 +74,7 @@ async function readText(file: File): Promise<string | null> {
 function Row({
   entry,
   confirming,
+  deleting,
   onAsk,
   onCancel,
   onDelete,
@@ -81,6 +82,7 @@ function Row({
 }: {
   entry: HistoryEntry;
   confirming: boolean;
+  deleting: boolean;
   onAsk: () => void;
   onCancel: () => void;
   onDelete: () => void;
@@ -111,10 +113,10 @@ function Row({
           </button>
           {confirming ? (
             <>
-              <button className="ctrl danger" type="button" onClick={onDelete}>
+              <button className="ctrl danger" type="button" disabled={deleting} onClick={onDelete}>
                 Delete for good
               </button>
-              <button className="ctrl" type="button" onClick={onCancel}>
+              <button className="ctrl" type="button" disabled={deleting} onClick={onCancel}>
                 Cancel
               </button>
             </>
@@ -135,6 +137,8 @@ export function HistoryPage({ gamesState }: { gamesState: GamesState }) {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [refused, setRefused] = useState<ImportRefusal[]>([]);
   const [busy, setBusy] = useState(false);
+  const deleting = useRef(false);
+  const [deletingNow, setDeletingNow] = useState(false);
   const toast = useToast();
 
   const query = historyQuery(filters);
@@ -143,6 +147,7 @@ export function HistoryPage({ gamesState }: { gamesState: GamesState }) {
   const change = (patch: Partial<HistoryFilters>) => {
     setFilters((previous) => ({ ...previous, ...patch }));
     setConfirming(null);
+    setRefused([]);
   };
 
   const exportGame = async (id: string) => {
@@ -153,6 +158,10 @@ export function HistoryPage({ gamesState }: { gamesState: GamesState }) {
     }
   };
   const deleteGame = async (id: string) => {
+    // One request at a time: a second click while the first is in flight does nothing.
+    if (deleting.current) return;
+    deleting.current = true;
+    setDeletingNow(true);
     try {
       await deleteHistory(id);
       setConfirming(null);
@@ -160,6 +169,9 @@ export function HistoryPage({ gamesState }: { gamesState: GamesState }) {
       toast.show('Deleted');
     } catch (failure) {
       toast.show(errorMessage(failure));
+    } finally {
+      deleting.current = false;
+      setDeletingNow(false);
     }
   };
 
@@ -276,7 +288,7 @@ export function HistoryPage({ gamesState }: { gamesState: GamesState }) {
           </select>
         </div>
         <div className="field">
-          <label htmlFor="f-from">From</label>
+          <label htmlFor="f-from">From (UTC)</label>
           <input
             id="f-from"
             type="date"
@@ -285,7 +297,7 @@ export function HistoryPage({ gamesState }: { gamesState: GamesState }) {
           />
         </div>
         <div className="field">
-          <label htmlFor="f-to">To</label>
+          <label htmlFor="f-to">To (UTC)</label>
           <input
             id="f-to"
             type="date"
@@ -339,6 +351,7 @@ export function HistoryPage({ gamesState }: { gamesState: GamesState }) {
                     key={entry.id}
                     entry={entry}
                     confirming={confirming === entry.id}
+                    deleting={deletingNow}
                     onAsk={() => setConfirming(entry.id)}
                     onCancel={() => setConfirming(null)}
                     onDelete={() => void deleteGame(entry.id)}

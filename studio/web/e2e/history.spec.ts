@@ -67,6 +67,8 @@ interface Mock {
   /** What POST /api/history answers for a record, by its seed. */
   answer: (record: { seed: number }) => { status: number; json: unknown };
   viewed: unknown[];
+  /** When set, a delete waits for it. */
+  gate: Promise<void> | null;
 }
 
 async function mockHistory(page: Page, rows: Entry[] = ROWS): Promise<Mock> {
@@ -77,6 +79,7 @@ async function mockHistory(page: Page, rows: Entry[] = ROWS): Promise<Mock> {
     posted: [],
     answer: () => ({ status: 200, json: { id: 'x', duplicate: false } }),
     viewed: [],
+    gate: null,
   };
   await mockGames(page);
   await page.route(
@@ -99,6 +102,7 @@ async function mockHistory(page: Page, rows: Entry[] = ROWS): Promise<Mock> {
     const id = new URL(request.url()).pathname.split('/').pop() ?? '';
     if (request.method() === 'DELETE') {
       mock.deleted.push(id);
+      await mock.gate;
       mock.rows = mock.rows.filter((row) => row.id !== id);
       await route.fulfill({ status: 204, body: '' });
     } else {
@@ -150,8 +154,8 @@ test('the filters send their query, and an empty answer says nothing matches', a
   await page.getByLabel('Result').selectOption({ label: 'Faults' });
   await expect.poll(() => mock.queries.at(-1)).toBe('?release=uttt-v009&result=fault');
   await page.getByLabel('Source').selectOption({ label: 'Arena samples' });
-  await page.getByLabel('From').fill('2026-10-01');
-  await page.getByLabel('To').fill('2026-10-10');
+  await page.getByLabel('From (UTC)').fill('2026-10-01');
+  await page.getByLabel('To (UTC)').fill('2026-10-10');
   await expect
     .poll(() => mock.queries.at(-1))
     .toBe('?release=uttt-v009&result=fault&source=arena&from=2026-10-01&to=2026-10-10');
@@ -166,8 +170,8 @@ test('the filters send their query, and an empty answer says nothing matches', a
   await page.getByLabel('Release').selectOption('');
   await page.getByLabel('Result').selectOption('');
   await page.getByLabel('Source').selectOption('');
-  await page.getByLabel('From').fill('');
-  await page.getByLabel('To').fill('');
+  await page.getByLabel('From (UTC)').fill('');
+  await page.getByLabel('To (UTC)').fill('');
   await expect.poll(() => mock.queries.at(-1)).toBe('');
   await expect(page.getByTestId('history-empty')).toContainText('No saved games yet');
 });
@@ -298,7 +302,7 @@ test('a file can be reviewed without being saved, then saved from the review', a
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(loaded)),
   });
-  await expect(page).toHaveURL(/#\/review\/file\/f\d+$/);
+  await expect(page).toHaveURL(/#\/review\/file\/f[0-9a-z]+$/);
   await expect(page.getByText('sample.json')).toBeVisible();
   expect(mock.viewed).toEqual([loaded]);
   expect(mock.posted).toEqual([]);
@@ -311,4 +315,51 @@ test('a file can be reviewed without being saved, then saved from the review', a
   const exported = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export file' }).click();
   expect((await exported).suggestedFilename()).toBe('sample.json');
+});
+
+test('a double click on Delete for good sends one request', async ({ page }) => {
+  const mock = await mockHistory(page);
+  let release: () => void = () => {};
+  mock.gate = new Promise<void>((resolve) => (release = resolve));
+  await page.goto('/#/history');
+  const first = rows(page).nth(0);
+  await first.getByRole('button', { name: 'Delete', exact: true }).click();
+  const confirm = first.getByRole('button', { name: 'Delete for good' });
+  await confirm.dblclick();
+  await expect(confirm).toBeDisabled();
+  await expect.poll(() => mock.deleted.length).toBe(1);
+  release();
+  await expect(rows(page)).toHaveCount(4);
+  expect(mock.deleted).toHaveLength(1);
+});
+
+test('the list of refused files goes away with a filter change or a later import', async ({
+  page,
+}) => {
+  const mock = await mockHistory(page);
+  mock.answer = ({ seed }) =>
+    seed === 3
+      ? { status: 400, json: { error: 'invalid game record: nope' } }
+      : { status: 200, json: { id: 'x', duplicate: false } };
+  await page.goto('/#/history');
+  await expect(rows(page)).toHaveCount(5);
+  const file = (name: string, seed: number) => ({
+    name,
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(record({ seed }))),
+  });
+  const refused = page.getByRole('alert', { name: 'Refused files' });
+
+  await page.getByLabel('Load game files').setInputFiles(file('bad.json', 3));
+  await expect(refused).toContainText('bad.json');
+  await page.getByLabel('Result').selectOption({ label: 'Draw' });
+  await expect(refused).toHaveCount(0);
+
+  await page.getByLabel('Load game files').setInputFiles(file('bad.json', 3));
+  await expect(refused).toContainText('bad.json');
+  await page.getByLabel('Load game files').setInputFiles(file('good.json', 1));
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Imported 1, 0 already there, 0 refused' }),
+  ).toBeVisible();
+  await expect(refused).toHaveCount(0);
 });
