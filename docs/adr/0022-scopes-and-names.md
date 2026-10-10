@@ -1,6 +1,6 @@
 # 0022. Scopes for decision records and pull requests
 
-- Status: accepted (owner, 2026-10-09)
+- Status: accepted (owner, 2026-10-09); decision 2 completed by [0025](0025-studio.md) (the scope `studio`)
 - Date: 2026-10-09
 - Scope: framework
 

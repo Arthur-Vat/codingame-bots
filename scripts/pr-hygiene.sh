@@ -48,8 +48,8 @@ export LC_ALL=C
 
 types=(feat fix docs test ci refactor perf chore build revert)
 # The crates (core, search, arena, bundler), .github/ (workflows), scripts/ (scripts), docs/adr/ (adr),
-# other documentation (docs), .claude/ (agents), workspace configuration (repo).
-framework_scopes=(core search arena bundler workflows scripts adr docs agents repo)
+# other documentation (docs), .claude/ (agents), workspace configuration (repo), studio/ (studio, ADR 0025).
+framework_scopes=(core search arena bundler workflows scripts adr docs agents repo studio)
 max_length=100
 label_color=ededed
 games_dir="${GAMES_DIR:-games}"
