@@ -139,6 +139,19 @@ export function isTextEntry(target: {
   );
 }
 
+/**
+ * Whether Space on this element belongs to the browser (it presses a button or a link, toggles a
+ * checkbox or a radio button), so no page shortcut may take it.
+ */
+export function usesSpace(target: { tagName: string; type?: string }): boolean {
+  const tag = target.tagName.toUpperCase();
+  if (tag === 'BUTTON' || tag === 'A') return true;
+  if (tag !== 'INPUT') return false;
+  return ['checkbox', 'radio', 'button', 'submit', 'reset', 'image', 'file'].includes(
+    (target.type ?? 'text').toLowerCase(),
+  );
+}
+
 /** Whether a click on the board may play: the latest frame, a human to move, nothing in flight. */
 export function canPlay(
   session: Session | null,

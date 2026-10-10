@@ -1,6 +1,6 @@
 /* Small helpers of the page that the game and review screens share. */
 
-import { isTextEntry } from './play';
+import { isTextEntry, usesSpace } from './play';
 
 /** Whether a key press belongs to a field that takes text or a choice, not to the board. */
 export function typesText(target: EventTarget | null): boolean {
@@ -10,6 +10,17 @@ export function typesText(target: EventTarget | null): boolean {
       tagName: target.tagName,
       type: target instanceof HTMLInputElement ? target.type : undefined,
       isContentEditable: target.isContentEditable,
+    })
+  );
+}
+
+/** Whether Space on the target is for the browser: a button, a link, a checkbox or a radio. */
+export function takesSpace(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    usesSpace({
+      tagName: target.tagName,
+      type: target instanceof HTMLInputElement ? target.type : undefined,
     })
   );
 }

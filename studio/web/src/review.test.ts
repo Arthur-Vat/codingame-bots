@@ -8,6 +8,7 @@ import {
   playbackInterval,
   playbackReducer,
   PLAYBACK_START,
+  retime,
   reviewKey,
   reviewOfRecord,
   reviewOfSession,
@@ -217,6 +218,27 @@ describe('playbackInterval', () => {
   });
 });
 
+describe('retime', () => {
+  it('keeps the delay in use while the wanted one is close to it', () => {
+    // A live game gains a frame: 120 s over 40 steps, then over 41.
+    expect(retime(3000, playbackInterval(41, 1))).toBe(3000);
+    expect(retime(3000, 2926)).toBe(3000);
+  });
+
+  it('takes the wanted delay when it differs by more than a quarter, as a new speed does', () => {
+    expect(retime(3000, 750)).toBe(750);
+    expect(retime(3000, 6000)).toBe(6000);
+    expect(retime(1000, 1300)).toBe(1300);
+    expect(retime(1000, 1250)).toBe(1000);
+  });
+
+  it('follows a delay that appears or goes away', () => {
+    expect(retime(null, 1000)).toBe(1000);
+    expect(retime(1000, null)).toBeNull();
+    expect(retime(null, null)).toBeNull();
+  });
+});
+
 describe('playbackReducer', () => {
   const at = (patch: Partial<PlaybackState>): PlaybackState => ({ ...PLAYBACK_START, ...patch });
 
@@ -255,6 +277,23 @@ describe('playbackReducer', () => {
     expect(state).toEqual({ cursor: 2, playing: true, speed: 4 });
     const paused = playbackReducer(at({ cursor: 2 }), { type: 'speed', speed: 0.5 });
     expect(paused).toEqual({ cursor: 2, playing: false, speed: 0.5 });
+  });
+
+  it('stops playing when a jump lands on the last frame', () => {
+    expect(
+      playbackReducer(at({ cursor: 1, playing: true }), { type: 'goto', frame: 5, last: 5 }),
+    ).toEqual({
+      cursor: 5,
+      playing: false,
+      speed: 1,
+    });
+    // A jump past the end lands on the last frame too.
+    expect(
+      playbackReducer(at({ playing: true }), { type: 'goto', frame: 99, last: 5 }).playing,
+    ).toBe(false);
+    expect(
+      playbackReducer(at({ playing: true }), { type: 'goto', frame: 4, last: 5 }).playing,
+    ).toBe(true);
   });
 
   it('jumps within the frames and keeps the playing state', () => {
@@ -313,6 +352,8 @@ describe('loaded files', () => {
     const first = rememberFile({ name: 'a.json', record: { a: 1 } });
     const second = rememberFile({ name: 'a.json', record: { a: 1 } });
     expect(first).not.toBe(second);
+    // Not a counter that starts again after a reload.
+    expect(first).toMatch(/^f[0-9a-z]{8,}$/);
     expect(recallFile(first)).toEqual({ name: 'a.json', record: { a: 1 } });
     expect(recallFile('missing')).toBeNull();
   });
