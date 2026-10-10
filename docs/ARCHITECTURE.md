@@ -29,6 +29,7 @@ codingame-bots/
 │  ├─ cg-check.sh           size and standalone build of paste-ready files
 │  ├─ new-release.sh        a bot -> games/<game>/releases/<game>-vNNN.rs
 │  ├─ check-releases.sh     releases frozen and true to their sources
+│  ├─ check-determinism.sh  releases replay identically with a fixed seed and iterations; iteration rates
 │  ├─ sprt.sh               smoke test and SPRT of a candidate file
 │  ├─ league.sh             Elo ratings of every release
 │  ├─ prune-branches.sh     deletes finished claude/ branches (ADR 0021)
@@ -123,7 +124,7 @@ GitHub Actions on free standard runners. `main` only accepts changes whose check
 
 | Workflow | Trigger | Does |
 | --- | --- | --- |
-| `ci.yml` | Pushes to `main`, every pull request, by hand | Tiers 1 to 3: format, lint, tests (parity included); bundles every bot, checks and plays the bundles; checks new releases; evaluation sanity checks; engine speed; dependency policy; docs indexes, status lines and links, shellcheck and actionlint; the studio's front end (package licenses, format, lint, types, unit tests, build, browser tests; [ADR 0026](adr/0026-node-for-the-studio.md)) |
+| `ci.yml` | Pushes to `main`, every pull request, by hand | Tiers 1 to 3: format, lint, tests (parity included); bundles every bot, checks and plays the bundles; checks new releases, including that they replay identically with a fixed seed and iterations; evaluation sanity checks; engine speed; dependency policy; docs indexes, status lines and links, shellcheck and actionlint; the studio's front end (package licenses, format, lint, types, unit tests, build, browser tests; [ADR 0026](adr/0026-node-for-the-studio.md)) |
 | `sprt.yml` | Every pull request | Tiers 4 and 6 for each release file the pull request adds, verdict as a check and a comment; passes at once when there is none. For a game in Legend the SPRT plays at CodinGame's full time ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)) |
 | `league.yml` | Push to `main` changing releases or evaluation settings, pull requests changing the league itself, by hand | Tier 7, ratings of all releases in the run summary |
 | `release.yml` | Push to `main` adding a release | Tag and GitHub release with the paste-ready file |
