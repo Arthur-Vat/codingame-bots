@@ -119,8 +119,8 @@ The history is one JSON file per game in `studio/data/history/` (or `<data>/hist
 
 The studio is meant for a Windows computer ([ADR 0025](../docs/adr/0025-studio.md)); the `Studio on Windows` job of CI builds it, tests it and plays a game through the server there. The commands are for PowerShell.
 
-1. Install Rust with rustup from <https://rustup.rs>, accepting the default (MSVC) toolchain. It asks for the Visual Studio Build Tools: install them with the workload "Desktop development with C++". Then open a new terminal.
-2. Install Node 22 LTS from <https://nodejs.org>.
+1. Install Rust with rustup from <https://rustup.rs>, accepting the default (MSVC) toolchain. It needs Microsoft's C++ build tools: accept its offer to install Visual Studio, or install the Visual Studio Build Tools with the workload "Desktop development with C++". Then open a new terminal.
+2. Install Node 22 LTS from <https://nodejs.org>: the front page may offer a newer line, so pick version 22 on the downloads page.
 3. Clone the repository (`git clone https://github.com/Arthur-Vat/codingame-bots.git`) or, if you already have it, run `git pull`.
 4. Build the front end:
 

@@ -184,9 +184,7 @@ jobs:
     # The owner runs the studio on Windows (ADR 0025). Git Bash, curl and jq
     # are preinstalled on the runner.
     runs-on: windows-latest
-    defaults:
-      run:
-        shell: bash
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
@@ -217,7 +215,7 @@ jobs:
 
           up=""
           for _ in $(seq 60); do
-            if curl -s --max-time 5 "$base/api/games" >/dev/null; then
+            if curl -sS --max-time 5 "$base/api/games" >/dev/null; then
               up=yes
               break
             fi
@@ -230,7 +228,7 @@ jobs:
 
           seat='{"kind":"bot","release":"uttt-v001","think_ms":50,"mode":"realtime"}'
           body="{\"game\":\"uttt\",\"seed\":1,\"opening_plies\":0,\"seats\":[$seat,$seat]}"
-          created="$(curl -s --max-time 30 -X POST -H 'Content-Type: application/json' \
+          created="$(curl -sS --max-time 30 -X POST -H 'Content-Type: application/json' \
             -d "$body" "$base/api/sessions")"
           echo "$created"
           id="$(jq -r '.id // empty' <<<"$created" | tr -d '\r')"
@@ -242,7 +240,7 @@ jobs:
           status=""
           session=""
           for _ in $(seq 120); do
-            session="$(curl -s --max-time 10 "$base/api/sessions/$id" || true)"
+            session="$(curl -sS --max-time 10 "$base/api/sessions/$id" || true)"
             status="$(jq -r '.status // empty' <<<"$session" 2>/dev/null | tr -d '\r' || true)"
             case "$status" in
               over | failed) break ;;
