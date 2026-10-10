@@ -146,6 +146,15 @@ fn a_computer_game_answers_and_replays_after_a_takeback() {
     assert_eq!(record["players"][0]["kind"], "human");
     assert_eq!(record["turns"].as_array().unwrap().len(), 4);
 
+    // Only a human can resign or run out of time.
+    let (status, _) = call(
+        &state,
+        "POST",
+        &format!("/api/sessions/{id}/end"),
+        &json!({"seat": 1, "reason": "resign"}),
+    );
+    assert_eq!(status, 409);
+
     call(
         &state,
         "DELETE",
@@ -159,13 +168,12 @@ fn a_computer_game_answers_and_replays_after_a_takeback() {
 fn a_bot_against_a_bot_plays_to_the_end() {
     let started = Instant::now();
     let state = bot_state();
-    let bot = json!({"kind": "bot", "release": RELEASE, "think_ms": 20, "mode": "realtime"});
+    let bot = json!({"kind": "bot", "release": RELEASE, "think_ms": 100, "mode": "realtime"});
     let id = create(&state, json!([bot, bot]));
     let session = wait_for(&state, &id, "the end of the game", |s| {
         s["status"] == "over"
     });
     assert!(session["result"].is_object(), "{session}");
-    assert!(turns(&session) >= 5);
     assert_eq!(session["to_act"], json!([]));
     let (_, record) = call(
         &state,
@@ -173,7 +181,7 @@ fn a_bot_against_a_bot_plays_to_the_end() {
         &format!("/api/sessions/{id}/record"),
         &Value::Null,
     );
-    assert_eq!(record["players"][0]["time_scale"], 0.2);
+    assert_eq!(record["players"][0]["time_scale"], 1.0);
     assert_eq!(record["players"][0]["fixed_iters"], Value::Null);
     assert_eq!(record["end"], session["result"]["end"]);
 

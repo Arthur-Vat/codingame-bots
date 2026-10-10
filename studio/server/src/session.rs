@@ -15,10 +15,14 @@
 //!
 //! # Ending a game by hand
 //!
-//! `EndReason` has no variant for a resignation, so a resignation is
-//! `Aborted { reason: "seat N resigned" }` while the session's result names
-//! the other seat as the winner. A human's flag falling is
-//! `Timeout { seat, limit_ms: 0 }`: the front end runs the clocks.
+//! Only a human seat can end a game this way. A resignation is
+//! `Resigned { seat }`; a human's flag falling is `Timeout { seat, limit_ms: 0 }`
+//! (the front end runs the clocks). In both the other seat wins.
+//!
+//! # Records
+//!
+//! A bot's `Player.command` in a studio record is the release's name, not
+//! the path of the compiled binary: the path is specific to the computer.
 
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 

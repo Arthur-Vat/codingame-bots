@@ -248,7 +248,8 @@ fn a_friend_game_is_played_by_move_index() {
     assert_eq!(status, 200, "{session}");
     assert_eq!(session["status"], "over");
     assert_eq!(session["result"]["winner"], 1);
-    assert_eq!(session["result"]["end"]["kind"], "aborted");
+    assert_eq!(session["result"]["end"]["kind"], "resigned");
+    assert_eq!(session["result"]["end"]["seat"], 0);
     assert_eq!(session["to_act"], json!([]));
     assert_eq!(session["human_moves"], json!([]));
     let (status, _) = call(

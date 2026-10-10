@@ -8,11 +8,10 @@
 use std::thread;
 use std::time::Duration;
 
-use cg_arena::live::{BotSettings, LiveBot, LiveGame, ReplayError, ResyncError};
+use cg_arena::live::{resync_bot_with, BotSettings, LiveBot, ResyncError};
 use cg_arena::record::RecordedAnswer;
-use cg_arena::referee::{GameSetup, SEATS};
+use cg_arena::referee::SEATS;
 use cg_arena::runner::{bot_seed, BotSpec, EndReason};
-use studio_game::StudioGame;
 
 use crate::session::{time_scale, Mode, Progress, SeatConfig, Session, Status};
 use crate::speed::iterations;
@@ -164,21 +163,31 @@ fn prepare(state: &State, session: &SharedSession, generation: u64) -> Result<bo
     {
         return Ok(false);
     }
-    let mut done = 0;
+    let mut replayed = 0;
     let mut started: [Option<LiveBot>; SEATS] = [None, None];
     for plan in &plans {
-        let mut tick = || {
-            done += 1;
-            update(session, generation, |s| {
-                s.progress = Some(Progress {
-                    done,
-                    total: Some(total),
-                });
-            })
-        };
-        match resync(game, plan, setup, &turns, &mut tick) {
-            Ok(Some(bot)) => started[plan.seat] = Some(bot),
-            Ok(None) => return Ok(false),
+        let before = replayed;
+        let result = resync_bot_with(
+            &plan.spec,
+            &plan.settings,
+            game.new_referee(&setup),
+            setup,
+            &turns,
+            plan.seat,
+            plan.limit,
+            &mut |done, _| {
+                replayed = before + done;
+                update(session, generation, |s| {
+                    s.progress = Some(Progress {
+                        done: before + done,
+                        total: Some(total),
+                    });
+                })
+            },
+        );
+        match result {
+            Ok(bot) => started[plan.seat] = Some(bot),
+            Err(ResyncError::Cancelled) => return Ok(false),
             Err(ResyncError::Diverged { .. }) => {
                 return Err(format!(
                     "{} did not replay identically; takebacks are unavailable against it",
@@ -192,46 +201,6 @@ fn prepare(state: &State, session: &SharedSession, generation: u64) -> Result<bo
         s.bots = started;
         s.progress = None;
     }))
-}
-
-/// Like [`cg_arena::live::resync_bot`], which this follows step by step, but
-/// reports each replayed answer to `tick` and stops (`Ok(None)`) when `tick`
-/// returns false, so a takeback can show its progress and a deleted session
-/// stops being replayed.
-fn resync(
-    game: &dyn StudioGame,
-    plan: &Plan,
-    setup: GameSetup,
-    turns: &[Vec<RecordedAnswer>],
-    tick: &mut dyn FnMut() -> bool,
-) -> Result<Option<LiveBot>, ResyncError> {
-    let mut bot = LiveBot::spawn(&plan.spec, &plan.settings).map_err(ResyncError::Spawn)?;
-    let mut live = LiveGame::new(game.new_referee(&setup), setup);
-    for (index, turn) in turns.iter().enumerate() {
-        if let Some(recorded) = turn.iter().find(|answer| answer.seat == plan.seat) {
-            let input = live.input_for(plan.seat);
-            let (lines, _) = bot
-                .ask(&input, live.answer_lines(plan.seat), plan.limit)
-                .map_err(ResyncError::Bot)?;
-            if lines != recorded.lines {
-                return Err(ResyncError::Diverged {
-                    turn: index,
-                    expected: recorded.lines.clone(),
-                    got: lines,
-                });
-            }
-            if !tick() {
-                return Ok(None);
-            }
-        }
-        live.play(turn.clone()).map_err(|invalid| {
-            ResyncError::Invalid(ReplayError {
-                turn: index,
-                invalid,
-            })
-        })?;
-    }
-    Ok(Some(bot))
 }
 
 /// What a bot must be asked.

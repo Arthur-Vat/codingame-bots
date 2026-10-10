@@ -81,11 +81,18 @@ fn answer(state: &State, port: u16, mut request: Request) {
     let origin = header(&request, "Origin");
     let response = if request_allowed(port, host.as_deref(), origin.as_deref()) {
         let mut body = Vec::new();
-        let _ = request.as_reader().take(MAX_BODY).read_to_end(&mut body);
-        let method = request.method().as_str().to_string();
-        let url = request.url().to_string();
-        let path = url.split(['?', '#']).next().unwrap_or("");
-        handle(state, &method, path, &body)
+        let _ = request
+            .as_reader()
+            .take(MAX_BODY + 1)
+            .read_to_end(&mut body);
+        if body.len() as u64 > MAX_BODY {
+            Response::error(413, "the request body is larger than 1 MiB")
+        } else {
+            let method = request.method().as_str().to_string();
+            let url = request.url().to_string();
+            let path = url.split(['?', '#']).next().unwrap_or("");
+            handle(state, &method, path, &body)
+        }
     } else {
         Response::error(403, "forbidden")
     };

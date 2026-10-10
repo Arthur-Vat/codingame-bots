@@ -84,8 +84,8 @@ JSON in and out; errors are `{"error": "..."}`. Ids are short random hex strings
 | `GET /api/sessions/{id}` | The session to poll: `status` (`waiting_human`, `bot_thinking`, `measuring`, `compiling`, `rewinding`, `over`, `failed`), `error`, `to_act`, `opening_turns`, `turns`, `frames`, `human_moves` (for the human to act), `result` and `progress` (`{done, total}` while rewinding; `total` is null while measuring). |
 | `POST /api/sessions/{id}/move` | `{"seat", "index"}`: plays `human_moves[index]`. 409 if it is not that human's turn or the index is wrong. |
 | `POST /api/sessions/{id}/takeback` | `{"turns": k}`: keeps the first `k` turns by replaying the game, and restarts each bot by replaying its answers. 409 against a "realtime" bot, for `k` out of range, or while the session is busy. A release that does not replay identically fails the session. |
-| `POST /api/sessions/{id}/end` | `{"seat", "reason": "resign" \| "timeout"}`: the other seat wins. A timeout ends with `Timeout {seat, limit_ms: 0}` (the front end runs the human clocks); a resignation with `Aborted {reason: "seat N resigned"}` and the other seat as the winner. |
-| `GET /api/sessions/{id}/record` | The game so far as a game record, format 1, source `studio` ([ADR 0027](../docs/adr/0027-game-records.md)). A game not over ends with `Aborted {reason: "unfinished"}`. |
+| `POST /api/sessions/{id}/end` | `{"seat", "reason": "resign" \| "timeout"}`: the other seat wins. A timeout ends with `Timeout {seat, limit_ms: 0}` (the front end runs the human clocks); a resignation with `Resigned {seat}`. Only human seats can end a game this way (409 for a bot). |
+| `GET /api/sessions/{id}/record` | The game so far as a game record, format 1, source `studio` ([ADR 0027](../docs/adr/0027-game-records.md)). A bot's `command` is the release's name (the path of the compiled binary is specific to the computer). A game not over ends with `Aborted {reason: "unfinished"}`. |
 | `DELETE /api/sessions/{id}` | Stops the bots and forgets the session. Sessions untouched for two hours are dropped. |
 
 The two modes of a computer seat:

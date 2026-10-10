@@ -366,15 +366,16 @@ fn post_end(state: &State, id: &str, body: &[u8]) -> Response {
         }
         let seat = request.seat;
         let end = match request.reason.as_str() {
-            "resign" => EndReason::Aborted {
-                reason: format!("seat {seat} resigned"),
-            },
+            "resign" => EndReason::Resigned { seat },
             "timeout" => EndReason::Timeout {
                 seat,
                 limit_ms: 0.0,
             },
             _ => return Response::error(400, "reason must be \"resign\" or \"timeout\""),
         };
+        if !matches!(s.seats[seat], SeatConfig::Human { .. }) {
+            return Response::error(409, "only a human seat can resign or run out of time");
+        }
         if matches!(s.status, Status::Over | Status::Failed) {
             return Response::error(409, "the game is already over");
         }

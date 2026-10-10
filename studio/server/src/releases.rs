@@ -67,6 +67,9 @@ impl Releases {
         let source = self.dir(game).join(format!("{release}.rs"));
         let contents =
             fs::read(&source).map_err(|error| format!("cannot read {release}: {error}"))?;
+        // `DefaultHasher` is only a cache key here, and its algorithm may
+        // change with the Rust version: the release is then compiled again,
+        // which is harmless.
         let mut hasher = DefaultHasher::new();
         hasher.write(&contents);
         let hash = format!("{:016x}", hasher.finish());

@@ -16,6 +16,9 @@ use crate::speed::Speed;
 /// Sessions untouched for this long are dropped.
 const SESSION_IDLE: Duration = Duration::from_secs(2 * 60 * 60);
 
+/// Looking up a session sweeps the idle ones at most this often.
+const SWEEP_EVERY: Duration = Duration::from_secs(60);
+
 /// A session shared between requests and its bot thread.
 pub type SharedSession = Arc<Mutex<Session>>;
 
@@ -31,6 +34,7 @@ struct Inner {
     releases: Releases,
     speed: Speed,
     sessions: Mutex<HashMap<String, SharedSession>>,
+    last_sweep: Mutex<Instant>,
 }
 
 /// The server's state. Cloning shares it: bot threads hold a clone.
@@ -52,6 +56,7 @@ impl State {
                 releases: Releases::new(repo, data.join("bin")),
                 speed: Speed::new(data.join("speed.json")),
                 sessions: Mutex::new(HashMap::new()),
+                last_sweep: Mutex::new(Instant::now()),
             }),
         }
     }
@@ -91,6 +96,7 @@ impl State {
 
     /// The session `id`, marked as used now.
     pub fn session(&self, id: &str) -> Option<SharedSession> {
+        self.sweep_if_due();
         let shared = lock(&self.inner.sessions).get(id).cloned()?;
         lock(&shared).touched = Instant::now();
         Some(shared)
@@ -103,6 +109,19 @@ impl State {
         };
         lock(&shared).stop();
         true
+    }
+
+    /// Sweeps unless it did less than a minute ago, so that an abandoned
+    /// game's bots stop without waiting for a new game to be created.
+    fn sweep_if_due(&self) {
+        {
+            let mut last = lock(&self.inner.last_sweep);
+            if last.elapsed() < SWEEP_EVERY {
+                return;
+            }
+            *last = Instant::now();
+        }
+        self.sweep();
     }
 
     /// Drops the sessions untouched for two hours.
