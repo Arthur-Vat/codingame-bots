@@ -12,3 +12,21 @@ updates:
       interval: monthly
     commit-message:
       prefix: deps
+  - package-ecosystem: npm
+    directory: /studio/web
+    schedule:
+      interval: monthly
+    # Only versions at least two weeks old (studio/README.md).
+    cooldown:
+      default-days: 14
+    ignore:
+      # Stays at the version that matches the Chromium preinstalled in Claude's
+      # sessions (chromium-1194); bumped by hand.
+      - dependency-name: "@playwright/test"
+    # Every other update comes in one pull request.
+    groups:
+      npm:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: deps

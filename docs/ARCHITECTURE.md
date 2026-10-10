@@ -123,7 +123,7 @@ GitHub Actions on free standard runners. `main` only accepts changes whose check
 
 | Workflow | Trigger | Does |
 | --- | --- | --- |
-| `ci.yml` | Pushes to `main`, every pull request, by hand | Tiers 1 to 3: format, lint, tests (parity included); bundles every bot, checks and plays the bundles; checks new releases; evaluation sanity checks; engine speed; dependency policy; docs indexes, status lines and links, shellcheck and actionlint |
+| `ci.yml` | Pushes to `main`, every pull request, by hand | Tiers 1 to 3: format, lint, tests (parity included); bundles every bot, checks and plays the bundles; checks new releases; evaluation sanity checks; engine speed; dependency policy; docs indexes, status lines and links, shellcheck and actionlint; the studio's front end (package licenses, format, lint, types, unit tests, build, browser tests; [ADR 0026](adr/0026-node-for-the-studio.md)) |
 | `sprt.yml` | Every pull request | Tiers 4 and 6 for each release file the pull request adds, verdict as a check and a comment; passes at once when there is none. For a game in Legend the SPRT plays at CodinGame's full time ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)) |
 | `league.yml` | Push to `main` changing releases or evaluation settings, pull requests changing the league itself, by hand | Tier 7, ratings of all releases in the run summary |
 | `release.yml` | Push to `main` adding a release | Tag and GitHub release with the paste-ready file |
@@ -131,6 +131,7 @@ GitHub Actions on free standard runners. `main` only accepts changes whose check
 | `prune-branches.yml` | Weekly (Monday), and by hand | Deletes finished `claude/` branches once their content is safe; a run by hand only lists them unless asked to delete ([ADR 0021](adr/0021-prune-finished-branches.md)) |
 | `pr-hygiene.yml` | Every pull request: opened, edited, new commits | Labels it by the paths it changes and checks its title ([ADR 0022](adr/0022-scopes-and-names.md)); Dependabot's are skipped, forks get the title check only |
 
+- **Node:** the Studio front end job uses the Node line written in `studio/web/package.json` (`engines`), and installs with `npm ci` ([ADR 0026](adr/0026-node-for-the-studio.md)).
 - **Compiler:** every job that builds Rust uses 1.90.0, CodinGame's version ([ADR 0010](adr/0010-codingame-rust-toolchain.md)).
-- **Branch protection:** a ruleset on `main` requires five checks: the four of `ci.yml` (format, lint and test; CodinGame compatibility; dependency licenses and sources; docs and scripts) and the SPRT's, so a rejected release cannot be merged. It blocks direct pushes, without requiring a GitHub review: the owner approves merges in the conversation ([ADR 0006](adr/0006-human-approves-merges.md), [ADR 0023](adr/0023-chat-approved-merges.md)).
+- **Branch protection:** a ruleset on `main` requires five checks: four of `ci.yml` (format, lint and test; CodinGame compatibility; dependency licenses and sources; docs and scripts) and the SPRT's, so a rejected release cannot be merged. The Studio front end job is not among them yet. It blocks direct pushes, without requiring a GitHub review: the owner approves merges in the conversation ([ADR 0006](adr/0006-human-approves-merges.md), [ADR 0023](adr/0023-chat-approved-merges.md)).
 - **Compute:** standard runners only, which are free on public repositories. The SPRT runs in one job on all of the runner's cores, which keeps it sequential; training spreads self-play over up to 20 jobs.
