@@ -25,8 +25,10 @@ import {
   exportFileName,
   findMoveIndex,
   frameAfterTurn,
+  isTextEntry,
   rematchRequest,
   runningSeat,
+  timeoutDue,
   sessionMode,
   turnOfFrame,
 } from './play';
@@ -122,13 +124,20 @@ function Row({ term, value }: { term: string; value: string }) {
   );
 }
 
-/** Whether a key press belongs to a text field or a menu, not to the board. */
+/** Whether a key press belongs to a field that takes text or a choice, not to the board. */
 function typesText(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
-    (target.isContentEditable || ['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName))
+    isTextEntry({
+      tagName: target.tagName,
+      type: target instanceof HTMLInputElement ? target.type : undefined,
+      isContentEditable: target.isContentEditable,
+    })
   );
 }
+
+/** How long to wait before reporting a timeout again after a failure. */
+const TIMEOUT_RETRY_MS = 1000;
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -154,6 +163,11 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
   // A request of ours is in flight: input and clocks wait for its answer.
   const [pending, setPending] = useState(false);
   const inFlight = useRef(false);
+  // A new game is being created (Rematch, or a dialog's Start): one at a time.
+  const launching = useRef(false);
+  const [starting, setStarting] = useState(false);
+  // After a failed timeout report, the next try waits a moment.
+  const [backingOff, setBackingOff] = useState(false);
   // The frame the user looks at while looking back; null follows the latest frame.
   const [pinned, setPinned] = useState<{ sessionId: string | null; frame: number } | null>(null);
   const toast = useToast();
@@ -162,8 +176,8 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
   const gameMissing = gamesState.games !== null && game === null;
   const closeDialog = useCallback(() => setDialogMode(null), []);
 
-  const clocks = useClocks(session, clock, pending);
-  const running = clock === null ? null : runningSeat(session, pending);
+  const clocks = useClocks(session, clock);
+  const running = clock === null ? null : runningSeat(session);
 
   const frames = session?.frames ?? [];
   const latest = frames.length - 1;
@@ -173,21 +187,29 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
   const shownTurn = session === null ? -1 : turnOfFrame(shown, session.opening_turns);
 
   const launch = async (request: SessionRequest, newClock: ClockSettings | null) => {
-    const id = await createSession(request);
-    if (sessionId !== null) {
-      // The old game is forgotten; if the server cannot do it, it drops the session itself.
-      deleteSession(sessionId).catch(() => undefined);
+    if (launching.current) return;
+    launching.current = true;
+    setStarting(true);
+    try {
+      const id = await createSession(request);
+      if (sessionId !== null) {
+        // The old game is forgotten; if the server cannot do it, it drops the session itself.
+        deleteSession(sessionId).catch(() => undefined);
+      }
+      onStarted(id, newClock);
+      setDialogMode(null);
+      window.location.hash = routeHash({ page: 'game', gameId, sessionId: id });
+    } finally {
+      launching.current = false;
+      setStarting(false);
     }
-    onStarted(id, newClock);
-    setDialogMode(null);
-    window.location.hash = routeHash({ page: 'game', gameId, sessionId: id });
   };
 
   const start = ({ form, seed }: SetupResult) =>
     launch(buildSessionRequest(gameId, form, seed, Math.random), clockOf(form));
 
-  /** Runs a request that answers with the session, one at a time. */
-  const run = async (job: (current: Session) => Promise<Session>) => {
+  /** Runs a request that answers with the session, one at a time. `onFailure` runs before the request counts as settled. */
+  const run = async (job: (current: Session) => Promise<Session>, onFailure?: () => void) => {
     if (session === null || inFlight.current) return;
     inFlight.current = true;
     setPending(true);
@@ -195,6 +217,7 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
       apply(await job(session));
     } catch (failure) {
       toast.show(errorMessage(failure));
+      onFailure?.();
     } finally {
       inFlight.current = false;
       setPending(false);
@@ -249,16 +272,22 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
     }
   };
 
-  // A human clock that reaches zero ends the game; it fires once (see clock.ts).
-  const timedOutSeat = clocks?.expired ?? null;
-  const endOnTimeout = useEffectEvent((seat: number) => {
-    if (session?.status === 'waiting_human') {
-      void run((current) => postEnd(current.id, seat, 'timeout'));
-    }
+  // A human clock that reaches zero ends the game (it expires once, see clock.ts). The report is
+  // made as soon as nothing of ours is in flight and the server is not busy, and again after a
+  // failure, so a timeout is never lost.
+  const timeoutSeat = timeoutDue(session, clocks?.expired ?? null, pending, backingOff);
+  const reportTimeout = useEffectEvent((seat: number) => {
+    void run(
+      (current) => postEnd(current.id, seat, 'timeout'),
+      () => {
+        setBackingOff(true);
+        setTimeout(() => setBackingOff(false), TIMEOUT_RETRY_MS);
+      },
+    );
   });
   useEffect(() => {
-    if (timedOutSeat !== null) endOnTimeout(timedOutSeat);
-  }, [timedOutSeat]);
+    if (timeoutSeat !== null) reportTimeout(timeoutSeat);
+  }, [timeoutSeat]);
 
   // ← → Home End look back and forward, as on Lichess.
   const onKey = useEffectEvent((event: KeyboardEvent) => {
@@ -394,7 +423,7 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
             )}
             {over && mode !== null && (
               <EndBlock
-                disabled={pending}
+                disabled={pending || starting}
                 onRematch={() => void rematch()}
                 onNewGame={() => setDialogMode(mode)}
               />

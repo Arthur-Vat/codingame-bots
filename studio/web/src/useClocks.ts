@@ -15,16 +15,15 @@ interface Held {
 /**
  * The clocks of the human seats of a session, run by the front end. They need the clock chosen
  * in the setup dialog (`settings`; without it there are none, after a reload for example). A
- * clock runs while the server waits for that human and no request is in flight (`pending`).
+ * clock runs while the server waits for that human, also while their move is on its way.
  */
 export function useClocks(
   session: Session | null,
   settings: ClockSettings | null,
-  pending: boolean,
 ): ClockState | null {
   const [held, setHeld] = useState<Held | null>(null);
   const id = session?.id ?? null;
-  const running = settings === null ? null : runningSeat(session, pending);
+  const running = settings === null ? null : runningSeat(session);
 
   // Follow the turns: increments for new moves, and the undoing of them after a takeback. This
   // is a state adjusted while rendering (it only changes when the turns changed).

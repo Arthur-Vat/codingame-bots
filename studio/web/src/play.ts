@@ -54,6 +54,8 @@ export function humanSeatVsComputer(session: Session): number | null {
 export function takebackKeep(session: Session): number | null {
   const mode = sessionMode(session);
   if (mode === 'bots') return null;
+  // The server refuses a takeback against a bot that plays in real time.
+  if (session.seats.some((seat) => seat.kind === 'bot' && seat.mode === 'realtime')) return null;
   let keep: number;
   if (mode === 'friend') {
     keep = session.turns.length - 1;
@@ -95,13 +97,46 @@ export function controlsFor(session: Session | null, pending: boolean): Controls
 }
 
 /**
- * The seat whose clock runs: the human to move, while the server waits for them and no request
- * is in flight. Null otherwise (a bot's turn, rewinding, compiling, measuring, a finished game).
+ * The seat whose clock runs: the human to move, while the server waits for them. A request of
+ * ours in flight (a move on its way) does not stop it: the time is the player's until the server
+ * has the move. Null otherwise (a bot's turn, rewinding, compiling, measuring, a finished game).
  */
-export function runningSeat(session: Session | null, pending: boolean): number | null {
-  if (session === null || pending || session.status !== 'waiting_human') return null;
+export function runningSeat(session: Session | null): number | null {
+  if (session === null || session.status !== 'waiting_human') return null;
   const seat = session.to_act[0];
   return seat !== undefined && session.seats[seat]?.kind === 'human' ? seat : null;
+}
+
+/**
+ * The seat whose timeout the front end must report now, or null. A clock ran out (`expired`),
+ * the game is on and the server is not busy rewinding or starting, no request of ours is in
+ * flight, and a failed report has not just been made (`backingOff`). The caller reports again
+ * whenever this holds, so a timeout is never lost to a failed or busy moment.
+ */
+export function timeoutDue(
+  session: Session | null,
+  expired: number | null,
+  pending: boolean,
+  backingOff: boolean,
+): number | null {
+  if (session === null || expired === null || pending || backingOff) return null;
+  return session.status === 'waiting_human' || session.status === 'bot_thinking' ? expired : null;
+}
+
+/** Whether a key press goes to a field that takes text or a choice, not to the board. */
+export function isTextEntry(target: {
+  tagName: string;
+  type?: string;
+  isContentEditable?: boolean;
+}): boolean {
+  if (target.isContentEditable) return true;
+  const tag = target.tagName.toUpperCase();
+  if (tag === 'SELECT' || tag === 'TEXTAREA') return true;
+  if (tag !== 'INPUT') return false;
+  // Checkboxes, switches and buttons are not text entry: the arrows still look back.
+  return !['checkbox', 'radio', 'button', 'submit', 'reset', 'file', 'image', 'color'].includes(
+    (target.type ?? 'text').toLowerCase(),
+  );
 }
 
 /** Whether a click on the board may play: the latest frame, a human to move, nothing in flight. */
@@ -112,7 +147,8 @@ export function canPlay(
 ): boolean {
   return (
     onLatestFrame &&
-    runningSeat(session, pending) !== null &&
+    !pending &&
+    runningSeat(session) !== null &&
     session !== null &&
     session.human_moves.length > 0
   );

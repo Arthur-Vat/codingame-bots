@@ -477,3 +477,118 @@ test('the clocks wait while a bot thinks and while the server rewinds', async ({
   await page.clock.runFor(1_000);
   await expect(page.getByTestId('clock-0')).toHaveText('9:59');
 });
+
+const OVER_BY_TIMEOUT = () =>
+  session({
+    status: 'over',
+    to_act: [],
+    human_moves: [],
+    result: { winner: 1, end: { kind: 'timeout', seat: 0, limit_ms: 0 } },
+  });
+
+async function startTimedFriendGame(page: Page) {
+  await page.goto('/#/game/uttt');
+  // From here on, time passes only when the test says so.
+  await page.clock.pauseAt(new Date('2026-01-01T00:00:10Z'));
+  await page.getByRole('button', { name: /Play with a friend/ }).click();
+  const dialog = page.getByRole('dialog', { name: 'Play with a friend' });
+  await dialog.getByLabel(/Minutes per side/).fill('0');
+  await dialog.getByRole('button', { name: 'Start' }).click();
+  await expect(page.getByTestId('clock-0')).toHaveText('0:30');
+}
+
+test('a clock that hits zero while a move is in flight reports the timeout after the move failed', async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+  const mock = await mockApi(page, session({}));
+  mock.next = OVER_BY_TIMEOUT();
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(/\/api\/sessions\/ab12\/move$/, async (route) => {
+    await gate;
+    await route.fulfill({ status: 409, json: { error: "it is not that human's turn" } });
+  });
+  await startTimedFriendGame(page);
+
+  await page.getByRole('button', { name: 'play row 4 column 4' }).click();
+  await page.clock.runFor(31_000);
+  await expect(page.getByTestId('clock-0')).toHaveText('0:00.0');
+  expect(mock.posts).toEqual([]);
+
+  release();
+  await expect
+    .poll(() => mock.posts)
+    .toEqual([{ path: '/end', body: { seat: 0, reason: 'timeout' } }]);
+  await expect(page.getByTestId('result')).toContainText('Out of time');
+});
+
+test('a timeout report that fails is made again', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+  const mock = await mockApi(page, session({}));
+  const ends: unknown[] = [];
+  await page.route(/\/api\/sessions\/ab12\/end$/, async (route) => {
+    ends.push(route.request().postDataJSON());
+    if (ends.length === 1) {
+      await route.fulfill({ status: 500, json: { error: 'disk full' } });
+    } else {
+      mock.current = OVER_BY_TIMEOUT();
+      await route.fulfill({ json: mock.current });
+    }
+  });
+  await startTimedFriendGame(page);
+
+  await page.clock.runFor(31_000);
+  await expect.poll(() => ends.length).toBe(1);
+  await expect(page.getByText('disk full')).toBeVisible();
+  await page.clock.runFor(1_500);
+  await expect.poll(() => ends.length).toBe(2);
+  expect(ends).toEqual([
+    { seat: 0, reason: 'timeout' },
+    { seat: 0, reason: 'timeout' },
+  ]);
+  await expect(page.getByTestId('result')).toContainText('Out of time');
+  await page.clock.runFor(5_000);
+  expect(ends.length).toBe(2);
+});
+
+test('a double click on Rematch creates one session', async ({ page }) => {
+  await mockApi(
+    page,
+    session({
+      status: 'over',
+      to_act: [],
+      turns: [answer(0, '4 4')],
+      frames: [frame(), frame({ marks: [[4, 4, 0]], points: [5, 3], winner: 0 })],
+      human_moves: [],
+      result: { winner: 0, end: { kind: 'finished' } },
+    }),
+  );
+  let created = 0;
+  await page.route('**/api/sessions', async (route) => {
+    created += 1;
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await route.fulfill({ json: { id: 'ab12' } });
+  });
+  await page.goto('/#/game/uttt/ab12');
+  await page.getByRole('button', { name: 'Rematch' }).dblclick();
+  await expect(page.getByRole('button', { name: 'Rematch' })).toBeEnabled();
+  expect(created).toBe(1);
+});
+
+test('the arrow keys look back when a switch has the focus', async ({ page }) => {
+  const f1 = frame({ marks: [[4, 4, 0]], last: [4, 4] });
+  await mockApi(
+    page,
+    session({ to_act: [1], turns: [answer(0, '4 4')], frames: [frame(), f1], human_moves: [] }),
+  );
+  await page.goto('/#/game/uttt/ab12');
+  await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
+  await page.getByLabel('Show coordinates').focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toHaveCount(0);
+  await page.keyboard.press('End');
+  await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
+});

@@ -91,6 +91,16 @@ describe('reconcile', () => {
     expect(reconcile(low, []).remaining[0]).toBe(1000);
   });
 
+  it('keeps an expiry through a later move, and drops it when turns are taken back', () => {
+    let state = initClocks({ minutes: 0.5, incrementSeconds: 0 }, [true, true], []);
+    state = tick(state, 31_000, 0).state;
+    expect(state.expired).toBe(0);
+    state = reconcile(state, [0]);
+    expect(state.expired).toBe(0);
+    state = reconcile(state, []);
+    expect(state.expired).toBeNull();
+  });
+
   it('follows a takeback followed by another move in one step', () => {
     let state = initClocks(settings, [true, true], []);
     state = reconcile(state, [0, 1, 0]);

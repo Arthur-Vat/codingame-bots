@@ -8,10 +8,12 @@ import {
   exportFileName,
   findMoveIndex,
   frameAfterTurn,
+  isTextEntry,
   rematchRequest,
   runningSeat,
   sessionMode,
   takebackKeep,
+  timeoutDue,
   timeUsed,
   turnOfFrame,
   turnSeats,
@@ -114,6 +116,14 @@ describe('takebackKeep', () => {
     ).toBeNull();
   });
 
+  it('has no takeback against a bot that plays in real time', () => {
+    const turns = [turn(0), turn(1), turn(0)];
+    expect(takebackKeep(session({ seats: [human, botRealtime], turns }))).toBeNull();
+    expect(
+      controlsFor(session({ seats: [human, botRealtime], turns }), false).takebackTo,
+    ).toBeNull();
+  });
+
   it('never goes below the opening turns', () => {
     expect(takebackKeep(session({ opening_turns: 1, turns: [turn(0)] }))).toBeNull();
     expect(takebackKeep(session({ opening_turns: 1, turns: [turn(0), turn(1)] }))).toBe(1);
@@ -157,16 +167,15 @@ describe('controlsFor', () => {
 });
 
 describe('runningSeat and canPlay', () => {
-  it('runs only for the human to move, with nothing in flight', () => {
-    expect(runningSeat(session({}), false)).toBe(0);
-    expect(runningSeat(session({}), true)).toBeNull();
-    expect(runningSeat(session({ status: 'bot_thinking' }), false)).toBeNull();
-    expect(runningSeat(session({ status: 'rewinding' }), false)).toBeNull();
-    expect(runningSeat(session({ status: 'compiling' }), false)).toBeNull();
-    expect(runningSeat(session({ status: 'measuring' }), false)).toBeNull();
-    expect(runningSeat(session({ status: 'over' }), false)).toBeNull();
-    expect(runningSeat(session({ seats: [bot, human], to_act: [0] }), false)).toBeNull();
-    expect(runningSeat(null, false)).toBeNull();
+  it('runs only for the human to move, also while their move is on its way', () => {
+    expect(runningSeat(session({}))).toBe(0);
+    expect(runningSeat(session({ status: 'bot_thinking' }))).toBeNull();
+    expect(runningSeat(session({ status: 'rewinding' }))).toBeNull();
+    expect(runningSeat(session({ status: 'compiling' }))).toBeNull();
+    expect(runningSeat(session({ status: 'measuring' }))).toBeNull();
+    expect(runningSeat(session({ status: 'over' }))).toBeNull();
+    expect(runningSeat(session({ seats: [bot, human], to_act: [0] }))).toBeNull();
+    expect(runningSeat(null)).toBeNull();
   });
 
   it('accepts input on the latest frame only, when a human is to move', () => {
@@ -179,6 +188,50 @@ describe('runningSeat and canPlay', () => {
       false,
     );
     expect(canPlay(session({}), false, true)).toBe(false);
+  });
+});
+
+describe('timeoutDue', () => {
+  it('names the expired seat once nothing is in flight and the game is on', () => {
+    expect(timeoutDue(session({}), 0, false, false)).toBe(0);
+    expect(timeoutDue(session({ status: 'bot_thinking' }), 1, false, false)).toBe(1);
+  });
+
+  it('waits while a request is in flight, and after a failed report', () => {
+    expect(timeoutDue(session({}), 0, true, false)).toBeNull();
+    expect(timeoutDue(session({}), 0, false, true)).toBeNull();
+  });
+
+  it('is due again after a failed move (the pending flag drops, the expiry stays)', () => {
+    expect(timeoutDue(session({}), 0, true, false)).toBeNull();
+    expect(timeoutDue(session({}), 0, false, false)).toBe(0);
+  });
+
+  it('is not due without an expiry, when the server is busy, or when the game is over', () => {
+    expect(timeoutDue(session({}), null, false, false)).toBeNull();
+    expect(timeoutDue(session({ status: 'rewinding' }), 0, false, false)).toBeNull();
+    expect(timeoutDue(session({ status: 'over' }), 0, false, false)).toBeNull();
+    expect(timeoutDue(session({ status: 'failed' }), 0, false, false)).toBeNull();
+    expect(timeoutDue(null, 0, false, false)).toBeNull();
+  });
+});
+
+describe('isTextEntry', () => {
+  it('is true for fields that take text, a choice or a number', () => {
+    expect(isTextEntry({ tagName: 'INPUT', type: 'text' })).toBe(true);
+    expect(isTextEntry({ tagName: 'INPUT', type: 'number' })).toBe(true);
+    expect(isTextEntry({ tagName: 'INPUT', type: 'search' })).toBe(true);
+    expect(isTextEntry({ tagName: 'INPUT' })).toBe(true);
+    expect(isTextEntry({ tagName: 'TEXTAREA' })).toBe(true);
+    expect(isTextEntry({ tagName: 'SELECT' })).toBe(true);
+    expect(isTextEntry({ tagName: 'DIV', isContentEditable: true })).toBe(true);
+  });
+
+  it('is false for switches, buttons and the page', () => {
+    expect(isTextEntry({ tagName: 'INPUT', type: 'checkbox' })).toBe(false);
+    expect(isTextEntry({ tagName: 'INPUT', type: 'radio' })).toBe(false);
+    expect(isTextEntry({ tagName: 'BUTTON' })).toBe(false);
+    expect(isTextEntry({ tagName: 'BODY', isContentEditable: false })).toBe(false);
   });
 });
 

@@ -93,7 +93,10 @@ export function reconcile(state: ClockState, turns: readonly (number | null)[]):
   for (const seat of turns.slice(common)) {
     change(seat, state.incrementMs, false);
   }
-  return { ...state, remaining, turns: [...turns], expired: null };
+  // An expiry stands (a move made after the clock hit zero does not undo it), unless turns were
+  // taken back.
+  const removed = common < state.turns.length;
+  return { ...state, remaining, turns: [...turns], expired: removed ? null : state.expired };
 }
 
 /** `m:ss`, and `0:ss.t` under ten seconds, as in the mockup. */
