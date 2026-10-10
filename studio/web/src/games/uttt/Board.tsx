@@ -45,6 +45,24 @@ function OMark({ className }: { className: string }) {
   );
 }
 
+/* The large marks of a closed small board span about 70% of it, the same for X and O. */
+function BigX() {
+  return (
+    <svg viewBox="0 0 100 100" className="big-x" aria-hidden="true">
+      <line x1="15" y1="15" x2="85" y2="85" />
+      <line x1="85" y1="15" x2="15" y2="85" />
+    </svg>
+  );
+}
+
+function BigO() {
+  return (
+    <svg viewBox="0 0 100 100" className="big-o" aria-hidden="true">
+      <circle cx="50" cy="50" r="33" />
+    </svg>
+  );
+}
+
 export default function Board({
   frame,
   interactive,
@@ -123,8 +141,8 @@ export default function Board({
                   }),
                 )}
                 <div className="sb-over" aria-hidden="true">
-                  {small.won === 0 && <XMark className="big-x" />}
-                  {small.won === 1 && <OMark className="big-o" />}
+                  {small.won === 0 && <BigX />}
+                  {small.won === 1 && <BigO />}
                 </div>
               </div>
             );

@@ -182,7 +182,8 @@
   stroke-width: 12;
 }
 
-/* A closed small board: a light tint and a faint large mark, quiet on purpose. */
+/* A closed small board, won or drawn, is slightly darker, so it never looks like the brighter
+   cells playable next. A faint large mark tells the winner, quiet on purpose. */
 .sb-over {
   position: absolute;
   inset: 0;
@@ -190,39 +191,29 @@
   z-index: 2;
 }
 
-.uttt-sb.won-x .sb-over {
-  background: rgba(34, 36, 40, 0.2);
-}
-
-.uttt-sb.won-o .sb-over {
-  background: rgba(255, 255, 255, 0.28);
-}
-
+.uttt-sb.won-x .sb-over,
+.uttt-sb.won-o .sb-over,
 .uttt-sb.drawn .sb-over {
-  background: rgba(60, 70, 78, 0.16);
+  background: rgba(30, 40, 48, 0.18);
 }
 
 .sb-over svg {
   position: absolute;
-  inset: 15%;
-  width: 70%;
-  height: 70%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .sb-over .big-x line {
   stroke: var(--x);
-  stroke-width: 5;
+  stroke-width: 4;
   stroke-linecap: round;
-  opacity: 0.35;
+  opacity: 0.4;
 }
 
-.sb-over .big-o .edge {
-  display: none;
-}
-
-.sb-over .big-o .ring {
+.sb-over .big-o circle {
   fill: none;
   stroke: var(--o);
-  stroke-width: 5;
-  opacity: 0.8;
+  stroke-width: 4;
+  opacity: 0.7;
 }
