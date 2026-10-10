@@ -1,0 +1,228 @@
+/* Ultimate Tic-Tac-Toe's board. Tokens come from the approved mockup. The board never moves
+   or resizes during a game: the coordinate gutters are always reserved, and marks, heat and
+   the hover dot are drawn over the cells without changing their size. */
+.uttt {
+  --sq: #b4c2ca;
+  --sq-play: #d3dde2;
+  --sq-line: rgba(30, 45, 55, 0.28);
+  --gap: #44515a;
+  --last: rgba(155, 199, 0, 0.45);
+  --x: #222428;
+  --o: #fbfbfb;
+  --o-edge: #3b4650;
+  --gutter: 18px;
+
+  container-type: inline-size;
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: var(--gutter) minmax(0, 1fr);
+  grid-template-rows: var(--gutter) minmax(0, 1fr);
+}
+
+.uttt-coords {
+  display: grid;
+  color: var(--muted, #8b8885);
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  font-size: 11px;
+  line-height: 1;
+  user-select: none;
+}
+
+.uttt-coords-top {
+  grid-column: 2;
+  grid-row: 1;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  /* The board's 4px padding sits inside its width. */
+  padding: 0 4px;
+  align-items: start;
+  text-align: center;
+}
+
+.uttt-coords-left {
+  grid-column: 1;
+  grid-row: 2;
+  grid-template-rows: repeat(9, minmax(0, 1fr));
+  padding: 4px 0;
+  align-items: center;
+  justify-items: start;
+}
+
+/* Hidden, not removed: the board keeps its place. */
+.uttt.coords-off .uttt-coords {
+  visibility: hidden;
+}
+
+.uttt-board {
+  grid-column: 2;
+  grid-row: 2;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  background: var(--gap);
+  border-radius: 3px;
+  user-select: none;
+}
+
+.uttt-sb {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  min-width: 0;
+  min-height: 0;
+  background: var(--sq);
+}
+
+.uttt-cell {
+  position: relative;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--sq-line);
+  border-bottom: 1px solid var(--sq-line);
+}
+
+.uttt-cell:nth-child(3n) {
+  border-right: 0;
+}
+
+.uttt-cell:nth-child(n + 7):nth-child(-n + 9) {
+  border-bottom: 0;
+}
+
+/* The cells playable next are a little brighter; on the first move all are, so none is. */
+.uttt-board:not(.free) .uttt-cell.play {
+  background: var(--sq-play);
+}
+
+.uttt-cell.last {
+  background: var(--last);
+}
+
+.uttt-cell.heat,
+.uttt-board:not(.free) .uttt-cell.play.heat {
+  background: rgba(54, 146, 231, var(--h));
+}
+
+.uttt-cell .pct {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  font-size: max(8px, 2.1cqw);
+  font-weight: 700;
+  color: #0e2a44;
+  pointer-events: none;
+}
+
+.uttt-cell .cell-btn {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.uttt-cell .cell-btn:focus-visible {
+  outline: 2px solid #3692e7;
+  outline-offset: -2px;
+}
+
+.uttt-cell.legal:hover::after {
+  content: '';
+  position: absolute;
+  inset: 37%;
+  border-radius: 50%;
+  background: rgba(20, 85, 30, 0.55);
+  pointer-events: none;
+}
+
+.uttt-cell.legal:hover .pct {
+  opacity: 0;
+}
+
+.uttt-cell.hl {
+  box-shadow: inset 0 0 0 3px #e0a50d;
+}
+
+.uttt-cell .mark {
+  position: absolute;
+  inset: 13%;
+  width: 74%;
+  height: 74%;
+  pointer-events: none;
+}
+
+.mark-x line {
+  stroke: var(--x);
+  stroke-width: 15;
+  stroke-linecap: round;
+}
+
+.mark-o .edge {
+  fill: none;
+  stroke: var(--o-edge);
+  stroke-width: 19;
+}
+
+.mark-o .ring {
+  fill: none;
+  stroke: var(--o);
+  stroke-width: 12;
+}
+
+/* A closed small board: a light tint and a faint large mark, quiet on purpose. */
+.sb-over {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.uttt-sb.won-x .sb-over {
+  background: rgba(34, 36, 40, 0.2);
+}
+
+.uttt-sb.won-o .sb-over {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.uttt-sb.drawn .sb-over {
+  background: rgba(60, 70, 78, 0.16);
+}
+
+.sb-over svg {
+  position: absolute;
+  inset: 15%;
+  width: 70%;
+  height: 70%;
+}
+
+.sb-over .big-x line {
+  stroke: var(--x);
+  stroke-width: 5;
+  stroke-linecap: round;
+  opacity: 0.35;
+}
+
+.sb-over .big-o .edge {
+  display: none;
+}
+
+.sb-over .big-o .ring {
+  fill: none;
+  stroke: var(--o);
+  stroke-width: 5;
+  opacity: 0.8;
+}
