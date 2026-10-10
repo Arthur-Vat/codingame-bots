@@ -102,6 +102,9 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
   } catch {
     throw new ApiError('The server cannot be reached.', true);
   }
+  if (response.status === 204) {
+    return undefined as T;
+  }
   let json: unknown;
   try {
     json = await response.json();
@@ -169,4 +172,57 @@ export function saveSession(id: string): Promise<{ id: string; duplicate: boolea
 /** The session's game record (format 1), as it is exported to a file. */
 export function getRecord(id: string): Promise<unknown> {
   return call('GET', `/api/sessions/${encodeURIComponent(id)}/record`);
+}
+
+/** A player of a game record. */
+export interface RecordPlayer {
+  name: string;
+  kind: 'human' | 'bot';
+  bot_seed: number | null;
+  command: string | null;
+  time_scale: number;
+  fixed_iters: number | null;
+}
+
+/** A game record, format 1 (ADR 0027). */
+export interface GameRecord {
+  format: number;
+  game: string;
+  seed: number;
+  opening_plies: number;
+  /** Seconds since the Unix epoch. */
+  unix_time: number;
+  source: string;
+  players: [RecordPlayer, RecordPlayer];
+  turns: Answer[][];
+  end: EndReason;
+  winner: number | null;
+}
+
+/** A record with the game's frames: `GET /api/history/{id}/view` and `POST /api/view`. */
+export interface RecordView {
+  record: GameRecord;
+  frames: unknown[];
+  opening_turns: number;
+  /** The turns that replay: all of them, or all but a final invalid one. */
+  shown_turns: number;
+}
+
+export function getHistoryView(id: string): Promise<RecordView> {
+  return call('GET', `/api/history/${encodeURIComponent(id)}/view`);
+}
+
+/** The view of a record that is not saved. */
+export function postView(record: unknown): Promise<RecordView> {
+  return call('POST', '/api/view', record);
+}
+
+/** The saved record, as it is exported to a file. */
+export function getHistoryRecord(id: string): Promise<unknown> {
+  return call('GET', `/api/history/${encodeURIComponent(id)}`);
+}
+
+/** Saves a record in the history. `duplicate` is true when it was there already. */
+export function postHistory(record: unknown): Promise<{ id: string; duplicate: boolean }> {
+  return call('POST', '/api/history', record);
 }

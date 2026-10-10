@@ -161,7 +161,7 @@ Gate: the first version (steps A to C) works on the owner's Windows computer, th
 - [x] Home screen of games, game and history pages, setup dialogs with an advanced mode
 - [x] Ultimate Tic-Tac-Toe's board: fixed in place, playable cells slightly brighter, quiet marks on won boards, optional coordinates
 - [x] Play modes: a friend with clocks, a release with think time and takebacks, bot against bot, the end-of-game block
-- [ ] Review: move list, playback (the whole game in 120 s at 1×), keyboard shortcuts, save and export
+- [x] Review: move list, playback (the whole game in 120 s at 1×), keyboard shortcuts, save and export
 - [ ] History page with filters and file import
 
 ### D. Analysis

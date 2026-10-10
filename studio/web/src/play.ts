@@ -213,9 +213,9 @@ export function cursorAfterKey(
 }
 
 /** The time a seat has used: the sum of the `ms` of its answers. */
-export function timeUsed(session: Session, seat: number): number {
+export function timeUsed(game: Pick<Session, 'turns'>, seat: number): number {
   let total = 0;
-  for (const turn of session.turns) {
+  for (const turn of game.turns) {
     for (const answer of turn) {
       if (answer.seat === seat) total += answer.ms;
     }

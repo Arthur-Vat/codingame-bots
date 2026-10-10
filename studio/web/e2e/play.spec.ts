@@ -299,9 +299,7 @@ test('compiling and measuring say what the server does', async ({ page }) => {
   );
 });
 
-test('bot against bot shows a compact line over the board, then the end block', async ({
-  page,
-}) => {
+test('bot against bot shows a compact line over the board, then the review', async ({ page }) => {
   const f1 = frame({ marks: [[4, 4, 0]], last: [4, 4] });
   const mock = await mockApi(
     page,
@@ -328,10 +326,12 @@ test('bot against bot shows a compact line over the board, then the end block', 
     frames: [frame(), f1, frame({ marks: [[4, 4, 0]], points: [2, 3], winner: 1 })],
     turns: [answer(0, '4 4', 12), answer(1, '4 5', 9)],
   };
+  // The game ended: the review opens by itself, with the same result and the board in place.
+  await expect(page).toHaveURL(/#\/review\/session\/ab12$/);
   await expect(page.getByTestId('result')).toContainText('0–1 · O wins');
   await expect(page.getByTestId('result')).toContainText('Small boards won: 2–3');
   await expect(page.getByTestId('board-overlay')).toHaveCount(0);
-  await expect(page.getByTestId('clock-1')).toHaveText('0.0 s');
+  await expect(page.getByTestId('player-1')).toContainText('0.0 s');
   expect(await box(page)).toEqual(live);
 });
 

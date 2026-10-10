@@ -78,7 +78,11 @@ export function moveRows(turns: readonly (readonly Answer[])[]): MoveRow[] {
  * Why the game ended. `detail` is the game's own text for a game that ran to its end (the
  * renderer writes it, because it knows the game); the rest comes from the end kind.
  */
-function endText(end: EndReason, seats: Session['seats'], detail: string | null): string {
+function endText(
+  end: EndReason,
+  seats: readonly { kind: 'human' | 'bot' }[],
+  detail: string | null,
+): string {
   const who = (seat: number) => (seats[seat]?.kind === 'bot' ? 'bot' : 'human');
   switch (end.kind) {
     case 'finished':
@@ -99,7 +103,7 @@ function endText(end: EndReason, seats: Session['seats'], detail: string | null)
 /** The headline ("1–0 · X wins") and the reason under the move list when the game is over. */
 export function resultText(
   result: SessionResult,
-  seats: Session['seats'],
+  seats: readonly { kind: 'human' | 'bot' }[],
   detail: string | null,
 ): { headline: string; detail: string } {
   const reason = endText(result.end, seats, detail);

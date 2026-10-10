@@ -25,6 +25,27 @@ describe('parseRoute', () => {
     expect(parseRoute('#/history')).toEqual({ page: 'history' });
   });
 
+  it('reads the review page of each kind', () => {
+    expect(parseRoute('#/review/session/ab12')).toEqual({
+      page: 'review',
+      kind: 'session',
+      id: 'ab12',
+    });
+    expect(parseRoute('#/review/saved/uttt-1-abc')).toEqual({
+      page: 'review',
+      kind: 'saved',
+      id: 'uttt-1-abc',
+    });
+    expect(parseRoute('#/review/file/f1')).toEqual({ page: 'review', kind: 'file', id: 'f1' });
+  });
+
+  it('sends a review without a known kind or an id to the home page', () => {
+    expect(parseRoute('#/review')).toEqual({ page: 'home' });
+    expect(parseRoute('#/review/session')).toEqual({ page: 'home' });
+    expect(parseRoute('#/review/other/x')).toEqual({ page: 'home' });
+    expect(parseRoute('#/review/session/a/b')).toEqual({ page: 'home' });
+  });
+
   it('sends anything unknown to the home page', () => {
     expect(parseRoute('#/game')).toEqual({ page: 'home' });
     expect(parseRoute('#/game/uttt/a/b')).toEqual({ page: 'home' });
@@ -44,7 +65,14 @@ describe('parseRoute', () => {
 
 describe('routeHash', () => {
   it('is the inverse of parseRoute', () => {
-    for (const hash of ['#/', '#/history', '#/game/uttt', '#/game/uttt/ab12']) {
+    for (const hash of [
+      '#/',
+      '#/history',
+      '#/game/uttt',
+      '#/game/uttt/ab12',
+      '#/review/session/ab12',
+      '#/review/saved/uttt-1-abc',
+    ]) {
       expect(routeHash(parseRoute(hash))).toBe(hash);
     }
   });
