@@ -118,6 +118,19 @@ fn being_sent_to_a_full_board_frees_the_choice() {
 }
 
 #[test]
+fn a_small_board_is_closed_when_won_or_full() {
+    let mut marks = won_board(0, 0, 0);
+    marks.extend(drawn_board(1, 1));
+    marks.push(((6, 6), 1));
+    let game = position(&marks, 0, None);
+    assert!(game.small_closed(0, 0), "won");
+    assert!(game.small_closed(1, 1), "full without a winner");
+    assert_eq!(game.small_winner(1, 1), None);
+    assert!(!game.small_closed(2, 2), "one mark");
+    assert!(!game.small_closed(0, 2), "empty");
+}
+
+#[test]
 fn winning_a_small_board_scores_a_point() {
     let mut game = position(&[((0, 0), 0), ((0, 1), 0)], 0, None);
     game.play_cell((0, 2)).unwrap();

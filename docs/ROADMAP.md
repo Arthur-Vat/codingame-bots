@@ -151,7 +151,7 @@ Gate: the first version (steps A to C) works on the owner's Windows computer, th
 
 - [x] The arena can write game records with every turn's answers
 - [x] The arena's bot processes can be driven one turn at a time, with a human in the other seat
-- [ ] The studio's game interface, and Ultimate Tic-Tac-Toe's adapter
+- [x] The studio's game interface, and Ultimate Tic-Tac-Toe's adapter
 - [ ] The server: games and releases, play, takebacks by replay, bot against bot, the speed measurement
 - [ ] The history: save, list and filter, import and export files
 
