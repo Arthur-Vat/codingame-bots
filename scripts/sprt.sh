@@ -19,6 +19,13 @@
 # its opponent, a timeout just loses its game. Games are written to
 # target/sprt/.
 #
+# Environment: when RECORDS_DIR is set and not empty, each step also keeps a
+# sample of its games as game records (ADR 0027), in its own folder of
+# RECORDS_DIR: CANDIDATE-smoke, CANDIDATE-sprt and CANDIDATE-confirmation
+# (CANDIDATE is the candidate's name). RECORDS_SAMPLE is the number of games
+# kept per step, 10 by default. The arena never overwrites a record: give an
+# empty RECORDS_DIR. Without RECORDS_DIR, nothing changes.
+#
 # Exit status: 0 when the candidate is accepted and confirmed; 1 when the
 # smoke test fails, the SPRT does not accept the candidate or the
 # confirmation fails; 2 on errors.
@@ -62,13 +69,23 @@ name() { basename "$1" .rs; }
 cand="$(name "$candidate")"
 base="$(name "$baseline")"
 read -r -a options <<<"$(arena_options)"
+# Sets "records" to the arena's options that keep a sample of a step's games,
+# or to nothing when RECORDS_DIR is unset or empty.
+records=()
+records_for() {
+  records=()
+  if [[ -n ${RECORDS_DIR:-} ]]; then
+    records=(--records "$RECORDS_DIR/$cand-$1" --records-sample "${RECORDS_SAMPLE:-10}")
+  fi
+}
 
 echo "Candidate: $cand. Baseline: $base."
 echo "Settings: $(describe_settings)."
 echo
 if ((SMOKE_PAIRS > 0)); then
   echo "Smoke test against $game-random:"
-  if ! "$arena" match "${options[@]}" --expect-no-faults-from "$cand" \
+  records_for smoke
+  if ! "$arena" match "${options[@]}" ${records[@]+"${records[@]}"} --expect-no-faults-from "$cand" \
     --bot "$cand=$dir/bin/$cand" --bot "random=$dir/bin/$game-random" \
     --pairs "$SMOKE_PAIRS" --min-score "$SMOKE_MIN_SCORE" \
     --out "$dir/$cand-smoke.jsonl"; then
@@ -79,8 +96,9 @@ if ((SMOKE_PAIRS > 0)); then
   echo
 fi
 echo "SPRT against $base:"
+records_for sprt
 status=0
-"$arena" sprt "${options[@]}" --expect-no-faults-from "$cand" \
+"$arena" sprt "${options[@]}" ${records[@]+"${records[@]}"} --expect-no-faults-from "$cand" \
   --candidate "$cand=$dir/bin/$cand" --baseline "$base=$dir/bin/$base" \
   --elo0 "$SPRT_ELO0" --elo1 "$SPRT_ELO1" --alpha "$SPRT_ALPHA" --beta "$SPRT_BETA" \
   --max-pairs "$SPRT_MAX_PAIRS" --out "$dir/$cand-sprt.jsonl" || status=$?
@@ -90,8 +108,10 @@ fi
 
 echo
 echo "Confirmation against $base at CodinGame's limits (time scale 1, no tolerance):"
+records_for confirmation
 if ! "$arena" match --seed "$SEED" --opening-plies "$OPENING_PLIES" \
   --time-scale 1 --time-tolerance-ms 0 --max-timeout-rate "$MAX_TIMEOUT_RATE" \
+  ${records[@]+"${records[@]}"} \
   --expect-no-faults-from "$cand" --expect-not-worse \
   --bot "$cand=$dir/bin/$cand" --bot "$base=$dir/bin/$base" \
   --pairs "$CONFIRM_PAIRS" --out "$dir/$cand-confirmation.jsonl"; then

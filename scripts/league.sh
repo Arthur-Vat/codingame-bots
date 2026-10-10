@@ -6,6 +6,12 @@
 # Usage: scripts/league.sh GAME
 #
 # Prints each matchup and the Elo table; games go to target/league/.
+#
+# Environment: when RECORDS_DIR is set and not empty, the league also keeps a
+# sample of its games as game records (ADR 0027) in RECORDS_DIR/GAME-league:
+# RECORDS_SAMPLE games per pair of bots, 10 by default. The arena never
+# overwrites a record: give an empty RECORDS_DIR. Without RECORDS_DIR,
+# nothing changes.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -40,6 +46,10 @@ for file in "${files[@]}"; do
   # Names drop the game prefix: random, greedy, v001, ...
   args+=(--bot "${name#"$game"-}=$dir/bin/$name")
 done
+records=()
+if [[ -n ${RECORDS_DIR:-} ]]; then
+  records=(--records "$RECORDS_DIR/$game-league" --records-sample "${RECORDS_SAMPLE:-10}")
+fi
 echo "Settings: $(describe_settings), $LEAGUE_PAIRS pairs per matchup."
-"target/release/$game-arena" league "${options[@]}" "${args[@]}" \
+"target/release/$game-arena" league "${options[@]}" "${args[@]}" ${records[@]+"${records[@]}"} \
   --pairs "$LEAGUE_PAIRS" --anchor "$LEAGUE_ANCHOR" --out "$dir/$game.jsonl"
