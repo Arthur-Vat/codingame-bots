@@ -12,3 +12,9 @@ updates:
       interval: monthly
     commit-message:
       prefix: deps
+  - package-ecosystem: npm
+    directory: /studio/web
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: deps
