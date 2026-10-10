@@ -56,6 +56,26 @@ describe('Board markup', () => {
     expect(html).toContain('aria-label="row 8 column 8"');
   });
 
+  it('places each cell in its small board, in reading order', () => {
+    const html = renderToStaticMarkup(createElement(Board, props()));
+    const boards = html.split('<div class="uttt-sb').slice(1);
+    expect(boards).toHaveLength(9);
+    const cellsOf = (board: string): string[] =>
+      [...board.matchAll(/role="gridcell"[^>]*aria-label="([^"]*)"/g)].map((m) => m[1] ?? '');
+    expect(boards[4]).toContain('aria-label="small board 1 1"');
+    expect(cellsOf(boards[4]!)[1]).toMatch(/^row 3 column 4/);
+    expect(boards[6]).toContain('aria-label="small board 2 0"');
+    expect(cellsOf(boards[6]!)[6]).toMatch(/^row 8 column 0/);
+    for (const board of boards) expect(cellsOf(board)).toHaveLength(9);
+  });
+
+  it('gives each cell its row and column in the whole grid, from 1', () => {
+    const html = renderToStaticMarkup(createElement(Board, props()));
+    expect(html).toContain('aria-rowindex="4" aria-colindex="5" aria-label="row 3 column 4');
+    expect(html).toContain('aria-rowindex="9" aria-colindex="1" aria-label="row 8 column 0');
+    expect(html).toContain('aria-rowcount="9" aria-colcount="9"');
+  });
+
   it('draws buttons only on playable cells of an interactive board', () => {
     const still = renderToStaticMarkup(createElement(Board, props()));
     expect(count(still, /<button/g)).toBe(0);

@@ -115,7 +115,7 @@ export function smallBoardState(
   return { won: state === 0 || state === 1 ? state : null, drawn: state === 'draw' };
 }
 
-/** True when every cell is playable: the first move, where no cell needs to stand out. */
-export function isFreeChoice(frame: UtttFrame): boolean {
+/** True when every cell is playable (the first move): a display cue only, so none stands out. */
+export function allCellsPlayable(frame: UtttFrame): boolean {
   return frame.playable.length === 81;
 }
