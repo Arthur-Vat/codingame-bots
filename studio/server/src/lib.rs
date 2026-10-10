@@ -2,11 +2,12 @@
 //!
 //! It serves the built front end and a JSON API to list games and releases,
 //! play friend, computer and bot-against-bot games, take moves back by
-//! replaying, and export a game record. The HTTP layer is thin: [`handle`]
+//! replaying, and export a game record, and keeps the history of saved games. The HTTP layer is thin: [`handle`]
 //! holds all the routing and [`server`] only adapts `tiny_http` to it.
 //!
 //! - [`state`]: the registered games, paths and sessions.
 //! - [`api`]: routing and the endpoints.
+//! - [`history`]: the saved games, one file each.
 //! - [`session`]: one game in progress, its JSON view and its record.
 //! - [`runner`]: the threads that start bots and play their turns.
 //! - [`releases`]: lists a game's releases and compiles them on first use.
@@ -15,6 +16,7 @@
 //! - [`server`]: the sockets.
 
 pub mod api;
+pub mod history;
 pub mod releases;
 pub mod runner;
 pub mod server;
@@ -28,6 +30,9 @@ pub use state::State;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod history_tests;
 
 #[cfg(all(test, unix))]
 mod bot_tests;

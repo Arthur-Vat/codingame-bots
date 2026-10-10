@@ -11,6 +11,7 @@ use cg_arena::record::RecordedAnswer;
 use cg_arena::referee::SEATS;
 use cg_arena::runner::EndReason;
 
+use crate::history;
 use crate::runner::{spawn_drive, spawn_launch};
 use crate::session::{other, GameResult, Mode, Progress, SeatConfig, Session, Status};
 use crate::state::{lock, SharedSession, State};
@@ -52,18 +53,19 @@ const THINK_MS: std::ops::RangeInclusive<u64> = 10..=10_000;
 /// The largest number of opening plies a request may ask for.
 const MAX_OPENING_PLIES: u32 = 81;
 
-/// Answers one request. `path` has no query string.
+/// Answers one request. `path` may end with a query string (`?a=b&c=d`).
 pub fn handle(state: &State, method: &str, path: &str, body: &[u8]) -> Response {
+    let (path, query) = path.split_once('?').unwrap_or((path, ""));
     let method = if method == "HEAD" { "GET" } else { method };
     match path.strip_prefix("/api") {
         Some("") => Response::error(404, "unknown route"),
-        Some(rest) if rest.starts_with('/') => api(state, method, &rest[1..], body),
+        Some(rest) if rest.starts_with('/') => api(state, method, &rest[1..], query, body),
         _ if method == "GET" => web::serve(state.web_dir(), path),
         _ => Response::error(405, "only GET serves files"),
     }
 }
 
-fn api(state: &State, method: &str, path: &str, body: &[u8]) -> Response {
+fn api(state: &State, method: &str, path: &str, query: &str, body: &[u8]) -> Response {
     let segments: Vec<&str> = path.split('/').collect();
     match (method, segments.as_slice()) {
         ("GET", ["games"]) => list_games(state),
@@ -87,10 +89,21 @@ fn api(state: &State, method: &str, path: &str, body: &[u8]) -> Response {
                 &serde_json::to_value(s.record()).unwrap_or(Value::Null),
             )
         }),
+        ("POST", ["sessions", id, "save"]) => history::save_session(state, id),
+        ("GET", ["history"]) => history::list(state, query),
+        ("POST", ["history"]) => history::save(state, body),
+        ("GET", ["history", id]) => history::get(state, id),
+        ("DELETE", ["history", id]) => history::delete(state, id),
+        ("GET", ["history", id, "view"]) => history::view(state, id),
+        ("POST", ["view"]) => history::view_body(state, body),
         (_, ["games"])
+        | (_, ["history"])
+        | (_, ["history", _])
+        | (_, ["history", _, "view"])
+        | (_, ["view"])
         | (_, ["sessions"])
         | (_, ["sessions", _])
-        | (_, ["sessions", _, "move" | "takeback" | "end" | "record"]) => {
+        | (_, ["sessions", _, "move" | "takeback" | "end" | "record" | "save"]) => {
             Response::error(405, "method not allowed")
         }
         _ => Response::error(404, "unknown route"),
