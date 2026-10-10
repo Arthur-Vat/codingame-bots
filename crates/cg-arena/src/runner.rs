@@ -11,7 +11,8 @@ use cg_core::rng::{Rng, SEED_ENV};
 use cg_core::time::TIME_SCALE_ENV;
 use serde::{Deserialize, Serialize};
 
-use crate::record::RecordedAnswer;
+use crate::live::BotSettings;
+use crate::record::{RecordedAnswer, FIXED_ITERS_ENV};
 use crate::referee::{Answer, Outcome, Referee, SEATS};
 
 /// How to start a bot.
@@ -165,12 +166,17 @@ pub fn run_match(
 ) -> Result<MatchRecord, ArenaError> {
     let mut processes = Vec::with_capacity(SEATS);
     for (seat, spec) in bots.iter().enumerate() {
-        let process = BotProcess::spawn(spec, bot_seed(seed, seat, &spec.name), options).map_err(
-            |error| ArenaError::Spawn {
-                bot: spec.name.clone(),
-                error,
-            },
-        )?;
+        let settings = BotSettings {
+            seed: bot_seed(seed, seat, &spec.name),
+            time_scale: options.time_scale,
+            // Arena bots inherit `CG_FIXED_ITERS` from the environment.
+            fixed_iters: None,
+            show_stderr: options.show_bot_stderr,
+        };
+        let process = BotProcess::spawn(spec, &settings).map_err(|error| ArenaError::Spawn {
+            bot: spec.name.clone(),
+            error,
+        })?;
         processes.push(process);
     }
 
@@ -272,16 +278,17 @@ fn lose(seat: usize) -> Outcome {
     Outcome::Win(1 - seat)
 }
 
-enum AskError {
+pub(crate) enum AskError {
     Timeout,
     Closed,
 }
 
-struct BotProcess {
+pub(crate) struct BotProcess {
     child: Child,
     stdin: Option<ChildStdin>,
     lines: Receiver<String>,
-    answers: u32,
+    /// How many answers the bot has given.
+    pub(crate) answers: u32,
     max_answer: Duration,
     total_answer: Duration,
     /// The time of every answer after the first, in milliseconds.
@@ -289,20 +296,23 @@ struct BotProcess {
 }
 
 impl BotProcess {
-    fn spawn(spec: &BotSpec, seed: u64, options: &MatchOptions) -> io::Result<BotProcess> {
+    pub(crate) fn spawn(spec: &BotSpec, settings: &BotSettings) -> io::Result<BotProcess> {
         let mut command = Command::new(&spec.program);
         command
             .args(&spec.args)
-            .env(SEED_ENV, seed.to_string())
+            .env(SEED_ENV, settings.seed.to_string())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(if options.show_bot_stderr {
+            .stderr(if settings.show_stderr {
                 Stdio::inherit()
             } else {
                 Stdio::null()
             });
-        if options.time_scale != 1.0 {
-            command.env(TIME_SCALE_ENV, options.time_scale.to_string());
+        if settings.time_scale != 1.0 {
+            command.env(TIME_SCALE_ENV, settings.time_scale.to_string());
+        }
+        if let Some(iterations) = settings.fixed_iters {
+            command.env(FIXED_ITERS_ENV, iterations.to_string());
         }
         let mut child = command.spawn()?;
         let stdin = child.stdin.take();
@@ -331,7 +341,7 @@ impl BotProcess {
 
     /// Sends `input` and waits for `count` answer lines within `limit`.
     /// Returns the lines and how long they took, in milliseconds.
-    fn ask(
+    pub(crate) fn ask(
         &mut self,
         input: &str,
         count: usize,
@@ -365,7 +375,7 @@ impl BotProcess {
     }
 
     /// Describes how the process ended, waiting briefly for it to exit.
-    fn exit_detail(&mut self) -> String {
+    pub(crate) fn exit_detail(&mut self) -> String {
         let deadline = Instant::now() + Duration::from_millis(200);
         loop {
             match self.child.try_wait() {
