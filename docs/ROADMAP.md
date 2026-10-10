@@ -153,14 +153,14 @@ Gate: the first version (steps A to C) works on the owner's Windows computer, th
 - [x] The arena's bot processes can be driven one turn at a time, with a human in the other seat
 - [x] The studio's game interface, and Ultimate Tic-Tac-Toe's adapter
 - [x] The server: games and releases, play, takebacks by replay, bot against bot, the speed measurement
-- [ ] The history: save, list and filter, import and export files
+- [x] The history: save, list and filter, import and export files
 
 ### C. Front end, first version
 
 - [x] Scaffold: TypeScript, React and Vite, lint, unit and browser tests, license check, CI job
 - [x] Home screen of games, game and history pages, setup dialogs with an advanced mode
-- [ ] Ultimate Tic-Tac-Toe's board: fixed in place, playable cells slightly brighter, quiet marks on won boards, optional coordinates
-- [ ] Play modes: a friend with clocks, a release with think time and takebacks, bot against bot, the end-of-game block
+- [x] Ultimate Tic-Tac-Toe's board: fixed in place, playable cells slightly brighter, quiet marks on won boards, optional coordinates
+- [x] Play modes: a friend with clocks, a release with think time and takebacks, bot against bot, the end-of-game block
 - [ ] Review: move list, playback (the whole game in 120 s at 1×), keyboard shortcuts, save and export
 - [ ] History page with filters and file import
 

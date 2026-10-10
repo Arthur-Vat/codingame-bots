@@ -143,3 +143,30 @@ export function getSession(id: string): Promise<Session> {
 export async function deleteSession(id: string): Promise<void> {
   await call('DELETE', `/api/sessions/${encodeURIComponent(id)}`);
 }
+
+/** Plays `human_moves[index]` for the human in `seat`. Answers with the session. */
+export function postMove(id: string, seat: number, index: number): Promise<Session> {
+  return call('POST', `/api/sessions/${encodeURIComponent(id)}/move`, { seat, index });
+}
+
+/** Keeps the first `turns` turns. Answers with the session. */
+export function postTakeback(id: string, turns: number): Promise<Session> {
+  return call('POST', `/api/sessions/${encodeURIComponent(id)}/takeback`, { turns });
+}
+
+export type EndKind = 'resign' | 'timeout';
+
+/** Ends the game with `seat` resigning or out of time; the other seat wins. */
+export function postEnd(id: string, seat: number, reason: EndKind): Promise<Session> {
+  return call('POST', `/api/sessions/${encodeURIComponent(id)}/end`, { seat, reason });
+}
+
+/** Saves the session's record in the history. `duplicate` is true when it was there already. */
+export function saveSession(id: string): Promise<{ id: string; duplicate: boolean }> {
+  return call('POST', `/api/sessions/${encodeURIComponent(id)}/save`, {});
+}
+
+/** The session's game record (format 1), as it is exported to a file. */
+export function getRecord(id: string): Promise<unknown> {
+  return call('GET', `/api/sessions/${encodeURIComponent(id)}/record`);
+}
