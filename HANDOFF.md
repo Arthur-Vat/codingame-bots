@@ -4,11 +4,11 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- Go for phase 5 step D (arena and ratings), asked 2026-10-09. Step E's light items were merged on 2026-10-09 (#58, #59; owner approved in the conversation). Left in E: speed regression check and docs-only PRs skipping heavy steps (heavier, ask first). Ask before any heavy work.
+- Phase 6 (studio) pull requests to approve, as they are opened: #62 (step A1: ADRs 0025 to 0027, roadmap, scope `studio`), opened 2026-10-10. The owner asked on 2026-10-10 to implement the whole phase 6 plan; merges still need approval per pull request.
 
 ## Open questions
 
-- Studio (planned phase 6, discussed 2026-10-10, nothing implemented): a local, Lichess-style browser app in this repository (`studio/`, scope `studio`), Rust server plus TypeScript and React front end, for the owner only, on Windows. Home screen of games; play a friend (clock, 10+0 by default), play any release (fixed iterations so takebacks replay exactly via `CG_SEED`/`CG_FIXED_ITERS`), bot against bot then review (120 s at 1x, speeds, steps), analysis engine from current code (win/draw/loss bar, top moves with lines, heatmap on legal cells, evaluation chart), history page with a sample (about 10 games a run) and file import/export. Mockup for the owner: https://claude.ai/artifact/PDeeJjWC7gHZ9eFCCZvavp. Next: the owner's remarks on the mockup, then the plan and decision records.
+None. (Phase 5's step D comes after phase 6, as in the plan approved 2026-10-10; leagues to be decided later.)
 
 ## Follow-ups
 
@@ -17,6 +17,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Notes
 
+- Phase 6 plan (approved 2026-10-10): A1 ADRs (#62); B1 arena records (`claude/studio-arena-records`) and C1 web scaffold (`claude/studio-web-scaffold`) stacked on #62's branch `claude/pensive-cannon-ws80zm`; then A2 determinism check (uses B1's records), B2 turn-by-turn bot driving, B3 game interface and uttt adapter, B4 server, B5 history, C2 to C6 front end, D analysis, E Windows CI and artifact sample. Mockup: https://claude.ai/artifact/PDeeJjWC7gHZ9eFCCZvavp (owner's remarks applied: one board tone, playable cells brighter, quiet won-board marks, board never moves, less text).
 - Phase 5's one-week trial is dropped (owner, 2026-10-09); the daily report at 06:45 Paris time, on Sonnet 5.5, keeps running.
 - Ultimate Tic-Tac-Toe strength work stays paused; no training or league run by hand.
 
