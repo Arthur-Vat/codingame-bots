@@ -222,6 +222,30 @@ export function getHistoryRecord(id: string): Promise<unknown> {
   return call('GET', `/api/history/${encodeURIComponent(id)}`);
 }
 
+/** One saved game in the history list. */
+export interface HistoryEntry {
+  id: string;
+  game: string;
+  unix_time: number;
+  /** The names of the players of seat 0 and seat 1. */
+  players: [string, string];
+  winner: number | null;
+  /** `finished`, `timeout`, `crash`, `invalid`, `aborted` or `resigned`. */
+  end: string;
+  turns: number;
+  source: string;
+}
+
+/** The saved games, newest first. `query` is `''` or a query string starting with `?`. */
+export function listHistory(query: string): Promise<HistoryEntry[]> {
+  return call('GET', `/api/history${query}`);
+}
+
+/** Deletes a saved game. */
+export async function deleteHistory(id: string): Promise<void> {
+  await call('DELETE', `/api/history/${encodeURIComponent(id)}`);
+}
+
 /** Saves a record in the history. `duplicate` is true when it was there already. */
 export function postHistory(record: unknown): Promise<{ id: string; duplicate: boolean }> {
   return call('POST', '/api/history', record);

@@ -858,6 +858,154 @@
   font-weight: 600;
 }
 
+.hist-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.hist-actions .btn {
+  flex: none;
+  cursor: pointer;
+}
+
+.filebtn:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.hist-hint {
+  margin: -6px 0 12px;
+}
+
+.filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.filters .field {
+  min-width: 140px;
+}
+
+.filters input[type='date'] {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 7px 10px;
+  color-scheme: dark;
+}
+
+.refused {
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  border-left: 3px solid var(--bad);
+}
+
+.refused ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+
+.tbl-wrap {
+  overflow-x: auto;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 860px;
+  font-size: 13px;
+}
+
+th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 11px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--fg-strong);
+}
+
+td.num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+tr:hover td {
+  background: var(--panel-2);
+}
+
+.res {
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+.res.d {
+  color: var(--muted);
+}
+
+.tag {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: var(--panel-2);
+  color: var(--fg);
+  white-space: nowrap;
+}
+
+td .res + .tag {
+  margin-left: 6px;
+}
+
+.tag.keep {
+  background: rgba(204, 75, 58, 0.2);
+  color: #f0a497;
+}
+
+.row-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.row-actions .ctrl {
+  flex: none;
+  padding: 6px 10px;
+  text-decoration: none;
+  text-align: center;
+}
+
+.ctrl.danger {
+  background: var(--bad);
+  color: #fff;
+}
+
 .empty-page {
   padding: 32px 18px;
   text-align: center;
