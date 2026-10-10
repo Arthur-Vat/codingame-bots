@@ -145,7 +145,7 @@ Gate: the first version (steps A to C) works on the owner's Windows computer, th
 ### A. Foundations
 
 - [x] Decision records on the studio, Node and game records, and the commit scope `studio` (owner, 2026-10-10)
-- [ ] Every release replays identically with a fixed seed and iterations (tested), and each release's iteration rate can be measured
+- [x] Every release replays identically with a fixed seed and iterations (tested), and each release's iteration rate can be measured
 
 ### B. Server
 
