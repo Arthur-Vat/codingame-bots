@@ -179,6 +179,83 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run e2e
 
+  studio-windows:
+    name: Studio on Windows
+    # The owner runs the studio on Windows (ADR 0025). Git Bash, curl and jq
+    # are preinstalled on the runner.
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Test the studio and the arena
+        # The studio's server tests compile a release with rustc and play bot
+        # games; the arena's unix-only tests are skipped on Windows.
+        run: cargo test --locked -p studio -p studio-game -p uttt-studio -p cg-arena
+      - name: Build the server
+        run: cargo build --locked --release -p studio
+      - name: Play a bot against a bot through the server
+        run: |
+          port=8499
+          base="http://127.0.0.1:$port"
+          # An empty folder stands for the front end, which this job does not build.
+          web="$RUNNER_TEMP/studio-web"
+          mkdir -p "$web"
+          target/release/studio.exe --port "$port" --web "$web" >studio.log 2>&1 &
+          server=$!
+          stop() {
+            kill "$server" 2>/dev/null || true
+            echo "--- server log"
+            cat studio.log || true
+          }
+          trap stop EXIT
+
+          up=""
+          for _ in $(seq 60); do
+            if curl -s --max-time 5 "$base/api/games" >/dev/null; then
+              up=yes
+              break
+            fi
+            sleep 1
+          done
+          if [ -z "$up" ]; then
+            echo "::error title=Studio on Windows::the server did not answer within 60 s"
+            exit 1
+          fi
+
+          seat='{"kind":"bot","release":"uttt-v001","think_ms":50,"mode":"realtime"}'
+          body="{\"game\":\"uttt\",\"seed\":1,\"opening_plies\":0,\"seats\":[$seat,$seat]}"
+          created="$(curl -s --max-time 30 -X POST -H 'Content-Type: application/json' \
+            -d "$body" "$base/api/sessions")"
+          echo "$created"
+          id="$(jq -r '.id // empty' <<<"$created" | tr -d '\r')"
+          if [ -z "$id" ]; then
+            echo "::error title=Studio on Windows::the session was not created"
+            exit 1
+          fi
+
+          status=""
+          session=""
+          for _ in $(seq 120); do
+            session="$(curl -s --max-time 10 "$base/api/sessions/$id" || true)"
+            status="$(jq -r '.status // empty' <<<"$session" 2>/dev/null | tr -d '\r' || true)"
+            case "$status" in
+              over | failed) break ;;
+            esac
+            sleep 1
+          done
+          echo "status: $status"
+          jq -c '{status, error, turns: (.turns | length), result}' <<<"$session" || true
+          if [ "$status" != over ]; then
+            echo "::error title=Studio on Windows::the game ended with status '$status' instead of 'over'"
+            exit 1
+          fi
+
   docs:
     name: Docs and scripts
     runs-on: ubuntu-latest
