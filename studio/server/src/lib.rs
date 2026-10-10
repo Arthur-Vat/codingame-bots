@@ -2,8 +2,9 @@
 //!
 //! It serves the built front end and a JSON API to list games and releases,
 //! play friend, computer and bot-against-bot games, take moves back by
-//! replaying, and export a game record, and keeps the history of saved games. The HTTP layer is thin: [`handle`]
-//! holds all the routing and [`server`] only adapts `tiny_http` to it.
+//! replaying, and export a game record, and keeps the history of saved games. The
+//! HTTP layer is thin: [`handle`] holds all the routing and [`server`] only
+//! adapts `tiny_http` to it.
 //!
 //! - [`state`]: the registered games, paths and sessions.
 //! - [`api`]: routing and the endpoints.
