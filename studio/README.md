@@ -65,6 +65,8 @@ A game adds an adapter crate, `games/<game>/studio`, that implements `studio_gam
 
 `studio_game::live_game` replays turns with a fresh referee into a `cg_arena::live::LiveGame`. The adapter's frame format is documented in its crate; `games/uttt/studio` is the first.
 
+A game's board renderer lives in `web/src/games/<game>/` and is registered in `web/src/games/registry.ts`, which maps the game's id to a React component that draws one frame.
+
 ## Running the server
 
 ```sh
