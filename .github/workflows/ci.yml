@@ -150,32 +150,33 @@ jobs:
           cache: npm
           cache-dependency-path: studio/web/package-lock.json
       - name: Install the locked dependencies
+        id: install
         run: npm ci
       # The next steps run even when an earlier one fails, so that one run
       # reports every problem.
       - name: Licenses of the packages
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run licenses
       - name: Format
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run format:check
       - name: Lint
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run lint
       - name: Type check
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run typecheck
       - name: Unit tests
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm test
       - name: Build
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build
       - name: Install Chromium for the browser tests
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npx playwright install --with-deps chromium
       - name: Browser tests
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run e2e
 
   docs:

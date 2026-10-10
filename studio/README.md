@@ -36,4 +36,10 @@ The first `npm run e2e` on a computer needs Chromium: `npx playwright install ch
 
 Few, each one a choice (ADR 0026). Versions are exact, and every version in the lockfile was published at least two weeks before it was added (`npm install --before=<date>` finds such versions). Only permissive licenses are allowed, listed in `web/licenses.json`; `web/scripts/check-licenses.mjs` refuses a package without a license, or with one that is not on the list.
 
-The lockfile is made with npm 11, which resolves the peer dependencies of Vitest where npm 10 (the one shipped with Node 22) fails; `npm ci` works with both.
+The lockfile is made with npm 11, because npm 10 (the one shipped with Node 22) fails on the peer dependencies of Vitest and rewrites the lockfile on `npm install`; `npm ci` works with either. To change a dependency, run from `studio/web/`:
+
+```sh
+npx npm@11 install --save-exact <package>@<exact version> --before=<date two weeks ago, as YYYY-MM-DD>
+```
+
+Then commit `package.json` and `package-lock.json`, and run the checks above.
