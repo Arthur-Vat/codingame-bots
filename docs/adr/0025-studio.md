@@ -12,7 +12,7 @@ On 2026-10-10 the owner asked for a user interface in the style of Lichess: choo
 What exists shapes the design:
 
 - The arena runs bots as separate processes that read CodinGame's text protocol, with the game's time limits, through one `Referee` trait per game ([ADR 0011](0011-framework-structure.md)). A referee cannot undo a move: any position is reached by replaying the game's answers from its seed.
-- Every Ultimate Tic-Tac-Toe release reads `CG_SEED` (its random seed) and `CG_FIXED_ITERS` (a fixed number of search iterations instead of a time budget). With both set, a release should answer the same moves every time, which makes it possible to restart a bot and replay a game into it.
+- Every Ultimate Tic-Tac-Toe release up to `uttt-v010` (2026-10-10) reads `CG_SEED` (its random seed) and `CG_FIXED_ITERS` (a fixed number of search iterations instead of a time budget). With both set, a release should answer the same moves every time, which makes it possible to restart a bot and replay a game into it.
 - A bot keeps its own state between turns and cannot be copied from outside its process on every platform; a takeback against a bot therefore means restarting it and replaying the game.
 - Releases never change, and they print no evaluation; code that ends up in a bot uses the standard library only.
 
@@ -33,5 +33,5 @@ The owner chose, in the conversation of 2026-10-10: this repository, a local app
 - Every new game must provide a studio adapter and a renderer, as well as its referee.
 - The repository gains a second toolchain, Node, for the front end ([ADR 0026](0026-node-for-the-studio.md)), and CI gains jobs for it, including one on Windows.
 - Game records need a format and a place to live ([ADR 0027](0027-game-records.md)).
-- `scripts/pr-hygiene.sh` must accept the scope `studio` before the first pull request that uses it.
+- `scripts/pr-hygiene.sh` accepts the scope `studio`.
 - Takebacks depend on the releases being deterministic, which must be tested for each release before it is offered.

@@ -1,6 +1,6 @@
 # Roadmap
 
-Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes Claude's work more autonomous, phase 6 builds a studio to play and review games in the browser, and phase 7 adds a second game. Reaching Legend is the ongoing result of the experiment loop, not a phase. Each phase ends at a gate that CI or CodinGame can check. Game counts in the gates are proposed values.
+Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes Claude's work more autonomous, phase 6 builds a studio to play and review games in the browser, and phase 7 adds a second game. Reaching Legend is the ongoing result of the experiment loop, not a phase. Each phase ends at a gate that CI, CodinGame or the owner can check. Game counts in the gates are proposed values.
 
 | Phase | Scope | Gate | Status |
 | --- | --- | --- | --- |
@@ -138,7 +138,7 @@ Order: A, then B, then C and E side by side, then D.
 
 ## Phase 6: studio
 
-Planned with the owner on 2026-10-10 ([ADR 0025](adr/0025-studio.md), [ADR 0026](adr/0026-node-for-the-studio.md), [ADR 0027](adr/0027-game-records.md)). Goal: a local app in the owner's browser, in the style of Lichess, to choose a game, play it against a friend on the same screen or against any release, watch two releases play each other, and review games with a bot's evaluation and best moves. Phase 5's step D stays paused meanwhile; the owner will decide later about leagues.
+Planned with the owner on 2026-10-10 ([ADR 0025](adr/0025-studio.md), [ADR 0026](adr/0026-node-for-the-studio.md), [ADR 0027](adr/0027-game-records.md)). Goal: a local app in the owner's browser, in the style of Lichess, to choose a game, play it against a friend on the same screen or against any release, watch two releases play each other, and review games with a bot's evaluation and best moves. Phase 5's step D comes after this phase, as in the plan the owner approved on 2026-10-10; the owner will decide later about leagues.
 
 Gate: the first version (steps A to C) works on the owner's Windows computer, then every item below is done.
 
