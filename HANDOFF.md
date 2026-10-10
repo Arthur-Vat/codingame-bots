@@ -8,7 +8,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Open questions
 
-None.
+- Studio (planned phase 6, discussed 2026-10-10, nothing implemented): a local, Lichess-style browser app in this repository (`studio/`, scope `studio`), Rust server plus TypeScript and React front end, for the owner only, on Windows. Home screen of games; play a friend (clock, 10+0 by default), play any release (fixed iterations so takebacks replay exactly via `CG_SEED`/`CG_FIXED_ITERS`), bot against bot then review (120 s at 1x, speeds, steps), analysis engine from current code (win/draw/loss bar, top moves with lines, heatmap on legal cells, evaluation chart), history page with a sample (about 10 games a run) and file import/export. Mockup for the owner: https://claude.ai/artifact/PDeeJjWC7gHZ9eFCCZvavp. Next: the owner's remarks on the mockup, then the plan and decision records.
 
 ## Follow-ups
 
