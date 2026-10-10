@@ -127,6 +127,18 @@ jobs:
           name: paste-ready-bots
           path: target/cg/*.rs
           if-no-files-found: error
+      - name: New releases replay identically with a fixed seed and iterations
+        if: github.event_name == 'pull_request'
+        run: |
+          mapfile -t added < <(git diff --name-only --diff-filter=A --no-renames HEAD^1 HEAD -- 'games/*/releases/*.rs')
+          if [ "${#added[@]}" -eq 0 ]; then
+            echo "no new release"
+            exit 0
+          fi
+          for file in "${added[@]}"; do
+            game="$(cut -d/ -f2 <<<"$file")"
+            scripts/check-determinism.sh "$game" 500 "$file"
+          done
 
   licenses:
     name: Dependency licenses and sources
