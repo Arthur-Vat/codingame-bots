@@ -29,8 +29,8 @@ rust-version = "1.90"
 cg-arena = { path = "crates/cg-arena" }
 cg-core = { path = "crates/cg-core" }
 cg-search = { path = "crates/cg-search" }
-uttt-engine = { path = "games/uttt/engine" }
 studio-game = { path = "studio/game" }
+uttt-engine = { path = "games/uttt/engine" }
 uttt-referee = { path = "games/uttt/referee" }
 uttt-studio = { path = "games/uttt/studio" }
 # Tools only. Nothing that ends up in a bot may depend on these.

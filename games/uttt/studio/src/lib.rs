@@ -22,8 +22,11 @@
 //! shows the position after the whole opening. A game with an opening holds
 //! those plies as its first turns (the referee's only valid action is the
 //! imposed one), and they add no frame. So after `n` turns there are
-//! `1 + n.saturating_sub(opening)` frames, where `opening` is the number of
-//! imposed plies (0 when `opening_plies` is 0).
+//! `1 + n.saturating_sub(opening)` frames, where `opening` is
+//! [`opening_turns`](StudioGame::opening_turns): the number of imposed plies,
+//! which can be fewer than `opening_plies` when the referee cuts the opening
+//! short. A human is asked for no move during the opening, and an invalid
+//! turn inside it is an error, not a frame.
 
 use cg_arena::live::{LiveGame, ReplayError};
 use cg_arena::record::RecordedAnswer;
@@ -43,17 +46,13 @@ fn seat_json(seat: Option<usize>) -> Value {
     seat.map_or(Value::Null, |seat| json!(seat))
 }
 
-/// The state of the small board at `(board_row, board_col)`.
+/// The state of the small board at `(board_row, board_col)`: its winner, or
+/// `"draw"` when it is closed without one.
 fn small_json(game: &UtttReferee, board_row: usize, board_col: usize) -> Value {
-    if let Some(seat) = game.small_winner(board_row, board_col) {
-        return json!(seat);
-    }
-    let full =
-        (0..3).all(|r| (0..3).all(|c| game.mark((3 * board_row + r, 3 * board_col + c)).is_some()));
-    if full {
-        json!("draw")
-    } else {
-        Value::Null
+    match game.small_winner(board_row, board_col) {
+        Some(seat) => json!(seat),
+        None if game.small_closed(board_row, board_col) => json!("draw"),
+        None => Value::Null,
     }
 }
 
@@ -100,12 +99,20 @@ fn frame(game: &UtttReferee) -> Value {
 /// and the count come that many `row col` lines.
 fn valid_cells(input: &str) -> Vec<Cell> {
     let mut lines = input.lines().skip(1);
-    let count: usize = lines.next().and_then(|line| line.parse().ok()).unwrap_or(0);
+    let count: usize = lines
+        .next()
+        .and_then(|line| line.parse().ok())
+        .expect("the referee sends the number of valid actions");
     lines
         .take(count)
-        .filter_map(|line| {
-            let (row, col) = line.split_once(' ')?;
-            Some((row.parse().ok()?, col.parse().ok()?))
+        .map(|line| {
+            let (row, col) = line
+                .split_once(' ')
+                .expect("the referee sends `row col` lines");
+            (
+                row.parse().expect("the referee sends a row number"),
+                col.parse().expect("the referee sends a column number"),
+            )
         })
         .collect()
 }
@@ -120,6 +127,11 @@ impl StudioGame for Uttt {
 
     fn new_referee(&self, setup: &GameSetup) -> Box<dyn Referee> {
         Box::new(referee(setup))
+    }
+
+    fn opening_turns(&self, setup: &GameSetup) -> usize {
+        // The referee may cut the opening short of `opening_plies`.
+        referee(setup).opening().len()
     }
 
     fn frames(
@@ -168,7 +180,7 @@ impl StudioGame for Uttt {
         seat: usize,
     ) -> Result<Vec<HumanMove>, ReplayError> {
         let game = live_game(self, *setup, turns)?;
-        if !game.to_act().contains(&seat) {
+        if turns.len() < self.opening_turns(setup) || !game.to_act().contains(&seat) {
             return Ok(Vec::new());
         }
         let mut cells = valid_cells(&game.input_for(seat));

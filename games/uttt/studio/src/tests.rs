@@ -28,8 +28,17 @@ fn play_out(setup: &GameSetup, limit: usize) -> Vec<Vec<RecordedAnswer>> {
         let Some(&seat) = game.to_act().first() else {
             break;
         };
-        let moves = Uttt.human_moves(setup, &turns, seat).unwrap();
-        turns.push(answer(seat, &moves[0].lines[0]));
+        let (row, col) = if turns.len() < Uttt.opening_turns(setup) {
+            // The server plays the imposed turns itself.
+            assert!(Uttt.human_moves(setup, &turns, seat).unwrap().is_empty());
+            valid_cells(&game.input_for(seat))[0]
+        } else {
+            let moves = Uttt.human_moves(setup, &turns, seat).unwrap();
+            let line = &moves[0].lines[0];
+            let (row, col) = line.split_once(' ').unwrap();
+            (row.parse().unwrap(), col.parse().unwrap())
+        };
+        turns.push(answer(seat, &format!("{row} {col}")));
     }
     turns
 }
@@ -186,6 +195,11 @@ fn an_opening_is_part_of_the_start() {
     assert_eq!(frames.len(), 1);
     assert_eq!(marks(&frames[0]), 4);
 
+    assert_eq!(Uttt.opening_turns(&setup), 4);
+    for seat in 0..2 {
+        assert!(Uttt.human_moves(&setup, &[], seat).unwrap().is_empty());
+    }
+
     // The referee asks for the imposed plies as turns, which add no frame.
     let turns = play_out(&setup, 6);
     assert_eq!(turns.len(), 6);
@@ -217,4 +231,20 @@ fn live_game_replays_to_the_same_position() {
 fn live_game_rejects_invalid_turns() {
     let turns = vec![answer(0, "4 4"), answer(1, "0 0")];
     assert!(live_game(&Uttt, setup(0), &turns).is_err());
+}
+
+#[test]
+fn an_invalid_turn_inside_the_opening_has_no_frame() {
+    let setup = setup(4);
+    let turns = vec![answer(0, "9 9")];
+    let error = Uttt.frames(&setup, &turns).unwrap_err();
+    assert_eq!((error.turn, error.invalid.seat), (0, 0));
+    assert!(Uttt.human_moves(&setup, &turns, 1).is_err());
+    // Callers show the start of a fresh game instead.
+    assert_eq!(Uttt.frames(&setup, &[]).unwrap().len(), 1);
+}
+
+#[test]
+fn a_game_without_an_opening_has_none() {
+    assert_eq!(Uttt.opening_turns(&setup(0)), 0);
 }

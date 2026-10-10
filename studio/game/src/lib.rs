@@ -39,11 +39,24 @@ pub trait StudioGame: Send + Sync {
     /// A fresh referee for this setup.
     fn new_referee(&self, setup: &GameSetup) -> Box<dyn Referee>;
 
+    /// How many leading turns the referee imposes (an opening). The server
+    /// plays them itself, and no human is asked for them. 0 for a game
+    /// without one.
+    fn opening_turns(&self, setup: &GameSetup) -> usize;
+
     /// What the board renderer draws: frame 0 is the start, then one frame
     /// per step. Turn-based games have one step per turn; a game whose turn
     /// has several steps returns several frames for it.
     ///
+    /// The imposed turns ([`opening_turns`](StudioGame::opening_turns)) are
+    /// part of the start: frame 0 is the position after them, and frame `i`
+    /// shows `turns[..opening + i]`. The frames of a game with fewer turns
+    /// than its opening are just frame 0.
+    ///
     /// Fails, with the index of the turn, when the turns break the rules.
+    /// `ReplayError::turn` counts all the turns, the opening's included.
+    /// There is no frame for a turn inside the opening: a caller shows
+    /// frame 0 of a fresh game (`frames(setup, &[])`) in that case.
     fn frames(
         &self,
         setup: &GameSetup,
@@ -52,7 +65,7 @@ pub trait StudioGame: Send + Sync {
 
     /// The moves a human in `seat` may play after `turns`, built from the
     /// referee's turn input for that seat. Empty when `seat` does not act
-    /// now.
+    /// now, and while the opening is not over.
     ///
     /// Fails, with the index of the turn, when the turns break the rules.
     fn human_moves(
