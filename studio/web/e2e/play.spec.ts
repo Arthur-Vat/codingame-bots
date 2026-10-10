@@ -466,16 +466,36 @@ test('the clocks wait while a bot thinks and while the server rewinds', async ({
   await page.clock.runFor(5_000);
   await expect(page.getByTestId('clock-0')).toHaveText('10:00');
 
+  // The page learns of a new status by polling, and the next poll is a fake timer that is armed
+  // only when the previous answer has arrived, in real time. So one runFor may fire nothing:
+  // advance the clock in small steps until the page shows the status, and only then check.
   mock.current = { ...mock.current, status: 'rewinding', progress: { done: 0, total: 1 } };
+  await expect
+    .poll(async () => {
+      await page.clock.runFor(250);
+      return page.getByTestId('board-overlay').count();
+    })
+    .toBe(1);
+  await expect(page.getByTestId('board-overlay')).toContainText('Rewinding uttt-v010');
   await page.clock.runFor(5_000);
   await expect(page.getByTestId('clock-0')).toHaveText('10:00');
 
   mock.current = { ...mock.current, status: 'waiting_human', to_act: [0], progress: null };
-  // The next poll brings the new status; only then does the clock run.
-  await page.clock.runFor(500);
+  await expect
+    .poll(async () => {
+      await page.clock.runFor(250);
+      return page.getByTestId('board-overlay').count();
+    })
+    .toBe(0);
+  // The clock runs again: it went down, by a few seconds at most (how many steps it took the
+  // page to see the status is not the test's business).
+  await expect
+    .poll(async () => {
+      await page.clock.runFor(100);
+      return page.getByTestId('clock-0').innerText();
+    })
+    .toMatch(/^9:5\d$/);
   await expect(page.getByTestId('clock-0')).toHaveClass(/run/);
-  await page.clock.runFor(1_000);
-  await expect(page.getByTestId('clock-0')).toHaveText('9:59');
 });
 
 const OVER_BY_TIMEOUT = () =>

@@ -8,7 +8,9 @@ export default defineConfig({
   // No retries: a flaky test must fail, not hide.
   retries: 0,
   forbidOnly: !!process.env.CI,
-  reporter: process.env.CI ? 'list' : [['html', { open: 'never' }]],
+  // In CI, the github reporter turns each failure into an annotation, readable
+  // without the job's log.
+  reporter: process.env.CI ? [['list'], ['github']] : [['html', { open: 'never' }]],
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
     trace: 'retain-on-failure',
