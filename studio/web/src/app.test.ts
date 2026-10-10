@@ -1,14 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { HOME_HEADING, homeHint } from './home';
+import { HOME_HEADING, releaseCount } from './home';
 
-describe('homeHint', () => {
-  it('tells that games need the server when there are none', () => {
-    expect(homeHint(0)).toBe('Games appear here when the server is running.');
-  });
-
-  it('counts the games, in the singular and the plural', () => {
-    expect(homeHint(1)).toBe('1 game is available.');
-    expect(homeHint(3)).toBe('3 games are available.');
+describe('releaseCount', () => {
+  it('counts the releases, in the singular and the plural', () => {
+    expect(releaseCount(0)).toBe('0 releases');
+    expect(releaseCount(1)).toBe('1 release');
+    expect(releaseCount(10)).toBe('10 releases');
   });
 });
 
