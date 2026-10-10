@@ -68,9 +68,7 @@ export default function Board({
       </div>
       <div
         className={`uttt-board${allCellsPlayable(frame) ? ' free' : ''}`}
-        role="grid"
-        aria-rowcount={9}
-        aria-colcount={9}
+        role="group"
         aria-label="Ultimate Tic-Tac-Toe board"
       >
         {THREE.flatMap((boardRow) =>
@@ -107,10 +105,7 @@ export default function Board({
                         key={cellKey(row, col)}
                         className={classes.join(' ')}
                         style={style}
-                        role="gridcell"
-                        aria-rowindex={row + 1}
-                        aria-colindex={col + 1}
-                        aria-label={s.label}
+                        {...(legal ? {} : { role: 'img', 'aria-label': s.label })}
                       >
                         {s.mark === 0 && <XMark className="mark mark-x" />}
                         {s.mark === 1 && <OMark className="mark mark-o" />}
