@@ -2,3 +2,9 @@
 **/*.rs.bk
 # Working copies of Claude's subagents
 /.claude/worktrees/
+# The studio's front end and its data (ADR 0025)
+/studio/web/node_modules/
+/studio/web/dist/
+/studio/web/test-results/
+/studio/web/playwright-report/
+/studio/data/
