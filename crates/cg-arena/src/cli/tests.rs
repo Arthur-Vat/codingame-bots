@@ -144,3 +144,118 @@ fn rejects_a_timeout_rate_outside_zero_to_one() {
         assert!(tournament(bots, 1, &args.common).is_err(), "{rate}");
     }
 }
+
+#[test]
+fn the_game_id_is_the_binary_name_without_arena() {
+    assert_eq!(game_id("uttt-arena"), "uttt");
+    assert_eq!(game_id("uttt"), "uttt");
+}
+
+#[test]
+fn a_record_sample_needs_records() {
+    let base = ["arena", "match", "--bot", "a=x", "--bot", "b=y"];
+    let without = Cli::try_parse_from(base.into_iter().chain(["--records-sample", "10"]));
+    assert!(without.is_err());
+    let with =
+        Cli::try_parse_from(
+            base.into_iter()
+                .chain(["--records", "dir", "--records-sample", "10"]),
+        )
+        .unwrap();
+    let Command::Match(args) = with.command else {
+        panic!("not a match")
+    };
+    assert_eq!(args.common.records_sample, Some(10));
+    // Records built without the command line refuse the same mistake.
+    let mut common = args.common;
+    common.records = None;
+    assert!(Records::create(&common, "uttt", "arena match").is_err());
+}
+
+fn game(pair: u32, swapped: bool) -> GameRecord {
+    GameRecord {
+        pair,
+        swapped,
+        game: crate::runner::MatchRecord {
+            seed: 9,
+            seats: ["a".to_string(), "b".to_string()],
+            winner: Some(0),
+            end: crate::runner::EndReason::Finished,
+            turns: 1,
+            max_answer_ms: [1.0, 0.0],
+            mean_answer_ms: [1.0, 0.0],
+            later_answer_ms: Default::default(),
+            recorded_turns: vec![vec![crate::record::RecordedAnswer {
+                seat: 0,
+                lines: vec!["4 4".to_string()],
+                ms: 1.0,
+            }]],
+        },
+    }
+}
+
+#[test]
+fn record_files_are_named_by_game_seed_pair_and_swap() {
+    assert_eq!(
+        record_file_name("uttt-5", &game(3, false)),
+        "uttt-5-p3-0.json"
+    );
+    assert_eq!(
+        record_file_name("uttt-5", &game(3, true)),
+        "uttt-5-p3-1.json"
+    );
+}
+
+#[test]
+fn writes_parseable_record_files_in_a_new_directory() {
+    let dir = std::env::temp_dir().join(format!("cg-arena-records-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    let dir_arg = dir.join("nested");
+    let cli = Cli::try_parse_from([
+        "arena",
+        "match",
+        "--bot",
+        "a=x",
+        "--bot",
+        "b=y",
+        "--seed",
+        "5",
+        "--records",
+        dir_arg.to_str().unwrap(),
+        "--records-sample",
+        "1",
+    ])
+    .unwrap();
+    let Command::Match(args) = cli.command else {
+        panic!("not a match")
+    };
+    let bots = two_bots(&args.bots).unwrap();
+    let tournament = tournament(bots, 2, &args.common).unwrap();
+    let mut records = Records::create(&args.common, "uttt", "arena match").unwrap();
+    // A limit of 1 keeps one win (ceil(1 / 3) = 1) and drops the second.
+    records.write(&tournament, &game(0, false));
+    records.write(&tournament, &game(1, false));
+    records.finish().unwrap();
+
+    let mut names: Vec<String> = fs::read_dir(&dir_arg)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+        .collect();
+    names.sort();
+    assert_eq!(names, ["uttt-5-p0-0.json"]);
+    let json = fs::read_to_string(dir_arg.join(&names[0])).unwrap();
+    let record: Record = serde_json::from_str(&json).unwrap();
+    assert_eq!(record.format, 1);
+    assert_eq!(record.game, "uttt");
+    assert_eq!(record.source, "arena match");
+    assert_eq!(record.turns.len(), 1);
+    assert_eq!(record.players[0].command.as_deref(), Some("x"));
+
+    // A second run in the same directory must not overwrite the record.
+    let mut again = Records::create(&args.common, "uttt", "arena match").unwrap();
+    again.write(&tournament, &game(0, false));
+    let error = again.finish().unwrap_err();
+    assert!(error.contains("the file exists"), "{error}");
+    assert_eq!(fs::read_to_string(dir_arg.join(&names[0])).unwrap(), json);
+    fs::remove_dir_all(&dir).unwrap();
+}

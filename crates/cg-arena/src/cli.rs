@@ -1,8 +1,8 @@
 //! The command line shared by every game's arena binary, with three
 //! commands: `match`, `sprt` and `league`.
 
-use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::thread;
@@ -11,6 +11,7 @@ use std::time::Duration;
 use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 
 use crate::ratings::{elo_margins, elo_ratings, MatchupResult};
+use crate::record::{Record, Sampler};
 use crate::referee::RefereeFactory;
 use crate::runner::{BotSpec, MatchOptions};
 use crate::sprt::{SequentialTest, SprtSettings, Verdict};
@@ -50,6 +51,21 @@ pub struct CommonArgs {
     /// Write one JSON line per game to this file.
     #[arg(long, value_name = "FILE")]
     pub out: Option<PathBuf>,
+
+    /// Write each kept game, with every answer, as a JSON file in this
+    /// directory, created if missing. Files are named
+    /// GAME-SEED-pPAIR-SWAPPED.json (SWAPPED is 1 for the second game of a
+    /// pair). A league adds the number of the bots' matchup, as in
+    /// GAME-SEED-m0v1-p3-1.json. Existing files are never overwritten: use a
+    /// new or empty directory.
+    #[arg(long, value_name = "DIR")]
+    pub records: Option<PathBuf>,
+
+    /// Keep about N games per pair of bots (each matchup of a league), a
+    /// mix of wins, draws and losses of the first bot, plus every game lost
+    /// by a fault. Without it, --records keeps every game.
+    #[arg(long, value_name = "N", requires = "records")]
+    pub records_sample: Option<usize>,
 
     /// Multiply the game's time limits. Bots receive the factor in
     /// CG_TIME_SCALE to scale their own budget.
@@ -170,7 +186,8 @@ pub struct LeagueArgs {
 }
 
 /// Runs the arena for one game. `name` is the binary's name for `--help`;
-/// `new_referee` builds each game.
+/// the game's id in game records is `name` without a trailing `-arena`
+/// (`uttt-arena` records the game `uttt`). `new_referee` builds each game.
 ///
 /// Exit status: 0 on success (for `sprt`: the candidate is accepted), 1 when
 /// a check failed (a fault with `--expect-no-faults`, a score below
@@ -182,10 +199,11 @@ pub fn main<F: RefereeFactory>(name: &'static str, new_referee: F) -> ExitCode {
         Ok(cli) => cli,
         Err(err) => err.exit(),
     };
+    let game = game_id(name);
     let result = match cli.command {
-        Command::Match(args) => run_match(args, &new_referee),
-        Command::Sprt(args) => run_sprt(args, &new_referee),
-        Command::League(args) => run_league(args, &new_referee),
+        Command::Match(args) => run_match(args, game, &new_referee),
+        Command::Sprt(args) => run_sprt(args, game, &new_referee),
+        Command::League(args) => run_league(args, game, &new_referee),
     };
     match result {
         Ok(true) => ExitCode::SUCCESS,
@@ -197,17 +215,34 @@ pub fn main<F: RefereeFactory>(name: &'static str, new_referee: F) -> ExitCode {
     }
 }
 
-fn run_match<F: RefereeFactory>(args: MatchArgs, new_referee: &F) -> Result<bool, String> {
+/// The game's id in game records: the binary's name without `-arena`.
+fn game_id(binary: &str) -> &str {
+    binary.strip_suffix("-arena").unwrap_or(binary)
+}
+
+fn run_match<F: RefereeFactory>(
+    args: MatchArgs,
+    game: &str,
+    new_referee: &F,
+) -> Result<bool, String> {
     let [first, second] = two_bots(&args.bots)?;
     check_fault_name(&args.common, &[first.name.clone(), second.name.clone()])?;
     let tournament = tournament([first, second], args.pairs, &args.common)?;
     let mut output = Output::create(args.common.out.as_deref())?;
+    let mut records = Records::create(&args.common, game, "arena match")?;
     let mut summary = Summary::new(tournament.bots.clone().map(|bot| bot.name));
-    play(&tournament, new_referee, &mut output, |game| {
-        summary.add(game);
-        Flow::Continue
-    })?;
+    play(
+        &tournament,
+        new_referee,
+        &mut output,
+        &mut records,
+        |game| {
+            summary.add(game);
+            Flow::Continue
+        },
+    )?;
     output.finish()?;
+    let records_result = records.finish();
 
     println!("{summary}");
     let mut passed = faults_ok(&args.common, &summary);
@@ -222,10 +257,14 @@ fn run_match<F: RefereeFactory>(args: MatchArgs, new_referee: &F) -> Result<bool
         eprintln!("error: {first} is clearly weaker than {second}");
         passed = false;
     }
-    Ok(passed)
+    records_result.map(|()| passed)
 }
 
-fn run_sprt<F: RefereeFactory>(args: SprtArgs, new_referee: &F) -> Result<bool, String> {
+fn run_sprt<F: RefereeFactory>(
+    args: SprtArgs,
+    game: &str,
+    new_referee: &F,
+) -> Result<bool, String> {
     let settings = SprtSettings {
         elo0: args.elo0,
         elo1: args.elo1,
@@ -244,16 +283,24 @@ fn run_sprt<F: RefereeFactory>(args: SprtArgs, new_referee: &F) -> Result<bool, 
     )?;
     let tournament = tournament([candidate, baseline], args.max_pairs, &args.common)?;
     let mut output = Output::create(args.common.out.as_deref())?;
+    let mut records = Records::create(&args.common, game, "arena sprt")?;
     let mut summary = Summary::new(tournament.bots.clone().map(|bot| bot.name));
     let mut test = SequentialTest::new(settings);
-    play(&tournament, new_referee, &mut output, |game| {
-        summary.add(game);
-        match test.add(game) {
-            Verdict::Continue => Flow::Continue,
-            _ => Flow::Stop,
-        }
-    })?;
+    play(
+        &tournament,
+        new_referee,
+        &mut output,
+        &mut records,
+        |game| {
+            summary.add(game);
+            match test.add(game) {
+                Verdict::Continue => Flow::Continue,
+                _ => Flow::Stop,
+            }
+        },
+    )?;
     output.finish()?;
+    let records_result = records.finish();
 
     println!("{summary}");
     let (lower, upper) = settings.bounds();
@@ -278,10 +325,15 @@ fn run_sprt<F: RefereeFactory>(args: SprtArgs, new_referee: &F) -> Result<bool, 
             Verdict::Continue => format!("INCONCLUSIVE after {} pairs", args.max_pairs),
         }
     );
-    Ok(faults_ok(&args.common, &summary) && verdict == Verdict::Accepted)
+    let passed = faults_ok(&args.common, &summary) && verdict == Verdict::Accepted;
+    records_result.map(|()| passed)
 }
 
-fn run_league<F: RefereeFactory>(args: LeagueArgs, new_referee: &F) -> Result<bool, String> {
+fn run_league<F: RefereeFactory>(
+    args: LeagueArgs,
+    game: &str,
+    new_referee: &F,
+) -> Result<bool, String> {
     let bots = args
         .bots
         .iter()
@@ -306,6 +358,7 @@ fn run_league<F: RefereeFactory>(args: LeagueArgs, new_referee: &F) -> Result<bo
     };
 
     let mut output = Output::create(args.common.out.as_deref())?;
+    let mut records = Records::create(&args.common, game, "arena league")?;
     let mut results = Vec::new();
     let mut faults = vec![Faults::default(); bots.len()];
     let mut games = vec![0u32; bots.len()];
@@ -314,10 +367,17 @@ fn run_league<F: RefereeFactory>(args: LeagueArgs, new_referee: &F) -> Result<bo
             let tournament =
                 tournament([bots[a].clone(), bots[b].clone()], args.pairs, &args.common)?;
             let mut summary = Summary::new([names[a].clone(), names[b].clone()]);
-            play(&tournament, new_referee, &mut output, |game| {
-                summary.add(game);
-                Flow::Continue
-            })?;
+            records.start_matchup(&format!("m{a}v{b}"));
+            play(
+                &tournament,
+                new_referee,
+                &mut output,
+                &mut records,
+                |game| {
+                    summary.add(game);
+                    Flow::Continue
+                },
+            )?;
             let score = summary.score().unwrap_or(0.5);
             println!(
                 "{} vs {}: {:.1}% of {} games ({} wins, {} draws, {} losses)",
@@ -345,6 +405,7 @@ fn run_league<F: RefereeFactory>(args: LeagueArgs, new_referee: &F) -> Result<bo
         }
     }
     output.finish()?;
+    let records_result = records.finish();
 
     let ratings = elo_ratings(bots.len(), &results, anchor);
     let margins = elo_margins(bots.len(), &results, anchor, &ratings);
@@ -372,7 +433,7 @@ fn run_league<F: RefereeFactory>(args: LeagueArgs, new_referee: &F) -> Result<bo
             }
         }
     }
-    Ok(passed)
+    records_result.map(|()| passed)
 }
 
 /// Checks that `--expect-no-faults-from` names one of `names`.
@@ -428,11 +489,13 @@ fn tournament(bots: [BotSpec; 2], pairs: u32, common: &CommonArgs) -> Result<Tou
     })
 }
 
-/// Plays a tournament, writing each game to `output` and reporting progress.
+/// Plays a tournament, writing each game to `output` and the kept ones to
+/// `records`, and reporting progress.
 fn play<F: RefereeFactory>(
     tournament: &Tournament,
     new_referee: &F,
     output: &mut Output,
+    records: &mut Records,
     mut on_game: impl FnMut(&GameRecord) -> Flow,
 ) -> Result<(), String> {
     let total = tournament.pairs * 2;
@@ -444,6 +507,7 @@ fn play<F: RefereeFactory>(
     let mut played = 0u32;
     tournament::run(tournament, new_referee, |game| {
         output.write(game);
+        records.write(tournament, game);
         played += 1;
         if played.is_multiple_of(200) && played < total {
             eprintln!("  {played} games played");
@@ -516,6 +580,107 @@ impl Output {
             None => Ok(()),
         }
     }
+}
+
+/// The optional directory of game records: one JSON file per kept game.
+struct Records {
+    dir: Option<PathBuf>,
+    game: String,
+    source: &'static str,
+    limit: Option<usize>,
+    sampler: Sampler,
+    /// The start of every file name in the current tournament.
+    stem: String,
+    seed: u64,
+    error: Option<String>,
+}
+
+impl Records {
+    /// Prepares the directory `--records` names, if any.
+    fn create(common: &CommonArgs, game: &str, source: &'static str) -> Result<Records, String> {
+        if common.records_sample.is_some() && common.records.is_none() {
+            return Err("--records-sample needs --records".to_string());
+        }
+        if let Some(dir) = &common.records {
+            fs::create_dir_all(dir)
+                .map_err(|err| format!("cannot create {}: {err}", dir.display()))?;
+        }
+        Ok(Records {
+            dir: common.records.clone(),
+            game: game.to_string(),
+            source,
+            limit: common.records_sample,
+            sampler: Sampler::new(common.records_sample),
+            stem: format!("{game}-{}", common.seed),
+            seed: common.seed,
+            error: None,
+        })
+    }
+
+    /// Starts the games of one pair of bots in a league: each pair gets its
+    /// own sample and its own file names.
+    fn start_matchup(&mut self, tag: &str) {
+        self.sampler = Sampler::new(self.limit);
+        self.stem = format!("{}-{}-{tag}", self.game, self.seed);
+    }
+
+    fn write(&mut self, tournament: &Tournament, game: &GameRecord) {
+        let Some(dir) = &self.dir else { return };
+        if !self.sampler.keep(game) {
+            return;
+        }
+        let [first, second] = &tournament.bots;
+        let seat_bots = if game.swapped {
+            [second, first]
+        } else {
+            [first, second]
+        };
+        let record = Record::from_match(
+            &self.game,
+            self.source,
+            tournament.opening_plies,
+            &game.game,
+            &tournament.options,
+            seat_bots,
+        );
+        let path = dir.join(record_file_name(&self.stem, game));
+        let written = serde_json::to_vec(&record)
+            .map_err(|err| err.to_string())
+            .and_then(|json| write_new_file(&path, &json));
+        if let Err(err) = written {
+            self.error
+                .get_or_insert(format!("{}: {err}", path.display()));
+        }
+    }
+
+    fn finish(self) -> Result<(), String> {
+        match self.error {
+            Some(err) => Err(format!("cannot write game records: {err}")),
+            None => Ok(()),
+        }
+    }
+}
+
+/// Writes `bytes` to a file that must not exist yet: a record is never
+/// overwritten.
+fn write_new_file(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .map_err(|err| {
+            if err.kind() == io::ErrorKind::AlreadyExists {
+                "the file exists; use a new or empty directory for --records".to_string()
+            } else {
+                err.to_string()
+            }
+        })?;
+    file.write_all(bytes).map_err(|err| err.to_string())
+}
+
+/// `STEM-pPAIR-0.json`, or `-1` for the swapped game of the pair.
+fn record_file_name(stem: &str, game: &GameRecord) -> String {
+    format!("{stem}-p{}-{}.json", game.pair, u8::from(game.swapped))
 }
 
 #[cfg(test)]

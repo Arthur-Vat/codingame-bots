@@ -15,6 +15,7 @@ fn game(pair: u32, swapped: bool, winner: Option<usize>, end: EndReason) -> Game
             max_answer_ms: [1.0, 2.0],
             mean_answer_ms: [0.5, 0.5],
             later_answer_ms: Default::default(),
+            recorded_turns: Vec::new(),
         },
     }
 }

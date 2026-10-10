@@ -9,8 +9,9 @@ use std::time::{Duration, Instant};
 
 use cg_core::rng::{Rng, SEED_ENV};
 use cg_core::time::TIME_SCALE_ENV;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
+use crate::record::RecordedAnswer;
 use crate::referee::{Answer, Outcome, Referee, SEATS};
 
 /// How to start a bot.
@@ -76,7 +77,7 @@ impl Default for MatchOptions {
 }
 
 /// Why a match ended.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum EndReason {
     /// The rules ended the game.
@@ -119,6 +120,12 @@ pub struct MatchRecord {
     /// answer has a longer limit. Not written to the JSON lines.
     #[serde(skip)]
     pub later_answer_ms: [Vec<f32>; SEATS],
+    /// The answers of every turn, in `players_to_act` order, for game
+    /// records. A turn whose answers broke the rules is included; a turn cut
+    /// by a timeout or a crash holds the answers received before it, and is
+    /// left out if there were none. Not written to the JSON lines.
+    #[serde(skip)]
+    pub recorded_turns: Vec<Vec<RecordedAnswer>>,
 }
 
 /// The match could not be played at all.
@@ -170,6 +177,7 @@ pub fn run_match(
     let limits = referee.time_limits();
     let scale = |limit: Duration| limit.mul_f64(options.time_scale) + options.time_tolerance;
     let mut turns = 0;
+    let mut recorded_turns = Vec::new();
     let (outcome, end) = 'game: loop {
         if let Some(outcome) = referee.outcome() {
             break (outcome, EndReason::Finished);
@@ -186,6 +194,7 @@ pub fn run_match(
         turns += 1;
 
         let mut answers = Vec::with_capacity(seats.len());
+        let mut recorded = Vec::with_capacity(seats.len());
         for seat in seats {
             let process = &mut processes[seat];
             let first = process.answers == 0;
@@ -200,17 +209,31 @@ pub fn run_match(
                 limits.later_answers
             });
             match process.ask(&input, referee.answer_lines(seat), limit) {
-                Ok(lines) => answers.push(Answer { seat, lines }),
+                Ok((lines, ms)) => {
+                    recorded.push(RecordedAnswer {
+                        seat,
+                        lines: lines.clone(),
+                        ms,
+                    });
+                    answers.push(Answer { seat, lines });
+                }
                 Err(AskError::Timeout) => {
+                    if !recorded.is_empty() {
+                        recorded_turns.push(recorded);
+                    }
                     let limit_ms = limit.as_secs_f64() * 1000.0;
                     break 'game (lose(seat), EndReason::Timeout { seat, limit_ms });
                 }
                 Err(AskError::Closed) => {
+                    if !recorded.is_empty() {
+                        recorded_turns.push(recorded);
+                    }
                     let detail = process.exit_detail();
                     break 'game (lose(seat), EndReason::Crash { seat, detail });
                 }
             }
         }
+        recorded_turns.push(recorded);
         if let Err(invalid) = referee.play(&answers) {
             let seat = invalid.seat;
             let reason = invalid.reason;
@@ -230,6 +253,7 @@ pub fn run_match(
         max_answer_ms: [0.0; SEATS],
         mean_answer_ms: [0.0; SEATS],
         later_answer_ms: Default::default(),
+        recorded_turns,
     };
     for (seat, process) in processes.iter_mut().enumerate() {
         record.max_answer_ms[seat] = process.max_answer.as_secs_f64() * 1000.0;
@@ -306,7 +330,13 @@ impl BotProcess {
     }
 
     /// Sends `input` and waits for `count` answer lines within `limit`.
-    fn ask(&mut self, input: &str, count: usize, limit: Duration) -> Result<Vec<String>, AskError> {
+    /// Returns the lines and how long they took, in milliseconds.
+    fn ask(
+        &mut self,
+        input: &str,
+        count: usize,
+        limit: Duration,
+    ) -> Result<(Vec<String>, f64), AskError> {
         let start = Instant::now();
         let stdin = self.stdin.as_mut().ok_or(AskError::Closed)?;
         stdin
@@ -331,7 +361,7 @@ impl BotProcess {
         self.answers += 1;
         self.max_answer = self.max_answer.max(elapsed);
         self.total_answer += elapsed;
-        Ok(lines)
+        Ok((lines, elapsed.as_secs_f64() * 1000.0))
     }
 
     /// Describes how the process ended, waiting briefly for it to exit.

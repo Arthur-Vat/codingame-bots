@@ -4,6 +4,7 @@
 //!
 //! - [`referee`]: the trait each game implements.
 //! - [`runner`]: one match between two bot processes.
+//! - [`record`]: full game records, and the sample of a run to keep.
 //! - [`tournament`]: many matches in parallel, in seat-swapped pairs.
 //! - [`summary`]: results from the first bot's point of view.
 //! - [`sprt`]: the sequential test deciding whether a candidate is stronger.
@@ -12,6 +13,7 @@
 
 pub mod cli;
 pub mod ratings;
+pub mod record;
 pub mod referee;
 pub mod runner;
 pub mod sprt;

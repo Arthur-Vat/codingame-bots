@@ -40,7 +40,7 @@ target/release/uttt-arena match \
   --pairs 100 --opening-plies 4 --out target/uttt-results.jsonl
 ```
 
-Each pair plays the same seed twice with seats swapped; `--opening-plies 4` starts the pair with 4 random moves imposed by the referee. Two more commands use the same options: `sprt` plays a candidate against a baseline until the test decides, and `league` rates several bots. See `uttt-arena <command> --help`.
+Each pair plays the same seed twice with seats swapped; `--opening-plies 4` starts the pair with 4 random moves imposed by the referee. Two more commands use the same options: `sprt` plays a candidate against a baseline until the test decides, and `league` rates several bots. See `uttt-arena <command> --help`. `--records DIR` also writes each game, with every answer, as a JSON file in `DIR` for the studio to replay; `--records-sample 10` keeps about 10 games per pair of bots (each matchup of a league) plus every game lost by a fault. A record is never overwritten: use a new or empty directory.
 
 ## Evaluating a bot
 
