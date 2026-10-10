@@ -102,6 +102,9 @@ fn answer(state: &State, port: u16, mut request: Request) {
         ("Content-Type", response.content_type.as_str()),
         ("Cache-Control", "no-store"),
     ] {
+        if value.is_empty() {
+            continue;
+        }
         if let Ok(header) = Header::from_bytes(name, value) {
             reply = reply.with_header(header);
         }

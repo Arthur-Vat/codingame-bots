@@ -12,10 +12,10 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use cg_arena::record::{Record, RECORD_FORMAT};
-use cg_arena::referee::{GameSetup, SEATS};
+use cg_arena::referee::{GameSetup, Outcome, SEATS};
 use cg_arena::runner::EndReason;
 use serde_json::{json, Value};
-use studio_game::StudioGame;
+use studio_game::{live_game, StudioGame};
 
 use crate::api::Response;
 use crate::state::{lock, State};
@@ -69,30 +69,29 @@ impl History {
     }
 
     /// Saves `record` (already validated). The id, and whether the same
-    /// record was already there.
+    /// record was already there. A file of that name that is not a record
+    /// (a write that was cut short) is replaced.
     fn save(&self, record: &Record) -> Result<(String, bool), String> {
         let id = record_id(record)?;
         let bytes = serde_json::to_vec(record).map_err(|error| error.to_string())?;
         let _writing = lock(&self.writing);
         fs::create_dir_all(&self.dir)
             .map_err(|error| format!("cannot create {}: {error}", self.dir.display()))?;
-        let path = self.path(&id);
-        match fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&path)
-        {
-            Ok(mut file) => {
-                if let Err(error) = file.write_all(&bytes) {
-                    drop(file);
-                    let _ = fs::remove_file(&path);
-                    return Err(format!("cannot write {}: {error}", path.display()));
-                }
-                Ok((id, false))
-            }
-            Err(error) if error.kind() == ErrorKind::AlreadyExists => Ok((id, true)),
-            Err(error) => Err(format!("cannot write {}: {error}", path.display())),
+        if matches!(self.read(&id), Ok(Some(_))) {
+            return Ok((id, true));
         }
+        // Written next to its place, then renamed: a reader never sees half
+        // a file. The listing ignores names without the `.json` extension.
+        let temporary = self.dir.join(format!(".tmp-{id}-{}", std::process::id()));
+        let path = self.path(&id);
+        let written = fs::File::create(&temporary)
+            .and_then(|mut file| file.write_all(&bytes).and_then(|()| file.sync_all()))
+            .and_then(|()| fs::rename(&temporary, &path));
+        if let Err(error) = written {
+            let _ = fs::remove_file(&temporary);
+            return Err(format!("cannot write {}: {error}", path.display()));
+        }
+        Ok((id, false))
     }
 
     /// The record `id`: `Ok(None)` if there is no such file.
@@ -108,9 +107,15 @@ impl History {
             .map_err(|error| format!("{} is not a game record: {error}", path.display()))
     }
 
-    fn delete(&self, id: &str) -> bool {
+    /// Deletes the file `id`: `Ok(false)` if there is none.
+    fn delete(&self, id: &str) -> Result<bool, String> {
         let _writing = lock(&self.writing);
-        fs::remove_file(self.path(id)).is_ok()
+        let path = self.path(id);
+        match fs::remove_file(&path) {
+            Ok(()) => Ok(true),
+            Err(error) if error.kind() == ErrorKind::NotFound => Ok(false),
+            Err(error) => Err(format!("cannot delete {}: {error}", path.display())),
+        }
     }
 
     /// Every readable record with its id. Files that cannot be read are
@@ -154,6 +159,7 @@ enum ResultFilter {
     O,
     Draw,
     Fault,
+    Unfinished,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -179,6 +185,8 @@ impl Filter {
         let mut filter = Filter::default();
         for pair in query.split('&').filter(|pair| !pair.is_empty()) {
             let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
+            let value = percent_decode(value)?;
+            let value = value.as_str();
             if value.is_empty() {
                 continue;
             }
@@ -191,7 +199,10 @@ impl Filter {
                         "o" => ResultFilter::O,
                         "draw" => ResultFilter::Draw,
                         "fault" => ResultFilter::Fault,
-                        _ => return Err("result must be x, o, draw or fault".to_string()),
+                        "unfinished" => ResultFilter::Unfinished,
+                        _ => {
+                            return Err("result must be x, o, draw, fault or unfinished".to_string())
+                        }
                     })
                 }
                 "source" => {
@@ -225,13 +236,13 @@ impl Filter {
                 record.end,
                 EndReason::Timeout { .. } | EndReason::Crash { .. } | EndReason::Invalid { .. }
             );
-            let drawn = record.winner.is_none()
-                && matches!(record.end, EndReason::Finished | EndReason::Aborted { .. });
+            let drawn = record.winner.is_none() && matches!(record.end, EndReason::Finished);
             let holds = match result {
                 ResultFilter::X => record.winner == Some(0),
                 ResultFilter::O => record.winner == Some(1),
                 ResultFilter::Draw => drawn,
                 ResultFilter::Fault => fault,
+                ResultFilter::Unfinished => matches!(record.end, EndReason::Aborted { .. }),
             };
             if !holds {
                 return false;
@@ -251,6 +262,31 @@ impl Filter {
     }
 }
 
+/// A query value with its `%XX` escapes and `+` (a space) decoded.
+fn percent_decode(value: &str) -> Result<String, String> {
+    let bytes = value.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut at = 0;
+    while at < bytes.len() {
+        match bytes[at] {
+            b'+' => decoded.push(b' '),
+            b'%' => {
+                let byte = bytes
+                    .get(at + 1..at + 3)
+                    .and_then(|hex| std::str::from_utf8(hex).ok())
+                    .filter(|hex| hex.bytes().all(|byte| byte.is_ascii_hexdigit()))
+                    .and_then(|hex| u8::from_str_radix(hex, 16).ok())
+                    .ok_or_else(|| format!("bad %-escape in {value:?}"))?;
+                decoded.push(byte);
+                at += 2;
+            }
+            byte => decoded.push(byte),
+        }
+        at += 1;
+    }
+    String::from_utf8(decoded).map_err(|_| format!("{value:?} is not valid UTF-8"))
+}
+
 /// The unix time of 00:00 UTC on `date`, written `YYYY-MM-DD`.
 fn day_start(date: &str) -> Result<u64, String> {
     let bad = || format!("{date:?} is not a date written YYYY-MM-DD");
@@ -260,7 +296,10 @@ fn day_start(date: &str) -> Result<u64, String> {
     else {
         return Err(bad());
     };
-    if year.len() != 4 || month.len() != 2 || day.len() != 2 {
+    let digits = |text: &str, length: usize| {
+        text.len() == length && text.bytes().all(|byte| byte.is_ascii_digit())
+    };
+    if !digits(year, 4) || !digits(month, 2) || !digits(day, 2) {
         return Err(bad());
     }
     let year: i64 = year.parse().map_err(|_| bad())?;
@@ -308,8 +347,8 @@ fn replay(game: &dyn StudioGame, record: &Record) -> Result<Replay, String> {
             record.format
         ));
     }
-    if record.players.len() != SEATS || record.winner.is_some_and(|seat| seat >= SEATS) {
-        return Err("the record's players or winner are not valid".to_string());
+    if record.winner.is_some_and(|seat| seat >= SEATS) {
+        return Err("the record's winner is not a seat".to_string());
     }
     let setup = GameSetup {
         seed: record.seed,
@@ -327,11 +366,71 @@ fn replay(game: &dyn StudioGame, record: &Record) -> Result<Replay, String> {
         }
         Err(error) => return Err(failed(error)),
     };
+    check_result(game, record, setup, shown_turns)?;
     Ok(Replay {
         frames,
         opening_turns: game.opening_turns(&setup),
         shown_turns,
     })
+}
+
+/// Checks that the record's end and winner agree with each other and with
+/// the referee: a finished game ends as the referee says, a fault or a
+/// resignation is won by the other seat, an aborted game has no winner.
+fn check_result(
+    game: &dyn StudioGame,
+    record: &Record,
+    setup: GameSetup,
+    shown_turns: usize,
+) -> Result<(), String> {
+    let lost_by = |seat: usize, what: &str| {
+        if seat >= SEATS {
+            Err(format!("the seat that {what} is not a seat"))
+        } else if record.winner != Some(SEATS - 1 - seat) {
+            Err(format!(
+                "seat {seat} {what}, so seat {} must be the winner, not {:?}",
+                SEATS - 1 - seat,
+                record.winner
+            ))
+        } else {
+            Ok(())
+        }
+    };
+    match &record.end {
+        EndReason::Finished => {
+            let live = live_game(game, setup, &record.turns[..shown_turns])
+                .map_err(|error| format!("the record does not replay: {error}"))?;
+            let expected = match live.outcome() {
+                Some(Outcome::Win(seat)) => Some(seat),
+                Some(Outcome::Draw) => None,
+                None => {
+                    return Err(
+                        "the record says the game finished, but it is not over after its turns"
+                            .to_string(),
+                    )
+                }
+            };
+            if record.winner == expected {
+                Ok(())
+            } else {
+                Err(format!(
+                    "the referee ends the game with winner {expected:?}, the record says {:?}",
+                    record.winner
+                ))
+            }
+        }
+        EndReason::Resigned { seat } => lost_by(*seat, "resigned"),
+        EndReason::Timeout { seat, .. } => lost_by(*seat, "timed out"),
+        EndReason::Crash { seat, .. } => lost_by(*seat, "crashed"),
+        EndReason::Invalid { seat, .. } => lost_by(*seat, "answered invalidly"),
+        EndReason::Aborted { .. } => {
+            if record.winner.is_none() {
+                Ok(())
+            } else {
+                Err("an aborted game has no winner".to_string())
+            }
+        }
+    }
 }
 
 /// The game of `record` and its replay, or the response saying why not.
@@ -438,10 +537,10 @@ pub fn delete(state: &State, id: &str) -> Response {
     if !valid_id(id) {
         return Response::error(400, "invalid game id");
     }
-    if state.history().delete(id) {
-        Response::new(204, "application/json", Vec::new())
-    } else {
-        Response::error(404, "unknown game")
+    match state.history().delete(id) {
+        Ok(true) => Response::new(204, "", Vec::new()),
+        Ok(false) => Response::error(404, "unknown game"),
+        Err(message) => Response::error(500, &message),
     }
 }
 
