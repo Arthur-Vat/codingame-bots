@@ -560,7 +560,10 @@ test('a timeout report that fails is made again', async ({ page }) => {
   });
   await startTimedFriendGame(page);
 
-  await page.clock.runFor(31_000);
+  // Just past the 30 s on the clock, and well short of the 1 s before the
+  // retry: the failed report's answer arrives in real time, so a longer step
+  // could also run the retry's timer.
+  await page.clock.runFor(30_050);
   await expect.poll(() => ends.length).toBe(1);
   await expect(page.getByText('disk full')).toBeVisible();
   await page.clock.runFor(1_500);
