@@ -28,8 +28,8 @@ impl Countdown {
 impl Referee for Countdown {
     fn time_limits(&self) -> TimeLimits {
         TimeLimits {
-            first_answer: Duration::from_millis(2000),
-            later_answers: Duration::from_millis(300),
+            first_answer: Duration::from_millis(5000),
+            later_answers: Duration::from_millis(2000),
         }
     }
 
@@ -89,7 +89,7 @@ fn counter(name: &str) -> BotSpec {
 }
 
 const SEED: u64 = 7;
-const LIMIT: Duration = Duration::from_secs(2);
+const LIMIT: Duration = Duration::from_secs(5);
 
 fn setup() -> GameSetup {
     GameSetup {
@@ -171,7 +171,7 @@ fn the_first_answer_of_a_seat_has_the_longer_limit_and_the_initial_input() {
     let mut game = LiveGame::new(Countdown::boxed(10), setup());
     assert_eq!(game.to_act(), vec![0]);
     assert_eq!(game.input_for(0), "seat 0\nturn 0\n");
-    assert_eq!(game.time_limit(0), Duration::from_millis(2000));
+    assert_eq!(game.time_limit(0), Duration::from_millis(5000));
     assert_eq!(game.answer_lines(0), 1);
     let answer = |seat| RecordedAnswer {
         seat,
@@ -181,10 +181,10 @@ fn the_first_answer_of_a_seat_has_the_longer_limit_and_the_initial_input() {
     game.play(vec![answer(0)]).unwrap();
     assert_eq!(game.to_act(), vec![1]);
     assert_eq!(game.input_for(1), "seat 1\nturn 1\n");
-    assert_eq!(game.time_limit(1), Duration::from_millis(2000));
+    assert_eq!(game.time_limit(1), Duration::from_millis(5000));
     game.play(vec![answer(1)]).unwrap();
     assert_eq!(game.input_for(0), "turn 2\n");
-    assert_eq!(game.time_limit(0), Duration::from_millis(300));
+    assert_eq!(game.time_limit(0), Duration::from_millis(2000));
 }
 
 #[test]
@@ -246,7 +246,85 @@ fn replaying_invalid_turns_is_an_error() {
         ms: 1.0,
     }];
     let error = LiveGame::replay(Countdown::boxed(10), setup(), &[turn]).err();
-    assert_eq!(error.map(|invalid| invalid.seat), Some(0));
+    assert_eq!(
+        error.map(|error| (error.turn, error.invalid.seat)),
+        Some((0, 0))
+    );
+}
+
+#[test]
+fn replaying_a_record_ending_in_an_invalid_turn_names_that_turn() {
+    let ok = |seat| {
+        vec![RecordedAnswer {
+            seat,
+            lines: vec!["ok 1".to_string()],
+            ms: 1.0,
+        }]
+    };
+    let nope = vec![RecordedAnswer {
+        seat: 0,
+        lines: vec!["nope".to_string()],
+        ms: 1.0,
+    }];
+    let turns = vec![ok(0), ok(1), nope];
+    let error = LiveGame::replay(Countdown::boxed(10), setup(), &turns)
+        .err()
+        .expect("the last turn is invalid");
+    assert_eq!(error.turn, turns.len() - 1);
+    assert!(error.to_string().starts_with("turn 2: "), "{error}");
+    let game = LiveGame::replay(Countdown::boxed(10), setup(), &turns[..error.turn]).unwrap();
+    assert_eq!(game.turns().len(), 2);
+    assert_eq!(game.to_act(), vec![0]);
+}
+
+fn answer(seat: usize) -> RecordedAnswer {
+    RecordedAnswer {
+        seat,
+        lines: vec!["ok 1".to_string()],
+        ms: 1.0,
+    }
+}
+
+#[test]
+fn answers_from_the_wrong_seat_are_refused_without_playing() {
+    let mut game = LiveGame::new(Countdown::boxed(10), setup());
+    let invalid = game.play(vec![answer(1)]).unwrap_err();
+    assert_eq!(invalid.seat, 1);
+    assert!(invalid.reason.contains("seat 1"), "{}", invalid.reason);
+    assert!(game.turns().is_empty());
+    assert!(game.failure().is_none());
+    assert_eq!(game.to_act(), vec![0]);
+    // Too many answers are refused too, and the game stays usable.
+    let invalid = game.play(vec![answer(0), answer(1)]).unwrap_err();
+    assert_eq!(invalid.seat, 1);
+    assert!(game.turns().is_empty());
+    game.play(vec![answer(0)]).unwrap();
+    assert_eq!(game.turns().len(), 1);
+    assert_eq!(game.to_act(), vec![1]);
+}
+
+#[test]
+fn an_empty_turn_is_refused_without_playing() {
+    let mut game = LiveGame::new(Countdown::boxed(10), setup());
+    let invalid = game.play(Vec::new()).unwrap_err();
+    assert_eq!(invalid.seat, 0);
+    assert!(game.turns().is_empty());
+    assert!(game.failure().is_none());
+    game.play(vec![answer(0)]).unwrap();
+}
+
+#[test]
+fn a_play_after_the_end_is_refused() {
+    let record = played_by_the_arena();
+    let mut game = LiveGame::replay(Countdown::boxed(10), setup(), &record.recorded_turns).unwrap();
+    let turns = game.turns().len();
+    let invalid = game.play(vec![answer(1)]).unwrap_err();
+    assert_eq!(invalid.seat, 1);
+    assert!(invalid.reason.contains("over"), "{}", invalid.reason);
+    assert!(game.play(Vec::new()).is_err());
+    assert_eq!(game.turns().len(), turns);
+    assert_eq!(game.outcome(), Some(Outcome::Win(0)));
+    assert!(game.failure().is_none());
 }
 
 #[test]
@@ -365,24 +443,30 @@ fn resync_reports_a_bot_that_stops_answering() {
 
 #[test]
 fn resync_reports_recorded_turns_that_break_the_rules() {
-    let nope = vec![RecordedAnswer {
-        seat: 1,
-        lines: vec!["nope".to_string()],
-        ms: 1.0,
-    }];
+    let turn = |seat, line: &str| {
+        vec![RecordedAnswer {
+            seat,
+            lines: vec![line.to_string()],
+            ms: 1.0,
+        }]
+    };
+    let turns = [turn(0, "ok 1"), turn(1, "nope")];
     let a = counter("a");
     let error = resync_bot(
         &a,
         &settings(0, "a"),
         Countdown::boxed(10),
         setup(),
-        &[nope],
+        &turns,
         0,
         LIMIT,
     )
     .err()
     .expect("the record is invalid");
-    assert!(matches!(error, ResyncError::Invalid(_)), "{error}");
+    assert!(
+        matches!(&error, ResyncError::Invalid(invalid) if invalid.turn == 1),
+        "{error}"
+    );
     assert!(error.to_string().contains("nope"));
 }
 

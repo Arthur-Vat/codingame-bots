@@ -56,6 +56,9 @@ impl std::error::Error for LiveError {}
 
 /// A bot process that is asked for one answer at a time. Dropping it stops
 /// the process.
+///
+/// A new bot knows nothing of a game in progress. To put one in a seat in
+/// the middle of a game, use [`resync_bot`].
 pub struct LiveBot {
     process: BotProcess,
 }
@@ -122,14 +125,18 @@ impl LiveGame {
     /// A fresh `referee`, built by the caller from `setup`, brought to the
     /// position after `turns`. A takeback is a replay of a prefix of the
     /// turns.
+    ///
+    /// Arena records keep a final turn whose answers broke the rules. To
+    /// show such a game, replay `turns[..error.turn]` when this fails.
     pub fn replay(
         referee: Box<dyn Referee>,
         setup: GameSetup,
         turns: &[Vec<RecordedAnswer>],
-    ) -> Result<LiveGame, InvalidAnswer> {
+    ) -> Result<LiveGame, ReplayError> {
         let mut game = LiveGame::new(referee, setup);
-        for turn in turns {
-            game.play(turn.clone())?;
+        for (turn, answers) in turns.iter().enumerate() {
+            game.play(answers.clone())
+                .map_err(|invalid| ReplayError { turn, invalid })?;
         }
         Ok(game)
     }
@@ -145,6 +152,10 @@ impl LiveGame {
 
     /// What the arena sends `seat` now: its initial input, if it has not
     /// answered yet, then the turn's input.
+    ///
+    /// "Has not answered" is decided from the game's turns, not from the
+    /// bot process: a bot started in the middle of a game must be brought
+    /// there with [`resync_bot`], or it would miss its initial input.
     pub fn input_for(&self, seat: usize) -> String {
         let mut input = String::new();
         if !self.has_answered(seat) {
@@ -171,12 +182,19 @@ impl LiveGame {
     }
 
     /// Plays this turn's `answers`, in [`to_act`](LiveGame::to_act) order.
-    /// On success they are appended to the turns. On error nothing is
-    /// recorded and the game is over: see the type's documentation.
+    /// On success they are appended to the turns.
+    ///
+    /// The answers' seats must be exactly `to_act()`, in order, and not
+    /// empty; otherwise this returns an [`InvalidAnswer`] without calling
+    /// the referee, and the game is unchanged. That also refuses a play
+    /// after the game is over. When the referee itself rejects the answers
+    /// nothing is recorded and the game is over: see the type's
+    /// documentation.
     pub fn play(&mut self, answers: Vec<RecordedAnswer>) -> Result<(), InvalidAnswer> {
         if let Some(failure) = &self.failure {
             return Err(failure.clone());
         }
+        self.check_seats(&answers)?;
         let played: Vec<Answer> = answers
             .iter()
             .map(|answer| Answer {
@@ -196,7 +214,42 @@ impl LiveGame {
         }
     }
 
-    /// Why the last [`play`](LiveGame::play) failed, if it did.
+    /// Checks that `answers` come from the seats that must act, in order.
+    fn check_seats(&self, answers: &[RecordedAnswer]) -> Result<(), InvalidAnswer> {
+        let expected = self.to_act();
+        if expected.is_empty() {
+            return Err(InvalidAnswer {
+                seat: answers.first().map_or(0, |answer| answer.seat),
+                reason: "the game is over, no answer is expected".to_string(),
+            });
+        }
+        if answers.is_empty() {
+            return Err(InvalidAnswer {
+                seat: expected[0],
+                reason: format!("no answers; seats {expected:?} must answer"),
+            });
+        }
+        for (index, answer) in answers.iter().enumerate() {
+            if expected.get(index) != Some(&answer.seat) {
+                return Err(InvalidAnswer {
+                    seat: answer.seat,
+                    reason: format!(
+                        "seat {} answered at position {index}, but seats {expected:?} must answer, in that order",
+                        answer.seat
+                    ),
+                });
+            }
+        }
+        if let Some(&seat) = expected.get(answers.len()) {
+            return Err(InvalidAnswer {
+                seat,
+                reason: format!("seat {seat} has not answered; seats {expected:?} must answer"),
+            });
+        }
+        Ok(())
+    }
+
+    /// Why the referee rejected the answers of a [`play`](LiveGame::play), if it did.
     pub fn failure(&self) -> Option<&InvalidAnswer> {
         self.failure.as_ref()
     }
@@ -228,6 +281,26 @@ impl LiveGame {
     }
 }
 
+/// A turn of a replayed game that the rules reject.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReplayError {
+    /// The index of the turn, from 0.
+    pub turn: usize,
+    pub invalid: InvalidAnswer,
+}
+
+impl fmt::Display for ReplayError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "turn {}: the answers of seat {} break the rules: {}",
+            self.turn, self.invalid.seat, self.invalid.reason
+        )
+    }
+}
+
+impl std::error::Error for ReplayError {}
+
 /// Why a bot could not be brought back to a position.
 #[derive(Debug)]
 pub enum ResyncError {
@@ -243,7 +316,7 @@ pub enum ResyncError {
     /// The bot did not answer.
     Bot(LiveError),
     /// The recorded turns break the rules.
-    Invalid(InvalidAnswer),
+    Invalid(ReplayError),
 }
 
 impl fmt::Display for ResyncError {
@@ -259,11 +332,7 @@ impl fmt::Display for ResyncError {
                 "the bot answered {got:?} in turn {turn}, the record has {expected:?}"
             ),
             ResyncError::Bot(error) => write!(f, "{error}"),
-            ResyncError::Invalid(invalid) => write!(
-                f,
-                "the recorded answers of seat {} break the rules: {}",
-                invalid.seat, invalid.reason
-            ),
+            ResyncError::Invalid(error) => write!(f, "{error}"),
         }
     }
 }
@@ -276,7 +345,12 @@ impl std::error::Error for ResyncError {}
 /// bot gets the input the arena would have sent and must answer the same
 /// lines within `limit`. A bot that does not (the release is not
 /// deterministic, or its seed or iterations differ) gives
-/// [`ResyncError::Diverged`].
+/// [`ResyncError::Diverged`]. It only succeeds when the recorded lines came
+/// from that same bot, started with the same seed and settings.
+///
+/// A bot started mid-game must always go through this function: whether a
+/// seat gets its initial input is decided by [`LiveGame::input_for`] from
+/// the game's turns, not by the process.
 pub fn resync_bot(
     spec: &BotSpec,
     settings: &BotSettings,
@@ -302,7 +376,12 @@ pub fn resync_bot(
                 });
             }
         }
-        game.play(turn.clone()).map_err(ResyncError::Invalid)?;
+        game.play(turn.clone()).map_err(|invalid| {
+            ResyncError::Invalid(ReplayError {
+                turn: index,
+                invalid,
+            })
+        })?;
     }
     Ok(bot)
 }
