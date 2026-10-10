@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- Phase 6 batch 1, asked 2026-10-10: #62 (ADRs), #63 (arena records), #64 (front-end scaffold), #65 (determinism check), #66 (live games), #67 (game interface), to merge in that order (stacked; #65 and #67 include #64 by merge commits). The owner asked on 2026-10-10 to implement the whole phase 6 plan; merges still need approval per pull request.
+- Phase 6 first version, asked 2026-10-10: merge in order #62, #63, #64, #65, #66, #67, #68, #69, #71, #70, #72, #73, #76, #74, #75 (stacked; some include lower ones by merge commits; the stack was checked to merge cleanly in this order). The owner asked on 2026-10-10 to implement the whole phase 6 plan; merges still need approval per pull request. Also the owner's call: make "Studio on Windows" (and "Studio front end") required checks in the ruleset.
 
 ## Open questions
 
@@ -17,11 +17,12 @@ None. (Phase 5's step D comes after phase 6, as in the plan approved 2026-10-10;
 
 ## Notes
 
-- Phase 6 plan (approved 2026-10-10). Open PRs (stacked, merge in order): #62 A1 ADRs, #63 B1 arena records, #64 C1 web scaffold, #65 A2 determinism (includes #64), #66 B2 live games, #67 B3 game interface (includes #64), #68 B4 server, #69 C3 uttt board, #70 C2 app shell. In progress: B5 history on `claude/studio-history` (review fixes pending: result validation, atomic writes, draw/unfinished filters), C4 play modes on `claude/studio-play` (combines #70, #69 and B5). Next: C5 review screen, C6 history page, D analysis (cg-search reporting, analysis engine, panel), E Windows CI + artifact samples. Subagents hit the plan's session usage limit once on 2026-10-10 (reset 18:40 UTC). Mockup: https://claude.ai/artifact/PDeeJjWC7gHZ9eFCCZvavp.
+- Phase 6 state: steps A, B, C and E are done in the open PRs above (first version: play friend / release with takebacks / bot vs bot, review with playback, history with filters and import, Windows CI and guide, SPRT/league record samples). Left: step D, analysis (cg-search read-only reporting with identical moves and speed baseline, an analysis engine from current code streaming top moves / W-D-L / lines, the analysis panel with eval bar, top moves, heatmap, keep thinking, chart filled in the background at about 100 ms per position). Then the owner tests on Windows (gate). Mockup: https://claude.ai/artifact/PDeeJjWC7gHZ9eFCCZvavp.
 - Phase 5's one-week trial is dropped (owner, 2026-10-09); the daily report at 06:45 Paris time, on Sonnet 5.5, keeps running.
 - Ultimate Tic-Tac-Toe strength work stays paused; no training or league run by hand.
 
 ## Usage
 
+- 2026-10-10 21:00 (Paris) | phase 6 steps A, B, C, E: #62 to #76 | main session 260 steps (88.6M read, context up to 588k: a very long conversation), 28 agents (54.6M read; the largest: play modes 13.0M and review/history pages 10.2M); agents hit the plan's session limit once
 - 2026-10-09 22:05 (Paris) | step E light items (#58, #59) | main session 22 steps (1.93M read), 1 agent (0.22M read)
 - 2026-10-09 21:50 (Paris) | agent guard hook (#52), roadmap line (#53), session setup (#54), handoff (#55), land-work and two-turn approvals (#57, #56 closed into it), all merged | main session 85 steps (10.79M read), 4 agents (0.49M read); the main session's context reached 185k over a long conversation
