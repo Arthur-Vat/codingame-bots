@@ -9,6 +9,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use studio_game::StudioGame;
 
+use crate::history::History;
 use crate::releases::Releases;
 use crate::session::Session;
 use crate::speed::Speed;
@@ -33,6 +34,7 @@ struct Inner {
     web: PathBuf,
     releases: Releases,
     speed: Speed,
+    history: History,
     sessions: Mutex<HashMap<String, SharedSession>>,
     last_sweep: Mutex<Instant>,
 }
@@ -55,6 +57,7 @@ impl State {
                 web,
                 releases: Releases::new(repo, data.join("bin")),
                 speed: Speed::new(data.join("speed.json")),
+                history: History::new(data.join("history")),
                 sessions: Mutex::new(HashMap::new()),
                 last_sweep: Mutex::new(Instant::now()),
             }),
@@ -79,6 +82,10 @@ impl State {
 
     pub fn speed(&self) -> &Speed {
         &self.inner.speed
+    }
+
+    pub fn history(&self) -> &History {
+        &self.inner.history
     }
 
     pub fn web_dir(&self) -> &Path {

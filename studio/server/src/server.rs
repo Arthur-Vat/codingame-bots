@@ -90,7 +90,8 @@ fn answer(state: &State, port: u16, mut request: Request) {
         } else {
             let method = request.method().as_str().to_string();
             let url = request.url().to_string();
-            let path = url.split(['?', '#']).next().unwrap_or("");
+            // `handle` splits the query string off itself.
+            let path = url.split('#').next().unwrap_or("");
             handle(state, &method, path, &body)
         }
     } else {
@@ -101,6 +102,9 @@ fn answer(state: &State, port: u16, mut request: Request) {
         ("Content-Type", response.content_type.as_str()),
         ("Cache-Control", "no-store"),
     ] {
+        if value.is_empty() {
+            continue;
+        }
         if let Ok(header) = Header::from_bytes(name, value) {
             reply = reply.with_header(header);
         }
