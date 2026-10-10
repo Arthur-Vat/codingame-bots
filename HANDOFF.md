@@ -17,7 +17,7 @@ None. (Phase 5's step D comes after phase 6, as in the plan approved 2026-10-10;
 
 ## Notes
 
-- Phase 6 plan (approved 2026-10-10): A1 ADRs (#62); B1 arena records (`claude/studio-arena-records`) and C1 web scaffold (`claude/studio-web-scaffold`) stacked on #62's branch `claude/pensive-cannon-ws80zm`; A2 #65, B2 #66, B3 #67 done; B4 server on `claude/studio-server` (stacked on #67) in review; then B5 history, C2 to C6 front end, D analysis, E Windows CI and artifact sample. Mockup: https://claude.ai/artifact/PDeeJjWC7gHZ9eFCCZvavp (owner's remarks applied: one board tone, playable cells brighter, quiet won-board marks, board never moves, less text).
+- Phase 6 plan (approved 2026-10-10). Open PRs (stacked, merge in order): #62 A1 ADRs, #63 B1 arena records, #64 C1 web scaffold, #65 A2 determinism (includes #64), #66 B2 live games, #67 B3 game interface (includes #64), #68 B4 server, #69 C3 uttt board, #70 C2 app shell. In progress: B5 history on `claude/studio-history` (review fixes pending: result validation, atomic writes, draw/unfinished filters), C4 play modes on `claude/studio-play` (combines #70, #69 and B5). Next: C5 review screen, C6 history page, D analysis (cg-search reporting, analysis engine, panel), E Windows CI + artifact samples. Subagents hit the plan's session usage limit once on 2026-10-10 (reset 18:40 UTC). Mockup: https://claude.ai/artifact/PDeeJjWC7gHZ9eFCCZvavp.
 - Phase 5's one-week trial is dropped (owner, 2026-10-09); the daily report at 06:45 Paris time, on Sonnet 5.5, keeps running.
 - Ultimate Tic-Tac-Toe strength work stays paused; no training or league run by hand.
 
