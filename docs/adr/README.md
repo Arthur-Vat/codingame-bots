@@ -26,9 +26,12 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0016](0016-self-play-training.md) | Train from self-play on GitHub Actions, with a pure-Rust tool | Accepted; decision 2 completed by 0021 |
 | [0020](0020-full-time-sprt-in-legend.md) | In Legend, the SPRT plays at CodinGame's time limits | Accepted |
 | [0021](0021-prune-finished-branches.md) | Delete finished branches, keeping their content | Accepted |
-| [0022](0022-scopes-and-names.md) | Scopes for decision records and pull requests | Accepted |
+| [0022](0022-scopes-and-names.md) | Scopes for decision records and pull requests | Accepted; decision 2 completed by 0025 |
 | [0023](0023-chat-approved-merges.md) | The owner approves merges in the conversation; Claude carries them out | Accepted |
 | [0024](0024-handoff-branch.md) | A handoff file on a standing branch carries state between sessions | Accepted |
+| [0025](0025-studio.md) | A local studio to play and review games in the browser | Accepted |
+| [0026](0026-node-for-the-studio.md) | Node and npm build the studio's front end | Accepted |
+| [0027](0027-game-records.md) | Game records: one format, a sample of each run, kept on the owner's computer | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 

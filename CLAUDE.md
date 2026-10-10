@@ -43,7 +43,7 @@ Procedures that repeat are project skills in `.claude/skills/`, and the agents t
 
 ## Conventions
 
-- Commit subjects and pull request titles follow Conventional Commits with a required scope, `type(scope): summary` ([ADR 0022](docs/adr/0022-scopes-and-names.md)). Types: `feat`, `fix`, `docs`, `test`, `ci`, `refactor`, `perf`, `chore`, `build`, `revert`, without `!`. Scope: a game's folder name (`uttt`) for work on that game, else a framework area: `core`, `search`, `arena`, `bundler`, `workflows`, `scripts`, `adr`, `docs`, `agents`, `repo`. Several scopes are separated by commas without spaces (`ci(workflows,uttt): ...`). At most 100 characters, no final period.
+- Commit subjects and pull request titles follow Conventional Commits with a required scope, `type(scope): summary` ([ADR 0022](docs/adr/0022-scopes-and-names.md)). Types: `feat`, `fix`, `docs`, `test`, `ci`, `refactor`, `perf`, `chore`, `build`, `revert`, without `!`. Scope: a game's folder name (`uttt`) for work on that game, else a framework area: `core`, `search`, `arena`, `bundler`, `workflows`, `scripts`, `adr`, `docs`, `agents`, `repo`, `studio`. Several scopes are separated by commas without spaces (`ci(workflows,uttt): ...`). At most 100 characters, no final period.
 - Every decision record has a `Scope:` line, `framework` or a game's folder name (`framework` if any of its decisions binds the framework), and appears in its scope's group in `docs/adr/README.md`.
 - New crates join the workspace in the root `Cargo.toml` and inherit `[workspace.package]` fields and `[lints] workspace = true`.
 - Game rules go in `games/<game>/RULES.md`, in our own words, with a source for every rule; other game facts in `games/<game>/README.md`; platform facts in `docs/CODINGAME.md`.

@@ -55,7 +55,12 @@ codingame-bots/
 │     ├─ bots/              first-valid/, random/, greedy/, wood/, rules-check/, mcts/
 │     ├─ releases/          frozen paste-ready file per version
 │     ├─ journal/           one entry per experiment, with an index
-│     └─ training/          reports of the training runs used, E011's class weights
+│     ├─ training/          reports of the training runs used, E011's class weights
+│     └─ studio/            Phase 6: the game's adapter for the studio
+├─ studio/                  Phase 6: local app to play and review games (ADR 0025)
+│  ├─ game/                 the interface a game implements for the studio
+│  ├─ server/               Rust server on 127.0.0.1: bots, games, history
+│  └─ web/                  front end: TypeScript, React, Vite; a board renderer per game
 ├─ .claude/                 agents/ and skills/ of Claude's sessions; worktrees/ ignored
 └─ .github/
    ├─ workflows/            ci, sprt, league, release, train, prune-branches, pr-hygiene
@@ -74,6 +79,7 @@ codingame-bots/
 - **`cg-core`:** what every bot needs, std-only: a line-based reader for the referee's input, a seeded xoshiro256++ generator, and the arena's time scale.
 - **`cg-search`:** game-independent search, std-only: a `Game` trait for two-player games where players take turns, Monte Carlo tree search (UCT) over it, and time budgets derived from a turn's CodinGame limit. Each game's engine implements the trait.
 - **Bundler:** flattens a bot and the workspace crates it uses into one file, checked and formatted by rustfmt, then removes comments, indentation and blank lines to save room ([ADR 0016](adr/0016-self-play-training.md); `--keep-comments` gives a readable bundle). It works on text and relies on conventions listed in its crate documentation: modules in files declared with `mod name;`, tests in separate files, other crates referred to by name, no crates.io dependencies on the bot side.
+- **Studio (Phase 6):** a local app in the owner's browser, in the style of Lichess ([ADR 0025](adr/0025-studio.md)). Its Rust server is the only judge of the rules: a game is its seed and each turn's answers, any position is rebuilt by replaying the game's referee, and a human's legal moves come from the referee's turn input. Bots run as processes, as in the arena. Against a human, a release plays with a fixed seed and iterations, so a takeback restarts it and replays the game. Analysis comes from an engine built from the current code. Each game adds an adapter crate and a board renderer. Game records are versioned JSON, kept on the owner's computer ([ADR 0027](adr/0027-game-records.md)); the front end is built with Node ([ADR 0026](adr/0026-node-for-the-studio.md)).
 - **Versions:** `releases/` keeps the exact file pasted for each version. The arena compiles old versions from these files with `rustc` alone, so history never rebuilds differently.
 
 Because the referee and the engine are written by the same hands, they could agree on a misread rule. Two checks guard against that: `RULES.md` cites the game's official source for every rule, and the `rules-check` bot compares the engine's valid actions with those of real CodinGame games (done for Ultimate Tic-Tac-Toe in Phase 2).

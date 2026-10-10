@@ -60,10 +60,10 @@ title_ok 'ci(workflows,uttt): label pull requests by path'
 for type in feat fix docs test ci refactor perf chore build revert; do
   title_ok "$type(uttt): a summary"
 done
-for scope in uttt core search arena bundler workflows scripts adr docs agents repo; do
+for scope in uttt core search arena bundler workflows scripts adr docs agents repo studio; do
   title_ok "fix($scope): a summary"
 done
-title_ok 'chore(core,search,arena,bundler,workflows,scripts,adr,docs,agents,repo,uttt): every scope'
+title_ok 'chore(core,search,arena,bundler,workflows,scripts,adr,docs,agents,repo,studio,uttt): every scope'
 title_ok "fix(uttt): $(printf 'a%.0s' {1..89})" # 100 characters
 
 # Titles that GitHub's revert button writes are exempt, however they look.

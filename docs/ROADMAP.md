@@ -1,6 +1,6 @@
 # Roadmap
 
-Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes Claude's work more autonomous, and phase 6 adds a second game. Reaching Legend is the ongoing result of the experiment loop, not a phase. Each phase ends at a gate that CI or CodinGame can check. Game counts in the gates are proposed values.
+Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes Claude's work more autonomous, phase 6 builds a studio to play and review games in the browser, and phase 7 adds a second game. Reaching Legend is the ongoing result of the experiment loop, not a phase. Each phase ends at a gate that CI, CodinGame or the owner can check. Game counts in the gates are proposed values.
 
 | Phase | Scope | Gate | Status |
 | --- | --- | --- | --- |
@@ -10,7 +10,8 @@ Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes 
 | 3. Evaluation | Openings, smoke tests, SPRT, ratings, league, journal, releases | A/A test passes; a weakened bot is rejected by the SPRT | Done (2026-10-07) |
 | 4. First real bot | MCTS `uttt-v001`, then the weekly experiment loop | v001 pasted and ranked; 3 experiments run end to end | Done (2026-10-07) |
 | 5. Autonomy and workflow | Conventions, CI checks, project agents and skills, merge policy, a daily scheduled session within the owner's usage limits, arena and ratings | Every item below done (the owner dropped the one-week trial on 2026-10-09) | In progress (2026-10-09) |
-| 6. Second game | A game with an official referee; `new-game` skill | Phase 3 gates met, changes mostly inside the game folder | Not started |
+| 6. Studio | A local Lichess-style app: play a friend or any release, bot against bot, review with analysis, game history | The first version works on the owner's Windows computer; every item below done | In progress (2026-10-10) |
+| 7. Second game | A game with an official referee; `new-game` skill | Phase 3 gates met, changes mostly inside the game folder | Not started |
 | Ongoing | Iterate every game toward Legend, then up the Legend ranking | | Ultimate Tic-Tac-Toe: Legend since 2026-10-07 (`uttt-v001`, 182 of 443); 59th with `uttt-v008` (2026-10-08); current release `uttt-v010`; strength work paused (2026-10-09) |
 
 ## Phase 0: foundations
@@ -135,6 +136,47 @@ Background runs stay off until the owner turns them on.
 
 Order: A, then B, then C and E side by side, then D.
 
+## Phase 6: studio
+
+Planned with the owner on 2026-10-10 ([ADR 0025](adr/0025-studio.md), [ADR 0026](adr/0026-node-for-the-studio.md), [ADR 0027](adr/0027-game-records.md)). Goal: a local app in the owner's browser, in the style of Lichess, to choose a game, play it against a friend on the same screen or against any release, watch two releases play each other, and review games with a bot's evaluation and best moves. Phase 5's step D comes after this phase, as in the plan the owner approved on 2026-10-10; the owner will decide later about leagues.
+
+Gate: the first version (steps A to C) works on the owner's Windows computer, then every item below is done.
+
+### A. Foundations
+
+- [x] Decision records on the studio, Node and game records, and the commit scope `studio` (owner, 2026-10-10)
+- [ ] Every release replays identically with a fixed seed and iterations (tested), and each release's iteration rate can be measured
+
+### B. Server
+
+- [ ] The arena can write game records with every turn's answers
+- [ ] The arena's bot processes can be driven one turn at a time, with a human in the other seat
+- [ ] The studio's game interface, and Ultimate Tic-Tac-Toe's adapter
+- [ ] The server: games and releases, play, takebacks by replay, bot against bot, the speed measurement
+- [ ] The history: save, list and filter, import and export files
+
+### C. Front end, first version
+
+- [ ] Scaffold: TypeScript, React and Vite, lint, unit and browser tests, license check, CI job
+- [ ] Home screen of games, game and history pages, setup dialogs with an advanced mode
+- [ ] Ultimate Tic-Tac-Toe's board: fixed in place, playable cells slightly brighter, quiet marks on won boards, optional coordinates
+- [ ] Play modes: a friend with clocks, a release with think time and takebacks, bot against bot, the end-of-game block
+- [ ] Review: move list, playback (the whole game in 120 s at 1×), keyboard shortcuts, save and export
+- [ ] History page with filters and file import
+
+### D. Analysis
+
+- [ ] The search reports moves, win, draw and loss chances and lines, with bots' moves and speed unchanged
+- [ ] An analysis engine built from the current code, streaming as it thinks
+- [ ] Analysis panel: win, draw and loss bar, top moves with lines, heatmap on legal cells, keep thinking, evaluation chart filled in the background
+
+### E. Windows and runs from GitHub
+
+- [ ] A Windows CI job and the setup guide for Windows
+- [ ] Workflows that play games upload a sample of game records; the studio imports it
+
+Order: A, B, C, then D and E. Later: a ready-to-run download, each bot's own evaluation from future releases, more games.
+
 ## Risks
 
 | Risk | Impact | Mitigation |
@@ -144,6 +186,8 @@ Order: A, then B, then C and E side by side, then D.
 | Timing noise on shared runners | Timeouts and wrong SPRT verdicts | One game per core, A/A test in CI, time limits revisited with the first real bot ([ADR 0013](adr/0013-evaluation-time-limits.md)), CodinGame's exact limits for games in Legend ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)) |
 | Claude plan usage limits | Slower iteration | Actions does the compute; one quick daily scheduled session, which the owner pauses when his usage runs high (phase 5); cheaper models implement |
 | CodinGame rules on outside help | Problems in prize contests | Multiplayer leaderboards only; read a contest's rules before entering it ([ADR 0009](adr/0009-manual-submission.md)) |
+| A release does not replay identically | A wrong takeback against that release | Each release is tested; one that fails offers no takeback ([ADR 0025](adr/0025-studio.md)) |
+| npm supply chain | A harmful package in the studio's front end | Few dependencies, lockfile, `npm ci`, license check ([ADR 0026](adr/0026-node-for-the-studio.md)) |
 | Projects beta not available | No single hub with an Overview | One long claude.ai conversation meanwhile ([ADR 0008](adr/0008-claude-hub.md)) |
 | Claude workspace cannot download Rust toolchains | Local checks run on a newer Rust than CodinGame | `rust-version` lints locally; CI on exactly 1.90.0 is the judge ([ADR 0010](adr/0010-codingame-rust-toolchain.md)) |
 | Public code gets copied | Others use these bots | Accepted ([ADR 0002](adr/0002-public-repo.md)) |
