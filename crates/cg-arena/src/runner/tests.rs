@@ -280,3 +280,50 @@ fn parses_bot_specs() {
     assert!(BotSpec::parse("name=").is_err());
     assert!(BotSpec::parse(" =bot").is_err());
 }
+
+#[test]
+fn records_every_turn_with_the_lines_the_bots_printed() {
+    let a = shell("a", POLITE);
+    let b = shell("b", POLITE);
+    let record = play(&mut Countdown::new(6), [&a, &b]);
+    assert_eq!(record.recorded_turns.len(), record.turns as usize);
+    for (index, turn) in record.recorded_turns.iter().enumerate() {
+        assert_eq!(turn.len(), 1);
+        assert_eq!(turn[0].seat, index % 2);
+        assert_eq!(turn[0].lines, vec!["ok".to_string()]);
+        assert!(turn[0].ms > 0.0);
+    }
+    let longest = record
+        .recorded_turns
+        .iter()
+        .flatten()
+        .filter(|answer| answer.seat == 0)
+        .map(|answer| answer.ms)
+        .fold(0.0, f64::max);
+    assert_eq!(longest, record.max_answer_ms[0]);
+}
+
+#[test]
+fn an_invalid_answer_is_the_last_recorded_turn() {
+    let rude = shell("rude", "while read line; do echo nope; done");
+    let b = shell("b", POLITE);
+    let record = play(&mut Countdown::new(6), [&b, &rude]);
+    assert!(matches!(record.end, EndReason::Invalid { seat: 1, .. }));
+    assert_eq!(record.turns, 2);
+    assert_eq!(record.recorded_turns.len(), 2);
+    let last = record.recorded_turns.last().unwrap();
+    assert_eq!(last.len(), 1);
+    assert_eq!(last[0].seat, 1);
+    assert_eq!(last[0].lines, vec!["nope".to_string()]);
+}
+
+#[test]
+fn a_timeout_leaves_its_turn_out_of_the_record() {
+    let slow = shell("slow", "read seat; read turn; echo ok; read turn; sleep 2");
+    let b = shell("b", POLITE);
+    let record = play(&mut Countdown::new(6), [&slow, &b]);
+    assert!(matches!(record.end, EndReason::Timeout { seat: 0, .. }));
+    // Turns 0 and 1 were answered; the third, where seat 0 timed out, was not.
+    assert_eq!(record.turns, 3);
+    assert_eq!(record.recorded_turns.len(), 2);
+}

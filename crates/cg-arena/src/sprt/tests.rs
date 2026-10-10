@@ -31,6 +31,7 @@ fn game(pair: u32, swapped: bool, candidate_points: f64) -> GameRecord {
             max_answer_ms: [0.0; 2],
             mean_answer_ms: [0.0; 2],
             later_answer_ms: Default::default(),
+            recorded_turns: Vec::new(),
         },
     }
 }
