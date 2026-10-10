@@ -556,6 +556,18 @@
   font-size: 12px;
 }
 
+.moves .lost {
+  grid-column: 1 / -1;
+  position: sticky;
+  bottom: 0;
+  padding: 6px 12px;
+  background: var(--bad);
+  color: #fff;
+  font-family: var(--font);
+  font-size: 12px;
+  text-align: center;
+}
+
 .controls {
   display: flex;
   gap: 4px;

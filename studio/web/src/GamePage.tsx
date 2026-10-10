@@ -28,7 +28,7 @@ import { useSession } from './useSession';
 const LOBBY: { mode: Mode; hint: string }[] = [
   { mode: 'friend', hint: 'Two people, one screen' },
   { mode: 'computer', hint: 'Any release, any think time' },
-  { mode: 'bots', hint: 'Plays a full game, then opens the review' },
+  { mode: 'bots', hint: 'Plays a full game in a few seconds' },
 ];
 
 const GAME_BLURBS: Record<string, string> = {
@@ -119,7 +119,15 @@ function PlayerStrip({ session, seat }: { session: Session | null; seat: number 
   );
 }
 
-function MoveList({ session, problem }: { session: Session | null; problem: string | null }) {
+function MoveList({
+  session,
+  problem,
+  lost,
+}: {
+  session: Session | null;
+  problem: string | null;
+  lost: boolean;
+}) {
   if (problem !== null && session === null) {
     return (
       <div className="moves">
@@ -145,6 +153,11 @@ function MoveList({ session, problem }: { session: Session | null; problem: stri
         <div className="result">
           <b>{resultText(session.result).headline}</b>
           <span>{resultText(session.result).detail}</span>
+        </div>
+      )}
+      {lost && (
+        <div className="lost" role="status">
+          Connection lost — retrying
         </div>
       )}
     </div>
@@ -248,7 +261,11 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
         <aside className="side side-right">
           <section className="panel table">
             <PlayerStrip session={session} seat={1 - bottom} />
-            <MoveList session={session} problem={problem} />
+            <MoveList
+              session={session}
+              problem={problem}
+              lost={session !== null && error !== null}
+            />
             <div className="controls">
               {['↶ Takeback', '⚑ Resign', 'Save', 'Export file'].map((label) => (
                 <button key={label} className="ctrl" type="button" disabled title="Coming later">

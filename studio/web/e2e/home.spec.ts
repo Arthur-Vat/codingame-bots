@@ -151,3 +151,78 @@ test('an unreachable server asks to start it', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText('Start the server: cargo run --release -p studio')).toBeVisible();
 });
+
+test('the home screen connects by itself once the server answers', async ({ page }) => {
+  let calls = 0;
+  await page.route('**/api/games', (route) =>
+    ++calls === 1 ? route.abort() : route.fulfill({ json: GAMES }),
+  );
+  await page.goto('/');
+  await expect(page.getByText('The page connects by itself')).toBeVisible();
+  await expect(page.getByRole('link', { name: /Ultimate Tic-Tac-Toe/ })).toBeVisible({
+    timeout: 8000,
+  });
+  await expect(page.getByText('Start the server')).toBeHidden();
+});
+
+test('starting a second game deletes the first session', async ({ page }) => {
+  await mockGames(page);
+  const deleted: string[] = [];
+  await page.route('**/api/sessions', (route) => route.fulfill({ json: { id: 'cd34' } }));
+  await page.route('**/api/sessions/*', (route) => {
+    const id = new URL(route.request().url()).pathname.split('/').pop();
+    if (route.request().method() === 'DELETE') {
+      deleted.push(id ?? '');
+      return route.fulfill({ json: { deleted: true } });
+    }
+    return route.fulfill({ json: { ...SESSION, id } });
+  });
+
+  await page.goto('/#/game/uttt/ab12');
+  await expect(page.getByTestId('player-0')).toContainText('You');
+  await page.getByRole('button', { name: /Play with a friend/ }).click();
+  await page.getByRole('button', { name: 'Start' }).click();
+  await expect(page).toHaveURL(/#\/game\/uttt\/cd34$/);
+  await expect.poll(() => deleted).toEqual(['ab12']);
+});
+
+test('the dialog holds still while the game is created, and shows a refusal', async ({ page }) => {
+  await mockGames(page);
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  await page.route('**/api/sessions', async (route) => {
+    await gate;
+    await route.fulfill({ status: 400, json: { error: 'unknown release "uttt-v003"' } });
+  });
+  await page.goto('/#/game/uttt');
+  await page.getByRole('button', { name: /Play with a friend/ }).click();
+  const dialog = page.getByRole('dialog', { name: 'Play with a friend' });
+  await dialog.getByRole('button', { name: 'Start' }).click();
+  await expect(dialog.getByRole('button', { name: 'Starting…' })).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await page.mouse.click(5, 5);
+  await expect(dialog).toBeVisible();
+  release();
+  await expect(dialog.getByRole('alert')).toHaveText('unknown release "uttt-v003"');
+  await expect(dialog.getByRole('button', { name: 'Start' })).toBeEnabled();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+});
+
+test('a lost connection shows while a session is open, and clears', async ({ page }) => {
+  await mockGames(page);
+  let fail = false;
+  await page.route('**/api/sessions/ab12', (route) =>
+    fail ? route.abort() : route.fulfill({ json: SESSION }),
+  );
+  await page.goto('/#/game/uttt/ab12');
+  await expect(page.getByTestId('player-0')).toContainText('You');
+  await expect(page.getByText('Connection lost')).toBeHidden();
+  fail = true;
+  await expect(page.getByText('Connection lost — retrying')).toBeVisible();
+  // The turns already shown stay.
+  await expect(page.getByLabel('Moves', { exact: true })).toContainText('4 5');
+  fail = false;
+  await expect(page.getByText('Connection lost')).toBeHidden({ timeout: 5000 });
+});

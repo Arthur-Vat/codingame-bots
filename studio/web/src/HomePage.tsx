@@ -9,6 +9,7 @@ export function ServerNotice({ message }: { message?: string }) {
     <section className="panel notice" role="alert">
       <h2>The server is not running</h2>
       <p>{SERVER_HINT}</p>
+      <p className="hint">The page connects by itself as soon as the server answers.</p>
       {message && <p className="hint">{message}</p>}
     </section>
   );

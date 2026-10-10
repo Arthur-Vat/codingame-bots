@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { SeatMark } from './Marks';
 import {
   DEFAULT_INCREMENT_INDEX,
@@ -117,13 +117,18 @@ export function SetupDialog({ mode, releases, onStart, onClose }: Props) {
     startRef.current?.focus();
   }, []);
 
+  // While the game is being created the dialog stays: closing it would hide an answer.
+  const close = useCallback(() => {
+    if (!busy) onClose();
+  }, [busy, onClose]);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') close();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [close]);
 
   const minutes = MINUTES[minutesIndex] ?? 10;
   const incrementSeconds = INCREMENTS[incrementIndex] ?? 0;
@@ -161,13 +166,13 @@ export function SetupDialog({ mode, releases, onStart, onClose }: Props) {
     <div
       className="modal"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget) close();
       }}
     >
       <div className="dialog" role="dialog" aria-modal="true" aria-labelledby={id('title')}>
         <header>
           <h2 id={id('title')}>{title}</h2>
-          <button className="x-btn" type="button" aria-label="Close" onClick={onClose}>
+          <button className="x-btn" type="button" aria-label="Close" onClick={close}>
             ×
           </button>
         </header>
@@ -334,7 +339,7 @@ export function SetupDialog({ mode, releases, onStart, onClose }: Props) {
             disabled={busy}
             onClick={() => void start()}
           >
-            Start
+            {busy ? 'Starting…' : 'Start'}
           </button>
         </footer>
       </div>
