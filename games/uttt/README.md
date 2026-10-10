@@ -84,6 +84,25 @@ Before E006 (after E005): about 925,000 random and 976,000 decisive playouts, an
 
 `cargo run --release -p uttt-engine --example value_speed -- [SECONDS]` measures what a value network would cost the search, with untrained networks of several sizes against `uttt-v008`'s playouts: estimates per second, and iterations of 90 ms searches at several stages of the game. Its last row is the engine's own network. Results and their use are in [ADR 0017](../../docs/adr/0017-value-network.md).
 
+## Determinism
+
+With a fixed seed and a fixed number of iterations (`CG_SEED`, `CG_FIXED_ITERS`), every release replays identically ([ADR 0025](../../docs/adr/0025-studio.md)). `scripts/check-determinism.sh uttt [ITERS] [RELEASE.rs...]` proves it: it compiles each release as CodinGame does, plays it against itself twice (2 pairs of games, seed 7, 500 iterations by default) with the arena's `--records`, and fails if the two runs differ in the lines answered, the winner or the way a game ended. It also prints the release's iteration rate: the iterations divided by the median time of its answers, leaving out each seat's first. CI runs it on the release a pull request adds.
+
+Measured on 2026-10-10 on the development machine (all ten releases identical; 500 iterations per answer, 4 games per run). Rates depend on the machine, and the studio measures them on the owner's computer:
+
+| Release | Iterations per millisecond | Median answer |
+| --- | --- | --- |
+| `uttt-v001` | 696 | 0.72 ms |
+| `uttt-v002` | 631 | 0.79 ms |
+| `uttt-v003` | 662 | 0.75 ms |
+| `uttt-v004` | 1,198 | 0.42 ms |
+| `uttt-v005` | 1,233 | 0.41 ms |
+| `uttt-v006` | 1,557 | 0.32 ms |
+| `uttt-v007` | 1,409 | 0.35 ms |
+| `uttt-v008` | 890 | 0.56 ms |
+| `uttt-v009` | 960 | 0.52 ms |
+| `uttt-v010` | 789 | 0.63 ms |
+
 ## Checking the rules on CodinGame
 
 The parity tests prove the engine and the referee agree with each other, not that both agree with CodinGame. To check that, once in Bronze league or above:

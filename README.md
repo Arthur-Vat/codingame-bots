@@ -46,6 +46,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 scripts/bundle-bots.sh                 # every bot -> target/cg/<game>-<bot>.rs
 scripts/cg-check.sh target/cg/*.rs     # size and standalone compile of each bundle
+scripts/check-determinism.sh uttt      # every release replays identically; iteration rates
 scripts/check-docs.sh                  # indexes, status lines, links, and lists of workflows and scripts
 ```
 
