@@ -8,10 +8,11 @@
 # Prints each matchup and the Elo table; games go to target/league/.
 #
 # Environment: when RECORDS_DIR is set and not empty, the league also keeps a
-# sample of its games as game records (ADR 0027) in RECORDS_DIR/GAME-league:
-# RECORDS_SAMPLE games per pair of bots, 10 by default. The arena never
-# overwrites a record: give an empty RECORDS_DIR. Without RECORDS_DIR,
-# nothing changes.
+# sample of its games as game records (ADR 0027) in RECORDS_DIR/GAME-league.
+# A relative RECORDS_DIR is relative to the repository root. RECORDS_SAMPLE
+# is the number of games kept per pair of bots, 10 by default; every game
+# that ended in a fault is kept too. The arena never overwrites a record:
+# give a new or empty RECORDS_DIR. Without RECORDS_DIR, nothing changes.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."

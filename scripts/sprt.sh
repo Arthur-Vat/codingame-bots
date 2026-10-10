@@ -22,13 +22,16 @@
 # Environment: when RECORDS_DIR is set and not empty, each step also keeps a
 # sample of its games as game records (ADR 0027), in its own folder of
 # RECORDS_DIR: CANDIDATE-smoke, CANDIDATE-sprt and CANDIDATE-confirmation
-# (CANDIDATE is the candidate's name). RECORDS_SAMPLE is the number of games
-# kept per step, 10 by default. The arena never overwrites a record: give an
-# empty RECORDS_DIR. Without RECORDS_DIR, nothing changes.
+# (CANDIDATE is the candidate's name). A relative RECORDS_DIR is relative to
+# the repository root. RECORDS_SAMPLE is the number of games kept per step,
+# 10 by default; every game that ended in a fault is kept too. The script
+# fails with status 2, before playing, if one of the folders exists and is
+# not empty: give a new or empty RECORDS_DIR. Without RECORDS_DIR, nothing
+# changes.
 #
 # Exit status: 0 when the candidate is accepted and confirmed; 1 when the
 # smoke test fails, the SPRT does not accept the candidate or the
-# confirmation fails; 2 on errors.
+# confirmation fails; 2 on errors (an arena error is never a verdict).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -78,6 +81,16 @@ records_for() {
     records=(--records "$RECORDS_DIR/$cand-$1" --records-sample "${RECORDS_SAMPLE:-10}")
   fi
 }
+# Fails before anything is played if a step's records folder is not empty.
+if [[ -n ${RECORDS_DIR:-} ]]; then
+  for step in smoke sprt confirmation; do
+    folder="$RECORDS_DIR/$cand-$step"
+    if [[ -d $folder && -n "$(ls -A "$folder")" ]]; then
+      echo "error: $folder already holds files; give a new or empty RECORDS_DIR" >&2
+      exit 2
+    fi
+  done
+fi
 
 echo "Candidate: $cand. Baseline: $base."
 echo "Settings: $(describe_settings)."
@@ -85,10 +98,16 @@ echo
 if ((SMOKE_PAIRS > 0)); then
   echo "Smoke test against $game-random:"
   records_for smoke
-  if ! "$arena" match "${options[@]}" ${records[@]+"${records[@]}"} --expect-no-faults-from "$cand" \
+  status=0
+  "$arena" match "${options[@]}" ${records[@]+"${records[@]}"} --expect-no-faults-from "$cand" \
     --bot "$cand=$dir/bin/$cand" --bot "random=$dir/bin/$game-random" \
     --pairs "$SMOKE_PAIRS" --min-score "$SMOKE_MIN_SCORE" \
-    --out "$dir/$cand-smoke.jsonl"; then
+    --out "$dir/$cand-smoke.jsonl" || status=$?
+  if ((status >= 2)); then
+    echo "error: the smoke test could not run (arena status $status)" >&2
+    exit 2
+  fi
+  if ((status != 0)); then
     echo
     echo "Verdict: SMOKE TEST FAILED (needs a score of $SMOKE_MIN_SCORE, no crash or invalid answer, and timeouts within MAX_TIMEOUT_RATE=$MAX_TIMEOUT_RATE)"
     exit 1
@@ -109,12 +128,18 @@ fi
 echo
 echo "Confirmation against $base at CodinGame's limits (time scale 1, no tolerance):"
 records_for confirmation
-if ! "$arena" match --seed "$SEED" --opening-plies "$OPENING_PLIES" \
+status=0
+"$arena" match --seed "$SEED" --opening-plies "$OPENING_PLIES" \
   --time-scale 1 --time-tolerance-ms 0 --max-timeout-rate "$MAX_TIMEOUT_RATE" \
   ${records[@]+"${records[@]}"} \
   --expect-no-faults-from "$cand" --expect-not-worse \
   --bot "$cand=$dir/bin/$cand" --bot "$base=$dir/bin/$base" \
-  --pairs "$CONFIRM_PAIRS" --out "$dir/$cand-confirmation.jsonl"; then
+  --pairs "$CONFIRM_PAIRS" --out "$dir/$cand-confirmation.jsonl" || status=$?
+if ((status >= 2)); then
+  echo "error: the confirmation could not run (arena status $status)" >&2
+  exit 2
+fi
+if ((status != 0)); then
   echo
   echo "Final verdict: REJECTED at full time ($cand is clearly weaker than $base there, or faulted)"
   exit 1
