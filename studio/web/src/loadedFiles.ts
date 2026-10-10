@@ -8,12 +8,11 @@ export interface LoadedFile {
 }
 
 const files = new Map<string, LoadedFile>();
-let counter = 0;
 
 /** Keeps a file and returns the id its review is opened with. */
 export function rememberFile(file: LoadedFile): string {
-  counter += 1;
-  const id = `f${counter}`;
+  // Time and chance, so that an id of an earlier page load is never reused.
+  const id = `f${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
   files.set(id, file);
   return id;
 }

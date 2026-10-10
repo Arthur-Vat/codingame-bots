@@ -17,6 +17,7 @@ import {
   timeUsed,
   turnOfFrame,
   turnSeats,
+  usesSpace,
 } from './play';
 
 const human = { kind: 'human', name: 'You' } as const;
@@ -316,5 +317,23 @@ describe('cursorAfterKey', () => {
 
   it('ignores other keys', () => {
     expect(cursorAfterKey('a', 3, 5)).toBeUndefined();
+  });
+});
+
+describe('usesSpace', () => {
+  it('is true where the browser acts on Space', () => {
+    expect(usesSpace({ tagName: 'BUTTON' })).toBe(true);
+    expect(usesSpace({ tagName: 'a' })).toBe(true);
+    expect(usesSpace({ tagName: 'INPUT', type: 'checkbox' })).toBe(true);
+    expect(usesSpace({ tagName: 'INPUT', type: 'radio' })).toBe(true);
+    expect(usesSpace({ tagName: 'INPUT', type: 'submit' })).toBe(true);
+  });
+
+  it('is false elsewhere', () => {
+    expect(usesSpace({ tagName: 'BODY' })).toBe(false);
+    expect(usesSpace({ tagName: 'DIV' })).toBe(false);
+    expect(usesSpace({ tagName: 'INPUT', type: 'text' })).toBe(false);
+    expect(usesSpace({ tagName: 'INPUT' })).toBe(false);
+    expect(usesSpace({ tagName: 'INPUT', type: 'range' })).toBe(false);
   });
 });

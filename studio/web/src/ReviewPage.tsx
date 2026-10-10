@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useReducer, useState, type ReactNode } from 'react';
 import { getHistoryRecord, getRecord, postHistory, saveSession } from './api';
 import { BoardSlot } from './BoardSlot';
-import { download, errorMessage, typesText } from './browser';
+import { download, errorMessage, takesSpace, typesText } from './browser';
 import { renderers, resultDetails } from './games/registry';
 import { Row, useKeepInView } from './GameTable';
 import { SeatMark } from './Marks';
@@ -15,6 +15,7 @@ import {
   playbackInterval,
   playbackReducer,
   PLAYBACK_START,
+  retime,
   reviewKey,
   type ReviewModel,
   type ReviewPlayer,
@@ -139,15 +140,20 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
   const last = lastFrame(model);
   const [playback, dispatch] = useReducer(playbackReducer, PLAYBACK_START);
   const cursor = Math.max(0, Math.min(playback.cursor, last));
-  const interval = playbackInterval(model.frames.length, playback.speed);
+  const wanted = playbackInterval(model.frames.length, playback.speed);
+  // The delay in use changes with the speed, not with every frame of a game still going on.
+  const [delay, setDelay] = useState(wanted);
+  const kept = retime(delay, wanted);
+  if (kept !== delay) setDelay(kept);
 
-  // One timer for as long as the game plays at one speed: a step moves the cursor, and the one
+  const tick = useEffectEvent(() => dispatch({ type: 'tick', last }));
+  // One timer for as long as the game plays at one delay: a step moves the cursor, and the one
   // that reaches the last frame stops playing.
   useEffect(() => {
-    if (!playback.playing || interval === null) return;
-    const timer = setInterval(() => dispatch({ type: 'tick', last }), interval);
+    if (!playback.playing || delay === null) return;
+    const timer = setInterval(tick, delay);
     return () => clearInterval(timer);
-  }, [playback.playing, interval, last]);
+  }, [playback.playing, delay]);
 
   const toggle = () => dispatch({ type: 'toggle', last });
   const goto = (frame: number) => dispatch({ type: 'goto', frame, last });
@@ -157,6 +163,8 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     const action = reviewKey(event.key, cursor, last);
     if (action === undefined) return;
+    // Space on a button, a link, a checkbox or a radio button is theirs.
+    if (action === 'toggle' && takesSpace(event.target)) return;
     event.preventDefault();
     if (action === 'toggle') {
       if (!event.repeat) toggle();
@@ -166,16 +174,8 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
   });
   useEffect(() => {
     const down = (event: KeyboardEvent) => onKey(event);
-    // Some browsers press a focused button again when Space is released.
-    const up = (event: KeyboardEvent) => {
-      if (event.key === ' ' && !typesText(event.target)) event.preventDefault();
-    };
     window.addEventListener('keydown', down);
-    window.addEventListener('keyup', up);
-    return () => {
-      window.removeEventListener('keydown', down);
-      window.removeEventListener('keyup', up);
-    };
+    return () => window.removeEventListener('keydown', down);
   }, []);
 
   const Renderer = renderers[model.game];

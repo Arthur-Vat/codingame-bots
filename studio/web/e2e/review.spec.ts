@@ -103,7 +103,7 @@ test('a saved game starts at the first frame and steps with the buttons and the 
   await expect(page.getByTestId('analysis-slot')).toBeAttached();
 });
 
-test('the keys do nothing while typing, and Space plays once even with a button focused', async ({
+test("the arrows step from anywhere, and Space is the browser's on a button, a switch or a link", async ({
   page,
 }) => {
   await mockSaved(page);
@@ -111,19 +111,50 @@ test('the keys do nothing while typing, and Space plays once even with a button 
   await page.getByRole('button', { name: 'Next move' }).click();
   await expect(cell(page, 4, 4, 'X')).toBeVisible();
 
-  // The switch is not text entry; the arrows still step.
-  await page.getByLabel('Show coordinates').focus();
+  // The switch is not text entry; the arrows still step, and Space toggles the switch only.
+  const coordinates = page.getByLabel('Show coordinates');
+  await coordinates.focus();
   await page.keyboard.press('ArrowRight');
   await expect(cell(page, 4, 5, 'O')).toBeVisible();
+  await page.keyboard.press('Space');
+  await expect(coordinates).toBeChecked();
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
 
-  const play = page.getByRole('button', { name: 'Play' });
-  await play.click();
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
-  // The Play button has the focus: Space pauses once, it does not press the button again.
+  // Space on a focused button presses that button: here it steps once, and does not play.
+  await page.getByRole('button', { name: 'Next move' }).focus();
+  await page.keyboard.press('Space');
+  await expect(cell(page, 5, 3, 'X')).toBeVisible();
+  await expect(cell(page, 3, 7, 'O')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+
+  // Space on a link plays nothing either.
+  await page.getByRole('link', { name: 'History' }).focus();
   await page.keyboard.press('Space');
   await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+
+  // With the focus on the page, Space plays and pauses.
+  await page.mouse.click(30, 700);
   await page.keyboard.press('Space');
   await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+
+  // The Play button itself, focused after a click, is pressed once by Space.
+  await page.getByRole('button', { name: 'Play' }).click();
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+});
+
+test('jumping to the last frame while playing stops the playback', async ({ page }) => {
+  await page.clock.install();
+  await mockSaved(page);
+  await page.goto(`/#/review/saved/${SAVED}`);
+  await page.getByRole('button', { name: 'Play' }).click();
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await page.getByRole('button', { name: 'Last move' }).click();
+  await expect(cell(page, 3, 7, 'O')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
 });
 
 test('playback at 4× reaches the end and stops; a speed change keeps playing', async ({ page }) => {

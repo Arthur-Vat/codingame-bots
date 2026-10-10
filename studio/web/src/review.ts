@@ -132,6 +132,19 @@ export function playbackInterval(frameCount: number, speed: number): number | nu
   return GAME_PLAYBACK_MS / (frameCount - 1) / speed;
 }
 
+/** How much the wanted delay may differ from the one in use before the timer is restarted. */
+const RETIME_RATIO = 0.25;
+
+/**
+ * The delay to keep between two frames. The one in use stays unless the wanted one differs from it
+ * by more than a quarter: a game still being played adds a frame every few moments, and each one
+ * must not restart the timer.
+ */
+export function retime(current: number | null, wanted: number | null): number | null {
+  if (current === null || wanted === null) return wanted;
+  return Math.abs(wanted - current) / current > RETIME_RATIO ? wanted : current;
+}
+
 export interface PlaybackState {
   /** The frame on the board. */
   cursor: number;
@@ -154,13 +167,13 @@ function clamp(frame: number, last: number): number {
 /**
  * The playback's state machine. A step moves the cursor and keeps playing; reaching the last frame
  * stops. A change of speed while playing keeps playing. Play at the end starts again from the
- * first frame. A jump by the user keeps the playing state.
+ * first frame. A jump by the user keeps playing, unless it lands on the last frame.
  */
 export function playbackReducer(state: PlaybackState, action: PlaybackAction): PlaybackState {
   switch (action.type) {
     case 'goto': {
       const cursor = clamp(action.frame, action.last);
-      return { ...state, cursor };
+      return { ...state, cursor, playing: state.playing && cursor < action.last };
     }
     case 'tick': {
       if (!state.playing) return state;
