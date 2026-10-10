@@ -80,7 +80,7 @@ Then open the URL it prints, `http://127.0.0.1:8411/`. The server listens on 127
 | `--port` | `8411` | The port to listen on. |
 | `--repo DIR` | the nearest folder above the current one holding `games/` and `Cargo.toml` | The repository root: the games' releases are read from `games/<game>/releases/`. |
 | `--web DIR` | `<repo>/studio/web/dist` | The built front end. Any path that is not a file in it gives its `index.html`. |
-| `--data DIR` | `<repo>/studio/data` (never committed) | Compiled bots in `bin/`, named `<release>-<hash of the file>`, and the speed measurements in `speed.json`. |
+| `--data DIR` | `<repo>/studio/data` (never committed) | Compiled bots in `bin/`, named `<release>-<hash of the file>`, the speed measurements in `speed.json`, and the saved games in `history/`. |
 
 A release is compiled with `rustc` (from `PATH`) the first time a game uses it, and the binary is reused. Release files are never modified. A computer seat in "fixed" mode needs the release's speed in iterations per millisecond: the first game against a release measures it by playing the release against itself (3000 iterations per answer, seed 1) and keeps the result in `speed.json`; the session's status is `measuring` meanwhile.
 
@@ -97,9 +97,20 @@ JSON in and out; errors are `{"error": "..."}`. Ids are short random hex strings
 | `POST /api/sessions/{id}/takeback` | `{"turns": k}`: keeps the first `k` turns by replaying the game, and restarts each bot by replaying its answers. 409 against a "realtime" bot, for `k` out of range, or while the session is busy. A release that does not replay identically fails the session. |
 | `POST /api/sessions/{id}/end` | `{"seat", "reason": "resign" \| "timeout"}`: the other seat wins. A timeout ends with `Timeout {seat, limit_ms: 0}` (the front end runs the human clocks); a resignation with `Resigned {seat}`. Only human seats can end a game this way (409 for a bot). |
 | `GET /api/sessions/{id}/record` | The game so far as a game record, format 1, source `studio` ([ADR 0027](../docs/adr/0027-game-records.md)). A bot's `command` is the release's name (the path of the compiled binary is specific to the computer). A game not over ends with `Aborted {reason: "unfinished"}`. |
+| `POST /api/sessions/{id}/save` | Saves the session's record in the history (same as `GET .../record` then `POST /api/history`). Returns `{"id", "duplicate"}`. |
+| `POST /api/history` | Saves one game record (format 1) in the history. It must be format 1, of a known game, and replay with the game's referee, or the answer is 400 naming the turn that breaks the rules; the one exception is a game that ended with an invalid answer, whose last turn may be the invalid one. Returns `{"id", "duplicate"}`: the same record saved twice is kept once (`duplicate` is true the second time). |
+| `GET /api/history` | The saved games, newest first, as `{id, game, unix_time, players: [name, name], winner: 0 \| 1 \| null, end, turns, source}` (`end` is `finished`, `timeout`, `crash`, `invalid`, `aborted` or `resigned`). Optional filters: `game`, `release` (either player's name), `result` (`x`: seat 0 won, `o`: seat 1 won, `draw`: no winner after a finished or aborted game, `fault`: a timeout, crash or invalid answer), `source` (`studio` or `arena`), `from` and `to` (`YYYY-MM-DD`, UTC days, both included). Files that cannot be read are skipped and named on the server's stderr. |
+| `GET /api/history/{id}` | The saved record, as the front end offers it for export. Ids are file names without `.json`, made of `a-z`, `0-9` and `-`. |
+| `GET /api/history/{id}/view` | `{"record", "frames", "opening_turns", "shown_turns"}`: the record with the game's frames. `shown_turns` is the number of turns that replay: all, or all but a final invalid one. |
+| `POST /api/view` | The same view for a record in the body that is not saved, to review a loaded file before saving it. |
+| `DELETE /api/history/{id}` | Deletes a saved game: 204, or 404. |
 | `DELETE /api/sessions/{id}` | Stops the bots and forgets the session. Sessions untouched for two hours are dropped. |
 
 The two modes of a computer seat:
 
 - `fixed`: a fixed number of iterations, `think_ms` times the release's measured speed, and the bot seed `cg_arena::runner::bot_seed`; this is what takebacks replay.
 - `realtime`: the release's own time budget scaled by `think_ms / 100` (`CG_TIME_SCALE`), with the game's limits scaled likewise plus 50 ms; for bots playing each other. A bot that times out, crashes or answers invalidly loses.
+
+### Saved games
+
+The history is one JSON file per game in `studio/data/history/` (or `<data>/history/`), named `<game>-<unix time>-<12 hex digits of a hash of the record>.json`. The folder is never committed ([ADR 0027](../docs/adr/0027-game-records.md)) and GitHub does not back it up: keep what matters by exporting it (`GET /api/history/{id}` gives the file). Loading a file adds it to the history through `POST /api/history`. The listing reads every file each time, which is fine for a few thousand games.
