@@ -1,5 +1,5 @@
-/* Dark only, by the owner's choice. Tokens come from the approved mockup. Fonts are not
-   loaded from the network yet: the system fallbacks apply. */
+/* Dark only, by the owner's choice. The tokens come from the approved mockup. Fonts are not
+   loaded from the network: Noto Sans is used when installed, else the system fonts. */
 :root {
   color-scheme: dark;
   --bg: #161512;
@@ -13,6 +13,14 @@
   --accent-soft: rgba(54, 146, 231, 0.18);
   --good: #629924;
   --bad: #cc4b3a;
+  --sq-light: #dee3e6;
+  --sq-dark: #8ca2ad;
+  --sq: #b4c2ca;
+  --sq-line: rgba(30, 45, 55, 0.28);
+  --x: #222428;
+  --o: #fbfbfb;
+  --o-edge: #3b4650;
+  --wdl-d: #8d9399;
   --font: 'Noto Sans', 'Segoe UI', system-ui, sans-serif;
   --mono: 'Noto Sans Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
 }
@@ -20,6 +28,10 @@
 html,
 body {
   height: 100%;
+}
+
+[hidden] {
+  display: none !important;
 }
 
 body {
@@ -30,60 +42,45 @@ body {
   font-size: 14px;
 }
 
+button,
+input,
+select {
+  box-sizing: border-box;
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-h1 {
+h1,
+h2,
+h3 {
   color: var(--fg-strong);
   margin: 0;
   text-wrap: balance;
 }
 
-.top {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 0 16px;
-  height: 52px;
-  border-bottom: 1px solid var(--line);
-  background: var(--bg);
-}
-
-.brand {
-  display: flex;
-  align-items: baseline;
-  gap: 2px;
-  font-weight: 700;
-  font-size: 20px;
-  color: var(--fg-strong);
-  letter-spacing: 0.01em;
-}
-
-.brand span {
-  color: var(--accent);
-}
-
-.wrap {
-  padding: 24px 16px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.home-head {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.home-head h1 {
-  font-size: 26px;
-  font-weight: 600;
-}
-
-.home-head p {
+p {
   margin: 0;
-  color: var(--muted);
-  max-width: 60ch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
 }

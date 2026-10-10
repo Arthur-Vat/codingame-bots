@@ -6,7 +6,7 @@ The decisions behind it are [ADR 0025](../docs/adr/0025-studio.md) (the studio),
 
 ## Status
 
-The front end's scaffold exists, in [`web/`](web/): a placeholder home screen with the checks and the CI job. So does the interface a game implements for the studio, in [`game/`](game/), with Ultimate Tic-Tac-Toe's adapter. The local server is in [`server/`](server/): see "Running the server" below. There is no board yet, and the front end does not call the server yet.
+The front end's scaffold exists, in [`web/`](web/), and so does the app shell: the top bar, the home screen (one card per game from the server), the game page's layout (lobby, board settings, player strips, move list) and the three setup dialogs with their advanced mode. A game started from a dialog is created on the server and its turns are listed as they come. The interface a game implements for the studio is in [`game/`](game/), with Ultimate Tic-Tac-Toe's adapter, and the local server in [`server/`](server/): see "Running the server" below. There is no board yet (the game page holds a square slot for it), the clocks do not run, and the history page is a placeholder.
 
 ## Front end
 
@@ -14,7 +14,7 @@ TypeScript, React and Vite, in `studio/web/`. It needs Node 22 (the line is writ
 
 ```sh
 npm ci                  # install the locked dependencies
-npm run dev             # the app, with reload, at http://localhost:5173
+npm run dev             # the app, with reload, at http://localhost:5173 (calls to /api go to the server on port 8411)
 npm run build           # type check, then the production build in dist/
 npm run preview         # serve the production build
 ```
@@ -29,6 +29,15 @@ npm run typecheck       # TypeScript
 npm test                # unit tests (Vitest)
 npm run e2e             # browser tests (Playwright, Chromium); builds and serves the app itself
 ```
+
+To work on the app against the real server, start the server in one terminal and the dev server in another:
+
+```sh
+cargo run --release -p studio     # the API, at http://127.0.0.1:8411
+npm run dev                       # in studio/web: the app, proxying /api to the server
+```
+
+The browser tests do not need the server: they mock the API.
 
 The first `npm run e2e` on a computer needs Chromium: `npx playwright install chromium`.
 
