@@ -5,6 +5,8 @@
 //! - [`referee`]: the trait each game implements.
 //! - [`runner`]: one match between two bot processes.
 //! - [`record`]: full game records, and the sample of a run to keep.
+//! - [`live`]: a game driven one turn at a time, and a bot restarted by
+//!   replaying a game into it, for the studio.
 //! - [`tournament`]: many matches in parallel, in seat-swapped pairs.
 //! - [`summary`]: results from the first bot's point of view.
 //! - [`sprt`]: the sequential test deciding whether a candidate is stronger.
@@ -12,6 +14,7 @@
 //! - [`cli`]: the command line every game's arena binary shares.
 
 pub mod cli;
+pub mod live;
 pub mod ratings;
 pub mod record;
 pub mod referee;

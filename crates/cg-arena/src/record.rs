@@ -18,7 +18,7 @@ pub const RECORD_FORMAT: u32 = 1;
 /// The environment variable that replaces the bots' time budget by a fixed
 /// iteration count. The arena does not depend on `cg-search`, which defines
 /// it as `cg_search::budget::FIXED_ITERATIONS_ENV`.
-const FIXED_ITERS_ENV: &str = "CG_FIXED_ITERS";
+pub(crate) const FIXED_ITERS_ENV: &str = "CG_FIXED_ITERS";
 
 /// The lines one seat answered in one turn, as the referee received them.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
