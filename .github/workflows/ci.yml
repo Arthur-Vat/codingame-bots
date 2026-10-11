@@ -364,6 +364,13 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
           "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Build" npm run build
+      - name: License notices
+        # The Pages workflow runs the same step; failing here, a missing
+        # license file never reaches a deployment (ADR 0030, decision 7).
+        # Needs Rust for `cargo metadata`, which this job has (see above).
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          "$GITHUB_WORKSPACE/scripts/annotate.sh" run "License notices" npm run notices
       - name: Install Chromium for the browser tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |

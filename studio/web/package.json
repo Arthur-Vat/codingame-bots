@@ -17,7 +17,8 @@
     "test": "vitest run",
     "wasm": "../../scripts/build-studio-wasm.sh",
     "e2e": "playwright test",
-    "licenses": "node scripts/check-licenses.mjs"
+    "licenses": "node scripts/check-licenses.mjs",
+    "notices": "node scripts/notices.mjs dist"
   },
   "dependencies": {
     "react": "19.3.0",
