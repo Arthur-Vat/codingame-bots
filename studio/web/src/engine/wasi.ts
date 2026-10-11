@@ -23,9 +23,10 @@ export interface WasiOptions {
   env?: Record<string, string>;
   /**
    * Gives up to `max` bytes of the standard input, blocking until some are there. An empty
-   * result is the end of the input.
+   * result is the end of the input, except when `mayBlock` is false: this read already has some
+   * bytes, so a blocking input returns what it holds now, possibly nothing, rather than wait.
    */
-  readStdin: (max: number) => Uint8Array;
+  readStdin: (max: number, mayBlock: boolean) => Uint8Array;
   onStdout: (bytes: Uint8Array) => void;
   onStderr: (bytes: Uint8Array) => void;
 }
@@ -87,7 +88,7 @@ export function makeWasi(module: WebAssembly.Module, options: WasiOptions): Wasi
         const ptr = view.getUint32(iovs + 8 * i, true);
         const len = view.getUint32(iovs + 8 * i + 4, true);
         if (len === 0) continue;
-        const chunk = options.readStdin(len);
+        const chunk = options.readStdin(len, total === 0);
         if (chunk.length === 0) break;
         new Uint8Array(mem().buffer, ptr, chunk.length).set(chunk);
         total += chunk.length;

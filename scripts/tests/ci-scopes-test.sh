@@ -91,7 +91,8 @@ scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licen
 # The studio.
 scopes_are 'rust=false framework=false games=[] studio=false web=true licenses=false' studio/web/src/App.tsx
 scopes_are 'rust=true framework=false games=[] studio=true web=false licenses=false' studio/server/src/main.rs
-scopes_are 'rust=true framework=false games=[] studio=true web=false licenses=false' studio/game/src/lib.rs
+scopes_are 'rust=true framework=false games=[] studio=true web=true licenses=false' studio/game/src/lib.rs
+scopes_are 'rust=true framework=false games=[] studio=true web=false licenses=false' studio/server/src/lib.rs
 scopes_are 'rust=true framework=false games=[] studio=true web=true licenses=false' studio/core/src/lib.rs
 scopes_are 'rust=true framework=false games=[] studio=true web=true licenses=false' studio/rules/src/main.rs
 scopes_are 'rust=true framework=false games=[] studio=true web=true licenses=true' studio/rules/Cargo.toml

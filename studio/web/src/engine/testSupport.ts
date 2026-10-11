@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /* Helpers of the browser engine's unit tests: the real WebAssembly files, built by
    scripts/build-studio-wasm.sh into public/wasm/, and fakes for what the page provides. */
 
