@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- Set the repository's Pages source, once (asked 2026-10-11): Settings > Pages > Build and deployment > Source: GitHub Actions. Then re-run the Pages workflow (Actions > Pages > Run workflow, branch main) if its first run failed; the site is https://arthur-vat.github.io/codingame-bots/.
+- Try the site, https://arthur-vat.github.io/codingame-bots/ (asked 2026-10-11): Pages source set to GitHub Actions by the owner, deployed by run 38176747370 (success). Sessions cannot open github.io (network policy), so only the owner can confirm it loads.
 
 ## Open questions
 
@@ -12,7 +12,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Follow-ups
 
-- **Phase 6 step F merged** (2026-10-11): ADR 0030 (#88), the rules in WebAssembly with studio-core (#89), the browser engine (#90), Pages deployment and license notices (#91), on the owner's approvals in the chat. Check the first Pages deployment once the owner has set the source; try the site in Firefox too (only Chromium was tested). Follow-ups noted by reviews: the front end parses and re-stringifies records on export/import, which can lose 64-bit seed digits (both engines); `npm run dev` without a local server silently uses the browser engine; the WebAssembly files are built twice in CI's front-end job.
+- **Phase 6 step F merged** (2026-10-11): ADR 0030 (#88), the rules in WebAssembly with studio-core (#89), the browser engine (#90), Pages deployment and license notices (#91), on the owner's approvals in the chat. Try the site in Firefox too (only Chromium was tested). Follow-ups noted by reviews: the front end parses and re-stringifies records on export/import, which can lose 64-bit seed digits (both engines); `npm run dev` without a local server silently uses the browser engine; the WebAssembly files are built twice in CI's front-end job; `actions/deploy-pages@v4` targets the deprecated Node 20 (move to a newer major when one exists).
 - **Then step G (interface)**, to be planned with the owner.
 - **Then: phase 6 step D, analysis** (see Notes), in its own session(s), following the updated `land-work` (#82). Ask the owner before starting: it is heavy work.
 - ADR 0023 still says the SPRT is not a required check, which is no longer true. The owner keeps the current merge policy (2026-10-09) and wants no new record; the line stays as is unless he asks for a fix.
