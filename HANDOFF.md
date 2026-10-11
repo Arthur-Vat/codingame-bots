@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- Go for the CI scoping work (plan in Follow-ups): answered in the conversation, 2026-10-11: "Do not start yet"; it is his next step, in a new session. Confirm with him before writing the ADR.
+- CI scoping (ADR 0029): #83 (ADR), #84 (`ci.yml`, stacked on #83), #85 (SPRT and league, stacked on #84), opened 2026-10-11; approval to ask once #85's review is handled. The owner must edit the "Protect main" ruleset twice: before #84 merges, swap `Format, lint, test`, `CodinGame compatibility`, `Dependency licenses and sources`, `Docs and scripts` for `CI passed` and `Pull request title and labels` (keep `SPRT of new releases`); before #85 merges, swap `SPRT of new releases` for `SPRT passed`. Also confirm making the hygiene check required.
 - Try the studio's first version on Windows (phase 6 gate), following "Running the studio on Windows" in `studio/README.md`. The owner will do it later (2026-10-11).
 
 ## Open questions
@@ -13,12 +13,7 @@ None. (Phase 5's step D comes after phase 6, as in the plan approved 2026-10-10;
 
 ## Follow-ups
 
-- **Next: CI scoped by area and game** (owner, 2026-10-11: option "full", "be careful, SPRT is also game scoped"; plan only so far). Answered in the conversation 2026-10-11: studio checks become blocking through the aggregate ("Yes"); engine speed stays report-only ("Ok"). Plan given then:
-  - Areas (same as ADR 0022 scopes and pr-hygiene labels): framework (`crates/`, `scripts/`, `.github/`, Cargo files, `deny.toml`), game `<g>` (`games/<g>/` minus Markdown), studio (`studio/`), docs (Markdown, `docs/`, `.claude/`). Framework change runs every game and the studio; game change runs that game and the studio's Rust jobs (server includes adapters, tests play `uttt-v001`); `studio/web` runs the front end only; docs run the docs check only. Unknown path, push to `main` and manual runs run everything.
-  - `ci.yml`: `Changes`; `Workspace: format and lint`; `Framework: tests`; per-game matrix `<g>: tests` (packages from `cargo metadata`) and `<g>: bots` (bundle, cg-check, release frozen/matching, smoke and vs-random games, evaluation controls, determinism, speed report); `Studio: server`, `Studio: Windows`, `Studio: front end`; licenses only on Cargo/deny changes; `Docs and scripts` always; aggregate `CI passed`. Game-specific steps move to `games/<g>/ci.sh`; framework scripts take the game as argument.
-  - `sprt.yml`: `<g>: SPRT` per game adding a release, per-game cache key (framework paths + `games/<g>`), aggregate `SPRT passed`, comment names the game. `league.yml`: `<g>: league` per affected game. `release.yml`, `train.yml`, `pr-hygiene.yml`, `prune-branches.yml` unchanged.
-  - Required checks become `CI passed`, `SPRT passed`, `Pull request title and labels` (today: Format, lint, test; CodinGame compatibility; Dependency licenses and sources; Docs and scripts; SPRT of new releases); this settles the 2026-10-10 question on the studio checks. The owner swaps them in the ruleset just before PRs 2 and 3 merge; give him exact steps.
-  - PRs: (1) ADR 0029, scope framework, extends 0012; (2) `ci(workflows,scripts,uttt): scope CI checks by area and game` with `scripts/ci-scopes.sh` and its table test, `games/uttt/ci.sh`, docs; (3) `ci(workflows,scripts): run the SPRT and the league per game`. 2 and 3 from `main`, merged together after the ruleset swap. Deep reviews. Then prove skipping with a docs-only and a uttt-only draft PR (real one-line changes), closed after; first push to `main` must be fully green.
+- **After #83 to #85 merge:** prove the skipping with a docs-only and a uttt-only draft PR (real one-line changes), closed after; the first push to `main` must be fully green. The SPRT legs only run with a new release: watch the first candidate.
 - **Then: phase 6 step D, analysis** (see Notes), in its own session(s), following the updated `land-work` (#82). Ask the owner before starting: it is heavy work.
 - ADR 0023 still says the SPRT is not a required check, which is no longer true. The owner keeps the current merge policy (2026-10-09) and wants no new record; the line stays as is unless he asks for a fix.
 - Record the CodinGame ranks of `uttt-v009` and `uttt-v010` when the owner reports them (skill `deliver-release`); the owner will report them later (2026-10-11).
