@@ -1,6 +1,6 @@
 # 0025. A local studio to play and review games in the browser
 
-- Status: accepted (owner, 2026-10-10)
+- Status: accepted (owner, 2026-10-10); decision 1 superseded by [0030](0030-studio-on-github-pages.md); decisions 2, 3, 4 and 5 completed by [0030](0030-studio-on-github-pages.md)
 - Date: 2026-10-10
 - Completes: [0022](0022-scopes-and-names.md), decision 2 (a new scope)
 - Scope: framework
