@@ -4,6 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
+- Approve #82 (skills: the 2026-10-11 retrospective's process fixes, batches of one to three as the owner chose), asked 2026-10-11; green and reviewed.
 - Try the studio's first version on Windows (phase 6 gate), following "Running the studio on Windows" in `studio/README.md`. The owner will do it later (2026-10-11).
 - Optional, asked 2026-10-10: make "Studio front end" and "Studio on Windows" required checks in the `main` ruleset. Later, said the owner (2026-10-11).
 
@@ -14,7 +15,7 @@ None. (Phase 5's step D comes after phase 6, as in the plan approved 2026-10-10;
 ## Follow-ups
 
 - **Next session's plan, in this order (owner, 2026-10-11: "all those topics are a priority"; answered in the conversation: OK with the retrospective's remarks). Done: step 1, CI failures readable without logs (#79, #80); Dependabot ignores npm majors (#81 merged 2026-10-11, #78 closed with a comment).** Keep each topic small, ask approval per batch as soon as it is green, and merge before stacking more.
-  2. **Process fixes from the 2026-10-11 retrospective** (one PR on `.claude/skills`, deep review; owner approved the remarks): `land-work`: linear stacks only (never merge sibling branches into each other; merge main into each branch before asking approval), small approval batches merged as they come, settle shared interfaces and formats in a written spec before parallel implementers, a known-risks checklist in every spec (input validation incl. imported files, edge cases, timing races, Windows); `handoff`/session hygiene: suggest a fresh session at ~150k context and actually do it between steps; scripts that post to GitHub are dry-run first.
+  2. **Process fixes from the 2026-10-11 retrospective**: in progress as #82 (see above). Original plan (one PR on `.claude/skills`, deep review; owner approved the remarks): `land-work`: linear stacks only (never merge sibling branches into each other; merge main into each branch before asking approval), small approval batches merged as they come, settle shared interfaces and formats in a written spec before parallel implementers, a known-risks checklist in every spec (input validation incl. imported files, edge cases, timing races, Windows); `handoff`/session hygiene: suggest a fresh session at ~150k context and actually do it between steps; scripts that post to GitHub are dry-run first.
   3. **Phase 6 step D, analysis** (see Notes), in its own session(s), with the improved process.
 - ADR 0023 still says the SPRT is not a required check, which is no longer true. The owner keeps the current merge policy (2026-10-09) and wants no new record; the line stays as is unless he asks for a fix.
 - Record the CodinGame ranks of `uttt-v009` and `uttt-v010` when the owner reports them (skill `deliver-release`); the owner will report them later (2026-10-11).
