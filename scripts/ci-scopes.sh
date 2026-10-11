@@ -27,13 +27,20 @@
 #      .cargo/                                         everything
 #   5  Cargo.toml elsewhere                            licenses, and rules 6 to 9
 #   6  crates/, scripts/                               framework
-#   7  games/<g>/ for a directory games/<g>            game <g>
+#   7  games/<g>/ for a directory games/<g>            game <g>; also web for
+#      games/<g>/studio/, games/<g>/referee/ and
+#      games/<g>/releases/
 #   8  studio/web/                                     web
-#   9  studio/core/, studio/game/, studio/rules/,
-#      studio/server/                                  studio
+#   9  studio/core/, studio/rules/                     studio and web
+#      studio/game/, studio/server/                    studio
 #   10 anything else                                   everything
 # framework means rust, framework, studio, web and every game; a game means
-# rust, studio and that game; studio means rust and studio; everything means
+# rust, studio and that game; studio means rust and studio; web means the
+# front end's checks only. The front end's browser engine (ADR 0030) runs the
+# studio's rules, the games' referees and adapters, and every release as
+# WebAssembly, and its browser tests use them: that is why rules 7 and 9 add
+# web for those paths, and why crates/ (cg-arena) and scripts/
+# (build-studio-wasm.sh), the framework, include it. Everything means
 # every output true and every game. --all gives everything; no file and no
 # --all, nothing. GAMES_DIR (default games) is where the game ids come from
 # (directories directly under it), for the tests.
@@ -152,6 +159,9 @@ area_effect() { # area_effect <path>
           f_rust=true
           f_studio=true
           f_games["$id"]=1
+          case $path in
+            games/*/studio/* | games/*/referee/* | games/*/releases/*) f_web=true ;;
+          esac
           return 0
         fi
       done
@@ -161,7 +171,13 @@ area_effect() { # area_effect <path>
       f_web=true
       return 0
       ;;
-    studio/core/* | studio/game/* | studio/rules/* | studio/server/*)
+    studio/core/* | studio/rules/*)
+      f_rust=true
+      f_studio=true
+      f_web=true
+      return 0
+      ;;
+    studio/game/* | studio/server/*)
       f_rust=true
       f_studio=true
       return 0
