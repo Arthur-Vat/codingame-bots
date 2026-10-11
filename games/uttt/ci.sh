@@ -45,9 +45,16 @@ scripts/annotate.sh run "1,000 random games" "$arena" match \
 echo "== Every other bundled bot against random"
 # Bots that search may lose a few games on time (ADR 0015).
 rate="$(sed -n 's/^MAX_TIMEOUT_RATE=//p' games/uttt/evaluation.env)"
-for bot in "$bin"/uttt-*; do
-  name="$(basename "$bot")"
+# One bundle per bot folder: a glob on target/cg/bin/uttt-* would also match a
+# game whose id starts with uttt-.
+for dir in games/uttt/bots/*/; do
+  name="uttt-$(basename "$dir")"
+  bot="$bin/$name"
   [ "$name" = uttt-random ] && continue
+  if [[ ! -x $bot ]]; then
+    echo "::error title=$name against random::$bot is missing"
+    exit 1
+  fi
   # The rules-check bot exits on any disagreement with the referee.
   if ! out="$(CG_RULES_CHECK_STRICT=1 "$arena" match \
     --bot "$name=$bot" --bot "random=$bin/uttt-random" \

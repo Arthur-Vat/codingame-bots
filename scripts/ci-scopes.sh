@@ -17,7 +17,8 @@
 # Each FILE is a path from the repository root, as `git diff --name-only`
 # prints it (a leading ./ is dropped); a file is classified by the first rule
 # that matches:
-#   1  *.md anywhere                                   nothing (docs)
+#   1  *.md anywhere, .github/ included (the pull
+#      request template)                               nothing (docs)
 #   2  docs/, .claude/                                 nothing (docs)
 #   3  .github/                                        everything
 #   4  root Cargo.toml, Cargo.lock, deny.toml, rust-toolchain(.toml),
@@ -33,6 +34,9 @@
 # every output true and every game. --all gives everything; no file and no
 # --all, nothing. GAMES_DIR (default games) is where the game ids come from
 # (directories directly under it), for the tests.
+# The framework's tests also run when any game is selected (the bundler's tests
+# bundle the games' bots, ADR 0029): the workflow decides that from `framework`
+# and `games`; the outputs above do not say it.
 #
 # results: the verdict of the aggregate job (`CI passed`). The environment
 # variable NEEDS holds the JSON of `${{ toJSON(needs) }}`. Each argument is
