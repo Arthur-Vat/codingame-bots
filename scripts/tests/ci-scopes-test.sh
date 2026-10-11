@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tests scripts/ci-scopes.sh: the area of each path (against a stand-in folder
-# of games) and the verdict of the aggregate job. Needs jq.
+# of games), the games of the sprt and league modes, and the verdict of the
+# aggregate job. Needs jq.
 # Usage: scripts/tests/ci-scopes-test.sh
 set -euo pipefail
 
@@ -8,7 +9,7 @@ cd "$(dirname "$0")/../.."
 script="$PWD/scripts/ci-scopes.sh"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
-unset GITHUB_ACTIONS NEEDS
+unset GITHUB_ACTIONS NEEDS RESULTS_TITLE
 mkdir -p "$tmp_dir/games/uttt" "$tmp_dir/games/other" "$tmp_dir/games/bad name"
 touch "$tmp_dir/games/README.txt"
 export GAMES_DIR="$tmp_dir/games"
@@ -138,6 +139,110 @@ status=0
 "$script" ci --nonsense >/dev/null 2>&1 || status=$?
 if ((status != 2)); then fail "ci --nonsense: expected status 2, got $status"; fi
 
+# ---- sprt and league ----
+
+# The games line printed for the arguments of the mode is the expected one.
+games_are() { # games_are <mode> <expected> <arguments>...
+  local mode="$1" expected="$2" actual
+  shift 2
+  checks=$((checks + 1))
+  if ! actual="$("$script" "$mode" "$@" 2>/dev/null)"; then
+    fail "$mode $*: the script failed"
+    return
+  fi
+  if [[ $actual != "games=$expected" ]]; then fail "$mode $*: expected 'games=$expected', got '$actual'"; fi
+}
+
+# The stderr summary of a mode.
+mode_summary_is() { # mode_summary_is <mode> <expected> <arguments>...
+  local mode="$1" expected="$2" actual
+  shift 2
+  checks=$((checks + 1))
+  actual="$("$script" "$mode" "$@" 2>&1 >/dev/null)"
+  if [[ $actual != "$expected" ]]; then fail "summary of $mode $*: expected '$expected', got '$actual'"; fi
+}
+
+# The exit status of the script with the arguments.
+status_is() { # status_is <status> <arguments>...
+  local want="$1" status=0
+  shift
+  checks=$((checks + 1))
+  "$script" "$@" >/dev/null 2>&1 || status=$?
+  if ((status != want)); then fail "$*: expected status $want, got $status"; fi
+}
+
+# sprt: the added files decide.
+games_are sprt '[]'
+games_are sprt '[]' ''
+games_are sprt '["uttt"]' games/uttt/releases/uttt-v011.rs
+games_are sprt '["other","uttt"]' games/uttt/releases/uttt-v011.rs games/other/releases/other-v001.rs
+games_are sprt '["other","uttt"]' games/other/releases/other-v001.rs games/uttt/releases/uttt-v011.rs games/uttt/releases/uttt-v012.rs
+games_are sprt '[]' games/uttt/releases/notes.md games/uttt/bots/x.rs games/uttt/releases/uttt-v011.rs.bak games/uttt/releases/.rs.md
+games_are sprt '[]' games/nogame/releases/a.md games/uttt/releases/sub/notes.txt games/uttt/bots/mcts/src/main.rs
+# A release file that the workflow's pathspec games/*/releases/*.rs matches but
+# that is not games/<known game>/releases/<name>.rs fails: the SPRT cannot
+# place it, and the league's find would rate it.
+sprt_fails() { # sprt_fails <message part> <arguments>...
+  local text="$1" output status=0
+  shift
+  checks=$((checks + 1))
+  output="$("$script" sprt "$@" 2>&1)" || status=$?
+  if ((status != 1)); then
+    fail "sprt $*: expected status 1, got $status: $output"
+  elif [[ $output != *"$text"* ]]; then
+    fail "sprt $*: the output lacks '$text': $output"
+  fi
+}
+sprt_fails 'cannot place games/uttt/releases/sub/uttt-v011.rs' games/uttt/releases/sub/uttt-v011.rs
+sprt_fails 'cannot place games/nogame/releases/a.rs' games/nogame/releases/a.rs
+sprt_fails 'cannot place games/bad name/releases/a.rs' 'games/bad name/releases/a.rs'
+sprt_fails 'cannot place games/README.txt/releases/a.rs' games/README.txt/releases/a.rs
+sprt_fails 'cannot place games/uttt/extra/releases/a.rs' games/uttt/extra/releases/a.rs
+sprt_fails 'cannot place games/uttt/releases/releases/a.rs' games/uttt/releases/releases/a.rs
+sprt_fails 'cannot place games/a/b/releases/c/d.rs' games/a/b/releases/c/d.rs
+sprt_fails 'cannot place ./games/nogame/releases/a.rs' ./games/nogame/releases/a.rs
+# One placed and one not: the whole run fails, naming the file.
+sprt_fails 'cannot place games/other/releases/x/y.rs' games/uttt/releases/uttt-v011.rs games/other/releases/x/y.rs
+games_are sprt '[]' games/uttt/evaluation.env docs/ROADMAP.md scripts/league.sh .github/workflows/sprt.yml
+games_are sprt '["uttt"]' ./games/uttt/releases/uttt-v011.rs
+games_are sprt '["uttt"]' -- games/uttt/releases/uttt-v011.rs
+games_are sprt '["uttt"]' -- games/uttt/releases/uttt-v011.rs 'games/uttt/releases/a b.rs'
+mode_summary_is sprt 'ci-scopes: sprt: games=uttt (2 files)' games/uttt/releases/uttt-v011.rs docs/x.md
+mode_summary_is sprt 'ci-scopes: sprt: games= (0 files)'
+status_is 2 sprt --all
+status_is 2 sprt --all games/uttt/releases/uttt-v011.rs
+status_is 2 sprt --nonsense
+
+# league: the changed files decide; the league's own files give every game.
+games_are league '[]'
+games_are league '[]' ''
+games_are league '["uttt"]' games/uttt/evaluation.env
+games_are league '["uttt"]' games/uttt/releases/uttt-v011.rs
+games_are league '["uttt"]' games/uttt/releases/uttt-v010.rs games/uttt/evaluation.env
+games_are league '["other","uttt"]' games/uttt/releases/uttt-v011.rs games/other/evaluation.env
+games_are league '["uttt"]' games/uttt/releases/notes.md
+games_are league '["uttt"]' games/uttt/releases/sub/x.rs
+games_are league '[]' games/uttt/bots/x.rs games/uttt/README.md games/uttt/evaluation.env.bak games/uttt/releases
+games_are league '[]' crates/cg-arena/src/lib.rs docs/ROADMAP.md .github/workflows/ci.yml
+games_are league '[]' games/nogame/releases/a.rs games/nogame/evaluation.env 'games/bad name/evaluation.env'
+games_are league '["other","uttt"]' scripts/league.sh
+games_are league '["other","uttt"]' scripts/lib/evaluation.sh
+# A change to the ci mode must not play the full league.
+games_are league '[]' scripts/ci-scopes.sh scripts/tests/ci-scopes-test.sh .github/workflows/sprt.yml
+games_are league '["other","uttt"]' .github/workflows/league.yml
+games_are league '["other","uttt"]' crates/cg-arena/src/lib.rs scripts/league.sh
+games_are league '["other","uttt"]' --all
+games_are league '["other","uttt"]' --all docs/ROADMAP.md
+games_are league '["other","uttt"]' --all games/uttt/evaluation.env
+games_are league '["uttt"]' ./games/uttt/evaluation.env
+games_are league '["other","uttt"]' ./scripts/league.sh
+games_are league '["uttt"]' -- games/uttt/releases/uttt-v011.rs
+# A deleted release still lists its game: the league rates what is left.
+games_are league '["uttt"]' games/uttt/releases/uttt-v001.rs
+mode_summary_is league 'ci-scopes: league: games=other uttt (1 files)' scripts/league.sh
+mode_summary_is league 'ci-scopes: league: games= (0 files)'
+status_is 2 league --nonsense
+
 # ---- results ----
 
 ok_needs='{
@@ -156,6 +261,26 @@ skipped_lint="$(jq -c '.lint.result = "skipped"' <<<"$ok_needs")"
 results_are 0 "$skipped_lint" 'ok   lint: skipped' changes=true lint=false game-bots=true docs=true
 results_are 1 "$skipped_lint" 'FAIL lint: skipped (had to run)' "${args[@]}"
 results_are 1 "$skipped_lint" '::error title=CI passed::lint: skipped (had to run)' "${args[@]}"
+
+# The annotation's title comes from RESULTS_TITLE, `CI passed` without it.
+checks=$((checks + 1))
+status=0
+output="$(RESULTS_TITLE='SPRT passed' NEEDS="$skipped_lint" "$script" results "${args[@]}" 2>&1)" || status=$?
+if ((status != 1)) || [[ $output != *'::error title=SPRT passed::lint: skipped (had to run)'* ]] || [[ $output == *'title=CI passed'* ]]; then
+  fail "results with RESULTS_TITLE: status $status, output: $output"
+fi
+checks=$((checks + 1))
+status=0
+output="$(RESULTS_TITLE='SPRT passed' NEEDS='not json' "$script" results "${args[@]}" 2>&1)" || status=$?
+if ((status != 1)) || [[ $output != *'::error title=SPRT passed::NEEDS is not a JSON object'* ]]; then
+  fail "results with RESULTS_TITLE and bad NEEDS: status $status, output: $output"
+fi
+checks=$((checks + 1))
+status=0
+output="$(RESULTS_TITLE='' NEEDS="$skipped_lint" "$script" results "${args[@]}" 2>&1)" || status=$?
+if ((status != 1)) || [[ $output != *'::error title=CI passed::'* ]]; then
+  fail "results with an empty RESULTS_TITLE: status $status, output: $output"
+fi
 
 # A failure, a cancellation.
 failed="$(jq -c '."game-bots".result = "failure"' <<<"$ok_needs")"
@@ -206,25 +331,39 @@ if ((status != 2)); then fail "unknown mode: expected status 2, got $status"; fi
 
 # ---- the workflow ----
 
-# `CI passed` gathers every other job of ci.yml, and its results call expects
-# each of them: a job added to the workflow and forgotten there would never
-# block a merge.
-workflow=.github/workflows/ci.yml
-mapfile -t job_ids < <(sed -n '/^jobs:/,$p' "$workflow" | sed -n 's/^  \([a-z][a-z0-9-]*\):[[:space:]]*$/\1/p')
-mapfile -t needed < <(sed -n '/^  ci-passed:/,$p' "$workflow" | sed -n '/^    needs:/,/^    [a-z]/p' | sed -n 's/^      - //p')
-mapfile -t expected_ids < <(sed -n '/^  ci-passed:/,$p' "$workflow" | sed -n '/scripts\/ci-scopes.sh results/,$p' | grep -o '[a-z][a-z0-9-]*=' | sed 's/=$//')
+# An aggregate job gathers every other job of its workflow, and its results
+# call expects each of them: a job added to the workflow and forgotten there
+# would never block a merge.
+aggregate_covers_jobs() { # aggregate_covers_jobs <workflow> <aggregate job id>
+  local workflow="$1" aggregate="$2" id
+  local -a job_ids needed expected_ids
+  mapfile -t job_ids < <(sed -n '/^jobs:/,$p' "$workflow" | sed -n 's/^  \([a-z][a-z0-9-]*\):[[:space:]]*$/\1/p')
+  mapfile -t needed < <(sed -n "/^  $aggregate:/,\$p" "$workflow" | sed -n '/^    needs:/,/^    [a-z]/p' | sed -n 's/^      - //p')
+  mapfile -t expected_ids < <(sed -n "/^  $aggregate:/,\$p" "$workflow" | sed -n '/scripts\/ci-scopes.sh results/,$p' | grep -o '[a-z][a-z0-9-]*=' | sed 's/=$//')
+  checks=$((checks + 1))
+  if ((${#job_ids[@]} < 2)); then fail "$workflow: found no jobs"; fi
+  for id in "${job_ids[@]}"; do
+    [[ $id == "$aggregate" ]] && continue
+    checks=$((checks + 1))
+    if ! printf '%s\n' "${needed[@]}" | grep -qx -- "$id"; then fail "$workflow: $aggregate does not list $id in needs"; fi
+    if ! printf '%s\n' "${expected_ids[@]}" | grep -qx -- "$id"; then fail "$workflow: the results call of $aggregate lacks $id="; fi
+  done
+  for id in "${needed[@]}" "${expected_ids[@]}"; do
+    checks=$((checks + 1))
+    if ! printf '%s\n' "${job_ids[@]}" | grep -qx -- "$id"; then fail "$workflow: $aggregate names $id, which is not a job"; fi
+  done
+}
+
+# `CI passed` for ci.yml, `SPRT passed` for sprt.yml.
+aggregate_covers_jobs .github/workflows/ci.yml ci-passed
+aggregate_covers_jobs .github/workflows/sprt.yml sprt-passed
+
+# The SPRT's annotation carries the name of its check (the default title is
+# `CI passed`).
 checks=$((checks + 1))
-if ((${#job_ids[@]} < 2)); then fail "$workflow: found no jobs"; fi
-for id in "${job_ids[@]}"; do
-  [[ $id == ci-passed ]] && continue
-  checks=$((checks + 1))
-  if ! printf '%s\n' "${needed[@]}" | grep -qx -- "$id"; then fail "$workflow: ci-passed does not list $id in needs"; fi
-  if ! printf '%s\n' "${expected_ids[@]}" | grep -qx -- "$id"; then fail "$workflow: the results call of ci-passed lacks $id="; fi
-done
-for id in "${needed[@]}" "${expected_ids[@]}"; do
-  checks=$((checks + 1))
-  if ! printf '%s\n' "${job_ids[@]}" | grep -qx -- "$id"; then fail "$workflow: ci-passed names $id, which is not a job"; fi
-done
+if ! grep -qx "          RESULTS_TITLE: SPRT passed" .github/workflows/sprt.yml; then
+  fail "sprt.yml: the results call lacks RESULTS_TITLE: SPRT passed"
+fi
 
 if ((failures > 0)); then
   echo "FAIL ci-scopes: $failures of $checks checks failed" >&2

@@ -1,11 +1,14 @@
 name: SPRT
 
-# Tests every release file a pull request adds (ADR 0012 to 0015, 0020): a
-# smoke test against the random bot, a sequential probability ratio test
-# against the previous release, then, if accepted and the game asks for it,
-# a confirmation match at CodinGame's exact time limits. In Legend the SPRT
-# itself plays at those limits (scripts/sprt.sh, the game's
-# evaluation.env). The check fails unless every step passes.
+# Tests every release file a pull request adds (ADR 0012 to 0015, 0020), one
+# job per game that gets a new release (ADR 0029): a smoke test against the
+# random bot, a sequential probability ratio test against the previous
+# release, then, if accepted and the game asks for it, a confirmation match
+# at CodinGame's exact time limits. In Legend the SPRT itself plays at those
+# limits (scripts/sprt.sh, the game's evaluation.env). A game's result is
+# kept for the framework's code and that game's code only. The check
+# `SPRT passed` fails unless every step of every game passes; it passes when
+# the pull request adds no release.
 on:
   pull_request:
 
@@ -29,10 +32,57 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # The games that get a new release in this pull request.
+  releases:
+    name: New releases
+    runs-on: ubuntu-latest
+    outputs:
+      games: ${{ steps.scopes.outputs.games }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The parent commit, to see which files a pull request adds.
+          fetch-depth: 2
+      - name: Find the games with a new release
+        id: scopes
+        run: |
+          # In a pull request, HEAD is the merge commit and HEAD^1 the base.
+          # NUL-separated: git quotes the odd file names otherwise. Written to
+          # a file first: a process substitution would hide a failure of git,
+          # and no files would then mean no test.
+          if ! git diff -z --name-only --diff-filter=A --no-renames HEAD^1 HEAD -- 'games/*/releases/*.rs' >"$RUNNER_TEMP/added-releases"; then
+            echo "::error title=New releases::git diff failed; the added releases are unknown"
+            exit 1
+          fi
+          mapfile -d '' -t files <"$RUNNER_TEMP/added-releases"
+          scopes="$(scripts/ci-scopes.sh sprt -- "${files[@]}")" || {
+            echo "::error title=New releases::scripts/ci-scopes.sh failed"
+            exit 1
+          }
+          echo "$scopes" | tee -a "$GITHUB_OUTPUT"
+          if [ "$scopes" = 'games=[]' ]; then
+            echo "No new release in this pull request: nothing to test." | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo '```text'
+              echo "$scopes"
+              echo '```'
+            } >>"$GITHUB_STEP_SUMMARY"
+          fi
+
   sprt:
-    name: SPRT of new releases
+    name: "${{ matrix.game }}: SPRT"
+    needs: releases
+    # An empty matrix is an error: skip the job instead.
+    if: needs.releases.outputs.games != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        game: ${{ fromJSON(needs.releases.outputs.games) }}
+    env:
+      GAME: ${{ matrix.game }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -41,16 +91,40 @@ jobs:
         id: find
         run: |
           # In a pull request, HEAD is the merge commit and HEAD^1 the base.
-          candidates="$(git diff --name-only --diff-filter=A HEAD^1 HEAD -- 'games/*/releases/*.rs' | tr '\n' ' ')"
+          # NUL-separated: git quotes the odd file names otherwise. Written to
+          # a file first, as in the releases job.
+          if ! git diff -z --name-only --diff-filter=A --no-renames HEAD^1 HEAD -- "games/$GAME/releases/*.rs" >"$RUNNER_TEMP/added-releases"; then
+            echo "::error title=$GAME SPRT::git diff failed; the added releases are unknown"
+            exit 1
+          fi
+          mapfile -d '' -t files <"$RUNNER_TEMP/added-releases"
+          candidates=""
+          for file in "${files[@]}"; do
+            # Directly in the game's releases folder.
+            if [[ "${file#"games/$GAME/releases/"}" == */* ]]; then
+              continue
+            fi
+            # The list is space separated below.
+            if [[ ! $file =~ ^[A-Za-z0-9._/-]+$ ]]; then
+              echo "::error title=$GAME SPRT::unsupported characters in the name of $file"
+              exit 1
+            fi
+            candidates="$candidates $file"
+          done
+          candidates="${candidates# }"
           echo "candidates=$candidates" >>"$GITHUB_OUTPUT"
+          # The releases job listed this game because a release was added: a
+          # leg with nothing to test would pass without testing anything.
           if [ -z "$candidates" ]; then
-            echo "No new release in this pull request: nothing to test." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "::error title=$GAME SPRT::no new release of $GAME found, although the releases job listed it"
+            exit 1
           fi
           # A result is kept for the exact code and settings it was obtained
-          # with: editing only Markdown (the journal) does not run it again.
+          # with: the framework's and this game's, not another game's, and
+          # editing only Markdown (the journal) does not run it again.
           # Re-running the job on GitHub does (see the next step).
-          key="$(git ls-tree -r HEAD -- Cargo.toml Cargo.lock crates games scripts | grep -v '\.md$' | sha256sum | cut -c 1-20)"
-          echo "key=sprt-$key" >>"$GITHUB_OUTPUT"
+          hash="$(git ls-tree -r HEAD -- Cargo.toml Cargo.lock crates scripts "games/$GAME" | grep -v '\.md$' | sha256sum | cut -c 1-20)"
+          echo "key=sprt-$GAME-$hash" >>"$GITHUB_OUTPUT"
       - name: Reuse the latest result on the same code
         id: cache
         # A re-run of this job (attempt 2 or more) always tests again, for
@@ -69,6 +143,8 @@ jobs:
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
         if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-matched-key == ''
+        with:
+          key: ${{ matrix.game }}
       - name: Smoke test and SPRT
         id: run
         if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-matched-key == ''
@@ -83,9 +159,8 @@ jobs:
           drop_annotations() { sed -i '/^::error title=/d' target/sprt-result/report.txt; }
           status=0
           for candidate in $CANDIDATES; do
-            game="$(cut -d/ -f2 <<<"$candidate")"
             set +e
-            scripts/annotate.sh run "SPRT of $candidate" scripts/sprt.sh "$game" "$candidate" | tee -a target/sprt-result/report.txt
+            scripts/annotate.sh run "SPRT of $candidate" scripts/sprt.sh "$GAME" "$candidate" | tee -a target/sprt-result/report.txt
             code="${PIPESTATUS[0]}"
             set -e
             # Status 2 is an error, not a verdict: keep no result.
@@ -105,7 +180,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: game-records
+          name: game-records-${{ matrix.game }}
           path: target/records
           if-no-files-found: ignore
           retention-days: 30
@@ -121,7 +196,7 @@ jobs:
           REUSED: ${{ steps.cache.outputs.cache-matched-key != '' }}
         run: |
           {
-            echo "## SPRT"
+            echo "## SPRT: $GAME"
             if [ "$REUSED" = true ]; then
               echo "Result of an earlier run on the same code and settings."
             fi
@@ -147,7 +222,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           origin="$(cat target/sprt-result/origin 2>/dev/null || echo "$REUSED_KEY")"
-          marker="<!-- sprt-result $origin -->"
+          marker="<!-- sprt-result $GAME $origin -->"
           comments="$(gh api --paginate "repos/$REPO/issues/$PR/comments" --jq '.[].body')"
           if grep -qF "$marker" <<<"$comments"; then
             echo "This result is already on the pull request."
@@ -155,7 +230,7 @@ jobs:
           fi
           {
             echo "$marker"
-            echo "### SPRT result for ${HEAD_SHA:0:7}"
+            echo "### SPRT result for $GAME at ${HEAD_SHA:0:7}"
             if [ -n "$REUSED_KEY" ]; then
               echo "From an earlier run on the same code and settings."
             fi
@@ -173,3 +248,32 @@ jobs:
           !cancelled() && steps.find.outputs.candidates != ''
           && (steps.run.outcome == 'success' || steps.cache.outputs.cache-matched-key != '')
         run: exit "$(cat target/sprt-result/status)"
+
+  # The required check (ADR 0029). Always runs, and fails when the search for
+  # new releases or any game's SPRT failed or was cancelled.
+  sprt-passed:
+    name: SPRT passed
+    needs:
+      - releases
+      - sprt
+    # Never `!cancelled()`: GitHub counts a skipped required check as passed,
+    # so this job must run when the run is cancelled too, and then fail.
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+      - name: Every SPRT that had to run succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          GAMES: ${{ needs.releases.outputs.games }}
+          RESULTS_TITLE: SPRT passed
+        run: |
+          # Empty when the releases job failed: the verdict then fails.
+          case "$GAMES" in
+            '') HAS_GAMES='' ;;
+            '[]') HAS_GAMES=false ;;
+            *) HAS_GAMES=true ;;
+          esac
+          scripts/ci-scopes.sh results releases=true sprt="$HAS_GAMES"

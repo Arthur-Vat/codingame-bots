@@ -1,7 +1,9 @@
 name: League
 
-# Rates every release of every game, with its baseline bots (ADR 0012).
-# Pull requests that change the league itself run it too.
+# Rates every release of each game that changed, with its baseline bots
+# (ADR 0012, 0029): one job per game. Every game is rated when the league
+# itself changes (this workflow, its scripts), on pull requests too, and when
+# started by hand.
 on:
   push:
     branches: [main]
@@ -44,10 +46,86 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # The games to rate (scripts/ci-scopes.sh league).
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    outputs:
+      games: ${{ steps.scopes.outputs.games }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # A push: the old commit comes by the fetch below. A pull request:
+          # the parent commit, to see which files it changes.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
+      - name: Decide which games are rated
+        id: scopes
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # On stderr: the games are read from stdout in a substitution.
+          fail() {
+            echo "::error title=Changes::scripts/ci-scopes.sh failed" >&2
+            exit 1
+          }
+          # Reads the changed files, NUL-separated (git quotes the odd file
+          # names otherwise), from the file $1.
+          games_of() {
+            mapfile -d '' -t files <"$1"
+            scripts/ci-scopes.sh league -- "${files[@]}" || fail
+          }
+          list="$RUNNER_TEMP/changed-files"
+          case "$EVENT" in
+            pull_request)
+              # In a pull request, HEAD is the merge commit and HEAD^1 the base.
+              # Written to a file first: a process substitution would hide a
+              # failure of git, and no files would then mean no league.
+              if ! git diff -z --name-only --no-renames HEAD^1 HEAD >"$list"; then
+                echo "::error title=Changes::git diff failed; the changed files are unknown"
+                exit 1
+              fi
+              scopes="$(games_of "$list")"
+              ;;
+            push)
+              # The first push of a branch has no commit before it, and a
+              # force push may have lost it: rate every game then, also when
+              # git diff fails (the list is written to a file, so a failure
+              # is seen, never taken for "no file changed").
+              if [[ ! $BEFORE =~ ^0+$ ]] &&
+                git fetch --depth=1 origin "$BEFORE" &&
+                git diff -z --name-only --no-renames "$BEFORE" HEAD >"$list"; then
+                scopes="$(games_of "$list")"
+              else
+                echo "The commits before this push cannot be compared: every game is rated."
+                scopes="$(scripts/ci-scopes.sh league --all)" || fail
+              fi
+              ;;
+            *)
+              # Runs by hand rate every game.
+              scopes="$(scripts/ci-scopes.sh league --all)" || fail
+              ;;
+          esac
+          echo "$scopes" | tee -a "$GITHUB_OUTPUT"
+          {
+            echo '```text'
+            echo "$scopes"
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+
   league:
-    name: Elo ratings of every release
+    name: "${{ matrix.game }}: league"
+    needs: changes
+    # An empty matrix is an error: skip the job instead.
+    if: needs.changes.outputs.games != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        game: ${{ fromJSON(needs.changes.outputs.games) }}
+    env:
+      GAME: ${{ matrix.game }}
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
@@ -55,10 +133,12 @@ jobs:
           toolchain: ${{ env.CG_RUST }}
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
-      - name: Play each game's league
+        with:
+          key: ${{ matrix.game }}
+      - name: Play the league
         env:
           # Empty unless given when starting the workflow by hand; empty
-          # values leave each game's settings in place.
+          # values leave the game's settings in place.
           TIME_SCALE: ${{ inputs.time_scale }}
           TIME_TOLERANCE_MS: ${{ inputs.time_tolerance_ms }}
           # A sample of the games, uploaded below (ADR 0027).
@@ -66,29 +146,26 @@ jobs:
         run: |
           # A fresh runner has no target folder yet; tee needs it.
           mkdir -p target
-          for settings in games/*/evaluation.env; do
-            game="$(basename "$(dirname "$settings")")"
-            scripts/annotate.sh run "League of $game" scripts/league.sh "$game" | tee "target/league-$game.txt"
-            {
-              echo "## League: $game"
-              echo '```'
-              # The annotation of a failure is for the check run only.
-              grep -v '^::error title=' "target/league-$game.txt" || true
-              echo '```'
-            } >>"$GITHUB_STEP_SUMMARY"
-          done
+          scripts/annotate.sh run "League of $GAME" scripts/league.sh "$GAME" | tee "target/league-$GAME.txt"
+          {
+            echo "## League: $GAME"
+            echo '```'
+            # The annotation of a failure is for the check run only.
+            grep -v '^::error title=' "target/league-$GAME.txt" || true
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
       - name: Upload a sample of the games
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: league-game-records
+          name: league-game-records-${{ matrix.game }}
           path: target/records
           if-no-files-found: ignore
           retention-days: 30
       - name: Publish the games and ratings
         uses: actions/upload-artifact@v7
         with:
-          name: league
+          name: league-${{ matrix.game }}
           path: |
-            target/league-*.txt
+            target/league-${{ matrix.game }}.txt
             target/league/*.jsonl

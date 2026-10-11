@@ -4,6 +4,8 @@
 #
 # Usage:
 #   scripts/ci-scopes.sh ci [--all] [FILE...]
+#   scripts/ci-scopes.sh sprt [FILE...]
+#   scripts/ci-scopes.sh league [--all] [FILE...]
 #   scripts/ci-scopes.sh results NAME=EXPECTED...
 #
 # ci: prints six lines to stdout, ready for $GITHUB_OUTPUT, and a one-line
@@ -38,16 +40,38 @@
 # bundle the games' bots, ADR 0029): the workflow decides that from `framework`
 # and `games`; the outputs above do not say it.
 #
-# results: the verdict of the aggregate job (`CI passed`). The environment
-# variable NEEDS holds the JSON of `${{ toJSON(needs) }}`. Each argument is
-# JOB=true (the job had to run: its result must be success) or JOB=false (it
+# sprt: the games the SPRT workflow tests. The FILEs are the files the pull
+# request adds (git diff --diff-filter=A). Prints one line to stdout and a
+# one-line summary to stderr:
+#   games=["id",...]      the games with a new release (compact JSON, sorted)
+# A game is listed when a FILE is games/<g>/releases/<name>.rs, directly in
+# releases/; files that are not .rs files under a releases/ folder are
+# ignored. A FILE that git's pathspec games/*/releases/*.rs matches (the * crosses /)
+# but that is not exactly games/<g>/releases/<name>.rs for a known game <g>
+# (a nested file, an unknown game folder) fails with status 1 and a message on
+# stderr: the SPRT cannot place it, and the league's find would rate it.
+# --all is a usage error: the SPRT tests new releases only.
+#
+# league: the games the league workflow rates. The FILEs are the changed
+# files. Prints the same line as sprt. --all, or a FILE among the league's
+# own files (.github/workflows/league.yml, scripts/league.sh and
+# scripts/lib/evaluation.sh), gives every game. Otherwise a
+# game is listed when a FILE is under games/<g>/releases/ (a deleted release
+# too) or is games/<g>/evaluation.env; other files are ignored.
+#
+# In sprt and league, a game counts only when it is a directory directly
+# under GAMES_DIR with a name that matches [A-Za-z0-9_-]+, as in ci, and a
+# FILE is read as in ci (a leading ./ is dropped, -- ends the options).
+#
+# results: the verdict of an aggregate job (`CI passed`, `SPRT passed`). The
+# environment variable NEEDS holds the JSON of `${{ toJSON(needs) }}`. Each
+# argument is JOB=true (the job had to run: its result must be success) or JOB=false (it
 # could be skipped: success or skipped). Anything else fails: another result,
 # a job named in an argument but missing from NEEDS, a job in NEEDS that no
 # argument names, an expected value that is not true or false (empty when the
 # job that decides it failed). Prints one line per job and, on failure, an
-# error annotation; exits 1 on failure.
-#
-# Planned (next change): modes `sprt` and `league`, for the two workflows.
+# error annotation, titled with the environment variable RESULTS_TITLE (default
+# `CI passed`); exits 1 on failure.
 #
 # Needs jq for the results mode. Exit status 2: wrong usage.
 set -euo pipefail
@@ -214,6 +238,141 @@ mode_ci() {
   echo "ci-scopes: framework=$f_framework games=${selected[*]:-} studio=$f_studio web=$f_web licenses=$f_licenses ($count files)" >&2
 }
 
+# ---- sprt and league ---------------------------------------------------
+
+# Splits the arguments into `files`, and sets `all` when --all is given.
+parse_files() { # parse_files <allow --all: true|false> <mode> <argument>...
+  local allow="$1" mode="$2" parse=true file
+  shift 2
+  all=false
+  files=()
+  for file in "$@"; do
+    if [[ $parse == true && $file == -- ]]; then
+      parse=false
+    elif [[ $parse == true && $file == --all && $allow == true ]]; then
+      all=true
+    elif [[ $parse == true && $file == -* ]]; then
+      echo "ci-scopes: $mode: unknown option $file" >&2
+      usage
+    else
+      files+=("$file")
+    fi
+  done
+}
+
+# Flags the game <id> when it is a known game.
+flag_game() { # flag_game <id>
+  local known
+  for known in "${all_games[@]}"; do
+    if [[ $known == "$1" ]]; then
+      f_games["$1"]=1
+      return 0
+    fi
+  done
+  return 0
+}
+
+# Prints games=<JSON array> for the games flagged, and the summary on stderr.
+print_games() { # print_games <mode> <file count>
+  local id json
+  local -a selected=()
+  for id in "${all_games[@]}"; do
+    if [[ -n ${f_games[$id]:-} ]]; then
+      selected+=("$id")
+    fi
+  done
+  if ((${#selected[@]} > 0)); then
+    mapfile -t selected < <(printf '%s\n' "${selected[@]}" | sort)
+    json="$(printf '"%s",' "${selected[@]}")"
+    json="[${json%,}]"
+  else
+    json="[]"
+  fi
+  printf 'games=%s\n' "$json"
+  echo "ci-scopes: $1: games=${selected[*]:-} ($2 files)" >&2
+}
+
+mode_sprt() {
+  local file path id rest known placed count=0
+  local all files
+  local -a unplaced=()
+  parse_files false sprt "$@"
+  load_games
+  for file in "${files[@]}"; do
+    count=$((count + 1))
+    path="$file"
+    while [[ $path == ./* ]]; do
+      path="${path#./}"
+    done
+    case $path in
+      games/*/releases/*.rs)
+        # The same pattern as git's pathspec in the workflow (* crosses /).
+        id="${path#games/}"
+        id="${id%%/*}"
+        placed=false
+        for known in "${all_games[@]}"; do
+          if [[ $known == "$id" && $path == "games/$id/releases/"* ]]; then
+            rest="${path#"games/$id/releases/"}"
+            # Directly in releases/: no further folder.
+            if [[ $rest != */* ]]; then
+              placed=true
+            fi
+          fi
+        done
+        if [[ $placed == true ]]; then
+          flag_game "$id"
+        else
+          unplaced+=("$file")
+        fi
+        ;;
+    esac
+  done
+  if ((${#unplaced[@]} > 0)); then
+    for file in "${unplaced[@]}"; do
+      echo "ci-scopes: sprt: cannot place $file: a release is games/<game>/releases/<name>.rs for a game of this repository" >&2
+    done
+    exit 1
+  fi
+  print_games sprt "$count"
+}
+
+mode_league() {
+  local file path id count=0 every=false
+  local all files
+  parse_files true league "$@"
+  load_games
+  if [[ $all == true ]]; then
+    every=true
+  fi
+  for file in "${files[@]}"; do
+    count=$((count + 1))
+    path="$file"
+    while [[ $path == ./* ]]; do
+      path="${path#./}"
+    done
+    case $path in
+      .github/workflows/league.yml | scripts/league.sh | scripts/lib/evaluation.sh)
+        every=true
+        ;;
+      games/*/releases/* | games/*/evaluation.env)
+        id="${path#games/}"
+        id="${id%%/*}"
+        # The id is the first folder; the path must be under its releases/
+        # or be its evaluation.env (a folder of another name does not count).
+        if [[ $path == "games/$id/releases/"* || $path == "games/$id/evaluation.env" ]]; then
+          flag_game "$id"
+        fi
+        ;;
+    esac
+  done
+  if [[ $every == true ]]; then
+    for id in "${all_games[@]}"; do
+      f_games["$id"]=1
+    done
+  fi
+  print_games league "$count"
+}
+
 # ---- results -----------------------------------------------------------
 
 # Escapes the text for a workflow command message.
@@ -226,7 +385,7 @@ escape() { # escape <text>
 }
 
 mode_results() {
-  local arg name expected result line status=0
+  local arg name expected result line status=0 title="${RESULTS_TITLE:-CI passed}"
   local -a order=() failing=()
   local -A want=() got=() seen=()
 
@@ -256,7 +415,7 @@ mode_results() {
   local listing
   if ! listing="$(jq -r 'to_entries[] | [.key, (.value.result // "")] | @tsv' <<<"$NEEDS" 2>&1)"; then
     echo "FAIL NEEDS is not a JSON object of jobs: $listing"
-    echo "::error title=CI passed::NEEDS is not a JSON object of jobs"
+    echo "::error title=$title::NEEDS is not a JSON object of jobs"
     exit 1
   fi
   while IFS=$'\t' read -r name result; do
@@ -311,7 +470,7 @@ mode_results() {
 
   if ((status != 0)); then
     line="$(printf '%s, ' "${failing[@]}")"
-    echo "::error title=CI passed::$(escape "${line%, }")"
+    echo "::error title=$title::$(escape "${line%, }")"
   fi
   exit "$status"
 }
@@ -323,6 +482,8 @@ mode="$1"
 shift
 case $mode in
   ci) mode_ci "$@" ;;
+  sprt) mode_sprt "$@" ;;
+  league) mode_league "$@" ;;
   results) mode_results "$@" ;;
   *)
     echo "ci-scopes: unknown mode $mode" >&2
