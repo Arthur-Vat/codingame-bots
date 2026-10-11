@@ -119,7 +119,7 @@ The history is one JSON file per game in `studio/data/history/` (or `<data>/hist
 
 ### Games from GitHub runs
 
-The SPRT and league workflows keep a sample of the games they play (about 10 per step or per pair of bots, [ADR 0027](../docs/adr/0027-game-records.md)). In the run's page on GitHub, download the artifact `game-records` (`league-game-records` for the league), unzip it, then in the studio open History, then Load game files, and choose the unzipped files. Artifacts expire after 30 days.
+The SPRT and league workflows keep a sample of the games they play (about 10 per step or per pair of bots, [ADR 0027](../docs/adr/0027-game-records.md)). In the run's page on GitHub, download the artifact `game-records-<game>` (`league-game-records-<game>` for the league), unzip it, then in the studio open History, then Load game files, and choose the unzipped files. Artifacts expire after 30 days.
 
 ## Running the studio on Windows
 

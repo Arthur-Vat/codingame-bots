@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tests scripts/ci-scopes.sh: the area of each path (against a stand-in folder
-# of games) and the verdict of the aggregate job. Needs jq.
+# of games), the games of the sprt and league modes, and the verdict of the
+# aggregate job. Needs jq.
 # Usage: scripts/tests/ci-scopes-test.sh
 set -euo pipefail
 
@@ -137,6 +138,86 @@ checks=$((checks + 1))
 status=0
 "$script" ci --nonsense >/dev/null 2>&1 || status=$?
 if ((status != 2)); then fail "ci --nonsense: expected status 2, got $status"; fi
+
+# ---- sprt and league ----
+
+# The games line printed for the arguments of the mode is the expected one.
+games_are() { # games_are <mode> <expected> <arguments>...
+  local mode="$1" expected="$2" actual
+  shift 2
+  checks=$((checks + 1))
+  if ! actual="$("$script" "$mode" "$@" 2>/dev/null)"; then
+    fail "$mode $*: the script failed"
+    return
+  fi
+  if [[ $actual != "games=$expected" ]]; then fail "$mode $*: expected 'games=$expected', got '$actual'"; fi
+}
+
+# The stderr summary of a mode.
+mode_summary_is() { # mode_summary_is <mode> <expected> <arguments>...
+  local mode="$1" expected="$2" actual
+  shift 2
+  checks=$((checks + 1))
+  actual="$("$script" "$mode" "$@" 2>&1 >/dev/null)"
+  if [[ $actual != "$expected" ]]; then fail "summary of $mode $*: expected '$expected', got '$actual'"; fi
+}
+
+# The exit status of the script with the arguments.
+status_is() { # status_is <status> <arguments>...
+  local want="$1" status=0
+  shift
+  checks=$((checks + 1))
+  "$script" "$@" >/dev/null 2>&1 || status=$?
+  if ((status != want)); then fail "$*: expected status $want, got $status"; fi
+}
+
+# sprt: the added files decide.
+games_are sprt '[]'
+games_are sprt '[]' ''
+games_are sprt '["uttt"]' games/uttt/releases/uttt-v011.rs
+games_are sprt '["other","uttt"]' games/uttt/releases/uttt-v011.rs games/other/releases/other-v001.rs
+games_are sprt '["other","uttt"]' games/other/releases/other-v001.rs games/uttt/releases/uttt-v011.rs games/uttt/releases/uttt-v012.rs
+games_are sprt '[]' games/uttt/releases/notes.md games/uttt/bots/x.rs games/nogame/releases/a.rs
+games_are sprt '[]' games/uttt/releases/sub/uttt-v011.rs games/uttt/releases/uttt-v011.rs.bak games/uttt/releases/.rs.md
+games_are sprt '[]' 'games/bad name/releases/a.rs' games/README.txt/releases/a.rs
+games_are sprt '[]' games/uttt/evaluation.env docs/ROADMAP.md scripts/league.sh .github/workflows/sprt.yml
+games_are sprt '["uttt"]' ./games/uttt/releases/uttt-v011.rs
+games_are sprt '["uttt"]' -- games/uttt/releases/uttt-v011.rs
+games_are sprt '["uttt"]' -- games/uttt/releases/uttt-v011.rs 'games/uttt/releases/a b.rs'
+mode_summary_is sprt 'ci-scopes: sprt: games=uttt (2 files)' games/uttt/releases/uttt-v011.rs docs/x.md
+mode_summary_is sprt 'ci-scopes: sprt: games= (0 files)'
+status_is 2 sprt --all
+status_is 2 sprt --all games/uttt/releases/uttt-v011.rs
+status_is 2 sprt --nonsense
+
+# league: the changed files decide; the league's own files give every game.
+games_are league '[]'
+games_are league '[]' ''
+games_are league '["uttt"]' games/uttt/evaluation.env
+games_are league '["uttt"]' games/uttt/releases/uttt-v011.rs
+games_are league '["uttt"]' games/uttt/releases/uttt-v010.rs games/uttt/evaluation.env
+games_are league '["other","uttt"]' games/uttt/releases/uttt-v011.rs games/other/evaluation.env
+games_are league '["uttt"]' games/uttt/releases/notes.md
+games_are league '["uttt"]' games/uttt/releases/sub/x.rs
+games_are league '[]' games/uttt/bots/x.rs games/uttt/README.md games/uttt/evaluation.env.bak games/uttt/releases
+games_are league '[]' crates/cg-arena/src/lib.rs docs/ROADMAP.md .github/workflows/ci.yml
+games_are league '[]' games/nogame/releases/a.rs games/nogame/evaluation.env 'games/bad name/evaluation.env'
+games_are league '["other","uttt"]' scripts/league.sh
+games_are league '["other","uttt"]' scripts/lib/evaluation.sh
+games_are league '["other","uttt"]' scripts/ci-scopes.sh
+games_are league '["other","uttt"]' .github/workflows/league.yml
+games_are league '["other","uttt"]' crates/cg-arena/src/lib.rs scripts/league.sh
+games_are league '["other","uttt"]' --all
+games_are league '["other","uttt"]' --all docs/ROADMAP.md
+games_are league '["other","uttt"]' --all games/uttt/evaluation.env
+games_are league '["uttt"]' ./games/uttt/evaluation.env
+games_are league '["other","uttt"]' ./scripts/league.sh
+games_are league '["uttt"]' -- games/uttt/releases/uttt-v011.rs
+# A deleted release still lists its game: the league rates what is left.
+games_are league '["uttt"]' games/uttt/releases/uttt-v001.rs
+mode_summary_is league 'ci-scopes: league: games=other uttt (1 files)' scripts/league.sh
+mode_summary_is league 'ci-scopes: league: games= (0 files)'
+status_is 2 league --nonsense
 
 # ---- results ----
 
