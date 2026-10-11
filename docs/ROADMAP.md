@@ -10,7 +10,7 @@ Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes 
 | 3. Evaluation | Openings, smoke tests, SPRT, ratings, league, journal, releases | A/A test passes; a weakened bot is rejected by the SPRT | Done (2026-10-07) |
 | 4. First real bot | MCTS `uttt-v001`, then the weekly experiment loop | v001 pasted and ranked; 3 experiments run end to end | Done (2026-10-07) |
 | 5. Autonomy and workflow | Conventions, CI checks, project agents and skills, merge policy, a daily scheduled session within the owner's usage limits, arena and ratings | Every item below done (the owner dropped the one-week trial on 2026-10-09) | In progress (2026-10-09) |
-| 6. Studio | A local Lichess-style app: play a friend or any release, bot against bot, review with analysis, game history | The first version works on the owner's Windows computer; every item below done | In progress (2026-10-10) |
+| 6. Studio | A Lichess-style app, local and on GitHub Pages: play a friend or any release, bot against bot, review with analysis, game history | The first version works on the owner's Windows computer; every item below done | In progress (2026-10-10) |
 | 7. Second game | A game with an official referee; `new-game` skill | Phase 3 gates met, changes mostly inside the game folder | Not started |
 | Ongoing | Iterate every game toward Legend, then up the Legend ranking | | Ultimate Tic-Tac-Toe: Legend since 2026-10-07 (`uttt-v001`, 182 of 443); 59th with `uttt-v008` (2026-10-08); current release `uttt-v010`; strength work paused (2026-10-09) |
 
@@ -176,7 +176,16 @@ Gate: the first version (steps A to C) works on the owner's Windows computer, th
 - [x] A Windows CI job and the setup guide for Windows
 - [x] Workflows that play games upload a sample of game records; the studio imports it
 
-Order: A, B, C, then D and E. Later: a ready-to-run download, each bot's own evaluation from future releases, more games.
+### F. In the browser, on GitHub Pages
+
+Decided with the owner on 2026-10-11 ([ADR 0030](adr/0030-studio-on-github-pages.md)): the same front end also runs as a static site, with the rules and the releases compiled to WebAssembly; the local server stays.
+
+- [x] Feasibility test: releases, referee and adapter in WebAssembly in Chromium, identical moves to native (2026-10-11)
+- [ ] The rules as a WebAssembly program, sharing the server's Rust code, and every release built to WebAssembly
+- [ ] The browser engine: bots in Web Workers, saved games in the browser, chosen when the site is served as static files
+- [ ] Published on GitHub Pages from `main`, with the guide
+
+Order: A, B, C, E, then F, then the interface rework (G, to be planned), then D. Later: each bot's own evaluation from future releases, more games.
 
 ## Risks
 
