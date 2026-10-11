@@ -1232,3 +1232,8 @@ html {
     height: 180px;
   }
 }
+
+.starting {
+  margin: 2rem;
+  color: var(--muted);
+}

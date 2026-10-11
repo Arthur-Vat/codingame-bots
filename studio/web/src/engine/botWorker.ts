@@ -21,8 +21,9 @@ scope.onmessage = ({ data: { module, sab, env } }) => {
   try {
     const wasi = makeWasi(module, {
       env,
-      readStdin(max) {
+      readStdin(max, mayBlock) {
         if (pending.length === 0) {
+          if (!mayBlock) return new Uint8Array(0);
           while (Atomics.load(control, 1) === 0) Atomics.wait(control, 1, 0);
           const size = Atomics.load(control, 1);
           pending = data.slice(0, size);

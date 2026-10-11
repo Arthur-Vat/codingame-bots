@@ -11,9 +11,12 @@ if (!root) {
 }
 
 // The engine is chosen first: the app asks it for everything. For the browser engine this may
-// reload the page once (cross-origin isolation), and then never returns.
+// reload the page once (cross-origin isolation), and then never returns. Until then the page
+// says it is starting rather than staying blank.
+const app = createRoot(root);
+app.render(<p className="starting">Starting…</p>);
 void startEngine().then(() => {
-  createRoot(root).render(
+  app.render(
     <StrictMode>
       <App />
     </StrictMode>,

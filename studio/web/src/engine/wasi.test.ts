@@ -90,6 +90,27 @@ describe('the input and the output', () => {
     expect(new TextDecoder().decode(bytes().subarray(200, 205))).toBe('hello');
   });
 
+  it('only lets the first buffer of a read wait for input', () => {
+    const asked: boolean[] = [];
+    let left = new TextEncoder().encode('abc');
+    const { call, view } = harness({
+      readStdin: (max, mayBlock) => {
+        asked.push(mayBlock);
+        const chunk = left.subarray(0, max);
+        left = left.subarray(chunk.length);
+        return chunk;
+      },
+    });
+    // Two buffers; the first one takes the whole input, so the second must not wait for more.
+    view().setUint32(0, 100, true);
+    view().setUint32(4, 3, true);
+    view().setUint32(8, 200, true);
+    view().setUint32(12, 10, true);
+    expect(call('fd_read', 0, 0, 2, 32)).toBe(0);
+    expect(view().getUint32(32, true)).toBe(3);
+    expect(asked).toEqual([true, false]);
+  });
+
   it('reads nothing at the end of the input', () => {
     const { call, view } = harness();
     view().setUint32(0, 100, true);

@@ -31,8 +31,8 @@
 #      games/<g>/studio/, games/<g>/referee/ and
 #      games/<g>/releases/
 #   8  studio/web/                                     web
-#   9  studio/core/, studio/rules/                     studio and web
-#      studio/game/, studio/server/                    studio
+#   9  studio/core/, studio/rules/, studio/game/       studio and web
+#      studio/server/                                  studio
 #   10 anything else                                   everything
 # framework means rust, framework, studio, web and every game; a game means
 # rust, studio and that game; studio means rust and studio; web means the
@@ -171,13 +171,13 @@ area_effect() { # area_effect <path>
       f_web=true
       return 0
       ;;
-    studio/core/* | studio/rules/*)
+    studio/core/* | studio/rules/* | studio/game/*)
       f_rust=true
       f_studio=true
       f_web=true
       return 0
       ;;
-    studio/game/* | studio/server/*)
+    studio/server/*)
       f_rust=true
       f_studio=true
       return 0
