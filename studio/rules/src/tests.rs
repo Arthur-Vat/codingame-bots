@@ -242,6 +242,17 @@ fn play_refuses_an_answer_out_of_turn_or_after_the_end() {
 }
 
 #[test]
+fn play_refuses_a_state_whose_turns_break_the_rules_without_a_result() {
+    let mut state = new_game(two_humans());
+    state["turns"] = json!([[{"seat": 0, "lines": ["99 99"], "ms": 0.0}]]);
+    let answer = json!({"seat": 0, "lines": ["1 1"], "ms": 0.0});
+    assert_eq!(
+        error(json!({"op": "play", "state": state, "answer": answer})),
+        "turn 0 breaks the rules, and the game has no result"
+    );
+}
+
+#[test]
 fn a_game_played_through_the_protocol_matches_the_core() {
     let (state, settled) = play_through(new_game(two_humans()));
 

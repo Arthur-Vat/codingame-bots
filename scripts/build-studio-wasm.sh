@@ -15,13 +15,13 @@
 # release files are never changed.
 #
 # Usage: scripts/build-studio-wasm.sh [OUT] [--strict]
-#   OUT       the output folder (default: studio/web/public/wasm, not committed)
+#   OUT       the output folder, relative to the current folder (default:
+#             studio/web/public/wasm in the repository, not committed)
 #   --strict  also fail when a release could not be built, so that nothing is
 #             skipped without notice (used by CI)
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
-
+caller=$PWD
 out=studio/web/public/wasm
 strict=0
 positional=0
@@ -42,6 +42,10 @@ if ((positional > 1)); then
   echo "usage: $0 [OUT] [--strict]" >&2
   exit 2
 fi
+if ((positional == 1)) && [[ $out != /* ]]; then
+  out=$caller/$out
+fi
+cd "$(dirname "$0")/.."
 
 target=wasm32-wasip1
 installed=0
@@ -58,7 +62,8 @@ if ((installed == 0)); then
 fi
 
 mkdir -p "$out"
-cargo build --locked --release --target "$target" -p studio-rules
+# Without symbols the file is about a fifth smaller.
+CARGO_PROFILE_RELEASE_STRIP=symbols cargo build --locked --release --target "$target" -p studio-rules
 cp "${CARGO_TARGET_DIR:-target}/$target/release/studio-rules.wasm" "$out/rules.wasm"
 
 shopt -s nullglob
