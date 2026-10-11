@@ -139,10 +139,12 @@ test('the board slot keeps its size when the coordinates are shown', async ({ pa
   expect(before?.width).toBeCloseTo(before?.height ?? 0, 1);
 });
 
-test('the history page is a placeholder', async ({ page }) => {
+test('the history page says when there is no saved game', async ({ page }) => {
   await mockGames(page);
+  await page.route('**/api/history', (route) => route.fulfill({ json: [] }));
   await page.goto('/#/history');
-  await expect(page.getByText('Saved games appear here')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Game history' })).toBeVisible();
+  await expect(page.getByText('No saved games yet')).toBeVisible();
   await expect(page.getByRole('link', { name: 'History' })).toHaveAttribute('aria-current', 'page');
 });
 

@@ -22,7 +22,7 @@ export default function App() {
     <>
       <TopBar route={route} games={gamesState.games} />
       {route.page === 'home' && <HomePage state={gamesState} />}
-      {route.page === 'history' && <HistoryPage />}
+      {route.page === 'history' && <HistoryPage gamesState={gamesState} />}
       {route.page === 'review' && (
         <ReviewPage key={`${route.kind}/${route.id}`} kind={route.kind} id={route.id} />
       )}
