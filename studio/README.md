@@ -53,6 +53,8 @@ npx npm@11 install --save-exact <package>@<exact version> --before=<date two wee
 
 Then commit `package.json` and `package-lock.json`, and run the checks above.
 
+Dependabot proposes minor and patch updates once a month, in one pull request. Major versions are left to a hand-made pull request each, which checks the toolchain still works with them (for example typescript-eslint's supported TypeScript versions, the `@types/node` major matching Node 22) and the licenses of any new package.
+
 ## How a game plugs in
 
 A game adds an adapter crate, `games/<game>/studio`, that implements `studio_game::StudioGame` ([game/](game/)) and holds no rules of its own: positions come from replaying the game's referee, and a human's legal moves from the referee's turn input.

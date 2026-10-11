@@ -66,7 +66,7 @@ codingame-bots/
 ├─ .claude/                 agents/ and skills/ of Claude's sessions; worktrees/ ignored
 └─ .github/
    ├─ workflows/            ci, sprt, league, release, train, prune-branches, pr-hygiene
-   ├─ dependabot.yml        monthly updates of actions and crates
+   ├─ dependabot.yml        monthly updates of actions, crates and npm
    └─ pull_request_template.md
 ```
 
