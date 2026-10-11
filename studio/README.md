@@ -53,7 +53,7 @@ npx npm@11 install --save-exact <package>@<exact version> --before=<date two wee
 
 Then commit `package.json` and `package-lock.json`, and run the checks above.
 
-Dependabot proposes minor and patch updates once a month, in one pull request. Major versions are left to a hand-made pull request each, which checks the toolchain still works with them (for example typescript-eslint's supported TypeScript versions, the `@types/node` major matching Node 22) and the licenses of any new package.
+Dependabot proposes minor and patch updates once a month, in one pull request. Major versions are left to a hand-made pull request each, which checks the toolchain still works with them (for example typescript-eslint's supported TypeScript versions, the `@types/node` major matching Node 22) and the licenses of any new package. The ignore rule may also hold back a security fix that only exists in a new major: that one is done by hand too, when GitHub reports the advisory.
 
 ## How a game plugs in
 
