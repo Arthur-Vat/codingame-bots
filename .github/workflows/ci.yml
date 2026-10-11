@@ -36,12 +36,14 @@ jobs:
           toolchain: ${{ env.CG_RUST }}
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+      # Job logs are not always at hand; annotate.sh carries a failing step's
+      # output excerpt to the check run as an annotation.
       - name: Format
-        run: cargo fmt --all -- --check
+        run: scripts/annotate.sh run Format cargo fmt --all -- --check
       - name: Lint
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+        run: scripts/annotate.sh run Lint cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test
-        run: cargo test --workspace --locked
+        run: scripts/annotate.sh run Test cargo test --workspace --locked
 
   codingame:
     name: CodinGame compatibility
@@ -57,19 +59,19 @@ jobs:
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
       - name: Bundle every bot into one paste-ready file
-        run: scripts/bundle-bots.sh
+        run: scripts/annotate.sh run "Bundle the bots" scripts/bundle-bots.sh
       - name: Size and standalone build of each paste-ready file
         env:
           CG_BIN_DIR: target/cg/bin
-        run: scripts/cg-check.sh target/cg/*.rs
+        run: scripts/annotate.sh run "Size and standalone build" scripts/cg-check.sh target/cg/*.rs
       - name: New releases match their sources; released files are frozen
         if: github.event_name == 'pull_request'
         # In a pull request, HEAD is the merge commit and HEAD^1 the base.
-        run: scripts/check-releases.sh HEAD^1
+        run: scripts/annotate.sh run "Release check" scripts/check-releases.sh HEAD^1
       - name: Play 1,000 games between the bundled random bots
         run: |
-          cargo build --release --locked -p uttt-arena
-          target/release/uttt-arena match \
+          scripts/annotate.sh run "Build the arena" cargo build --release --locked -p uttt-arena
+          scripts/annotate.sh run "1,000 random games" target/release/uttt-arena match \
             --bot random=target/cg/bin/uttt-random \
             --bot random-again=target/cg/bin/uttt-random \
             --pairs 500 --expect-no-faults --out target/cg/uttt-smoke.jsonl
@@ -119,8 +121,11 @@ jobs:
           grep -q '^  1\. greedy ' target/cg/league.txt
       - name: Engine speed
         run: |
-          cargo run --release --locked -p uttt-engine --example speed -- 3 \
-            | tee -a "$GITHUB_STEP_SUMMARY"
+          # The annotation of a failure stays out of the step summary.
+          scripts/annotate.sh run "Engine speed" \
+            cargo run --release --locked -p uttt-engine --example speed -- 3 \
+            | tee target/speed.txt
+          grep -v '^::error title=' target/speed.txt >>"$GITHUB_STEP_SUMMARY"
       - name: Publish the paste-ready files
         uses: actions/upload-artifact@v7
         with:
@@ -137,15 +142,34 @@ jobs:
           fi
           for file in "${added[@]}"; do
             game="$(cut -d/ -f2 <<<"$file")"
-            scripts/check-determinism.sh "$game" 500 "$file"
+            scripts/annotate.sh run "Determinism of $file" scripts/check-determinism.sh "$game" 500 "$file"
           done
 
   licenses:
     name: Dependency licenses and sources
     runs-on: ubuntu-latest
+    env:
+      # The version EmbarkStudios/cargo-deny-action used on 2026-10-11; bump
+      # both together, the checksum is the archive's.
+      CARGO_DENY_VERSION: "0.20.2"
+      CARGO_DENY_SHA256: 9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f
     steps:
       - uses: actions/checkout@v7
-      - uses: EmbarkStudios/cargo-deny-action@v2
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+      - name: Install cargo-deny
+        run: |
+          archive="cargo-deny-$CARGO_DENY_VERSION-x86_64-unknown-linux-musl"
+          cd "$RUNNER_TEMP"
+          scripts_dir="$GITHUB_WORKSPACE/scripts"
+          "$scripts_dir/annotate.sh" run "Download cargo-deny" curl -sSfL --retry 3 -O \
+            "https://github.com/EmbarkStudios/cargo-deny/releases/download/$CARGO_DENY_VERSION/$archive.tar.gz"
+          echo "$CARGO_DENY_SHA256  $archive.tar.gz" | "$scripts_dir/annotate.sh" run "Checksum of cargo-deny" sha256sum -c -
+          tar -xzf "$archive.tar.gz"
+          echo "$RUNNER_TEMP/$archive" >>"$GITHUB_PATH"
+      - name: Licenses, bans, advisories and sources
+        run: scripts/annotate.sh run "cargo deny" cargo deny --log-level warn --all-features check
 
   studio-web:
     name: Studio front end
@@ -163,30 +187,40 @@ jobs:
           cache-dependency-path: studio/web/package-lock.json
       - name: Install the locked dependencies
         id: install
-        run: npm ci
+        # Job logs are not always at hand; the annotation carries the failure
+        # to the check run.
+        run: |
+          "$GITHUB_WORKSPACE/scripts/annotate.sh" run "npm ci" npm ci
       # The next steps run even when an earlier one fails, so that one run
       # reports every problem.
       - name: Licenses of the packages
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: npm run licenses
+        run: |
+          "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Licenses" npm run licenses
       - name: Format
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: npm run format:check
+        run: |
+          "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Format" npm run format:check
       - name: Lint
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: npm run lint
+        run: |
+          "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Lint" npm run lint
       - name: Type check
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: npm run typecheck
+        run: |
+          "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Type check" npm run typecheck
       - name: Unit tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: npm test
+        run: |
+          "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Unit tests" npm test
       - name: Build
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: npm run build
+        run: |
+          "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Build" npm run build
       - name: Install Chromium for the browser tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: npx playwright install --with-deps chromium
+        run: |
+          "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Install Chromium" npx playwright install --with-deps chromium
       - name: Browser tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run e2e
@@ -206,9 +240,9 @@ jobs:
       - name: Test the studio and the arena
         # The studio's server tests compile a release with rustc and play bot
         # games; the arena's unix-only tests are skipped on Windows.
-        run: cargo test --locked -p studio -p studio-game -p uttt-studio -p cg-arena
+        run: scripts/annotate.sh run "Test the studio and the arena" cargo test --locked -p studio -p studio-game -p uttt-studio -p cg-arena
       - name: Build the server
-        run: cargo build --locked --release -p studio
+        run: scripts/annotate.sh run "Build the server" cargo build --locked --release -p studio
       - name: Play a bot against a bot through the server
         run: |
           port=8499
@@ -219,9 +253,13 @@ jobs:
           target/release/studio.exe --port "$port" --web "$web" >studio.log 2>&1 &
           server=$!
           stop() {
+            local status=$?
             kill "$server" 2>/dev/null || true
             echo "--- server log"
             cat studio.log || true
+            if [ "$status" != 0 ]; then
+              scripts/annotate.sh file "Studio server log" studio.log
+            fi
           }
           trap stop EXIT
 
@@ -272,18 +310,21 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Indexes, status lines and links match the repository
-        run: scripts/check-docs.sh
+        run: scripts/annotate.sh run "Docs check" scripts/check-docs.sh
       # The next steps run even when an earlier one fails, so that one run
       # reports every problem.
       - name: Lint the shell scripts
         if: ${{ !cancelled() }}
         # Preinstalled on ubuntu-latest.
-        run: shellcheck scripts/*.sh scripts/lib/*.sh scripts/tests/*.sh
+        run: scripts/annotate.sh run Shellcheck shellcheck scripts/*.sh scripts/lib/*.sh scripts/tests/*.sh
       - name: Test the agent guard
         if: ${{ !cancelled() }}
-        run: scripts/tests/agent-guard-test.sh
+        run: scripts/annotate.sh run "Agent guard test" scripts/tests/agent-guard-test.sh
+      - name: Test the annotation wrapper
+        if: ${{ !cancelled() }}
+        run: scripts/annotate.sh run "Annotation wrapper test" scripts/tests/annotate-test.sh
       - name: Lint the workflows
         if: ${{ !cancelled() }}
         # The image is pinned; it includes shellcheck, which also lints the
         # `run` steps.
-        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+        run: scripts/annotate.sh run Actionlint docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color

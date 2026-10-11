@@ -16,7 +16,7 @@ Training runs on GitHub Actions (ADR 0016); `.github/workflows/train.yml` trains
 ## Follow
 
 - Poll the run every few minutes; self-play jobs and the fit take from minutes to hours.
-- Logs cannot be read from the session: read the jobs' annotations, where the workflow reports results and push errors.
+- Read the jobs' annotations first, where the workflow reports results and push errors; job logs are readable too (skill `github-api`).
 
 ## Bring the results back
 

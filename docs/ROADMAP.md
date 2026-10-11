@@ -132,6 +132,7 @@ Background runs stay off until the owner turns them on.
 - [ ] Agentic checks stay in Claude's sessions (owner's choice, 2026-10-09): no Claude job in GitHub Actions
 - [x] The docs check also verifies that the architecture lists every workflow and script, and the README every workflow (the README names scripts by area)
 - [x] Shellcheck also lints the scripts' tests, `scripts/tests/*.sh` (owner, 2026-10-09)
+- [x] Every workflow's failures are reported as annotations with an excerpt of the output, readable without the job's log (owner, 2026-10-11)
 - [ ] Optional: commit subjects checked like pull request titles
 
 Order: A, then B, then C and E side by side, then D.

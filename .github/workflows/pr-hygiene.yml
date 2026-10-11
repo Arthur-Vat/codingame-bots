@@ -47,4 +47,4 @@ jobs:
         run: scripts/pr-hygiene.sh title "$TITLE"
       - name: Test the script
         if: ${{ !cancelled() }}
-        run: scripts/tests/pr-hygiene-test.sh
+        run: scripts/annotate.sh run "Hygiene script test" scripts/tests/pr-hygiene-test.sh
