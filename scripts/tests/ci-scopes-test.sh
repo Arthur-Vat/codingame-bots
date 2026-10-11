@@ -285,6 +285,28 @@ status=0
 "$script" frobnicate >/dev/null 2>&1 || status=$?
 if ((status != 2)); then fail "unknown mode: expected status 2, got $status"; fi
 
+# ---- the workflow ----
+
+# `CI passed` gathers every other job of ci.yml, and its results call expects
+# each of them: a job added to the workflow and forgotten there would never
+# block a merge.
+workflow=.github/workflows/ci.yml
+mapfile -t job_ids < <(sed -n '/^jobs:/,$p' "$workflow" | sed -n 's/^  \([a-z][a-z0-9-]*\):[[:space:]]*$/\1/p')
+mapfile -t needed < <(sed -n '/^  ci-passed:/,$p' "$workflow" | sed -n '/^    needs:/,/^    [a-z]/p' | sed -n 's/^      - //p')
+mapfile -t expected_ids < <(sed -n '/^  ci-passed:/,$p' "$workflow" | sed -n '/scripts\/ci-scopes.sh results/,$p' | grep -o '[a-z][a-z0-9-]*=' | sed 's/=$//')
+checks=$((checks + 1))
+if ((${#job_ids[@]} < 2)); then fail "$workflow: found no jobs"; fi
+for id in "${job_ids[@]}"; do
+  [[ $id == ci-passed ]] && continue
+  checks=$((checks + 1))
+  if ! printf '%s\n' "${needed[@]}" | grep -qx -- "$id"; then fail "$workflow: ci-passed does not list $id in needs"; fi
+  if ! printf '%s\n' "${expected_ids[@]}" | grep -qx -- "$id"; then fail "$workflow: the results call of ci-passed lacks $id="; fi
+done
+for id in "${needed[@]}" "${expected_ids[@]}"; do
+  checks=$((checks + 1))
+  if ! printf '%s\n' "${job_ids[@]}" | grep -qx -- "$id"; then fail "$workflow: ci-passed names $id, which is not a job"; fi
+done
+
 if ((failures > 0)); then
   echo "FAIL ci-scopes: $failures of $checks checks failed" >&2
   exit 1

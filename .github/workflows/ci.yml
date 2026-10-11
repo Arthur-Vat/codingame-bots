@@ -50,8 +50,14 @@ jobs:
         run: |
           if [ "$EVENT" = pull_request ]; then
             # In a pull request, HEAD is the merge commit and HEAD^1 the base.
-            # NUL-separated: git quotes the odd file names otherwise.
-            mapfile -d '' -t files < <(git diff -z --name-only --no-renames HEAD^1 HEAD)
+            # NUL-separated: git quotes the odd file names otherwise. Written
+            # to a file first: a process substitution would hide a failure of
+            # git, and no files would then mean no checks.
+            if ! git diff -z --name-only --no-renames HEAD^1 HEAD >"$RUNNER_TEMP/changed-files"; then
+              echo "::error title=Changes::git diff failed; the changed files are unknown"
+              exit 1
+            fi
+            mapfile -d '' -t files <"$RUNNER_TEMP/changed-files"
             scopes="$(scripts/ci-scopes.sh ci -- "${files[@]}")" || {
               echo "::error title=Changes::scripts/ci-scopes.sh failed"
               exit 1
@@ -92,13 +98,17 @@ jobs:
   framework-tests:
     name: "Framework: tests"
     needs: changes
-    if: needs.changes.outputs.framework == 'true'
+    # A game's change runs them too: the bundler's tests bundle the game's
+    # bots (ADR 0029).
+    if: needs.changes.outputs.framework == 'true' || needs.changes.outputs.games != '[]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.CG_RUST }}
+          # The bundler's tests bundle bots, which formats the result.
+          components: rustfmt
       - uses: Swatinem/rust-cache@v2
       - name: Test the shared crates
         run: |
@@ -130,6 +140,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.CG_RUST }}
+          # The tests may bundle bots, which formats the result.
+          components: rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.game }}
@@ -178,7 +190,14 @@ jobs:
       - name: Size and standalone build of each paste-ready file
         env:
           CG_BIN_DIR: target/cg/bin
-        run: scripts/annotate.sh run "Size and standalone build" scripts/cg-check.sh target/cg/"$GAME"-*.rs
+        run: |
+          # One file per bot folder: a glob on the game's name would also
+          # match a game whose id starts with it (uttt-x).
+          files=()
+          for dir in "games/$GAME"/bots/*/; do
+            files+=("target/cg/$GAME-$(basename "$dir").rs")
+          done
+          scripts/annotate.sh run "Size and standalone build" scripts/cg-check.sh "${files[@]}"
       - name: New releases match their sources; released files are frozen
         if: github.event_name == 'pull_request'
         # In a pull request, HEAD is the merge commit and HEAD^1 the base.
@@ -191,16 +210,28 @@ jobs:
             exit 1
           fi
           "games/$GAME/ci.sh"
+      - name: Collect the paste-ready files of the game
+        run: |
+          mkdir -p target/cg/paste-ready
+          for dir in "games/$GAME"/bots/*/; do
+            cp "target/cg/$GAME-$(basename "$dir").rs" target/cg/paste-ready/
+          done
       - name: Publish the paste-ready files
         uses: actions/upload-artifact@v7
         with:
           name: paste-ready-bots-${{ matrix.game }}
-          path: target/cg/${{ matrix.game }}-*.rs
+          path: target/cg/paste-ready/
           if-no-files-found: error
       - name: New releases replay identically with a fixed seed and iterations
         if: github.event_name == 'pull_request'
         run: |
-          mapfile -t added < <(git diff --name-only --diff-filter=A --no-renames HEAD^1 HEAD -- "games/$GAME/releases/*.rs")
+          # Written to a file first: a process substitution would hide a
+          # failure of git, and no files would then mean no check.
+          if ! git diff --name-only --diff-filter=A --no-renames HEAD^1 HEAD -- "games/$GAME/releases/*.rs" >"$RUNNER_TEMP/added-releases"; then
+            echo "::error title=Determinism::git diff failed; the added releases are unknown"
+            exit 1
+          fi
+          mapfile -t added <"$RUNNER_TEMP/added-releases"
           if [ "${#added[@]}" -eq 0 ]; then
             echo "no new release"
             exit 0
@@ -247,6 +278,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.CG_RUST }}
+          # The tests may bundle bots, which formats the result.
+          components: rustfmt
       - uses: Swatinem/rust-cache@v2
       - name: Test the studio and the games' adapters
         run: |
@@ -468,6 +501,14 @@ jobs:
             '[]') HAS_GAMES=false ;;
             *) HAS_GAMES=true ;;
           esac
-          scripts/ci-scopes.sh results changes=true lint="$RUST" framework-tests="$FRAMEWORK" \
+          # The framework's tests run for a framework change and for a game's.
+          if [ -z "$FRAMEWORK" ] || [ -z "$HAS_GAMES" ]; then
+            FRAMEWORK_TESTS=''
+          elif [ "$FRAMEWORK" = true ] || [ "$HAS_GAMES" = true ]; then
+            FRAMEWORK_TESTS=true
+          else
+            FRAMEWORK_TESTS=false
+          fi
+          scripts/ci-scopes.sh results changes=true lint="$RUST" framework-tests="$FRAMEWORK_TESTS" \
             game-tests="$HAS_GAMES" game-bots="$HAS_GAMES" licenses="$LICENSES" \
             studio-server="$STUDIO" studio-windows="$STUDIO" studio-web="$WEB" docs=true
