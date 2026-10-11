@@ -35,6 +35,7 @@ codingame-bots/
 │  ├─ prune-branches.sh     deletes finished claude/ branches (ADR 0021)
 │  ├─ check-docs.sh         indexes, status lines and links match the repository; agents declare model and tools; workflows and scripts are listed
 │  ├─ pr-hygiene.sh         pull request titles (ADR 0022) and labels from changed paths
+│  ├─ ci-scopes.sh          which CI checks run for the paths a pull request changes, and the verdict of the aggregate `CI passed` job (ADR 0029)
 │  ├─ annotate.sh           runs a workflow step and reports its failure as an annotation
 │  ├─ agent-guard.sh        hook of Claude's sessions: only the project's agents and the read-only built-in ones may start
 │  ├─ session-setup.sh      hook of Claude's cloud sessions: installs shellcheck, as in CI
@@ -50,6 +51,7 @@ codingame-bots/
 │     ├─ README.md          layout, bots, how to play matches
 │     ├─ RULES.md           the rules in our own words, with sources
 │     ├─ evaluation.env     SPRT, league and arena settings
+│     ├─ ci.sh              the CI steps only this game needs: arena games, evaluation controls, engine speed (ADR 0029)
 │     ├─ referee/           readable reference rules, implements Referee
 │     ├─ arena/             uttt-arena binary
 │     ├─ engine/            fast rules for bots, checked against the referee
@@ -125,7 +127,7 @@ GitHub Actions on free standard runners. `main` only accepts changes whose check
 
 | Workflow | Trigger | Does |
 | --- | --- | --- |
-| `ci.yml` | Pushes to `main`, every pull request, by hand | Tiers 1 to 3: format, lint, tests (parity included); bundles every bot, checks and plays the bundles; checks new releases, including that they replay identically with a fixed seed and iterations; evaluation sanity checks; engine speed; dependency policy; docs indexes, status lines and links, shellcheck and actionlint; the studio's front end (package licenses, format, lint, types, unit tests, build, browser tests; [ADR 0026](adr/0026-node-for-the-studio.md)); the studio's tests, a release build and a bot-against-bot game through the server on Windows ([ADR 0025](adr/0025-studio.md)) |
+| `ci.yml` | Pushes to `main`, every pull request, by hand | Runs per area and per game: `scripts/ci-scopes.sh` maps the changed paths to jobs, and pushes to `main` and runs by hand run everything ([ADR 0029](adr/0029-ci-scoped-by-area-and-game.md)). Jobs: `Changes`; format and lint of the workspace; the framework's tests; for each game, its tests (parity included) and its bots (bundles every bot, checks and plays the bundles, `games/<game>/ci.sh` with the evaluation sanity checks and the engine speed report, new releases checked and replayed identically with a fixed seed and iterations); dependency policy; the studio's tests (every game's adapter included); the studio's front end (package licenses, format, lint, types, unit tests, build, browser tests; [ADR 0026](adr/0026-node-for-the-studio.md)); the studio's tests, a release build and a bot-against-bot game through the server on Windows ([ADR 0025](adr/0025-studio.md)); docs indexes, status lines and links, shellcheck, actionlint and the scripts' tests, on every pull request; and `CI passed`, which gathers them all |
 | `sprt.yml` | Every pull request | Tiers 4 and 6 for each release file the pull request adds, verdict as a check and a comment; passes at once when there is none. For a game in Legend the SPRT plays at CodinGame's full time ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)) |
 | `league.yml` | Push to `main` changing releases or evaluation settings, pull requests changing the league itself, by hand | Tier 7, ratings of all releases in the run summary |
 | `release.yml` | Push to `main` adding a release | Tag and GitHub release with the paste-ready file |
@@ -133,7 +135,7 @@ GitHub Actions on free standard runners. `main` only accepts changes whose check
 | `prune-branches.yml` | Weekly (Monday), and by hand | Deletes finished `claude/` branches once their content is safe; a run by hand only lists them unless asked to delete ([ADR 0021](adr/0021-prune-finished-branches.md)) |
 | `pr-hygiene.yml` | Every pull request: opened, edited, new commits | Labels it by the paths it changes and checks its title ([ADR 0022](adr/0022-scopes-and-names.md)); Dependabot's are skipped, forks get the title check only |
 
-- **Node:** the Studio front end job uses the Node line written in `studio/web/package.json` (`engines`), and installs with `npm ci` ([ADR 0026](adr/0026-node-for-the-studio.md)).
+- **Node:** the `Studio: front end` job uses the Node line written in `studio/web/package.json` (`engines`), and installs with `npm ci` ([ADR 0026](adr/0026-node-for-the-studio.md)).
 - **Compiler:** every job that builds Rust uses 1.90.0, CodinGame's version ([ADR 0010](adr/0010-codingame-rust-toolchain.md)).
-- **Branch protection:** a ruleset on `main` requires five checks: four of `ci.yml` (format, lint and test; CodinGame compatibility; dependency licenses and sources; docs and scripts) and the SPRT's, so a rejected release cannot be merged. The Studio front end job is not among them yet. It blocks direct pushes, without requiring a GitHub review: the owner approves merges in the conversation ([ADR 0006](adr/0006-human-approves-merges.md), [ADR 0023](adr/0023-chat-approved-merges.md)).
+- **Branch protection:** a ruleset on `main` requires `CI passed` (the aggregate of `ci.yml`, [ADR 0029](adr/0029-ci-scoped-by-area-and-game.md)), `SPRT of new releases` and `Pull request title and labels`, so a rejected release cannot be merged. `CI passed` always runs and fails when a job it gathers failed, was cancelled, or was skipped although its area changed, so every job of `ci.yml`, the studio's included, is blocking through it; jobs can change without touching the ruleset. It blocks direct pushes, without requiring a GitHub review: the owner approves merges in the conversation ([ADR 0006](adr/0006-human-approves-merges.md), [ADR 0023](adr/0023-chat-approved-merges.md)).
 - **Compute:** standard runners only, which are free on public repositories. The SPRT runs in one job on all of the runner's cores, which keeps it sequential; training spreads self-play over up to 20 jobs.
