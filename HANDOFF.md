@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-None.
+- Set the repository's Pages source, once (asked 2026-10-11): Settings > Pages > Build and deployment > Source: GitHub Actions. Then re-run the Pages workflow (Actions > Pages > Run workflow, branch main) if its first run failed; the site is https://arthur-vat.github.io/codingame-bots/.
 
 ## Open questions
 
@@ -12,7 +12,7 @@ None.
 
 ## Follow-ups
 
-- **Phase 6 step F in progress** (answered in the conversation, 2026-10-11: "implement step F"; then "Both engines"; ADR 0030 merged as #88 on "yes merge 88 please"). Stack: `claude/studio-rules-wasm` (studio-core + studio-rules WASI program + scripts/build-studio-wasm.sh; implemented, under deep review), `claude/studio-browser-engine` (browser engine in the front end; implementer running), then the Pages workflow with license notices and the guide (owner must set Settings > Pages > Source: GitHub Actions). Feasibility test files in the session scratchpad are not kept; facts are in ADR 0030.
+- **Phase 6 step F merged** (2026-10-11): ADR 0030 (#88), the rules in WebAssembly with studio-core (#89), the browser engine (#90), Pages deployment and license notices (#91), on the owner's approvals in the chat. Check the first Pages deployment once the owner has set the source; try the site in Firefox too (only Chromium was tested). Follow-ups noted by reviews: the front end parses and re-stringifies records on export/import, which can lose 64-bit seed digits (both engines); `npm run dev` without a local server silently uses the browser engine; the WebAssembly files are built twice in CI's front-end job.
 - **Then step G (interface)**, to be planned with the owner.
 - **Then: phase 6 step D, analysis** (see Notes), in its own session(s), following the updated `land-work` (#82). Ask the owner before starting: it is heavy work.
 - ADR 0023 still says the SPRT is not a required check, which is no longer true. The owner keeps the current merge policy (2026-10-09) and wants no new record; the line stays as is unless he asks for a fix.
@@ -31,6 +31,7 @@ None.
 
 ## Usage
 
+- 2026-10-11 21:30 (Paris) | phase 6 step F: feasibility test, ADR 0030 (#88), #89 to #91 merged | main session 138 steps (29.2M read, context 68k to 324k), 7 agents (36.0M read; implementers 20.5M for the browser engine, 7.7M for the rules, 4.0M for Pages)
 - 2026-10-11 18:15 (Paris) | CI scoped by area and game: ADR 0029 and #83 to #85 merged, proofs #86 and #87 closed | main session 81 steps (13.7M read, context 66k to 245k), 5 agents (10.8M read; the two implementers 4.8M and 4.6M over three rounds each)
 - 2026-10-11 15:45 (Paris) | CI review and the plan to scope CI by area and game (no PR yet) | main session 13 steps (1.90M read, context 130k to 172k)
 - 2026-10-11 15:15 (Paris) | process fixes in the skills (#82 merged) | main session 17 steps (1.91M read, context 101k to 130k), 1 agent (0.20M read)
