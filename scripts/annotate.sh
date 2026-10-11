@@ -19,7 +19,8 @@
 # a failure (`error:`, `error[E0000]:`, `failures:`, `---- name ----`, `thread
 # 'name' panicked at`) it holds 40 lines, then `[…]` and the last 5 lines of
 # the output if there are more. Without such a line it holds the last 40 lines,
-# after `[…]` if there are more.
+# after `[…]` if there are more. The markers are those of cargo, rustc and
+# Rust's tests; other tools (npm, TypeScript, Vitest) get the last lines.
 set -euo pipefail
 
 max_line=300
@@ -109,7 +110,11 @@ run)
   "$@" 2>&1 | tee "$tmp"
   status=${PIPESTATUS[0]}
   set -e
-  if ((status != 0)); then annotation "$title" "$tmp" "exit status $status"; fi
+  if ((status != 0)); then
+    # A workflow command must start a line.
+    if [[ -s $tmp && -n $(tail -c 1 "$tmp") ]]; then echo; fi
+    annotation "$title" "$tmp" "exit status $status"
+  fi
   exit "$status"
   ;;
 file)

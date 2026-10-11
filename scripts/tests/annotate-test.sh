@@ -53,6 +53,10 @@ run run Demo bash -c 'echo a; echo b; exit 3'
 same "failing: status" 3 "$status"
 same "failing: output" $'a\nb\n::error title=Demo::a%0Ab%0Aexit status 3' "$output"
 
+# Output without a final newline: the annotation still starts a line.
+run run Demo bash -c 'printf partial; exit 3'
+same "no final newline: output" $'partial\n::error title=Demo::partial%0Aexit status 3' "$output"
+
 # A command that succeeds prints its output and no annotation.
 run run Demo bash -c 'echo fine'
 same "passing: status" 0 "$status"
