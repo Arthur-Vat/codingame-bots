@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- CI scoping (ADR 0029): #83 (ADR), #84 (`ci.yml`, stacked on #83), #85 (SPRT and league, stacked on #84), opened 2026-10-11; approval to ask once #85's review is handled. The owner must edit the "Protect main" ruleset twice: before #84 merges, swap `Format, lint, test`, `CodinGame compatibility`, `Dependency licenses and sources`, `Docs and scripts` for `CI passed` and `Pull request title and labels` (keep `SPRT of new releases`); before #85 merges, swap `SPRT of new releases` for `SPRT passed`. Also confirm making the hygiene check required.
+- CI scoping (ADR 0029): #83 merged 2026-10-11. #84 (`ci.yml`) and #85 (SPRT and league, stacked on #84) wait for the owner's approval; he chose two ruleset edits (2026-10-11): before #84 merges, swap `Format, lint, test`, `CodinGame compatibility`, `Dependency licenses and sources`, `Docs and scripts` for `CI passed` and `Pull request title and labels` (keep `SPRT of new releases`); before #85, swap `SPRT of new releases` for `SPRT passed`. Answered in the conversation 2026-10-11: "I agree with the checks" (the hygiene check becomes required).
 - Try the studio's first version on Windows (phase 6 gate), following "Running the studio on Windows" in `studio/README.md`. The owner will do it later (2026-10-11).
 
 ## Open questions
