@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- Approve the revised plan (2026-10-11): step F, the studio on GitHub Pages (was: a Windows download); step G, the interface rework; then step D. Also choose a name and logo (sketches: https://claude.ai/artifact/KhabkNpGfzXde8DVHhTBLb). Nothing is implemented until the owner says so.
+None.
 
 ## Open questions
 
@@ -12,7 +12,8 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Follow-ups
 
-- **Phase 6 steps F (download) then G (interface)**, before step D: plan to be approved by the owner (Waiting).
+- **Phase 6 step F in progress** (answered in the conversation, 2026-10-11: "implement step F"; then "Both engines"; ADR 0030 merged as #88 on "yes merge 88 please"). Stack: `claude/studio-rules-wasm` (studio-core + studio-rules WASI program + scripts/build-studio-wasm.sh; implemented, under deep review), `claude/studio-browser-engine` (browser engine in the front end; implementer running), then the Pages workflow with license notices and the guide (owner must set Settings > Pages > Source: GitHub Actions). Feasibility test files in the session scratchpad are not kept; facts are in ADR 0030.
+- **Then step G (interface)**, to be planned with the owner.
 - **Then: phase 6 step D, analysis** (see Notes), in its own session(s), following the updated `land-work` (#82). Ask the owner before starting: it is heavy work.
 - ADR 0023 still says the SPRT is not a required check, which is no longer true. The owner keeps the current merge policy (2026-10-09) and wants no new record; the line stays as is unless he asks for a fix.
 - Record the CodinGame ranks of `uttt-v009` and `uttt-v010` when the owner reports them (skill `deliver-release`); the owner will report them later (2026-10-11).
