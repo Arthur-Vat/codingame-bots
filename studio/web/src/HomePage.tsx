@@ -60,6 +60,11 @@ export function HomePage({ state }: { state: GamesState }) {
           </div>
         </div>
       )}
+      <footer className="home-foot">
+        <a href="THIRD-PARTY-NOTICES.txt" target="_blank" rel="noopener">
+          Licenses
+        </a>
+      </footer>
     </main>
   );
 }

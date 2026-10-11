@@ -108,6 +108,17 @@
   max-width: 60ch;
 }
 
+.home-foot {
+  margin-top: 32px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.home-foot a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));

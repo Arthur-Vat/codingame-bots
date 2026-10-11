@@ -55,6 +55,11 @@ test('the home screen lists the games the server offers', async ({ page }) => {
   await expect(card).toContainText('Latest: uttt-v003');
   await expect(page.getByText('Next game')).toBeVisible();
   await expect(page.getByText('More games')).toBeVisible();
+  // The notices file sits beside the page (a relative URL, for the site's subpath).
+  await expect(page.getByRole('link', { name: 'Licenses' })).toHaveAttribute(
+    'href',
+    'THIRD-PARTY-NOTICES.txt',
+  );
 });
 
 test('a card opens the game page with the three ways to start', async ({ page }) => {
