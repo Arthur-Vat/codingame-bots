@@ -114,3 +114,35 @@ The two modes of a computer seat:
 ### Saved games
 
 The history is one JSON file per game in `studio/data/history/` (or `<data>/history/`), named `<game>-<unix time>-<12 hex digits of a hash of the record>.json`. The folder is never committed ([ADR 0027](../docs/adr/0027-game-records.md)) and GitHub does not back it up: keep what matters by exporting it (`GET /api/history/{id}` gives the file). Loading a file adds it to the history through `POST /api/history`. The listing reads every file each time, which is fine for a few thousand games.
+
+## Running the studio on Windows
+
+The studio is meant for a Windows computer ([ADR 0025](../docs/adr/0025-studio.md)); the `Studio on Windows` job of CI builds it, tests it and plays a game through the server there. The commands are for PowerShell.
+
+1. Install Rust with rustup from <https://rustup.rs>, accepting the default (MSVC) toolchain. It needs Microsoft's C++ build tools: accept its offer to install Visual Studio, or install the Visual Studio Build Tools with the workload "Desktop development with C++". Then open a new terminal.
+2. Install Node 22 LTS from <https://nodejs.org>: the front page may offer a newer line, so pick version 22 on the downloads page.
+3. Clone the repository (`git clone https://github.com/Arthur-Vat/codingame-bots.git`) or, if you already have it, run `git pull`.
+4. Build the front end:
+
+   ```powershell
+   cd studio\web
+   npm ci
+   npm run build
+   ```
+
+5. Start the studio from the repository root, then open <http://127.0.0.1:8411/>:
+
+   ```powershell
+   cd ..\..
+   cargo run --release -p studio
+   ```
+
+Where the data lives: in `studio\data` (saved games in `history\`, compiled bots in `bin\`, speed measurements in `speed.json`). It is never committed and nothing backs it up: export the games that matter from the app.
+
+To update, run `git pull`, then steps 4 and 5 again.
+
+Troubleshooting:
+
+- `rustc` or `cargo` is not found: close the terminal and open a new one, which reads the `PATH` that rustup changed. The studio compiles each release with `rustc` from `PATH`.
+- The port is in use: start the server on another one, `cargo run --release -p studio -- --port 8412`, and open that address.
+- The first game against a release takes a few seconds: the studio compiles the release, then measures its speed once. Later games start at once.
