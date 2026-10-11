@@ -140,7 +140,12 @@ fn play(args: PlayArgs) -> Result<Value, String> {
         return Err("the game is already over".to_string());
     }
     let seat = args.answer.seat;
-    let (live, _) = state.position(game);
+    let (live, valid) = state.position(game);
+    if valid < state.turns.len() {
+        return Err(format!(
+            "turn {valid} breaks the rules, and the game has no result"
+        ));
+    }
     if live.to_act() != [seat] {
         return Err(format!("it is not seat {seat}'s turn"));
     }
