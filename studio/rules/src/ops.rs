@@ -124,6 +124,16 @@ fn settle(args: StateArgs) -> Result<Value, String> {
         "human_moves": human_moves,
         "result": state.result_json(),
         "next": next_json(&state, &live, next),
+        "bot_seeds": (0..SEATS)
+            .map(|seat| {
+                let config = &state.seats[seat];
+                if config.is_bot() {
+                    json!(bot_seed(state.seed, seat, config.name()).to_string())
+                } else {
+                    Value::Null
+                }
+            })
+            .collect::<Vec<_>>(),
     }))
 }
 

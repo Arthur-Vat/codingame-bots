@@ -150,7 +150,7 @@ A request is a JSON object with a string field `op`; the response is `{"ok": val
 | --- | --- | --- |
 | `games` | none | `[{"id", "name"}]`, in the server's order |
 | `new` | `request` (the body of `POST /api/sessions`), `releases` (the game's known releases) | a `State` with no turns and no result; the errors are those of `POST /api/sessions` |
-| `settle` | `state` | `{"opening_turns", "valid_turns", "to_act", "frames", "human_moves", "result", "next"}`: the result if the rules say the game is over, and `next`: `{"kind": "over"}`, `{"kind": "human", "seat"}`, `{"kind": "bot", "seat", "input", "answer_lines", "limit_ms", "bot_seed"}` or `{"kind": "unsupported", "error"}` |
+| `settle` | `state` | `{"opening_turns", "valid_turns", "to_act", "frames", "human_moves", "result", "next", "bot_seeds"}`: the result if the rules say the game is over, `bot_seeds` (each seat's bot seed as a decimal string, `null` for a human; a restarted bot needs it before its turn), and `next`: `{"kind": "over"}`, `{"kind": "human", "seat"}`, `{"kind": "bot", "seat", "input", "answer_lines", "limit_ms", "bot_seed"}` or `{"kind": "unsupported", "error"}` |
 | `play` | `state`, `answer` | `{"turns", "result"}`: the answer appended; one the rules reject is kept and loses the game for its seat |
 | `replay` | `state`, `seat` | `[{"input", "answer_lines", "lines"}]`: what a restarted bot of that seat is asked, and must answer again, turn by turn |
 | `record` | `state`, `unix_time` | `{"record_text"}`: the game record, as `GET /api/sessions/{id}/record` writes it |

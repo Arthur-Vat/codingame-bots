@@ -67,6 +67,8 @@ export interface Settled {
   human_moves: HumanMove[];
   result: GameResult | null;
   next: Next;
+  /** Each seat's bot seed as decimal text, `null` for a human. */
+  bot_seeds: [string | null, string | null];
 }
 
 /** A line of the history, as `GET /api/history` lists it. */
@@ -125,24 +127,7 @@ export function createRules(load: () => Promise<WebAssembly.Module>): Rules {
   };
 }
 
-/**
- * The `CG_SEED` of each seat of a game (`null` for a human), as decimal text. The rules give a bot's
- * seed with the turn it is asked for; a restarted bot needs it before, so it is read from the
- * game's record, whose `bot_seed` keys are its players' in seat order and appear nowhere else
- * (every string in the record escapes its quotes). The digits are taken from the text, never
- * parsed as a number.
- */
+/** The `CG_SEED` of each seat of a game (`null` for a human), as decimal text, never parsed as a number. */
 export function botSeeds(rules: Rules, state: RulesState): [string | null, string | null] {
-  const { record_text } = rules.call<{ record_text: string }>({
-    op: 'record',
-    state,
-    unix_time: 0,
-  });
-  const found = [...record_text.matchAll(/"bot_seed":(null|\d+)/g)].map((match) => match[1]);
-  const seed = (index: number): string | null => {
-    const digits = found[index];
-    return digits === undefined || digits === 'null' ? null : digits;
-  };
-  if (found.length !== 2) throw new Error('the record does not hold the two bot seeds');
-  return [seed(0), seed(1)];
+  return rules.call<Settled>({ op: 'settle', state }).bot_seeds;
 }
