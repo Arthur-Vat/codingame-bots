@@ -8,12 +8,22 @@
 //   package.json and, from package-lock.json, their transitive ones (no devDependencies);
 // - the Rust crates in the WebAssembly files: the dependency graph of the package studio-rules for
 //   the target wasm32-wasip1, from `cargo metadata`, without this workspace's own crates;
-// - the Rust standard library, compiled into every WebAssembly file.
+// - the Rust standard library and wasi-libc (which the target links in), compiled into every
+//   WebAssembly file, from the toolchain's share/doc/rust: its COPYRIGHT-library.html is copied
+//   unchanged beside the notices as rust-library-copyright.html.
 //
 // It fails, naming the package, rather than writing an incomplete file. Run it from studio/web
 // after `npm ci` and `npm run build` (the folder must be the built site), with Rust installed.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -21,6 +31,8 @@ export const OUTPUT_NAME = 'THIRD-PARTY-NOTICES.txt';
 export const REPOSITORY_URL = 'https://github.com/Arthur-Vat/codingame-bots';
 export const WASM_TARGET = 'wasm32-wasip1';
 export const RULES_PACKAGE = 'studio-rules';
+/** The Rust project's notice for the standard library, copied unchanged beside the notices. */
+export const LIBRARY_COPYRIGHT_NAME = 'rust-library-copyright.html';
 
 /** Whether a file name is a license file: LICENSE*, LICENCE*, COPYING*, NOTICE*, any case. */
 export function isLicenseFileName(name) {
@@ -169,8 +181,9 @@ const RULE = '='.repeat(78);
 const THIN = '-'.repeat(78);
 
 /** One entry: a title line, the license, and the full text of each license file. */
-export function renderEntry({ title, license, texts }) {
+export function renderEntry({ title, license, texts, description = null }) {
   const lines = [THIN, title, `License: ${license}`];
+  if (description !== null) lines.push(description);
   for (const { name, text } of texts) {
     lines.push('', `[${name}]`, '', text);
   }
@@ -194,7 +207,9 @@ ${REPOSITORY_URL}
 The page also bundles the software below, under its own licenses, whose notices follow:
 - the npm packages in the page's JavaScript;
 - the Rust crates compiled into the rules' WebAssembly file;
-- the Rust standard library, compiled into every WebAssembly file (the rules and each bot).`;
+- the Rust standard library and wasi-libc, compiled and linked into every WebAssembly file (the
+  rules and each bot); the Rust project's own notice for the library and the crates it contains
+  is the file ${LIBRARY_COPYRIGHT_NAME}, beside this one.`;
 
 export function renderNotices({ npm, crates, std }) {
   return (
@@ -202,7 +217,7 @@ export function renderNotices({ npm, crates, std }) {
       HEADER,
       renderSection('NPM PACKAGES', npm),
       renderSection('RUST CRATES', crates),
-      renderSection('THE RUST STANDARD LIBRARY', [std]),
+      renderSection('THE RUST STANDARD LIBRARY AND WASI-LIBC', std),
     ].join('\n\n') + '\n'
   );
 }
@@ -262,42 +277,67 @@ function crateEntries(root) {
   });
 }
 
-/** The MIT license text published by the Rust project, from the installed toolchain. */
-export function findRustMitLicense(sysroot) {
-  const docs = join(sysroot, 'share', 'doc');
-  const candidates = [join(docs, 'rust', 'LICENSE-MIT')];
-  if (existsSync(docs)) {
-    for (const dir of readdirSync(docs).sort(compareText))
-      candidates.push(join(docs, dir, 'LICENSE-MIT'));
+function requireFile(path, what) {
+  if (!existsSync(path) || !statSync(path).isFile()) {
+    throw new Error(`${what} not found in the Rust toolchain (${path}): is Rust installed?`);
   }
-  const found = candidates.find((path) => existsSync(path));
-  if (found === undefined) {
-    throw new Error(
-      `no LICENSE-MIT found in the Rust toolchain (looked in ${docs}): is Rust installed?`,
-    );
-  }
-  return found;
+  return path;
 }
 
-function stdEntry() {
-  const sysroot = execFileSync('rustc', ['--print', 'sysroot'], { encoding: 'utf8' }).trim();
-  const path = findRustMitLicense(sysroot);
-  const version = execFileSync('rustc', ['--version'], { encoding: 'utf8' }).trim();
+/**
+ * The entries for what the WebAssembly files contain besides crates, from the toolchain's
+ * `share/doc/rust` folder (`docFolder`): the Rust standard library and wasi-libc, which the target
+ * wasm32-wasip1 links into every file. Returns `{ entries, copyrightFile }`, the second being the
+ * Rust project's own notice for the library, to be copied beside the notices. Fails if a file is
+ * missing.
+ */
+export function rustToolchainEntries(docFolder, version) {
+  const copyrightFile = requireFile(
+    join(docFolder, 'COPYRIGHT-library.html'),
+    'COPYRIGHT-library.html',
+  );
+  const licenseText = (file, name) => ({
+    name,
+    text: readText(requireFile(join(docFolder, 'licenses', file), `licenses/${file}`)),
+  });
+  const mit = licenseText('MIT.txt', 'MIT license');
+  const apache = licenseText('Apache-2.0.txt', 'Apache License 2.0');
+  const llvm = licenseText('LLVM-exception.txt', 'LLVM exception');
   return {
-    title: `The Rust standard library (${version})`,
-    license: 'MIT OR Apache-2.0',
-    texts: [{ name: 'MIT license, as published by the Rust project', text: readText(path) }],
+    copyrightFile,
+    entries: [
+      {
+        title: `The Rust standard library (${version})`,
+        description: `The library and the crates it contains are listed with their licenses in ${LIBRARY_COPYRIGHT_NAME}, the Rust project's own notice, beside this file.`,
+        license: 'MIT OR Apache-2.0',
+        texts: [mit, apache],
+      },
+      {
+        title: 'wasi-libc (linked by the Rust target wasm32-wasip1)',
+        description: 'Source: https://github.com/WebAssembly/wasi-libc',
+        license: 'Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT',
+        texts: [apache, llvm, mit],
+      },
+    ],
   };
+}
+
+function toolchainEntries() {
+  const sysroot = execFileSync('rustc', ['--print', 'sysroot'], { encoding: 'utf8' }).trim();
+  const version = execFileSync('rustc', ['--version'], { encoding: 'utf8' }).trim();
+  return rustToolchainEntries(join(sysroot, 'share', 'doc', 'rust'), version);
 }
 
 export function main(argv) {
   const folder = resolve(argv[0] ?? 'dist');
+  const toolchain = toolchainEntries();
   const notices = renderNotices({
     npm: npmEntries(webRoot()),
     crates: crateEntries(repositoryRoot()),
-    std: stdEntry(),
+    std: toolchain.entries,
   });
   mkdirSync(folder, { recursive: true });
+  copyFileSync(toolchain.copyrightFile, join(folder, LIBRARY_COPYRIGHT_NAME));
   writeFileSync(join(folder, OUTPUT_NAME), notices);
   console.log(`wrote ${join(folder, OUTPUT_NAME)} (${Buffer.byteLength(notices)} bytes)`);
 }
