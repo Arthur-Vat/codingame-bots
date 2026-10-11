@@ -34,4 +34,5 @@ At most about 200 words, no narration:
 1. The commit SHAs and subjects.
 2. What changed, file by file, in a line each.
 3. The summary line of each check you ran.
-4. What you did not do, doubts, and anything outside the spec you noticed.
+4. For each known risk the spec lists: how it is handled, or why it does not apply.
+5. What you did not do, doubts, and anything outside the spec you noticed.
