@@ -4,7 +4,6 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- CI scoping (ADR 0029): #83 merged 2026-10-11. #84 (`ci.yml`) and #85 (SPRT and league, stacked on #84) wait for the owner's approval; he chose two ruleset edits (2026-10-11): before #84 merges, swap `Format, lint, test`, `CodinGame compatibility`, `Dependency licenses and sources`, `Docs and scripts` for `CI passed` and `Pull request title and labels` (keep `SPRT of new releases`); before #85, swap `SPRT of new releases` for `SPRT passed`. Answered in the conversation 2026-10-11: "I agree with the checks" (the hygiene check becomes required).
 - Try the studio's first version on Windows (phase 6 gate), following "Running the studio on Windows" in `studio/README.md`. The owner will do it later (2026-10-11).
 
 ## Open questions
@@ -13,13 +12,13 @@ None. (Phase 5's step D comes after phase 6, as in the plan approved 2026-10-10;
 
 ## Follow-ups
 
-- **After #83 to #85 merge:** prove the skipping with a docs-only and a uttt-only draft PR (real one-line changes), closed after; the first push to `main` must be fully green. The SPRT legs only run with a new release: watch the first candidate.
 - **Then: phase 6 step D, analysis** (see Notes), in its own session(s), following the updated `land-work` (#82). Ask the owner before starting: it is heavy work.
 - ADR 0023 still says the SPRT is not a required check, which is no longer true. The owner keeps the current merge policy (2026-10-09) and wants no new record; the line stays as is unless he asks for a fix.
 - Record the CodinGame ranks of `uttt-v009` and `uttt-v010` when the owner reports them (skill `deliver-release`); the owner will report them later (2026-10-11).
 
 ## Notes
 
+- CI scoped by area and game (ADR 0029), merged 2026-10-11 (#83 to #85, on the owner's approvals in the chat). The ruleset requires `CI passed`, `SPRT passed` and `Pull request title and labels` (owner's edits, 2026-10-11). Proved by draft PRs #86 (docs-only: only Changes and Docs and scripts ran) and #87 (uttt-only: no front end or licenses), both closed; `main` green at 24b6a8f. The per-game SPRT leg has not run yet (no release since): watch the first candidate. Skipped matrix jobs show the raw name `${{ matrix.game }}: ...` (cosmetic, kept).
 - Phase 6 state (2026-10-11): steps A, B, C and E merged (#62 to #76; on the owner's approvals in the chat). Left: step D, analysis: (1) cg-search read-only reporting (moves' visits, win/draw/loss, PV) and keep-thinking, proving bots' moves identical at fixed seed and iterations and speed at the baseline (`cargo run --release -p uttt-engine --example speed`, games/uttt/README.md); (2) an analysis engine tool built from current code with the latest release's settings, streaming JSON; (3) server routes and the analysis panel (W/D/L bar, top moves with lines and hover highlight, heatmap on legal cells, keep thinking, evaluation chart filled in the background at about 100 ms per position; the review page has a reserved slot). Lesson: stacked branches that merge siblings by merge commits make GitHub report conflicts after earlier merges; keep stacks linear, or merge main into each branch before asking for approval. Mockup: https://claude.ai/artifact/PDeeJjWC7gHZ9eFCCZvavp.
 - CI failures (2026-10-11): every workflow step reports its failure as an annotation through `scripts/annotate.sh` (#79); job logs are readable from sessions, annotations first (ADR 0028, #80, skill `github-api`). The exact network entry the owner allowed stays out of the repository at the owner's request; do not write it in any file, this one included (the branch is public). cargo-deny now runs from its pinned release in CI (version and SHA-256 in `ci.yml`), no longer through EmbarkStudios' action.
 - In cloud sessions, `sudo dockerd` starts Docker, so actionlint can run locally as in CI.
@@ -28,6 +27,7 @@ None. (Phase 5's step D comes after phase 6, as in the plan approved 2026-10-10;
 
 ## Usage
 
+- 2026-10-11 18:15 (Paris) | CI scoped by area and game: ADR 0029 and #83 to #85 merged, proofs #86 and #87 closed | main session 81 steps (13.7M read, context 66k to 245k), 5 agents (10.8M read; the two implementers 4.8M and 4.6M over three rounds each)
 - 2026-10-11 15:45 (Paris) | CI review and the plan to scope CI by area and game (no PR yet) | main session 13 steps (1.90M read, context 130k to 172k)
 - 2026-10-11 15:15 (Paris) | process fixes in the skills (#82 merged) | main session 17 steps (1.91M read, context 101k to 130k), 1 agent (0.20M read)
 - 2026-10-11 14:40 (Paris) | Dependabot: npm majors by hand (#81 merged), #78 closed | main session 28 steps (2.35M read, context 66k to 97k), 1 agent (0.15M read)
