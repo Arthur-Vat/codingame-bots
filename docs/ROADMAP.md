@@ -135,7 +135,7 @@ Background runs stay off until the owner turns them on.
 - [x] Every workflow's failures are reported as annotations with an excerpt of the output, readable without the job's log (owner, 2026-10-11)
 - [ ] Optional: commit subjects checked like pull request titles
 
-Order: A, then B, then C and E side by side, then D.
+Order: A, then B, then C and E side by side, then D (step D after phase 6).
 
 ## Phase 6: studio
 
