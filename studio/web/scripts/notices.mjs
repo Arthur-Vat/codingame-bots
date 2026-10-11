@@ -18,7 +18,6 @@ import { execFileSync } from 'node:child_process';
 import {
   copyFileSync,
   existsSync,
-  mkdirSync,
   readFileSync,
   readdirSync,
   statSync,
@@ -82,6 +81,22 @@ export function resolveLockDependency(packages, fromPath, name) {
  * optional or peer dependency that is not installed is skipped; a missing required one is an
  * error. Returns `[{ name, version, path, license }]`, sorted by name then version.
  */
+/**
+ * Build tools whose own code the production bundle contains although they are devDependencies:
+ * Vite adds its module preload helpers to the page's JavaScript.
+ */
+export const BUNDLED_TOOLS = ['vite'];
+
+/** The lockfile entries of `BUNDLED_TOOLS`, as `productionClosure` gives packages. */
+export function bundledTools(lock) {
+  return BUNDLED_TOOLS.map((name) => {
+    const path = `node_modules/${name}`;
+    const entry = lock.packages?.[path];
+    if (entry === undefined) throw new Error(`${name} is not in package-lock.json`);
+    return { name, version: entry.version, path, license: entry.license ?? null };
+  });
+}
+
 export function productionClosure(lock) {
   const packages = lock.packages ?? {};
   const root = packages[''];
@@ -233,7 +248,8 @@ function webRoot() {
 
 function npmEntries(web) {
   const lock = JSON.parse(readFileSync(join(web, 'package-lock.json'), 'utf8'));
-  return productionClosure(lock).map((pkg) => {
+  const packages = [...productionClosure(lock), ...bundledTools(lock)].sort(compareEntries);
+  return packages.map((pkg) => {
     const folder = join(web, ...pkg.path.split('/'));
     const label = `npm package ${pkg.name}@${pkg.version}`;
     if (!existsSync(folder)) throw new Error(`${label} is not installed (${folder}): run npm ci`);
@@ -277,12 +293,25 @@ function crateEntries(root) {
   });
 }
 
-function requireFile(path, what) {
+function requireFile(path, what, where = 'in the Rust toolchain', hint = 'is Rust installed?') {
   if (!existsSync(path) || !statSync(path).isFile()) {
-    throw new Error(`${what} not found in the Rust toolchain (${path}): is Rust installed?`);
+    throw new Error(`${what} not found ${where} (${path}): ${hint}`);
   }
   return path;
 }
+
+/** The commit of https://github.com/WebAssembly/wasi-libc that `licenses/wasi-libc/` comes from. */
+export const WASI_LIBC_COMMIT = '165235bc467d5fa52d424f5d82587dfb76ed9d54';
+
+/** wasi-libc's license files, kept in `licenses/wasi-libc/` (the toolchain has none). */
+export const WASI_LIBC_FILES = [
+  ['LICENSE', 'wasi-libc LICENSE'],
+  ['LICENSE-APACHE-LLVM', 'wasi-libc LICENSE-APACHE-LLVM'],
+  ['LICENSE-APACHE', 'wasi-libc LICENSE-APACHE'],
+  ['LICENSE-MIT', 'wasi-libc LICENSE-MIT'],
+  ['cloudlibc-LICENSE', 'wasi-libc libc-bottom-half/cloudlibc/LICENSE'],
+  ['musl-COPYRIGHT', 'wasi-libc libc-top-half/musl/COPYRIGHT'],
+];
 
 /**
  * The entries for what the WebAssembly files contain besides crates, from the toolchain's
@@ -291,7 +320,7 @@ function requireFile(path, what) {
  * Rust project's own notice for the library, to be copied beside the notices. Fails if a file is
  * missing.
  */
-export function rustToolchainEntries(docFolder, version) {
+export function rustToolchainEntries(docFolder, version, wasiFolder) {
   const copyrightFile = requireFile(
     join(docFolder, 'COPYRIGHT-library.html'),
     'COPYRIGHT-library.html',
@@ -302,7 +331,6 @@ export function rustToolchainEntries(docFolder, version) {
   });
   const mit = licenseText('MIT.txt', 'MIT license');
   const apache = licenseText('Apache-2.0.txt', 'Apache License 2.0');
-  const llvm = licenseText('LLVM-exception.txt', 'LLVM exception');
   return {
     copyrightFile,
     entries: [
@@ -314,9 +342,20 @@ export function rustToolchainEntries(docFolder, version) {
       },
       {
         title: 'wasi-libc (linked by the Rust target wasm32-wasip1)',
-        description: 'Source: https://github.com/WebAssembly/wasi-libc',
-        license: 'Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT',
-        texts: [apache, llvm, mit],
+        description: `Source: https://github.com/WebAssembly/wasi-libc (license files from commit ${WASI_LIBC_COMMIT}). Parts come from cloudlibc and musl, whose notices follow.`,
+        license:
+          'Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT; cloudlibc BSD-2-Clause; musl MIT',
+        texts: WASI_LIBC_FILES.map(([file, name]) => ({
+          name,
+          text: readText(
+            requireFile(
+              join(wasiFolder, file),
+              file,
+              'in the kept wasi-libc licenses',
+              'restore it from git',
+            ),
+          ),
+        })),
       },
     ],
   };
@@ -325,7 +364,8 @@ export function rustToolchainEntries(docFolder, version) {
 function toolchainEntries() {
   const sysroot = execFileSync('rustc', ['--print', 'sysroot'], { encoding: 'utf8' }).trim();
   const version = execFileSync('rustc', ['--version'], { encoding: 'utf8' }).trim();
-  return rustToolchainEntries(join(sysroot, 'share', 'doc', 'rust'), version);
+  const wasiFolder = resolve(dirname(fileURLToPath(import.meta.url)), 'licenses', 'wasi-libc');
+  return rustToolchainEntries(join(sysroot, 'share', 'doc', 'rust'), version, wasiFolder);
 }
 
 export function main(argv) {
@@ -336,7 +376,9 @@ export function main(argv) {
     crates: crateEntries(repositoryRoot()),
     std: toolchain.entries,
   });
-  mkdirSync(folder, { recursive: true });
+  if (!existsSync(join(folder, 'index.html'))) {
+    throw new Error(`${folder} holds no built site (index.html): run npm run build first`);
+  }
   copyFileSync(toolchain.copyrightFile, join(folder, LIBRARY_COPYRIGHT_NAME));
   writeFileSync(join(folder, OUTPUT_NAME), notices);
   console.log(`wrote ${join(folder, OUTPUT_NAME)} (${Buffer.byteLength(notices)} bytes)`);

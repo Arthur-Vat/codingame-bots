@@ -13,18 +13,17 @@ on:
       - "games/*/releases/**"
       - "games/*/studio/**"
       - "games/*/referee/**"
-      - "crates/cg-arena/**"
-      - "crates/cg-core/**"
+      - "crates/**"
       - "Cargo.lock"
       - "Cargo.toml"
       - "scripts/build-studio-wasm.sh"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
+# The build job runs install and build scripts: it gets read access only, and
+# only the deploy job may write to Pages.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -83,7 +82,6 @@ jobs:
             test -s "dist/$file" || { echo "::error title=Check the site::dist/$file is missing or empty"; exit 1; }
           done
           ls -l dist dist/wasm
-      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: studio/web/dist
@@ -91,7 +89,12 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages
     needs: build
+    # A manual run can start from any branch; only `main` is published.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

@@ -1,8 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
+  bundledTools,
   collectLicenseTexts,
   findLicenseFiles,
   isLicenseFileName,
@@ -12,6 +14,8 @@ import {
   resolveLockDependency,
   rustClosure,
   rustToolchainEntries,
+  WASI_LIBC_COMMIT,
+  WASI_LIBC_FILES,
 } from './notices.mjs';
 
 describe('isLicenseFileName', () => {
@@ -249,11 +253,18 @@ describe('rustToolchainEntries', () => {
     for (const name of files) writeFileSync(join(folder, 'licenses', name), `text of ${name}\n`);
     return folder;
   }
-  const all = ['MIT.txt', 'Apache-2.0.txt', 'LLVM-exception.txt'];
+  function wasiLicenses(skip = null) {
+    const folder = mkdtempSync(join(tmpdir(), 'wasi-'));
+    for (const [file] of WASI_LIBC_FILES) {
+      if (file !== skip) writeFileSync(join(folder, file), `text of ${file}\n`);
+    }
+    return folder;
+  }
+  const all = ['MIT.txt', 'Apache-2.0.txt'];
 
   it('gives the standard library and wasi-libc their texts, and the notice file to copy', () => {
     const folder = toolchainDocs(all);
-    const { entries, copyrightFile } = rustToolchainEntries(folder, 'rustc 1.90.0');
+    const { entries, copyrightFile } = rustToolchainEntries(folder, 'rustc 1.90.0', wasiLicenses());
     expect(copyrightFile).toBe(join(folder, 'COPYRIGHT-library.html'));
     expect(entries.map((e) => e.title)).toEqual([
       'The Rust standard library (rustc 1.90.0)',
@@ -264,21 +275,39 @@ describe('rustToolchainEntries', () => {
       'text of MIT.txt',
       'text of Apache-2.0.txt',
     ]);
-    expect(entries[1].license).toBe('Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT');
     expect(entries[1].description).toContain('https://github.com/WebAssembly/wasi-libc');
-    expect(entries[1].texts.map((t) => t.text)).toEqual([
-      'text of Apache-2.0.txt',
-      'text of LLVM-exception.txt',
-      'text of MIT.txt',
-    ]);
+    expect(entries[1].description).toContain(WASI_LIBC_COMMIT);
+    expect(entries[1].texts.map((t) => t.text)).toEqual(
+      WASI_LIBC_FILES.map(([file]) => `text of ${file}`),
+    );
   });
 
   it('fails naming the missing file', () => {
-    expect(() => rustToolchainEntries(toolchainDocs(['MIT.txt', 'Apache-2.0.txt']), 'v')).toThrow(
-      /LLVM-exception\.txt/,
+    expect(() => rustToolchainEntries(toolchainDocs(['MIT.txt']), 'v', wasiLicenses())).toThrow(
+      /Apache-2\.0\.txt/,
     );
+    expect(() =>
+      rustToolchainEntries(toolchainDocs(all), 'v', wasiLicenses('musl-COPYRIGHT')),
+    ).toThrow(/musl-COPYRIGHT/);
     const noNotice = toolchainDocs(all);
     rmSync(join(noNotice, 'COPYRIGHT-library.html'));
-    expect(() => rustToolchainEntries(noNotice, 'v')).toThrow(/COPYRIGHT-library\.html/);
+    expect(() => rustToolchainEntries(noNotice, 'v', wasiLicenses())).toThrow(
+      /COPYRIGHT-library\.html/,
+    );
+  });
+
+  it('keeps every wasi-libc license file in the repository', () => {
+    const kept = join(dirname(fileURLToPath(import.meta.url)), 'licenses', 'wasi-libc');
+    for (const [file] of WASI_LIBC_FILES) expect(existsSync(join(kept, file))).toBe(true);
+  });
+});
+
+describe('bundledTools', () => {
+  it('adds Vite, whose preload helpers are in the bundle, from the lockfile', () => {
+    const lock = { packages: { 'node_modules/vite': { version: '7.1.0', license: 'MIT' } } };
+    expect(bundledTools(lock)).toEqual([
+      { name: 'vite', version: '7.1.0', path: 'node_modules/vite', license: 'MIT' },
+    ]);
+    expect(() => bundledTools({ packages: {} })).toThrow(/vite/);
   });
 });
