@@ -29,7 +29,8 @@
 #   6  crates/, scripts/                               framework
 #   7  games/<g>/ for a directory games/<g>            game <g>
 #   8  studio/web/                                     web
-#   9  studio/game/, studio/server/                    studio
+#   9  studio/core/, studio/game/, studio/rules/,
+#      studio/server/                                  studio
 #   10 anything else                                   everything
 # framework means rust, framework, studio, web and every game; a game means
 # rust, studio and that game; studio means rust and studio; everything means
@@ -160,7 +161,7 @@ area_effect() { # area_effect <path>
       f_web=true
       return 0
       ;;
-    studio/game/* | studio/server/*)
+    studio/core/* | studio/game/* | studio/rules/* | studio/server/*)
       f_rust=true
       f_studio=true
       return 0
