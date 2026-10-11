@@ -1,5 +1,5 @@
 //! Fast Ultimate Tic-Tac-Toe rules for bots, as described in
-//! `games/uttt/RULES.md`.
+//! `games/uttt/RULES.md` (the rules, with their sources).
 //!
 //! The whole position fits in a few machine words and is `Copy`: search
 //! copies it instead of undoing moves. Each small board is a 9-bit mask per
