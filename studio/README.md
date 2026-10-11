@@ -6,7 +6,7 @@ The decisions behind it are [ADR 0025](../docs/adr/0025-studio.md) (the studio),
 
 ## Status
 
-Only the front end's scaffold exists, in [`web/`](web/): a placeholder home screen with the checks and the CI job. There is no server, no game and no board yet.
+The front end's scaffold exists, in [`web/`](web/): a placeholder home screen with the checks and the CI job. So does the interface a game implements for the studio, in [`game/`](game/), with Ultimate Tic-Tac-Toe's adapter. There is no server and no board yet.
 
 ## Front end
 
@@ -43,3 +43,15 @@ npx npm@11 install --save-exact <package>@<exact version> --before=<date two wee
 ```
 
 Then commit `package.json` and `package-lock.json`, and run the checks above.
+
+## How a game plugs in
+
+A game adds an adapter crate, `games/<game>/studio`, that implements `studio_game::StudioGame` ([game/](game/)) and holds no rules of its own: positions come from replaying the game's referee, and a human's legal moves from the referee's turn input.
+
+- `info`: the game's id (its folder name) and display name.
+- `new_referee`: a fresh referee for a setup (seed and opening plies), the one the arena uses.
+- `opening_turns`: the leading turns the referee imposes (its opening plies); the server plays them itself.
+- `frames`: the JSON the board renderer draws: frame 0 is the position after the opening, then one frame per step; frame `i` of a turn-based game shows the turns up to `opening_turns + i`.
+- `human_moves`: the moves a human in a seat may play, each with the answer lines to send the referee.
+
+`studio_game::live_game` replays turns with a fresh referee into a `cg_arena::live::LiveGame`. The adapter's frame format is documented in its crate; `games/uttt/studio` is the first.

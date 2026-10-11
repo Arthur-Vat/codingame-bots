@@ -13,6 +13,7 @@ CodinGame's [Ultimate Tic-Tac-Toe](https://www.codingame.com/multiplayer/bot-pro
 | [engine/](engine/) | Fast implementation of the rules for bots: bitboards, no allocation, random and decisive playouts, playouts guided by the class policy (32 move classes) or the pattern policy (E015), and the value network's inputs and evaluation |
 | [arena/](arena/) | `uttt-arena`: plays bots against each other through the referee |
 | [trainer/](trainer/) | `uttt-trainer`: self-play data, and training of the playout policy, the value network and the move models ([ADR 0016](../../docs/adr/0016-self-play-training.md), [ADR 0017](../../docs/adr/0017-value-network.md)) |
+| [studio/](studio/) | `uttt-studio`: the game's adapter for the studio, with no rules of its own: frames come from replaying the referee, a human's legal moves from its turn input ([ADR 0025](../../docs/adr/0025-studio.md)) |
 | [bots/](bots/) | One crate per bot |
 | [evaluation.env](evaluation.env) | Settings of the SPRT, the league and the arena for evaluations ([ADR 0012](../../docs/adr/0012-evaluation.md)) |
 | [releases/](releases/) | Frozen paste-ready file of each version |

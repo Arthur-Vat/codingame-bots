@@ -150,6 +150,12 @@ impl UtttReferee {
         self.small_winners[board_row][board_col]
     }
 
+    /// Whether the small board at `(board_row, board_col)` is closed: won, or
+    /// full without a winner.
+    pub fn small_closed(&self, board_row: usize, board_col: usize) -> bool {
+        self.open_cells(board_row, board_col).is_empty()
+    }
+
     /// The result once the game is over.
     pub fn result(&self) -> Option<Outcome> {
         if let Some(seat) = self.main_winner {
