@@ -6,6 +6,9 @@
 //! HTTP layer is thin: [`handle`] holds all the routing and [`server`] only
 //! adapts `tiny_http` to it.
 //!
+//! The logic that needs the rules, and no process, file or clock, is in
+//! `studio-core`, which the browser's WebAssembly program shares.
+//!
 //! - [`state`]: the registered games, paths and sessions.
 //! - [`api`]: routing and the endpoints.
 //! - [`history`]: the saved games, one file each.

@@ -1,10 +1,11 @@
 //! One game in progress.
 //!
-//! A session is a game's setup, the seats' players and the answers played so
-//! far. Everything else (the frames, the legal moves, whose turn it is) is
-//! rebuilt by replaying the game's referee, so the session cannot disagree
-//! with the rules. Bot processes live in the session while the game runs;
-//! they are started and driven by [`crate::runner`].
+//! A session is a [`GameState`] (the game's setup, the seats' players and
+//! the answers played so far, in `studio-core`) with what the server needs
+//! to run bots. Everything else (the frames, the legal moves, whose turn it
+//! is) is rebuilt by replaying the game's referee, so the session cannot
+//! disagree with the rules. Bot processes live in the session while the game
+//! runs; they are started and driven by [`crate::runner`].
 //!
 //! # Generation
 //!
@@ -13,73 +14,21 @@
 //! checks that it still holds the generation it started with before it
 //! stores anything.
 //!
-//! # Ending a game by hand
+//! # Ending a game by hand and records
 //!
-//! Only a human seat can end a game this way. A resignation is
-//! `Resigned { seat }`; a human's flag falling is `Timeout { seat, limit_ms: 0 }`
-//! (the front end runs the clocks). In both the other seat wins.
-//!
-//! # Records
-//!
-//! A bot's `Player.command` in a studio record is the release's name, not
-//! the path of the compiled binary: the path is specific to the computer.
+//! See `studio_core::session`.
 
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use cg_arena::live::{LiveBot, LiveGame};
-use cg_arena::record::{Player, PlayerKind, Record, RecordedAnswer, RECORD_FORMAT};
-use cg_arena::referee::{GameSetup, Outcome, SEATS};
-use cg_arena::runner::{bot_seed, EndReason};
-use serde::Deserialize;
+use cg_arena::record::{Record, RecordedAnswer};
+use cg_arena::referee::SEATS;
+use cg_arena::runner::EndReason;
 use serde_json::{json, Value};
-use studio_game::{live_game, StudioGame};
+use studio_core::session::{GameState, Next, SEVERAL_SEATS};
+use studio_game::StudioGame;
 
-/// How a computer seat plays.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Mode {
-    /// A fixed number of iterations, from the measured speed of the
-    /// release: a takeback can replay it exactly.
-    Fixed,
-    /// The release's own time budget, scaled by `think_ms / 100`: the mode
-    /// of bots playing each other.
-    Realtime,
-}
-
-impl Mode {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Mode::Fixed => "fixed",
-            Mode::Realtime => "realtime",
-        }
-    }
-}
-
-/// Who plays a seat.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum SeatConfig {
-    Human {
-        name: String,
-    },
-    Bot {
-        release: String,
-        think_ms: u64,
-        mode: Mode,
-    },
-}
-
-impl SeatConfig {
-    pub fn name(&self) -> &str {
-        match self {
-            SeatConfig::Human { name } => name,
-            SeatConfig::Bot { release, .. } => release,
-        }
-    }
-
-    pub fn is_bot(&self) -> bool {
-        matches!(self, SeatConfig::Bot { .. })
-    }
-}
+pub use studio_core::session::{other, time_scale, GameResult, Mode, SeatConfig};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
@@ -106,14 +55,6 @@ impl Status {
     }
 }
 
-/// How a finished game ended.
-#[derive(Clone, Debug, PartialEq)]
-pub struct GameResult {
-    /// The winning seat, `None` for a draw.
-    pub winner: Option<usize>,
-    pub end: EndReason,
-}
-
 /// How far a long step is. `total` is `None` when it is not known.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Progress {
@@ -123,97 +64,29 @@ pub struct Progress {
 
 pub struct Session {
     pub id: String,
-    pub game: String,
-    pub seed: u64,
-    pub opening_plies: u32,
-    pub opening_turns: usize,
-    pub seats: [SeatConfig; SEATS],
-    pub turns: Vec<Vec<RecordedAnswer>>,
+    /// The game in progress: setup, seats, turns, result.
+    pub core: GameState,
     pub status: Status,
     pub error: Option<String>,
-    pub result: Option<GameResult>,
     pub progress: Option<Progress>,
     pub generation: u64,
     /// The running bot of each seat, `None` while its thread has it.
     pub bots: [Option<LiveBot>; SEATS],
-    /// The iterations of each "fixed" seat, known once measured.
-    pub fixed_iters: [Option<u64>; SEATS],
     pub touched: Instant,
 }
 
-/// The seat that is not `seat`.
-pub fn other(seat: usize) -> usize {
-    1 - seat
-}
-
 impl Session {
-    pub fn new(
-        id: String,
-        game: &dyn StudioGame,
-        seed: u64,
-        opening_plies: u32,
-        seats: [SeatConfig; SEATS],
-    ) -> Session {
-        let setup = GameSetup {
-            seed,
-            opening_plies,
-        };
+    pub fn new(id: String, core: GameState) -> Session {
         Session {
             id,
-            game: game.info().id.to_string(),
-            seed,
-            opening_plies,
-            opening_turns: game.opening_turns(&setup),
-            seats,
-            turns: Vec::new(),
+            core,
             status: Status::WaitingHuman,
             error: None,
-            result: None,
             progress: None,
             generation: 0,
             bots: [None, None],
-            fixed_iters: [None, None],
             touched: Instant::now(),
         }
-    }
-
-    pub fn setup(&self) -> GameSetup {
-        GameSetup {
-            seed: self.seed,
-            opening_plies: self.opening_plies,
-        }
-    }
-
-    /// Whether any seat is a computer in `mode`.
-    pub fn has_bot_in_mode(&self, wanted: Mode) -> bool {
-        self.seats
-            .iter()
-            .any(|seat| matches!(seat, SeatConfig::Bot { mode, .. } if *mode == wanted))
-    }
-
-    /// The game after the turns played, and how many turns that is. When the
-    /// last turn is one the rules reject (a bot's invalid answer is kept in
-    /// the record), the game stops before it.
-    pub fn position(&self, game: &dyn StudioGame) -> (LiveGame, usize) {
-        let setup = self.setup();
-        match live_game(game, setup, &self.turns) {
-            Ok(live) => (live, self.turns.len()),
-            Err(error) => {
-                let live = live_game(game, setup, &self.turns[..error.turn])
-                    .expect("the turns before the first invalid one are valid");
-                (live, error.turn)
-            }
-        }
-    }
-
-    /// How many answers the computer seats have given in the turns played:
-    /// what a restarted bot has to replay.
-    pub fn bot_answers(&self) -> usize {
-        self.turns
-            .iter()
-            .flatten()
-            .filter(|answer| self.seats[answer.seat].is_bot())
-            .count()
     }
 
     /// Stops the bots and the threads waiting for them.
@@ -225,7 +98,7 @@ impl Session {
     /// Ends the game with `result`.
     pub fn finish(&mut self, result: GameResult) {
         self.stop();
-        self.result = Some(result);
+        self.core.result = Some(result);
         self.status = Status::Over;
         self.progress = None;
         self.error = None;
@@ -250,115 +123,72 @@ impl Session {
     /// Looks at the position and sets the status: over, waiting for a
     /// human, or a bot to think. Returns whether a bot must act now.
     pub fn settle(&mut self, game: &dyn StudioGame) -> bool {
-        if self.result.is_some() {
+        if self.core.result.is_some() {
             return false;
         }
-        let (live, _) = self.position(game);
-        if let Some(outcome) = live.outcome() {
-            let winner = match outcome {
-                Outcome::Win(seat) => Some(seat),
-                Outcome::Draw => None,
-            };
-            self.finish(GameResult {
-                winner,
-                end: EndReason::Finished,
-            });
-            return false;
-        }
-        let seats = live.to_act();
-        let [seat] = seats[..] else {
-            self.fail("games where several seats answer at once are not supported".to_string());
-            return false;
-        };
-        self.error = None;
-        if self.seats[seat].is_bot() {
-            self.status = Status::BotThinking;
-            true
-        } else {
-            self.status = Status::WaitingHuman;
-            false
+        match self.core.settle(game) {
+            Next::Over => {
+                if let Some(result) = self.core.result.clone() {
+                    self.finish(result);
+                }
+                false
+            }
+            Next::Unsupported => {
+                self.fail(SEVERAL_SEATS.to_string());
+                false
+            }
+            Next::Bot { .. } => {
+                self.error = None;
+                self.status = Status::BotThinking;
+                true
+            }
+            Next::Human { .. } => {
+                self.error = None;
+                self.status = Status::WaitingHuman;
+                false
+            }
         }
     }
 
     /// Plays the answer of `seat`. A move the rules reject loses the game
     /// for `seat`, and the turn is kept in the record.
     pub fn apply_answer(&mut self, game: &dyn StudioGame, answer: RecordedAnswer) {
-        let seat = answer.seat;
-        let (mut live, _) = self.position(game);
-        match live.play(vec![answer.clone()]) {
-            Ok(()) => self.turns.push(vec![answer]),
-            Err(invalid) => {
-                self.turns.push(vec![answer]);
-                self.lose(
-                    seat,
-                    EndReason::Invalid {
-                        seat: invalid.seat,
-                        reason: invalid.reason,
-                    },
-                );
-            }
+        self.core.apply_answer(game, answer);
+        if let Some(result) = self.core.result.clone() {
+            self.finish(result);
         }
     }
 
     /// The time `seat`'s bot has for its next answer.
     pub fn limit_for(&self, seat: usize, live: &LiveGame) -> Duration {
-        match &self.seats[seat] {
-            SeatConfig::Human { .. } => Duration::ZERO,
-            SeatConfig::Bot {
-                think_ms,
-                mode: Mode::Fixed,
-                ..
-            } => Duration::from_millis(10_000 + 5 * think_ms),
-            SeatConfig::Bot {
-                think_ms,
-                mode: Mode::Realtime,
-                ..
-            } => live.time_limit(seat).mul_f64(time_scale(*think_ms)) + Duration::from_millis(50),
-        }
+        self.core.limit_for(seat, live)
     }
 
     /// The JSON the front end polls.
     pub fn view(&self, game: &dyn StudioGame) -> Value {
-        let setup = self.setup();
-        let (live, valid) = self.position(game);
-        let over = self.result.is_some() || self.status == Status::Failed;
+        let core = &self.core;
+        let (live, valid) = core.position(game);
+        let over = core.result.is_some() || self.status == Status::Failed;
         let to_act = if over { Vec::new() } else { live.to_act() };
-        let frames = game
-            .frames(&setup, &self.turns[..valid])
-            .or_else(|_| game.frames(&setup, &[]))
-            .unwrap_or_default();
+        let frames = core.frames(game, valid);
         let human_moves = match to_act[..] {
-            [seat] if self.status == Status::WaitingHuman => game
-                .human_moves(&setup, &self.turns[..valid], seat)
-                .unwrap_or_default(),
+            [seat] if self.status == Status::WaitingHuman => core.human_moves(game, valid, seat),
             _ => Vec::new(),
         };
-        let turns: Vec<Vec<Value>> = self
-            .turns
-            .iter()
-            .map(|turn| {
-                turn.iter()
-                    .map(|a| json!({"seat": a.seat, "lines": a.lines, "ms": a.ms}))
-                    .collect()
-            })
-            .collect();
         json!({
             "id": self.id,
-            "game": self.game,
-            "seed": self.seed,
-            "opening_plies": self.opening_plies,
-            "seats": (0..SEATS).map(|seat| self.seat_json(seat)).collect::<Vec<_>>(),
+            "game": core.game,
+            "seed": core.seed,
+            "opening_plies": core.opening_plies,
+            "seats": (0..SEATS).map(|seat| core.seat_json(seat)).collect::<Vec<_>>(),
             "status": self.status.as_str(),
             "error": self.error,
             "to_act": to_act,
-            "opening_turns": self.opening_turns,
-            "turns": turns,
+            "opening_turns": core.opening_turns,
+            "turns": core.turns_json(),
             "frames": frames,
             "human_moves": human_moves,
-            "result": self.result.as_ref().map(|result| json!({
-                "winner": result.winner,
-                "end": serde_json::to_value(&result.end).unwrap_or(Value::Null),
-            })),
+            "result": core.result_json(),
             "progress": self.progress.map(|progress| json!({
                 "done": progress.done,
                 "total": progress.total,
@@ -366,80 +196,12 @@ impl Session {
         })
     }
 
-    fn seat_json(&self, seat: usize) -> Value {
-        match &self.seats[seat] {
-            SeatConfig::Human { name } => json!({"kind": "human", "name": name}),
-            SeatConfig::Bot {
-                release,
-                think_ms,
-                mode,
-            } => json!({
-                "kind": "bot",
-                "name": release,
-                "release": release,
-                "think_ms": think_ms,
-                "mode": mode.as_str(),
-                "fixed_iters": self.fixed_iters[seat],
-            }),
-        }
-    }
-
-    /// The record of the game so far (format 1). A game still going ends
-    /// with `Aborted { reason: "unfinished" }` and no winner.
+    /// The record of the game so far (format 1), made now.
     pub fn record(&self) -> Record {
-        let result = self.result.clone().unwrap_or_else(|| GameResult {
-            winner: None,
-            end: EndReason::Aborted {
-                reason: "unfinished".to_string(),
-            },
-        });
-        let players = std::array::from_fn(|seat| match &self.seats[seat] {
-            SeatConfig::Human { name } => Player {
-                name: name.clone(),
-                kind: PlayerKind::Human,
-                bot_seed: None,
-                command: None,
-                time_scale: 1.0,
-                fixed_iters: None,
-            },
-            SeatConfig::Bot {
-                release,
-                think_ms,
-                mode,
-            } => Player {
-                name: release.clone(),
-                kind: PlayerKind::Bot,
-                bot_seed: Some(bot_seed(self.seed, seat, release)),
-                command: Some(release.clone()),
-                time_scale: match mode {
-                    Mode::Fixed => 1.0,
-                    Mode::Realtime => time_scale(*think_ms),
-                },
-                fixed_iters: match mode {
-                    Mode::Fixed => self.fixed_iters[seat],
-                    Mode::Realtime => None,
-                },
-            },
-        });
-        Record {
-            format: RECORD_FORMAT,
-            game: self.game.clone(),
-            seed: self.seed,
-            opening_plies: self.opening_plies,
-            unix_time: SystemTime::now()
+        self.core.record(
+            SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .map_or(0, |elapsed| elapsed.as_secs()),
-            source: "studio".to_string(),
-            players,
-            turns: self.turns.clone(),
-            end: result.end,
-            winner: result.winner,
-        }
+        )
     }
-}
-
-/// The `CG_TIME_SCALE` of a "realtime" seat: its think time over the 100 ms
-/// of a CodinGame turn.
-pub fn time_scale(think_ms: u64) -> f64 {
-    think_ms as f64 / 100.0
 }

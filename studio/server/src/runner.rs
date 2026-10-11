@@ -13,8 +13,9 @@ use cg_arena::record::RecordedAnswer;
 use cg_arena::referee::SEATS;
 use cg_arena::runner::{bot_seed, BotSpec, EndReason};
 
+use studio_core::speed::iterations;
+
 use crate::session::{time_scale, Mode, Progress, SeatConfig, Session, Status};
-use crate::speed::iterations;
 use crate::state::{lock, SharedSession, State};
 
 /// Starts the bots of a session, replays the game into them, and plays
@@ -76,7 +77,12 @@ fn prepare(state: &State, session: &SharedSession, generation: u64) -> Result<bo
         if s.status != Status::Rewinding {
             s.status = Status::Compiling;
         }
-        (s.game.clone(), s.setup(), s.seats.clone(), s.turns.clone())
+        (
+            s.core.game.clone(),
+            s.core.setup(),
+            s.core.seats.clone(),
+            s.core.turns.clone(),
+        )
     };
     let game = state
         .game(&game_id)
@@ -107,7 +113,7 @@ fn prepare(state: &State, session: &SharedSession, generation: u64) -> Result<bo
                 })?;
                 let fixed_iters = iterations(*think_ms, rate);
                 if !update(session, generation, |s| {
-                    s.fixed_iters[seat] = Some(fixed_iters);
+                    s.core.fixed_iters[seat] = Some(fixed_iters);
                     s.progress = None;
                 }) {
                     return Ok(false);
@@ -220,13 +226,13 @@ fn drive(state: &State, session: &SharedSession, generation: u64) {
             if s.generation != generation {
                 return;
             }
-            let Some(game) = state.game(&s.game) else {
+            let Some(game) = state.game(&s.core.game) else {
                 return;
             };
             if !s.settle(game) {
                 return;
             }
-            let (live, _) = s.position(game);
+            let (live, _) = s.core.position(game);
             let seat = live.to_act()[0];
             let Some(bot) = s.bots[seat].take() else {
                 s.fail(format!("the bot of seat {seat} is not running"));
@@ -253,7 +259,7 @@ fn drive(state: &State, session: &SharedSession, generation: u64) {
         if s.generation != generation {
             return;
         }
-        let Some(game) = state.game(&s.game) else {
+        let Some(game) = state.game(&s.core.game) else {
             return;
         };
         s.bots[seat] = Some(bot);

@@ -257,8 +257,19 @@ dependencies = [
  "clap",
  "serde",
  "serde_json",
+ "studio-core",
  "studio-game",
  "tiny_http",
+]
+
+[[package]]
+name = "studio-core"
+version = "0.0.0"
+dependencies = [
+ "cg-arena",
+ "serde",
+ "serde_json",
+ "studio-game",
  "uttt-studio",
 ]
 

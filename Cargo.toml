@@ -9,6 +9,7 @@ members = [
     "games/*/trainer",
     "games/*/bots/*",
     "games/*/studio",
+    "studio/core",
     "studio/game",
     "studio/server",
 ]
@@ -30,6 +31,7 @@ rust-version = "1.90"
 cg-arena = { path = "crates/cg-arena" }
 cg-core = { path = "crates/cg-core" }
 cg-search = { path = "crates/cg-search" }
+studio-core = { path = "studio/core" }
 studio-game = { path = "studio/game" }
 uttt-engine = { path = "games/uttt/engine" }
 uttt-referee = { path = "games/uttt/referee" }
