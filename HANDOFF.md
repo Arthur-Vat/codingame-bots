@@ -4,7 +4,6 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- Approve #81 (Dependabot: npm majors by hand), asked 2026-10-11; green and reviewed. After the merge, close #78 with a comment (reasons in #81's body).
 - Try the studio's first version on Windows (phase 6 gate), following "Running the studio on Windows" in `studio/README.md`. The owner will do it later (2026-10-11).
 - Optional, asked 2026-10-10: make "Studio front end" and "Studio on Windows" required checks in the `main` ruleset. Later, said the owner (2026-10-11).
 
@@ -14,8 +13,7 @@ None. (Phase 5's step D comes after phase 6, as in the plan approved 2026-10-10;
 
 ## Follow-ups
 
-- **Next session's plan, in this order (owner, 2026-10-11: "all those topics are a priority"; answered in the conversation: OK with the retrospective's remarks; #77 merged; #78 for the next session). Step 1, CI failures readable without logs, is done: #79 and #80 merged 2026-10-11.** Start a fresh session; keep each topic small, ask approval per batch as soon as it is green, and merge before stacking more.
-  1. **Dependabot**: in progress as #81 (see above). Original plan: close #78 with a comment (TypeScript 7 unsupported by typescript-eslint, Vite 8 pulls MPL `lightningcss` refused by ADR 0026, `@types/node` 26 for Node 22, `npm ci` fails); in `.github/dependabot.yml` ignore major versions for npm (`update-types: ["version-update:semver-major"]`) and keep `@types/node` on 22; majors are done by hand in their own PR.
+- **Next session's plan, in this order (owner, 2026-10-11: "all those topics are a priority"; answered in the conversation: OK with the retrospective's remarks). Done: step 1, CI failures readable without logs (#79, #80); Dependabot ignores npm majors (#81 merged 2026-10-11, #78 closed with a comment).** Keep each topic small, ask approval per batch as soon as it is green, and merge before stacking more.
   2. **Process fixes from the 2026-10-11 retrospective** (one PR on `.claude/skills`, deep review; owner approved the remarks): `land-work`: linear stacks only (never merge sibling branches into each other; merge main into each branch before asking approval), small approval batches merged as they come, settle shared interfaces and formats in a written spec before parallel implementers, a known-risks checklist in every spec (input validation incl. imported files, edge cases, timing races, Windows); `handoff`/session hygiene: suggest a fresh session at ~150k context and actually do it between steps; scripts that post to GitHub are dry-run first.
   3. **Phase 6 step D, analysis** (see Notes), in its own session(s), with the improved process.
 - ADR 0023 still says the SPRT is not a required check, which is no longer true. The owner keeps the current merge policy (2026-10-09) and wants no new record; the line stays as is unless he asks for a fix.
@@ -31,6 +29,7 @@ None. (Phase 5's step D comes after phase 6, as in the plan approved 2026-10-10;
 
 ## Usage
 
+- 2026-10-11 14:40 (Paris) | Dependabot: npm majors by hand (#81 merged), #78 closed | main session 28 steps (2.35M read, context 66k to 97k), 1 agent (0.15M read)
 - 2026-10-11 14:30 (Paris) | step 1, CI failures as annotations (#79) and ADR 0028 (#80), both merged | main session 93 steps (16.0M read, context 66k to 261k), 4 agents (3.2M read; the implementer 2.2M over three rounds)
 - 2026-10-11 09:10 (Paris) | merges of #62 to #76 (three approval rounds after GitHub conflicts), flaky e2e fix, #77, retrospective and next plan | since 2026-10-10 21:00 Paris (overlapping the line below by about two hours): main session 123 steps (73.3M read; context 526k to 689k, every step re-reading a very long conversation), 7 agents (16.3M read)
 - 2026-10-10 21:00 (Paris) | phase 6 steps A, B, C, E: #62 to #76 | main session 260 steps (88.6M read, context up to 588k: a very long conversation), 28 agents (54.6M read; the largest: play modes 13.0M and review/history pages 10.2M); agents hit the plan's session limit once
