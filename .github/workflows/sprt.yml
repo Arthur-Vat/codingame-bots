@@ -47,8 +47,14 @@ jobs:
         id: scopes
         run: |
           # In a pull request, HEAD is the merge commit and HEAD^1 the base.
-          # NUL-separated: git quotes the odd file names otherwise.
-          mapfile -d '' -t files < <(git diff -z --name-only --diff-filter=A --no-renames HEAD^1 HEAD -- 'games/*/releases/*.rs')
+          # NUL-separated: git quotes the odd file names otherwise. Written to
+          # a file first: a process substitution would hide a failure of git,
+          # and no files would then mean no test.
+          if ! git diff -z --name-only --diff-filter=A --no-renames HEAD^1 HEAD -- 'games/*/releases/*.rs' >"$RUNNER_TEMP/added-releases"; then
+            echo "::error title=New releases::git diff failed; the added releases are unknown"
+            exit 1
+          fi
+          mapfile -d '' -t files <"$RUNNER_TEMP/added-releases"
           scopes="$(scripts/ci-scopes.sh sprt -- "${files[@]}")" || {
             echo "::error title=New releases::scripts/ci-scopes.sh failed"
             exit 1
@@ -85,8 +91,13 @@ jobs:
         id: find
         run: |
           # In a pull request, HEAD is the merge commit and HEAD^1 the base.
-          # NUL-separated: git quotes the odd file names otherwise.
-          mapfile -d '' -t files < <(git diff -z --name-only --diff-filter=A --no-renames HEAD^1 HEAD -- "games/$GAME/releases/*.rs")
+          # NUL-separated: git quotes the odd file names otherwise. Written to
+          # a file first, as in the releases job.
+          if ! git diff -z --name-only --diff-filter=A --no-renames HEAD^1 HEAD -- "games/$GAME/releases/*.rs" >"$RUNNER_TEMP/added-releases"; then
+            echo "::error title=$GAME SPRT::git diff failed; the added releases are unknown"
+            exit 1
+          fi
+          mapfile -d '' -t files <"$RUNNER_TEMP/added-releases"
           candidates=""
           for file in "${files[@]}"; do
             # Directly in the game's releases folder.
@@ -254,6 +265,7 @@ jobs:
         env:
           NEEDS: ${{ toJSON(needs) }}
           GAMES: ${{ needs.releases.outputs.games }}
+          RESULTS_TITLE: SPRT passed
         run: |
           # Empty when the releases job failed: the verdict then fails.
           case "$GAMES" in

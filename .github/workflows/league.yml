@@ -81,12 +81,19 @@ jobs:
           case "$EVENT" in
             pull_request)
               # In a pull request, HEAD is the merge commit and HEAD^1 the base.
-              git diff -z --name-only --no-renames HEAD^1 HEAD >"$list"
+              # Written to a file first: a process substitution would hide a
+              # failure of git, and no files would then mean no league.
+              if ! git diff -z --name-only --no-renames HEAD^1 HEAD >"$list"; then
+                echo "::error title=Changes::git diff failed; the changed files are unknown"
+                exit 1
+              fi
               scopes="$(games_of "$list")"
               ;;
             push)
               # The first push of a branch has no commit before it, and a
-              # force push may have lost it: rate every game then.
+              # force push may have lost it: rate every game then, also when
+              # git diff fails (the list is written to a file, so a failure
+              # is seen, never taken for "no file changed").
               if [[ ! $BEFORE =~ ^0+$ ]] &&
                 git fetch --depth=1 origin "$BEFORE" &&
                 git diff -z --name-only --no-renames "$BEFORE" HEAD >"$list"; then

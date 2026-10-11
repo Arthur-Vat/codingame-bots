@@ -59,14 +59,15 @@
 # under GAMES_DIR with a name that matches [A-Za-z0-9_-]+, as in ci, and a
 # FILE is read as in ci (a leading ./ is dropped, -- ends the options).
 #
-# results: the verdict of the aggregate job (`CI passed`). The environment
-# variable NEEDS holds the JSON of `${{ toJSON(needs) }}`. Each argument is
-# JOB=true (the job had to run: its result must be success) or JOB=false (it
+# results: the verdict of an aggregate job (`CI passed`, `SPRT passed`). The
+# environment variable NEEDS holds the JSON of `${{ toJSON(needs) }}`. Each
+# argument is JOB=true (the job had to run: its result must be success) or JOB=false (it
 # could be skipped: success or skipped). Anything else fails: another result,
 # a job named in an argument but missing from NEEDS, a job in NEEDS that no
 # argument names, an expected value that is not true or false (empty when the
 # job that decides it failed). Prints one line per job and, on failure, an
-# error annotation; exits 1 on failure.
+# error annotation, titled with the environment variable RESULTS_TITLE (default
+# `CI passed`); exits 1 on failure.
 #
 # Needs jq for the results mode. Exit status 2: wrong usage.
 set -euo pipefail
@@ -362,7 +363,7 @@ escape() { # escape <text>
 }
 
 mode_results() {
-  local arg name expected result line status=0
+  local arg name expected result line status=0 title="${RESULTS_TITLE:-CI passed}"
   local -a order=() failing=()
   local -A want=() got=() seen=()
 
@@ -392,7 +393,7 @@ mode_results() {
   local listing
   if ! listing="$(jq -r 'to_entries[] | [.key, (.value.result // "")] | @tsv' <<<"$NEEDS" 2>&1)"; then
     echo "FAIL NEEDS is not a JSON object of jobs: $listing"
-    echo "::error title=CI passed::NEEDS is not a JSON object of jobs"
+    echo "::error title=$title::NEEDS is not a JSON object of jobs"
     exit 1
   fi
   while IFS=$'\t' read -r name result; do
@@ -447,7 +448,7 @@ mode_results() {
 
   if ((status != 0)); then
     line="$(printf '%s, ' "${failing[@]}")"
-    echo "::error title=CI passed::$(escape "${line%, }")"
+    echo "::error title=$title::$(escape "${line%, }")"
   fi
   exit "$status"
 }
