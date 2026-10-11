@@ -25,7 +25,7 @@ The session reaches GitHub through a proxy. GitHub's GraphQL API is refused, so 
 
 - `gh api "repos/$R/commits/<sha>/check-runs?per_page=50" --jq '[.check_runs[] | "\(.name)=\(.conclusion // .status)"]'`. Runs cancelled by a newer run of the same workflow can be ignored.
 - To wait, poll every 25 to 30 seconds with a deadline; CodinGame compatibility takes about 10 minutes, a full-time SPRT up to about 4 hours.
-- Job logs and artifacts cannot be downloaded. Read a job's annotations instead: `gh api repos/$R/actions/runs/<run>/jobs --jq '.jobs[] | {name, conclusion, id}'`, then `gh api repos/$R/check-runs/<job id>/annotations`. Workflows that Claude reads should report results as annotations or commits.
+- Read a failure from its job's annotations first: `gh api repos/$R/actions/runs/<run>/jobs --jq '.jobs[] | {name, conclusion, id}'`, then `gh api repos/$R/check-runs/<job id>/annotations`; CI reports every failing step there with an excerpt of its output (`scripts/annotate.sh`). When more is needed, a job's log is readable since 2026-10-11: `gh api repos/$R/actions/jobs/<job id>/logs | tail -n 200` (the owner opened the environment's network to the hosts GitHub serves logs from, weighing a public repository and no secrets in the environment; to revisit if either changes). Artifacts cannot be downloaded. Workflows that Claude reads should still report results as annotations or commits.
 
 ## Merging (only with the owner's approval, ADR 0023)
 

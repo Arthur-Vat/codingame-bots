@@ -35,6 +35,7 @@ codingame-bots/
 │  ├─ prune-branches.sh     deletes finished claude/ branches (ADR 0021)
 │  ├─ check-docs.sh         indexes, status lines and links match the repository; agents declare model and tools; workflows and scripts are listed
 │  ├─ pr-hygiene.sh         pull request titles (ADR 0022) and labels from changed paths
+│  ├─ annotate.sh           runs a CI step and reports its failure as an annotation
 │  ├─ agent-guard.sh        hook of Claude's sessions: only the project's agents and the read-only built-in ones may start
 │  ├─ session-setup.sh      hook of Claude's cloud sessions: installs shellcheck, as in CI
 │  ├─ tests/                tests of the scripts
