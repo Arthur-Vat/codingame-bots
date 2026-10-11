@@ -4,7 +4,8 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- Phase 6 first version, asked 2026-10-10: merge in order #62, #63, #64, #65, #66, #67, #68, #69, #71, #70, #72, #73, #76, #74, #75 (stacked; some include lower ones by merge commits; the stack was checked to merge cleanly in this order). The owner asked on 2026-10-10 to implement the whole phase 6 plan; merges still need approval per pull request. Also the owner's call: make "Studio on Windows" (and "Studio front end") required checks in the ruleset.
+- Try the studio's first version on Windows (phase 6 gate), following "Running the studio on Windows" in `studio/README.md`; all of it is on `main` since 2026-10-11.
+- Optional, asked 2026-10-10: make "Studio front end" and "Studio on Windows" required checks in the `main` ruleset (sessions cannot edit rulesets).
 
 ## Open questions
 
@@ -17,7 +18,7 @@ None. (Phase 5's step D comes after phase 6, as in the plan approved 2026-10-10;
 
 ## Notes
 
-- Phase 6 state: steps A, B, C and E are done in the open PRs above (first version: play friend / release with takebacks / bot vs bot, review with playback, history with filters and import, Windows CI and guide, SPRT/league record samples). Left: step D, analysis (cg-search read-only reporting with identical moves and speed baseline, an analysis engine from current code streaming top moves / W-D-L / lines, the analysis panel with eval bar, top moves, heatmap, keep thinking, chart filled in the background at about 100 ms per position). Then the owner tests on Windows (gate). Mockup: https://claude.ai/artifact/PDeeJjWC7gHZ9eFCCZvavp.
+- Phase 6 state (2026-10-11): steps A, B, C and E merged (#62 to #76; on the owner's approvals in the chat). Left: step D, analysis: (1) cg-search read-only reporting (moves' visits, win/draw/loss, PV) and keep-thinking, proving bots' moves identical at fixed seed and iterations and speed at the baseline (`cargo run --release -p uttt-engine --example speed`, games/uttt/README.md); (2) an analysis engine tool built from current code with the latest release's settings, streaming JSON; (3) server routes and the analysis panel (W/D/L bar, top moves with lines and hover highlight, heatmap on legal cells, keep thinking, evaluation chart filled in the background at about 100 ms per position; the review page has a reserved slot). Lesson: stacked branches that merge siblings by merge commits make GitHub report conflicts after earlier merges; keep stacks linear, or merge main into each branch before asking for approval. Mockup: https://claude.ai/artifact/PDeeJjWC7gHZ9eFCCZvavp.
 - Phase 5's one-week trial is dropped (owner, 2026-10-09); the daily report at 06:45 Paris time, on Sonnet 5.5, keeps running.
 - Ultimate Tic-Tac-Toe strength work stays paused; no training or league run by hand.
 
