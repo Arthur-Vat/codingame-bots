@@ -128,7 +128,7 @@ Background runs stay off until the owner turns them on.
 ### E. CI, fixed checks
 
 - [ ] Speed regression check (tier 5 of the evaluation pipeline): the pull request against `main` in the same job, to cancel the runner's noise
-- [ ] Documentation-only pull requests skip the heavy steps while still reporting the required checks
+- [ ] CI scoped by area and game (owner, 2026-10-11, [ADR 0029](adr/0029-ci-scoped-by-area-and-game.md)): a pull request runs only the checks of what it changes, documentation-only ones included, behind aggregate required checks; the SPRT and the league run per game
 - [ ] Agentic checks stay in Claude's sessions (owner's choice, 2026-10-09): no Claude job in GitHub Actions
 - [x] The docs check also verifies that the architecture lists every workflow and script, and the README every workflow (the README names scripts by area)
 - [x] Shellcheck also lints the scripts' tests, `scripts/tests/*.sh` (owner, 2026-10-09)
