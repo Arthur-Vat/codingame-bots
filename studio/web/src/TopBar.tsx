@@ -1,4 +1,5 @@
 import type { GameSummary } from './api';
+import { engineKind } from './engine/detect';
 import type { Route } from './route';
 
 /** The top bar: brand, navigation, and the current game as a crumb. */
@@ -7,8 +8,12 @@ export function TopBar({ route, games }: { route: Route; games: GameSummary[] | 
     route.page === 'game'
       ? (games?.find((game) => game.id === route.gameId)?.name ?? route.gameId)
       : null;
+  const inBrowser = engineKind() === 'browser';
   return (
-    <header className="top">
+    <header
+      className="top"
+      title={inBrowser ? 'Running in your browser' : 'Running on the local server'}
+    >
       <a className="brand" href="#/" aria-label="studio, home">
         studio<span>.</span>
       </a>
@@ -21,6 +26,7 @@ export function TopBar({ route, games }: { route: Route; games: GameSummary[] | 
         </a>
       </nav>
       {gameName !== null && <span className="crumb">{gameName}</span>}
+      {inBrowser && <span className="engine">in your browser</span>}
     </header>
   );
 }

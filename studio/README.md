@@ -1,12 +1,12 @@
 # studio
 
-A local app in the owner's browser, in the style of Lichess, to choose a game, play it against a friend or a release, watch two releases play each other, and review games with a bot's evaluation and best moves. It runs locally, served by its own server, and is to run as a static site on GitHub Pages too, with the bots in the browser ([ADR 0030](../docs/adr/0030-studio-on-github-pages.md); phase 6, step F).
+A local app in the owner's browser, in the style of Lichess, to choose a game, play it against a friend or a release, watch two releases play each other, and review games with a bot's evaluation and best moves. It runs locally, served by its own server, and also as a static site (GitHub Pages is the plan) with the rules and the bots in the browser: see "Two engines" below ([ADR 0030](../docs/adr/0030-studio-on-github-pages.md); phase 6, step F).
 
 The decisions behind it are [ADR 0025](../docs/adr/0025-studio.md) (the studio), [ADR 0026](../docs/adr/0026-node-for-the-studio.md) (Node and npm for the front end) and [ADR 0027](../docs/adr/0027-game-records.md) (game records). The plan is phase 6 of the [roadmap](../docs/ROADMAP.md).
 
 ## Status
 
-The front end's scaffold exists, in [`web/`](web/), and so does the app shell: the top bar, the home screen (one card per game from the server), the game page's layout and the three setup dialogs with their advanced mode. Games are playable: Ultimate Tic-Tac-Toe's board is drawn from the server's frames, and the three modes work against the server: a friend on the same screen, a release with takebacks, and two releases playing each other. Human clocks (minutes plus increment) run in the front end, which ends the game on a timeout; a bot shows the time it has used. The move list and the keys ← → Home End look back at earlier positions, and input is accepted on the latest one only. A game that ends shows its result, with Rematch, New game, Save and Export file. The interface a game implements for the studio is in [`game/`](game/), with Ultimate Tic-Tac-Toe's adapter, and the local server in [`server/`](server/): see "Running the server" below. A game can be reviewed, at `#/review/session/<id>` (a game played here), `#/review/saved/<id>` (a saved game) or `#/review/file/<id>` (a record loaded in the browser): the board is read-only and starts at the first position, with a playback bar (first, previous, play or pause, next, last, and the speeds 0.25×, 0.5×, 1×, 2×, 4×: the whole game lasts 120 s at 1×), the clickable move list, the keys ← → Home End and Space, the info card, and Save to history and Export file. A "Review" button ends every game played here, and a game between two bots opens its review by itself. The history page, at `#/history`, lists the saved games with filters (release, result, source, dates, sent to `GET /api/history`) and, for each one, Review, Export and Delete (asked twice in the row). "Load game files" adds several `.json` files to the history and says how many were imported, were there already, or were refused, with the server's reasons (a workflow artifact comes zipped: unzip it first); "Review a file" opens one file for review without saving it. Analysis is not there yet.
+The front end's scaffold exists, in [`web/`](web/), and so does the app shell: the top bar, the home screen (one card per game from the server), the game page's layout and the three setup dialogs with their advanced mode. Games are playable: Ultimate Tic-Tac-Toe's board is drawn from the server's frames, and the three modes work against the server: a friend on the same screen, a release with takebacks, and two releases playing each other. Human clocks (minutes plus increment) run in the front end, which ends the game on a timeout; a bot shows the time it has used. The move list and the keys ← → Home End look back at earlier positions, and input is accepted on the latest one only. A game that ends shows its result, with Rematch, New game, Save and Export file. The interface a game implements for the studio is in [`game/`](game/), with Ultimate Tic-Tac-Toe's adapter, and the local server in [`server/`](server/): see "Running the server" below. A game can be reviewed, at `#/review/session/<id>` (a game played here), `#/review/saved/<id>` (a saved game) or `#/review/file/<id>` (a record loaded in the browser): the board is read-only and starts at the first position, with a playback bar (first, previous, play or pause, next, last, and the speeds 0.25×, 0.5×, 1×, 2×, 4×: the whole game lasts 120 s at 1×), the clickable move list, the keys ← → Home End and Space, the info card, and Save to history and Export file. A "Review" button ends every game played here, and a game between two bots opens its review by itself. The history page, at `#/history`, lists the saved games with filters (release, result, source, dates, sent to `GET /api/history`) and, for each one, Review, Export and Delete (asked twice in the row). "Load game files" adds several `.json` files to the history and says how many were imported, were there already, or were refused, with the server's reasons (a workflow artifact comes zipped: unzip it first); "Review a file" opens one file for review without saving it. The same front end runs on the browser engine, in the page, when no server answers: the rules in WebAssembly, the bots as WebAssembly in Web Workers, saved games in IndexedDB. Publishing the site on GitHub Pages (its workflow and the license notices) is not done yet. Analysis is not there yet.
 
 ## Front end
 
@@ -16,7 +16,8 @@ TypeScript, React and Vite, in `studio/web/`. It needs Node 22 (the line is writ
 npm ci                  # install the locked dependencies
 npm run dev             # the app, with reload, at http://localhost:5173 (calls to /api go to the server on port 8411)
 npm run build           # type check, then the production build in dist/
-npm run preview         # serve the production build
+npm run preview         # serve the production build, as static files: the browser engine
+npm run wasm            # build the rules and the releases to WebAssembly (the browser engine's files)
 ```
 
 The checks, all run by the `Studio: front end` job of CI:
@@ -27,7 +28,7 @@ npm run format:check    # Prettier (npm run format fixes)
 npm run lint            # ESLint
 npm run typecheck       # TypeScript
 npm test                # unit tests (Vitest)
-npm run e2e             # browser tests (Playwright, Chromium); builds and serves the app itself
+npm run e2e             # browser tests (Playwright, Chromium); builds the WebAssembly files and the app, and serves it
 ```
 
 To work on the app against the real server, start the server in one terminal and the dev server in another:
@@ -37,9 +38,24 @@ cargo run --release -p studio     # the API, at http://127.0.0.1:8411
 npm run dev                       # in studio/web: the app, proxying /api to the server
 ```
 
-The browser tests do not need the server: they mock the API.
+The browser tests do not need the server. Most mock the API (`e2e/*.spec.ts`; their pages are told to use the server's engine, see below). `e2e/browser-engine.spec.ts` runs the browser engine for real, with real bots, on the production build served by `npm run preview`, which has no `/api`. So `npm run e2e` and `npm test` need the WebAssembly files, and therefore Rust with the `wasm32-wasip1` target (`rustup target add wasm32-wasip1`): `npm run e2e` builds them first, and `npm test` fails with a message saying to run `npm run wasm` when they are missing. `npm run build` does not need Rust. `npm run wasm` runs a bash script (`scripts/build-studio-wasm.sh`): on Windows use Git Bash or WSL for it; running the local server needs none of this.
 
 The first `npm run e2e` on a computer needs Chromium: `npx playwright install chromium`.
+
+## Two engines
+
+The front end calls one API (the routes below) and has two engines behind it ([ADR 0030](../docs/adr/0030-studio-on-github-pages.md)). They keep the same behaviour: a change to one is made to the other in the same pull request.
+
+- **The server's engine**: `fetch` to the local server (`cargo run --release -p studio`): native bots, saved games on disk.
+- **The browser engine** (`web/src/engine/`): the same routes, JSON shapes, status codes and error bodies, answered in the page. `routes.ts` is the router. `rules.ts` calls `wasm/rules.wasm` (see "The rules in WebAssembly") with a fresh instance for each request. `sessions.ts` mirrors the server's sessions: statuses, progress, takebacks that restart each bot and replay it, and a generation counter that cancels a bot's turn when a takeback or a deletion makes it stale. `bot.ts` and `botWorker.ts` run a release in a Web Worker, its standard input blocking on a `SharedArrayBuffer`. `speed.ts` measures a release's speed in the browser (3000 iterations, seed 1, the release against itself) for "fixed" mode. `storage.ts` keeps the saved games. `wasi.ts` is our own small WASI layer.
+
+**How the engine is chosen.** At start-up, before the app renders, the page asks `GET /api/games`: a 200 answer that is a JSON array means the studio server is there; anything else (404, a page of HTML, an error, no answer) means the browser engine. The choice shows in the top bar (a tooltip, and "in your browser" beside the title for the browser engine). For diagnosis, `localStorage['studio.engine'] = 'server'` or `'browser'` forces one; the browser tests of the server's engine use it, since `preview` has no server. With `npm run dev` and no server on port 8411, the page uses the browser engine, which needs the files of `npm run wasm`.
+
+**Isolation, and the one reload.** A bot reads its input with a blocking read that waits on a `SharedArrayBuffer`, which browsers allow only on a cross-origin isolated page (the headers `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`). The dev server sets them. A static host that cannot (GitHub Pages, `npm run preview`) is helped by `public/coi-sw.js`, a service worker of ours that adds the two headers to same-origin responses: the first visit registers it and reloads the page once (a `sessionStorage` key stops a second reload), and later visits are isolated from the start. Nothing is loaded from another origin. Where the page cannot be isolated (no service worker, for example in some private windows), games between people, the history and reviews work, and a game with a bot is refused with "This browser does not let bots run on this page (cross-origin isolation is unavailable)".
+
+**Where the browser engine keeps data.** In that browser, on that computer, for that site: saved games in IndexedDB (database `studio`, store `games`; each value holds the record text exactly as saved), and measured speeds in `localStorage` (key `studio.speed.v1`, by release name and the SHA-256 of its WebAssembly file). Clearing the site's data deletes the saved games: export what matters (Export, on the history page). Nothing is sent anywhere. The local server's saved games and the browser's are separate, until exported and loaded. Where IndexedDB is unavailable, saving and the history answer 409 with a message, and playing still works.
+
+**What differs from the server.** Bots run about 1.3 to 1.45 times slower in WebAssembly than natively, so a release plays a little weaker at real time limits; fixed-iteration play is unaffected. A release that does not compile to WebAssembly is not in `wasm/manifest.json`, so the browser does not offer it. A release's speed is measured in the browser, not taken from the server's `speed.json`.
 
 ## Dependencies
 
@@ -134,7 +150,7 @@ A request is a JSON object with a string field `op`; the response is `{"ok": val
 | --- | --- | --- |
 | `games` | none | `[{"id", "name"}]`, in the server's order |
 | `new` | `request` (the body of `POST /api/sessions`), `releases` (the game's known releases) | a `State` with no turns and no result; the errors are those of `POST /api/sessions` |
-| `settle` | `state` | `{"opening_turns", "valid_turns", "to_act", "frames", "human_moves", "result", "next"}`: the result if the rules say the game is over, and `next`: `{"kind": "over"}`, `{"kind": "human", "seat"}`, `{"kind": "bot", "seat", "input", "answer_lines", "limit_ms", "bot_seed"}` or `{"kind": "unsupported", "error"}` |
+| `settle` | `state` | `{"opening_turns", "valid_turns", "to_act", "frames", "human_moves", "result", "next", "bot_seeds"}`: the result if the rules say the game is over, `bot_seeds` (each seat's bot seed as a decimal string, `null` for a human; a restarted bot needs it before its turn), and `next`: `{"kind": "over"}`, `{"kind": "human", "seat"}`, `{"kind": "bot", "seat", "input", "answer_lines", "limit_ms", "bot_seed"}` or `{"kind": "unsupported", "error"}` |
 | `play` | `state`, `answer` | `{"turns", "result"}`: the answer appended; one the rules reject is kept and loses the game for its seat |
 | `replay` | `state`, `seat` | `[{"input", "answer_lines", "lines"}]`: what a restarted bot of that seat is asked, and must answer again, turn by turn |
 | `record` | `state`, `unix_time` | `{"record_text"}`: the game record, as `GET /api/sessions/{id}/record` writes it |

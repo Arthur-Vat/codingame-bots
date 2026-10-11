@@ -312,6 +312,13 @@ jobs:
         working-directory: studio/web
     steps:
       - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          # The browser engine runs the rules program and the releases as
+          # WebAssembly (ADR 0030): the tests need them built.
+          targets: wasm32-wasip1
+      - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-node@v7
         with:
           # The Node line is written once, in `engines` (ADR 0026).
@@ -342,6 +349,13 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
           "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Type check" npm run typecheck
+      - name: Build the rules and the releases to WebAssembly
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        # --strict: a release that does not compile to WebAssembly fails the
+        # step. The unit tests of the browser engine and the browser tests
+        # read the files it writes in public/wasm/.
+        run: |
+          "$GITHUB_WORKSPACE/scripts/annotate.sh" run "WebAssembly build" "$GITHUB_WORKSPACE/scripts/build-studio-wasm.sh" --strict
       - name: Unit tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |

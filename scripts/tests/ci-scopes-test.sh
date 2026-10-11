@@ -79,18 +79,23 @@ scopes_are 'rust=true framework=false games=["other","uttt"] studio=true web=fal
   games/other/engine/src/lib.rs games/uttt/evaluation.env
 scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licenses=false' \
   games/uttt/engine/src/lib.rs games/uttt/journal/E001-x.md
-scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licenses=false' \
+scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=false' \
   games/uttt/studio/src/lib.rs
+scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=false' \
+  games/uttt/referee/src/lib.rs
+scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=false' \
+  games/uttt/releases/uttt-v011.rs
 scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licenses=false' \
   games/uttt/ci.sh
 
 # The studio.
 scopes_are 'rust=false framework=false games=[] studio=false web=true licenses=false' studio/web/src/App.tsx
 scopes_are 'rust=true framework=false games=[] studio=true web=false licenses=false' studio/server/src/main.rs
-scopes_are 'rust=true framework=false games=[] studio=true web=false licenses=false' studio/game/src/lib.rs
-scopes_are 'rust=true framework=false games=[] studio=true web=false licenses=false' studio/core/src/lib.rs
-scopes_are 'rust=true framework=false games=[] studio=true web=false licenses=false' studio/rules/src/main.rs
-scopes_are 'rust=true framework=false games=[] studio=true web=false licenses=true' studio/rules/Cargo.toml
+scopes_are 'rust=true framework=false games=[] studio=true web=true licenses=false' studio/game/src/lib.rs
+scopes_are 'rust=true framework=false games=[] studio=true web=false licenses=false' studio/server/src/lib.rs
+scopes_are 'rust=true framework=false games=[] studio=true web=true licenses=false' studio/core/src/lib.rs
+scopes_are 'rust=true framework=false games=[] studio=true web=true licenses=false' studio/rules/src/main.rs
+scopes_are 'rust=true framework=false games=[] studio=true web=true licenses=true' studio/rules/Cargo.toml
 scopes_are 'rust=true framework=false games=[] studio=true web=false licenses=true' studio/server/Cargo.toml
 scopes_are 'rust=false framework=false games=[] studio=false web=true licenses=false' \
   studio/web/package.json studio/web/package-lock.json
@@ -98,6 +103,8 @@ scopes_are 'rust=false framework=false games=[] studio=false web=true licenses=f
 # The framework.
 scopes_are "$framework" crates/cg-core/src/lib.rs
 scopes_are "$framework" scripts/sprt.sh
+scopes_are "$framework" scripts/build-studio-wasm.sh
+scopes_are "$framework" crates/cg-arena/src/live.rs
 scopes_are "$framework" scripts/tests/pr-hygiene-test.sh
 scopes_are "$framework" crates/cg-core/src/lib.rs docs/ROADMAP.md
 scopes_are 'rust=true framework=true games=["other","uttt"] studio=true web=true licenses=true' crates/cg-arena/Cargo.toml

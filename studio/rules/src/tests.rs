@@ -180,8 +180,11 @@ fn settle_gives_a_bot_what_it_is_asked() {
     assert_eq!(next["input"], live.input_for(0));
     // The seed is a decimal string, whole.
     let expected = bot_seed(18_446_744_073_709_551_000, 0, "uttt-v010").to_string();
-    assert_eq!(next["bot_seed"], Value::String(expected));
+    assert_eq!(next["bot_seed"], Value::String(expected.clone()));
     assert!(next["bot_seed"].is_string());
+    // Every bot seat's seed, before it is asked, for a restart.
+    assert_eq!(settled["bot_seeds"][0], Value::String(expected));
+    assert_eq!(settled["bot_seeds"].as_array().map(Vec::len), Some(2));
 }
 
 #[test]

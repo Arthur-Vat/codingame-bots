@@ -16,4 +16,9 @@ export default tseslint.config(
     files: ['*.{ts,js}', 'e2e/**/*.ts', 'scripts/**/*.{ts,mjs}'],
     languageOptions: { globals: globals.node },
   },
+  {
+    // The service worker that makes the page cross-origin isolated.
+    files: ['public/coi-sw.js'],
+    languageOptions: { globals: globals.serviceworker },
+  },
 );

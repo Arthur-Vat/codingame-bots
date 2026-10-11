@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
+    "wasm": "../../scripts/build-studio-wasm.sh",
     "e2e": "playwright test",
     "licenses": "node scripts/check-licenses.mjs"
   },
