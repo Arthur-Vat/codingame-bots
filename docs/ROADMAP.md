@@ -173,7 +173,7 @@ Gate: the first version (steps A to C) works on the owner's Windows computer, th
 ### E. Windows and runs from GitHub
 
 - [x] A Windows CI job and the setup guide for Windows
-- [ ] Workflows that play games upload a sample of game records; the studio imports it
+- [x] Workflows that play games upload a sample of game records; the studio imports it
 
 Order: A, B, C, then D and E. Later: a ready-to-run download, each bot's own evaluation from future releases, more games.
 

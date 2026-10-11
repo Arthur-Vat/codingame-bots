@@ -115,6 +115,10 @@ The two modes of a computer seat:
 
 The history is one JSON file per game in `studio/data/history/` (or `<data>/history/`), named `<game>-<unix time>-<12 hex digits of a hash of the record>.json`. The folder is never committed ([ADR 0027](../docs/adr/0027-game-records.md)) and GitHub does not back it up: keep what matters by exporting it (`GET /api/history/{id}` gives the file). Loading a file adds it to the history through `POST /api/history`. The listing reads every file each time, which is fine for a few thousand games.
 
+### Games from GitHub runs
+
+The SPRT and league workflows keep a sample of the games they play (about 10 per step or per pair of bots, [ADR 0027](../docs/adr/0027-game-records.md)). In the run's page on GitHub, download the artifact `game-records` (`league-game-records` for the league), unzip it, then in the studio open History, then Load game files, and choose the unzipped files. Artifacts expire after 30 days.
+
 ## Running the studio on Windows
 
 The studio is meant for a Windows computer ([ADR 0025](../docs/adr/0025-studio.md)); the `Studio on Windows` job of CI builds it, tests it and plays a game through the server there. The commands are for PowerShell.

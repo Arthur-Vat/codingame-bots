@@ -74,6 +74,8 @@ jobs:
         if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-matched-key == ''
         env:
           CANDIDATES: ${{ steps.find.outputs.candidates }}
+          # A sample of the games, uploaded below (ADR 0027).
+          RECORDS_DIR: target/records
         run: |
           mkdir -p target/sprt-result
           status=0
@@ -90,6 +92,16 @@ jobs:
           echo "$status" >target/sprt-result/status
           # Identifies this result in the comment that posts it.
           echo "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >target/sprt-result/origin
+      - name: Upload a sample of the games
+        # Nothing to upload when the result was reused or there was no new
+        # release: the folder does not exist and the step finds no file.
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: game-records
+          path: target/records
+          if-no-files-found: ignore
+          retention-days: 30
       - name: Keep the result
         if: steps.run.outcome == 'success'
         uses: actions/cache/save@v6

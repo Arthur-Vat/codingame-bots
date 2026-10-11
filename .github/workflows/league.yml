@@ -61,6 +61,8 @@ jobs:
           # values leave each game's settings in place.
           TIME_SCALE: ${{ inputs.time_scale }}
           TIME_TOLERANCE_MS: ${{ inputs.time_tolerance_ms }}
+          # A sample of the games, uploaded below (ADR 0027).
+          RECORDS_DIR: target/records
         run: |
           # A fresh runner has no target folder yet; tee needs it.
           mkdir -p target
@@ -74,6 +76,14 @@ jobs:
               echo '```'
             } >>"$GITHUB_STEP_SUMMARY"
           done
+      - name: Upload a sample of the games
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: league-game-records
+          path: target/records
+          if-no-files-found: ignore
+          retention-days: 30
       - name: Publish the games and ratings
         uses: actions/upload-artifact@v7
         with:
