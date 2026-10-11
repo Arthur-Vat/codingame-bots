@@ -4,6 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
+- CI scoped per game (asked 2026-10-11): the owner chose the full option (skip by changed paths, checks named per game and per framework area, the SPRT per game too, one aggregate required check) and asked for a plan only, no implementation yet. Plan given in the conversation 2026-10-11; waiting for his go. It comes before phase 6 step D.
 - Try the studio's first version on Windows (phase 6 gate), following "Running the studio on Windows" in `studio/README.md`. The owner will do it later (2026-10-11).
 - Optional, asked 2026-10-10: make "Studio front end" and "Studio on Windows" required checks in the `main` ruleset. Later, said the owner (2026-10-11).
 
