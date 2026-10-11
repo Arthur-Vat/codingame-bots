@@ -20,10 +20,16 @@ updates:
     cooldown:
       default-days: 14
     ignore:
+      # Major versions are done by hand, each in its own pull request
+      # (studio/README.md): they tend to break the toolchain or bring new
+      # dependencies whose licenses must be checked first. This also keeps
+      # @types/node on 22, the Node version the studio runs on.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
       # Stays at the version that matches the Chromium preinstalled in Claude's
       # sessions (chromium-1194); bumped by hand.
       - dependency-name: "@playwright/test"
-    # Every other update comes in one pull request.
+    # Every other minor or patch update comes in one pull request.
     groups:
       npm:
         patterns:
