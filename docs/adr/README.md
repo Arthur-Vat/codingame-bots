@@ -32,6 +32,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0025](0025-studio.md) | A local studio to play and review games in the browser | Accepted |
 | [0026](0026-node-for-the-studio.md) | Node and npm build the studio's front end | Accepted |
 | [0027](0027-game-records.md) | Game records: one format, a sample of each run, kept on the owner's computer | Accepted |
+| [0028](0028-job-logs-from-sessions.md) | Job logs readable from Claude's sessions | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 
