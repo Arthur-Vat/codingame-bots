@@ -1,7 +1,13 @@
+/** What a review shows: a session of the server, a saved game, or a file loaded in the browser. */
+export type ReviewKind = 'session' | 'saved' | 'file';
+
+const REVIEW_KINDS: readonly string[] = ['session', 'saved', 'file'];
+
 /** Where the app is, read from the URL hash. */
 export type Route =
   | { page: 'home' }
   | { page: 'history' }
+  | { page: 'review'; kind: ReviewKind; id: string }
   | { page: 'game'; gameId: string; sessionId: string | null };
 
 /**
@@ -17,6 +23,12 @@ export function parseRoute(hash: string): Route {
   const [first, gameId, sessionId] = segments;
   if (first === 'history' && segments.length === 1) {
     return { page: 'history' };
+  }
+  if (first === 'review' && segments.length === 3 && gameId && sessionId) {
+    // The second segment is the kind and the third the id.
+    return REVIEW_KINDS.includes(gameId)
+      ? { page: 'review', kind: gameId as ReviewKind, id: sessionId }
+      : { page: 'home' };
   }
   if (first === 'game' && gameId && segments.length <= 3) {
     return { page: 'game', gameId, sessionId: sessionId ?? null };
@@ -39,6 +51,8 @@ export function routeHash(route: Route): string {
       return '#/';
     case 'history':
       return '#/history';
+    case 'review':
+      return `#/review/${route.kind}/${encodeURIComponent(route.id)}`;
     case 'game': {
       const game = `#/game/${encodeURIComponent(route.gameId)}`;
       return route.sessionId ? `${game}/${encodeURIComponent(route.sessionId)}` : game;

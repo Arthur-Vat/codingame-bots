@@ -438,6 +438,63 @@
   justify-content: center;
 }
 
+.playback button {
+  background: var(--panel);
+  border: 0;
+  border-radius: 4px;
+  padding: 8px 12px;
+  color: var(--fg);
+  min-width: 40px;
+}
+
+.playback button:hover:not(:disabled) {
+  background: var(--panel-2);
+  color: var(--fg-strong);
+}
+
+.playback button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.playback .play {
+  background: var(--accent);
+  color: #fff;
+  min-width: 56px;
+}
+
+.playback .play:hover:not(:disabled) {
+  background: #2b7fcf;
+  color: #fff;
+}
+
+.speed {
+  display: flex;
+  gap: 2px;
+  margin-left: 8px;
+  background: var(--panel);
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.playback .speed button {
+  padding: 6px 9px;
+  min-width: 0;
+  font-size: 12px;
+  font-family: var(--mono);
+  background: transparent;
+}
+
+.playback .speed button[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--fg-strong);
+}
+
+/* Room kept under the move list for the analysis panel. */
+.analysis-slot {
+  min-height: 0;
+}
+
 /* Right panel */
 .table {
   display: flex;
@@ -956,8 +1013,13 @@
   overflow-wrap: anywhere;
 }
 
+.after .wide {
+  flex: 1 1 100%;
+}
+
 .after {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 8px;
   border-top: 1px solid var(--line);

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { GamePage } from './GamePage';
 import { HistoryPage } from './HistoryPage';
 import { HomePage } from './HomePage';
+import { ReviewPage } from './ReviewPage';
 import { TopBar } from './TopBar';
 import { useGames, useRoute } from './hooks';
 import type { ClockSettings } from './setup';
@@ -22,6 +23,9 @@ export default function App() {
       <TopBar route={route} games={gamesState.games} />
       {route.page === 'home' && <HomePage state={gamesState} />}
       {route.page === 'history' && <HistoryPage />}
+      {route.page === 'review' && (
+        <ReviewPage key={`${route.kind}/${route.id}`} kind={route.kind} id={route.id} />
+      )}
       {route.page === 'game' && (
         <GamePage
           key={route.gameId}

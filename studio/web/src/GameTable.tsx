@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import type { Session } from './api';
 import { clockClass, formatClock, formatSpent, type ClockState } from './clock';
 import { SeatMark } from './Marks';
@@ -63,6 +63,48 @@ export function PlayerStrip({
   );
 }
 
+/**
+ * Keeps the shown move of a move list in view; at the latest position of a finished game, shows
+ * the end block under the list.
+ */
+export function useKeepInView(
+  shownTurn: number,
+  turnCount: number,
+  over: boolean,
+  atLatest: boolean,
+): RefObject<HTMLDivElement | null> {
+  const list = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const element = list.current;
+    if (element === null) return;
+    if (over && atLatest) {
+      element.scrollTop = element.scrollHeight;
+      return;
+    }
+    const current = element.querySelector<HTMLElement>('button.cur');
+    if (current === null) return;
+    if (current.offsetTop < element.scrollTop) {
+      element.scrollTop = current.offsetTop;
+    } else if (
+      current.offsetTop + current.offsetHeight >
+      element.scrollTop + element.clientHeight
+    ) {
+      element.scrollTop = current.offsetTop + current.offsetHeight - element.clientHeight;
+    }
+  }, [shownTurn, turnCount, over, atLatest]);
+  return list;
+}
+
+/** One line of an info card: a term and its value. */
+export function Row({ term, value }: { term: string; value: string }) {
+  return (
+    <>
+      <dt>{term}</dt>
+      <dd>{value}</dd>
+    </>
+  );
+}
+
 interface MoveListProps {
   session: Session | null;
   problem: string | null;
@@ -85,29 +127,9 @@ export function MoveList({
   detail,
   onPick,
 }: MoveListProps) {
-  const list = useRef<HTMLDivElement>(null);
   const turnCount = session?.turns.length ?? 0;
   const over = session?.result != null;
-
-  // Keep the shown move in view; at the latest position of a finished game, show the end block.
-  useEffect(() => {
-    const element = list.current;
-    if (element === null) return;
-    if (over && atLatest) {
-      element.scrollTop = element.scrollHeight;
-      return;
-    }
-    const current = element.querySelector<HTMLElement>('button.cur');
-    if (current === null) return;
-    if (current.offsetTop < element.scrollTop) {
-      element.scrollTop = current.offsetTop;
-    } else if (
-      current.offsetTop + current.offsetHeight >
-      element.scrollTop + element.clientHeight
-    ) {
-      element.scrollTop = current.offsetTop + current.offsetHeight - element.clientHeight;
-    }
-  }, [shownTurn, turnCount, over, atLatest]);
+  const list = useKeepInView(shownTurn, turnCount, over, atLatest);
 
   if (problem !== null && session === null) {
     return (
@@ -229,10 +251,12 @@ export function Controls({
 export function EndBlock({
   onRematch,
   onNewGame,
+  onReview,
   disabled,
 }: {
   onRematch: () => void;
   onNewGame: () => void;
+  onReview: () => void;
   disabled: boolean;
 }) {
   return (
@@ -242,6 +266,9 @@ export function EndBlock({
       </button>
       <button className="btn" type="button" disabled={disabled} onClick={onNewGame}>
         New game
+      </button>
+      <button className="btn primary wide" type="button" onClick={onReview}>
+        Review
       </button>
     </div>
   );

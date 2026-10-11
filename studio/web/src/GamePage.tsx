@@ -12,10 +12,11 @@ import {
   type SessionRequest,
 } from './api';
 import { BoardOverlay } from './BoardOverlay';
+import { download, errorMessage, typesText } from './browser';
 import { BoardSlot } from './BoardSlot';
 import { clockSeed } from './setup';
 import { renderers, resultDetails } from './games/registry';
-import { Controls, EndBlock, MoveList, PlayerStrip } from './GameTable';
+import { Controls, EndBlock, MoveList, PlayerStrip, Row } from './GameTable';
 import type { GamesState } from './hooks';
 import { ServerNotice } from './HomePage';
 import {
@@ -25,7 +26,6 @@ import {
   exportFileName,
   findMoveIndex,
   frameAfterTurn,
-  isTextEntry,
   rematchRequest,
   runningSeat,
   timeoutDue,
@@ -115,46 +115,8 @@ function InfoCard({
   );
 }
 
-function Row({ term, value }: { term: string; value: string }) {
-  return (
-    <>
-      <dt>{term}</dt>
-      <dd>{value}</dd>
-    </>
-  );
-}
-
-/** Whether a key press belongs to a field that takes text or a choice, not to the board. */
-function typesText(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLElement &&
-    isTextEntry({
-      tagName: target.tagName,
-      type: target instanceof HTMLInputElement ? target.type : undefined,
-      isContentEditable: target.isContentEditable,
-    })
-  );
-}
-
 /** How long to wait before reporting a timeout again after a failure. */
 const TIMEOUT_RETRY_MS = 1000;
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-/** Downloads `data` as a JSON file. */
-function download(name: string, data: unknown): void {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = name;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Props) {
   const { session, error, apply } = useSession(sessionId);
@@ -327,6 +289,24 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
   const mode = session === null ? null : sessionMode(session);
   const over = session?.status === 'over';
 
+  const openReview = useCallback(() => {
+    if (sessionId !== null) {
+      window.location.hash = routeHash({ page: 'review', kind: 'session', id: sessionId });
+    }
+  }, [sessionId]);
+  // A game between two bots opens its review when it ends, if it was seen going on.
+  const seenGoing = useRef<string | null>(null);
+  const status = session?.status;
+  useEffect(() => {
+    if (sessionId === null || status === undefined) return;
+    if (status !== 'over') {
+      seenGoing.current = sessionId;
+    } else if (seenGoing.current === sessionId && mode === 'bots') {
+      seenGoing.current = null;
+      openReview();
+    }
+  }, [sessionId, status, mode, openReview]);
+
   return (
     <>
       {gamesState.error?.unreachable && (
@@ -426,6 +406,7 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
                 disabled={pending || starting}
                 onRematch={() => void rematch()}
                 onNewGame={() => setDialogMode(mode)}
+                onReview={openReview}
               />
             )}
             <PlayerStrip session={session} seat={bottom} clocks={clocks} running={running} />
