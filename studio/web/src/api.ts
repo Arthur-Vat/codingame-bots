@@ -1,4 +1,7 @@
-/** A typed client of the studio server (`studio/server`), see studio/README.md. */
+/** A typed client of the studio API, see studio/README.md: the local server (`studio/server`) or
+    the browser engine (`src/engine/`), which answer the same routes. */
+
+import { engineKind } from './engine/detect';
 
 export interface GameSummary {
   id: string;
@@ -91,31 +94,64 @@ export class ApiError extends Error {
   }
 }
 
-async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+/** What a route answered: the status and the body as text. */
+interface Reply {
+  status: number;
+  text: string;
+}
+
+/**
+ * Sends a request to the engine in use: the local server's API over `fetch`, or the browser engine
+ * (`src/engine/`), which answers the same routes with the same JSON.
+ */
+async function transport(
+  method: string,
+  path: string,
+  bodyText: string | undefined,
+): Promise<Reply> {
+  if (engineKind() === 'browser') {
+    const { browserEngine } = await import('./engine/browser');
+    const reply = await browserEngine.handle(method, path, bodyText);
+    return { status: reply.status, text: reply.bodyText };
+  }
   let response: Response;
   try {
     response = await fetch(path, {
       method,
-      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: bodyText === undefined ? undefined : { 'Content-Type': 'application/json' },
+      body: bodyText,
     });
   } catch {
     throw new ApiError('The server cannot be reached.', true);
   }
   if (response.status === 204) {
+    return { status: 204, text: '' };
+  }
+  try {
+    return { status: response.status, text: await response.text() };
+  } catch {
+    throw new ApiError('The server cannot be reached.', true);
+  }
+}
+
+async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const answer = await transport(
+    method,
+    path,
+    body === undefined ? undefined : JSON.stringify(body),
+  );
+  if (answer.status === 204) {
     return undefined as T;
   }
   let json: unknown;
   try {
-    json = await response.json();
+    json = JSON.parse(answer.text);
   } catch {
-    throw new ApiError(
-      `The server sent something that is not JSON (HTTP ${response.status}).`,
-      true,
-    );
+    const who = engineKind() === 'browser' ? 'The browser engine' : 'The server';
+    throw new ApiError(`${who} sent something that is not JSON (HTTP ${answer.status}).`, true);
   }
-  if (!response.ok) {
-    throw new ApiError(errorText(json) ?? `HTTP ${response.status}`, false);
+  if (answer.status < 200 || answer.status >= 300) {
+    throw new ApiError(errorText(json) ?? `HTTP ${answer.status}`, false);
   }
   return json as T;
 }

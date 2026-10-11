@@ -74,6 +74,14 @@
   font-size: 13px;
 }
 
+/* Which engine answers, when it is not the local server's. */
+.engine {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  opacity: 0.8;
+}
+
 .wrap {
   padding-inline: 16px;
   padding-block: 24px;
