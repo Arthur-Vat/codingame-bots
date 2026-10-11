@@ -77,9 +77,24 @@ run run Demo bash -c 'exit 4'
 same "no output: status" 4 "$status"
 same "no output: annotation" '::error title=Demo::no output%0Aexit status 4' "$output"
 
-# stderr is merged with stdout, in order.
-run run Demo bash -c 'echo out; echo err >&2; exit 1'
-same "merged: output" $'out\nerr\n::error title=Demo::out%0Aerr%0Aexit status 1' "$output"
+# The streams stay apart: stdout holds the command's stdout and the annotation,
+# stderr the command's stderr; the excerpt holds both, in order of arrival.
+"$script" run Demo bash -c 'echo out; sleep 0.3; echo progress >&2; sleep 0.3; echo out2; exit 1' \
+  >"$tmp_dir/stdout" 2>"$tmp_dir/stderr" || true
+same "apart: stdout" $'out\nout2\n::error title=Demo::out%0Aprogress%0Aout2%0Aexit status 1' "$(cat "$tmp_dir/stdout")"
+same "apart: stderr" "progress" "$(cat "$tmp_dir/stderr")"
+
+# Output without a final newline: the annotation starts a line.
+"$script" run Demo bash -c 'printf partial; exit 1' >"$tmp_dir/stdout" 2>"$tmp_dir/stderr" || true
+same "unterminated: stdout" $'partial\n::error title=Demo::partial%0Aexit status 1' "$(cat "$tmp_dir/stdout")"
+
+# The last lines of stderr are in the excerpt, every time (the copy of stderr
+# is complete before the excerpt is read).
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+  "$script" run Demo bash -c 'for i in $(seq 200); do echo "noise $i" >&2; done; echo "last words" >&2; exit 1' \
+    >"$tmp_dir/stdout" 2>/dev/null || true
+  same "stderr tail $attempt" 1 "$(grep -c 'last words%0Aexit status 1$' "$tmp_dir/stdout" || true)"
+done
 
 # A command that cannot be found: status 127 and an annotation.
 run run Demo no-such-command-here

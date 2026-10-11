@@ -7,10 +7,10 @@
 #   scripts/annotate.sh run TITLE COMMAND [ARGS...]
 #   scripts/annotate.sh file TITLE PATH
 #
-# run: runs the command with stdout and stderr merged, prints its output as it
-# comes, and exits with its status. When the status is not 0, a last line
+# run: runs the command, passes its stdout to stdout and its stderr to stderr
+# as they come, and exits with its status. When the status is not 0, a last line
 # `::error title=TITLE::MESSAGE` follows the output. The message is an excerpt
-# of the output and the line `exit status N`.
+# of both streams, in the order they arrived, and the line `exit status N`.
 # file: prints the annotation for the content of the file, always, and exits
 # with 0; the message is `no output` for a missing or empty file.
 #
@@ -105,14 +105,22 @@ shift 2
 case "$mode" in
 run)
   tmp="$(mktemp)"
-  trap 'rm -f "$tmp"' EXIT
+  out_tmp="$(mktemp)"
+  trap 'rm -f "$tmp" "$out_tmp"' EXIT
+  # stderr goes to a tee of its own, so that it stays on stderr while both
+  # streams are recorded in $tmp; $out_tmp holds stdout only.
+  exec {err_fd}> >(tee -a "$tmp" >&2)
+  err_pid=$!
   set +e
-  "$@" 2>&1 | tee "$tmp"
+  "$@" 2>&"$err_fd" | tee -a "$tmp" "$out_tmp"
   status=${PIPESTATUS[0]}
   set -e
+  # The copy of stderr must be complete before the excerpt is read.
+  exec {err_fd}>&-
+  wait "$err_pid" || true
   if ((status != 0)); then
     # A workflow command must start a line.
-    if [[ -s $tmp && -n $(tail -c 1 "$tmp") ]]; then echo; fi
+    if [[ -s $out_tmp && -n $(tail -c 1 "$out_tmp") ]]; then echo; fi
     annotation "$title" "$tmp" "exit status $status"
   fi
   exit "$status"
