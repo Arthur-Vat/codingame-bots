@@ -69,7 +69,7 @@ On one core, a game at 10,000 iterations per move takes about a quarter of a sec
 
 ## Engine speed
 
-`cargo run --release -p uttt-engine --example speed` runs random playouts from the start position for a few seconds, then decisive playouts (a move that wins the game when there is one, as the search plays them), then 100 ms MCTS searches from there. Moves per playout are averaged over 10,000 games played one move at a time. CI runs it on every pull request and push to `main` and shows the table in the job summary of the "CodinGame compatibility" job.
+`cargo run --release -p uttt-engine --example speed` runs random playouts from the start position for a few seconds, then decisive playouts (a move that wins the game when there is one, as the search plays them), then 100 ms MCTS searches from there. Moves per playout are averaged over 10,000 games played one move at a time. CI runs it on every pull request and push to `main` and shows the table in the job summary of the "uttt: bots" job (from `ci.sh`); it is a report, not a check.
 
 Baseline, measured on 2026-10-08 on one thread of an Intel Xeon at 2.8 GHz (this shared machine varies by about 10% between runs), after E006 sped up selection and playouts:
 
@@ -116,5 +116,5 @@ The parity tests prove the engine and the referee agree with each other, not tha
 
 Each release has a GitHub release with its paste-ready file attached; the same file is in `releases/`. For any other bot:
 
-1. Bundle it into one file: `scripts/bundle-bots.sh` writes `target/cg/uttt-<bot>.rs` for every bot. CI also publishes these files as the `paste-ready-bots` artifact of each run.
+1. Bundle it into one file: `scripts/bundle-bots.sh` writes `target/cg/uttt-<bot>.rs` for every bot. CI also publishes these files as the `paste-ready-bots-uttt` artifact of each run. The steps of CI that only this game needs (the arena games, the evaluation controls, the engine speed) are in [`ci.sh`](ci.sh) ([ADR 0029](../../docs/adr/0029-ci-scoped-by-area-and-game.md)).
 2. In the CodinGame IDE for this game, select **Rust**, replace the editor content with the file, then click **Play my code** or **Submit**.

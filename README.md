@@ -18,10 +18,10 @@ Every bot change is judged by CI: unit tests, a check that the bot compiles on C
 - [`games/<game>/`](games/): everything for one game. Its rules (`RULES.md`), a readable referee, a fast engine, an arena binary, a trainer, the bots, the frozen releases, the journal of experiments, the reports of training runs, and the settings of its evaluations.
 - [`studio/`](studio/): the studio, a local app to play and review games in the browser (phase 6). So far only its front end in TypeScript, React and Vite, in `studio/web/`.
 - [`docs/`](docs/): architecture, roadmap, workflow, CodinGame facts, and the decision records in `docs/adr/`.
-- [`scripts/`](scripts/): bundling and checking bots, making and checking releases, the SPRT, the league, pruning finished branches, checking the docs, reporting CI failures as annotations, labelling pull requests, and the hooks of Claude's sessions (which agents may start, the tools a cloud session installs).
+- [`scripts/`](scripts/): bundling and checking bots, making and checking releases, the SPRT, the league, pruning finished branches, checking the docs, reporting CI failures as annotations, labelling pull requests, deciding which CI checks run, and the hooks of Claude's sessions (which agents may start, the tools a cloud session installs).
 - [`.claude/`](.claude/): Claude's project agents (implementer, reviewers) and skills (the procedures that repeat).
 - [`.github/workflows/`](.github/workflows/):
-  - `ci.yml`: format, lint, tests, CodinGame compatibility, dependency licenses, docs and scripts, the studio's front end.
+  - `ci.yml`: format, lint, tests, bot checks, dependency licenses, docs and scripts, the studio; each runs only for the areas and games a pull request changes ([ADR 0029](docs/adr/0029-ci-scoped-by-area-and-game.md)).
   - `sprt.yml`: smoke test and SPRT of each new release.
   - `league.yml`: ratings of all releases.
   - `release.yml`: a GitHub release for each new release file.

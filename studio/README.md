@@ -19,7 +19,7 @@ npm run build           # type check, then the production build in dist/
 npm run preview         # serve the production build
 ```
 
-The checks, all run by the `Studio front end` job of CI:
+The checks, all run by the `Studio: front end` job of CI:
 
 ```sh
 npm run licenses        # every package of the lockfile has an allowed license (licenses.json)
@@ -123,7 +123,7 @@ The SPRT and league workflows keep a sample of the games they play (about 10 per
 
 ## Running the studio on Windows
 
-The studio is meant for a Windows computer ([ADR 0025](../docs/adr/0025-studio.md)); the `Studio on Windows` job of CI builds it, tests it and plays a game through the server there. The commands are for PowerShell.
+The studio is meant for a Windows computer ([ADR 0025](../docs/adr/0025-studio.md)); the `Studio: Windows` job of CI builds it, tests it and plays a game through the server there. The commands are for PowerShell.
 
 1. Install Rust with rustup from <https://rustup.rs>, accepting the default (MSVC) toolchain. It needs Microsoft's C++ build tools: accept its offer to install Visual Studio, or install the Visual Studio Build Tools with the workload "Desktop development with C++". Then open a new terminal.
 2. Install Node 22 LTS from <https://nodejs.org>: the front page may offer a newer line, so pick version 22 on the downloads page.

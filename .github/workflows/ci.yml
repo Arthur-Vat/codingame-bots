@@ -26,8 +26,60 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  check:
-    name: Format, lint, test
+  # Which areas the pull request changes (ADR 0029). Every job below that
+  # depends on an area reads this job's outputs, and `ci-passed` gathers them.
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    outputs:
+      rust: ${{ steps.scopes.outputs.rust }}
+      framework: ${{ steps.scopes.outputs.framework }}
+      games: ${{ steps.scopes.outputs.games }}
+      studio: ${{ steps.scopes.outputs.studio }}
+      web: ${{ steps.scopes.outputs.web }}
+      licenses: ${{ steps.scopes.outputs.licenses }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The parent commit, to see which files a pull request changes.
+          fetch-depth: 2
+      - name: Decide which checks run
+        id: scopes
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            # In a pull request, HEAD is the merge commit and HEAD^1 the base.
+            # NUL-separated: git quotes the odd file names otherwise. Written
+            # to a file first: a process substitution would hide a failure of
+            # git, and no files would then mean no checks.
+            if ! git diff -z --name-only --no-renames HEAD^1 HEAD >"$RUNNER_TEMP/changed-files"; then
+              echo "::error title=Changes::git diff failed; the changed files are unknown"
+              exit 1
+            fi
+            mapfile -d '' -t files <"$RUNNER_TEMP/changed-files"
+            scopes="$(scripts/ci-scopes.sh ci -- "${files[@]}")" || {
+              echo "::error title=Changes::scripts/ci-scopes.sh failed"
+              exit 1
+            }
+          else
+            # Pushes to main and runs by hand check everything.
+            scopes="$(scripts/ci-scopes.sh ci --all)" || {
+              echo "::error title=Changes::scripts/ci-scopes.sh failed"
+              exit 1
+            }
+          fi
+          echo "$scopes" | tee -a "$GITHUB_OUTPUT"
+          {
+            echo '```text'
+            echo "$scopes"
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+
+  lint:
+    name: "Workspace: format and lint"
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -42,12 +94,85 @@ jobs:
         run: scripts/annotate.sh run Format cargo fmt --all -- --check
       - name: Lint
         run: scripts/annotate.sh run Lint cargo clippy --workspace --all-targets --locked -- -D warnings
-      - name: Test
-        run: scripts/annotate.sh run Test cargo test --workspace --locked
 
-  codingame:
-    name: CodinGame compatibility
+  framework-tests:
+    name: "Framework: tests"
+    needs: changes
+    # A game's change runs them too: the bundler's tests bundle the game's
+    # bots (ADR 0029).
+    if: needs.changes.outputs.framework == 'true' || needs.changes.outputs.games != '[]'
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          # The bundler's tests bundle bots, which formats the result.
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Test the shared crates
+        run: |
+          # Every package whose manifest is under crates/.
+          mapfile -t packages < <(cargo metadata --no-deps --format-version 1 |
+            jq -r --arg root "$GITHUB_WORKSPACE/crates/" '.packages[] | select(.manifest_path | startswith($root)) | .name')
+          if [ "${#packages[@]}" -eq 0 ]; then
+            echo "::error title=Framework tests::no package under crates/"
+            exit 1
+          fi
+          args=()
+          for package in "${packages[@]}"; do
+            args+=(-p "$package")
+          done
+          scripts/annotate.sh run "Framework tests" cargo test --locked "${args[@]}"
+
+  game-tests:
+    name: "${{ matrix.game }}: tests"
+    needs: changes
+    # An empty matrix is an error: skip the job instead.
+    if: needs.changes.outputs.games != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        game: ${{ fromJSON(needs.changes.outputs.games) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          # The tests may bundle bots, which formats the result.
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.game }}
+      - name: Test the game
+        env:
+          GAME: ${{ matrix.game }}
+        run: |
+          # Every package whose manifest is under games/<game>/.
+          mapfile -t packages < <(cargo metadata --no-deps --format-version 1 |
+            jq -r --arg root "$GITHUB_WORKSPACE/games/$GAME/" '.packages[] | select(.manifest_path | startswith($root)) | .name')
+          if [ "${#packages[@]}" -eq 0 ]; then
+            echo "::error title=$GAME tests::no package under games/$GAME/"
+            exit 1
+          fi
+          args=()
+          for package in "${packages[@]}"; do
+            args+=(-p "$package")
+          done
+          scripts/annotate.sh run "$GAME tests" cargo test --locked "${args[@]}"
+
+  game-bots:
+    name: "${{ matrix.game }}: bots"
+    needs: changes
+    if: needs.changes.outputs.games != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        game: ${{ fromJSON(needs.changes.outputs.games) }}
+    env:
+      GAME: ${{ matrix.game }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -58,95 +183,67 @@ jobs:
           toolchain: ${{ env.CG_RUST }}
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.game }}
       - name: Bundle every bot into one paste-ready file
-        run: scripts/annotate.sh run "Bundle the bots" scripts/bundle-bots.sh
+        run: scripts/annotate.sh run "Bundle the bots" scripts/bundle-bots.sh "$GAME"
       - name: Size and standalone build of each paste-ready file
         env:
           CG_BIN_DIR: target/cg/bin
-        run: scripts/annotate.sh run "Size and standalone build" scripts/cg-check.sh target/cg/*.rs
+        run: |
+          # One file per bot folder: a glob on the game's name would also
+          # match a game whose id starts with it (uttt-x).
+          files=()
+          for dir in "games/$GAME"/bots/*/; do
+            files+=("target/cg/$GAME-$(basename "$dir").rs")
+          done
+          scripts/annotate.sh run "Size and standalone build" scripts/cg-check.sh "${files[@]}"
       - name: New releases match their sources; released files are frozen
         if: github.event_name == 'pull_request'
         # In a pull request, HEAD is the merge commit and HEAD^1 the base.
-        run: scripts/annotate.sh run "Release check" scripts/check-releases.sh HEAD^1
-      - name: Play 1,000 games between the bundled random bots
+        run: scripts/annotate.sh run "Release check" scripts/check-releases.sh HEAD^1 "$GAME"
+      - name: The game's own checks
         run: |
-          scripts/annotate.sh run "Build the arena" cargo build --release --locked -p uttt-arena
-          scripts/annotate.sh run "1,000 random games" target/release/uttt-arena match \
-            --bot random=target/cg/bin/uttt-random \
-            --bot random-again=target/cg/bin/uttt-random \
-            --pairs 500 --expect-no-faults --out target/cg/uttt-smoke.jsonl
-      - name: Play every other bundled bot against random
-        env:
-          # The rules-check bot exits on any disagreement with the referee.
-          CG_RULES_CHECK_STRICT: "1"
+          # Each game provides games/<game>/ci.sh (ADR 0029).
+          if [ ! -x "games/$GAME/ci.sh" ]; then
+            echo "::error title=$GAME checks::games/$GAME/ci.sh is missing or not executable"
+            exit 1
+          fi
+          "games/$GAME/ci.sh"
+      - name: Collect the paste-ready files of the game
         run: |
-          # Bots that search may lose a few games on time (ADR 0015).
-          rate="$(sed -n 's/^MAX_TIMEOUT_RATE=//p' games/uttt/evaluation.env)"
-          for bot in target/cg/bin/uttt-*; do
-            name="$(basename "$bot")"
-            [ "$name" = uttt-random ] && continue
-            if ! out="$(target/release/uttt-arena match \
-              --bot "$name=$bot" --bot random=target/cg/bin/uttt-random \
-              --pairs 100 --expect-no-faults --max-timeout-rate "$rate" 2>&1)"; then
-              echo "$out"
-              # Job logs are hard to read from outside GitHub; an annotation
-              # carries the summary to the check run.
-              echo "::error title=$name against random::$(grep -E 'score|faults|slowest|error' <<<"$out" | tr '\n' ' ')"
-              exit 1
-            fi
-            echo "$out"
+          mkdir -p target/cg/paste-ready
+          for dir in "games/$GAME"/bots/*/; do
+            cp "target/cg/$GAME-$(basename "$dir").rs" target/cg/paste-ready/
           done
-      - name: The evaluation tells bots apart (controls and A/A test)
-        run: |
-          bin=target/cg/bin
-          # Runs an SPRT with fixed seeds and checks its verdict and faults.
-          # The bots never look at the clock, so the outcome is reproducible.
-          expect() {
-            local verdict="$1" out
-            shift
-            out="$(target/release/uttt-arena sprt "$@" --opening-plies 4 --seed 1)" || true
-            echo "$out"
-            if ! grep -q "^Verdict: $verdict" <<<"$out" ||
-              [ "$(grep -c '0 timeouts, 0 crashes, 0 invalid answers' <<<"$out")" != 2 ]; then
-              echo "::error title=Evaluation control::expected $verdict; got $(grep -E '^Verdict|faults' <<<"$out" | tr '\n' ' ')"
-              return 1
-            fi
-          }
-          expect ACCEPTED --candidate greedy=$bin/uttt-greedy --baseline random=$bin/uttt-random
-          expect REJECTED --candidate random=$bin/uttt-random --baseline greedy=$bin/uttt-greedy
-          expect REJECTED --candidate greedy=$bin/uttt-greedy --baseline greedy-again=$bin/uttt-greedy
-          target/release/uttt-arena league --pairs 50 --opening-plies 4 --expect-no-faults \
-            --bot first-valid=$bin/uttt-first-valid --bot random=$bin/uttt-random \
-            --bot greedy=$bin/uttt-greedy --anchor random | tee target/cg/league.txt
-          grep -q '^  1\. greedy ' target/cg/league.txt
-      - name: Engine speed
-        run: |
-          # The annotation of a failure stays out of the step summary.
-          scripts/annotate.sh run "Engine speed" \
-            cargo run --release --locked -p uttt-engine --example speed -- 3 \
-            | tee target/speed.txt
-          grep -v '^::error title=' target/speed.txt >>"$GITHUB_STEP_SUMMARY"
       - name: Publish the paste-ready files
         uses: actions/upload-artifact@v7
         with:
-          name: paste-ready-bots
-          path: target/cg/*.rs
+          name: paste-ready-bots-${{ matrix.game }}
+          path: target/cg/paste-ready/
           if-no-files-found: error
       - name: New releases replay identically with a fixed seed and iterations
         if: github.event_name == 'pull_request'
         run: |
-          mapfile -t added < <(git diff --name-only --diff-filter=A --no-renames HEAD^1 HEAD -- 'games/*/releases/*.rs')
+          # Written to a file first: a process substitution would hide a
+          # failure of git, and no files would then mean no check.
+          if ! git diff --name-only --diff-filter=A --no-renames HEAD^1 HEAD -- "games/$GAME/releases/*.rs" >"$RUNNER_TEMP/added-releases"; then
+            echo "::error title=Determinism::git diff failed; the added releases are unknown"
+            exit 1
+          fi
+          mapfile -t added <"$RUNNER_TEMP/added-releases"
           if [ "${#added[@]}" -eq 0 ]; then
             echo "no new release"
             exit 0
           fi
           for file in "${added[@]}"; do
-            game="$(cut -d/ -f2 <<<"$file")"
-            scripts/annotate.sh run "Determinism of $file" scripts/check-determinism.sh "$game" 500 "$file"
+            scripts/annotate.sh run "Determinism of $file" scripts/check-determinism.sh "$GAME" 500 "$file"
           done
 
   licenses:
     name: Dependency licenses and sources
+    needs: changes
+    if: needs.changes.outputs.licenses == 'true'
     runs-on: ubuntu-latest
     env:
       # The version EmbarkStudios/cargo-deny-action used on 2026-10-11; bump
@@ -171,8 +268,38 @@ jobs:
       - name: Licenses, bans, advisories and sources
         run: scripts/annotate.sh run "cargo deny" cargo deny --log-level warn --all-features check
 
+  studio-server:
+    name: "Studio: server"
+    needs: changes
+    if: needs.changes.outputs.studio == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          # The tests may bundle bots, which formats the result.
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Test the studio and the games' adapters
+        run: |
+          # Every package whose manifest is under studio/ or games/*/studio/.
+          mapfile -t packages < <(cargo metadata --no-deps --format-version 1 |
+            jq -r --arg root "$GITHUB_WORKSPACE/" '.packages[] | select(.manifest_path | ltrimstr($root) | test("^(studio/|games/[^/]+/studio/)")) | .name')
+          if [ "${#packages[@]}" -eq 0 ]; then
+            echo "::error title=Studio tests::no package under studio/"
+            exit 1
+          fi
+          args=()
+          for package in "${packages[@]}"; do
+            args+=(-p "$package")
+          done
+          scripts/annotate.sh run "Studio tests" cargo test --locked "${args[@]}"
+
   studio-web:
-    name: Studio front end
+    name: "Studio: front end"
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -226,7 +353,9 @@ jobs:
         run: npm run e2e
 
   studio-windows:
-    name: Studio on Windows
+    name: "Studio: Windows"
+    needs: changes
+    if: needs.changes.outputs.studio == 'true'
     # The owner runs the studio on Windows (ADR 0025). Git Bash, curl and jq
     # are preinstalled on the runner.
     runs-on: windows-latest
@@ -316,15 +445,70 @@ jobs:
       - name: Lint the shell scripts
         if: ${{ !cancelled() }}
         # Preinstalled on ubuntu-latest.
-        run: scripts/annotate.sh run Shellcheck shellcheck scripts/*.sh scripts/lib/*.sh scripts/tests/*.sh
+        run: scripts/annotate.sh run Shellcheck shellcheck scripts/*.sh scripts/lib/*.sh scripts/tests/*.sh games/*/ci.sh
       - name: Test the agent guard
         if: ${{ !cancelled() }}
         run: scripts/annotate.sh run "Agent guard test" scripts/tests/agent-guard-test.sh
       - name: Test the annotation wrapper
         if: ${{ !cancelled() }}
         run: scripts/annotate.sh run "Annotation wrapper test" scripts/tests/annotate-test.sh
+      - name: Test the CI scopes
+        if: ${{ !cancelled() }}
+        run: scripts/annotate.sh run "CI scopes test" scripts/tests/ci-scopes-test.sh
       - name: Lint the workflows
         if: ${{ !cancelled() }}
         # The image is pinned; it includes shellcheck, which also lints the
         # `run` steps.
         run: scripts/annotate.sh run Actionlint docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+
+  # The one check branch protection requires for this workflow (ADR 0029):
+  # the jobs above come and go with the areas a pull request changes, this one
+  # always runs and says whether every job that had to run succeeded.
+  ci-passed:
+    name: CI passed
+    needs:
+      - changes
+      - lint
+      - framework-tests
+      - game-tests
+      - game-bots
+      - licenses
+      - studio-server
+      - studio-windows
+      - studio-web
+      - docs
+    # Never `!cancelled()`: GitHub counts a skipped required check as passed,
+    # so this job must run when the run is cancelled too, and then fail.
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+      - name: Every job that had to run succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          RUST: ${{ needs.changes.outputs.rust }}
+          FRAMEWORK: ${{ needs.changes.outputs.framework }}
+          GAMES: ${{ needs.changes.outputs.games }}
+          STUDIO: ${{ needs.changes.outputs.studio }}
+          WEB: ${{ needs.changes.outputs.web }}
+          LICENSES: ${{ needs.changes.outputs.licenses }}
+        run: |
+          # Empty when the changes job failed: the verdict then fails.
+          case "$GAMES" in
+            '') HAS_GAMES='' ;;
+            '[]') HAS_GAMES=false ;;
+            *) HAS_GAMES=true ;;
+          esac
+          # The framework's tests run for a framework change and for a game's.
+          if [ -z "$FRAMEWORK" ] || [ -z "$HAS_GAMES" ]; then
+            FRAMEWORK_TESTS=''
+          elif [ "$FRAMEWORK" = true ] || [ "$HAS_GAMES" = true ]; then
+            FRAMEWORK_TESTS=true
+          else
+            FRAMEWORK_TESTS=false
+          fi
+          scripts/ci-scopes.sh results changes=true lint="$RUST" framework-tests="$FRAMEWORK_TESTS" \
+            game-tests="$HAS_GAMES" game-bots="$HAS_GAMES" licenses="$LICENSES" \
+            studio-server="$STUDIO" studio-windows="$STUDIO" studio-web="$WEB" docs=true

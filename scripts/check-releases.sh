@@ -9,10 +9,18 @@
 #   and passes scripts/cg-check.sh;
 # - a journal entry of the game has the line `release: <game>-vNNN`.
 #
-# Usage: scripts/check-releases.sh [BASE]
+# With GAME, only the releases of games/GAME/releases/ are considered; without,
+# those of every game.
+#
+# Usage: scripts/check-releases.sh [BASE [GAME]]
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+game_filter="${2:-*}"
+if [[ $game_filter != '*' && ! $game_filter =~ ^[A-Za-z0-9_-]+$ ]]; then
+  echo "usage: $0 [BASE [GAME]]" >&2
+  exit 2
+fi
 base="$(git merge-base "${1:-origin/main}" HEAD)"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
@@ -36,7 +44,7 @@ while IFS=$'\t' read -r change file; do
     continue
   fi
   added[$game]="$file"
-done < <(git diff --name-status --no-renames "$base" HEAD -- 'games/*/releases/*')
+done < <(git diff --name-status --no-renames "$base" HEAD -- "games/$game_filter/releases/*")
 
 if ((${#added[@]} > 0)); then
   cargo build --quiet --release --locked -p cg-bundler
