@@ -6,7 +6,7 @@
 
 ## Context
 
-Claude works in cloud sessions whose outbound network is set by the owner in the session's environment. Until 2026-10-11 that setting let a session reach GitHub's API but not the hosts GitHub sends a job's log from: the API answers a log request with a redirect to Azure Blob Storage (`productionresultssa7.blob.core.windows.net` on 2026-10-11). Workflows were therefore designed for what a session could read: annotations, pull request comments and commits ([ADR 0016](0016-self-play-training.md), Context). A failure that a workflow did not put in an annotation could only be read by the owner; the cause of three CI failures of 2026-10-10 was confirmed only once logs became readable.
+Claude works in cloud sessions whose outbound network is set by the owner in the session's environment. Until 2026-10-11 that setting let a session reach GitHub's API but not the hosts GitHub sends a job's log from: the API answers a log request with a redirect to Azure Blob Storage (`productionresultssa7.blob.core.windows.net` on 2026-10-11). Workflows were therefore designed for what a session could read: annotations, pull request comments and commits ([ADR 0016](0016-self-play-training.md), Context). A failure that a workflow did not put in an annotation could only be read by the owner; the causes of the CI failures of 2026-10-10 were confirmed only once logs became readable.
 
 On 2026-10-11 the owner set the environment's network access to a custom list: the default list of package registries, plus the hosts GitHub serves job logs from. The owner weighed the risk first. A session runs code from the repository and reads text from outside, such as pull request comments and logs, and every host it can reach is a host it could send data to. Cloud storage hosts are shared by many owners. The owner judged the risk acceptable because the repository is public and the environment holds no secrets.
 
@@ -19,6 +19,5 @@ On 2026-10-11 the owner set the environment's network access to a custom list: t
 ## Consequences
 
 - Claude can find the cause of a failure without asking the owner for the log, including failures in steps that annotate nothing.
-- Each host added to the network list is another place data could go. That is accepted only while the repository is public and the environment has no secrets.
-- Before adding a secret to the environment, or making the repository private, the network list is reviewed first.
+- Each host added to the network list is another place data could go. That is accepted only while the repository is public and the environment has no secrets, so the list is reviewed before either changes.
 - Artifacts are not covered by this decision.
