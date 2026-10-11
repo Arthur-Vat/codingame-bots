@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Reads and updates HANDOFF.md on the standing branch claude/handoff - what waits for the owner, open questions, follow-ups, notes of the phase in progress and each piece of work's usage line. Use at the start of every session, whenever one of those changes, and at the end of each piece of work.
+description: Reads and updates HANDOFF.md on the standing branch claude/handoff - what waits for the owner, open questions, follow-ups, notes of the phase in progress and each piece of work's usage line. Use at the start of every session, whenever one of those changes, at the end of each piece of work, and between the steps or batches of a longer plan.
 ---
 
 # Hand work over between sessions
@@ -52,7 +52,7 @@ At the end of each piece of work, and between the steps or batches of a longer p
 
 Finishing a pull request is not a reason by itself. The file carries the state over.
 
-When the first one holds, it is a stopping point, not a remark: recommend the new session and do not start the next step in this one unless the owner says to (the 2026-10-11 retrospective: sessions went on to 588k and 689k).
+When the first one holds, the line is also a stopping point: recommend the new session and do not start the next step in this one unless the owner says to (the 2026-10-11 retrospective: sessions went on to 588k and 689k).
 
 ## The file
 

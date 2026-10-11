@@ -16,8 +16,8 @@ The owner wants to be asked before any heavy implementation starts (2026-10-09):
 Before any implementer starts:
 - Write the decision record (skill `write-adr`) and any naming or convention the work depends on.
 - Decide each pull request's title (ADR 0022) and branch (`claude/<topic>`).
-- Prefer independent pull requests, each starting from `main`. For several pull requests that cannot avoid touching the same lines (often `docs/ROADMAP.md` lines next to each other, the architecture's lists, `README.md`), decide the order now and stack them linearly: each branch starts from the one directly below it and its pull request's base is that branch. Never merge a sibling branch into another: after the first merges, GitHub then reports conflicts on the rest (#62 to #76). When `main` moves, merge it into each remaining branch, lowest first, and wait for green again before asking for approval. Each pull request ticks its own roadmap line and updates the docs for its own change.
-- Before parallel implementers start, write down every interface, format or layout that more than one of them uses (JSON shapes, routes, type and function names, command-line flags, file layouts). Each spec quotes it word for word; an implementer that finds it must change stops and reports instead of adapting it. Bookkeeping that is not part of a change (a decision's date, a setting the owner made) rides with the next substantive pull request (skill `review-pr`, "Small bookkeeping").
+- Prefer independent pull requests, each starting from `main`. For several pull requests that cannot avoid touching the same lines (often `docs/ROADMAP.md` lines next to each other, the architecture's lists, `README.md`), decide the order now and stack them linearly: each branch starts from the one directly below it and its pull request's base is that branch. Never merge a sibling branch into another: after the first merges, GitHub then reports conflicts on the rest (#62 to #76). When `main` moves before a batch is approved, merge it into each of the batch's branches, lowest first, and wait for green again before asking for approval; within an approved batch, leave the branches alone (a new head needs a new approval, ADR 0023). Each pull request ticks its own roadmap line and updates the docs for its own change. Bookkeeping that is not part of a change (a decision's date, a setting the owner made) rides with the next substantive pull request (skill `review-pr`, "Small bookkeeping").
+- Before parallel implementers start, write down every interface, format or layout that more than one of them uses (JSON shapes, routes, type and function names, command-line flags, file layouts). Each spec quotes it word for word; an implementer that finds it must change stops and reports instead of adapting it.
 
 ## 2. Write each spec
 
@@ -28,7 +28,7 @@ An implementer gets, in its prompt:
 - the files to change and the docs to update;
 - the known risks, each handled or marked as not applying, with why:
   - input validation, including imported or user-supplied files;
-  - edge cases: empty, largest, malformed;
+  - edge cases beyond the examples: empty, largest, malformed;
   - timing races: asynchronous interfaces, servers, tests that wait;
   - Windows: paths, line endings, starting processes, shell scripts;
   - writes to GitHub (comments, labels, branch deletions, workflow dispatches): a dry-run mode, on by default, whose output is checked once before the first real run;
@@ -44,7 +44,7 @@ Skill `review-pr`. One light review can cover a batch of documentation-only bran
 
 Skill `github-api`. The body says what and why (linking the roadmap item or decision record), what the review found and what changed, the check summary lines (`CLAUDE.md`'s commands), and for a stack: the order, "Create a merge commit, not squash", and that GitHub retargets each one when the one below merges. End with the attribution lines.
 
-Then ask the owner for approval in the conversation, in two turns (owner, 2026-10-09), in small batches of one to three pull requests (owner, 2026-10-11): ask as soon as a batch is written (opened, its required checks green and its review handled, skill `review-pr`), and merge it before opening or stacking more on top. Never ask about a pull request still being written.
+Then ask the owner for approval in the conversation, in two turns (owner, 2026-10-09), in small batches of one to three pull requests (owner, 2026-10-11): ask as soon as a batch is written (opened, its required checks green and its review handled, skill `review-pr`), and merge it before stacking more on top of it. Never ask about a pull request still being written.
 
 1. The full brief, for each pull request: what it changes, its checks, its review and what was fixed, its risks and the head it would merge at. End the message by asking, in plain text, whether he wants to consider merging. No form in this turn: a form opens before the message can be read. His yes is not an approval: it names no pull request.
 2. Once he says yes, a form (the question tool) whose options name the pull requests (ADR 0023): merge them as they are, such as `Merge #50, #51`, and, only when the order matters (a stack, shared lines, one building on another), merge them in order, such as `Merge #50, then #51`, with the reason in the option's description. Recommend one option. Add an option to hold. A choice in the form is an answer in the conversation.

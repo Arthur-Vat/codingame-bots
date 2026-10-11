@@ -29,7 +29,7 @@ The session reaches GitHub through a proxy. GitHub's GraphQL API is refused, so 
 
 ## Scripts that write to GitHub
 
-A new or changed script that writes to GitHub (comments, labels, branch deletions, workflow dispatches) has a dry-run mode, on by default, like `scripts/prune-branches.sh`; check its dry-run output once before the first real run.
+A new or changed script that writes to GitHub (comments, labels, branch deletions, workflow dispatches) has a dry-run mode, on by default, like `scripts/prune-branches.sh`; check its dry-run output once before the first real run. A workflow that calls such a script turns the dry run off explicitly, as `prune-branches.yml` does.
 
 ## Merging (only with the owner's approval, ADR 0023)
 
