@@ -139,7 +139,7 @@ Order: A, then B, then C and E side by side, then D.
 
 ## Phase 6: studio
 
-Planned with the owner on 2026-10-10 ([ADR 0025](adr/0025-studio.md), [ADR 0026](adr/0026-node-for-the-studio.md), [ADR 0027](adr/0027-game-records.md)). Goal: a local app in the owner's browser, in the style of Lichess, to choose a game, play it against a friend on the same screen or against any release, watch two releases play each other, and review games with a bot's evaluation and best moves. Phase 5's step D comes after this phase, as in the plan the owner approved on 2026-10-10; the owner will decide later about leagues.
+Planned with the owner on 2026-10-10 ([ADR 0025](adr/0025-studio.md), [ADR 0026](adr/0026-node-for-the-studio.md), [ADR 0027](adr/0027-game-records.md)). Goal: an app in the browser, in the style of Lichess, served locally and on GitHub Pages ([ADR 0030](adr/0030-studio-on-github-pages.md)), to choose a game, play it against a friend on the same screen or against any release, watch two releases play each other, and review games with a bot's evaluation and best moves. Phase 5's step D comes after this phase, as in the plan the owner approved on 2026-10-10; the owner will decide later about leagues.
 
 Gate: the first version (steps A to C) works on the owner's Windows computer, then every item below is done.
 
@@ -183,7 +183,7 @@ Decided with the owner on 2026-10-11 ([ADR 0030](adr/0030-studio-on-github-pages
 - [x] Feasibility test: releases, referee and adapter in WebAssembly in Chromium, identical moves to native (2026-10-11)
 - [ ] The rules as a WebAssembly program, sharing the server's Rust code, and every release built to WebAssembly
 - [ ] The browser engine: bots in Web Workers, saved games in the browser, chosen when the site is served as static files
-- [ ] Published on GitHub Pages from `main`, with the guide
+- [ ] Published on GitHub Pages from `main`, with the license notices of what it bundles and the guide
 
 Order: A, B, C, E, then F, then the interface rework (G, to be planned), then D. Later: each bot's own evaluation from future releases, more games.
 

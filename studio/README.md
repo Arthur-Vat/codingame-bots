@@ -1,6 +1,6 @@
 # studio
 
-A local app in the owner's browser, in the style of Lichess, to choose a game, play it against a friend or a release, watch two releases play each other, and review games with a bot's evaluation and best moves. It is for the owner only and is never hosted.
+A local app in the owner's browser, in the style of Lichess, to choose a game, play it against a friend or a release, watch two releases play each other, and review games with a bot's evaluation and best moves. It runs locally, served by its own server, and is to run as a static site on GitHub Pages too, with the bots in the browser ([ADR 0030](../docs/adr/0030-studio-on-github-pages.md); phase 6, step F).
 
 The decisions behind it are [ADR 0025](../docs/adr/0025-studio.md) (the studio), [ADR 0026](../docs/adr/0026-node-for-the-studio.md) (Node and npm for the front end) and [ADR 0027](../docs/adr/0027-game-records.md) (game records). The plan is phase 6 of the [roadmap](../docs/ROADMAP.md).
 
