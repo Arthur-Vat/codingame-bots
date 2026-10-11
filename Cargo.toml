@@ -11,6 +11,7 @@ members = [
     "games/*/studio",
     "studio/core",
     "studio/game",
+    "studio/rules",
     "studio/server",
 ]
 
