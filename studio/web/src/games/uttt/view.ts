@@ -119,3 +119,16 @@ export function smallBoardState(
 export function allCellsPlayable(frame: UtttFrame): boolean {
   return frame.playable.length === 81;
 }
+
+/** How a finished game is described: the small boards each seat won, when the frame has them. */
+export function resultDetail(frame: UtttFrame): string | null {
+  const points: unknown = frame.points;
+  if (
+    !Array.isArray(points) ||
+    points.length !== 2 ||
+    !points.every((p) => typeof p === 'number' && Number.isFinite(p))
+  ) {
+    return null;
+  }
+  return `Small boards won: ${points[0]}–${points[1]}`;
+}

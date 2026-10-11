@@ -3,6 +3,7 @@ import {
   asUtttFrame,
   cellState,
   prepareHeat,
+  resultDetail,
   smallBoardState,
   type Cell,
   type UtttFrame,
@@ -137,5 +138,16 @@ describe('asUtttFrame', () => {
     expect(asUtttFrame(null)).toBeNull();
     expect(asUtttFrame({})).toBeNull();
     expect(asUtttFrame({ cells: [], small: [], playable: [] })).toBeNull();
+  });
+});
+
+describe('resultDetail', () => {
+  it('counts the small boards each seat won', () => {
+    expect(resultDetail({ ...emptyFrame(), points: [4, 3] })).toBe('Small boards won: 4–3');
+  });
+
+  it('says nothing when the frame has no points', () => {
+    const frame = { ...emptyFrame(), points: undefined } as unknown as UtttFrame;
+    expect(resultDetail(frame)).toBeNull();
   });
 });

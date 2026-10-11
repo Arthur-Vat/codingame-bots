@@ -807,6 +807,183 @@
   color: var(--muted);
 }
 
+/* Playing: the board's overlays, the clocks, the move list's buttons, the end block, the toast. */
+.board-wrap.bare {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto;
+}
+
+.board-wrap.bare .board-slot {
+  grid-column: 1;
+  grid-row: 1;
+  padding: 0;
+  background: transparent;
+  align-content: start;
+}
+
+.board-wrap.bare .board-slot.empty {
+  padding: 16px;
+  background: #44515a;
+  align-content: center;
+}
+
+.rewind {
+  position: absolute;
+  inset: 0;
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  background: rgba(22, 21, 18, 0.78);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 24px;
+  border-radius: 3px;
+  z-index: 5;
+}
+
+.rewind strong {
+  color: var(--fg-strong);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.rewind p {
+  margin: 0;
+  color: var(--fg);
+  max-width: 34ch;
+  font-size: 13px;
+}
+
+.bar {
+  width: min(260px, 80%);
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.15s linear;
+}
+
+.bar.indeterminate i {
+  width: 40%;
+  animation: slide 1.2s ease-in-out infinite;
+}
+
+@keyframes slide {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar.indeterminate i {
+    animation: none;
+    width: 100%;
+  }
+}
+
+.board-pill {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 6px 14px;
+  border-radius: 14px;
+  background: rgba(22, 21, 18, 0.82);
+  color: var(--fg-strong);
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.clock.run {
+  background: var(--accent);
+  color: #fff;
+}
+
+.clock.low {
+  background: var(--bad);
+  color: #fff;
+}
+
+.clock.spent {
+  font-size: 18px;
+}
+
+.moves {
+  position: relative;
+}
+
+.moves button {
+  background: none;
+  border: 0;
+  text-align: left;
+  padding: 5px 12px;
+  color: var(--fg-strong);
+  font: inherit;
+}
+
+.moves button:hover {
+  background: var(--panel-2);
+}
+
+.moves button.cur {
+  background: var(--accent-soft);
+  color: #fff;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.moves .failed {
+  grid-column: 1 / -1;
+  padding: 12px 14px;
+  color: #f0a497;
+  font-family: var(--font);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.after {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.toast {
+  position: fixed;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--fg-strong);
+  color: var(--bg);
+  padding: 10px 16px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 13px;
+  z-index: 60;
+  max-width: calc(100% - 32px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* A scrollbar appearing (the end block makes the page longer) must not move the board. */
+html {
+  scrollbar-gutter: stable;
+}
+
 @media (max-width: 1180px) {
   .game {
     grid-template-columns: minmax(0, 1fr) 320px;
