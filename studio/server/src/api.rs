@@ -10,6 +10,8 @@ use studio_game::StudioGame;
 use cg_arena::record::RecordedAnswer;
 use cg_arena::referee::SEATS;
 use cg_arena::runner::EndReason;
+use studio_core::request::{self, CreateRequest};
+use studio_core::session::GameState;
 
 use crate::history;
 use crate::runner::{spawn_drive, spawn_launch};
@@ -46,12 +48,6 @@ impl Response {
         Response::json(status, &json!({ "error": message }))
     }
 }
-
-/// The smallest and largest think time a computer seat accepts.
-const THINK_MS: std::ops::RangeInclusive<u64> = 10..=10_000;
-
-/// The largest number of opening plies a request may ask for.
-const MAX_OPENING_PLIES: u32 = 81;
 
 /// Answers one request. `path` may end with a query string (`?a=b&c=d`).
 pub fn handle(state: &State, method: &str, path: &str, body: &[u8]) -> Response {
@@ -129,7 +125,7 @@ fn with_session(
         return unknown_session();
     };
     let mut session = lock(&shared);
-    let Some(game) = state.game(&session.game) else {
+    let Some(game) = state.game(&session.core.game) else {
         return Response::error(500, "the session's game is not registered");
     };
     action(&shared, &mut session, game)
@@ -151,94 +147,23 @@ fn list_games(state: &State) -> Response {
     Response::json(200, &Value::Array(games))
 }
 
-#[derive(Deserialize)]
-struct CreateRequest {
-    game: String,
-    seed: Option<u64>,
-    opening_plies: Option<u32>,
-    seats: Vec<SeatRequest>,
-}
-
-#[derive(Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-enum SeatRequest {
-    Human {
-        name: Option<String>,
-    },
-    Bot {
-        release: String,
-        think_ms: Option<u64>,
-        mode: Option<Mode>,
-    },
-}
-
 fn create_session(state: &State, body: &[u8]) -> Response {
     let request: CreateRequest = match parse(body) {
         Ok(request) => request,
         Err(response) => return response,
     };
-    let Some(game) = state.game(&request.game) else {
-        return Response::error(400, &format!("unknown game {:?}", request.game));
+    let game = state.game(&request.game);
+    let game_id = request.game.clone();
+    let new = match request::validate(request, game.is_some(), || state.releases().list(&game_id)) {
+        Ok(new) => new,
+        Err(message) => return Response::error(400, &message),
     };
-    let Some(seed) = request.seed else {
-        return Response::error(400, "seed is required");
+    let Some(game) = game else {
+        return Response::error(500, "the game is not registered");
     };
-    let opening_plies = request.opening_plies.unwrap_or(0);
-    if opening_plies > MAX_OPENING_PLIES {
-        return Response::error(400, "opening_plies is too large");
-    }
-    if opening_plies > 0 {
-        return Response::error(
-            400,
-            "openings are not supported in live games yet: opening_plies must be 0",
-        );
-    }
-    if request.seats.len() != SEATS {
-        return Response::error(400, &format!("seats must hold exactly {SEATS} seats"));
-    }
-    let known = state.releases().list(&request.game);
-    let mut seats = Vec::new();
-    for (index, seat) in request.seats.into_iter().enumerate() {
-        match seat {
-            SeatRequest::Human { name } => {
-                let name = name
-                    .map(|name| name.trim().chars().take(40).collect::<String>())
-                    .filter(|name| !name.is_empty())
-                    .unwrap_or_else(|| format!("Player {}", index + 1));
-                seats.push(SeatConfig::Human { name });
-            }
-            SeatRequest::Bot {
-                release,
-                think_ms,
-                mode,
-            } => {
-                if !known.contains(&release) {
-                    return Response::error(400, &format!("unknown release {release:?}"));
-                }
-                let Some(think_ms) = think_ms.filter(|ms| THINK_MS.contains(ms)) else {
-                    return Response::error(
-                        400,
-                        &format!(
-                            "think_ms must be a number from {} to {}",
-                            THINK_MS.start(),
-                            THINK_MS.end()
-                        ),
-                    );
-                };
-                let Some(mode) = mode else {
-                    return Response::error(400, "mode must be \"fixed\" or \"realtime\"");
-                };
-                seats.push(SeatConfig::Bot {
-                    release,
-                    think_ms,
-                    mode,
-                });
-            }
-        }
-    }
-    let seats: [SeatConfig; SEATS] = seats.try_into().expect("two seats were checked");
-    let any_bot = seats.iter().any(SeatConfig::is_bot);
-    let mut session = Session::new(state.new_id(), game, seed, opening_plies, seats);
+    let any_bot = new.seats.iter().any(SeatConfig::is_bot);
+    let core = GameState::new(game, new.seed, new.opening_plies, new.seats);
+    let mut session = Session::new(state.new_id(), core);
     if any_bot {
         session.status = Status::Compiling;
     } else {
@@ -271,14 +196,17 @@ fn post_move(state: &State, id: &str, body: &[u8]) -> Response {
                 &format!("not waiting for a move (status {})", s.status.as_str()),
             );
         }
-        let (live, valid) = s.position(game);
+        let (live, valid) = s.core.position(game);
         if live.to_act() != [request.seat]
-            || !matches!(s.seats.get(request.seat), Some(SeatConfig::Human { .. }))
+            || !matches!(
+                s.core.seats.get(request.seat),
+                Some(SeatConfig::Human { .. })
+            )
         {
             return Response::error(409, "it is not that human's turn");
         }
-        let setup = s.setup();
-        let moves = match game.human_moves(&setup, &s.turns[..valid], request.seat) {
+        let setup = s.core.setup();
+        let moves = match game.human_moves(&setup, &s.core.turns[..valid], request.seat) {
             Ok(moves) => moves,
             Err(error) => return Response::error(409, &error.to_string()),
         };
@@ -327,32 +255,32 @@ fn post_takeback(state: &State, id: &str, body: &[u8]) -> Response {
                 &format!("no takeback now (status {})", s.status.as_str()),
             );
         }
-        if s.has_bot_in_mode(Mode::Realtime) {
+        if s.core.has_bot_in_mode(Mode::Realtime) {
             return Response::error(
                 409,
                 "takebacks are unavailable against a bot playing in real time",
             );
         }
-        let (_, valid) = s.position(game);
-        if request.turns < s.opening_turns || request.turns > valid {
+        let (_, valid) = s.core.position(game);
+        if request.turns < s.core.opening_turns || request.turns > valid {
             return Response::error(
                 409,
                 &format!(
                     "turns must be from {} to {valid}, got {}",
-                    s.opening_turns, request.turns
+                    s.core.opening_turns, request.turns
                 ),
             );
         }
         s.stop();
-        s.turns.truncate(request.turns);
-        s.result = None;
+        s.core.turns.truncate(request.turns);
+        s.core.result = None;
         s.error = None;
         s.progress = None;
-        if s.seats.iter().any(SeatConfig::is_bot) {
+        if s.core.seats.iter().any(SeatConfig::is_bot) {
             s.status = Status::Rewinding;
             s.progress = Some(Progress {
                 done: 0,
-                total: Some(s.bot_answers()),
+                total: Some(s.core.bot_answers()),
             });
             spawn_launch(state, shared, s.generation);
         } else {
@@ -386,7 +314,7 @@ fn post_end(state: &State, id: &str, body: &[u8]) -> Response {
             },
             _ => return Response::error(400, "reason must be \"resign\" or \"timeout\""),
         };
-        if !matches!(s.seats[seat], SeatConfig::Human { .. }) {
+        if !matches!(s.core.seats[seat], SeatConfig::Human { .. }) {
             return Response::error(409, "only a human seat can resign or run out of time");
         }
         if matches!(s.status, Status::Over | Status::Failed) {

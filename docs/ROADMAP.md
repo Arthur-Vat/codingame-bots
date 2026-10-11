@@ -181,7 +181,7 @@ Gate: the first version (steps A to C) works on the owner's Windows computer, th
 Decided with the owner on 2026-10-11 ([ADR 0030](adr/0030-studio-on-github-pages.md)): the same front end also runs as a static site, with the rules and the releases compiled to WebAssembly; the local server stays.
 
 - [x] Feasibility test: releases, referee and adapter in WebAssembly in Chromium, identical moves to native (2026-10-11)
-- [ ] The rules as a WebAssembly program, sharing the server's Rust code, and every release built to WebAssembly
+- [x] The rules as a WebAssembly program, sharing the server's Rust code, and every release built to WebAssembly
 - [ ] The browser engine: bots in Web Workers, saved games in the browser, chosen when the site is served as static files
 - [ ] Published on GitHub Pages from `main`, with the license notices of what it bundles and the guide
 

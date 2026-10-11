@@ -121,6 +121,29 @@ The history is one JSON file per game in `studio/data/history/` (or `<data>/hist
 
 The SPRT and league workflows keep a sample of the games they play (about 10 per step or per pair of bots, [ADR 0027](../docs/adr/0027-game-records.md)). In the run's page on GitHub, download the artifact `game-records-<game>` (`league-game-records-<game>` for the league), unzip it, then in the studio open History, then Load game files, and choose the unzipped files. Artifacts expire after 30 days.
 
+## The rules in WebAssembly
+
+The browser engine of the static site ([ADR 0030](../docs/adr/0030-studio-on-github-pages.md)) holds no rules: it calls a WebAssembly program built from the same Rust code as the server.
+
+- [`core/`](core/) (`studio-core`): the logic of the server that needs the rules and no process, file or clock: the seats and the state of a game with its settling, answers, time limits and record, the checking of a session request, the checking of a game record, the rows and filters of the history, and the conversion of a think time to iterations. The server calls it, so the two cannot disagree; it also registers the games (`studio_core::games::registered`), the one place a new game is added. Time is passed in, not read.
+- [`rules/`](rules/) (`studio-rules`): `studio_rules::handle(request) -> response`, and a binary that reads one request on stdin and prints one response and a newline on stdout, so that it runs as a WASI command for `wasm32-wasip1`. It keeps nothing between requests: a game in progress travels in each request as a `State`.
+
+A request is a JSON object with a string field `op`; the response is `{"ok": value}` or `{"error": "message"}` (an unknown op, malformed JSON and bad fields give an error, never a crash). A `Seat` is `{"kind": "human", "name"}` or `{"kind": "bot", "release", "think_ms", "mode", "fixed_iters"}` (a bot seat in an output also has `name`, its release), an `Answer` is `{"seat", "lines", "ms"}`, a `Result` is `{"winner", "end"}` with the end as in a game record, a `State` is `{"game", "seed", "opening_plies", "seats", "turns", "result"}` and a `Row` is a line of `GET /api/history`. A record travels as text (`record_text`) and a bot seed as a decimal string, because JavaScript loses the precision of a 64-bit number. For the same reason a `State`'s `seed` must be a safe integer (at most 2^53 − 1, which the front end's seeds are), and the numbers of the `record` that `view` returns (its seed and bot seeds) may lose precision once parsed in JavaScript: they are for display, and the record text stays the reference.
+
+| `op` | Request fields | `ok` |
+| --- | --- | --- |
+| `games` | none | `[{"id", "name"}]`, in the server's order |
+| `new` | `request` (the body of `POST /api/sessions`), `releases` (the game's known releases) | a `State` with no turns and no result; the errors are those of `POST /api/sessions` |
+| `settle` | `state` | `{"opening_turns", "valid_turns", "to_act", "frames", "human_moves", "result", "next"}`: the result if the rules say the game is over, and `next`: `{"kind": "over"}`, `{"kind": "human", "seat"}`, `{"kind": "bot", "seat", "input", "answer_lines", "limit_ms", "bot_seed"}` or `{"kind": "unsupported", "error"}` |
+| `play` | `state`, `answer` | `{"turns", "result"}`: the answer appended; one the rules reject is kept and loses the game for its seat |
+| `replay` | `state`, `seat` | `[{"input", "answer_lines", "lines"}]`: what a restarted bot of that seat is asked, and must answer again, turn by turn |
+| `record` | `state`, `unix_time` | `{"record_text"}`: the game record, as `GET /api/sessions/{id}/record` writes it |
+| `check` | `record_text` | `{"id", "row"}`: the checks of `POST /api/history`, and the id the server would save it under |
+| `view` | `record_text` | `{"record", "frames", "opening_turns", "shown_turns"}`, as `POST /api/view` |
+| `filter` | `query`, `rows` | the rows `GET /api/history?query` would list, newest first |
+
+`scripts/build-studio-wasm.sh [OUT] [--strict]` builds `OUT/rules.wasm`, every release of every game as `OUT/<game>/<release>.wasm` (compiled unchanged with `rustc --target wasm32-wasip1`), and `OUT/manifest.json` listing the releases that compiled, newest first. `OUT` is `studio/web/public/wasm` by default (not committed). A release that does not compile is skipped with a warning; `--strict`, used by CI, fails instead. It needs the target: `rustup target add wasm32-wasip1`. To try the program without a browser: `echo '{"op":"games"}' | cargo run -q -p studio-rules`.
+
 ## Running the studio on Windows
 
 The studio is meant for a Windows computer ([ADR 0025](../docs/adr/0025-studio.md)); the `Studio: Windows` job of CI builds it, tests it and plays a game through the server there. The commands are for PowerShell.

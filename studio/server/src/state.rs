@@ -50,7 +50,7 @@ impl State {
     /// end built in `web`, and keeping compiled bots and measurements in
     /// `data`.
     pub fn new(repo: PathBuf, web: PathBuf, data: PathBuf) -> State {
-        let games: Vec<Box<dyn StudioGame>> = vec![Box::new(uttt_studio::Uttt)];
+        let games = studio_core::games::registered();
         State {
             inner: Arc::new(Inner {
                 games,
@@ -69,11 +69,7 @@ impl State {
     }
 
     pub fn game(&self, id: &str) -> Option<&dyn StudioGame> {
-        self.inner
-            .games
-            .iter()
-            .map(|game| game.as_ref())
-            .find(|game| game.info().id == id)
+        studio_core::games::find(&self.inner.games, id)
     }
 
     pub fn releases(&self) -> &Releases {

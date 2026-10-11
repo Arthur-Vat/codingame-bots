@@ -30,6 +30,7 @@ codingame-bots/
 │  ├─ new-release.sh        a bot -> games/<game>/releases/<game>-vNNN.rs
 │  ├─ check-releases.sh     releases frozen and true to their sources
 │  ├─ check-determinism.sh  releases replay identically with a fixed seed and iterations; iteration rates
+│  ├─ build-studio-wasm.sh  the studio's rules program and every release -> WebAssembly (ADR 0030)
 │  ├─ sprt.sh               smoke test and SPRT of a candidate file
 │  ├─ league.sh             Elo ratings of every release
 │  ├─ prune-branches.sh     deletes finished claude/ branches (ADR 0021)
@@ -62,7 +63,9 @@ codingame-bots/
 │     ├─ training/          reports of the training runs used, E011's class weights
 │     └─ studio/            Phase 6: the game's adapter for the studio
 ├─ studio/                  Phase 6: local app to play and review games (ADR 0025)
+│  ├─ core/                 the studio's logic that needs the rules, shared by the server and the browser (ADR 0030)
 │  ├─ game/                 the interface a game implements for the studio
+│  ├─ rules/                the rules as a WebAssembly program (JSON requests in, JSON out) for the browser
 │  ├─ server/               Rust server on 127.0.0.1: bots, games, history
 │  └─ web/                  front end: TypeScript, React, Vite; a board renderer per game
 ├─ .claude/                 agents/ and skills/ of Claude's sessions; worktrees/ ignored
@@ -127,7 +130,7 @@ GitHub Actions on free standard runners. `main` only accepts changes whose check
 
 | Workflow | Trigger | Does |
 | --- | --- | --- |
-| `ci.yml` | Pushes to `main`, every pull request, by hand | Runs per area and per game: `scripts/ci-scopes.sh` maps the changed paths to jobs, and pushes to `main` and runs by hand run everything ([ADR 0029](adr/0029-ci-scoped-by-area-and-game.md)). Jobs: `Changes`; format and lint of the workspace; the framework's tests (also when a game changes, since the bundler's tests bundle its bots); for each game, its tests (parity included) and its bots (bundles every bot, checks and plays the bundles, `games/<game>/ci.sh` with the evaluation sanity checks and the engine speed report, new releases checked and replayed identically with a fixed seed and iterations); dependency policy; the studio's tests (every game's adapter included); the studio's front end (package licenses, format, lint, types, unit tests, build, browser tests; [ADR 0026](adr/0026-node-for-the-studio.md)); the studio's tests, a release build and a bot-against-bot game through the server on Windows ([ADR 0025](adr/0025-studio.md)); docs indexes, status lines and links, shellcheck, actionlint and the scripts' tests, on every pull request; and `CI passed`, which gathers them all |
+| `ci.yml` | Pushes to `main`, every pull request, by hand | Runs per area and per game: `scripts/ci-scopes.sh` maps the changed paths to jobs, and pushes to `main` and runs by hand run everything ([ADR 0029](adr/0029-ci-scoped-by-area-and-game.md)). Jobs: `Changes`; format and lint of the workspace; the framework's tests (also when a game changes, since the bundler's tests bundle its bots); for each game, its tests (parity included) and its bots (bundles every bot, checks and plays the bundles, `games/<game>/ci.sh` with the evaluation sanity checks and the engine speed report, new releases checked and replayed identically with a fixed seed and iterations); dependency policy; the studio's tests (every game's adapter included) and the build of the rules and the releases to WebAssembly; the studio's front end (package licenses, format, lint, types, unit tests, build, browser tests; [ADR 0026](adr/0026-node-for-the-studio.md)); the studio's tests, a release build and a bot-against-bot game through the server on Windows ([ADR 0025](adr/0025-studio.md)); docs indexes, status lines and links, shellcheck, actionlint and the scripts' tests, on every pull request; and `CI passed`, which gathers them all |
 | `sprt.yml` | Every pull request | Per game, in a job named after it ([ADR 0029](adr/0029-ci-scoped-by-area-and-game.md)): tiers 4 and 6 for each release file the pull request adds to that game, verdict as a check and a comment; a result is kept for the framework's code and that game's code only. The aggregate check `SPRT passed` passes at once when there is no new release. For a game in Legend the SPRT plays at CodinGame's full time ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)) |
 | `league.yml` | Push to `main` changing releases or evaluation settings, pull requests changing the league itself, by hand | Tier 7, per game ([ADR 0029](adr/0029-ci-scoped-by-area-and-game.md)): ratings of all releases of each game that changed (every game when the league itself changed, that is this workflow, `scripts/league.sh` or `scripts/lib/evaluation.sh`, or by hand) in the run summary |
 | `release.yml` | Push to `main` adding a release | Tag and GitHub release with the paste-ready file |

@@ -88,6 +88,9 @@ scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licen
 scopes_are 'rust=false framework=false games=[] studio=false web=true licenses=false' studio/web/src/App.tsx
 scopes_are 'rust=true framework=false games=[] studio=true web=false licenses=false' studio/server/src/main.rs
 scopes_are 'rust=true framework=false games=[] studio=true web=false licenses=false' studio/game/src/lib.rs
+scopes_are 'rust=true framework=false games=[] studio=true web=false licenses=false' studio/core/src/lib.rs
+scopes_are 'rust=true framework=false games=[] studio=true web=false licenses=false' studio/rules/src/main.rs
+scopes_are 'rust=true framework=false games=[] studio=true web=false licenses=true' studio/rules/Cargo.toml
 scopes_are 'rust=true framework=false games=[] studio=true web=false licenses=true' studio/server/Cargo.toml
 scopes_are 'rust=false framework=false games=[] studio=false web=true licenses=false' \
   studio/web/package.json studio/web/package-lock.json

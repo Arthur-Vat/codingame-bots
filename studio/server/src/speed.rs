@@ -1,9 +1,8 @@
 //! How fast a release searches, for "think time".
 //!
-//! A computer seat gets a think time in milliseconds, but a takeback needs
-//! the bot to replay exactly, so it plays a fixed number of iterations. The
-//! rate converts one to the other. It is measured once per release on this
-//! computer by letting the release play itself, and cached in a file.
+//! The rate (iterations per millisecond, see `studio_core::speed`) is
+//! measured once per release on this computer by letting the release play
+//! itself, and cached in a file.
 
 use std::collections::HashMap;
 use std::fs;
@@ -15,6 +14,7 @@ use cg_arena::live::{BotSettings, LiveBot, LiveGame};
 use cg_arena::record::RecordedAnswer;
 use cg_arena::referee::GameSetup;
 use cg_arena::runner::{bot_seed, BotSpec};
+use studio_core::speed::median;
 use studio_game::StudioGame;
 
 use crate::releases::Compiled;
@@ -86,25 +86,6 @@ impl Speed {
         }
         let _ = serde_json::to_string_pretty(&snapshot).map(|text| fs::write(&self.file, text));
         Ok(rate)
-    }
-}
-
-/// The iterations for `think_ms` at `rate` iterations per millisecond.
-pub fn iterations(think_ms: u64, rate: f64) -> u64 {
-    ((think_ms as f64 * rate).round() as u64).max(1)
-}
-
-/// The median of `samples`; 0 when there are none.
-pub fn median(samples: &mut [f64]) -> f64 {
-    if samples.is_empty() {
-        return 0.0;
-    }
-    samples.sort_by(f64::total_cmp);
-    let middle = samples.len() / 2;
-    if samples.len() % 2 == 1 {
-        samples[middle]
-    } else {
-        (samples[middle - 1] + samples[middle]) / 2.0
     }
 }
 

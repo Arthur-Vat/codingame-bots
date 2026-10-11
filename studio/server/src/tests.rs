@@ -8,7 +8,6 @@ use cg_arena::record::{PlayerKind, Record};
 use serde_json::{json, Value};
 
 use crate::server::{bind_address, request_allowed, BIND_ADDRESS};
-use crate::speed::{iterations, median};
 use crate::{handle, State};
 
 /// A folder under the system's temporary one, removed on drop.
@@ -414,13 +413,4 @@ fn requests_must_come_from_the_studios_own_page() {
         Some("127.0.0.1:8411"),
         Some("http://evil.example")
     ));
-}
-
-#[test]
-fn a_think_time_becomes_iterations() {
-    assert_eq!(iterations(100, 12.5), 1250);
-    assert_eq!(iterations(10, 0.0001), 1);
-    assert_eq!(median(&mut [3.0, 1.0, 2.0]), 2.0);
-    assert_eq!(median(&mut [4.0, 1.0, 2.0, 3.0]), 2.5);
-    assert_eq!(median(&mut []), 0.0);
 }
