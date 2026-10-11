@@ -113,8 +113,11 @@ jobs:
           done
           candidates="${candidates# }"
           echo "candidates=$candidates" >>"$GITHUB_OUTPUT"
+          # The releases job listed this game because a release was added: a
+          # leg with nothing to test would pass without testing anything.
           if [ -z "$candidates" ]; then
-            echo "No new release of $GAME in this pull request: nothing to test." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "::error title=$GAME SPRT::no new release of $GAME found, although the releases job listed it"
+            exit 1
           fi
           # A result is kept for the exact code and settings it was obtained
           # with: the framework's and this game's, not another game's, and

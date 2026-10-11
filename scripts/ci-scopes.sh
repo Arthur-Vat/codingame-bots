@@ -45,13 +45,17 @@
 # one-line summary to stderr:
 #   games=["id",...]      the games with a new release (compact JSON, sorted)
 # A game is listed when a FILE is games/<g>/releases/<name>.rs, directly in
-# releases/; other files are ignored. --all is a usage error: the SPRT tests
-# new releases only.
+# releases/; files that are not .rs files under a releases/ folder are
+# ignored. A FILE that git's pathspec games/*/releases/*.rs matches (the * crosses /)
+# but that is not exactly games/<g>/releases/<name>.rs for a known game <g>
+# (a nested file, an unknown game folder) fails with status 1 and a message on
+# stderr: the SPRT cannot place it, and the league's find would rate it.
+# --all is a usage error: the SPRT tests new releases only.
 #
 # league: the games the league workflow rates. The FILEs are the changed
 # files. Prints the same line as sprt. --all, or a FILE among the league's
-# own files (.github/workflows/league.yml, scripts/league.sh,
-# scripts/lib/evaluation.sh and this script), gives every game. Otherwise a
+# own files (.github/workflows/league.yml, scripts/league.sh and
+# scripts/lib/evaluation.sh), gives every game. Otherwise a
 # game is listed when a FILE is under games/<g>/releases/ (a deleted release
 # too) or is games/<g>/evaluation.env; other files are ignored.
 #
@@ -289,8 +293,9 @@ print_games() { # print_games <mode> <file count>
 }
 
 mode_sprt() {
-  local file path id rest count=0
+  local file path id rest known placed count=0
   local all files
+  local -a unplaced=()
   parse_files false sprt "$@"
   load_games
   for file in "${files[@]}"; do
@@ -301,16 +306,33 @@ mode_sprt() {
     done
     case $path in
       games/*/releases/*.rs)
+        # The same pattern as git's pathspec in the workflow (* crosses /).
         id="${path#games/}"
         id="${id%%/*}"
-        rest="${path#games/"$id"/releases/}"
-        # Directly in releases/: no further folder.
-        if [[ $rest != */* ]]; then
+        placed=false
+        for known in "${all_games[@]}"; do
+          if [[ $known == "$id" && $path == "games/$id/releases/"* ]]; then
+            rest="${path#"games/$id/releases/"}"
+            # Directly in releases/: no further folder.
+            if [[ $rest != */* ]]; then
+              placed=true
+            fi
+          fi
+        done
+        if [[ $placed == true ]]; then
           flag_game "$id"
+        else
+          unplaced+=("$file")
         fi
         ;;
     esac
   done
+  if ((${#unplaced[@]} > 0)); then
+    for file in "${unplaced[@]}"; do
+      echo "ci-scopes: sprt: cannot place $file: a release is games/<game>/releases/<name>.rs for a game of this repository" >&2
+    done
+    exit 1
+  fi
   print_games sprt "$count"
 }
 
@@ -329,7 +351,7 @@ mode_league() {
       path="${path#./}"
     done
     case $path in
-      .github/workflows/league.yml | scripts/league.sh | scripts/lib/evaluation.sh | scripts/ci-scopes.sh)
+      .github/workflows/league.yml | scripts/league.sh | scripts/lib/evaluation.sh)
         every=true
         ;;
       games/*/releases/* | games/*/evaluation.env)

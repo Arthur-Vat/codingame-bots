@@ -13,13 +13,11 @@ on:
       - ".github/workflows/league.yml"
       - "scripts/league.sh"
       - "scripts/lib/evaluation.sh"
-      - "scripts/ci-scopes.sh"
   pull_request:
     paths:
       - ".github/workflows/league.yml"
       - "scripts/league.sh"
       - "scripts/lib/evaluation.sh"
-      - "scripts/ci-scopes.sh"
   workflow_dispatch:
     inputs:
       time_scale:

@@ -177,9 +177,32 @@ games_are sprt '[]' ''
 games_are sprt '["uttt"]' games/uttt/releases/uttt-v011.rs
 games_are sprt '["other","uttt"]' games/uttt/releases/uttt-v011.rs games/other/releases/other-v001.rs
 games_are sprt '["other","uttt"]' games/other/releases/other-v001.rs games/uttt/releases/uttt-v011.rs games/uttt/releases/uttt-v012.rs
-games_are sprt '[]' games/uttt/releases/notes.md games/uttt/bots/x.rs games/nogame/releases/a.rs
-games_are sprt '[]' games/uttt/releases/sub/uttt-v011.rs games/uttt/releases/uttt-v011.rs.bak games/uttt/releases/.rs.md
-games_are sprt '[]' 'games/bad name/releases/a.rs' games/README.txt/releases/a.rs
+games_are sprt '[]' games/uttt/releases/notes.md games/uttt/bots/x.rs games/uttt/releases/uttt-v011.rs.bak games/uttt/releases/.rs.md
+games_are sprt '[]' games/nogame/releases/a.md games/uttt/releases/sub/notes.txt games/uttt/bots/mcts/src/main.rs
+# A release file that the workflow's pathspec games/*/releases/*.rs matches but
+# that is not games/<known game>/releases/<name>.rs fails: the SPRT cannot
+# place it, and the league's find would rate it.
+sprt_fails() { # sprt_fails <message part> <arguments>...
+  local text="$1" output status=0
+  shift
+  checks=$((checks + 1))
+  output="$("$script" sprt "$@" 2>&1)" || status=$?
+  if ((status != 1)); then
+    fail "sprt $*: expected status 1, got $status: $output"
+  elif [[ $output != *"$text"* ]]; then
+    fail "sprt $*: the output lacks '$text': $output"
+  fi
+}
+sprt_fails 'cannot place games/uttt/releases/sub/uttt-v011.rs' games/uttt/releases/sub/uttt-v011.rs
+sprt_fails 'cannot place games/nogame/releases/a.rs' games/nogame/releases/a.rs
+sprt_fails 'cannot place games/bad name/releases/a.rs' 'games/bad name/releases/a.rs'
+sprt_fails 'cannot place games/README.txt/releases/a.rs' games/README.txt/releases/a.rs
+sprt_fails 'cannot place games/uttt/extra/releases/a.rs' games/uttt/extra/releases/a.rs
+sprt_fails 'cannot place games/uttt/releases/releases/a.rs' games/uttt/releases/releases/a.rs
+sprt_fails 'cannot place games/a/b/releases/c/d.rs' games/a/b/releases/c/d.rs
+sprt_fails 'cannot place ./games/nogame/releases/a.rs' ./games/nogame/releases/a.rs
+# One placed and one not: the whole run fails, naming the file.
+sprt_fails 'cannot place games/other/releases/x/y.rs' games/uttt/releases/uttt-v011.rs games/other/releases/x/y.rs
 games_are sprt '[]' games/uttt/evaluation.env docs/ROADMAP.md scripts/league.sh .github/workflows/sprt.yml
 games_are sprt '["uttt"]' ./games/uttt/releases/uttt-v011.rs
 games_are sprt '["uttt"]' -- games/uttt/releases/uttt-v011.rs
@@ -204,7 +227,8 @@ games_are league '[]' crates/cg-arena/src/lib.rs docs/ROADMAP.md .github/workflo
 games_are league '[]' games/nogame/releases/a.rs games/nogame/evaluation.env 'games/bad name/evaluation.env'
 games_are league '["other","uttt"]' scripts/league.sh
 games_are league '["other","uttt"]' scripts/lib/evaluation.sh
-games_are league '["other","uttt"]' scripts/ci-scopes.sh
+# A change to the ci mode must not play the full league.
+games_are league '[]' scripts/ci-scopes.sh scripts/tests/ci-scopes-test.sh .github/workflows/sprt.yml
 games_are league '["other","uttt"]' .github/workflows/league.yml
 games_are league '["other","uttt"]' crates/cg-arena/src/lib.rs scripts/league.sh
 games_are league '["other","uttt"]' --all
