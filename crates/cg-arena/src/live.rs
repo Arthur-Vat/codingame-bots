@@ -8,7 +8,8 @@
 //!
 //! - [`LiveBot`]: one bot process, asked one answer at a time.
 //! - [`LiveGame`]: a referee and the answers played so far.
-//! - [`resync_bot`]: restarts a bot and replays a game into it.
+//! - [`resync_bot`]: restarts a bot and replays a game into it
+//!   ([`resync_bot_with`] reports progress and can be cancelled).
 
 use std::fmt;
 use std::io;
@@ -315,6 +316,8 @@ pub enum ResyncError {
     },
     /// The bot did not answer.
     Bot(LiveError),
+    /// The progress callback asked to stop.
+    Cancelled,
     /// The recorded turns break the rules.
     Invalid(ReplayError),
 }
@@ -332,6 +335,7 @@ impl fmt::Display for ResyncError {
                 "the bot answered {got:?} in turn {turn}, the record has {expected:?}"
             ),
             ResyncError::Bot(error) => write!(f, "{error}"),
+            ResyncError::Cancelled => write!(f, "the replay was cancelled"),
             ResyncError::Invalid(error) => write!(f, "{error}"),
         }
     }
@@ -360,6 +364,38 @@ pub fn resync_bot(
     seat: usize,
     limit: Duration,
 ) -> Result<LiveBot, ResyncError> {
+    resync_bot_with(
+        spec,
+        settings,
+        referee,
+        setup,
+        turns,
+        seat,
+        limit,
+        &mut |_, _| true,
+    )
+}
+
+/// [`resync_bot`] that reports its progress: after each answer the bot
+/// replays, `progress` is called with the number of answers replayed so far
+/// and the total the bot has to replay. When it returns `false` the replay
+/// stops with [`ResyncError::Cancelled`] (and the bot is stopped).
+#[allow(clippy::too_many_arguments)]
+pub fn resync_bot_with(
+    spec: &BotSpec,
+    settings: &BotSettings,
+    referee: Box<dyn Referee>,
+    setup: GameSetup,
+    turns: &[Vec<RecordedAnswer>],
+    seat: usize,
+    limit: Duration,
+    progress: &mut dyn FnMut(usize, usize) -> bool,
+) -> Result<LiveBot, ResyncError> {
+    let total = turns
+        .iter()
+        .filter(|turn| turn.iter().any(|answer| answer.seat == seat))
+        .count();
+    let mut done = 0;
     let mut bot = LiveBot::spawn(spec, settings).map_err(ResyncError::Spawn)?;
     let mut game = LiveGame::new(referee, setup);
     for (index, turn) in turns.iter().enumerate() {
@@ -374,6 +410,10 @@ pub fn resync_bot(
                     expected: recorded.lines.clone(),
                     got: lines,
                 });
+            }
+            done += 1;
+            if !progress(done, total) {
+                return Err(ResyncError::Cancelled);
             }
         }
         game.play(turn.clone()).map_err(|invalid| {

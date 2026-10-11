@@ -6,7 +6,7 @@ The decisions behind it are [ADR 0025](../docs/adr/0025-studio.md) (the studio),
 
 ## Status
 
-The front end's scaffold exists, in [`web/`](web/): a placeholder home screen with the checks and the CI job. So does the interface a game implements for the studio, in [`game/`](game/), with Ultimate Tic-Tac-Toe's adapter. There is no server and no board yet.
+The front end's scaffold exists, in [`web/`](web/): a placeholder home screen with the checks and the CI job. So does the interface a game implements for the studio, in [`game/`](game/), with Ultimate Tic-Tac-Toe's adapter. The local server is in [`server/`](server/): see "Running the server" below. There is no board yet, and the front end does not call the server yet.
 
 ## Front end
 
@@ -55,3 +55,40 @@ A game adds an adapter crate, `games/<game>/studio`, that implements `studio_gam
 - `human_moves`: the moves a human in a seat may play, each with the answer lines to send the referee.
 
 `studio_game::live_game` replays turns with a fresh referee into a `cg_arena::live::LiveGame`. The adapter's frame format is documented in its crate; `games/uttt/studio` is the first.
+
+## Running the server
+
+```sh
+cargo run --release -p studio
+```
+
+Then open the URL it prints, `http://127.0.0.1:8411/`. The server listens on 127.0.0.1 only and refuses requests whose `Host` or `Origin` is not its own. Without the front end built (`npm run build` in `studio/web`) it still serves the API, and `/` says how to build it.
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `--port` | `8411` | The port to listen on. |
+| `--repo DIR` | the nearest folder above the current one holding `games/` and `Cargo.toml` | The repository root: the games' releases are read from `games/<game>/releases/`. |
+| `--web DIR` | `<repo>/studio/web/dist` | The built front end. Any path that is not a file in it gives its `index.html`. |
+| `--data DIR` | `<repo>/studio/data` (never committed) | Compiled bots in `bin/`, named `<release>-<hash of the file>`, and the speed measurements in `speed.json`. |
+
+A release is compiled with `rustc` (from `PATH`) the first time a game uses it, and the binary is reused. Release files are never modified. A computer seat in "fixed" mode needs the release's speed in iterations per millisecond: the first game against a release measures it by playing the release against itself (3000 iterations per answer, seed 1) and keeps the result in `speed.json`; the session's status is `measuring` meanwhile.
+
+### API
+
+JSON in and out; errors are `{"error": "..."}`. Ids are short random hex strings.
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/games` | The games, each with its releases, newest first. |
+| `POST /api/sessions` | Starts a game: `{"game", "seed", "opening_plies": 0, "seats": [S0, S1]}`. A seat is `{"kind": "human", "name"}` or `{"kind": "bot", "release", "think_ms": 10..=10000, "mode": "fixed" \| "realtime"}`. Returns `{"id"}`. Openings are not supported in live games yet, so `opening_plies` must be 0. |
+| `GET /api/sessions/{id}` | The session to poll: `status` (`waiting_human`, `bot_thinking`, `measuring`, `compiling`, `rewinding`, `over`, `failed`), `error`, `to_act`, `opening_turns`, `turns`, `frames`, `human_moves` (for the human to act), `result` and `progress` (`{done, total}` while rewinding; `total` is null while measuring). |
+| `POST /api/sessions/{id}/move` | `{"seat", "index"}`: plays `human_moves[index]`. 409 if it is not that human's turn or the index is wrong. |
+| `POST /api/sessions/{id}/takeback` | `{"turns": k}`: keeps the first `k` turns by replaying the game, and restarts each bot by replaying its answers. 409 against a "realtime" bot, for `k` out of range, or while the session is busy. A release that does not replay identically fails the session. |
+| `POST /api/sessions/{id}/end` | `{"seat", "reason": "resign" \| "timeout"}`: the other seat wins. A timeout ends with `Timeout {seat, limit_ms: 0}` (the front end runs the human clocks); a resignation with `Resigned {seat}`. Only human seats can end a game this way (409 for a bot). |
+| `GET /api/sessions/{id}/record` | The game so far as a game record, format 1, source `studio` ([ADR 0027](../docs/adr/0027-game-records.md)). A bot's `command` is the release's name (the path of the compiled binary is specific to the computer). A game not over ends with `Aborted {reason: "unfinished"}`. |
+| `DELETE /api/sessions/{id}` | Stops the bots and forgets the session. Sessions untouched for two hours are dropped. |
+
+The two modes of a computer seat:
+
+- `fixed`: a fixed number of iterations, `think_ms` times the release's measured speed, and the bot seed `cg_arena::runner::bot_seed`; this is what takebacks replay.
+- `realtime`: the release's own time budget scaled by `think_ms / 100` (`CG_TIME_SCALE`), with the game's limits scaled likewise plus 50 ms; for bots playing each other. A bot that times out, crashes or answers invalidly loses.

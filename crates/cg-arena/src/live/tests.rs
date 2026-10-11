@@ -547,3 +547,47 @@ fn a_timeout_and_a_crash_are_distinguished() {
         other => panic!("unexpected error {other}"),
     }
 }
+
+#[test]
+fn resync_reports_its_progress_and_can_be_cancelled() {
+    let record = played_by_the_arena();
+    let turns = &record.recorded_turns;
+    let a = counter("a");
+    let mut seen = Vec::new();
+    let bot = resync_bot_with(
+        &a,
+        &settings(0, "a"),
+        Countdown::boxed(10),
+        setup(),
+        &turns[..5],
+        0,
+        LIMIT,
+        &mut |done, total| {
+            seen.push((done, total));
+            true
+        },
+    )
+    .unwrap();
+    // Seat 0 answered in turns 0, 2 and 4.
+    assert_eq!(seen, vec![(1, 3), (2, 3), (3, 3)]);
+    assert_eq!(bot.answers(), 3);
+
+    let mut calls = 0;
+    let error = resync_bot_with(
+        &a,
+        &settings(0, "a"),
+        Countdown::boxed(10),
+        setup(),
+        &turns[..5],
+        0,
+        LIMIT,
+        &mut |_, _| {
+            calls += 1;
+            calls < 2
+        },
+    )
+    .err()
+    .expect("the replay was cancelled");
+    assert!(matches!(error, ResyncError::Cancelled), "{error}");
+    assert_eq!(calls, 2);
+}

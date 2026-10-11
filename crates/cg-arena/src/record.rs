@@ -13,6 +13,9 @@ use crate::runner::{bot_seed, BotSpec, EndReason, MatchOptions, MatchRecord};
 use crate::tournament::GameRecord;
 
 /// The version of the record format. A change to the format raises it.
+/// Adding a kind of end (`EndReason::Resigned`) does not: readers of format 1
+/// only fail on a kind they do not know, and records made by the arena never
+/// hold it.
 pub const RECORD_FORMAT: u32 = 1;
 
 /// The environment variable that replaces the bots' time budget by a fixed

@@ -327,3 +327,12 @@ fn a_timeout_leaves_its_turn_out_of_the_record() {
     assert_eq!(record.turns, 3);
     assert_eq!(record.recorded_turns.len(), 2);
 }
+
+#[test]
+fn a_resignation_is_a_choice_not_a_fault() {
+    let end = EndReason::Resigned { seat: 1 };
+    assert_eq!(end.faulty_seat(), None);
+    let json = serde_json::to_value(&end).unwrap();
+    assert_eq!(json, serde_json::json!({"kind": "resigned", "seat": 1}));
+    assert_eq!(serde_json::from_value::<EndReason>(json).unwrap(), end);
+}

@@ -91,16 +91,20 @@ pub enum EndReason {
     Invalid { seat: usize, reason: String },
     /// The arena stopped the game; it counts as a draw.
     Aborted { reason: String },
+    /// The player in this seat gave up, and the other seat wins. The arena
+    /// never produces it: the studio does, for a human.
+    Resigned { seat: usize },
 }
 
 impl EndReason {
-    /// The seat at fault, if a bot caused the end of the game.
+    /// The seat at fault, if a bot caused the end of the game. A
+    /// resignation is a choice, not a fault.
     pub fn faulty_seat(&self) -> Option<usize> {
         match self {
             EndReason::Timeout { seat, .. }
             | EndReason::Crash { seat, .. }
             | EndReason::Invalid { seat, .. } => Some(*seat),
-            EndReason::Finished | EndReason::Aborted { .. } => None,
+            EndReason::Finished | EndReason::Aborted { .. } | EndReason::Resigned { .. } => None,
         }
     }
 }

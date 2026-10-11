@@ -106,7 +106,8 @@ impl Summary {
             EndReason::Timeout { seat, .. } => self.faults[bot_in_seat(*seat)].timeouts += 1,
             EndReason::Crash { seat, .. } => self.faults[bot_in_seat(*seat)].crashes += 1,
             EndReason::Invalid { seat, .. } => self.faults[bot_in_seat(*seat)].invalid += 1,
-            EndReason::Aborted { .. } => self.aborted += 1,
+            // The arena never resigns; if a record says so, it is not a fault.
+            EndReason::Aborted { .. } | EndReason::Resigned { .. } => self.aborted += 1,
             EndReason::Finished => {}
         }
         for seat in 0..2 {
