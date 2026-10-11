@@ -68,11 +68,12 @@ jobs:
           mkdir -p target
           for settings in games/*/evaluation.env; do
             game="$(basename "$(dirname "$settings")")"
-            scripts/league.sh "$game" | tee "target/league-$game.txt"
+            scripts/annotate.sh run "League of $game" scripts/league.sh "$game" | tee "target/league-$game.txt"
             {
               echo "## League: $game"
               echo '```'
-              cat "target/league-$game.txt"
+              # The annotation of a failure is for the check run only.
+              grep -v '^::error title=' "target/league-$game.txt" || true
               echo '```'
             } >>"$GITHUB_STEP_SUMMARY"
           done

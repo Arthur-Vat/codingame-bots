@@ -78,17 +78,24 @@ jobs:
           RECORDS_DIR: target/records
         run: |
           mkdir -p target/sprt-result
+          # The annotation of a failure is for the check run, not the report
+          # that is posted.
+          drop_annotations() { sed -i '/^::error title=/d' target/sprt-result/report.txt; }
           status=0
           for candidate in $CANDIDATES; do
             game="$(cut -d/ -f2 <<<"$candidate")"
             set +e
-            scripts/sprt.sh "$game" "$candidate" | tee -a target/sprt-result/report.txt
+            scripts/annotate.sh run "SPRT of $candidate" scripts/sprt.sh "$game" "$candidate" | tee -a target/sprt-result/report.txt
             code="${PIPESTATUS[0]}"
             set -e
             # Status 2 is an error, not a verdict: keep no result.
-            if [ "$code" -ge 2 ]; then exit "$code"; fi
+            if [ "$code" -ge 2 ]; then
+              drop_annotations
+              exit "$code"
+            fi
             if [ "$code" -ne 0 ]; then status=1; fi
           done
+          drop_annotations
           echo "$status" >target/sprt-result/status
           # Identifies this result in the comment that posts it.
           echo "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >target/sprt-result/origin

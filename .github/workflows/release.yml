@@ -39,5 +39,5 @@ jobs:
             if [ -n "$entry" ]; then
               notes="$notes Journal: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$GITHUB_SHA/$entry"
             fi
-            gh release create "$tag" "$file" --target "$GITHUB_SHA" --title "$tag" --notes "$notes"
+            scripts/annotate.sh run "Release $tag" gh release create "$tag" "$file" --target "$GITHUB_SHA" --title "$tag" --notes "$notes"
           done
