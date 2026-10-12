@@ -27,6 +27,7 @@ Every bot change is judged by CI: unit tests, a check that the bot compiles on C
   - `release.yml`: a GitHub release for each new release file.
   - `train.yml`: self-play and training, started by hand.
   - `prune-branches.yml`: weekly deletion of finished `claude/` branches.
+  - `archive.yml`: keeps each game's arena games in one artifact, and rebuilds the site ([ADR 0031](docs/adr/0031-arena-games-archive.md)).
   - `pr-hygiene.yml`: labels each pull request and checks its title.
   - `pages.yml`: publishes the studio as a static site on GitHub Pages from `main`.
 

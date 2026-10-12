@@ -1,0 +1,152 @@
+name: Arena archive
+
+# Keeps each game's arena games in one workflow artifact, arena-games-<game>
+# (ADR 0031, scripts/arena-archive.sh): the archive's records, checked by
+# replaying them, plus the league and SPRT samples of a release when a push to
+# main adds one. A weekly run uploads the archive again before it expires,
+# 90 days after its upload. Every upload deletes the older copies, then asks
+# the Pages workflow to rebuild. A run by hand uploads a dry-run copy only
+# (dry-run-arena-games-<game>, kept a day) unless dry_run is unchecked: it
+# deletes nothing and starts no Pages build.
+#
+# The workflow_run trigger runs this file from the default branch with write
+# permissions: it never checks out or runs code of a pull request. The
+# downloaded records are data, read by studio-archive.
+on:
+  workflow_run:
+    workflows: [League]
+    types: [completed]
+    branches: [main]
+  schedule:
+    # Wednesdays, early, off the hour.
+    - cron: "41 4 * * 3"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Upload a dry-run copy only: delete nothing, start no Pages build"
+        type: boolean
+        default: true
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # CodinGame's Rust compiler (docs/CODINGAME.md, ADR 0010).
+  # Keep in sync with `CG_RUST` in ci.yml.
+  CG_RUST: "1.90.0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # The games to archive and whether a release is being added.
+  plan:
+    name: Plan
+    # A League run counts when it succeeded on a push to main.
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      games: ${{ steps.plan.outputs.games }}
+      adding: ${{ steps.plan.outputs.adding }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The commit the League run rated: its parent shows the added files.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 2
+      - name: Decide which games are archived
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: scripts/annotate.sh run "Arena archive plan" scripts/arena-archive.sh plan
+
+  archive:
+    name: "${{ matrix.game }}: archive"
+    needs: plan
+    # An empty matrix is an error: skip the job instead.
+    if: needs.plan.outputs.games != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # One run at a time per game: an archive is built from the one before. A
+    # run that archives nothing never queues, and a dry run never waits for
+    # or cancels a real one.
+    concurrency:
+      group: arena-archive-${{ matrix.game }}${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '-dry-run' || '' }}
+      cancel-in-progress: false
+    permissions:
+      actions: write # to delete the older archives
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        game: ${{ fromJSON(needs.plan.outputs.games) }}
+    env:
+      GAME: ${{ matrix.game }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+    steps:
+      # The default branch (or the branch a run by hand was started on).
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Build studio-archive
+        run: scripts/annotate.sh run "Build studio-archive" cargo build --locked --release -p studio --bin studio-archive
+      - name: Gather the games
+        id: gather
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ARCHIVE_TOOL: ${{ github.workspace }}/target/release/studio-archive
+          ADDING: ${{ needs.plan.outputs.adding }}
+          LEAGUE_RUN_ID: ${{ github.event.workflow_run.id }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: scripts/annotate.sh run "Gather the games of $GAME" scripts/arena-archive.sh gather "$GAME" "$RUNNER_TEMP/arena"
+      - name: Upload the archive
+        id: upload
+        if: steps.gather.outputs.upload == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.DRY_RUN == 'true' && format('dry-run-arena-games-{0}', matrix.game) || format('arena-games-{0}', matrix.game) }}
+          path: ${{ runner.temp }}/arena/archive
+          if-no-files-found: error
+          retention-days: ${{ env.DRY_RUN == 'true' && 1 || 90 }}
+      - name: Delete the older archives
+        if: steps.upload.outcome == 'success' && env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: scripts/annotate.sh run "Delete the older archives of $GAME" scripts/arena-archive.sh prune "$GAME" "$ARTIFACT_ID"
+
+  # Asks the Pages workflow to rebuild when this run uploaded an archive.
+  pages:
+    name: Rebuild the site
+    needs: archive
+    # The count of uploaded archives below guards the dispatch: one game
+    # failing does not block another's rebuild.
+    if: ${{ !cancelled() && needs.archive.result != 'skipped' && (github.event_name != 'workflow_dispatch' || !inputs.dry_run) }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write # to start the Pages workflow
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Start the Pages build
+        run: |
+          # The artifacts of this run; dry-run copies do not start with arena-games-.
+          count="$(gh api --paginate "repos/$GH_REPO/actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100" |
+            jq -s '[.[].artifacts[] | select(.name | startswith("arena-games-"))] | length')" || {
+            echo "::error title=Arena archive::cannot list the artifacts of this run"
+            exit 1
+          }
+          if [ "$count" -gt 0 ]; then
+            gh workflow run pages.yml --ref main
+            echo "::notice title=Arena archive::the Pages build is started"
+          else
+            echo "::notice title=Arena archive::no archive uploaded: the Pages build is not started"
+          fi

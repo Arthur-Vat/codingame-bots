@@ -482,6 +482,9 @@ jobs:
       - name: Test the CI scopes
         if: ${{ !cancelled() }}
         run: scripts/annotate.sh run "CI scopes test" scripts/tests/ci-scopes-test.sh
+      - name: Test the arena archive
+        if: ${{ !cancelled() }}
+        run: scripts/annotate.sh run "Arena archive test" scripts/tests/arena-archive-test.sh
       - name: Lint the workflows
         if: ${{ !cancelled() }}
         # The image is pinned; it includes shellcheck, which also lints the
