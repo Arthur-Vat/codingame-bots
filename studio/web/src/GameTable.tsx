@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import type { Session } from './api';
 import { clockClass, formatClock, formatSpent, type ClockState } from './clock';
 import { SeatMark } from './Marks';
@@ -197,7 +197,53 @@ function MoveRowView({ number, children }: { number: number; children: ReactNode
   );
 }
 
+/** How long the confirmation of a resignation waits before it takes itself back. */
+export const RESIGN_CONFIRM_MS = 4000;
+
+/**
+ * The resign button, in two steps: the first click asks "Confirm resign", the second resigns. The
+ * question goes away after RESIGN_CONFIRM_MS, on Escape, and when the button is not usable. The
+ * caller gives it a new `key` for each session, so a new game starts with the first step.
+ */
+function ResignButton({ disabled, onResign }: { disabled: boolean; onResign: () => void }) {
+  const [asking, setAsking] = useState(false);
+  // A button that cannot be used forgets the question.
+  if (disabled && asking) setAsking(false);
+  const sure = asking && !disabled;
+  useEffect(() => {
+    if (!sure) return;
+    const timer = setTimeout(() => setAsking(false), RESIGN_CONFIRM_MS);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAsking(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [sure]);
+  return (
+    <button
+      className={`ctrl${sure ? ' danger' : ''}`}
+      type="button"
+      disabled={disabled}
+      onClick={() => {
+        if (!sure) {
+          setAsking(true);
+          return;
+        }
+        setAsking(false);
+        onResign();
+      }}
+    >
+      {sure ? 'Confirm resign' : '⚑ Resign'}
+    </button>
+  );
+}
+
 interface ControlsProps {
+  /** The session the buttons belong to: a resignation asked in another one is forgotten. */
+  sessionId: string;
   /** Takeback, resign: shown while a game with a human is on. */
   showPlayControls: boolean;
   takebackTo: number | null;
@@ -211,6 +257,7 @@ interface ControlsProps {
 
 /** The row of buttons under the move list. */
 export function Controls({
+  sessionId,
   showPlayControls,
   takebackTo,
   resignSeat,
@@ -232,9 +279,7 @@ export function Controls({
           >
             ↶ Takeback
           </button>
-          <button className="ctrl" type="button" disabled={resignSeat === null} onClick={onResign}>
-            ⚑ Resign
-          </button>
+          <ResignButton key={sessionId} disabled={resignSeat === null} onResign={onResign} />
         </>
       )}
       <button className="ctrl" type="button" disabled={!canSave} onClick={onSave}>

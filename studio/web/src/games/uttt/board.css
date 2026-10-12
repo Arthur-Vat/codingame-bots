@@ -14,7 +14,6 @@
 
   container-type: inline-size;
   width: 100%;
-  max-width: 640px;
   aspect-ratio: 1;
   display: grid;
   grid-template-columns: var(--gutter) minmax(0, 1fr);
@@ -216,4 +215,33 @@
   stroke: var(--o);
   stroke-width: 4;
   opacity: 0.7;
+}
+
+/* The dashed line through the three small boards that won the game: blue dashes with a thin dark edge,
+   so it reads over the dark X, the white O and the grey squares. It never takes a click. */
+.uttt-win {
+  grid-column: 2;
+  grid-row: 2;
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.uttt-win line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 10 12;
+}
+
+/* The edge is the same dashes, a little wider, so each blue dash gets a thin dark outline. */
+.uttt-win .edge {
+  stroke: rgba(14, 24, 32, 0.55);
+  stroke-width: 6;
+}
+
+.uttt-win .dash {
+  stroke: var(--accent, #3692e7);
+  stroke-width: 3.5;
 }

@@ -1,5 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
-import { answer, frame, gameFrames, gameTurns, mockGames, record, recordView } from './fixtures';
+import {
+  answer,
+  frame,
+  gameFrames,
+  gameTurns,
+  mockGames,
+  pageHeights,
+  record,
+  recordView,
+} from './fixtures';
 
 // The server is not run by this job: the API is mocked with page.route.
 
@@ -295,7 +304,9 @@ test('the end block of a finished game has a Review button, and two bots open it
   });
   await page.route('**/api/sessions/ab12', (route) => route.fulfill({ json: current }));
   await page.goto('/#/game/uttt/ab12');
-  await expect(page.getByTestId('board-overlay')).toContainText('move 2');
+  // The move number is in the info card, not over the board.
+  await expect(page.locator('.info dt:text-is("Move") + dd')).toHaveText('2');
+  await expect(page.getByTestId('board-overlay')).toHaveCount(0);
 
   current = sessionOver();
   await expect(page).toHaveURL(/#\/review\/session\/ab12$/);
@@ -346,4 +357,70 @@ test('the review keeps its board where the game page has it', async ({ page }) =
   await page.goto('/#/review/session/ab12');
   await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
   expect(await slotBox(page)).toEqual(onGame);
+});
+
+test('the review page fits the window, with the playback bar and a table as tall as the board', async ({
+  page,
+}) => {
+  await mockSaved(page);
+  for (const viewport of [
+    { width: 1536, height: 730 },
+    { width: 1366, height: 650 },
+    { width: 1920, height: 970 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto(`/#/review/saved/${SAVED}`);
+    await expect(page.getByRole('button', { name: 'Next move' })).toBeVisible();
+    const name = `${viewport.width}x${viewport.height}`;
+    const fit = await pageHeights(page);
+    expect(fit.scroll, name).toBeLessThanOrEqual(fit.inner);
+    const bar = await page.getByTestId('playback').boundingBox();
+    expect(bar!.y + bar!.height, name).toBeLessThanOrEqual(viewport.height);
+    const squares = await page.locator('.uttt-board').boundingBox();
+    const table = await page.locator('.panel.table').boundingBox();
+    expect(Math.abs(table!.y - squares!.y), name).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(table!.y + table!.height - (squares!.y + squares!.height)),
+      name,
+    ).toBeLessThanOrEqual(1);
+  }
+});
+
+test('in a narrower window the review’s board and playback bar still fit the height', async ({
+  page,
+}) => {
+  await mockSaved(page);
+  for (const viewport of [
+    { width: 1100, height: 700 },
+    { width: 1024, height: 768 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto(`/#/review/saved/${SAVED}`);
+    await expect(page.getByRole('button', { name: 'Next move' })).toBeVisible();
+    const name = `${viewport.width}x${viewport.height}`;
+    const squares = await page.locator('.uttt-board').boundingBox();
+    const bar = await page.getByTestId('playback').boundingBox();
+    expect(squares!.y + squares!.height, name).toBeLessThanOrEqual(viewport.height);
+    expect(bar!.y + bar!.height, name).toBeLessThanOrEqual(viewport.height);
+  }
+});
+
+test('the final frame of a game won by three small boards has the dashed line, the first has none', async ({
+  page,
+}) => {
+  const small: (0 | 1 | null)[][] = [
+    [1, 1, 1],
+    [null, null, null],
+    [null, null, null],
+  ];
+  const frames = gameFrames();
+  const last = { ...frames[frames.length - 1]!, small };
+  await mockSaved(page, { ...recordView(), frames: [...frames.slice(0, -1), last] });
+  await page.goto(`/#/review/saved/${SAVED}`);
+  await expect(page.getByRole('button', { name: 'Next move' })).toBeVisible();
+  await expect(page.getByTestId('win-lines')).toHaveCount(0);
+  await page.keyboard.press('End');
+  await expect(page.getByTestId('win-lines')).toBeVisible();
+  await page.keyboard.press('Home');
+  await expect(page.getByTestId('win-lines')).toHaveCount(0);
 });

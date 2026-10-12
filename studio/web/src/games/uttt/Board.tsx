@@ -6,6 +6,7 @@ import {
   allCellsPlayable,
   prepareHeat,
   smallBoardState,
+  winningLines,
   type HeatMap,
   type UtttFrame,
 } from './view';
@@ -59,6 +60,37 @@ function BigO() {
   return (
     <svg viewBox="0 0 100 100" className="big-o" aria-hidden="true">
       <circle cx="50" cy="50" r="33" />
+    </svg>
+  );
+}
+
+/* A won game's line, in a 300 x 300 box over the board: the small boards' centres are at 50, 150
+   and 250 (to within a pixel or two), and the line runs a little past the two outer ones. */
+const REACH = 24;
+
+function WinLines({ frame }: { frame: UtttFrame }) {
+  const lines = winningLines(frame);
+  if (lines.length === 0) return null;
+  const at = (n: number) => 50 + 100 * n;
+  return (
+    <svg className="uttt-win" viewBox="0 0 300 300" aria-hidden="true" data-testid="win-lines">
+      {lines.map(({ from, to }) => {
+        const dr = Math.sign(to[0] - from[0]);
+        const dc = Math.sign(to[1] - from[1]);
+        const length = Math.hypot(dr, dc);
+        const coords = {
+          x1: at(from[1]) - (dc / length) * REACH,
+          y1: at(from[0]) - (dr / length) * REACH,
+          x2: at(to[1]) + (dc / length) * REACH,
+          y2: at(to[0]) + (dr / length) * REACH,
+        };
+        return (
+          <g key={`${from[0]}${from[1]}${to[0]}${to[1]}`}>
+            <line className="edge" {...coords} />
+            <line className="dash" {...coords} />
+          </g>
+        );
+      })}
     </svg>
   );
 }
@@ -149,6 +181,7 @@ export default function Board({
           }),
         )}
       </div>
+      <WinLines frame={frame} />
     </div>
   );
 }

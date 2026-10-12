@@ -1,5 +1,4 @@
 import type { Answer, EndReason, SeatInfo, Session, SessionResult } from './api';
-import { sessionMode } from './play';
 
 /** The mark of a seat: seat 0 moves first and is X. */
 export function seatMark(seat: number): 'X' | 'O' {
@@ -118,10 +117,21 @@ export function bottomSeat(session: Session | null): number {
   return human === -1 ? 0 : human;
 }
 
-/** What covers the board: a full notice, or a compact line over a game between two bots. */
-export type Overlay =
-  | { kind: 'notice'; title: string; text: string | null; fraction: number | null }
-  | { kind: 'pill'; text: string };
+/**
+ * The number of the move being played (1 for the first), once the game is being played: null
+ * while the bots are compiled, measured or rewound, and when the game is over or failed.
+ */
+export function moveBeingPlayed(session: Session): number | null {
+  const playing = session.status === 'bot_thinking' || session.status === 'waiting_human';
+  return playing && session.frames.length > 0 ? session.turns.length + 1 : null;
+}
+
+/** A notice over the board while the session rewinds, compiles or measures. */
+export interface Overlay {
+  title: string;
+  text: string | null;
+  fraction: number | null;
+}
 
 function releaseNames(session: Session, only?: (seat: SeatInfo) => boolean): string {
   const names: string[] = [];
@@ -141,7 +151,6 @@ export function overlayFor(session: Session): Overlay | null {
       const total = session.progress?.total ?? null;
       if (total === null || total === 0) {
         return {
-          kind: 'notice',
           title: `Rewinding ${names}`,
           text: `Restarting ${names} from the first move.`,
           fraction: total === 0 ? 0 : null,
@@ -149,7 +158,6 @@ export function overlayFor(session: Session): Overlay | null {
       }
       const done = Math.min(session.progress?.done ?? 0, total);
       return {
-        kind: 'notice',
         title: `Rewinding ${names}`,
         text: `Replaying ${total} move${total === 1 ? '' : 's'} with seed ${session.seed}.`,
         fraction: done / total,
@@ -157,7 +165,6 @@ export function overlayFor(session: Session): Overlay | null {
     }
     case 'compiling':
       return {
-        kind: 'notice',
         title: `Compiling ${releaseNames(session)}…`,
         text: null,
         fraction: null,
@@ -165,19 +172,11 @@ export function overlayFor(session: Session): Overlay | null {
     case 'measuring': {
       const names = releaseNames(session, (seat) => seat.kind === 'bot' && seat.mode === 'fixed');
       return {
-        kind: 'notice',
         title: `Measuring ${names || releaseNames(session)}'s speed on this computer…`,
         text: 'Only the first game against a release needs this.',
         fraction: null,
       };
     }
-    case 'bot_thinking':
-      return sessionMode(session) === 'bots'
-        ? {
-            kind: 'pill',
-            text: `${session.seats[0].name} vs ${session.seats[1].name} · move ${session.turns.length + 1}`,
-          }
-        : null;
     default:
       return null;
   }

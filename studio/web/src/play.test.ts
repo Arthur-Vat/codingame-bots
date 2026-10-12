@@ -6,6 +6,7 @@ import {
   cursorAfterKey,
   deepEqual,
   exportFileName,
+  hasGameInProgress,
   findMoveIndex,
   frameAfterTurn,
   isTextEntry,
@@ -335,5 +336,23 @@ describe('usesSpace', () => {
     expect(usesSpace({ tagName: 'INPUT', type: 'text' })).toBe(false);
     expect(usesSpace({ tagName: 'INPUT' })).toBe(false);
     expect(usesSpace({ tagName: 'INPUT', type: 'range' })).toBe(false);
+  });
+});
+
+describe('hasGameInProgress', () => {
+  it('is true once a player has moved in a game that goes on', () => {
+    expect(hasGameInProgress(session({ turns: [turn(0)], opening_turns: 0 }))).toBe(true);
+    expect(hasGameInProgress(session({ turns: [turn(0), turn(1)], opening_turns: 1 }))).toBe(true);
+  });
+
+  it('is false with no session, no move, or only the opening turns', () => {
+    expect(hasGameInProgress(null)).toBe(false);
+    expect(hasGameInProgress(session({ turns: [], opening_turns: 0 }))).toBe(false);
+    expect(hasGameInProgress(session({ turns: [turn(0)], opening_turns: 1 }))).toBe(false);
+  });
+
+  it('is false for a game that is over or failed', () => {
+    expect(hasGameInProgress(session({ turns: [turn(0)], status: 'over' }))).toBe(false);
+    expect(hasGameInProgress(session({ turns: [turn(0)], status: 'failed' }))).toBe(false);
   });
 });

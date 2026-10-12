@@ -132,3 +132,79 @@ export function resultDetail(frame: UtttFrame): string | null {
   }
   return `Small boards won: ${points[0]}–${points[1]}`;
 }
+
+/** The board before anything is played and nothing can be: every cell empty, none playable. */
+export function emptyFrame(): UtttFrame {
+  return {
+    cells: Array.from({ length: 9 }, () => Array<Mark>(9).fill(null)),
+    small: Array.from({ length: 3 }, () => Array<SmallState>(3).fill(null)),
+    last: null,
+    playable: [],
+    to_move: null,
+    points: [0, 0],
+    result: null,
+  };
+}
+
+/** A line through three small boards, from the centre of one end to the centre of the other. */
+export interface WinLine {
+  /** Small-board coordinates `[row, col]` of the two ends. */
+  from: Cell;
+  to: Cell;
+}
+
+const LINES: [Cell, Cell][] = [
+  [
+    [0, 0],
+    [0, 2],
+  ],
+  [
+    [1, 0],
+    [1, 2],
+  ],
+  [
+    [2, 0],
+    [2, 2],
+  ],
+  [
+    [0, 0],
+    [2, 0],
+  ],
+  [
+    [0, 1],
+    [2, 1],
+  ],
+  [
+    [0, 2],
+    [2, 2],
+  ],
+  [
+    [0, 0],
+    [2, 2],
+  ],
+  [
+    [0, 2],
+    [2, 0],
+  ],
+];
+
+/**
+ * The lines of three small boards won by the game's winner, when the frame's result has a winner;
+ * none for a win on the count of small boards, a draw, a game in progress or a malformed frame.
+ */
+export function winningLines(frame: UtttFrame): WinLine[] {
+  const winner: unknown = frame?.result?.winner;
+  const small: unknown = frame?.small;
+  if (winner !== 0 && winner !== 1) return [];
+  // Three rows of three, or nothing to draw.
+  if (!Array.isArray(small) || small.length !== 3) return [];
+  if (!small.every((row) => Array.isArray(row) && row.length === 3)) return [];
+  const owns = (cell: Cell): boolean => {
+    const row: unknown = frame.small[cell[0]];
+    return Array.isArray(row) && row[cell[1]] === winner;
+  };
+  return LINES.filter(([from, to]) => {
+    const middle: Cell = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
+    return owns(from) && owns(middle) && owns(to);
+  }).map(([from, to]) => ({ from, to }));
+}
