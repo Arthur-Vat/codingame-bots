@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-None. (#92, ADR 0031, merged 2026-10-12 on the owner's approval in the chat.)
+- #96 `feat(studio): fit the board to the window and polish the game page` (step G1), head d667f83, CI green, review fixed; brief given and approval asked 2026-10-12.
 
 ## Open questions
 
