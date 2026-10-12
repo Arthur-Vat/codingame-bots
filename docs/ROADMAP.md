@@ -188,12 +188,13 @@ Decided with the owner on 2026-10-11 ([ADR 0030](adr/0030-studio-on-github-pages
 
 ### G. Interface rework
 
-Planned with the owner on 2026-10-12, from his trial on Windows: the game page fits the window, a finished game becomes its review on the same page, the history is a tab of each game, and a game between two bots is shown once it is played. Reworked the same day, after the first version (owner, 2026-10-12): after a game the player is offered Rematch, New game and the analysis board, the tabs are Play and History, and the review screen became the analysis board, with the engine to come in step D.
+Planned with the owner on 2026-10-12, from his trial on Windows: the game page fits the window, a finished game becomes its review on the same page, the history is a tab of each game, and a game between two bots is shown once it is played. Reworked the same day, after the first version (owner, 2026-10-12): after a game the player is offered Rematch, New game and the analysis board, the tabs are Play and History, and the review screen became the analysis board, with the engine to come in step D; and one setup menu, opened by Play, replaced the three setup dialogs.
 
 - [x] The board fits the window, the panels match it, the new logo, an empty board before a game, the winning line, and confirmations before resigning or leaving a running game
 - [x] One page per game: play, review and history in tabs; a finished game becomes its review in place
 - [x] Bot against bot shown once it is played: a spinner on the board while the bots play, then the review from the first move (owner, 2026-10-12)
 - [x] After a game: Rematch, New game and Analysis board; tabs Play and History; a game from the history opens on the analysis board, without engine until step D (owner, 2026-10-12)
+- [x] One setup menu, opened by Play when no game is shown: the mode first (three buttons), then the opponents and the time, then an optional advanced mode (owner, 2026-10-12)
 
 Order: A, B, C, E, then F, then the interface rework (G), then D. Later: each bot's own evaluation from future releases, more games.
 

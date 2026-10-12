@@ -97,6 +97,9 @@ test('a game page has two tabs in the top bar, and the home page has none', asyn
   await expect(nav.getByRole('link')).toHaveText(['Play', 'History']);
   await expect(tab(page, 'Play')).toHaveAttribute('aria-current', 'page');
   await expect(tab(page, 'Play')).toHaveAttribute('href', '#/game/uttt');
+  // The Play tab opened the setup menu, which covers the page until it is closed.
+  await expect(page.getByRole('dialog', { name: 'Game setup' })).toBeVisible();
+  await page.keyboard.press('Escape');
   await expect(tab(page, 'History')).toHaveAttribute('href', '#/game/uttt/history');
   await expect(page.getByRole('link', { name: 'Games' })).not.toHaveAttribute(
     'aria-current',

@@ -84,9 +84,9 @@ describe('statusText', () => {
 
 describe('sessionTitle and bottomSeat', () => {
   it('tells the kind of game from the seats', () => {
-    expect(sessionTitle(session({}))).toBe('Against the computer');
-    expect(sessionTitle(session({ seats: [human, human] }))).toBe('Friend game');
-    expect(sessionTitle(session({ seats: [bot, bot] }))).toBe('Bot against bot');
+    expect(sessionTitle(session({}))).toBe('Human vs bot');
+    expect(sessionTitle(session({ seats: [human, human] }))).toBe('Human vs human');
+    expect(sessionTitle(session({ seats: [bot, bot] }))).toBe('Bot vs bot');
   });
 
   it('puts the first human at the bottom', () => {

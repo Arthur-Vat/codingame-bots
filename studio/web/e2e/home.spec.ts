@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { chooseMode, openSetup, setupMenu } from './fixtures';
 
 // The server is not run by this job: the API is mocked with page.route.
 
@@ -62,16 +63,20 @@ test('the home screen lists the games the server offers', async ({ page }) => {
   );
 });
 
-test('a card opens the game page with the three ways to start', async ({ page }) => {
+test('a card opens the game page and its setup menu with the three ways to start', async ({
+  page,
+}) => {
   await mockGames(page);
   await page.goto('/');
   await page.getByRole('link', { name: /Ultimate Tic-Tac-Toe/ }).click();
   await expect(page).toHaveURL(/#\/game\/uttt$/);
   await expect(page.locator('.crumb')).toHaveText('Ultimate Tic-Tac-Toe');
-  for (const name of ['Play with a friend', 'Play the computer', 'Bot against bot']) {
-    await expect(page.getByRole('button', { name: new RegExp(name) })).toBeVisible();
+  const menu = setupMenu(page);
+  await expect(menu).toBeVisible();
+  for (const name of ['Human vs human', 'Human vs bot', 'Bot vs bot']) {
+    await expect(menu.getByRole('button', { name, exact: true })).toBeVisible();
   }
-  await expect(page.getByText('Choose a mode on the left to start a game.')).toBeVisible();
+  await expect(page.getByText('Press New game to start a game.')).toBeVisible();
   // Analysis does not exist yet: no switch for its heat map.
   await expect(page.getByLabel('Heatmap of best moves')).toHaveCount(0);
 });
@@ -86,11 +91,14 @@ test('playing the computer sends a human seat and a fixed bot seat', async ({ pa
   await page.route('**/api/sessions/ab12', (route) => route.fulfill({ json: SESSION }));
 
   await page.goto('/#/game/uttt');
-  await page.getByRole('button', { name: /Play the computer/ }).click();
-  const dialog = page.getByRole('dialog', { name: 'Play the computer' });
+  const dialog = setupMenu(page);
   await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Human vs bot', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
   await expect(dialog.getByRole('button', { name: 'Start' })).toBeFocused();
-  await expect(dialog.getByLabel('Release')).toHaveValue('uttt-v003');
+  await expect(dialog.getByLabel('Release', { exact: true })).toHaveValue('uttt-v003');
   await expect(dialog.getByText('uttt-v003 (latest)')).toBeAttached();
   await expect(dialog.getByText('≈ 100 ms')).toBeVisible();
   await dialog.getByRole('button', { name: 'Start' }).click();
@@ -116,11 +124,10 @@ test('playing the computer sends a human seat and a fixed bot seat', async ({ pa
   await expect(page.getByText('uttt-v003 is thinking…')).toBeVisible();
 });
 
-test('Escape closes the dialog and the advanced mode shows the seed', async ({ page }) => {
+test('Escape closes the menu and the advanced mode shows the seed', async ({ page }) => {
   await mockGames(page);
   await page.goto('/#/game/uttt');
-  await page.getByRole('button', { name: /Bot against bot/ }).click();
-  const dialog = page.getByRole('dialog', { name: 'Bot against bot' });
+  const dialog = await chooseMode(setupMenu(page), 'Bot vs bot');
   await expect(dialog.getByLabel(/^X \(moves first\)/)).toHaveValue('uttt-v003');
   await expect(dialog.getByLabel('O', { exact: true })).toHaveValue('uttt-v002');
   await expect(dialog.getByLabel('Seed')).toBeHidden();
@@ -134,6 +141,9 @@ test('Escape closes the dialog and the advanced mode shows the seed', async ({ p
 test('the board slot keeps its size when the coordinates are shown', async ({ page }) => {
   await mockGames(page);
   await page.goto('/#/game/uttt');
+  // The menu opens by itself; this test is about the page behind it.
+  await expect(setupMenu(page)).toBeVisible();
+  await page.keyboard.press('Escape');
   const slot = page.getByTestId('board-slot');
   await expect(slot).toBeVisible();
   const before = await slot.boundingBox();
@@ -188,13 +198,13 @@ test('starting a second game deletes the first session', async ({ page }) => {
 
   await page.goto('/#/game/uttt/ab12');
   await expect(page.getByTestId('player-0')).toContainText('You');
-  await page.getByRole('button', { name: /Play with a friend/ }).click();
-  await page.getByRole('button', { name: 'Start' }).click();
+  const dialog = await chooseMode(await openSetup(page), 'Human vs human');
+  await dialog.getByRole('button', { name: 'Start' }).click();
   await expect(page).toHaveURL(/#\/game\/uttt\/cd34$/);
   await expect.poll(() => deleted).toEqual(['ab12']);
 });
 
-test('the dialog holds still while the game is created, and shows a refusal', async ({ page }) => {
+test('the menu holds still while the game is created, and shows a refusal', async ({ page }) => {
   await mockGames(page);
   let release: () => void = () => {};
   const gate = new Promise<void>((resolve) => (release = resolve));
@@ -203,8 +213,7 @@ test('the dialog holds still while the game is created, and shows a refusal', as
     await route.fulfill({ status: 400, json: { error: 'unknown release "uttt-v003"' } });
   });
   await page.goto('/#/game/uttt');
-  await page.getByRole('button', { name: /Play with a friend/ }).click();
-  const dialog = page.getByRole('dialog', { name: 'Play with a friend' });
+  const dialog = await chooseMode(setupMenu(page), 'Human vs human');
   await dialog.getByRole('button', { name: 'Start' }).click();
   await expect(dialog.getByRole('button', { name: 'Starting…' })).toBeDisabled();
   await page.keyboard.press('Escape');

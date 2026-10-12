@@ -146,7 +146,7 @@ test('the arena games are listed read-only, beside my games', async ({ page }) =
   await expect(page.getByLabel('Open a file')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Delete', exact: true })).toHaveCount(0);
   await expect(page.getByLabel('Source')).toHaveCount(0);
-  await expect(page.getByLabel('Release')).toBeVisible();
+  await expect(page.getByLabel('Release', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Result')).toBeVisible();
   await expect(rows(page).first().getByRole('link', { name: 'Analysis board' })).toHaveAttribute(
     'href',
@@ -199,12 +199,12 @@ test('a filter narrows the arena games with the history filter, and no record is
   // The rows go to the filter as the index has them.
   expect(api.filtered[0]?.rows).toEqual(ROWS);
 
-  await page.getByLabel('Release').selectOption('uttt-v009');
+  await page.getByLabel('Release', { exact: true }).selectOption('uttt-v009');
   await expect(rows(page)).toHaveCount(2);
   await expect.poll(() => api.filtered.at(-1)?.query).toBe('?game=uttt&release=uttt-v009');
   await expect(rows(page).nth(1)).toContainText('uttt-v001');
 
-  await page.getByLabel('Release').selectOption('');
+  await page.getByLabel('Release', { exact: true }).selectOption('');
   await expect(rows(page)).toHaveCount(3);
   // The list only ever asked for the index.
   expect(new Set(arena.requests)).toEqual(
@@ -221,9 +221,9 @@ test('an answer to a filter that has been changed since is ignored', async ({ pa
   // The answer to the first query is held back until the second has been answered.
   let release: () => void = () => {};
   api.gate = new Promise<void>((resolve) => (release = resolve));
-  await page.getByLabel('Release').selectOption('uttt-v009');
+  await page.getByLabel('Release', { exact: true }).selectOption('uttt-v009');
   await expect.poll(() => api.filtered.length).toBe(2);
-  await page.getByLabel('Release').selectOption('uttt-v001');
+  await page.getByLabel('Release', { exact: true }).selectOption('uttt-v001');
   await expect(rows(page)).toHaveCount(2);
   const late = page.waitForResponse((response) => response.url().includes('release=uttt-v009'));
   release();
@@ -359,7 +359,7 @@ test('a filter that matches nothing in the arena games says so', async ({ page }
   await serveArena(page.context(), { index: { format: 1, rows: ROWS } });
   await page.goto('/#/game/uttt/history/arena');
   await expect(rows(page)).toHaveCount(3);
-  await page.getByLabel('Release').selectOption('uttt-v010');
+  await page.getByLabel('Release', { exact: true }).selectOption('uttt-v010');
   await page.getByLabel('Result').selectOption({ label: 'Faults' });
   await expect(page.getByTestId('history-empty')).toHaveText(
     'No saved game matches these filters.',

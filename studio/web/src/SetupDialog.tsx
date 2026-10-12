@@ -6,8 +6,10 @@ import {
   DEFAULT_THINK_INDEX,
   INCREMENTS,
   MINUTES,
+  MODES,
   MODE_TITLES,
   THINK_MS,
+  botThinkIndexes,
   clockSeed,
   defaultRelease,
   defaultSecondRelease,
@@ -27,22 +29,36 @@ const SIDE_CAPTIONS: Record<Side, string> = {
   o: 'You play O; the bot moves first',
 };
 
-/** What the dialog hands back when Start is pressed. */
+/** What the menu hands back when Start is pressed. */
 export interface SetupResult {
   form: SetupForm;
   seed: number;
 }
 
 interface Props {
-  mode: Mode;
+  /** The mode selected when the menu opens. */
+  initialMode: Mode;
+  /** Called with each mode the owner selects, so the page can open the menu on it next time. */
+  onModeChange?: (mode: Mode) => void;
   /** The release names of the game. */
   releases: readonly string[];
   /** Starts the game; a rejected promise shows its message in the dialog. */
   onStart: (result: SetupResult) => Promise<void>;
   onClose: () => void;
-  /** A game is in progress and Start would end it: the dialog says so. */
+  /** A game is in progress and Start would end it: the menu says so. */
   endsRunningGame?: boolean;
 }
+
+/** The positions of a clock's two sliders. */
+interface ClockIndexes {
+  minutes: number;
+  increment: number;
+}
+
+const DEFAULT_CLOCK: ClockIndexes = {
+  minutes: DEFAULT_MINUTES_INDEX,
+  increment: DEFAULT_INCREMENT_INDEX,
+};
 
 function ReleaseSelect({
   id,
@@ -96,19 +112,32 @@ function ThinkSlider({
 }
 
 /** The modal that sets a game up. It is mounted for one opening, so its fields start afresh. */
-export function SetupDialog({ mode, releases, onStart, onClose, endsRunningGame = false }: Props) {
+export function SetupDialog({
+  initialMode,
+  onModeChange,
+  releases,
+  onStart,
+  onClose,
+  endsRunningGame = false,
+}: Props) {
   const ids = useId();
   const id = (name: string) => `${ids}-${name}`;
   const startRef = useRef<HTMLButtonElement>(null);
 
+  // What was chosen in each mode stays while the menu is open and the mode is switched.
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [release, setRelease] = useState(() => defaultRelease(releases));
   const [thinkIndex, setThinkIndex] = useState(DEFAULT_THINK_INDEX);
   const [xRelease, setXRelease] = useState(() => defaultRelease(releases));
   const [oRelease, setORelease] = useState(() => defaultSecondRelease(releases));
+  // The think time of both bots, and the two of advanced mode.
+  const [botsThinkIndex, setBotsThinkIndex] = useState(DEFAULT_THINK_INDEX);
   const [xThinkIndex, setXThinkIndex] = useState(DEFAULT_THINK_INDEX);
   const [oThinkIndex, setOThinkIndex] = useState(DEFAULT_THINK_INDEX);
-  const [minutesIndex, setMinutesIndex] = useState(DEFAULT_MINUTES_INDEX);
-  const [incrementIndex, setIncrementIndex] = useState(DEFAULT_INCREMENT_INDEX);
+  const [perBotEdited, setPerBotEdited] = useState(false);
+  // The clock of each mode that has one.
+  const [friendClock, setFriendClock] = useState<ClockIndexes>(DEFAULT_CLOCK);
+  const [computerClock, setComputerClock] = useState<ClockIndexes>(DEFAULT_CLOCK);
   const [side, setSide] = useState<Side>('x');
   const [advanced, setAdvanced] = useState(false);
   const [seedText, setSeedText] = useState(() => String(clockSeed(Date.now())));
@@ -119,7 +148,7 @@ export function SetupDialog({ mode, releases, onStart, onClose, endsRunningGame 
     startRef.current?.focus();
   }, []);
 
-  // While the game is being created the dialog stays: closing it would hide an answer.
+  // While the game is being created the menu stays: closing it would hide an answer.
   const close = useCallback(() => {
     if (!busy) onClose();
   }, [busy, onClose]);
@@ -132,9 +161,25 @@ export function SetupDialog({ mode, releases, onStart, onClose, endsRunningGame 
     return () => document.removeEventListener('keydown', onKey);
   }, [close]);
 
-  const minutes = MINUTES[minutesIndex] ?? 10;
-  const incrementSeconds = INCREMENTS[incrementIndex] ?? 0;
+  const clockIndexes = mode === 'friend' ? friendClock : computerClock;
+  const setClockIndexes = mode === 'friend' ? setFriendClock : setComputerClock;
+  const minutes = MINUTES[clockIndexes.minutes] ?? 10;
+  const incrementSeconds = INCREMENTS[clockIndexes.increment] ?? 0;
   const think = (index: number) => THINK_MS[index] ?? 100;
+
+  const pickMode = (picked: Mode) => {
+    setMode(picked);
+    onModeChange?.(picked);
+  };
+  // Turning advanced mode on starts the two bots' times from the shared one, unless one of them
+  // was edited already: those times are kept.
+  const setAdvancedMode = (on: boolean) => {
+    if (on && !perBotEdited) {
+      setXThinkIndex(botsThinkIndex);
+      setOThinkIndex(botsThinkIndex);
+    }
+    setAdvanced(on);
+  };
 
   const start = async () => {
     let form: SetupForm;
@@ -143,12 +188,13 @@ export function SetupDialog({ mode, releases, onStart, onClose, endsRunningGame 
     } else if (mode === 'computer') {
       form = { mode, release, thinkMs: think(thinkIndex), side, minutes, incrementSeconds };
     } else {
+      const [xIndex, oIndex] = botThinkIndexes(advanced, botsThinkIndex, xThinkIndex, oThinkIndex);
       form = {
         mode,
         xRelease,
         oRelease,
-        xThinkMs: think(xThinkIndex),
-        oThinkMs: think(oThinkIndex),
+        xThinkMs: think(xIndex),
+        oThinkMs: think(oIndex),
       };
     }
     setBusy(true);
@@ -161,7 +207,6 @@ export function SetupDialog({ mode, releases, onStart, onClose, endsRunningGame 
     }
   };
 
-  const title = MODE_TITLES[mode];
   const timed = mode === 'friend' || mode === 'computer';
 
   return (
@@ -173,22 +218,67 @@ export function SetupDialog({ mode, releases, onStart, onClose, endsRunningGame 
     >
       <div className="dialog" role="dialog" aria-modal="true" aria-labelledby={id('title')}>
         <header>
-          <h2 id={id('title')}>{title}</h2>
+          <h2 id={id('title')}>Game setup</h2>
           <button className="x-btn" type="button" aria-label="Close" onClick={close}>
             ×
           </button>
         </header>
         <div className="body">
+          <div className="modes" role="group" aria-label="Mode">
+            {MODES.map((choice) => (
+              <button
+                key={choice}
+                type="button"
+                aria-pressed={mode === choice}
+                onClick={() => pickMode(choice)}
+              >
+                <strong>{MODE_TITLES[choice]}</strong>
+              </button>
+            ))}
+          </div>
           {mode === 'computer' && (
             <>
-              <div className="field">
-                <label htmlFor={id('release')}>Release</label>
-                <ReleaseSelect
-                  id={id('release')}
-                  value={release}
-                  releases={releases}
-                  onChange={setRelease}
-                />
+              <div className="pair">
+                <div className="field">
+                  <label htmlFor={id('release')}>Release</label>
+                  <ReleaseSelect
+                    id={id('release')}
+                    value={release}
+                    releases={releases}
+                    onChange={setRelease}
+                  />
+                </div>
+                <div className="field">
+                  <span className="flabel">Your side</span>
+                  <div className="sides" role="group" aria-label="Your side">
+                    <button
+                      type="button"
+                      aria-pressed={side === 'x'}
+                      aria-label="Play X"
+                      onClick={() => setSide('x')}
+                    >
+                      <SeatMark seat={0} />
+                    </button>
+                    <button
+                      type="button"
+                      className="rnd"
+                      aria-pressed={side === 'random'}
+                      aria-label="Random side"
+                      onClick={() => setSide('random')}
+                    >
+                      ?
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={side === 'o'}
+                      aria-label="Play O"
+                      onClick={() => setSide('o')}
+                    >
+                      <SeatMark seat={1} />
+                    </button>
+                  </div>
+                  <div className="side-cap">{SIDE_CAPTIONS[side]}</div>
+                </div>
               </div>
               <div className="field">
                 <ThinkSlider
@@ -202,45 +292,41 @@ export function SetupDialog({ mode, releases, onStart, onClose, endsRunningGame 
             </>
           )}
           {mode === 'bots' && (
-            <div className="bots-grid">
-              <div className="field">
-                <label htmlFor={id('x-release')}>X (moves first)</label>
-                <ReleaseSelect
-                  id={id('x-release')}
-                  value={xRelease}
-                  releases={releases}
-                  onChange={setXRelease}
-                />
+            <>
+              <div className="pair">
+                <div className="field">
+                  <label htmlFor={id('x-release')}>X (moves first)</label>
+                  <ReleaseSelect
+                    id={id('x-release')}
+                    value={xRelease}
+                    releases={releases}
+                    onChange={setXRelease}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor={id('o-release')}>O</label>
+                  <ReleaseSelect
+                    id={id('o-release')}
+                    value={oRelease}
+                    releases={releases}
+                    onChange={setORelease}
+                  />
+                </div>
               </div>
-              <div className="field">
-                <label htmlFor={id('o-release')}>O</label>
-                <ReleaseSelect
-                  id={id('o-release')}
-                  value={oRelease}
-                  releases={releases}
-                  onChange={setORelease}
-                />
-              </div>
-              <div className="field">
-                <ThinkSlider
-                  id={id('x-think')}
-                  label="X think"
-                  index={xThinkIndex}
-                  onChange={setXThinkIndex}
-                />
-              </div>
-              <div className="field">
-                <ThinkSlider
-                  id={id('o-think')}
-                  label="O think"
-                  index={oThinkIndex}
-                  onChange={setOThinkIndex}
-                />
-              </div>
-            </div>
+              {!advanced && (
+                <div className="field">
+                  <ThinkSlider
+                    id={id('bots-think')}
+                    label="Think time"
+                    index={botsThinkIndex}
+                    onChange={setBotsThinkIndex}
+                  />
+                </div>
+              )}
+            </>
           )}
           {timed && (
-            <>
+            <div className="pair">
               <div className="field">
                 <label htmlFor={id('minutes')}>
                   {mode === 'computer' ? 'Your minutes' : 'Minutes per side'}{' '}
@@ -251,8 +337,10 @@ export function SetupDialog({ mode, releases, onStart, onClose, endsRunningGame 
                   id={id('minutes')}
                   min={0}
                   max={MINUTES.length - 1}
-                  value={minutesIndex}
-                  onChange={(event) => setMinutesIndex(Number(event.target.value))}
+                  value={clockIndexes.minutes}
+                  onChange={(event) =>
+                    setClockIndexes({ ...clockIndexes, minutes: Number(event.target.value) })
+                  }
                 />
               </div>
               <div className="field">
@@ -264,43 +352,12 @@ export function SetupDialog({ mode, releases, onStart, onClose, endsRunningGame 
                   id={id('increment')}
                   min={0}
                   max={INCREMENTS.length - 1}
-                  value={incrementIndex}
-                  onChange={(event) => setIncrementIndex(Number(event.target.value))}
+                  value={clockIndexes.increment}
+                  onChange={(event) =>
+                    setClockIndexes({ ...clockIndexes, increment: Number(event.target.value) })
+                  }
                 />
               </div>
-            </>
-          )}
-          {mode === 'computer' && (
-            <div className="field">
-              <span className="flabel">Your side</span>
-              <div className="sides" role="group" aria-label="Your side">
-                <button
-                  type="button"
-                  aria-pressed={side === 'x'}
-                  aria-label="Play X"
-                  onClick={() => setSide('x')}
-                >
-                  <SeatMark seat={0} />
-                </button>
-                <button
-                  type="button"
-                  className="rnd"
-                  aria-pressed={side === 'random'}
-                  aria-label="Random side"
-                  onClick={() => setSide('random')}
-                >
-                  ?
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={side === 'o'}
-                  aria-label="Play O"
-                  onClick={() => setSide('o')}
-                >
-                  <SeatMark seat={1} />
-                </button>
-              </div>
-              <div className="side-cap">{SIDE_CAPTIONS[side]}</div>
             </div>
           )}
           <label className="switch" htmlFor={id('advanced')}>
@@ -309,11 +366,37 @@ export function SetupDialog({ mode, releases, onStart, onClose, endsRunningGame 
               type="checkbox"
               id={id('advanced')}
               checked={advanced}
-              onChange={(event) => setAdvanced(event.target.checked)}
+              onChange={(event) => setAdvancedMode(event.target.checked)}
             />
           </label>
           {advanced && (
             <div className="adv">
+              {mode === 'bots' && (
+                <div className="pair">
+                  <div className="field">
+                    <ThinkSlider
+                      id={id('x-think')}
+                      label="X think"
+                      index={xThinkIndex}
+                      onChange={(index) => {
+                        setXThinkIndex(index);
+                        setPerBotEdited(true);
+                      }}
+                    />
+                  </div>
+                  <div className="field">
+                    <ThinkSlider
+                      id={id('o-think')}
+                      label="O think"
+                      index={oThinkIndex}
+                      onChange={(index) => {
+                        setOThinkIndex(index);
+                        setPerBotEdited(true);
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
               <div className="field">
                 <label htmlFor={id('seed')}>Seed</label>
                 <input

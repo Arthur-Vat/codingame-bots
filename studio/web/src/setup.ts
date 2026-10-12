@@ -15,13 +15,19 @@ export const DEFAULT_INCREMENT_INDEX = 0;
 export type Mode = 'friend' | 'computer' | 'bots';
 export type Side = 'x' | 'random' | 'o';
 
+/** The modes in the order the setup menu shows them. */
+export const MODES: readonly Mode[] = ['friend', 'computer', 'bots'];
+
 export const MODE_TITLES: Record<Mode, string> = {
-  friend: 'Play with a friend',
-  computer: 'Play the computer',
-  bots: 'Bot against bot',
+  friend: 'Human vs human',
+  computer: 'Human vs bot',
+  bots: 'Bot vs bot',
 };
 
-/** What the owner chose in the setup dialog, one shape per mode. */
+/** The mode the setup menu opens with when none was chosen yet. */
+export const DEFAULT_MODE: Mode = 'computer';
+
+/** What the owner chose in the setup menu, one shape per mode. */
 export type SetupForm =
   | { mode: 'friend'; minutes: number; incrementSeconds: number }
   | {
@@ -33,6 +39,19 @@ export type SetupForm =
       incrementSeconds: number;
     }
   | { mode: 'bots'; xRelease: string; oRelease: string; xThinkMs: number; oThinkMs: number };
+
+/**
+ * The think-time indexes of X and O in a game between bots: both take the shared one, unless
+ * advanced mode is on, when each takes its own.
+ */
+export function botThinkIndexes(
+  advanced: boolean,
+  shared: number,
+  x: number,
+  o: number,
+): [number, number] {
+  return advanced ? [x, o] : [shared, shared];
+}
 
 /** The clock of a human seat. A later change runs it. */
 export interface ClockSettings {

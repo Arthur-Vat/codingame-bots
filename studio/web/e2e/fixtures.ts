@@ -1,7 +1,7 @@
 // Fixtures shared by the browser tests of the analysis board and history screens. The API is mocked with
 // page.route: these are what the server would send.
 
-import type { Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 export const GAMES = [
   { id: 'uttt', name: 'Ultimate Tic-Tac-Toe', releases: ['uttt-v010', 'uttt-v009', 'uttt-v001'] },
@@ -103,4 +103,32 @@ export async function pageHeights(page: Page): Promise<{ scroll: number; inner: 
   return await page.evaluate<{ scroll: number; inner: number }>(
     '({ scroll: document.documentElement.scrollHeight, inner: window.innerHeight })',
   );
+}
+
+/** The names of the setup menu's three mode buttons. */
+export type SetupMode = 'Human vs human' | 'Human vs bot' | 'Bot vs bot';
+
+/** The setup menu (Game setup). */
+export function setupMenu(page: Page): Locator {
+  return page.getByRole('dialog', { name: 'Game setup' });
+}
+
+/** Opens the menu with the left column's New game button of the Play tab shown. */
+export async function openSetup(page: Page): Promise<Locator> {
+  await page
+    .getByRole('region', { name: 'New game' })
+    .filter({ visible: true })
+    .getByRole('button', { name: 'New game' })
+    .click();
+  const menu = setupMenu(page);
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
+/** Picks a mode in the open menu and checks it is the selected one. */
+export async function chooseMode(menu: Locator, mode: SetupMode): Promise<Locator> {
+  const button = menu.getByRole('button', { name: mode, exact: true });
+  await button.click();
+  await expect(button).toHaveAttribute('aria-pressed', 'true');
+  return menu;
 }

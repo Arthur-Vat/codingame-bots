@@ -282,47 +282,18 @@
   overflow-wrap: anywhere;
 }
 
-.lobby {
+.new-game {
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.lobby button {
+.new-game .btn {
+  flex: none;
+  width: 100%;
   padding: 12px;
-  border: 0;
-  border-radius: 4px;
-  background: var(--panel-2);
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.lobby button strong {
-  color: var(--fg-strong);
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.lobby button span {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.lobby button:hover:not(:disabled) {
-  background: var(--accent);
-}
-
-.lobby button:hover:not(:disabled) strong,
-.lobby button:hover:not(:disabled) span {
-  color: #fff;
-}
-
-.lobby button:disabled {
-  opacity: 0.5;
-  cursor: default;
+  font-size: 15px;
 }
 
 .toggles {
@@ -751,7 +722,7 @@
 .dialog {
   background: var(--panel);
   border-radius: 6px;
-  width: min(440px, 100%);
+  width: min(560px, 100%);
   max-height: calc(100% - 32px);
   overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
@@ -868,10 +839,39 @@
   color: var(--muted);
 }
 
-.bots-grid {
+.pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+.modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.modes button {
+  padding: 10px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background: var(--panel-2);
+  text-align: center;
+}
+
+.modes button strong {
+  color: var(--fg-strong);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.modes button:hover:not([aria-pressed='true']) {
+  background: var(--line);
+}
+
+.modes button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .adv {

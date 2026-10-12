@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  botThinkIndexes,
   buildSessionRequest,
   clockLabel,
   clockOf,
@@ -147,5 +148,15 @@ describe('releases', () => {
   it('marks the latest in its label', () => {
     expect(releaseLabel('uttt-v010', 'uttt-v010')).toBe('uttt-v010 (latest)');
     expect(releaseLabel('uttt-v009', 'uttt-v010')).toBe('uttt-v009');
+  });
+});
+
+describe('botThinkIndexes', () => {
+  it('gives both bots the shared think time when advanced mode is off', () => {
+    expect(botThinkIndexes(false, 2, 0, 6)).toEqual([2, 2]);
+  });
+
+  it('gives each bot its own think time when advanced mode is on', () => {
+    expect(botThinkIndexes(true, 2, 0, 6)).toEqual([0, 6]);
   });
 });

@@ -149,7 +149,7 @@ test('the filters send their query, and an empty answer says nothing matches', a
   await expect(rows(page)).toHaveCount(5);
   expect(mock.queries).toEqual(['?game=uttt']);
 
-  await page.getByLabel('Release').selectOption('uttt-v009');
+  await page.getByLabel('Release', { exact: true }).selectOption('uttt-v009');
   await expect.poll(() => mock.queries.at(-1)).toBe('?game=uttt&release=uttt-v009');
   await page.getByLabel('Result').selectOption({ label: 'Faults' });
   await expect.poll(() => mock.queries.at(-1)).toBe('?game=uttt&release=uttt-v009&result=fault');
@@ -167,7 +167,7 @@ test('the filters send their query, and an empty answer says nothing matches', a
     'No saved game matches these filters.',
   );
 
-  await page.getByLabel('Release').selectOption('');
+  await page.getByLabel('Release', { exact: true }).selectOption('');
   await page.getByLabel('Result').selectOption('');
   await page.getByLabel('Source').selectOption('');
   await page.getByLabel('From (UTC)').fill('');
@@ -179,7 +179,7 @@ test('the filters send their query, and an empty answer says nothing matches', a
 test('the release filter offers the releases of the games', async ({ page }) => {
   await mockHistory(page);
   await page.goto('/#/game/uttt/history');
-  await expect(page.getByLabel('Release').locator('option')).toHaveText([
+  await expect(page.getByLabel('Release', { exact: true }).locator('option')).toHaveText([
     'All releases',
     'uttt-v010',
     'uttt-v009',
@@ -200,7 +200,7 @@ test('the history is the game’s own: its query, its releases, its links', asyn
   await page.goto('/#/game/other/history');
   await expect(rows(page)).toHaveCount(5);
   expect(mock.queries).toEqual(['?game=other']);
-  await expect(page.getByLabel('Release').locator('option')).toHaveText([
+  await expect(page.getByLabel('Release', { exact: true }).locator('option')).toHaveText([
     'All releases',
     'other-v001',
   ]);
@@ -369,7 +369,7 @@ test('a file names its game: the analysis board opens on that game’s page when
   await page.goto('/#/game/uttt/history');
   await expect(rows(page)).toHaveCount(5);
   // The games are loaded once their releases are offered.
-  await expect(page.getByLabel('Release').locator('option')).toHaveCount(2);
+  await expect(page.getByLabel('Release', { exact: true }).locator('option')).toHaveCount(2);
   await page.getByLabel('Open a file').setInputFiles({
     name: 'other.json',
     mimeType: 'application/json',
