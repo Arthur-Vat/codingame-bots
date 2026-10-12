@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- #101 (step G5, the setup menu), head now 27c5053 (modes renamed Human vs human, Human vs bot, Bot vs bot, no subtitles: owner, 2026-10-12); approval to ask again once green. (#100, step G4, merged 2026-10-12.)
+- The wording pass's list (given in the chat 2026-10-12: remove the home intro, the Next game and More games cards, the default blurb, "Fixed iterations, so takebacks replay exactly.", "Otherwise taken from the clock.", "Loading adds games to your history."; shorten the arena note): awaiting the owner's validation. (#101, step G5, merged 2026-10-12: "Merge 101 please".)
 
 ## Open questions
 
@@ -17,7 +17,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 - **Step G (interface) done** (2026-10-12): G1 (#96), G2 (#97), G3 (#99) merged on the owner's approvals in the chat. G3 as the owner changed it (2026-10-12; the paced display, #98, closed): a game between two bots is shown once it is played: an empty board with a spinner (no veil) while the bots play, Save and Export disabled until the end, then its review in place on the first frame, paused (`src/botGame.ts`, `PlayingOverlay.tsx`); think times unchanged (no 5 s or 10 s wanted). Keep the test "the review keeps its board where the game page has it". E2e tip: the hidden Play tab stays in the DOM, so locators use `filter({ visible: true })`. Step F follow-ups (Firefox, 64-bit seeds on import/export) later, separately (owner, 2026-10-12).
 - **Step G4 merged** (#100, 2026-10-12): tabs Play | History; a finished game offers Rematch, New game, Analysis board; the analysis board `#/game/<game>/analysis/<session|saved|file|arena>/<id>` (no engine yet, a note says it comes later); games from the History open on it without Rematch or New game (owner, 2026-10-12: say "analysis", not "review"). Review nits kept: Play marked current on a session's board after a reload; "Back to the game" on an unknown session.
 - **Wording rule** (owner, 2026-10-12): in the studio, no text that brings no information (subtitles, intros, restated labels) where it can be avoided. A wording pass is proposed as its own pull request after #101; list of texts given to the owner, not yet validated.
-- **Step G5 in review (#101)** (owner's go, 2026-10-12, "do the immediate next step"): the setup menu. Clicking Play opens it by itself when Play shows no game; three mode buttons at the top (A friend, A release, Bot against bot), then the opponents (drop-down lists of releases, as today; your side for a release), the clock or think time in the simple part with defaults (one think time for both bots), then Advanced mode with the seed and per-bot think times; Start. New game after a game opens it with the same mode selected; the left "New game" panel goes away. Branch `claude/wonderful-newton-bjslb4`, restarted from main.
+- **Step G5 merged** (#101, 2026-10-12): one Game setup menu; modes Human vs human, Human vs bot, Bot vs bot, no subtitles.
 - **Then: phase 6 step D, analysis** (see Notes), in its own session(s), following the updated `land-work` (#82). Ask the owner before starting: it is heavy work.
 - ADR 0023 still says the SPRT is not a required check, which is no longer true. The owner keeps the current merge policy (2026-10-09) and wants no new record; the line stays as is unless he asks for a fix.
 - Record the CodinGame ranks of `uttt-v009` and `uttt-v010` when the owner reports them (skill `deliver-release`); the owner will report them later (2026-10-11).
@@ -35,6 +35,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Usage
 
+- 2026-10-12 21:45 (Paris) | G5: modes renamed, #101 merged | main session 24 steps (5.30M read, context 216k to 246k: a long conversation)
 - 2026-10-12 21:15 (Paris) | step G5: #101 opened (setup menu) | main session 25 steps (4.74M read, context 175k to 207k), 2 agents (4.09M read; the implementer 3.36M over 41 steps, the deep review 0.73M)
 - 2026-10-12 20:40 (Paris) | step G4: owner's after-game and setup flow decided, #100 merged | main session 56 steps (6.73M read, context 68k to 178k), 2 agents (9.38M read; the implementer 7.77M over 66 steps, the deep review 1.61M)
 - 2026-10-12 15:00 (Paris) | step G3: #98 (paced display) closed on the owner's redesign, #99 merged (bot games shown once played) | main session 48 steps (7.79M read, context 119k to 193k), 3 agents (6.27M read; the implementer 4.89M over 36 steps, two designs; two deep reviews 0.70M and 0.68M)
