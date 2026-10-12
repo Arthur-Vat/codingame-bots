@@ -97,7 +97,16 @@ export default function App() {
                       }),
                       label: 'Back to the game',
                     }
-                  : { hash: tabs?.history ?? '#/', label: 'Back to history' }
+                  : {
+                      // Back to the list the game came from: the arena games for an arena game.
+                      hash: routeHash({
+                        page: 'game',
+                        gameId: route.gameId,
+                        tab: 'history',
+                        set: route.board.kind === 'arena' ? 'arena' : 'mine',
+                      }),
+                      label: 'Back to history',
+                    }
               }
               actions={afterActions(route.gameId, route.board)}
             />

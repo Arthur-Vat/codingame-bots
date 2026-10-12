@@ -287,6 +287,11 @@ test('Save adds an arena game to my games, and says so when it is there already'
   await serveArena(page.context(), { index: { format: 1, rows: ROWS }, records: texts });
   await page.goto('/#/game/uttt/analysis/arena/uttt-1760000000-aaaaaaaaaaaa');
   await expect(page.getByRole('button', { name: 'Save to history' })).toBeEnabled();
+  // Opened from a link, an arena game still leads back to the arena games.
+  await expect(page.getByRole('link', { name: 'Back to history' })).toHaveAttribute(
+    'href',
+    '#/game/uttt/history/arena',
+  );
 
   await page.getByRole('button', { name: 'Save to history' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Saved to your history' })).toBeVisible();

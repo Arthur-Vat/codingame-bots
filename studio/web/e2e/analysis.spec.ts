@@ -276,7 +276,7 @@ test('a finished session stays in the Play tab, and is saved and exported there'
 
   await expect(shown(page.getByText('Played here'))).toBeVisible();
   await expect(page.getByText('uttt-v010, ≈ 100 ms').first()).toBeVisible();
-  await expect(page.getByText('Played here')).toBeVisible();
+  await expect(page.getByTestId('result')).toContainText('0–1 · O wins');
   await expect(page.getByTestId('playback')).toBeVisible();
   const start = await slotBox(page);
 
