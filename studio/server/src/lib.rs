@@ -12,6 +12,8 @@
 //! - [`state`]: the registered games, paths and sessions.
 //! - [`api`]: routing and the endpoints.
 //! - [`history`]: the saved games, one file each.
+//! - [`archive`]: builds an archive of arena games from folders of records
+//!   (the `studio-archive` tool, [ADR 0031](../../../docs/adr/0031-arena-games-archive.md)).
 //! - [`session`]: one game in progress, its JSON view and its record.
 //! - [`runner`]: the threads that start bots and play their turns.
 //! - [`releases`]: lists a game's releases and compiles them on first use.
@@ -20,6 +22,7 @@
 //! - [`server`]: the sockets.
 
 pub mod api;
+pub mod archive;
 pub mod history;
 pub mod releases;
 pub mod runner;
@@ -37,6 +40,9 @@ mod tests;
 
 #[cfg(test)]
 mod history_tests;
+
+#[cfg(test)]
+mod archive_tests;
 
 #[cfg(all(test, unix))]
 mod bot_tests;
