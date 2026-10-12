@@ -64,7 +64,6 @@ import { useSession } from './useSession';
 const GAME_BLURBS: Record<string, string> = {
   uttt: 'Nine small boards. Your move sends the opponent to the small board matching the cell you played. Win three small boards in a row, or the most small boards when no move is left.',
 };
-const DEFAULT_BLURB = 'Play a friend, play a release, or watch two releases play each other.';
 
 interface Props {
   gameId: string;
@@ -97,10 +96,11 @@ function InfoCard({
   problem: string | null;
 }) {
   if (session === null) {
+    const blurb = problem ?? ownEntry(GAME_BLURBS, gameId);
     return (
       <section className="panel info">
         <h3>{game?.name ?? gameId}</h3>
-        <p className="hint">{problem ?? ownEntry(GAME_BLURBS, gameId) ?? DEFAULT_BLURB}</p>
+        {blurb !== undefined && <p className="hint">{blurb}</p>}
       </section>
     );
   }

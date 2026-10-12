@@ -54,8 +54,9 @@ test('the home screen lists the games the server offers', async ({ page }) => {
   const card = page.getByRole('link', { name: /Ultimate Tic-Tac-Toe/ });
   await expect(card).toContainText('3 releases');
   await expect(card).toContainText('Latest: uttt-v003');
-  await expect(page.getByText('Next game')).toBeVisible();
-  await expect(page.getByText('More games')).toBeVisible();
+  // No placeholder cards and no intro: only the games there are (owner, 2026-10-12).
+  await expect(page.locator('.card')).toHaveCount(1);
+  await expect(page.locator('.home-head p')).toHaveCount(0);
   // The notices file sits beside the page (a relative URL, for the site's subpath).
   await expect(page.getByRole('link', { name: 'Licenses' })).toHaveAttribute(
     'href',
@@ -124,6 +125,20 @@ test('playing the computer sends a human seat and a fixed bot seat', async ({ pa
   await expect(page.getByText('uttt-v003 is thinking…')).toBeVisible();
 });
 
+test('the info card holds the game’s rules, and a game without them shows no filler', async ({
+  page,
+}) => {
+  await page.route('**/api/games', (route) =>
+    route.fulfill({ json: [...GAMES, { id: 'other', name: 'Other game', releases: [] }] }),
+  );
+  await page.goto('/#/game/uttt');
+  const info = page.locator('.panel.info').filter({ visible: true });
+  await expect(info).toContainText('Nine small boards');
+  await page.goto('/#/game/other');
+  await expect(info.getByRole('heading', { name: 'Other game' })).toBeVisible();
+  await expect(info.locator('p')).toHaveCount(0);
+});
+
 test('Escape closes the menu and the advanced mode shows the seed', async ({ page }) => {
   await mockGames(page);
   await page.goto('/#/game/uttt');
@@ -133,7 +148,6 @@ test('Escape closes the menu and the advanced mode shows the seed', async ({ pag
   await expect(dialog.getByLabel('Seed')).toBeHidden();
   await dialog.getByLabel('Advanced mode').check();
   await expect(dialog.getByLabel('Seed')).toBeVisible();
-  await expect(dialog.getByText('Otherwise taken from the clock.')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
 });

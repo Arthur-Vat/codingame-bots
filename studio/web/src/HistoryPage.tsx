@@ -310,9 +310,7 @@ export function HistoryPage({
       {arena ? (
         <p className="hint hist-hint">{ARENA_NOTE}</p>
       ) : (
-        <p className="hint hist-hint">
-          Loading adds games to your history. Workflow artifacts come zipped: unzip them first.
-        </p>
+        <p className="hint hist-hint">Workflow artifacts come zipped: unzip them first.</p>
       )}
 
       <section className="panel filters" aria-label="Filters">

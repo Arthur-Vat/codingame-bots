@@ -112,8 +112,7 @@ export function arenaEmptyText(filtered: boolean): string {
 }
 
 /** The note under the switch of the arena games. */
-export const ARENA_NOTE =
-  'Games played by the releases on GitHub (SPRT and league samples). Read-only: save one to add it to your games.';
+export const ARENA_NOTE = 'Bot games played on GitHub (SPRT and league samples).';
 
 /** What is said of the rows of the published index that were left out, or null. */
 export function droppedText(dropped: number): string | null {

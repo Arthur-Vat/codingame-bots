@@ -1,6 +1,6 @@
 import { BoardThumb } from './BoardThumb';
 import type { GamesState } from './hooks';
-import { HOME_HEADING, HOME_INTRO, SERVER_HINT, releaseCount } from './home';
+import { HOME_HEADING, SERVER_HINT, releaseCount } from './home';
 import { defaultRelease } from './setup';
 
 /** The notice shown in place of the content when the server does not answer. */
@@ -21,7 +21,6 @@ export function HomePage({ state }: { state: GamesState }) {
     <main className="wrap">
       <div className="home-head">
         <h1>{HOME_HEADING}</h1>
-        <p>{HOME_INTRO}</p>
       </div>
       {error ? (
         error.unreachable ? (
@@ -48,16 +47,6 @@ export function HomePage({ state }: { state: GamesState }) {
               </div>
             </a>
           ))}
-          <div className="card soon">
-            <h2>Next game</h2>
-            <p className="hint">Appears when the framework adds its second game.</p>
-          </div>
-          <div className="card soon">
-            <h2>More games</h2>
-            <p className="hint">
-              Each game brings its referee, a board renderer and, later, its analysis.
-            </p>
-          </div>
         </div>
       )}
       <footer className="home-foot">

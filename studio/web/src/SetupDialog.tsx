@@ -287,7 +287,6 @@ export function SetupDialog({
                   index={thinkIndex}
                   onChange={setThinkIndex}
                 />
-                <p className="hint">Fixed iterations, so takebacks replay exactly.</p>
               </div>
             </>
           )}
@@ -407,7 +406,6 @@ export function SetupDialog({
                   onChange={(event) => setSeedText(event.target.value)}
                 />
               </div>
-              <p className="hint">Otherwise taken from the clock.</p>
             </div>
           )}
           {error !== null && (
