@@ -125,6 +125,20 @@ test('playing the computer sends a human seat and a fixed bot seat', async ({ pa
   await expect(page.getByText('uttt-v003 is thinking…')).toBeVisible();
 });
 
+test('the info card holds the game’s rules, and a game without them shows no filler', async ({
+  page,
+}) => {
+  await page.route('**/api/games', (route) =>
+    route.fulfill({ json: [...GAMES, { id: 'other', name: 'Other game', releases: [] }] }),
+  );
+  await page.goto('/#/game/uttt');
+  const info = page.locator('.panel.info').filter({ visible: true });
+  await expect(info).toContainText('Nine small boards');
+  await page.goto('/#/game/other');
+  await expect(info.getByRole('heading', { name: 'Other game' })).toBeVisible();
+  await expect(info.locator('p')).toHaveCount(0);
+});
+
 test('Escape closes the menu and the advanced mode shows the seed', async ({ page }) => {
   await mockGames(page);
   await page.goto('/#/game/uttt');

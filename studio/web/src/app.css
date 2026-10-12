@@ -136,12 +136,6 @@
   font-weight: 600;
 }
 
-.home-head p {
-  margin: 0;
-  color: var(--muted);
-  max-width: 60ch;
-}
-
 .home-foot {
   margin-top: 32px;
   font-size: 12px;
