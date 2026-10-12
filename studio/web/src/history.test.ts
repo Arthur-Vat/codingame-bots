@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError, type HistoryEntry } from './api';
 import {
+  ARENA_NOTE,
+  arenaEmptyText,
+  droppedText,
   emptyText,
   faultTag,
   filtersActive,
@@ -93,6 +96,17 @@ describe('table cells', () => {
   it('says why the table is empty', () => {
     expect(emptyText(true)).toBe('No saved game matches these filters.');
     expect(emptyText(false)).toContain('No saved games yet');
+  });
+
+  it('says why the arena games are empty, and what is left out', () => {
+    expect(arenaEmptyText(false)).toBe('No arena games published yet.');
+    expect(arenaEmptyText(true)).toBe('No saved game matches these filters.');
+    expect(ARENA_NOTE).toBe(
+      'Games played by the releases on GitHub (SPRT and league samples). Read-only: save one to add it to your games.',
+    );
+    expect(droppedText(0)).toBeNull();
+    expect(droppedText(1)).toBe('1 entry of the published index is not valid and not listed.');
+    expect(droppedText(3)).toBe('3 entries of the published index are not valid and not listed.');
   });
 });
 

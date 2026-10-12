@@ -81,7 +81,14 @@ function recordPlayer(player: RecordPlayer): ReviewPlayer {
 
 /** Where a record came from. */
 export type RecordOrigin =
-  { kind: 'saved'; id: string } | { kind: 'file'; id: string; name: string };
+  | { kind: 'saved'; id: string }
+  | { kind: 'file'; id: string; name: string }
+  | { kind: 'arena'; id: string };
+
+function sourceText(origin: RecordOrigin, record: GameRecord): string {
+  if (origin.kind === 'file') return origin.name;
+  return `${origin.kind === 'arena' ? 'Arena game' : 'Saved'} (${record.source})`;
+}
 
 /** The review of a record with its frames: a saved game, or a file shown before it is saved. */
 export function reviewOfRecord(view: RecordView, origin: RecordOrigin): ReviewModel {
@@ -98,7 +105,7 @@ export function reviewOfRecord(view: RecordView, origin: RecordOrigin): ReviewMo
     openingTurns: view.opening_turns,
     result: { winner: record.winner, end: record.end },
     seed: record.seed,
-    source: origin.kind === 'file' ? origin.name : `Saved (${record.source})`,
+    source: sourceText(origin, record),
     unixTime: record.unix_time,
     saved: origin.kind === 'saved',
     error: null,
@@ -222,9 +229,9 @@ export function formatDate(unixSeconds: number): string {
   return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())} ${two(date.getHours())}:${two(date.getMinutes())}`;
 }
 
-/** The name a record is exported under: `uttt-1-ab…` for a saved game, else the game and seed. */
+/** The name a record is exported under: `uttt-1-ab…` for a saved or an arena game, else the game and seed. */
 export function exportName(model: ReviewModel, now: Date): string {
-  if (model.kind === 'saved') return `${model.id}.json`;
+  if (model.kind === 'saved' || model.kind === 'arena') return `${model.id}.json`;
   if (model.kind === 'file') {
     return model.source.toLowerCase().endsWith('.json') ? model.source : `${model.source}.json`;
   }

@@ -494,6 +494,73 @@ describe('the saved games', () => {
     expect(bad.status).toBe(400);
   });
 
+  it('filters the rows of the body like the list of saved games, without the store', async () => {
+    const { engine } = await testEngine({ store: null });
+    const row = (
+      id: string,
+      unixTime: number,
+      players: [string, string],
+      winner: number | null,
+    ) => ({
+      id,
+      game: 'uttt',
+      unix_time: unixTime,
+      players,
+      winner,
+      end: 'finished',
+      turns: 40,
+      source: 'arena match',
+    });
+    const rows = [
+      row('uttt-100-aaaaaaaaaaaa', 100, ['uttt-v001', 'uttt-v002'], 0),
+      row('uttt-300-cccccccccccc', 300, ['uttt-v002', 'uttt-v003'], 1),
+      row('uttt-200-bbbbbbbbbbbb', 200, ['uttt-v001', 'uttt-v003'], null),
+    ];
+    const ids = async (query: string) =>
+      ((await request(engine, 'POST', `/api/filter${query}`, rows)).body as { id: string }[]).map(
+        (found) => found.id,
+      );
+    // Newest first.
+    expect(await ids('')).toEqual([
+      'uttt-300-cccccccccccc',
+      'uttt-200-bbbbbbbbbbbb',
+      'uttt-100-aaaaaaaaaaaa',
+    ]);
+    expect(await ids('?release=uttt-v002')).toEqual([
+      'uttt-300-cccccccccccc',
+      'uttt-100-aaaaaaaaaaaa',
+    ]);
+    expect(await ids('?result=draw')).toEqual(['uttt-200-bbbbbbbbbbbb']);
+    expect(await ids('?source=studio')).toEqual([]);
+    expect(await ids('?from=2030-01-01')).toEqual([]);
+    expect((await request(engine, 'POST', '/api/filter', rows)).body).toEqual([
+      rows[1],
+      rows[2],
+      rows[0],
+    ]);
+    expect((await request(engine, 'POST', '/api/filter', [])).body).toEqual([]);
+  });
+
+  it('refuses a filter with a bad query or body with a 400, and other methods with a 405', async () => {
+    const { engine } = await testEngine();
+    for (const query of ['?result=bogus', '?source=web', '?from=yesterday', '?release=%zz']) {
+      const refused = await request(engine, 'POST', `/api/filter${query}`, []);
+      expect(refused.status).toBe(400);
+      expect(typeof (refused.body as { error: string }).error).toBe('string');
+    }
+    for (const body of [undefined, '', 'not json', '{"rows":[]}', '[1]', '[{"id":"x"}]']) {
+      const refused = await request(engine, 'POST', '/api/filter', body);
+      expect(refused.status).toBe(400);
+      expect(typeof (refused.body as { error: string }).error).toBe('string');
+    }
+    for (const method of ['GET', 'PUT', 'DELETE']) {
+      const wrong = await request(engine, method, '/api/filter');
+      expect(wrong.status).toBe(405);
+      expect(wrong.body).toEqual({ error: 'method not allowed' });
+    }
+    expect((await request(engine, 'POST', '/api/filter/x', [])).status).toBe(404);
+  });
+
   it('checks the id the way the server does', async () => {
     expect(validHistoryId('uttt-1760000000-0123456789ab')).toBe(true);
     for (const id of ['', 'A', 'a/b', '../x', 'a b', 'a.json', 'é']) {

@@ -31,7 +31,12 @@ export function errorMessage(error: unknown): string {
 
 /** Downloads `data` as a JSON file. */
 export function download(name: string, data: unknown): void {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  downloadText(name, JSON.stringify(data, null, 2));
+}
+
+/** Downloads `text` as a JSON file, byte for byte. */
+export function downloadText(name: string, text: string): void {
+  const blob = new Blob([text], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

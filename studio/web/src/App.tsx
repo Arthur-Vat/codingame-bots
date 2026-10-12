@@ -22,7 +22,10 @@ export default function App() {
     <>
       <TopBar route={route} games={gamesState.games} />
       {route.page === 'home' && <HomePage state={gamesState} />}
-      {route.page === 'history' && <HistoryPage gamesState={gamesState} />}
+      {route.page === 'history' && (
+        // Each set starts with its own filters and its own list.
+        <HistoryPage key={route.set} set={route.set} gamesState={gamesState} />
+      )}
       {route.page === 'review' && (
         <ReviewPage key={`${route.kind}/${route.id}`} kind={route.kind} id={route.id} />
       )}

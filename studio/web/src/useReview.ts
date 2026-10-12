@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ApiError, getHistoryView, postView, type RecordView } from './api';
+import { ApiError, getHistoryView, postView, postViewText, type RecordView } from './api';
+import { arenaRecordText } from './arena';
 import { recallFile } from './loadedFiles';
 import { reviewOfRecord, reviewOfSession, type ReviewModel } from './review';
 import type { ReviewKind } from './route';
@@ -22,10 +23,17 @@ function failure(error: unknown): string {
   return error instanceof ApiError ? error.message : String(error);
 }
 
-/** Fetches the view of a saved game, or of a file kept in the page, once. */
-async function loadView(kind: 'saved' | 'file', id: string): Promise<ReviewModel> {
+/**
+ * Fetches the view of a saved game, of an arena game or of a file kept in the page, once. An arena
+ * game's record is fetched from the published site and checked by the rules (`POST /api/view`),
+ * sent as the text it was published in.
+ */
+async function loadView(kind: 'saved' | 'file' | 'arena', id: string): Promise<ReviewModel> {
   if (kind === 'saved') {
     return reviewOfRecord(await getHistoryView(id), { kind: 'saved', id });
+  }
+  if (kind === 'arena') {
+    return reviewOfRecord(await postViewText(await arenaRecordText(id)), { kind: 'arena', id });
   }
   const file = recallFile(id);
   if (file === null) {

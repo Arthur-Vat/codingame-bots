@@ -7,8 +7,12 @@ import {
   postHistory,
   type HistoryEntry,
 } from './api';
-import { download, errorMessage } from './browser';
+import { arenaRecordText, listArena } from './arena';
+import { download, downloadText, errorMessage } from './browser';
 import {
+  ARENA_NOTE,
+  arenaEmptyText,
+  droppedText,
   emptyText,
   faultTag,
   filtersActive,
@@ -30,34 +34,43 @@ import {
 import type { GamesState } from './hooks';
 import { rememberFile } from './loadedFiles';
 import { formatDate } from './review';
-import { routeHash } from './route';
+import { routeHash, type HistorySet } from './route';
 import { Toast, useToast } from './Toast';
 
 interface Listing {
   entries: HistoryEntry[] | null;
   error: string | null;
+  /** Rows of the published index that are left out (the arena games). */
+  dropped: number;
 }
 
-/** The saved games for a query; asked again when `refresh` changes. */
-function useHistoryList(query: string, refresh: number): Listing | null {
+/**
+ * The saved games, or the arena games, for a query; asked again when `refresh` changes. An answer
+ * that comes after the query or the set has changed is ignored.
+ */
+function useHistoryList(set: HistorySet, query: string, refresh: number): Listing | null {
   const [listing, setListing] = useState<Listing | null>(null);
   useEffect(() => {
     let live = true;
-    listHistory(query).then(
-      (entries) => {
-        if (live) setListing({ entries, error: null });
+    const asked =
+      set === 'arena'
+        ? listArena(query).then(({ entries, dropped }) => ({ entries, dropped }))
+        : listHistory(query).then((entries) => ({ entries, dropped: 0 }));
+    asked.then(
+      ({ entries, dropped }) => {
+        if (live) setListing({ entries, error: null, dropped });
       },
       (error: unknown) => {
         if (live) {
           const text = error instanceof ApiError ? error.message : errorMessage(error);
-          setListing({ entries: null, error: text });
+          setListing({ entries: null, error: text, dropped: 0 });
         }
       },
     );
     return () => {
       live = false;
     };
-  }, [query, refresh]);
+  }, [set, query, refresh]);
   // The list of the last query stays on screen until the new one arrives.
   return listing;
 }
@@ -72,6 +85,7 @@ async function readText(file: File): Promise<string | null> {
 }
 
 function Row({
+  set,
   entry,
   confirming,
   deleting,
@@ -80,6 +94,7 @@ function Row({
   onDelete,
   onExport,
 }: {
+  set: HistorySet;
   entry: HistoryEntry;
   confirming: boolean;
   deleting: boolean;
@@ -105,13 +120,20 @@ function Row({
       </td>
       <td>
         <div className="row-actions">
-          <a className="ctrl" href={routeHash({ page: 'review', kind: 'saved', id: entry.id })}>
+          <a
+            className="ctrl"
+            href={routeHash({
+              page: 'review',
+              kind: set === 'arena' ? 'arena' : 'saved',
+              id: entry.id,
+            })}
+          >
             Review
           </a>
           <button className="ctrl" type="button" onClick={onExport}>
             Export
           </button>
-          {confirming ? (
+          {set === 'arena' ? null : confirming ? (
             <>
               <button className="ctrl danger" type="button" disabled={deleting} onClick={onDelete}>
                 Delete for good
@@ -131,7 +153,25 @@ function Row({
   );
 }
 
-export function HistoryPage({ gamesState }: { gamesState: GamesState }) {
+/** The switch between the visitor's own games and the arena games published with the site. */
+function SetSwitch({ set }: { set: HistorySet }) {
+  const link = (target: HistorySet, text: string) => (
+    <a
+      href={routeHash({ page: 'history', set: target })}
+      aria-current={set === target ? 'page' : undefined}
+    >
+      {text}
+    </a>
+  );
+  return (
+    <nav className="hist-sets" aria-label="Games shown">
+      {link('mine', 'My games')}
+      {link('arena', 'Arena games')}
+    </nav>
+  );
+}
+
+export function HistoryPage({ set, gamesState }: { set: HistorySet; gamesState: GamesState }) {
   const [filters, setFilters] = useState<HistoryFilters>(NO_FILTERS);
   const [refresh, setRefresh] = useState(0);
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -142,7 +182,8 @@ export function HistoryPage({ gamesState }: { gamesState: GamesState }) {
   const toast = useToast();
 
   const query = historyQuery(filters);
-  const listing = useHistoryList(query, refresh);
+  const listing = useHistoryList(set, query, refresh);
+  const arena = set === 'arena';
   const releases = releaseOptions(gamesState.games);
   const change = (patch: Partial<HistoryFilters>) => {
     setFilters((previous) => ({ ...previous, ...patch }));
@@ -152,7 +193,8 @@ export function HistoryPage({ gamesState }: { gamesState: GamesState }) {
 
   const exportGame = async (id: string) => {
     try {
-      download(`${id}.json`, await getHistoryRecord(id));
+      if (arena) downloadText(`${id}.json`, await arenaRecordText(id));
+      else download(`${id}.json`, await getHistoryRecord(id));
     } catch (failure) {
       toast.show(errorMessage(failure));
     }
@@ -216,32 +258,39 @@ export function HistoryPage({ gamesState }: { gamesState: GamesState }) {
     <main className="wrap">
       <div className="hist-head">
         <h1>Game history</h1>
-        <div className="hist-actions">
-          <label className="btn filebtn" aria-disabled={busy}>
-            <input
-              type="file"
-              multiple
-              accept=".json,application/json"
-              className="visually-hidden"
-              disabled={busy}
-              onChange={(event) => void loadFiles(event)}
-            />
-            <span>Load game files</span>
-          </label>
-          <label className="btn filebtn">
-            <input
-              type="file"
-              accept=".json,application/json"
-              className="visually-hidden"
-              onChange={(event) => void reviewFile(event)}
-            />
-            <span>Review a file</span>
-          </label>
-        </div>
+        {!arena && (
+          <div className="hist-actions">
+            <label className="btn filebtn" aria-disabled={busy}>
+              <input
+                type="file"
+                multiple
+                accept=".json,application/json"
+                className="visually-hidden"
+                disabled={busy}
+                onChange={(event) => void loadFiles(event)}
+              />
+              <span>Load game files</span>
+            </label>
+            <label className="btn filebtn">
+              <input
+                type="file"
+                accept=".json,application/json"
+                className="visually-hidden"
+                onChange={(event) => void reviewFile(event)}
+              />
+              <span>Review a file</span>
+            </label>
+          </div>
+        )}
       </div>
-      <p className="hint hist-hint">
-        Loading adds games to your history. Workflow artifacts come zipped: unzip them first.
-      </p>
+      <SetSwitch set={set} />
+      {arena ? (
+        <p className="hint hist-hint">{ARENA_NOTE}</p>
+      ) : (
+        <p className="hint hist-hint">
+          Loading adds games to your history. Workflow artifacts come zipped: unzip them first.
+        </p>
+      )}
 
       <section className="panel filters" aria-label="Filters">
         <div className="field">
@@ -273,20 +322,22 @@ export function HistoryPage({ gamesState }: { gamesState: GamesState }) {
             ))}
           </select>
         </div>
-        <div className="field">
-          <label htmlFor="f-source">Source</label>
-          <select
-            id="f-source"
-            value={filters.source}
-            onChange={(event) => change({ source: event.target.value as SourceFilter })}
-          >
-            {SOURCE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {!arena && (
+          <div className="field">
+            <label htmlFor="f-source">Source</label>
+            <select
+              id="f-source"
+              value={filters.source}
+              onChange={(event) => change({ source: event.target.value as SourceFilter })}
+            >
+              {SOURCE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="field">
           <label htmlFor="f-from">From (UTC)</label>
           <input
@@ -328,7 +379,7 @@ export function HistoryPage({ gamesState }: { gamesState: GamesState }) {
         )}
         {entries !== null && entries.length === 0 && (
           <div className="empty-page" data-testid="history-empty">
-            {emptyText(filtersActive(filters))}
+            {arena ? arenaEmptyText(filtersActive(filters)) : emptyText(filtersActive(filters))}
           </div>
         )}
         {entries !== null && entries.length > 0 && (
@@ -349,6 +400,7 @@ export function HistoryPage({ gamesState }: { gamesState: GamesState }) {
                 {entries.map((entry) => (
                   <Row
                     key={entry.id}
+                    set={set}
                     entry={entry}
                     confirming={confirming === entry.id}
                     deleting={deletingNow}
@@ -363,6 +415,9 @@ export function HistoryPage({ gamesState }: { gamesState: GamesState }) {
           </div>
         )}
         {listing === null && <div className="empty-page">Loading…</div>}
+        {arena && droppedText(listing?.dropped ?? 0) !== null && (
+          <p className="hint">{droppedText(listing?.dropped ?? 0)}</p>
+        )}
       </section>
       <Toast text={toast.text} />
     </main>

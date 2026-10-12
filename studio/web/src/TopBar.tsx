@@ -1,6 +1,6 @@
 import type { GameSummary } from './api';
 import { engineKind } from './engine/detect';
-import type { Route } from './route';
+import { routeHash, type Route } from './route';
 
 /** The top bar: brand, navigation, and the current game as a crumb. */
 export function TopBar({ route, games }: { route: Route; games: GameSummary[] | null }) {
@@ -9,6 +9,11 @@ export function TopBar({ route, games }: { route: Route; games: GameSummary[] | 
       ? (games?.find((game) => game.id === route.gameId)?.name ?? route.gameId)
       : null;
   const inBrowser = engineKind() === 'browser';
+  // From an arena game, History leads back to the arena games.
+  const historyLink = routeHash({
+    page: 'history',
+    set: route.page === 'review' && route.kind === 'arena' ? 'arena' : 'mine',
+  });
   return (
     <header
       className="top"
@@ -21,7 +26,7 @@ export function TopBar({ route, games }: { route: Route; games: GameSummary[] | 
         <a href="#/" aria-current={route.page === 'history' ? undefined : 'page'}>
           Games
         </a>
-        <a href="#/history" aria-current={route.page === 'history' ? 'page' : undefined}>
+        <a href={historyLink} aria-current={route.page === 'history' ? 'page' : undefined}>
           History
         </a>
       </nav>
