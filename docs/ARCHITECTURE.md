@@ -34,6 +34,7 @@ codingame-bots/
 │  ├─ sprt.sh               smoke test and SPRT of a candidate file
 │  ├─ league.sh             Elo ratings of every release
 │  ├─ prune-branches.sh     deletes finished claude/ branches (ADR 0021)
+│  ├─ arena-archive.sh      keeps each game's arena games in one artifact: plan, gather, prune (ADR 0031)
 │  ├─ check-docs.sh         indexes, status lines and links match the repository; agents declare model and tools; workflows and scripts are listed
 │  ├─ pr-hygiene.sh         pull request titles (ADR 0022) and labels from changed paths
 │  ├─ ci-scopes.sh          which CI checks, SPRT games and league games run for the paths a change touches, and the verdict of the aggregate jobs `CI passed` and `SPRT passed` (ADR 0029)
@@ -70,7 +71,7 @@ codingame-bots/
 │  └─ web/                  front end: TypeScript, React, Vite; a board renderer per game
 ├─ .claude/                 agents/ and skills/ of Claude's sessions; worktrees/ ignored
 └─ .github/
-   ├─ workflows/            ci, sprt, league, release, train, prune-branches, pr-hygiene, pages
+   ├─ workflows/            ci, sprt, league, release, train, prune-branches, archive, pr-hygiene, pages
    ├─ dependabot.yml        monthly updates of actions, crates and npm
    └─ pull_request_template.md
 ```
@@ -136,6 +137,7 @@ GitHub Actions on free standard runners. `main` only accepts changes whose check
 | `release.yml` | Push to `main` adding a release | Tag and GitHub release with the paste-ready file |
 | `train.yml` | By hand | Self-play in up to 20 parallel jobs, then the fit of the playout policy, the value network or the move models; results and report go to a branch `claude/train/<run id>` ([ADR 0016](adr/0016-self-play-training.md)) |
 | `prune-branches.yml` | Weekly (Monday), and by hand | Deletes finished `claude/` branches once their content is safe; a run by hand only lists them unless asked to delete ([ADR 0021](adr/0021-prune-finished-branches.md)) |
+| `archive.yml` | After a successful League run on a push to `main` that added a release, weekly (Wednesday), and by hand | Keeps one artifact `arena-games-<game>` per game ([ADR 0031](adr/0031-arena-games-archive.md), `scripts/arena-archive.sh`): the records of the archive, the release's league sample and its pull request's latest SPRT sample, each checked by `studio-archive`, uploaded for 90 days with the older copies deleted; the weekly run uploads the archive again when it expires in less than 30 days, and the first archive starts from the league samples of `main`. Then asks `pages.yml` to rebuild. A run by hand uploads a dry-run copy only, deleting nothing, unless asked otherwise |
 | `pages.yml` | Push to `main` changing the studio, a game's releases, referee or studio adapter, `cg-arena`, `cg-core`, the lockfile or the manifest, or this workflow; by hand | Builds the studio's rules and every release to WebAssembly, the front end and the license notices (`THIRD-PARTY-NOTICES.txt`), then deploys `studio/web/dist` to GitHub Pages ([ADR 0030](adr/0030-studio-on-github-pages.md)); the repository's Pages source must be GitHub Actions. Pull requests never deploy |
 | `pr-hygiene.yml` | Every pull request: opened, edited, new commits | Labels it by the paths it changes and checks its title ([ADR 0022](adr/0022-scopes-and-names.md)); Dependabot's are skipped, forks get the title check only |
 
