@@ -106,7 +106,7 @@ export async function pageHeights(page: Page): Promise<{ scroll: number; inner: 
 }
 
 /** The names of the setup menu's three mode buttons. */
-export type SetupMode = 'A friend' | 'A release' | 'Bot against bot';
+export type SetupMode = 'Human vs human' | 'Human vs bot' | 'Bot vs bot';
 
 /** The setup menu (Game setup). */
 export function setupMenu(page: Page): Locator {

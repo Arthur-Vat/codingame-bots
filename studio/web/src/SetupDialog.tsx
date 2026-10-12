@@ -7,7 +7,6 @@ import {
   INCREMENTS,
   MINUTES,
   MODES,
-  MODE_HINTS,
   MODE_TITLES,
   THINK_MS,
   botThinkIndexes,
@@ -225,18 +224,15 @@ export function SetupDialog({
           </button>
         </header>
         <div className="body">
-          <div className="modes" role="group" aria-label="Play against">
+          <div className="modes" role="group" aria-label="Mode">
             {MODES.map((choice) => (
               <button
                 key={choice}
                 type="button"
                 aria-pressed={mode === choice}
-                aria-labelledby={id(`mode-${choice}`)}
-                aria-describedby={id(`hint-${choice}`)}
                 onClick={() => pickMode(choice)}
               >
-                <strong id={id(`mode-${choice}`)}>{MODE_TITLES[choice]}</strong>
-                <span id={id(`hint-${choice}`)}>{MODE_HINTS[choice]}</span>
+                <strong>{MODE_TITLES[choice]}</strong>
               </button>
             ))}
           </div>

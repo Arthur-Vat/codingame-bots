@@ -711,7 +711,7 @@ test('New game on the analysis board opens the setup menu with the mode just pla
   await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
   await expect(setupMenu(page)).toBeVisible();
   await expect(
-    setupMenu(page).getByRole('button', { name: 'A friend', exact: true }),
+    setupMenu(page).getByRole('button', { name: 'Human vs human', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
   expect(created).toHaveLength(0);
 

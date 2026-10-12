@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { chooseMode, gameFrames, gameTurns, mockGames, openSetup, setupMenu } from './fixtures';
+import { chooseMode, gameFrames, gameTurns, mockGames, openSetup } from './fixtures';
 
 // A game between two bots is shown once it is played: a spinner over the empty board while the
 // bots play, then the game from its first move, paused. The API is mocked with page.route.
@@ -64,14 +64,6 @@ async function boardBox(page: Page) {
   expect(box).not.toBeNull();
   return box;
 }
-
-test('the setup menu says the game is shown once it is played', async ({ page }) => {
-  await mockApi(page, botGame());
-  await page.goto('/#/game/uttt');
-  await expect(setupMenu(page).getByRole('button', { name: 'Bot against bot' })).toContainText(
-    'Watch the game once it is played',
-  );
-});
 
 test('while the bots play: a spinner over the empty board, nothing of the game, the move advancing', async ({
   page,
@@ -210,7 +202,7 @@ test('starting another game while the bots play still warns that it ends this on
   await mockApi(page, botGoing(2));
   await page.goto('/#/game/uttt/ab12');
   await expect(page.getByTestId('playing')).toBeVisible();
-  await chooseMode(await openSetup(page), 'Bot against bot');
+  await chooseMode(await openSetup(page), 'Bot vs bot');
   await expect(page.getByText('Starting a new game ends the one in progress.')).toBeVisible();
 });
 

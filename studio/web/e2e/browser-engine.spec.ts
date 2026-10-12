@@ -68,7 +68,7 @@ test('the page becomes cross-origin isolated after one reload, and says which en
 
 test('a friend game is played in the browser, by the Rust rules', async ({ page }) => {
   await open(page, '/#/game/uttt');
-  await startGame(page, 'A friend');
+  await startGame(page, 'Human vs human');
   await expect(page.getByRole('button', { name: 'play row 4 column 4' })).toBeVisible();
   await page.getByRole('button', { name: 'play row 4 column 4' }).click();
   await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
@@ -92,7 +92,7 @@ test('against uttt-v001 in fixed mode: two moves, a takeback that replays the bo
 }) => {
   test.setTimeout(180_000);
   await open(page, '/#/game/uttt');
-  await startGame(page, 'A release', async (dialog) => {
+  await startGame(page, 'Human vs bot', async (dialog) => {
     await dialog.getByLabel('Release', { exact: true }).selectOption('uttt-v001');
     // The smallest think time of the slider.
     await dialog.getByLabel(/^Think time/).fill('0');
@@ -130,7 +130,7 @@ test('bot against bot in real time to the end, its playback, and the history kep
 }) => {
   test.setTimeout(240_000);
   await open(page, '/#/game/uttt');
-  await startGame(page, 'Bot against bot', async (dialog) => {
+  await startGame(page, 'Bot vs bot', async (dialog) => {
     await dialog.getByLabel(/^X \(moves first\)/).selectOption('uttt-v001');
     await dialog.getByLabel('O', { exact: true }).selectOption('uttt-v002');
     await dialog.getByLabel(/^Think time/).fill('0');
@@ -242,7 +242,7 @@ test.describe('where the page cannot be isolated', () => {
     });
     expect(await isolated(page)).toBe(false);
 
-    await startGame(page, 'A friend');
+    await startGame(page, 'Human vs human');
     await page.getByRole('button', { name: 'play row 4 column 4' }).click();
     await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
     await resign(page);
@@ -255,7 +255,7 @@ test.describe('where the page cannot be isolated', () => {
     await expect(page.getByTestId('history-row')).toHaveCount(1);
 
     await page.goto('/#/game/uttt');
-    await startGame(page, 'A release');
+    await startGame(page, 'Human vs bot');
     await expect(page.getByRole('alert')).toContainText(
       'This browser does not let bots run on this page (cross-origin isolation is unavailable)',
     );
@@ -278,7 +278,7 @@ test.describe('the arena games (ADR 0031)', () => {
     await expect(setupMenu(page)).toBeVisible({
       timeout: 30_000,
     });
-    await startGame(page, 'A friend');
+    await startGame(page, 'Human vs human');
     await page.getByRole('button', { name: 'play row 4 column 4' }).click();
     await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
     await resign(page);

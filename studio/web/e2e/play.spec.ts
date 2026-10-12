@@ -392,7 +392,7 @@ test('a finished game shows the end block with Rematch, New game, Analysis board
   await page.getByTestId('end-block').getByRole('button', { name: 'New game' }).click();
   await expect(setupMenu(page)).toBeVisible();
   await expect(
-    setupMenu(page).getByRole('button', { name: 'A friend', exact: true }),
+    setupMenu(page).getByRole('button', { name: 'Human vs human', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
 });
 
@@ -448,7 +448,7 @@ test('a human clock that reaches zero ends the game with a timeout, once', async
   await page.goto('/#/game/uttt');
   // From here on, time passes only when the test says so.
   await page.clock.pauseAt(new Date('2026-01-01T00:00:10Z'));
-  const dialog = await chooseMode(setupMenu(page), 'A friend');
+  const dialog = await chooseMode(setupMenu(page), 'Human vs human');
   await dialog.getByLabel(/Minutes per side/).fill('0');
   await dialog.getByRole('button', { name: 'Start' }).click();
 
@@ -483,7 +483,7 @@ test('the clocks wait while a bot thinks and while the server rewinds', async ({
   );
   await page.goto('/#/game/uttt');
   await page.clock.pauseAt(new Date('2026-01-01T00:00:10Z'));
-  await chooseMode(setupMenu(page), 'A release');
+  await chooseMode(setupMenu(page), 'Human vs bot');
   await setupMenu(page).getByRole('button', { name: 'Start' }).click();
   await expect(page.getByTestId('clock-0')).toHaveText('10:00');
   await page.clock.runFor(5_000);
@@ -533,7 +533,7 @@ async function startTimedFriendGame(page: Page) {
   await page.goto('/#/game/uttt');
   // From here on, time passes only when the test says so.
   await page.clock.pauseAt(new Date('2026-01-01T00:00:10Z'));
-  const dialog = await chooseMode(setupMenu(page), 'A friend');
+  const dialog = await chooseMode(setupMenu(page), 'Human vs human');
   await dialog.getByLabel(/Minutes per side/).fill('0');
   await dialog.getByRole('button', { name: 'Start' }).click();
   await expect(page.getByTestId('clock-0')).toHaveText('0:30');
@@ -797,7 +797,7 @@ test('a new game asks first only while a game is in progress', async ({ page }) 
   const warning = 'Starting a new game ends the one in progress.';
 
   await page.goto('/#/game/uttt/ab12');
-  const dialog = await chooseMode(await openSetup(page), 'A friend');
+  const dialog = await chooseMode(await openSetup(page), 'Human vs human');
   await expect(dialog.getByText(warning)).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'End this game and start' })).toBeVisible();
   // Closing the menu keeps the game.

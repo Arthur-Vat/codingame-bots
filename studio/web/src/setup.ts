@@ -19,16 +19,9 @@ export type Side = 'x' | 'random' | 'o';
 export const MODES: readonly Mode[] = ['friend', 'computer', 'bots'];
 
 export const MODE_TITLES: Record<Mode, string> = {
-  friend: 'A friend',
-  computer: 'A release',
-  bots: 'Bot against bot',
-};
-
-/** The line under a mode's button. */
-export const MODE_HINTS: Record<Mode, string> = {
-  friend: 'Two people, one screen',
-  computer: 'Any release, any think time',
-  bots: 'Watch the game once it is played',
+  friend: 'Human vs human',
+  computer: 'Human vs bot',
+  bots: 'Bot vs bot',
 };
 
 /** The mode the setup menu opens with when none was chosen yet. */

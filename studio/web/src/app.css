@@ -856,21 +856,13 @@
   border: 2px solid transparent;
   border-radius: 4px;
   background: var(--panel-2);
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  text-align: center;
 }
 
 .modes button strong {
   color: var(--fg-strong);
   font-weight: 600;
   font-size: 14px;
-}
-
-.modes button span {
-  color: var(--muted);
-  font-size: 12px;
 }
 
 .modes button:hover:not([aria-pressed='true']) {

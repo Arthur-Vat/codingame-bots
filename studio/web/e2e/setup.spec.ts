@@ -89,15 +89,12 @@ test('Play opens the setup menu by itself, Escape closes it, and the next visit 
   await expect(menu).toBeVisible();
   await expect(menu).toHaveAttribute('aria-modal', 'true');
   await expect(menu.getByRole('heading', { name: 'Game setup' })).toBeVisible();
-  const modes = menu.getByRole('group', { name: 'Play against' }).getByRole('button');
-  await expect(modes).toHaveText([
-    /A friend\s*Two people, one screen/,
-    /A release\s*Any release, any think time/,
-    /Bot against bot\s*Watch the game once it is played/,
-  ]);
-  // The studio's main use is selected: a release.
-  await expect(pressed(menu, 'A release')).toHaveAttribute('aria-pressed', 'true');
-  await expect(pressed(menu, 'A friend')).toHaveAttribute('aria-pressed', 'false');
+  const modes = menu.getByRole('group', { name: 'Mode' }).getByRole('button');
+  // Each button is its name alone, with no line under it (owner, 2026-10-12).
+  await expect(modes).toHaveText(['Human vs human', 'Human vs bot', 'Bot vs bot']);
+  // The studio's main use is selected: human against a bot.
+  await expect(pressed(menu, 'Human vs bot')).toHaveAttribute('aria-pressed', 'true');
+  await expect(pressed(menu, 'Human vs human')).toHaveAttribute('aria-pressed', 'false');
 
   await page.keyboard.press('Escape');
   await expect(menu).toHaveCount(0);
@@ -122,17 +119,17 @@ test('the menu opens with the mode last chosen, also from the New game button', 
 }) => {
   await mockApi(page);
   await page.goto('/#/game/uttt');
-  await chooseMode(setupMenu(page), 'Bot against bot');
+  await chooseMode(setupMenu(page), 'Bot vs bot');
   await page.keyboard.press('Escape');
   await expect(setupMenu(page)).toHaveCount(0);
 
   const menu = await openSetup(page);
-  await expect(pressed(menu, 'Bot against bot')).toHaveAttribute('aria-pressed', 'true');
+  await expect(pressed(menu, 'Bot vs bot')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Escape');
 
   await tabLink(page, 'History').click();
   await tabLink(page, 'Play').click();
-  await expect(pressed(setupMenu(page), 'Bot against bot')).toHaveAttribute('aria-pressed', 'true');
+  await expect(pressed(setupMenu(page), 'Bot vs bot')).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('an address with a session, running or finished, does not open the menu', async ({ page }) => {
@@ -190,18 +187,18 @@ test('switching modes keeps what was chosen in each mode', async ({ page }) => {
   await menu.getByLabel(/^Your minutes/).fill('2');
   await menu.getByRole('button', { name: 'Play O' }).click();
 
-  await chooseMode(menu, 'A friend');
+  await chooseMode(menu, 'Human vs human');
   await expect(menu.getByLabel('Release', { exact: true })).toHaveCount(0);
   await expect(menu.getByLabel(/^Minutes per side/)).toHaveValue('5');
   await menu.getByLabel(/^Minutes per side/).fill('3');
 
-  await chooseMode(menu, 'Bot against bot');
+  await chooseMode(menu, 'Bot vs bot');
   await expect(menu.getByLabel(/^X \(moves first\)/)).toHaveValue('uttt-v010');
   await menu.getByLabel(/^X \(moves first\)/).selectOption('uttt-v001');
   await menu.getByLabel('O', { exact: true }).selectOption('uttt-v010');
   await menu.getByLabel(/^Think time/).fill('6');
 
-  await chooseMode(menu, 'A release');
+  await chooseMode(menu, 'Human vs bot');
   await expect(menu.getByLabel('Release', { exact: true })).toHaveValue('uttt-v009');
   await expect(menu.getByLabel(/^Think time/)).toHaveValue('4');
   await expect(menu.getByLabel(/^Your minutes/)).toHaveValue('2');
@@ -210,10 +207,10 @@ test('switching modes keeps what was chosen in each mode', async ({ page }) => {
     'true',
   );
 
-  await chooseMode(menu, 'A friend');
+  await chooseMode(menu, 'Human vs human');
   await expect(menu.getByLabel(/^Minutes per side/)).toHaveValue('3');
 
-  await chooseMode(menu, 'Bot against bot');
+  await chooseMode(menu, 'Bot vs bot');
   await expect(menu.getByLabel(/^X \(moves first\)/)).toHaveValue('uttt-v001');
   await expect(menu.getByLabel('O', { exact: true })).toHaveValue('uttt-v010');
   await expect(menu.getByLabel(/^Think time/)).toHaveValue('6');
@@ -224,7 +221,7 @@ test('bot against bot: one think time for both, or one for each in advanced mode
 }) => {
   const created = await mockApi(page);
   await page.goto('/#/game/uttt');
-  const menu = await chooseMode(setupMenu(page), 'Bot against bot');
+  const menu = await chooseMode(setupMenu(page), 'Bot vs bot');
   await expect(menu.getByLabel(/^X think/)).toHaveCount(0);
   await expect(menu.getByLabel(/^Think time/)).toHaveValue('2');
   await expect(menu.getByText('≈ 100 ms')).toBeVisible();
@@ -245,7 +242,7 @@ test('bot against bot: one think time for both, or one for each in advanced mode
 
   // Advanced mode on: each bot has its own, starting from the shared one.
   await openSetup(page);
-  await chooseMode(menu, 'Bot against bot');
+  await chooseMode(menu, 'Bot vs bot');
   await menu.getByLabel(/^Think time/).fill('5');
   await menu.getByLabel('Advanced mode').check();
   await expect(menu.getByLabel(/^X think/)).toHaveValue('5');
@@ -263,7 +260,7 @@ test('bot against bot: one think time for both, or one for each in advanced mode
 
   // Turned off again, the shared time is back for both.
   await openSetup(page);
-  await chooseMode(menu, 'Bot against bot');
+  await chooseMode(menu, 'Bot vs bot');
   await menu.getByLabel('Advanced mode').check();
   await menu.getByLabel('Advanced mode').uncheck();
   await expect(menu.getByLabel(/^Think time/)).toHaveValue('2');
@@ -274,15 +271,15 @@ test('the times of the two bots survive a switch of mode and advanced mode off a
 }) => {
   await mockApi(page);
   await page.goto('/#/game/uttt');
-  const menu = await chooseMode(setupMenu(page), 'Bot against bot');
+  const menu = await chooseMode(setupMenu(page), 'Bot vs bot');
   await menu.getByLabel('Advanced mode').check();
   await menu.getByLabel(/^X think/).fill('0');
   await menu.getByLabel(/^O think/).fill('6');
 
-  await chooseMode(menu, 'A release');
+  await chooseMode(menu, 'Human vs bot');
   await menu.getByLabel('Advanced mode').uncheck();
   await menu.getByLabel('Advanced mode').check();
-  await chooseMode(menu, 'Bot against bot');
+  await chooseMode(menu, 'Bot vs bot');
   await expect(menu.getByLabel(/^X think/)).toHaveValue('0');
   await expect(menu.getByLabel(/^O think/)).toHaveValue('6');
 });
@@ -323,7 +320,7 @@ test('a friend game sends two human seats, and the seed only in advanced mode', 
 }) => {
   const created = await mockApi(page);
   await page.goto('/#/game/uttt');
-  const menu = await chooseMode(setupMenu(page), 'A friend');
+  const menu = await chooseMode(setupMenu(page), 'Human vs human');
   await expect(menu.getByLabel('Seed')).toHaveCount(0);
   await menu.getByLabel('Advanced mode').check();
   await expect(menu.getByLabel('Seed')).toBeVisible();
@@ -345,18 +342,24 @@ test('New game in the end block opens the menu with the mode just played', async
   await mockApi(page, over());
   await page.goto('/#/game/uttt/ab12');
   await page.getByTestId('end-block').getByRole('button', { name: 'New game' }).click();
-  await expect(pressed(setupMenu(page), 'Bot against bot')).toHaveAttribute('aria-pressed', 'true');
+  await expect(pressed(setupMenu(page), 'Bot vs bot')).toHaveAttribute('aria-pressed', 'true');
 
   const friends = await page.context().newPage();
   await mockApi(friends, over({ seats: [human('Player 1'), human('Player 2')] }));
   await friends.goto('/#/game/uttt/ab12');
   await friends.getByTestId('end-block').getByRole('button', { name: 'New game' }).click();
-  await expect(pressed(setupMenu(friends), 'A friend')).toHaveAttribute('aria-pressed', 'true');
+  await expect(pressed(setupMenu(friends), 'Human vs human')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
   // The left column's New game button opens it with the mode last chosen, the finished game's.
   await friends.keyboard.press('Escape');
   await expect(setupMenu(friends)).toHaveCount(0);
   await openSetup(friends);
-  await expect(pressed(setupMenu(friends), 'A friend')).toHaveAttribute('aria-pressed', 'true');
+  await expect(pressed(setupMenu(friends), 'Human vs human')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
 });
 
 test('the menu fits a 1536x730 window in every mode, also in advanced mode', async ({ page }) => {
@@ -366,7 +369,7 @@ test('the menu fits a 1536x730 window in every mode, also in advanced mode', asy
   const menu = setupMenu(page);
   await expect(menu).toBeVisible();
   for (const advanced of [false, true]) {
-    for (const mode of ['A friend', 'A release', 'Bot against bot'] as const) {
+    for (const mode of ['Human vs human', 'Human vs bot', 'Bot vs bot'] as const) {
       await chooseMode(menu, mode);
       const advancedMode = menu.getByLabel('Advanced mode');
       if (advanced) await advancedMode.check();

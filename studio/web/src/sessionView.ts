@@ -37,7 +37,7 @@ export function statusText(session: Session): string {
 /** The title of the info card: who plays whom. */
 export function sessionTitle(session: Session): string {
   const bots = session.seats.filter((seat) => seat.kind === 'bot').length;
-  return bots === 0 ? 'Friend game' : bots === 1 ? 'Against the computer' : 'Bot against bot';
+  return bots === 0 ? 'Human vs human' : bots === 1 ? 'Human vs bot' : 'Bot vs bot';
 }
 
 /** The text of a turn in the move list: its answers' lines. */

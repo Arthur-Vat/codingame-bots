@@ -73,7 +73,7 @@ test('a card opens the game page and its setup menu with the three ways to start
   await expect(page.locator('.crumb')).toHaveText('Ultimate Tic-Tac-Toe');
   const menu = setupMenu(page);
   await expect(menu).toBeVisible();
-  for (const name of ['A friend', 'A release', 'Bot against bot']) {
+  for (const name of ['Human vs human', 'Human vs bot', 'Bot vs bot']) {
     await expect(menu.getByRole('button', { name, exact: true })).toBeVisible();
   }
   await expect(page.getByText('Press New game to start a game.')).toBeVisible();
@@ -93,7 +93,7 @@ test('playing the computer sends a human seat and a fixed bot seat', async ({ pa
   await page.goto('/#/game/uttt');
   const dialog = setupMenu(page);
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'A release', exact: true })).toHaveAttribute(
+  await expect(dialog.getByRole('button', { name: 'Human vs bot', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
@@ -127,7 +127,7 @@ test('playing the computer sends a human seat and a fixed bot seat', async ({ pa
 test('Escape closes the menu and the advanced mode shows the seed', async ({ page }) => {
   await mockGames(page);
   await page.goto('/#/game/uttt');
-  const dialog = await chooseMode(setupMenu(page), 'Bot against bot');
+  const dialog = await chooseMode(setupMenu(page), 'Bot vs bot');
   await expect(dialog.getByLabel(/^X \(moves first\)/)).toHaveValue('uttt-v003');
   await expect(dialog.getByLabel('O', { exact: true })).toHaveValue('uttt-v002');
   await expect(dialog.getByLabel('Seed')).toBeHidden();
@@ -198,7 +198,7 @@ test('starting a second game deletes the first session', async ({ page }) => {
 
   await page.goto('/#/game/uttt/ab12');
   await expect(page.getByTestId('player-0')).toContainText('You');
-  const dialog = await chooseMode(await openSetup(page), 'A friend');
+  const dialog = await chooseMode(await openSetup(page), 'Human vs human');
   await dialog.getByRole('button', { name: 'Start' }).click();
   await expect(page).toHaveURL(/#\/game\/uttt\/cd34$/);
   await expect.poll(() => deleted).toEqual(['ab12']);
@@ -213,7 +213,7 @@ test('the menu holds still while the game is created, and shows a refusal', asyn
     await route.fulfill({ status: 400, json: { error: 'unknown release "uttt-v003"' } });
   });
   await page.goto('/#/game/uttt');
-  const dialog = await chooseMode(setupMenu(page), 'A friend');
+  const dialog = await chooseMode(setupMenu(page), 'Human vs human');
   await dialog.getByRole('button', { name: 'Start' }).click();
   await expect(dialog.getByRole('button', { name: 'Starting…' })).toBeDisabled();
   await page.keyboard.press('Escape');
