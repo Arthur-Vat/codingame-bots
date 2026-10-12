@@ -4,7 +4,12 @@ import { arenaRow, serveArena } from './arena';
 
 // The browser engine as GitHub Pages serves it: static files from `npm run preview`, which has
 // no /api and sets no headers. Nothing is mocked: the rules, the bots (the real releases, built
-// to WebAssembly by `npm run wasm`) and the saved games (IndexedDB) are the real ones.
+// to WebAssembly by `npm run wasm`) and the saved games (IndexedDB) are the real ones. The one
+// exception is the block "the arena games (ADR 0031)": it serves a fixture archive of
+// `arena-games/` by intercepting those requests (e2e/arena.ts), since the preview site has none.
+// Playwright cannot intercept a request that a service worker handles, so that block runs with
+// the service worker blocked (the page is then not isolated, which the arena games do not need);
+// the rules, the saved games and the filters in it are still the real ones.
 
 async function isolated(page: Page): Promise<boolean> {
   try {
