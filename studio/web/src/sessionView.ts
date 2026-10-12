@@ -117,9 +117,13 @@ export function bottomSeat(session: Session | null): number {
   return human === -1 ? 0 : human;
 }
 
-/** The number of the move being played (1 for the first), or null once the game is over. */
+/**
+ * The number of the move being played (1 for the first), once the game is being played: null
+ * while the bots are compiled, measured or rewound, and when the game is over or failed.
+ */
 export function moveBeingPlayed(session: Session): number | null {
-  return session.status === 'over' || session.status === 'failed' ? null : session.turns.length + 1;
+  const playing = session.status === 'bot_thinking' || session.status === 'waiting_human';
+  return playing && session.frames.length > 0 ? session.turns.length + 1 : null;
 }
 
 /** A notice over the board while the session rewinds, compiles or measures. */

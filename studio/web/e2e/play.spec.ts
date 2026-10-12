@@ -667,6 +667,33 @@ test('the game page fits the window, and its table is as tall as the board', asy
   }
 });
 
+test('in a narrower window the board still fits the window’s height', async ({ page }) => {
+  const f1 = frame({ marks: [[4, 4, 0]], last: [4, 4] });
+  await mockApi(
+    page,
+    session({
+      to_act: [1],
+      turns: [answer(0, '4 4')],
+      frames: [frame(), f1],
+      human_moves: humanMoves(f1),
+    }),
+  );
+  for (const viewport of [
+    { width: 1100, height: 700 },
+    { width: 1024, height: 768 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/#/game/uttt/ab12');
+    await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
+    const squares = await board(page).boundingBox();
+    const { inner } = await pageHeights(page);
+    expect(
+      squares!.y + squares!.height,
+      `${viewport.width}x${viewport.height}`,
+    ).toBeLessThanOrEqual(inner);
+  }
+});
+
 test('resigning takes a second click, and the question goes away', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
   const f1 = frame({ marks: [[4, 4, 0]], last: [4, 4] });
@@ -824,7 +851,8 @@ test('a game won with three small boards in a row has a dashed line through them
   // The line takes no click: the cell under it is still the target.
   await expect(lines).toHaveCSS('pointer-events', 'none');
 
-  // A win on the count of small boards has no line, and neither has a game in progress.
+  // A win on the count of small boards has no line, and neither has a game in progress, even
+  // with three small boards in a row.
   mock.current = {
     ...mock.current,
     frames: won(
@@ -836,6 +864,17 @@ test('a game won with three small boards in a row has a dashed line through them
       1,
     ),
   };
+  await page.reload();
+  await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
+  await expect(lines).toHaveCount(0);
+
+  const inProgress = frame({ marks: [[4, 4, 0]], small: diagonal });
+  mock.current = session({
+    to_act: [1],
+    turns: [answer(0, '4 4')],
+    frames: [frame(), inProgress],
+    human_moves: humanMoves(inProgress),
+  });
   await page.reload();
   await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
   await expect(lines).toHaveCount(0);

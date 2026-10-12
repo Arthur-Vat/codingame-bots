@@ -386,6 +386,25 @@ test('the review page fits the window, with the playback bar and a table as tall
   }
 });
 
+test('in a narrower window the review’s board and playback bar still fit the height', async ({
+  page,
+}) => {
+  await mockSaved(page);
+  for (const viewport of [
+    { width: 1100, height: 700 },
+    { width: 1024, height: 768 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto(`/#/review/saved/${SAVED}`);
+    await expect(page.getByRole('button', { name: 'Next move' })).toBeVisible();
+    const name = `${viewport.width}x${viewport.height}`;
+    const squares = await page.locator('.uttt-board').boundingBox();
+    const bar = await page.getByTestId('playback').boundingBox();
+    expect(squares!.y + squares!.height, name).toBeLessThanOrEqual(viewport.height);
+    expect(bar!.y + bar!.height, name).toBeLessThanOrEqual(viewport.height);
+  }
+});
+
 test('the final frame of a game won by three small boards has the dashed line, the first has none', async ({
   page,
 }) => {

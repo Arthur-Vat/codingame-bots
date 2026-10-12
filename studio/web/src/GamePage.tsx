@@ -21,6 +21,7 @@ import type { GamesState } from './hooks';
 import { ServerNotice } from './HomePage';
 import {
   canPlay,
+  hasGameInProgress,
   controlsFor,
   cursorAfterKey,
   exportFileName,
@@ -300,12 +301,7 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
       : null;
   const mode = session === null ? null : sessionMode(session);
   const over = session?.status === 'over';
-  // Starting another game would drop this one: it has moves and is neither over nor dead.
-  const gameInProgress =
-    session !== null &&
-    session.status !== 'over' &&
-    session.status !== 'failed' &&
-    session.turns.length > 0;
+  const gameInProgress = hasGameInProgress(session);
 
   const openReview = useCallback(() => {
     if (sessionId !== null) {

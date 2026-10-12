@@ -173,11 +173,18 @@ describe('overlayFor', () => {
     expect(overlayFor(session({ status: 'over' }))).toBeNull();
   });
 
-  it('numbers the move being played, and none once the game is over or failed', () => {
+  it('numbers the move being played, once the bots play and not after', () => {
     const played = [turn(0, '4 4'), turn(1, '4 5')];
-    expect(moveBeingPlayed(session({ status: 'bot_thinking', turns: played }))).toBe(3);
-    expect(moveBeingPlayed(session({ status: 'compiling' }))).toBe(1);
-    expect(moveBeingPlayed(session({ status: 'over', turns: played }))).toBeNull();
-    expect(moveBeingPlayed(session({ status: 'failed', turns: played }))).toBeNull();
+    const frames = [{}, {}, {}];
+    const playing = { status: 'bot_thinking', turns: played, frames } as const;
+    expect(moveBeingPlayed(session(playing))).toBe(3);
+    expect(moveBeingPlayed(session({ ...playing, frames: [{}] }))).toBe(3);
+    // Compiling, measuring and rewinding are not moves; neither is a game with no frame yet.
+    for (const status of ['compiling', 'measuring', 'rewinding'] as const) {
+      expect(moveBeingPlayed(session({ ...playing, status }))).toBeNull();
+    }
+    expect(moveBeingPlayed(session({ ...playing, frames: [] }))).toBeNull();
+    expect(moveBeingPlayed(session({ ...playing, status: 'over' }))).toBeNull();
+    expect(moveBeingPlayed(session({ ...playing, status: 'failed' }))).toBeNull();
   });
 });

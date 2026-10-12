@@ -152,6 +152,19 @@ export function usesSpace(target: { tagName: string; type?: string }): boolean {
   );
 }
 
+/**
+ * Whether starting another game would drop this one: a player has moved since the opening, and
+ * the game is neither over nor failed.
+ */
+export function hasGameInProgress(session: Session | null): boolean {
+  return (
+    session !== null &&
+    session.status !== 'over' &&
+    session.status !== 'failed' &&
+    session.turns.length > session.opening_turns
+  );
+}
+
 /** Whether a click on the board may play: the latest frame, a human to move, nothing in flight. */
 export function canPlay(
   session: Session | null,
