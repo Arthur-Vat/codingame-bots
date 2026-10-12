@@ -217,7 +217,7 @@
   opacity: 0.7;
 }
 
-/* The dashed line through the three small boards that won the game: blue dashes on a dark edge,
+/* The dashed line through the three small boards that won the game: blue dashes with a thin dark edge,
    so it reads over the dark X, the white O and the grey squares. It never takes a click. */
 .uttt-win {
   grid-column: 2;
@@ -231,17 +231,17 @@
 
 .uttt-win line {
   fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 10 12;
 }
 
+/* The edge is the same dashes, a little wider, so each blue dash gets a thin dark outline. */
 .uttt-win .edge {
-  stroke: rgba(14, 24, 32, 0.8);
-  stroke-width: 9;
-  stroke-dasharray: 14 8;
-  stroke-dashoffset: 1;
+  stroke: rgba(14, 24, 32, 0.55);
+  stroke-width: 6;
 }
 
 .uttt-win .dash {
   stroke: var(--accent, #3692e7);
-  stroke-width: 5;
-  stroke-dasharray: 12 10;
+  stroke-width: 3.5;
 }
