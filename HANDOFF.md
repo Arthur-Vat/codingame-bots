@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- The wording pass's list (given in the chat 2026-10-12: remove the home intro, the Next game and More games cards, the default blurb, "Fixed iterations, so takebacks replay exactly.", "Otherwise taken from the clock.", "Loading adds games to your history."; shorten the arena note): awaiting the owner's validation. (#101, step G5, merged 2026-10-12: "Merge 101 please".)
+- The wording pass's list (given in the chat 2026-10-12: remove the home intro, the Next game and More games cards, the default blurb, "Fixed iterations, so takebacks replay exactly.", "Otherwise taken from the clock.", "Loading adds games to your history."; arena note becomes "Bot games played on GitHub (SPRT and league samples)."; also reword any "a release plays" text: a release is a frozen file, a bot built from it plays (owner, 2026-10-12)): awaiting the owner's validation. (#101, step G5, merged 2026-10-12: "Merge 101 please".)
 
 ## Open questions
 
