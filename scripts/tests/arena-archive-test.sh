@@ -438,6 +438,12 @@ done
 
 # ---- site ----
 
+# A repository of its own with three games (uttt, other, third), so that the
+# games come from ci-scopes.sh as in the real thing.
+site_repo="$tmp_dir/site-repo"
+mkdir -p "$site_repo/scripts" "$site_repo/games/uttt" "$site_repo/games/other" "$site_repo/games/third"
+cp "$repo_root/scripts/arena-archive.sh" "$repo_root/scripts/ci-scopes.sh" "$site_repo/scripts/"
+
 # site <out dir> [VAR=value...]: runs the site mode from a folder of its own, so
 # that a relative output folder is relative to where it is called from.
 site_dir="$tmp_dir/caller"
@@ -446,43 +452,46 @@ site() {
   local out="$1"
   shift
   status=0
-  (cd "$site_dir" && env "$@" "$repo_root/scripts/arena-archive.sh" site "$out" >"$tmp_dir/stdout" 2>"$tmp_dir/stderr") || status=$?
+  (cd "$site_dir" && env "$@" "$site_repo/scripts/arena-archive.sh" site "$out" >"$tmp_dir/stdout" 2>"$tmp_dir/stderr") || status=$?
 }
 
-artifacts_path='repos/owner/repo/actions/artifacts?per_page=100'
-named() { # named <name> <id> <expired> <created>: an artifact of the listing
+named() { # named <name> <id> <expired> <created>: an artifact of a listing
   jq -nc --arg name "$1" --argjson id "$2" --argjson expired "$3" --arg created "$4" \
     '{id: $id, name: $name, expired: $expired, created_at: $created, expires_at: "2027-01-01T00:00:00Z"}'
 }
+by_name() { # by_name <game> <listing>: the answer to the listing of arena-games-<game>
+  canned "repos/owner/repo/actions/artifacts?name=arena-games-$1&per_page=100" "$2"
+}
 
-# Several games over two pages: the newest of each name by date (not by id),
-# the dry-run copies, the expired ones, the samples and odd names are ignored.
+# Several games: the newest unexpired archive of each by date (not by id), the
+# expired and the dry-run ones ignored, a game without archive skipped, and the
+# artifacts of the repository never listed as a whole.
 begin
 rm -rf "$site_dir/site"
-canned "$artifacts_path" "$(listing \
+by_name uttt "$(listing \
   "$(named arena-games-uttt 130 false 2026-08-01T00:00:00Z)" \
   "$(named arena-games-uttt 120 false 2026-10-01T00:00:00Z)" \
-  "$(named dry-run-arena-games-uttt 400 false 2026-10-11T00:00:00Z)" \
-  "$(named game-records-uttt 410 false 2026-10-11T00:00:00Z)")
+  "$(named dry-run-arena-games-uttt 400 false 2026-10-11T00:00:00Z)")
 $(listing \
-  "$(named arena-games-other 300 false 2026-09-01T00:00:00Z)" \
   "$(named arena-games-uttt 110 false 2026-09-01T00:00:00Z)" \
-  "$(named arena-games-gone 500 true 2026-10-02T00:00:00Z)" \
-  "$(named arena-games-Upper_Case 510 false 2026-10-02T00:00:00Z)" \
-  "$(named arena-games-uttt-extra.zip 520 false 2026-10-02T00:00:00Z)" \
-  "$(named x-arena-games-uttt 530 false 2026-10-02T00:00:00Z)")"
+  "$(named arena-games-uttt 140 true 2026-10-05T00:00:00Z)")"
+by_name other "$(listing "$(named arena-games-other 300 false 2026-09-01T00:00:00Z)")"
+by_name third "$(listing "$(named arena-games-third 500 true 2026-10-02T00:00:00Z)")"
 archive_zip 120 uttt-1 uttt-2
 archive_zip 300 other-1
 site site
 status_is "site: several games" false
-expect "site: the tool ran once over the newest archive of each name, without --game" \
+expect "site: the tool ran once over the newest archive of each game, without --game" \
   "$(grep -qE "^studio-archive --out $site_dir/site .*inputs/arena-games-other .*inputs/arena-games-uttt\$" "$stub/tool.log" && [[ "$(wc -l <"$stub/tool.log")" -eq 1 ]] && lacks "$stub/tool.log" '--game' && echo 0 || echo 1)"
 expect "site: the archive is written relative to the caller" "$([[ -f $site_dir/site/index.json && -f $site_dir/site/records/uttt-1.json && -f $site_dir/site/records/other-1.json ]] && echo 0 || echo 1)"
 expect "site: only the two archives are downloaded" \
   "$([[ "$(grep -c 'artifacts/.*/zip' "$stub/gh.log")" == 2 ]] && has "$stub/gh.log" 'artifacts/120/zip' && has "$stub/gh.log" 'artifacts/300/zip' && echo 0 || echo 1)"
-for id in 130 110 400 410 500 510 520 530; do
+for id in 130 110 140 400 500; do
   expect "site: artifact $id is not downloaded" "$(lacks "$stub/gh.log" "artifacts/$id/zip" && echo 0 || echo 1)"
 done
+expect "site: each game is listed by name" \
+  "$(has "$stub/gh.log" 'name=arena-games-uttt&' && has "$stub/gh.log" 'name=arena-games-other&' && has "$stub/gh.log" 'name=arena-games-third&' && echo 0 || echo 1)"
+expect "site: the whole listing of the repository is not asked for" "$(lacks "$stub/gh.log" 'artifacts?per_page' && echo 0 || echo 1)"
 expect "site: nothing is deleted or uploaded" "$(lacks "$stub/gh.log" ' -X ' && echo 0 || echo 1)"
 expect "site: a notice says which archives" "$(has "$tmp_dir/stdout" 'arena-games-other,arena-games-uttt' && echo 0 || echo 1)"
 
@@ -496,13 +505,14 @@ expect "site: the absolute folder is written" "$([[ -f $tmp_dir/absolute/index.j
 for case in empty only-copies; do
   begin
   rm -rf "$site_dir/site"
+  by_name uttt "$(listing)"
+  by_name third "$(listing)"
   if [[ $case == empty ]]; then
-    canned "$artifacts_path" "$(listing)"
+    by_name other "$(listing)"
   else
-    canned "$artifacts_path" "$(listing \
-      "$(named dry-run-arena-games-uttt 400 false 2026-10-11T00:00:00Z)" \
-      "$(named arena-games-gone 500 true 2026-10-02T00:00:00Z)" \
-      "$(named league-game-records-uttt 600 false 2026-10-02T00:00:00Z)")"
+    by_name other "$(listing \
+      "$(named dry-run-arena-games-other 400 false 2026-10-11T00:00:00Z)" \
+      "$(named arena-games-other 500 true 2026-10-02T00:00:00Z)")"
   fi
   site site
   status_is "site: no archive ($case)" false
@@ -514,26 +524,31 @@ done
 # A download that fails fails the step, and the tool does not run.
 begin
 rm -rf "$site_dir/site"
-canned "$artifacts_path" "$(listing \
-  "$(named arena-games-uttt 120 false 2026-10-01T00:00:00Z)" \
-  "$(named arena-games-other 300 false 2026-09-01T00:00:00Z)")"
+by_name uttt "$(listing "$(named arena-games-uttt 120 false 2026-10-01T00:00:00Z)")"
+by_name other "$(listing "$(named arena-games-other 300 false 2026-09-01T00:00:00Z)")"
+by_name third "$(listing)"
 archive_zip 300 other-1
 site site
 status_is "site: a download fails" true
 expect "site: download failure: the tool did not run" "$([[ ! -e $stub/tool.log && ! -e $site_dir/site ]] && echo 0 || echo 1)"
 expect "site: download failure: an error annotation" "$(has "$tmp_dir/stdout" '::error title=Arena archive::cannot download artifact 120' && echo 0 || echo 1)"
 
-# A listing that fails fails the step.
+# A listing that fails (here the last game's) fails the step.
 begin
 rm -rf "$site_dir/site"
+by_name uttt "$(listing "$(named arena-games-uttt 120 false 2026-10-01T00:00:00Z)")"
+by_name other "$(listing)"
+archive_zip 120 uttt-1
 site site
-status_is "site: the listing fails" true
+status_is "site: a listing fails" true
 expect "site: listing failure: the tool did not run" "$([[ ! -e $stub/tool.log ]] && echo 0 || echo 1)"
 
 # The tool fails: the step fails.
 begin
 rm -rf "$site_dir/site"
-canned "$artifacts_path" "$(listing "$(named arena-games-uttt 120 false 2026-10-01T00:00:00Z)")"
+by_name uttt "$(listing "$(named arena-games-uttt 120 false 2026-10-01T00:00:00Z)")"
+by_name other "$(listing)"
+by_name third "$(listing)"
 archive_zip 120 uttt-1
 export STUB_TOOL_FAIL=1
 site site

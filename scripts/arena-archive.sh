@@ -39,10 +39,10 @@
 # delete.
 #
 # site: collects the archives for the site (ADR 0031, decision 5), read-only:
-# it deletes and uploads nothing. Lists the artifacts of the repository, keeps
-# the unexpired ones called exactly arena-games-<name> (never the dry-run
-# copies), the newest of each name, downloads each into a folder of its own,
-# and runs ARCHIVE_TOOL --out OUT_DIR over the folders (no --game): OUT_DIR
+# it deletes and uploads nothing. For each game of the repository (as for
+# plan), lists the artifacts called exactly arena-games-<game> (never the
+# dry-run copies), keeps the newest unexpired one, downloads each into a
+# folder of its own, and runs ARCHIVE_TOOL --out OUT_DIR over the folders (no --game): OUT_DIR
 # then holds index.json and records/<id>.json of every game, as the Pages
 # build publishes them under arena-games/. OUT_DIR is relative to where the
 # script is called from, must not exist or must be empty, and is not touched
@@ -345,17 +345,23 @@ mode_prune() {
 # ---- site --------------------------------------------------------------
 
 # Prints "<name> <id>" for the newest unexpired archive of each game: the
-# artifacts called exactly arena-games-<name>, not dry-run-arena-games-<name>.
-# The listing holds every artifact of the repository (the SPRT and league
-# samples too), so each page is cut down by jq before the next arrives.
+# artifacts called exactly arena-games-<game>, so never the dry-run copies. The
+# games are those of the repository (as for plan), and each is listed by name:
+# the repository holds many other artifacts, which are never listed.
 site_archives() {
-  local rows
-  rows="$(gh api --paginate "repos/$REPO/actions/artifacts?per_page=100" |
-    jq -r '.artifacts[]
-      | select((.expired | not) and (.name | test("^arena-games-[a-z0-9-]+$")))
-      | [.name, (.id | tostring), .created_at] | @tsv')" || return 1
-  # Newest first within a name (the timestamps are ISO 8601), then the first of each.
-  LC_ALL=C sort -t$'\t' -k1,1 -k3,3r <<<"$rows" | awk -F'\t' 'NF && !seen[$1]++ { print $1, $2 }'
+  local scopes games game id
+  scopes="$("$here/ci-scopes.sh" league --all)" || return 1
+  games="$(jq -r '.[]' <<<"${scopes#games=}")" || return 1
+  while read -r game; do
+    [[ -n $game ]] || continue
+    valid_game "$game" || continue
+    id="$(list_artifacts "arena-games-$game" |
+      jq -r --arg name "arena-games-$game" \
+        '[.[] | select((.expired | not) and .name == $name)] | sort_by(.created_at) | last | .id // empty')" || return 1
+    if [[ -n $id ]]; then
+      echo "arena-games-$game $id"
+    fi
+  done <<<"$games"
 }
 
 mode_site() {
