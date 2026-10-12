@@ -212,17 +212,17 @@ test('the history is the game’s own: its query, its releases, its links', asyn
     'href',
     '#/game/other/history',
   );
-  await expect(rows(page).first().getByRole('link', { name: 'Review' })).toHaveAttribute(
+  await expect(rows(page).first().getByRole('link', { name: 'Analysis board' })).toHaveAttribute(
     'href',
-    '#/game/other/review/saved/uttt-1760000000-aaaaaaaaaaaa',
+    '#/game/other/analysis/saved/uttt-1760000000-aaaaaaaaaaaa',
   );
 });
 
-test('Review opens the saved game', async ({ page }) => {
+test('Analysis board opens the saved game', async ({ page }) => {
   await mockHistory(page);
   await page.goto('/#/game/uttt/history');
-  await rows(page).nth(1).getByRole('link', { name: 'Review' }).click();
-  await expect(page).toHaveURL(/#\/game\/uttt\/review\/saved\/uttt-1759990000-bbbbbbbbbbbb$/);
+  await rows(page).nth(1).getByRole('link', { name: 'Analysis board' }).click();
+  await expect(page).toHaveURL(/#\/game\/uttt\/analysis\/saved\/uttt-1759990000-bbbbbbbbbbbb$/);
   await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
   await expect(page.getByTestId('result')).toBeVisible();
 });
@@ -324,16 +324,18 @@ test('a file that is not JSON is refused without asking the server', async ({ pa
   expect(mock.posted).toEqual([]);
 });
 
-test('a file can be reviewed without being saved, then saved from the review', async ({ page }) => {
+test('a file can be opened without being saved, then saved from the analysis board', async ({
+  page,
+}) => {
   const mock = await mockHistory(page);
   await page.goto('/#/game/uttt/history');
   const loaded = record({ seed: 777 });
-  await page.getByLabel('Review a file').setInputFiles({
+  await page.getByLabel('Open a file').setInputFiles({
     name: 'sample.json',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(loaded)),
   });
-  await expect(page).toHaveURL(/#\/game\/uttt\/review\/file\/f[0-9a-z]+$/);
+  await expect(page).toHaveURL(/#\/game\/uttt\/analysis\/file\/f[0-9a-z]+$/);
   await expect(page.getByText('sample.json')).toBeVisible();
   expect(mock.viewed).toEqual([loaded]);
   expect(mock.posted).toEqual([]);
@@ -348,7 +350,7 @@ test('a file can be reviewed without being saved, then saved from the review', a
   expect((await exported).suggestedFilename()).toBe('sample.json');
 });
 
-test('a file names its game: the review opens on that game’s page when the app has it', async ({
+test('a file names its game: the analysis board opens on that game’s page when the app has it', async ({
   page,
 }) => {
   await mockHistory(page);
@@ -368,14 +370,14 @@ test('a file names its game: the review opens on that game’s page when the app
   await expect(rows(page)).toHaveCount(5);
   // The games are loaded once their releases are offered.
   await expect(page.getByLabel('Release').locator('option')).toHaveCount(2);
-  await page.getByLabel('Review a file').setInputFiles({
+  await page.getByLabel('Open a file').setInputFiles({
     name: 'other.json',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(record({ game: 'other' }))),
   });
-  await expect(page).toHaveURL(/#\/game\/other\/review\/file\/f[0-9a-z]+$/);
+  await expect(page).toHaveURL(/#\/game\/other\/analysis\/file\/f[0-9a-z]+$/);
   await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
-  await expect(page).toHaveURL(/#\/game\/other\/review\/file\/f[0-9a-z]+$/);
+  await expect(page).toHaveURL(/#\/game\/other\/analysis\/file\/f[0-9a-z]+$/);
 });
 
 test('a file naming a game the app does not have opens on the current game, as plain text', async ({
@@ -384,24 +386,24 @@ test('a file naming a game the app does not have opens on the current game, as p
   await mockHistory(page);
   await page.goto('/#/game/uttt/history');
   await expect(rows(page)).toHaveCount(5);
-  await page.getByLabel('Review a file').setInputFiles({
+  await page.getByLabel('Open a file').setInputFiles({
     name: 'odd.json',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(record({ game: '<img src=x onerror=alert(1)> ../a b' }))),
   });
-  await expect(page).toHaveURL(/#\/game\/uttt\/review\/file\/f[0-9a-z]+$/);
+  await expect(page).toHaveURL(/#\/game\/uttt\/analysis\/file\/f[0-9a-z]+$/);
   await expect(page.locator('img[src="x"]')).toHaveCount(0);
 });
 
 test('a file whose game is not a name opens on the current game', async ({ page }) => {
   await mockHistory(page);
   await page.goto('/#/game/uttt/history');
-  await page.getByLabel('Review a file').setInputFiles({
+  await page.getByLabel('Open a file').setInputFiles({
     name: 'nameless.json',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(record({ game: 7 }))),
   });
-  await expect(page).toHaveURL(/#\/game\/uttt\/review\/file\/f[0-9a-z]+$/);
+  await expect(page).toHaveURL(/#\/game\/uttt\/analysis\/file\/f[0-9a-z]+$/);
 });
 
 test('a double click on Delete for good sends one request', async ({ page }) => {

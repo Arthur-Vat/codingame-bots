@@ -392,7 +392,7 @@
   gap: 8px;
   /* As wide as the column allows, up to 900 px for the board, and no taller than the window leaves:
      its height is its width less the 24 px of the eval bar and its gap (see "The game page and
-     the review page fit the window" below). */
+     the analysis board fit the window" below). */
   width: min(100%, 924px, max(280px, 100dvh - 85px - var(--bar)) + 24px);
 }
 
@@ -1309,7 +1309,7 @@ td .res + .tag {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
-/* The game page and the review page fit the window at every width: the board is as large as the
+/* The game page and the analysis board fit the window at every width: the board is as large as the
    column and the window's height allow, up to 900 px. The height left for the board is the
    window's, less the top bar (53 px with its border), the page's padding (16 px twice) and the
    playback bar's room (--bar); the 24 px more in the width are the reserved eval bar and its gap.
@@ -1317,7 +1317,7 @@ td .res + .tag {
    they stack under or beside the board and the page may scroll for them, never for the board. */
 .game {
   /* The playback bar's room (40 px and the 12 px above it) is kept on the game page too, so the
-     board stays where it is when a finished game opens its review. */
+     board stays where it is when a finished game opens the analysis board. */
   --bar: 52px;
   padding-block: 16px;
 }
@@ -1374,6 +1374,20 @@ td .res + .tag {
     display: none;
   }
 
+  /* The note in it sits under the table, in the room beside the playback bar, so that the table
+     stays as tall as the squares. */
+  .game > .side-right {
+    position: relative;
+  }
+
+  .side-right .analysis-slot {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 12px;
+  }
+
   .side-right .table {
     flex: 1;
     min-height: 0;
@@ -1425,4 +1439,29 @@ html {
 .starting {
   margin: 2rem;
   color: var(--muted);
+}
+
+/* The analysis board: the way back, and the links among the buttons of an end block. */
+.back-link {
+  font-size: 13px;
+  padding-inline: 2px;
+}
+
+.after a.btn {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}
+
+.empty-page p {
+  margin: 0;
+}
+
+.empty-page .back-link {
+  display: inline-block;
+  margin-top: 12px;
+}
+
+.analysis-slot {
+  padding-inline: 2px;
 }

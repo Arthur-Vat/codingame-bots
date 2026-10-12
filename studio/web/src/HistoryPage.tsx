@@ -33,7 +33,7 @@ import {
 } from './history';
 import type { GamesState } from './hooks';
 import { rememberFile } from './loadedFiles';
-import { formatDate } from './review';
+import { formatDate } from './analysis';
 import { routeHash, type HistorySet } from './route';
 import { Toast, useToast } from './Toast';
 
@@ -127,11 +127,11 @@ function Row({
             href={routeHash({
               page: 'game',
               gameId,
-              tab: 'review',
-              review: { kind: set === 'arena' ? 'arena' : 'saved', id: entry.id },
+              tab: 'analysis',
+              board: { kind: set === 'arena' ? 'arena' : 'saved', id: entry.id },
             })}
           >
-            Review
+            Analysis board
           </a>
           <button className="ctrl" type="button" onClick={onExport}>
             Export
@@ -248,8 +248,8 @@ export function HistoryPage({
     }
   };
 
-  /** Opens a file for review without adding it to the history. */
-  const reviewFile = async (event: ChangeEvent<HTMLInputElement>) => {
+  /** Opens a file on the analysis board without adding it to the history. */
+  const openFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const input = event.target;
     const file = input.files?.[0];
     input.value = '';
@@ -271,8 +271,8 @@ export function HistoryPage({
     window.location.hash = routeHash({
       page: 'game',
       gameId: known ? named : gameId,
-      tab: 'review',
-      review: { kind: 'file', id },
+      tab: 'analysis',
+      board: { kind: 'file', id },
     });
   };
 
@@ -299,9 +299,9 @@ export function HistoryPage({
                 type="file"
                 accept=".json,application/json"
                 className="visually-hidden"
-                onChange={(event) => void reviewFile(event)}
+                onChange={(event) => void openFile(event)}
               />
-              <span>Review a file</span>
+              <span>Open a file</span>
             </label>
           </div>
         )}

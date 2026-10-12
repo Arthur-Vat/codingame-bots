@@ -13,6 +13,11 @@ export function replaceHash(hash: string): void {
   window.location.replace(url.href);
 }
 
+/** Goes to another hash, as a link would: Back returns to the page that was left. */
+export function goToHash(hash: string): void {
+  window.location.hash = hash;
+}
+
 /** Replaces the hash once `hash` is known (null: not yet). */
 export function useReplaceHash(hash: string | null): void {
   useEffect(() => {

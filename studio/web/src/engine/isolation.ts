@@ -3,7 +3,7 @@
    static host such as GitHub Pages sets no headers, so a service worker of ours (public/coi-sw.js)
    adds them: the first visit registers it and reloads the page once, and later ones are isolated
    from the start. Where that fails the page still works for games between humans, the history and
-   reviews; only what needs a bot says so. */
+   the analysis board; only what needs a bot says so. */
 
 export interface IsolationEnvironment {
   isolated: boolean;

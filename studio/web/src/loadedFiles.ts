@@ -1,4 +1,4 @@
-/* Game files loaded in the browser to be reviewed. They live in the memory of the page only, under
+/* Game files loaded in the browser to be opened on the analysis board. They live in the memory of the page only, under
    a generated id: a reload forgets them, and loading the file again makes a new one. */
 
 export interface LoadedFile {
@@ -9,7 +9,7 @@ export interface LoadedFile {
 
 const files = new Map<string, LoadedFile>();
 
-/** Keeps a file and returns the id its review is opened with. */
+/** Keeps a file and returns the id its analysis board is opened with. */
 export function rememberFile(file: LoadedFile): string {
   // Time and chance, so that an id of an earlier page load is never reused.
   const id = `f${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;

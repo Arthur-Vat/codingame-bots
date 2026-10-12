@@ -299,24 +299,36 @@ export function Controls({
   );
 }
 
-/** What to do after a game: play again with the same settings, or choose new ones. The game itself is its review. */
+/**
+ * What to do after a game: play again with the same settings, choose new ones, and, when
+ * `analysisHash` is given, open the game on the analysis board.
+ */
 export function EndBlock({
   onRematch,
   onNewGame,
+  analysisHash,
   disabled,
+  testId = 'end-block',
 }: {
   onRematch: () => void;
   onNewGame: () => void;
+  analysisHash?: string;
   disabled: boolean;
+  testId?: string;
 }) {
   return (
-    <div className="after" data-testid="end-block">
+    <div className="after" data-testid={testId}>
       <button className="btn" type="button" disabled={disabled} onClick={onRematch}>
         Rematch
       </button>
       <button className="btn" type="button" disabled={disabled} onClick={onNewGame}>
         New game
       </button>
+      {analysisHash !== undefined && (
+        <a className="btn wide" href={analysisHash}>
+          Analysis board
+        </a>
+      )}
     </div>
   );
 }

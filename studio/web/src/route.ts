@@ -1,23 +1,26 @@
 /**
- * What a review shows: a saved game, a file loaded in the browser, or an arena game published with
- * the site (ADR 0031). A game played here is reviewed in place, in the Play tab.
+ * What the analysis board shows: a saved game, a file loaded in the browser, an arena game
+ * published with the site (ADR 0031), or a game played in this page (by its session id).
  */
-export type ReviewKind = 'saved' | 'file' | 'arena';
+export type AnalysisKind = 'saved' | 'file' | 'arena' | 'session';
 
-const REVIEW_KINDS: readonly string[] = ['saved', 'file', 'arena'];
+const ANALYSIS_KINDS: readonly string[] = ['saved', 'file', 'arena', 'session'];
 
 /** Whose games the history lists: the visitor's own, or the arena games published with the site. */
 export type HistorySet = 'mine' | 'arena';
 
-/** The three tabs of a game's page. */
-export type GameTab = 'play' | 'review' | 'history';
+/** The views of a game's page: the two tabs, and the analysis board, which is not a tab. */
+export type GameTab = 'play' | 'history' | 'analysis';
+
+/** The tabs the top bar shows. */
+export type ShownTab = Exclude<GameTab, 'analysis'>;
 
 /** Where the app is, read from the URL hash. */
 export type Route =
   | { page: 'home' }
   | { page: 'game'; gameId: string; tab: 'play'; sessionId: string | null }
-  | { page: 'game'; gameId: string; tab: 'review'; review: { kind: ReviewKind; id: string } | null }
-  | { page: 'game'; gameId: string; tab: 'history'; set: HistorySet };
+  | { page: 'game'; gameId: string; tab: 'history'; set: HistorySet }
+  | { page: 'game'; gameId: string; tab: 'analysis'; board: { kind: AnalysisKind; id: string } };
 
 /**
  * Reads a hash such as `#/game/uttt/ab12` into a route. Anything unknown is the home page.
@@ -38,23 +41,21 @@ export function parseRoute(hash: string): Route {
 
 const HOME: Route = { page: 'home' };
 
-function isReviewKind(value: string): value is ReviewKind {
-  return REVIEW_KINDS.includes(value);
+function isAnalysisKind(value: string): value is AnalysisKind {
+  return ANALYSIS_KINDS.includes(value);
 }
 
 /** The route of `#/game/<gameId>/<rest...>`. */
 function parseGame(gameId: string, rest: string[]): Route {
   const [tab, kind, id] = rest;
   if (rest.length === 0) return { page: 'game', gameId, tab: 'play', sessionId: null };
-  if (tab === 'review') {
-    if (rest.length === 1) return { page: 'game', gameId, tab: 'review', review: null };
-    if (rest.length === 3 && kind && id) {
-      return isReviewKind(kind)
-        ? { page: 'game', gameId, tab: 'review', review: { kind, id } }
-        : HOME;
-    }
-    return HOME;
+  if (tab === 'analysis') {
+    return rest.length === 3 && kind && id && isAnalysisKind(kind)
+      ? { page: 'game', gameId, tab: 'analysis', board: { kind, id } }
+      : HOME;
   }
+  // The Review tab of the earlier versions is gone, with its addresses.
+  if (tab === 'review') return HOME;
   if (tab === 'history') {
     if (rest.length === 1) return { page: 'game', gameId, tab: 'history', set: 'mine' };
     if (rest.length === 2 && kind === 'arena') {
@@ -84,12 +85,10 @@ export function routeHash(route: Route): string {
       switch (route.tab) {
         case 'play':
           return route.sessionId ? `${game}/${encodeURIComponent(route.sessionId)}` : game;
-        case 'review':
-          return route.review === null
-            ? `${game}/review`
-            : `${game}/review/${route.review.kind}/${encodeURIComponent(route.review.id)}`;
         case 'history':
           return route.set === 'arena' ? `${game}/history/arena` : `${game}/history`;
+        case 'analysis':
+          return `${game}/analysis/${route.board.kind}/${encodeURIComponent(route.board.id)}`;
       }
     }
   }

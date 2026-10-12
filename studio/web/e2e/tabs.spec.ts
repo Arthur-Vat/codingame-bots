@@ -1,8 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
-import { serveArena } from './arena';
 import { gameFrames, gameTurns, mockGames, record, recordView } from './fixtures';
 
-// One page per game, with the Play, Review and History tabs. The API is mocked with page.route.
+// One page per game, with the Play and History tabs and the analysis board. The API is mocked with page.route.
 
 const SAVED = 'uttt-1760000000-abcdef123456';
 
@@ -76,13 +75,16 @@ async function mockAll(page: Page, session: unknown = running()): Promise<Calls>
   return calls;
 }
 
-const tab = (page: Page, name: 'Play' | 'Review' | 'History') =>
+const tab = (page: Page, name: 'Play' | 'History') =>
   page.getByRole('navigation', { name: 'Game' }).getByRole('link', { name });
+
+/** What is on screen: the Play tab stays in the page, hidden, behind the others. */
+const onScreen = { visible: true };
 
 const cell = (page: Page, row: number, col: number, mark: 'X' | 'O') =>
   page.getByRole('img', { name: `row ${row} column ${col} ${mark}` });
 
-test('a game page has three tabs in the top bar, and the home page has none', async ({ page }) => {
+test('a game page has two tabs in the top bar, and the home page has none', async ({ page }) => {
   await mockAll(page);
   await page.goto('/');
   await expect(page.getByRole('navigation', { name: 'Game' })).toHaveCount(0);
@@ -92,19 +94,20 @@ test('a game page has three tabs in the top bar, and the home page has none', as
   await page.goto('/#/game/uttt');
   await expect(page.locator('.crumb')).toHaveText('Ultimate Tic-Tac-Toe');
   const nav = page.getByRole('navigation', { name: 'Game' });
-  await expect(nav.getByRole('link')).toHaveText(['Play', 'Review', 'History']);
+  await expect(nav.getByRole('link')).toHaveText(['Play', 'History']);
   await expect(tab(page, 'Play')).toHaveAttribute('aria-current', 'page');
   await expect(tab(page, 'Play')).toHaveAttribute('href', '#/game/uttt');
-  await expect(tab(page, 'Review')).toHaveAttribute('href', '#/game/uttt/review');
   await expect(tab(page, 'History')).toHaveAttribute('href', '#/game/uttt/history');
   await expect(page.getByRole('link', { name: 'Games' })).not.toHaveAttribute(
     'aria-current',
     'page',
   );
 
-  await tab(page, 'Review').click();
-  await expect(tab(page, 'Review')).toHaveAttribute('aria-current', 'page');
+  await tab(page, 'History').click();
+  await expect(tab(page, 'History')).toHaveAttribute('aria-current', 'page');
   await expect(tab(page, 'Play')).not.toHaveAttribute('aria-current', 'page');
+  // The Review tab is gone.
+  await expect(page.getByRole('link', { name: 'Review' })).toHaveCount(0);
 });
 
 test('the tabs fit the top bar and the page does not scroll sideways', async ({ page }) => {
@@ -158,33 +161,38 @@ test('the Play tab is the remembered session while another tab is shown', async 
   await page.goto('/#/game/uttt/ab12');
   await expect(page.getByTestId('player-0')).toContainText('Alice');
   // Straight to another tab by address: Play leads back to the session.
-  await page.goto('/#/game/uttt/review');
+  await page.goto(`/#/game/uttt/analysis/saved/${SAVED}`);
   await expect(tab(page, 'Play')).toHaveAttribute('href', '#/game/uttt/ab12');
   await page.goto('/#/game/uttt/history/arena');
   await expect(tab(page, 'Play')).toHaveAttribute('href', '#/game/uttt/ab12');
   await expect(tab(page, 'History')).toHaveAttribute('href', '#/game/uttt/history/arena');
 });
 
-test('Review with nothing open says so and leads to the history', async ({ page }) => {
-  await mockAll(page);
-  await serveArena(page.context(), { index: null });
-  await page.goto('/#/game/uttt/ab12');
-  await tab(page, 'Review').click();
-  await expect(page).toHaveURL(/#\/game\/uttt\/review$/);
-  await expect(page.getByText('No game open for review.')).toBeVisible();
-  await page.getByRole('link', { name: 'Open one from the history' }).click();
-  await expect(page).toHaveURL(/#\/game\/uttt\/history$/);
-  await expect(page.getByTestId('history-row')).toHaveCount(1);
-});
-
-test('History, a row’s Review, and the tabs remember it', async ({ page }) => {
+test('a history row’s Analysis board: History stays current, no Rematch, and the way back', async ({
+  page,
+}) => {
   await mockAll(page);
   await page.goto('/#/game/uttt/ab12');
   await tab(page, 'History').click();
-  await page.getByTestId('history-row').getByRole('link', { name: 'Review' }).click();
-  await expect(page).toHaveURL(new RegExp(`#/game/uttt/review/saved/${SAVED}$`));
+  await page.getByTestId('history-row').getByRole('link', { name: 'Analysis board' }).click();
+  await expect(page).toHaveURL(new RegExp(`#/game/uttt/analysis/saved/${SAVED}$`));
   await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
-  await expect(tab(page, 'Review')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('heading', { name: 'Analysis board' })).toBeVisible();
+  await expect(tab(page, 'History')).toHaveAttribute('aria-current', 'page');
+  await expect(tab(page, 'Play')).not.toHaveAttribute('aria-current', 'page');
+  // A game from the history offers neither Rematch nor New game (the hidden Play tab has its own).
+  await expect(page.getByRole('button', { name: 'Rematch' }).filter(onScreen)).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'New game', exact: true }).filter(onScreen),
+  ).toHaveCount(0);
+  await expect(page.getByText("The engine's analysis comes in a later version.")).toBeVisible();
+  await expect(page.getByText('Saved (arena match)')).toBeVisible();
+
+  // The Play tab still leads to the session, and the way back to the history.
+  await expect(tab(page, 'Play')).toHaveAttribute('href', '#/game/uttt/ab12');
+  await page.getByRole('link', { name: 'Back to history' }).click();
+  await expect(page).toHaveURL(/#\/game\/uttt\/history$/);
+  await expect(page.getByTestId('history-row')).toHaveCount(1);
 
   await tab(page, 'Play').click();
   // The tab is in front once the Play tab is shown and the others are gone: before that, both
@@ -193,11 +201,6 @@ test('History, a row’s Review, and the tabs remember it', async ({ page }) => 
   await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
   await expect(page.getByTestId('player-0')).toContainText('Alice');
   await expect(page.getByRole('button', { name: 'First move' })).toHaveCount(0);
-
-  await tab(page, 'Review').click();
-  await expect(page).toHaveURL(new RegExp(`#/game/uttt/review/saved/${SAVED}$`));
-  await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
-  await expect(page.getByText('Saved (arena match)')).toBeVisible();
 });
 
 test('a finished game keeps its frame while another tab is shown, and takes no key there', async ({
@@ -211,11 +214,10 @@ test('a finished game keeps its frame while another tab is shown, and takes no k
   await expect(cell(page, 3, 7, 'O')).toHaveCount(0);
   await expect(cell(page, 5, 3, 'X')).toBeVisible();
 
-  await tab(page, 'Review').click();
-  await page.getByRole('link', { name: 'Open one from the history' }).click();
-  await page.getByTestId('history-row').getByRole('link', { name: 'Review' }).click();
+  await tab(page, 'History').click();
+  await page.getByTestId('history-row').getByRole('link', { name: 'Analysis board' }).click();
   await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
-  // The saved game starts on its first frame. Keys move that review, not the hidden game.
+  // The saved game starts on its first frame. Keys move that analysis board, not the hidden game.
   await page.keyboard.press('End');
   await expect(page.getByRole('button', { name: 'Last move' })).toBeDisabled();
   await page.keyboard.press('Space');
@@ -232,7 +234,7 @@ test('a finished game keeps its frame while another tab is shown, and takes no k
   await expect(page.getByRole('button', { name: 'Pause' })).toHaveCount(0);
 });
 
-test('a playing review stops when its tab is left and goes on when it is shown again', async ({
+test('a playing game stops when its tab is left and goes on when it is shown again', async ({
   page,
 }) => {
   await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
@@ -257,14 +259,20 @@ test('a playing review stops when its tab is left and goes on when it is shown a
   await expect(cell(page, 4, 4, 'X')).toBeVisible();
 });
 
-test('the addresses of the time before the tabs are unknown: the home page', async ({ page }) => {
+test('the addresses of the time before the tabs, and of the Review tab, are unknown: the home page', async ({
+  page,
+}) => {
   await mockAll(page, over());
   for (const hash of [
     '/#/history',
     '/#/history/arena',
     `/#/review/saved/${SAVED}`,
     '/#/review/session/ab12',
+    '/#/game/uttt/review',
+    `/#/game/uttt/review/saved/${SAVED}`,
     '/#/game/uttt/review/session/ab12',
+    '/#/game/uttt/analysis',
+    '/#/game/uttt/analysis/bogus/x',
   ]) {
     await page.goto(hash);
     await expect(page.getByRole('heading', { name: 'Choose a game' }), hash).toBeVisible();
@@ -272,7 +280,7 @@ test('the addresses of the time before the tabs are unknown: the home page', asy
   }
 });
 
-test('a review of another game’s record moves to that game’s page', async ({ page }) => {
+test('the analysis board of another game’s record moves to that game’s page', async ({ page }) => {
   await mockGames(page);
   await page.route('**/api/games', (route) =>
     route.fulfill({
@@ -289,20 +297,23 @@ test('a review of another game’s record moves to that game’s page', async ({
     'window.seen = []; window.addEventListener("hashchange", (event) => window.seen.push(new URL(event.newURL).hash));',
   );
   await page.goto('/#/game/uttt');
-  await page.goto(`/#/game/uttt/review/saved/${SAVED}`);
-  await expect(page).toHaveURL(new RegExp(`#/game/other/review/saved/${SAVED}$`));
+  await page.goto(`/#/game/uttt/analysis/saved/${SAVED}`);
+  await expect(page).toHaveURL(new RegExp(`#/game/other/analysis/saved/${SAVED}$`));
   await expect(page.locator('.crumb')).toHaveText('Other');
   await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
   // Replaced once, with no loop between two routes, and Back leaves it behind.
   const seen = await page.evaluate<string[]>('window.seen');
-  expect(seen).toEqual([`#/game/uttt/review/saved/${SAVED}`, `#/game/other/review/saved/${SAVED}`]);
+  expect(seen).toEqual([
+    `#/game/uttt/analysis/saved/${SAVED}`,
+    `#/game/other/analysis/saved/${SAVED}`,
+  ]);
   await page.goBack();
   await expect(page).toHaveURL(/#\/game\/uttt$/);
 });
 
 test('a game the server does not have is said on every tab', async ({ page }) => {
   await mockGames(page);
-  for (const hash of ['/#/game/nope', '/#/game/nope/review', '/#/game/nope/history']) {
+  for (const hash of ['/#/game/nope', '/#/game/nope/analysis/saved/x', '/#/game/nope/history']) {
     await page.goto(hash);
     await expect(
       page.getByText('The server has no game called nope.').filter({ visible: true }).first(),
@@ -327,7 +338,7 @@ test('an id that every object inherits is not a game, and the page still renders
   for (const hash of [
     '/#/game/constructor',
     '/#/game/constructor/history',
-    '/#/game/__proto__/review',
+    '/#/game/__proto__/analysis/saved/x',
     '/#/game/toString/history/arena',
   ]) {
     await page.goto(hash);
@@ -345,10 +356,10 @@ test('an id that every object inherits is not a game, and the page still renders
 test('a file that names an inherited id opens on the current game', async ({ page }) => {
   await mockAll(page);
   await page.goto('/#/game/uttt/history');
-  await page.getByLabel('Review a file').setInputFiles({
+  await page.getByLabel('Open a file').setInputFiles({
     name: 'odd.json',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(record({ game: 'constructor' }))),
   });
-  await expect(page).toHaveURL(/#\/game\/uttt\/review\/file\/f[0-9a-z]+$/);
+  await expect(page).toHaveURL(/#\/game\/uttt\/analysis\/file\/f[0-9a-z]+$/);
 });

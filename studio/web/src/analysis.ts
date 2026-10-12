@@ -1,24 +1,25 @@
-/* What the review screen needs, as pure functions: the one model a saved game, an arena game and
-   a file are turned into, and the timing and the stepping of the playback. */
+/* What the analysis board needs, as pure functions: the one model a saved game, an arena game, a
+   file and a game played here are turned into, and the timing and the stepping of the playback. */
 
 import type { Answer, GameRecord, RecordPlayer, RecordView, SessionResult } from './api';
-import type { ReviewKind } from './route';
+import { exportFileName } from './play';
+import type { AnalysisKind } from './route';
 
-/** One player of a reviewed game. */
-export interface ReviewPlayer {
+/** One player of the game on the analysis board. */
+export interface AnalysisPlayer {
   name: string;
   kind: 'human' | 'bot';
   /** How a bot played, when it is known (think time, iterations, time factor). */
   settings: string | null;
 }
 
-/** A reviewed game, whatever it came from. */
-export interface ReviewModel {
-  kind: ReviewKind;
-  /** The saved game's id, the arena game's id, or the id of the loaded file. */
+/** A game on the analysis board, whatever it came from. */
+export interface AnalysisModel {
+  kind: AnalysisKind;
+  /** The saved game's id, the arena game's id, the id of the loaded file, or the session's id. */
   id: string;
   game: string;
-  players: [ReviewPlayer, ReviewPlayer];
+  players: [AnalysisPlayer, AnalysisPlayer];
   /** The turns the board can show, openings included. */
   turns: Answer[][];
   /** The turns of the record that do not replay (a last invalid answer) and are not listed. */
@@ -36,7 +37,7 @@ export interface ReviewModel {
   saved: boolean;
 }
 
-function recordPlayer(player: RecordPlayer): ReviewPlayer {
+function recordPlayer(player: RecordPlayer): AnalysisPlayer {
   let settings: string | null = null;
   if (player.kind === 'bot') {
     if (player.fixed_iters !== null) {
@@ -52,15 +53,17 @@ function recordPlayer(player: RecordPlayer): ReviewPlayer {
 export type RecordOrigin =
   | { kind: 'saved'; id: string }
   | { kind: 'file'; id: string; name: string }
-  | { kind: 'arena'; id: string };
+  | { kind: 'arena'; id: string }
+  | { kind: 'session'; id: string };
 
 function sourceText(origin: RecordOrigin, record: GameRecord): string {
   if (origin.kind === 'file') return origin.name;
+  if (origin.kind === 'session') return 'Played here';
   return `${origin.kind === 'arena' ? 'Arena game' : 'Saved'} (${record.source})`;
 }
 
-/** The review of a record with its frames: a saved game, or a file shown before it is saved. */
-export function reviewOfRecord(view: RecordView, origin: RecordOrigin): ReviewModel {
+/** The model of a record with its frames: a saved game, a game played here, or a file shown before it is saved. */
+export function analysisOfRecord(view: RecordView, origin: RecordOrigin): AnalysisModel {
   const record: GameRecord = view.record;
   const shown = Math.min(view.shown_turns, record.turns.length);
   return {
@@ -81,7 +84,7 @@ export function reviewOfRecord(view: RecordView, origin: RecordOrigin): ReviewMo
 }
 
 /** The last frame index of a model, or -1 without frames. */
-export function lastFrame(model: ReviewModel): number {
+export function lastFrame(model: AnalysisModel): number {
   return model.frames.length - 1;
 }
 
@@ -177,7 +180,7 @@ export const NO_PLAYBACK: HeldPlayback = { key: null, state: PLAYBACK_START };
 /**
  * The playback to use for the game `key`: the one held when it is for that game, else a new one,
  * stopped at normal speed on frame `start`. A game going on has no key until it is over; then its
- * review starts on the frame that was on the board.
+ * playback starts on the frame that was on the board.
  */
 export function playbackFor(held: HeldPlayback, key: string | null, start: number): HeldPlayback {
   if (held.key === key) return held;
@@ -189,8 +192,8 @@ export function shownCursor(state: PlaybackState, last: number): number {
   return clamp(state.cursor, last);
 }
 
-/** What a key does in the review: a frame to go to, `'toggle'` for Space, or undefined. */
-export function reviewKey(
+/** What a key does with a game that is over or on the analysis board: a frame to go to, `'toggle'` for Space, or undefined. */
+export function analysisKey(
   key: string,
   cursor: number,
   last: number,
@@ -220,8 +223,12 @@ export function formatDate(unixSeconds: number): string {
   return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())} ${two(date.getHours())}:${two(date.getMinutes())}`;
 }
 
-/** The name a record is exported under: `uttt-1-ab…` for a saved or an arena game, else the file's own. */
-export function exportName(model: ReviewModel): string {
+/**
+ * The name a record is exported under: `uttt-1-ab…` for a saved or an arena game, the name the
+ * Play tab uses (`now` dates it) for a game played here, else the file's own.
+ */
+export function exportName(model: AnalysisModel, now: Date = new Date()): string {
   if (model.kind === 'saved' || model.kind === 'arena') return `${model.id}.json`;
+  if (model.kind === 'session') return exportFileName(model.game, model.seed, now);
   return model.source.toLowerCase().endsWith('.json') ? model.source : `${model.source}.json`;
 }

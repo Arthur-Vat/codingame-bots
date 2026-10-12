@@ -63,7 +63,7 @@ codingame-bots/
 │     ├─ journal/           one entry per experiment, with an index
 │     ├─ training/          reports of the training runs used, E011's class weights
 │     └─ studio/            Phase 6: the game's adapter for the studio
-├─ studio/                  Phase 6: local app to play and review games (ADR 0025)
+├─ studio/                  Phase 6: local app to play and analyse games (ADR 0025)
 │  ├─ core/                 the studio's logic that needs the rules, shared by the server and the browser (ADR 0030)
 │  ├─ game/                 the interface a game implements for the studio
 │  ├─ rules/                the rules as a WebAssembly program (JSON requests in, JSON out) for the browser

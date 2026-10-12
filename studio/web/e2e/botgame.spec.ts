@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { gameFrames, gameTurns, mockGames } from './fixtures';
 
 // A game between two bots is shown once it is played: a spinner over the empty board while the
-// bots play, then the review from its first move, paused. The API is mocked with page.route.
+// bots play, then the game from its first move, paused. The API is mocked with page.route.
 
 const bot = (name: string) => ({
   kind: 'bot',
@@ -116,7 +116,7 @@ test('while the bots play: a spinner over the empty board, nothing of the game, 
   await expect(spinner).toBeVisible();
 });
 
-test('the game ends: the spinner goes, the moves and the result come, the review opens on its first move', async ({
+test('the game ends: the spinner goes, the moves and the result come, the playback opens on its first move', async ({
   page,
 }) => {
   const mock = await mockApi(page, botGoing(3));
@@ -149,7 +149,7 @@ test('the game ends: the spinner goes, the moves and the result come, the review
   await expect(cell(page, 3, 7, 'O')).toBeVisible();
 });
 
-test('a game already over when opened is its review from the first move', async ({ page }) => {
+test('a game already over when opened opens on its first move', async ({ page }) => {
   await mockApi(page, botGame());
   await page.goto('/#/game/uttt/ab12');
   await expect(page.getByTestId('playback')).toBeVisible();

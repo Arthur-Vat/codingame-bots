@@ -1,26 +1,32 @@
 import { useState, type ReactNode } from 'react';
-import { getHistoryRecord, postHistory, postHistoryText } from './api';
+import { getHistoryRecord, getRecord, postHistory, postHistoryText, saveSession } from './api';
+import {
+  exportName,
+  formatDate,
+  lastFrame,
+  type AnalysisModel,
+  type AnalysisPlayer,
+} from './analysis';
 import { arenaRecordText } from './arena';
 import { BoardSlot } from './BoardSlot';
 import { download, downloadText, errorMessage } from './browser';
 import { emptyFrameFor, renderers, resultDetailFor } from './games/registry';
-import { Row, useKeepInView } from './GameTable';
+import { EndBlock, Row, useKeepInView } from './GameTable';
 import { SeatMark } from './Marks';
 import { recallFile } from './loadedFiles';
 import { frameAfterTurn, timeUsed, turnOfFrame } from './play';
 import { PlaybackBar } from './PlaybackBar';
-import { exportName, formatDate, lastFrame, type ReviewModel, type ReviewPlayer } from './review';
-import { routeHash, type ReviewKind } from './route';
+import { routeHash, type AnalysisKind } from './route';
 import { formatSpent } from './clock';
 import { moveRows, resultText, seatMark } from './sessionView';
 import { Toast, useToast } from './Toast';
 import { Redirect, StatusPanel } from './Panels';
 import { usePlayback } from './usePlayback';
-import { useReview } from './useReview';
+import { useAnalysis } from './useAnalysis';
 
 /** One player's strip: mark, name, how it played, and the time its answers took. */
-function ReviewStrip({ model, seat }: { model: ReviewModel; seat: number }) {
-  const player: ReviewPlayer | undefined = model.players[seat];
+function AnalysisStrip({ model, seat }: { model: AnalysisModel; seat: number }) {
+  const player: AnalysisPlayer | undefined = model.players[seat];
   const spent = timeUsed(model, seat);
   return (
     <div className="player" data-testid={`player-${seat}`}>
@@ -38,14 +44,14 @@ function ReviewStrip({ model, seat }: { model: ReviewModel; seat: number }) {
   );
 }
 
-function playerLine(player: ReviewPlayer): string {
+function playerLine(player: AnalysisPlayer): string {
   return player.settings === null ? player.name : `${player.name}, ${player.settings}`;
 }
 
-function InfoCard({ model, resultLine }: { model: ReviewModel; resultLine: string }) {
+function InfoCard({ model, resultLine }: { model: AnalysisModel; resultLine: string }) {
   return (
     <section className="panel info">
-      <h3>Review</h3>
+      <h3>Analysis board</h3>
       <dl>
         <Row term="Source" value={model.source} />
         <Row term="Date" value={formatDate(model.unixTime)} />
@@ -58,7 +64,7 @@ function InfoCard({ model, resultLine }: { model: ReviewModel; resultLine: strin
   );
 }
 
-function ReviewMoves({
+function AnalysisMoves({
   model,
   shownTurn,
   atLatest,
@@ -66,7 +72,7 @@ function ReviewMoves({
   detail,
   onPick,
 }: {
-  model: ReviewModel;
+  model: AnalysisModel;
   shownTurn: number;
   atLatest: boolean;
   headline: string;
@@ -109,21 +115,50 @@ function MoveRow({ number, children }: { number: number; children: ReactNode }) 
   );
 }
 
-/** The record to save or export, whatever the game came from but an arena game (kept as text). */
-async function recordOf(model: ReviewModel): Promise<unknown> {
+/** The record to export, whatever the game came from but an arena game (kept as text). */
+async function recordOf(model: AnalysisModel): Promise<unknown> {
   if (model.kind === 'saved') return getHistoryRecord(model.id);
+  if (model.kind === 'session') return getRecord(model.id);
   if (model.kind === 'arena') throw new Error('An arena game is kept as text.');
   const file = recallFile(model.id);
   if (file === null) throw new Error('This file is no longer loaded.');
   return file.record;
 }
 
-function ReviewScreen({ model }: { model: ReviewModel }) {
+/** Where the way back leads, and what it says. */
+export interface BackLink {
+  hash: string;
+  label: string;
+}
+
+/** What a game just played offers from the analysis board; it acts through the Play tab. */
+export interface AfterActions {
+  onRematch: () => void;
+  onNewGame: () => void;
+}
+
+function Back({ back }: { back: BackLink }) {
+  return (
+    <a className="back-link" href={back.hash}>
+      {back.label}
+    </a>
+  );
+}
+
+function AnalysisScreen({
+  model,
+  back,
+  actions,
+}: {
+  model: AnalysisModel;
+  back: BackLink;
+  actions: AfterActions | null;
+}) {
   const toast = useToast();
   const [coordinates, setCoordinates] = useState(false);
   const [savedHere, setSavedHere] = useState(false);
   const last = lastFrame(model);
-  // A review opened here starts at the first frame.
+  // The analysis board opens on the first frame.
   const playback = usePlayback(last, 0, `${model.kind}/${model.id}`, { active: true, keys: true });
   const cursor = playback.cursor;
   const goto = playback.goto;
@@ -149,7 +184,9 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
       const { duplicate } =
         model.kind === 'arena'
           ? await postHistoryText(await arenaRecordText(model.id))
-          : await postHistory(await recordOf(model));
+          : model.kind === 'session'
+            ? await saveSession(model.id)
+            : await postHistory(await recordOf(model));
       setSavedHere(true);
       toast.show(duplicate ? 'Already in your history' : 'Saved to your history');
     } catch (failure) {
@@ -172,6 +209,7 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
     <>
       <main className="wrap game">
         <aside className="side side-left">
+          <Back back={back} />
           <InfoCard model={model} resultLine={resultLine} />
           <section className="panel toggles" aria-label="Board settings">
             <span className="label">Board</span>
@@ -213,8 +251,8 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
 
         <aside className="side side-right">
           <section className="panel table">
-            <ReviewStrip model={model} seat={1} />
-            <ReviewMoves
+            <AnalysisStrip model={model} seat={1} />
+            <AnalysisMoves
               model={model}
               shownTurn={shownTurn}
               atLatest={cursor >= last}
@@ -240,9 +278,19 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
                 Export file
               </button>
             </div>
-            <ReviewStrip model={model} seat={0} />
+            {actions !== null && (
+              <EndBlock
+                testId="analysis-actions"
+                disabled={false}
+                onRematch={actions.onRematch}
+                onNewGame={actions.onNewGame}
+              />
+            )}
+            <AnalysisStrip model={model} seat={0} />
           </section>
-          <div className="analysis-slot" data-testid="analysis-slot" />
+          <div className="analysis-slot" data-testid="analysis-slot">
+            <p className="hint">The engine&apos;s analysis comes in a later version.</p>
+          </div>
         </aside>
       </main>
       <Toast text={toast.text} />
@@ -250,54 +298,73 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
   );
 }
 
-/** The game a review route names, loaded; its page when the game is loaded. */
-function ReviewLoader({ gameId, kind, id }: { gameId: string; kind: ReviewKind; id: string }) {
-  const { model, error } = useReview(kind, id);
+/** The game an analysis board route names, loaded; its page when the game is loaded. */
+function AnalysisLoader({
+  gameId,
+  kind,
+  id,
+  back,
+  actions,
+}: {
+  gameId: string;
+  kind: AnalysisKind;
+  id: string;
+  back: BackLink;
+  actions: AfterActions | null;
+}) {
+  const { model, error, playing } = useAnalysis(kind, id);
   if (model === null) {
+    if (playing) {
+      return (
+        <StatusPanel text="This game is still being played.">
+          <Back back={back} />
+        </StatusPanel>
+      );
+    }
     return error === null ? (
       <StatusPanel text="Loading the game…" />
     ) : (
-      <StatusPanel text={error} alert />
+      <StatusPanel text={error} alert>
+        <Back back={back} />
+      </StatusPanel>
     );
   }
-  // A hand-typed address with another game's id: the review belongs to its own game's page.
+  // A hand-typed address with another game's id: the game belongs to its own game's page.
   if (model.game !== gameId) {
     return (
       <Redirect
         hash={routeHash({
           page: 'game',
           gameId: model.game,
-          tab: 'review',
-          review: { kind, id },
+          tab: 'analysis',
+          board: { kind, id },
         })}
       />
     );
   }
   // A new game starts from its first frame, with its own playback.
-  return <ReviewScreen key={`${model.kind}/${model.id}`} model={model} />;
+  return (
+    <AnalysisScreen key={`${model.kind}/${model.id}`} model={model} back={back} actions={actions} />
+  );
 }
 
-/** The Review tab of a game: the game open for review, or a way to open one. */
-export function ReviewTab({
+/**
+ * The analysis board of a game: a game of the history, a file or a game just played, with
+ * playback, Save and Export. `back` leads to where the game came from; `actions` (Rematch and New
+ * game) is given only for a game the Play tab still holds.
+ */
+export function AnalysisTab({
   gameId,
-  review,
+  board,
+  back,
+  actions,
 }: {
   gameId: string;
-  review: { kind: ReviewKind; id: string } | null;
+  board: { kind: AnalysisKind; id: string };
+  back: BackLink;
+  actions: AfterActions | null;
 }) {
-  if (review === null) {
-    return (
-      <main className="wrap">
-        <section className="panel empty-page" data-testid="review-empty">
-          <p>No game open for review.</p>
-          <p>
-            <a href={routeHash({ page: 'game', gameId, tab: 'history', set: 'mine' })}>
-              Open one from the history
-            </a>
-          </p>
-        </section>
-      </main>
-    );
-  }
-  return <ReviewLoader gameId={gameId} kind={review.kind} id={review.id} />;
+  return (
+    <AnalysisLoader gameId={gameId} kind={board.kind} id={board.id} back={back} actions={actions} />
+  );
 }

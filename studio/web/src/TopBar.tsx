@@ -1,6 +1,7 @@
 import type { GameSummary } from './api';
 import { engineKind } from './engine/detect';
-import type { GameTab, Route } from './route';
+import { currentTab } from './gameTabs';
+import type { Route, ShownTab } from './route';
 
 /** The mark: nine small squares, the centre one in the accent colour (the favicon is the same). */
 function LogoMark() {
@@ -22,14 +23,13 @@ function LogoMark() {
   );
 }
 
-const TABS: { tab: GameTab; label: string }[] = [
+const TABS: { tab: ShownTab; label: string }[] = [
   { tab: 'play', label: 'Play' },
-  { tab: 'review', label: 'Review' },
   { tab: 'history', label: 'History' },
 ];
 
 /**
- * The top bar: brand, navigation, and on a game's page the game as a crumb with its three tabs.
+ * The top bar: brand, navigation, and on a game's page the game as a crumb with its two tabs.
  * `tabs` holds where each tab's link leads (what the tab showed last); the board loses no height
  * to them.
  */
@@ -40,7 +40,7 @@ export function TopBar({
 }: {
   route: Route;
   games: GameSummary[] | null;
-  tabs: Record<GameTab, string> | null;
+  tabs: Record<ShownTab, string> | null;
 }) {
   const gameName =
     route.page === 'game'
@@ -65,7 +65,11 @@ export function TopBar({
       {route.page === 'game' && tabs !== null && (
         <nav className="nav tabs" aria-label="Game">
           {TABS.map(({ tab, label }) => (
-            <a key={tab} href={tabs[tab]} aria-current={route.tab === tab ? 'page' : undefined}>
+            <a
+              key={tab}
+              href={tabs[tab]}
+              aria-current={currentTab(route) === tab ? 'page' : undefined}
+            >
               {label}
             </a>
           ))}

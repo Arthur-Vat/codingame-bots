@@ -1,11 +1,13 @@
 import { Fragment, useState } from 'react';
+import { requestIsLive, type AfterRequest } from './afterRequest';
+import { AnalysisTab } from './AnalysisPage';
 import { GamePage } from './GamePage';
 import { memoryOf, NO_MEMORY, remember, tabHashes, type GameMemory } from './gameTabs';
 import { HistoryPage } from './HistoryPage';
 import { HomePage } from './HomePage';
-import { useGames, useRoute } from './hooks';
+import { goToHash, useGames, useRoute } from './hooks';
+import { routeHash } from './route';
 import { StatusPanel } from './Panels';
-import { ReviewTab } from './ReviewPage';
 import type { ClockSettings } from './setup';
 import { TopBar } from './TopBar';
 
@@ -26,6 +28,12 @@ export default function App() {
   const memory = remember(remembered, route);
   if (memory !== remembered) setRemembered(memory);
 
+  // Rematch or New game asked on the analysis board, taken by the Play tab. One at a time, and
+  // dropped as soon as the page is anywhere it no longer makes sense (also adjusted while
+  // rendering).
+  const [request, setRequest] = useState<AfterRequest | null>(null);
+  if (request !== null && !requestIsLive(request, route)) setRequest(null);
+
   const tabs = route.page === 'game' ? tabHashes(memory, route.gameId) : null;
   const games = gamesState.games;
   // The Play tab shows its route's session, or the one it last had when another tab is shown.
@@ -36,13 +44,26 @@ export default function App() {
         ? route.sessionId
         : memoryOf(memory, route.gameId).session;
 
+  // Rematch and New game on the analysis board, for a game the Play tab still holds.
+  const afterActions = (gameId: string, board: { kind: string; id: string }) =>
+    board.kind === 'session' && memoryOf(memory, gameId).session === board.id
+      ? {
+          onRematch: () => ask(gameId, board.id, 'rematch'),
+          onNewGame: () => ask(gameId, board.id, 'new-game'),
+        }
+      : null;
+  const ask = (gameId: string, sessionId: string, action: AfterRequest['action']) => {
+    setRequest({ gameId, sessionId, action });
+    goToHash(routeHash({ page: 'game', gameId, tab: 'play', sessionId }));
+  };
+
   return (
     <>
       <TopBar route={route} games={games} tabs={tabs} />
       {route.page === 'home' && <HomePage state={gamesState} />}
       {route.page === 'game' && (
-        // One page for the game. The Play tab stays mounted while the Review or the History tab
-        // is shown, so a game goes on (polling, human clocks, a timeout is still reported).
+        // One page for the game. The Play tab stays mounted while the analysis board or the
+        // History tab is shown, so a game goes on (polling, human clocks, a timeout is still reported).
         <Fragment key={route.gameId}>
           <GamePage
             gameId={route.gameId}
@@ -55,14 +76,39 @@ export default function App() {
                 : null
             }
             onStarted={(sessionId, clock) => setSessionClock({ sessionId, clock })}
+            request={request}
+            onRequestDone={() => setRequest(null)}
           />
           {route.tab !== 'play' && games !== null && !games.some((g) => g.id === route.gameId) ? (
             <StatusPanel text={`The server has no game called ${route.gameId}.`} alert />
-          ) : route.tab === 'review' ? (
-            <ReviewTab
-              key={route.review === null ? '' : `${route.review.kind}/${route.review.id}`}
+          ) : route.tab === 'analysis' ? (
+            <AnalysisTab
+              key={`${route.board.kind}/${route.board.id}`}
               gameId={route.gameId}
-              review={route.review}
+              board={route.board}
+              back={
+                route.board.kind === 'session'
+                  ? {
+                      hash: routeHash({
+                        page: 'game',
+                        gameId: route.gameId,
+                        tab: 'play',
+                        sessionId: route.board.id,
+                      }),
+                      label: 'Back to the game',
+                    }
+                  : {
+                      // Back to the list the game came from: the arena games for an arena game.
+                      hash: routeHash({
+                        page: 'game',
+                        gameId: route.gameId,
+                        tab: 'history',
+                        set: route.board.kind === 'arena' ? 'arena' : 'mine',
+                      }),
+                      label: 'Back to history',
+                    }
+              }
+              actions={afterActions(route.gameId, route.board)}
             />
           ) : route.tab === 'history' ? (
             // Each set starts with its own filters and its own list.
