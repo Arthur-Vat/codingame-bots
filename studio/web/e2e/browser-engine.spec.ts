@@ -123,7 +123,7 @@ test('against uttt-v001 in fixed mode: two moves, a takeback that replays the bo
   ]);
 });
 
-test('bot against bot in real time to the end, its review, and the history kept in the browser', async ({
+test('bot against bot in real time to the end, its playback, and the history kept in the browser', async ({
   page,
 }) => {
   test.setTimeout(240_000);
@@ -134,7 +134,7 @@ test('bot against bot in real time to the end, its review, and the history kept 
     await dialog.getByLabel(/^X think/).fill('0');
     await dialog.getByLabel(/^O think/).fill('0');
   });
-  // A game between two bots becomes its review, in place, when it is over.
+  // A game between two bots stays in the Play tab with its playback when it is over.
   await expect(page.getByTestId('playback')).toBeVisible({ timeout: 180_000 });
   await expect(page).toHaveURL(/#\/game\/uttt\/[0-9a-f]+$/);
   await expect(page.getByTestId('result')).toBeVisible();
@@ -147,7 +147,7 @@ test('bot against bot in real time to the end, its review, and the history kept 
   await expect(page.getByRole('button', { name: 'In your history' })).toBeDisabled();
 
   // The saved game is listed, and is still there after the page is loaded again.
-  await page.getByRole('link', { name: 'History' }).click();
+  await page.getByRole('link', { name: 'History', exact: true }).click();
   const rows = page.getByTestId('history-row');
   await expect(rows).toHaveCount(1);
   await page.reload();
@@ -167,11 +167,11 @@ test('bot against bot in real time to the end, its review, and the history kept 
   await page.getByLabel('Release').selectOption('');
   await expect(rows).toHaveCount(1);
 
-  // Review opens it from the browser's storage.
-  await rows.first().getByRole('link', { name: 'Review' }).click();
-  await expect(page).toHaveURL(/#\/game\/uttt\/review\/saved\/uttt-\d+-[0-9a-f]{12}$/);
+  // Analysis board opens it from the browser's storage.
+  await rows.first().getByRole('link', { name: 'Analysis board' }).click();
+  await expect(page).toHaveURL(/#\/game\/uttt\/analysis\/saved\/uttt-\d+-[0-9a-f]{12}$/);
   await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
-  await page.getByRole('link', { name: 'History' }).click();
+  await page.getByRole('link', { name: 'History', exact: true }).click();
 
   // Export gives the record file.
   const exported = page.waitForEvent('download');
@@ -219,15 +219,15 @@ test('bot against bot in real time to the end, its review, and the history kept 
   await expect(page.getByRole('alert', { name: 'Refused files' })).toContainText('nonsense.json');
   await expect(rows).toHaveCount(1);
 
-  // ... and a file can be reviewed without being saved.
-  await page.getByLabel('Review a file').setInputFiles(loadable);
-  await expect(page).toHaveURL(/#\/game\/uttt\/review\/file\/f[0-9a-z]+$/);
+  // ... and a file can be opened on the analysis board without being saved.
+  await page.getByLabel('Open a file').setInputFiles(loadable);
+  await expect(page).toHaveURL(/#\/game\/uttt\/analysis\/file\/f[0-9a-z]+$/);
   await expect(page.getByText('game.json')).toBeVisible();
   await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
 });
 
 test.describe('where the page cannot be isolated', () => {
-  // No service worker, so no isolation: games between people, the history and reviews work, and
+  // No service worker, so no isolation: games between people, the history and the analysis board work, and
   // what needs a bot says why it cannot.
   test.use({ serviceWorkers: 'block' });
 
@@ -250,7 +250,7 @@ test.describe('where the page cannot be isolated', () => {
     await expect(
       page.getByRole('status').filter({ hasText: 'Saved to your history' }),
     ).toBeVisible();
-    await page.getByRole('link', { name: 'History' }).click();
+    await page.getByRole('link', { name: 'History', exact: true }).click();
     await expect(page.getByTestId('history-row')).toHaveCount(1);
 
     await page.goto('/#/game/uttt');
@@ -264,10 +264,10 @@ test.describe('where the page cannot be isolated', () => {
 test.describe('the arena games (ADR 0031)', () => {
   // Playwright's interception does not see the requests that a service worker handles, so these
   // tests run without ours: on a full load the page waits ten seconds for it, and the history and
-  // the reviews work all the same.
+  // the analysis board works all the same.
   test.use({ serviceWorkers: 'block' });
 
-  test('the arena games are read from the site itself, filtered by the rules, reviewed, saved and exported', async ({
+  test('the arena games are read from the site itself, filtered by the rules, analysed, saved and exported', async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -341,9 +341,9 @@ test.describe('the arena games (ADR 0031)', () => {
     const otherFilter = parsed.winner === 0 ? 'O wins' : 'X wins';
     await page.getByLabel('Result').selectOption({ label: winnerFilter });
     await expect(listed).toHaveCount(1);
-    await expect(listed.first().getByRole('link', { name: 'Review' })).toHaveAttribute(
+    await expect(listed.first().getByRole('link', { name: 'Analysis board' })).toHaveAttribute(
       'href',
-      `#/game/uttt/review/arena/${id}`,
+      `#/game/uttt/analysis/arena/${id}`,
     );
     await page.getByLabel('Result').selectOption({ label: 'Draw' });
     await expect(page.getByTestId('history-empty')).toHaveText(
@@ -351,9 +351,9 @@ test.describe('the arena games (ADR 0031)', () => {
     );
     await page.getByLabel('Result').selectOption({ label: otherFilter });
     await expect(listed).toHaveCount(1);
-    await expect(listed.first().getByRole('link', { name: 'Review' })).toHaveAttribute(
+    await expect(listed.first().getByRole('link', { name: 'Analysis board' })).toHaveAttribute(
       'href',
-      '#/game/uttt/review/arena/uttt-1-decoy',
+      '#/game/uttt/analysis/arena/uttt-1-decoy',
     );
     await page.getByLabel('Result').selectOption('');
     await expect(listed).toHaveCount(2);
@@ -365,9 +365,9 @@ test.describe('the arena games (ADR 0031)', () => {
     expect(file.suggestedFilename()).toBe(`${id}.json`);
     expect(await readFile(await file.path(), 'utf8')).toBe(text);
 
-    // Review replays the record with the rules, from the published text.
-    await listed.first().getByRole('link', { name: 'Review' }).click();
-    await expect(page).toHaveURL(new RegExp(`#/game/uttt/review/arena/${id}$`));
+    // Analysis board replays the record with the rules, from the published text.
+    await listed.first().getByRole('link', { name: 'Analysis board' }).click();
+    await expect(page).toHaveURL(new RegExp(`#/game/uttt/analysis/arena/${id}$`));
     await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
     await expect(page.getByTestId('result').filter({ visible: true })).toBeVisible();
     expect(arena.requests.at(-1)).toBe(`http://127.0.0.1:4173/arena-games/records/${id}.json`);
@@ -384,7 +384,7 @@ test.describe('the arena games (ADR 0031)', () => {
     await page.getByLabel('Source').selectOption({ label: 'Played in the studio' });
     await expect(mine).toHaveCount(1);
     // Saved again, it is the same game.
-    await page.goto(`/#/game/uttt/review/arena/${id}`);
+    await page.goto(`/#/game/uttt/analysis/arena/${id}`);
     await page.getByRole('button', { name: 'Save to history' }).click();
     await expect(
       page.getByRole('status').filter({ hasText: 'Already in your history' }),

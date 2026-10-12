@@ -1,4 +1,4 @@
-// Fixtures shared by the browser tests of the review and history screens. The API is mocked with
+// Fixtures shared by the browser tests of the analysis board and history screens. The API is mocked with
 // page.route: these are what the server would send.
 
 import type { Page } from '@playwright/test';

@@ -49,7 +49,7 @@ interface Api {
   gate: Promise<void> | null;
 }
 
-/** The server's routes the pages of the history and of a review call. */
+/** The server's routes the pages of the history and of the analysis board call. */
 async function mockApi(page: Page): Promise<Api> {
   const api: Api = { mine: [], viewed: [], saved: [], filtered: [], gate: null };
   await mockGames(page);
@@ -143,14 +143,14 @@ test('the arena games are listed read-only, beside my games', async ({ page }) =
 
   // Read-only: no import, no delete, no source filter; the other filters stay.
   await expect(page.getByLabel('Load game files')).toHaveCount(0);
-  await expect(page.getByLabel('Review a file')).toHaveCount(0);
+  await expect(page.getByLabel('Open a file')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Delete', exact: true })).toHaveCount(0);
   await expect(page.getByLabel('Source')).toHaveCount(0);
   await expect(page.getByLabel('Release')).toBeVisible();
   await expect(page.getByLabel('Result')).toBeVisible();
-  await expect(rows(page).first().getByRole('link', { name: 'Review' })).toHaveAttribute(
+  await expect(rows(page).first().getByRole('link', { name: 'Analysis board' })).toHaveAttribute(
     'href',
-    '#/game/uttt/review/arena/uttt-1760000000-aaaaaaaaaaaa',
+    '#/game/uttt/analysis/arena/uttt-1760000000-aaaaaaaaaaaa',
   );
   await expect(rows(page).first().getByRole('button', { name: 'Export' })).toBeVisible();
 });
@@ -251,7 +251,7 @@ test('a late list of one set does not show in the other', async ({ page }) => {
   await expect(rows(page).first()).toContainText('studio');
 });
 
-test('Review opens the arena game, checked by the rules from the published text', async ({
+test('Analysis board opens the arena game, checked by the rules from the published text', async ({
   page,
 }) => {
   const api = await mockApi(page);
@@ -261,9 +261,9 @@ test('Review opens the arena game, checked by the rules from the published text'
     records: texts,
   });
   await page.goto('/#/game/uttt/history/arena');
-  await rows(page).nth(0).getByRole('link', { name: 'Review' }).click();
+  await rows(page).nth(0).getByRole('link', { name: 'Analysis board' }).click();
 
-  await expect(page).toHaveURL(/#\/game\/uttt\/review\/arena\/uttt-1760000000-aaaaaaaaaaaa$/);
+  await expect(page).toHaveURL(/#\/game\/uttt\/analysis\/arena\/uttt-1760000000-aaaaaaaaaaaa$/);
   await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
   await expect(page.getByTestId('result')).toBeVisible();
   await expect(page.getByText('Arena game (arena match)')).toBeVisible();
@@ -285,7 +285,7 @@ test('Save adds an arena game to my games, and says so when it is there already'
   const api = await mockApi(page);
   const texts = recordTexts();
   await serveArena(page.context(), { index: { format: 1, rows: ROWS }, records: texts });
-  await page.goto('/#/game/uttt/review/arena/uttt-1760000000-aaaaaaaaaaaa');
+  await page.goto('/#/game/uttt/analysis/arena/uttt-1760000000-aaaaaaaaaaaa');
   await expect(page.getByRole('button', { name: 'Save to history' })).toBeEnabled();
 
   await page.getByRole('button', { name: 'Save to history' }).click();
@@ -299,7 +299,7 @@ test('Save adds an arena game to my games, and says so when it is there already'
   await expect(rows(page)).toHaveCount(1);
   await expect(rows(page).first()).toContainText('arena');
   // Opened again, the same game is a duplicate.
-  await page.goto('/#/game/uttt/review/arena/uttt-1760000000-aaaaaaaaaaaa');
+  await page.goto('/#/game/uttt/analysis/arena/uttt-1760000000-aaaaaaaaaaaa');
   await page.getByRole('button', { name: 'Save to history' }).click();
   await expect(
     page.getByRole('status').filter({ hasText: 'Already in your history' }),
@@ -321,14 +321,14 @@ test('Export downloads the published record as <id>.json', async ({ page }) => {
   expect(listed.suggestedFilename()).toBe('uttt-1759990000-bbbbbbbbbbbb.json');
   expect(await readFile(await listed.path(), 'utf8')).toBe(texts['uttt-1759990000-bbbbbbbbbbbb']);
 
-  // ... and from the review, byte for byte.
-  await page.goto('/#/game/uttt/review/arena/uttt-1760000000-aaaaaaaaaaaa');
+  // ... and from the analysis board, byte for byte.
+  await page.goto('/#/game/uttt/analysis/arena/uttt-1760000000-aaaaaaaaaaaa');
   await expect(page.getByRole('button', { name: 'Export file' })).toBeEnabled();
-  const fromReview = page.waitForEvent('download');
+  const fromBoard = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export file' }).click();
-  const reviewed = await fromReview;
-  expect(reviewed.suggestedFilename()).toBe('uttt-1760000000-aaaaaaaaaaaa.json');
-  const file = await readFile(await reviewed.path(), 'utf8');
+  const fromBoardFile = await fromBoard;
+  expect(fromBoardFile.suggestedFilename()).toBe('uttt-1760000000-aaaaaaaaaaaa.json');
+  const file = await readFile(await fromBoardFile.path(), 'utf8');
   expect(file).toBe(texts['uttt-1760000000-aaaaaaaaaaaa']);
   expect(file).toContain('18446744073709551615');
 });
@@ -392,15 +392,15 @@ test('the site being unreachable is an error naming the URL, not an empty list',
   );
 });
 
-test('an arena game that is not published, or has a bad id, says why on the review page', async ({
+test('an arena game that is not published, or has a bad id, says why on the analysis board', async ({
   page,
 }) => {
   await mockApi(page);
   await serveArena(page.context(), { index: { format: 1, rows: ROWS }, records: {} });
-  await page.goto('/#/game/uttt/review/arena/uttt-1-missing');
+  await page.goto('/#/game/uttt/analysis/arena/uttt-1-missing');
   await expect(page.getByRole('alert')).toContainText(
     'The arena game uttt-1-missing is not published',
   );
-  await page.goto('/#/game/uttt/review/arena/Not%20An%20Id');
+  await page.goto('/#/game/uttt/analysis/arena/Not%20An%20Id');
   await expect(page.getByRole('alert')).toContainText('is not the id of an arena game');
 });

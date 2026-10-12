@@ -32,23 +32,18 @@ describe('parseRoute', () => {
     });
   });
 
-  it('reads the review tab, with nothing open and with a game of each kind', () => {
-    expect(parseRoute('#/game/uttt/review')).toEqual({
-      page: 'game',
-      gameId: 'uttt',
-      tab: 'review',
-      review: null,
-    });
+  it('reads the analysis board of a game of each kind', () => {
     for (const [kind, id] of [
       ['saved', 'uttt-1-abc'],
       ['file', 'f1'],
       ['arena', 'uttt-1-abc'],
+      ['session', 'ab12'],
     ] as const) {
-      expect(parseRoute(`#/game/uttt/review/${kind}/${id}`)).toEqual({
+      expect(parseRoute(`#/game/uttt/analysis/${kind}/${id}`)).toEqual({
         page: 'game',
         gameId: 'uttt',
-        tab: 'review',
-        review: { kind, id },
+        tab: 'analysis',
+        board: { kind, id },
       });
     }
   });
@@ -94,8 +89,17 @@ describe('parseRoute', () => {
     }
   });
 
-  it('sends the review of a session to the home page: a session is reviewed in the Play tab', () => {
-    expect(parseRoute('#/game/uttt/review/session/ab12')).toEqual({ page: 'home' });
+  it('sends the addresses of the Review tab, which is gone, to the home page', () => {
+    for (const hash of [
+      '#/game/uttt/review',
+      '#/game/uttt/review/',
+      '#/game/uttt/review/saved/uttt-1-abc',
+      '#/game/uttt/review/file/f1',
+      '#/game/uttt/review/arena/uttt-1-abc',
+      '#/game/uttt/review/session/ab12',
+    ]) {
+      expect(parseRoute(hash), hash).toEqual({ page: 'home' });
+    }
   });
 
   it('sends anything unknown or malformed to the home page', () => {
@@ -103,14 +107,16 @@ describe('parseRoute', () => {
       '#/game',
       '#/game/',
       '#/game/uttt/a/b',
-      '#/game/uttt/review/bogus/x',
-      '#/game/uttt/review/session',
-      '#/game/uttt/review/session/a',
-      '#/game/uttt/review/saved/x/extra',
+      '#/game/uttt/analysis',
+      '#/game/uttt/analysis/',
+      '#/game/uttt/analysis/saved',
+      '#/game/uttt/analysis/bogus/x',
+      '#/game/uttt/analysis/session',
+      '#/game/uttt/analysis/saved/x/extra',
       '#/game/uttt/history/other',
       '#/game/uttt/history/arena/extra',
       '#/game/uttt/history/mine',
-      '#/game/uttt/abcd/review',
+      '#/game/uttt/abcd/analysis',
       '#/review',
       '#/review/other/x',
       '#/nowhere',
@@ -132,11 +138,11 @@ describe('parseRoute', () => {
       tab: 'play',
       sessionId: null,
     });
-    expect(parseRoute('#/game/a%20b/review/file/x%2Fy')).toEqual({
+    expect(parseRoute('#/game/a%20b/analysis/file/x%2Fy')).toEqual({
       page: 'game',
       gameId: 'a b',
-      tab: 'review',
-      review: { kind: 'file', id: 'x/y' },
+      tab: 'analysis',
+      board: { kind: 'file', id: 'x/y' },
     });
   });
 });
@@ -147,10 +153,10 @@ describe('routeHash', () => {
       '#/',
       '#/game/uttt',
       '#/game/uttt/ab12',
-      '#/game/uttt/review',
-      '#/game/uttt/review/saved/uttt-1-abc',
-      '#/game/uttt/review/file/f1',
-      '#/game/uttt/review/arena/uttt-1-abc',
+      '#/game/uttt/analysis/saved/uttt-1-abc',
+      '#/game/uttt/analysis/file/f1',
+      '#/game/uttt/analysis/arena/uttt-1-abc',
+      '#/game/uttt/analysis/session/ab12',
       '#/game/uttt/history',
       '#/game/uttt/history/arena',
     ]) {
@@ -161,7 +167,7 @@ describe('routeHash', () => {
   it('percent-encodes what is not a plain segment, and parses it back', () => {
     const routes: Route[] = [
       { page: 'game', gameId: 'a b', tab: 'play', sessionId: 'x/y' },
-      { page: 'game', gameId: '../x', tab: 'review', review: { kind: 'file', id: '<b>#?' } },
+      { page: 'game', gameId: '../x', tab: 'analysis', board: { kind: 'file', id: '<b>#?' } },
       { page: 'game', gameId: 'é', tab: 'history', set: 'arena' },
     ];
     for (const route of routes) {

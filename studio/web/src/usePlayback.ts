@@ -6,10 +6,10 @@ import {
   playbackInterval,
   playbackReducer,
   retime,
-  reviewKey,
+  analysisKey,
   shownCursor,
   type PlaybackAction,
-} from './review';
+} from './analysis';
 
 export interface Playback {
   /** The frame on the board. */
@@ -74,7 +74,7 @@ export function usePlayback(
   const onKey = useEffectEvent((event: KeyboardEvent) => {
     if (!keys || key === null || typesText(event.target)) return;
     if (event.altKey || event.ctrlKey || event.metaKey) return;
-    const action = reviewKey(event.key, cursor, last);
+    const action = analysisKey(event.key, cursor, last);
     if (action === undefined) return;
     // Space on a button, a link, a checkbox or a radio button is theirs.
     if (action === 'toggle' && takesSpace(event.target)) return;

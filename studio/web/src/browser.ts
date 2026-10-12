@@ -1,4 +1,4 @@
-/* Small helpers of the page that the game and review screens share. */
+/* Small helpers of the page that the game and analysis screens share. */
 
 import { isTextEntry, usesSpace } from './play';
 

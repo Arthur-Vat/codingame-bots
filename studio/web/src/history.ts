@@ -103,7 +103,7 @@ export function sourceTag(source: string): string {
 export function emptyText(filtered: boolean): string {
   return filtered
     ? 'No saved game matches these filters.'
-    : 'No saved games yet. Save one from a review, or load game files.';
+    : 'No saved games yet. Save one from the analysis board, or load game files.';
 }
 
 /** What the table says in the arena games when it has no row. */

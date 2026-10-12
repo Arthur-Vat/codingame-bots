@@ -306,7 +306,7 @@ test('compiling and measuring say what the server does', async ({ page }) => {
   );
 });
 
-test('bot against bot shows the move number in the info card, then becomes its review', async ({
+test('bot against bot shows the move number in the info card, then keeps its playback', async ({
   page,
 }) => {
   const f1 = frame({ marks: [[4, 4, 0]], last: [4, 4] });
@@ -339,7 +339,7 @@ test('bot against bot shows the move number in the info card, then becomes its r
     frames: [frame(), f1, frame({ marks: [[4, 4, 0]], points: [2, 3], winner: 1 })],
     turns: [answer(0, '4 4', 12), answer(1, '4 5', 9)],
   };
-  // The game ended: it becomes its review in place, from its first move, with the board in
+  // The game ended: it stays here with its playback, from its first move, with the board in
   // place; the address stays.
   await expect(page.getByTestId('playback')).toBeVisible();
   await expect(page.getByTestId('playing')).toHaveCount(0);
@@ -353,7 +353,7 @@ test('bot against bot shows the move number in the info card, then becomes its r
   expect(await box(page)).toEqual(live);
 });
 
-test('a finished game shows the end block with Rematch, New game, Save and Export', async ({
+test('a finished game shows the end block with Rematch, New game, Analysis board, Save and Export', async ({
   page,
 }) => {
   const last = frame({ marks: [[4, 4, 0]], points: [5, 3], winner: 0 });
@@ -374,6 +374,10 @@ test('a finished game shows the end block with Rematch, New game, Save and Expor
   await expect(result).toContainText('Small boards won: 5–3');
   await expect(page.getByRole('button', { name: 'Rematch' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'New game' })).toBeVisible();
+  await expect(page.getByTestId('end-block').getByRole('link')).toHaveAttribute(
+    'href',
+    '#/game/uttt/analysis/session/ab12',
+  );
 
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Saved to your history' })).toBeVisible();

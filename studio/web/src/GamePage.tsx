@@ -11,6 +11,7 @@ import {
   type Session,
   type SessionRequest,
 } from './api';
+import type { AfterRequest } from './afterRequest';
 import { BoardOverlay } from './BoardOverlay';
 import { botsPlaying, unplayedView } from './botGame';
 import { PlayingOverlay } from './PlayingOverlay';
@@ -80,6 +81,9 @@ interface Props {
   /** The clock chosen for this session, kept by the app until a later change runs it. */
   clock: ClockSettings | null;
   onStarted: (sessionId: string, clock: ClockSettings | null) => void;
+  /** Rematch or New game asked on the analysis board of the session; run once, then cleared. */
+  request: AfterRequest | null;
+  onRequestDone: () => void;
 }
 
 function InfoCard({
@@ -137,7 +141,16 @@ function InfoCard({
 /** How long to wait before reporting a timeout again after a failure. */
 const TIMEOUT_RETRY_MS = 1000;
 
-export function GamePage({ gameId, sessionId, active, gamesState, clock, onStarted }: Props) {
+export function GamePage({
+  gameId,
+  sessionId,
+  active,
+  gamesState,
+  clock,
+  onStarted,
+  request,
+  onRequestDone,
+}: Props) {
   const { session, error, apply } = useSession(sessionId);
   const [dialogMode, setDialogMode] = useState<Mode | null>(null);
   const [coordinates, setCoordinates] = useState(false);
@@ -173,11 +186,11 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
   const latest = frames.length - 1;
   const pinnedFrame = pinned !== null && pinned.sessionId === sessionId ? pinned.frame : null;
   const looked = pinnedFrame === null ? latest : Math.min(pinnedFrame, latest);
-  // A game that is over is its own review: the playback starts on the frame that was looked at,
+  // A game that is over stays here with its playback: it starts on the frame that was looked at,
   // and a game between two bots on its first frame, paused.
   const over = shownSession?.status === 'over';
-  const reviewStart = over && sessionMode(shownSession) === 'bots' ? 0 : looked;
-  const playback = usePlayback(latest, reviewStart, over ? shownSession.id : null, {
+  const startFrame = over && sessionMode(shownSession) === 'bots' ? 0 : looked;
+  const playback = usePlayback(latest, startFrame, over ? shownSession.id : null, {
     active,
     keys: active && dialogMode === null,
   });
@@ -334,6 +347,33 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
   const mode = shownSession === null ? null : sessionMode(shownSession);
   const gameInProgress = hasGameInProgress(session);
 
+  // Rematch or New game asked on the analysis board of this session, once the Play tab is shown
+  // with the finished game. The request is cleared as it is taken; a request taken already (the
+  // effect runs twice in strict mode) is not run again.
+  const requested =
+    request !== null &&
+    active &&
+    over &&
+    request.gameId === gameId &&
+    request.sessionId === sessionId &&
+    session?.id === sessionId
+      ? request
+      : null;
+  const handled = useRef<AfterRequest | null>(null);
+  const runRequest = useEffectEvent((taken: AfterRequest) => {
+    onRequestDone();
+    if (taken.action === 'rematch') {
+      void rematch();
+    } else if (mode !== null) {
+      setDialogMode(mode);
+    }
+  });
+  useEffect(() => {
+    if (requested === null || handled.current === requested) return;
+    handled.current = requested;
+    runRequest(requested);
+  }, [requested]);
+
   return (
     <>
       {gamesState.error?.unreachable && (
@@ -461,11 +501,16 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
                 disabled={pending || starting}
                 onRematch={() => void rematch()}
                 onNewGame={() => setDialogMode(mode)}
+                analysisHash={routeHash({
+                  page: 'game',
+                  gameId,
+                  tab: 'analysis',
+                  board: { kind: 'session', id: shownSession.id },
+                })}
               />
             )}
             <PlayerStrip session={shownSession} seat={bottom} clocks={clocks} running={running} />
           </section>
-          {over && <div className="analysis-slot" data-testid="analysis-slot" />}
         </aside>
       </main>
       <Toast text={active ? toast.text : null} />

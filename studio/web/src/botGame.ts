@@ -1,4 +1,4 @@
-/* How a game between two bots is shown: nothing of it while the bots play, then its review. */
+/* How a game between two bots is shown: nothing of it while the bots play, then the game. */
 
 import type { Session } from './api';
 import { sessionMode } from './play';

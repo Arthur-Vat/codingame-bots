@@ -11,13 +11,13 @@ import {
   playbackReducer,
   PLAYBACK_START,
   retime,
-  reviewKey,
-  reviewOfRecord,
+  analysisKey,
+  analysisOfRecord,
   shownCursor,
   SPEEDS,
   speedLabel,
   type PlaybackState,
-} from './review';
+} from './analysis';
 
 const turn = (seat: number, line: string, ms = 5): Answer[] => [{ seat, lines: [line], ms }];
 
@@ -57,9 +57,9 @@ function view(patch: Partial<RecordView> = {}, recordPatch: Partial<GameRecord> 
   };
 }
 
-describe('reviewOfRecord', () => {
+describe('analysisOfRecord', () => {
   it('turns a saved game into the model', () => {
-    const model = reviewOfRecord(view(), { kind: 'saved', id: 'uttt-1-abc' });
+    const model = analysisOfRecord(view(), { kind: 'saved', id: 'uttt-1-abc' });
     expect(model.kind).toBe('saved');
     expect(model.id).toBe('uttt-1-abc');
     expect(model.players[0]).toEqual({ name: 'uttt-v010', kind: 'bot', settings: null });
@@ -81,7 +81,7 @@ describe('reviewOfRecord', () => {
         winner: 1,
       },
     );
-    const model = reviewOfRecord(invalid, { kind: 'saved', id: 'x' });
+    const model = analysisOfRecord(invalid, { kind: 'saved', id: 'x' });
     expect(model.turns).toHaveLength(2);
     expect(model.hiddenTurns).toBe(1);
     expect(model.result).toEqual({
@@ -92,14 +92,14 @@ describe('reviewOfRecord', () => {
   });
 
   it('keeps every turn when all of them replay, and never reads past the list', () => {
-    expect(reviewOfRecord(view(), { kind: 'saved', id: 'x' }).hiddenTurns).toBe(0);
-    const model = reviewOfRecord(view({ shown_turns: 9 }), { kind: 'saved', id: 'x' });
+    expect(analysisOfRecord(view(), { kind: 'saved', id: 'x' }).hiddenTurns).toBe(0);
+    const model = analysisOfRecord(view({ shown_turns: 9 }), { kind: 'saved', id: 'x' });
     expect(model.turns).toHaveLength(3);
     expect(model.hiddenTurns).toBe(0);
   });
 
   it('shows a loaded file under its name, not saved yet', () => {
-    const model = reviewOfRecord(view(), { kind: 'file', id: 'f1', name: 'sprt-sample.json' });
+    const model = analysisOfRecord(view(), { kind: 'file', id: 'f1', name: 'sprt-sample.json' });
     expect(model.kind).toBe('file');
     expect(model.id).toBe('f1');
     expect(model.source).toBe('sprt-sample.json');
@@ -107,15 +107,23 @@ describe('reviewOfRecord', () => {
   });
 
   it('shows an arena game as not saved, from the arena', () => {
-    const model = reviewOfRecord(view(), { kind: 'arena', id: 'uttt-1-abc' });
+    const model = analysisOfRecord(view(), { kind: 'arena', id: 'uttt-1-abc' });
     expect(model.kind).toBe('arena');
     expect(model.id).toBe('uttt-1-abc');
     expect(model.source).toBe('Arena game (arena match)');
     expect(model.saved).toBe(false);
   });
 
+  it('shows a game played here as played here, not saved yet', () => {
+    const model = analysisOfRecord(view(), { kind: 'session', id: 'ab12' });
+    expect(model.kind).toBe('session');
+    expect(model.id).toBe('ab12');
+    expect(model.source).toBe('Played here');
+    expect(model.saved).toBe(false);
+  });
+
   it('describes iterations for a fixed bot, and nothing for a human', () => {
-    const model = reviewOfRecord(
+    const model = analysisOfRecord(
       view(
         {},
         {
@@ -132,7 +140,7 @@ describe('reviewOfRecord', () => {
   });
 
   it('keeps the opening turns of the replay', () => {
-    const model = reviewOfRecord(view({ opening_turns: 2 }), { kind: 'saved', id: 'x' });
+    const model = analysisOfRecord(view({ opening_turns: 2 }), { kind: 'saved', id: 'x' });
     expect(model.openingTurns).toBe(2);
   });
 });
@@ -280,7 +288,7 @@ describe('playbackFor', () => {
     expect(playbackFor(NO_PLAYBACK, 'x', -3).state.cursor).toBe(0);
   });
 
-  it('plays from the last frame by starting over, as the review does', () => {
+  it('plays from the last frame by starting over, as the analysis board does', () => {
     const atEnd = playbackFor(NO_PLAYBACK, 'x', 4).state;
     expect(playbackReducer(atEnd, { type: 'toggle', last: 4 })).toEqual({
       cursor: 0,
@@ -298,23 +306,23 @@ describe('shownCursor', () => {
   });
 });
 
-describe('reviewKey', () => {
+describe('analysisKey', () => {
   it('steps with the arrows, within the frames', () => {
-    expect(reviewKey('ArrowRight', 1, 5)).toBe(2);
-    expect(reviewKey('ArrowLeft', 1, 5)).toBe(0);
-    expect(reviewKey('ArrowLeft', 0, 5)).toBe(0);
-    expect(reviewKey('ArrowRight', 5, 5)).toBe(5);
+    expect(analysisKey('ArrowRight', 1, 5)).toBe(2);
+    expect(analysisKey('ArrowLeft', 1, 5)).toBe(0);
+    expect(analysisKey('ArrowLeft', 0, 5)).toBe(0);
+    expect(analysisKey('ArrowRight', 5, 5)).toBe(5);
   });
 
   it('jumps with Home and End', () => {
-    expect(reviewKey('Home', 3, 5)).toBe(0);
-    expect(reviewKey('End', 3, 5)).toBe(5);
+    expect(analysisKey('Home', 3, 5)).toBe(0);
+    expect(analysisKey('End', 3, 5)).toBe(5);
   });
 
   it('plays and pauses with Space, and ignores other keys', () => {
-    expect(reviewKey(' ', 3, 5)).toBe('toggle');
-    expect(reviewKey('a', 3, 5)).toBeUndefined();
-    expect(reviewKey('Enter', 3, 5)).toBeUndefined();
+    expect(analysisKey(' ', 3, 5)).toBe('toggle');
+    expect(analysisKey('a', 3, 5)).toBeUndefined();
+    expect(analysisKey('Enter', 3, 5)).toBeUndefined();
   });
 });
 
@@ -325,14 +333,17 @@ describe('formatDate and exportName', () => {
   });
 
   it('names an export after the saved or arena id, or the file', () => {
-    const saved = reviewOfRecord(view(), { kind: 'saved', id: 'uttt-1-abc' });
+    const saved = analysisOfRecord(view(), { kind: 'saved', id: 'uttt-1-abc' });
     expect(exportName(saved)).toBe('uttt-1-abc.json');
-    const arena = reviewOfRecord(view(), { kind: 'arena', id: 'uttt-2-def' });
+    const arena = analysisOfRecord(view(), { kind: 'arena', id: 'uttt-2-def' });
     expect(exportName(arena)).toBe('uttt-2-def.json');
-    const file = reviewOfRecord(view(), { kind: 'file', id: 'f1', name: 'sample' });
+    const file = analysisOfRecord(view(), { kind: 'file', id: 'f1', name: 'sample' });
     expect(exportName(file)).toBe('sample.json');
-    const named = reviewOfRecord(view(), { kind: 'file', id: 'f1', name: 'a.json' });
+    const named = analysisOfRecord(view(), { kind: 'file', id: 'f1', name: 'a.json' });
     expect(exportName(named)).toBe('a.json');
+    // A game played here is named as the Play tab names it: the game, the UTC day, the seed.
+    const played = analysisOfRecord(view(), { kind: 'session', id: 'ab12' });
+    expect(exportName(played, new Date('2026-10-12T10:00:00Z'))).toBe('uttt-2026-10-12-99.json');
   });
 });
 

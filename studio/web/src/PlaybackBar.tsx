@@ -1,4 +1,4 @@
-import { SPEEDS, speedLabel } from './review';
+import { SPEEDS, speedLabel } from './analysis';
 
 interface Props {
   cursor: number;
