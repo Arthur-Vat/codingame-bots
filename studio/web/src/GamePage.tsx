@@ -15,7 +15,7 @@ import { BoardOverlay } from './BoardOverlay';
 import { download, errorMessage, typesText } from './browser';
 import { BoardSlot } from './BoardSlot';
 import { clockSeed } from './setup';
-import { emptyFrames, renderers, resultDetails } from './games/registry';
+import { emptyFrameFor, ownEntry, renderers, resultDetailFor } from './games/registry';
 import { Controls, EndBlock, MoveList, PlayerStrip, Row } from './GameTable';
 import type { GamesState } from './hooks';
 import { ServerNotice } from './HomePage';
@@ -97,7 +97,7 @@ function InfoCard({
     return (
       <section className="panel info">
         <h3>{game?.name ?? gameId}</h3>
-        <p className="hint">{problem ?? GAME_BLURBS[gameId] ?? DEFAULT_BLURB}</p>
+        <p className="hint">{problem ?? ownEntry(GAME_BLURBS, gameId) ?? DEFAULT_BLURB}</p>
       </section>
     );
   }
@@ -109,6 +109,7 @@ function InfoCard({
       <dl>
         <dt>Status</dt>
         <dd>{statusText(session)}</dd>
+        {session.status === 'over' && <Row term="Source" value="Played here" />}
         {bots === 2 &&
           session.seats.map((seat, index) => (
             <Row
@@ -146,6 +147,8 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
   // After a failed timeout report, the next try waits a moment.
   const [backingOff, setBackingOff] = useState(false);
   // The frame the user looks at while looking back; null follows the latest frame.
+  // The session whose finished game was saved from this page (it reads "In your history").
+  const [savedSession, setSavedSession] = useState<string | null>(null);
   const [pinned, setPinned] = useState<{ sessionId: string | null; frame: number } | null>(null);
   const toast = useToast();
 
@@ -236,6 +239,8 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
     if (session === null) return;
     try {
       const { duplicate } = await saveSession(session.id);
+      // Only a game that is over is saved whole: a game saved while it went on is not "in" the history.
+      if (session.status === 'over') setSavedSession(session.id);
       toast.show(duplicate ? 'Already in your history' : 'Saved to your history');
     } catch (failure) {
       toast.show(errorMessage(failure));
@@ -310,23 +315,23 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
   const Renderer = renderers[gameId];
   const frame = frames[shown];
   // With no frame yet (no game, or a session still compiling) the game's empty board is drawn.
-  const shownFrame = frame ?? emptyFrames[gameId]?.();
+  const shownFrame = frame ?? emptyFrameFor(gameId);
   const finalFrame = frames[latest];
   const detail =
     session?.result?.end.kind === 'finished' && finalFrame !== undefined
-      ? (resultDetails[gameId]?.(finalFrame) ?? null)
+      ? resultDetailFor(gameId, finalFrame)
       : null;
   const mode = session === null ? null : sessionMode(session);
   const gameInProgress = hasGameInProgress(session);
 
   return (
-    <div hidden={!active} data-testid="play-tab">
+    <>
       {gamesState.error?.unreachable && (
-        <div className="wrap" style={{ paddingBlock: '24px 0' }}>
+        <div className="wrap" hidden={!active} style={{ paddingBlock: '24px 0' }}>
           <ServerNotice />
         </div>
       )}
-      <main className="wrap game">
+      <main className="wrap game" hidden={!active} data-testid="play-tab">
         <aside className="side side-left">
           <InfoCard
             game={game}
@@ -421,6 +426,7 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
                 takebackTo={controls.takebackTo}
                 resignSeat={controls.resignSeat}
                 canSave={session.turns.length > 0}
+                saved={over && savedSession === session.id}
                 onTakeback={takeback}
                 onResign={resign}
                 onSave={() => void save()}
@@ -439,7 +445,7 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
           {over && <div className="analysis-slot" data-testid="analysis-slot" />}
         </aside>
       </main>
-      <Toast text={toast.text} />
+      <Toast text={active ? toast.text : null} />
       {active && dialogMode !== null && game !== null && (
         <SetupDialog
           key={dialogMode}
@@ -450,6 +456,6 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
           endsRunningGame={gameInProgress}
         />
       )}
-    </div>
+    </>
   );
 }

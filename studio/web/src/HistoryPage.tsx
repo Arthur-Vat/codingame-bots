@@ -262,12 +262,15 @@ export function HistoryPage({
     const { record } = parsed;
     setRefused([]);
     const id = rememberFile({ name: file.name, record });
-    // The record names its game; what it holds is untrusted, so only a string is used, and it
-    // goes into the address percent-encoded. Without one, the view request says what is wrong.
+    // The record names its game; what it holds is untrusted, so the name counts only when it is
+    // the id of a game the app has. Otherwise the file opens on the current game, and the view
+    // request says what is wrong.
     const named = (record as { game?: unknown }).game;
+    const known =
+      typeof named === 'string' && (gamesState.games ?? []).some((game) => game.id === named);
     window.location.hash = routeHash({
       page: 'game',
-      gameId: typeof named === 'string' && named !== '' ? named : gameId,
+      gameId: known ? named : gameId,
       tab: 'review',
       review: { kind: 'file', id },
     });

@@ -141,6 +141,9 @@ test('Play, History and back: the same session, nothing refetched from scratch',
   await expect(tab(page, 'Play')).toHaveAttribute('href', '#/game/uttt/ab12');
 
   await tab(page, 'Play').click();
+  // The tab is in front once the Play tab is shown and the others are gone: before that, both
+  // tabs' elements can be in the page at once.
+  await expect(page.getByTestId('play-tab')).toBeVisible();
   await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
   await expect(page.getByTestId('player-0')).toContainText('Alice');
   await expect(page.getByTestId('play-tab')).toBeVisible();
@@ -184,6 +187,9 @@ test('History, a row’s Review, and the tabs remember it', async ({ page }) => 
   await expect(tab(page, 'Review')).toHaveAttribute('aria-current', 'page');
 
   await tab(page, 'Play').click();
+  // The tab is in front once the Play tab is shown and the others are gone: before that, both
+  // tabs' elements can be in the page at once.
+  await expect(page.getByTestId('play-tab')).toBeVisible();
   await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
   await expect(page.getByTestId('player-0')).toContainText('Alice');
   await expect(page.getByRole('button', { name: 'First move' })).toHaveCount(0);
@@ -216,6 +222,9 @@ test('a finished game keeps its frame while another tab is shown, and takes no k
   await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
 
   await tab(page, 'Play').click();
+  // The tab is in front once the Play tab is shown and the others are gone: before that, both
+  // tabs' elements can be in the page at once.
+  await expect(page.getByTestId('play-tab')).toBeVisible();
   await expect(page.getByTestId('playback')).toBeVisible();
   await expect(cell(page, 5, 3, 'X')).toBeVisible();
   await expect(cell(page, 3, 7, 'O')).toHaveCount(0);
@@ -239,6 +248,9 @@ test('a playing review stops when its tab is left and goes on when it is shown a
   // 120 s over 4 steps: a full minute would have moved two frames; nothing moves while hidden.
   await page.clock.runFor(60_000);
   await tab(page, 'Play').click();
+  // The tab is in front once the Play tab is shown and the others are gone: before that, both
+  // tabs' elements can be in the page at once.
+  await expect(page.getByTestId('play-tab')).toBeVisible();
   await expect(cell(page, 4, 4, 'X')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
   await page.clock.runFor(31_000);
@@ -337,4 +349,37 @@ test('an empty history says so inside the game’s tab', async ({ page }) => {
   );
   await page.goto('/#/game/uttt/history');
   await expect(page.getByTestId('history-empty')).toContainText('No saved games yet');
+});
+
+test('an id that every object inherits is not a game, and the page still renders', async ({
+  page,
+}) => {
+  await mockGames(page);
+  for (const hash of [
+    '/#/game/constructor',
+    '/#/game/constructor/history',
+    '/#/game/__proto__/review',
+    '/#/game/toString/history/arena',
+  ]) {
+    await page.goto(hash);
+    await expect(
+      page
+        .getByText(/The server has no game called /)
+        .filter({ visible: true })
+        .first(),
+    ).toBeVisible();
+    await expect(page.locator('header.top')).toBeVisible();
+    await expect(page.locator('#root > *').first()).toBeAttached();
+  }
+});
+
+test('a file that names an inherited id opens on the current game', async ({ page }) => {
+  await mockAll(page);
+  await page.goto('/#/game/uttt/history');
+  await page.getByLabel('Review a file').setInputFiles({
+    name: 'odd.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(record({ game: 'constructor' }))),
+  });
+  await expect(page).toHaveURL(/#\/game\/uttt\/review\/file\/f[0-9a-z]+$/);
 });

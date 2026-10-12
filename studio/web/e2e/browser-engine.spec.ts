@@ -144,11 +144,7 @@ test('bot against bot in real time to the end, its review, and the history kept 
 
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Saved to your history' })).toBeVisible();
-  // Saved again, it is the same game.
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Already in your history' }),
-  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'In your history' })).toBeDisabled();
 
   // The saved game is listed, and is still there after the page is loaded again.
   await page.getByRole('link', { name: 'History' }).click();

@@ -244,6 +244,7 @@ test('a finished session is its own review, and is saved and exported there', as
   await page.route('**/api/sessions/ab12/record', (route) => route.fulfill({ json: record() }));
   await page.goto('/#/game/uttt/ab12');
 
+  await expect(page.getByText('Played here')).toBeVisible();
   await expect(page.getByText('uttt-v010, ≈ 100 ms').first()).toBeVisible();
   await expect(page.getByTestId('result')).toContainText('0–1 · O wins');
   await expect(page.getByTestId('playback')).toBeVisible();
@@ -252,6 +253,7 @@ test('a finished session is its own review, and is saved and exported there', as
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Saved to your history' })).toBeVisible();
   expect(posts).toEqual(['POST']);
+  await expect(page.getByRole('button', { name: 'In your history' })).toBeDisabled();
   expect(await slotBox(page)).toEqual(start);
 
   const exported = page.waitForEvent('download');
@@ -270,6 +272,7 @@ test('saving a game that is in the history already says so', async ({ page }) =>
   await expect(
     page.getByRole('status').filter({ hasText: 'Already in your history' }),
   ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'In your history' })).toBeDisabled();
 });
 
 test('a saved game is already in the history and exports its record', async ({ page }) => {

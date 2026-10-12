@@ -348,21 +348,48 @@ test('a file can be reviewed without being saved, then saved from the review', a
   expect((await exported).suggestedFilename()).toBe('sample.json');
 });
 
-test('a file names its game: the review opens on that game’s page, as plain text', async ({
+test('a file names its game: the review opens on that game’s page when the app has it', async ({
+  page,
+}) => {
+  await mockHistory(page);
+  await page.route('**/api/games', (route) =>
+    route.fulfill({
+      json: [
+        { id: 'uttt', name: 'Ultimate Tic-Tac-Toe', releases: ['uttt-v001'] },
+        { id: 'other', name: 'Other', releases: [] },
+      ],
+    }),
+  );
+  // The rules' view of a record of that game names it, so the page does not move it elsewhere.
+  await page.route('**/api/view', (route) =>
+    route.fulfill({ json: recordView({ game: 'other' }) }),
+  );
+  await page.goto('/#/game/uttt/history');
+  await expect(rows(page)).toHaveCount(5);
+  // The games are loaded once their releases are offered.
+  await expect(page.getByLabel('Release').locator('option')).toHaveCount(2);
+  await page.getByLabel('Review a file').setInputFiles({
+    name: 'other.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(record({ game: 'other' }))),
+  });
+  await expect(page).toHaveURL(/#\/game\/other\/review\/file\/f[0-9a-z]+$/);
+  await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
+  await expect(page).toHaveURL(/#\/game\/other\/review\/file\/f[0-9a-z]+$/);
+});
+
+test('a file naming a game the app does not have opens on the current game, as plain text', async ({
   page,
 }) => {
   await mockHistory(page);
   await page.goto('/#/game/uttt/history');
-  const odd = '<img src=x onerror=alert(1)> ../a b';
+  await expect(rows(page)).toHaveCount(5);
   await page.getByLabel('Review a file').setInputFiles({
     name: 'odd.json',
     mimeType: 'application/json',
-    buffer: Buffer.from(JSON.stringify(record({ game: odd }))),
+    buffer: Buffer.from(JSON.stringify(record({ game: '<img src=x onerror=alert(1)> ../a b' }))),
   });
-  await expect(page).toHaveURL((url) =>
-    url.hash.startsWith(`#/game/${encodeURIComponent(odd)}/review/file/f`),
-  );
-  await expect(page.getByRole('alert')).toHaveText(`The server has no game called ${odd}.`);
+  await expect(page).toHaveURL(/#\/game\/uttt\/review\/file\/f[0-9a-z]+$/);
   await expect(page.locator('img[src="x"]')).toHaveCount(0);
 });
 

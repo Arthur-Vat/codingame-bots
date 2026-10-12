@@ -253,6 +253,8 @@ interface ControlsProps {
   takebackTo: number | null;
   resignSeat: number | null;
   canSave: boolean;
+  /** The finished game is in the history already. */
+  saved?: boolean;
   onTakeback: () => void;
   onResign: () => void;
   onSave: () => void;
@@ -266,6 +268,7 @@ export function Controls({
   takebackTo,
   resignSeat,
   canSave,
+  saved = false,
   onTakeback,
   onResign,
   onSave,
@@ -286,8 +289,8 @@ export function Controls({
           <ResignButton key={sessionId} disabled={resignSeat === null} onResign={onResign} />
         </>
       )}
-      <button className="ctrl" type="button" disabled={!canSave} onClick={onSave}>
-        Save
+      <button className="ctrl" type="button" disabled={!canSave || saved} onClick={onSave}>
+        {saved ? 'In your history' : 'Save'}
       </button>
       <button className="ctrl" type="button" disabled={!canSave} onClick={onExport}>
         Export file
