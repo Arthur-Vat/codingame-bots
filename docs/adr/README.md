@@ -31,10 +31,11 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0024](0024-handoff-branch.md) | A handoff file on a standing branch carries state between sessions | Accepted |
 | [0025](0025-studio.md) | A local studio to play and review games in the browser | Accepted; decision 1 superseded by 0030; decisions 2, 3, 4 and 5 completed by 0030 |
 | [0026](0026-node-for-the-studio.md) | Node and npm build the studio's front end | Accepted; decision 3 completed by 0030 |
-| [0027](0027-game-records.md) | Game records: one format, a sample of each run, kept on the owner's computer | Accepted; decision 3 completed by 0030 |
+| [0027](0027-game-records.md) | Game records: one format, a sample of each run, kept on the owner's computer | Accepted; decision 3 completed by 0030, decisions 2 and 3 by 0031 |
 | [0028](0028-job-logs-from-sessions.md) | Job logs readable from Claude's sessions | Accepted |
 | [0029](0029-ci-scoped-by-area-and-game.md) | CI scoped by area and game | Accepted |
-| [0030](0030-studio-on-github-pages.md) | The studio also runs in the browser, published on GitHub Pages | Accepted |
+| [0030](0030-studio-on-github-pages.md) | The studio also runs in the browser, published on GitHub Pages | Accepted; decision 6 completed by 0031 |
+| [0031](0031-arena-games-archive.md) | Arena games: one archive per game on GitHub, shown read-only in the studio | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 

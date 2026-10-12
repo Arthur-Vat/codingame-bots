@@ -184,6 +184,7 @@ Decided with the owner on 2026-10-11 ([ADR 0030](adr/0030-studio-on-github-pages
 - [x] The rules as a WebAssembly program, sharing the server's Rust code, and every release built to WebAssembly
 - [x] The browser engine: bots in Web Workers, saved games in the browser, chosen when the site is served as static files
 - [x] Published on GitHub Pages from `main`, with the license notices of what it bundles and the guide
+- [ ] Arena games: one archive per game kept as a workflow artifact, added to when a release is published and re-uploaded before it expires, shown read-only in the history ([ADR 0031](adr/0031-arena-games-archive.md), owner, 2026-10-12)
 
 Order: A, B, C, E, then F, then the interface rework (G, to be planned), then D. Later: each bot's own evaluation from future releases, more games.
 

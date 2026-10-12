@@ -1,6 +1,6 @@
 # 0027. Game records: one format, a sample of each run, kept on the owner's computer
 
-- Status: accepted (owner, 2026-10-10); decision 3 completed by [0030](0030-studio-on-github-pages.md)
+- Status: accepted (owner, 2026-10-10); decision 3 completed by [0030](0030-studio-on-github-pages.md); decisions 2 and 3 completed by [0031](0031-arena-games-archive.md)
 - Date: 2026-10-10
 - Scope: framework
 

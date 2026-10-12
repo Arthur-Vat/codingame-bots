@@ -1,6 +1,6 @@
 # 0030. The studio also runs in the browser, published on GitHub Pages
 
-- Status: accepted (owner, 2026-10-11)
+- Status: accepted (owner, 2026-10-11); decision 6 completed by [0031](0031-arena-games-archive.md)
 - Date: 2026-10-11
 - Supersedes: [0025](0025-studio.md), decision 1 (for the owner only, never hosted)
 - Completes: [0025](0025-studio.md), decisions 2, 3, 4 and 5; [0026](0026-node-for-the-studio.md), decision 3; [0027](0027-game-records.md), decision 3
