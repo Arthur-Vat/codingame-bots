@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { pageHeights } from './fixtures';
+import { chooseMode, openSetup, pageHeights, setupMenu } from './fixtures';
 
 // The server is not run by this job: the API is mocked with page.route. The session below is
 // what the server would send; the mock changes it by hand where the server would.
@@ -373,7 +373,9 @@ test('a finished game shows the end block with Rematch, New game, Analysis board
   await expect(result).toContainText('1–0 · X wins');
   await expect(result).toContainText('Small boards won: 5–3');
   await expect(page.getByRole('button', { name: 'Rematch' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'New game' })).toBeVisible();
+  await expect(
+    page.getByTestId('end-block').getByRole('button', { name: 'New game' }),
+  ).toBeVisible();
   await expect(page.getByTestId('end-block').getByRole('link')).toHaveAttribute(
     'href',
     '#/game/uttt/analysis/session/ab12',
@@ -387,8 +389,8 @@ test('a finished game shows the end block with Rematch, New game, Analysis board
   await page.getByRole('button', { name: 'Export file' }).click();
   expect((await download).suggestedFilename()).toMatch(/^uttt-\d{4}-\d{2}-\d{2}-5\.json$/);
 
-  await page.getByRole('button', { name: 'New game' }).click();
-  await expect(page.getByRole('dialog', { name: 'Play with a friend' })).toBeVisible();
+  await page.getByTestId('end-block').getByRole('button', { name: 'New game' }).click();
+  await expect(setupMenu(page)).toBeVisible();
 });
 
 test('a duplicate save and the reasons of an end', async ({ page }) => {
@@ -443,8 +445,7 @@ test('a human clock that reaches zero ends the game with a timeout, once', async
   await page.goto('/#/game/uttt');
   // From here on, time passes only when the test says so.
   await page.clock.pauseAt(new Date('2026-01-01T00:00:10Z'));
-  await page.getByRole('button', { name: /Play with a friend/ }).click();
-  const dialog = page.getByRole('dialog', { name: 'Play with a friend' });
+  const dialog = await chooseMode(setupMenu(page), 'A friend');
   await dialog.getByLabel(/Minutes per side/).fill('0');
   await dialog.getByRole('button', { name: 'Start' }).click();
 
@@ -479,11 +480,8 @@ test('the clocks wait while a bot thinks and while the server rewinds', async ({
   );
   await page.goto('/#/game/uttt');
   await page.clock.pauseAt(new Date('2026-01-01T00:00:10Z'));
-  await page.getByRole('button', { name: /Play the computer/ }).click();
-  await page
-    .getByRole('dialog', { name: 'Play the computer' })
-    .getByRole('button', { name: 'Start' })
-    .click();
+  await chooseMode(setupMenu(page), 'A release');
+  await setupMenu(page).getByRole('button', { name: 'Start' }).click();
   await expect(page.getByTestId('clock-0')).toHaveText('10:00');
   await page.clock.runFor(5_000);
   await expect(page.getByTestId('clock-0')).toHaveText('10:00');
@@ -532,8 +530,7 @@ async function startTimedFriendGame(page: Page) {
   await page.goto('/#/game/uttt');
   // From here on, time passes only when the test says so.
   await page.clock.pauseAt(new Date('2026-01-01T00:00:10Z'));
-  await page.getByRole('button', { name: /Play with a friend/ }).click();
-  const dialog = page.getByRole('dialog', { name: 'Play with a friend' });
+  const dialog = await chooseMode(setupMenu(page), 'A friend');
   await dialog.getByLabel(/Minutes per side/).fill('0');
   await dialog.getByRole('button', { name: 'Start' }).click();
   await expect(page.getByTestId('clock-0')).toHaveText('0:30');
@@ -797,11 +794,10 @@ test('a new game asks first only while a game is in progress', async ({ page }) 
   const warning = 'Starting a new game ends the one in progress.';
 
   await page.goto('/#/game/uttt/ab12');
-  await page.getByRole('button', { name: /Play with a friend/ }).click();
-  const dialog = page.getByRole('dialog', { name: 'Play with a friend' });
+  const dialog = await chooseMode(await openSetup(page), 'A friend');
   await expect(dialog.getByText(warning)).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'End this game and start' })).toBeVisible();
-  // Closing the dialog keeps the game.
+  // Closing the menu keeps the game.
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
@@ -810,7 +806,7 @@ test('a new game asks first only while a game is in progress', async ({ page }) 
   // A game with no move yet is not worth a warning.
   mock.current = session({});
   await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toHaveCount(0);
-  await page.getByRole('button', { name: /Play with a friend/ }).click();
+  await openSetup(page);
   await expect(dialog.getByText(warning)).toHaveCount(0);
   await expect(dialog.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
@@ -825,14 +821,13 @@ test('a new game asks first only while a game is in progress', async ({ page }) 
     result: { winner: 0, end: { kind: 'resigned', seat: 1 } },
   });
   await expect(page.getByTestId('end-block')).toBeVisible();
-  await page.getByRole('button', { name: 'New game', exact: true }).click();
+  await page.getByTestId('end-block').getByRole('button', { name: 'New game' }).click();
   await expect(dialog.getByText(warning)).toHaveCount(0);
   await expect(dialog.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
 
-  // No game at all.
+  // No game at all: the menu opens by itself.
   await page.goto('/#/game/uttt');
-  await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: /Play with a friend/ }).click();
+  await expect(dialog).toBeVisible();
   await expect(dialog.getByText(warning)).toHaveCount(0);
 });
 

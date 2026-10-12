@@ -52,7 +52,7 @@ import {
   clockLabel,
   clockOf,
   thinkLabel,
-  MODE_TITLES,
+  DEFAULT_MODE,
   type ClockSettings,
   type Mode,
 } from './setup';
@@ -60,12 +60,6 @@ import { Toast, useToast } from './Toast';
 import { useClocks } from './useClocks';
 import { usePlayback } from './usePlayback';
 import { useSession } from './useSession';
-
-const LOBBY: { mode: Mode; hint: string }[] = [
-  { mode: 'friend', hint: 'Two people, one screen' },
-  { mode: 'computer', hint: 'Any release, any think time' },
-  { mode: 'bots', hint: 'Watch the game once it is played' },
-];
 
 const GAME_BLURBS: Record<string, string> = {
   uttt: 'Nine small boards. Your move sends the opponent to the small board matching the cell you played. Win three small boards in a row, or the most small boards when no move is left.',
@@ -152,7 +146,12 @@ export function GamePage({
   onRequestDone,
 }: Props) {
   const { session, error, apply } = useSession(sessionId);
+  // The setup menu: null while it is closed, else the mode it opened with.
   const [dialogMode, setDialogMode] = useState<Mode | null>(null);
+  // The mode last chosen in the menu, which the menu opens with next.
+  const [lastMode, setLastMode] = useState<Mode>(DEFAULT_MODE);
+  // The menu has opened by itself since the Play tab was last shown without a game.
+  const [autoOpened, setAutoOpened] = useState(false);
   const [coordinates, setCoordinates] = useState(false);
   // A request of ours is in flight: input and clocks wait for its answer.
   const [pending, setPending] = useState(false);
@@ -171,8 +170,22 @@ export function GamePage({
   const game = gamesState.games?.find((candidate) => candidate.id === gameId) ?? null;
   const gameMissing = gamesState.games !== null && game === null;
   const closeDialog = useCallback(() => setDialogMode(null), []);
-  // A page that is not shown opens no dialog.
+  const openMenu = (mode: Mode) => {
+    setLastMode(mode);
+    setDialogMode(mode);
+  };
+  // A page that is not shown opens no menu.
   if (!active && dialogMode !== null) setDialogMode(null);
+  // The Play tab shown with no game opens the menu by itself, once: not again after it was closed,
+  // but again the next time the tab is shown without a game. A session in the address never opens
+  // it, and it waits for the game list to know the game. (Adjusted while rendering, so it runs
+  // once also in strict mode.)
+  if (!active || sessionId !== null) {
+    if (autoOpened) setAutoOpened(false);
+  } else if (game !== null && !autoOpened) {
+    setAutoOpened(true);
+    setDialogMode(lastMode);
+  }
 
   // While two bots play, nothing of their game is shown (a spinner is, over the empty board); the
   // actions below keep using the real session.
@@ -365,7 +378,7 @@ export function GamePage({
     if (taken.action === 'rematch') {
       void rematch();
     } else if (mode !== null) {
-      setDialogMode(mode);
+      openMenu(mode);
     }
   });
   useEffect(() => {
@@ -391,19 +404,15 @@ export function GamePage({
             clock={clock}
             problem={gameMissing ? problem : null}
           />
-          <section className="panel lobby" aria-label="New game">
-            <span className="label">New game</span>
-            {LOBBY.map(({ mode: lobbyMode, hint }) => (
-              <button
-                key={lobbyMode}
-                type="button"
-                disabled={game === null}
-                onClick={() => setDialogMode(lobbyMode)}
-              >
-                <strong>{MODE_TITLES[lobbyMode]}</strong>
-                <span>{hint}</span>
-              </button>
-            ))}
+          <section className="panel new-game" aria-label="New game">
+            <button
+              className="btn primary"
+              type="button"
+              disabled={game === null}
+              onClick={() => openMenu(lastMode)}
+            >
+              New game
+            </button>
           </section>
           <section className="panel toggles" aria-label="Board settings">
             <span className="label">Board</span>
@@ -500,7 +509,7 @@ export function GamePage({
               <EndBlock
                 disabled={pending || starting}
                 onRematch={() => void rematch()}
-                onNewGame={() => setDialogMode(mode)}
+                onNewGame={() => openMenu(mode)}
                 analysisHash={routeHash({
                   page: 'game',
                   gameId,
@@ -516,8 +525,8 @@ export function GamePage({
       <Toast text={active ? toast.text : null} />
       {active && dialogMode !== null && game !== null && (
         <SetupDialog
-          key={dialogMode}
-          mode={dialogMode}
+          initialMode={dialogMode}
+          onModeChange={setLastMode}
           releases={game.releases}
           onStart={start}
           onClose={closeDialog}

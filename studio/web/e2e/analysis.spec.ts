@@ -8,6 +8,7 @@ import {
   pageHeights,
   record,
   recordView,
+  setupMenu,
 } from './fixtures';
 
 // The server is not run by this job: the API is mocked with page.route.
@@ -375,7 +376,9 @@ test('a finished game stays in the Play tab: three after-game actions, the keys 
   await page.goto('/#/game/uttt/ab12');
   await expect(page.getByTestId('end-block')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Rematch' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'New game' })).toBeVisible();
+  await expect(
+    page.getByTestId('end-block').getByRole('button', { name: 'New game' }),
+  ).toBeVisible();
   await expect(page.getByRole('link', { name: 'Analysis board', exact: true })).toBeVisible();
   await expect(page.getByTestId('end-block').getByRole('button')).toHaveText([
     'Rematch',
@@ -690,7 +693,7 @@ test('Rematch on the analysis board starts a game in the Play tab, as the end bl
   expect(typeof boardSeed).toBe(typeof blockSeed);
 });
 
-test('New game on the analysis board opens the setup dialog of the mode just played', async ({
+test('New game on the analysis board opens the setup menu with the mode just played', async ({
   page,
 }) => {
   const created = await mockRematch(page);
@@ -706,10 +709,13 @@ test('New game on the analysis board opens the setup dialog of the mode just pla
     .getByRole('button', { name: 'New game' })
     .click();
   await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
-  await expect(page.getByRole('dialog', { name: 'Play with a friend' })).toBeVisible();
+  await expect(setupMenu(page)).toBeVisible();
+  await expect(
+    setupMenu(page).getByRole('button', { name: 'A friend', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
   expect(created).toHaveLength(0);
 
-  // The request was taken once: closing the dialog and coming back by the history opens nothing.
+  // The request was taken once: closing the menu and coming back by the history opens nothing.
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await tabLink(page, 'History').click();

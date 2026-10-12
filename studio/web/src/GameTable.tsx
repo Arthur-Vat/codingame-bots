@@ -145,7 +145,7 @@ export function MoveList({
   if (session === null) {
     return (
       <div className="moves">
-        <div className="empty">Choose a mode on the left to start a game.</div>
+        <div className="empty">Press New game to start a game.</div>
       </div>
     );
   }
