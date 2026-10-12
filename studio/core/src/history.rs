@@ -106,6 +106,17 @@ pub struct Filter {
     to: Option<u64>,
 }
 
+/// Whether the player `name` of `row` is the release `release`. SPRT and studio records name a
+/// bot as its release (`uttt-v010`); league records leave out the game (`v009`), so the name
+/// with the row's game in front counts too.
+fn names_release(row: &Row, name: &str, release: &str) -> bool {
+    name == release
+        || release
+            .strip_prefix(row.game.as_str())
+            .and_then(|rest| rest.strip_prefix('-'))
+            .is_some_and(|short| short == name)
+}
+
 impl Filter {
     /// Reads a query string (`a=b&c=d`, without the `?`).
     pub fn parse(query: &str) -> Result<Filter, String> {
@@ -154,11 +165,11 @@ impl Filter {
         if self.game.as_ref().is_some_and(|game| *game != row.game) {
             return false;
         }
-        if self
-            .release
-            .as_ref()
-            .is_some_and(|release| row.players.iter().all(|name| name != release))
-        {
+        if self.release.as_ref().is_some_and(|release| {
+            !row.players
+                .iter()
+                .any(|name| names_release(row, name, release))
+        }) {
             return false;
         }
         if let Some(result) = self.result {
@@ -195,6 +206,16 @@ impl Filter {
         rows.sort_by(|a, b| (b.unix_time, &b.id).cmp(&(a.unix_time, &a.id)));
         rows
     }
+}
+
+/// The rows in `body`, a JSON array of rows as the listing writes them, that pass the filter
+/// `query`, newest first: the answer of `POST /api/filter`, for both engines. The query is checked
+/// before the body.
+pub fn filter_body(query: &str, body: &[u8]) -> Result<Vec<Row>, String> {
+    let filter = Filter::parse(query)?;
+    let rows: Vec<Row> =
+        serde_json::from_slice(body).map_err(|error| format!("invalid request body: {error}"))?;
+    Ok(filter.select(rows))
 }
 
 /// A query value with its `%XX` escapes and `+` (a space) decoded.

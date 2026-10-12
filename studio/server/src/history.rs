@@ -176,6 +176,23 @@ pub fn list(state: &State, query: &str) -> Response {
     Response::json(200, &Value::Array(summaries))
 }
 
+/// `POST /api/filter?...`: the rows in the body (a JSON array of the rows of
+/// `GET /api/history`) that pass the same filters, newest first. It reads no
+/// saved game: the studio filters the arena games, which it fetched from the
+/// published site, with the same rules as its own.
+pub fn filter_rows(query: &str, body: &[u8]) -> Response {
+    match history::filter_body(query, body) {
+        Ok(rows) => {
+            let rows: Vec<Value> = rows
+                .iter()
+                .map(|row| serde_json::to_value(row).unwrap_or(Value::Null))
+                .collect();
+            Response::json(200, &Value::Array(rows))
+        }
+        Err(message) => Response::error(400, &message),
+    }
+}
+
 /// The record `id`, or the response saying why there is none.
 fn stored(state: &State, id: &str) -> Result<Record, Response> {
     if !valid_id(id) {

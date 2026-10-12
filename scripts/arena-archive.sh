@@ -8,6 +8,7 @@
 #   scripts/arena-archive.sh plan
 #   scripts/arena-archive.sh gather GAME WORK_DIR
 #   scripts/arena-archive.sh prune GAME KEEP_ID
+#   scripts/arena-archive.sh site OUT_DIR
 #
 # plan: decides the games to archive and writes `games=<JSON array>` and
 # `adding=<true|false>` to $GITHUB_OUTPUT (and stdout). For EVENT_NAME
@@ -37,14 +38,27 @@
 # not listed. With DRY_RUN=true (the default) it only prints what it would
 # delete.
 #
+# site: collects the archives for the site (ADR 0031, decision 5), read-only:
+# it deletes and uploads nothing. For each game of the repository (as for
+# plan), lists the artifacts called exactly arena-games-<game> (never the
+# dry-run copies), keeps the newest unexpired one, downloads each into a
+# folder of its own, and runs ARCHIVE_TOOL --out OUT_DIR over the folders (no --game): OUT_DIR
+# then holds index.json and records/<id>.json of every game, as the Pages
+# build publishes them under arena-games/. OUT_DIR is relative to where the
+# script is called from, must not exist or must be empty, and is not touched
+# when there is no archive: then a warning annotation is printed and the exit
+# status is 0. A failed listing, download or tool fails the step.
+#
 # Environment: REPO (owner/name) and GH_TOKEN for the gh CLI; DRY_RUN
-# (default true, prune only); ARCHIVE_TOOL (gather); ADDING, LEAGUE_RUN_ID and
+# (default true, prune only); ARCHIVE_TOOL (gather, site); ADDING, LEAGUE_RUN_ID and
 # HEAD_SHA (gather, when adding); EVENT_NAME (plan); NOW (unix seconds,
 # default: now; for tests); GITHUB_OUTPUT and GITHUB_STEP_SUMMARY, written
 # only when set. Needs gh, jq and unzip.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
+# Paths given on the command line are relative to here.
+caller="$PWD"
 cd "$here/.."
 
 # A refresh is due when the current archive expires in less than this.
@@ -328,6 +342,54 @@ mode_prune() {
   echo "$game: kept artifact $keep; $deleted other(s) $([[ $dry_run == true ]] && echo 'would be deleted' || echo deleted)"
 }
 
+# ---- site --------------------------------------------------------------
+
+# Prints "<name> <id>" for the newest unexpired archive of each game: the
+# artifacts called exactly arena-games-<game>, so never the dry-run copies. The
+# games are those of the repository (as for plan), and each is listed by name:
+# the repository holds many other artifacts, which are never listed.
+site_archives() {
+  local scopes games game id
+  scopes="$("$here/ci-scopes.sh" league --all)" || return 1
+  games="$(jq -r '.[]' <<<"${scopes#games=}")" || return 1
+  while read -r game; do
+    [[ -n $game ]] || continue
+    valid_game "$game" || continue
+    id="$(list_artifacts "arena-games-$game" |
+      jq -r --arg name "arena-games-$game" \
+        '[.[] | select((.expired | not) and .name == $name)] | sort_by(.created_at) | last | .id // empty')" || return 1
+    if [[ -n $id ]]; then
+      echo "arena-games-$game $id"
+    fi
+  done <<<"$games"
+}
+
+mode_site() {
+  local out="${1-}"
+  [[ -n $out ]] || usage
+  : "${REPO:?set REPO to owner/name}"
+  : "${ARCHIVE_TOOL:?set ARCHIVE_TOOL to the studio-archive binary}"
+  [[ $out == /* ]] || out="$caller/$out"
+  local archives name id
+  archives="$(site_archives)" || die "cannot list the artifacts of $REPO"
+  if [[ -z $archives ]]; then
+    echo "::warning title=Arena games::no arena games archive is published yet: the site has no arena games"
+    return 0
+  fi
+  local work
+  work="$(mktemp -d)"
+  # shellcheck disable=SC2064 # the folder is fixed now
+  trap "rm -rf '$work'" EXIT
+  local -a inputs=()
+  while read -r name id; do
+    [[ -n $name ]] || continue
+    download "$work" "$id" "$work/inputs/$name"
+    inputs+=("$work/inputs/$name")
+  done <<<"$archives"
+  "$ARCHIVE_TOOL" --out "$out" "${inputs[@]}" || die "studio-archive failed; the site has no arena games"
+  notice "the site has the arena games of ${#inputs[@]} archive(s): $(cut -d' ' -f1 <<<"$archives" | paste -sd, -)"
+}
+
 # ---- main --------------------------------------------------------------
 
 (($# >= 1)) || usage
@@ -337,5 +399,6 @@ case $mode in
   plan) mode_plan ;;
   gather) mode_gather "$@" ;;
   prune) mode_prune "$@" ;;
+  site) mode_site "$@" ;;
   *) usage ;;
 esac

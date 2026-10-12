@@ -1,7 +1,8 @@
 import { useEffect, useEffectEvent, useReducer, useState, type ReactNode } from 'react';
-import { getHistoryRecord, getRecord, postHistory, saveSession } from './api';
+import { getHistoryRecord, getRecord, postHistory, postHistoryText, saveSession } from './api';
+import { arenaRecordText } from './arena';
 import { BoardSlot } from './BoardSlot';
-import { download, errorMessage, takesSpace, typesText } from './browser';
+import { download, downloadText, errorMessage, takesSpace, typesText } from './browser';
 import { renderers, resultDetails } from './games/registry';
 import { Row, useKeepInView } from './GameTable';
 import { SeatMark } from './Marks';
@@ -124,10 +125,11 @@ function MoveRow({ number, children }: { number: number; children: ReactNode }) 
   );
 }
 
-/** The record to save or export, whatever the game came from. */
+/** The record to save or export, whatever the game came from but an arena game (kept as text). */
 async function recordOf(model: ReviewModel): Promise<unknown> {
   if (model.kind === 'session') return getRecord(model.id);
   if (model.kind === 'saved') return getHistoryRecord(model.id);
+  if (model.kind === 'arena') throw new Error('An arena game is kept as text.');
   const file = recallFile(model.id);
   if (file === null) throw new Error('This file is no longer loaded.');
   return file.record;
@@ -195,10 +197,13 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
 
   const save = async () => {
     try {
+      // An arena game is saved as the text it was published in.
       const { duplicate } =
         model.kind === 'session'
           ? await saveSession(model.id)
-          : await postHistory(await recordOf(model));
+          : model.kind === 'arena'
+            ? await postHistoryText(await arenaRecordText(model.id))
+            : await postHistory(await recordOf(model));
       setSavedHere(true);
       toast.show(duplicate ? 'Already in your history' : 'Saved to your history');
     } catch (failure) {
@@ -207,7 +212,11 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
   };
   const exportFile = async () => {
     try {
-      download(exportName(model, new Date()), await recordOf(model));
+      if (model.kind === 'arena') {
+        downloadText(exportName(model, new Date()), await arenaRecordText(model.id));
+      } else {
+        download(exportName(model, new Date()), await recordOf(model));
+      }
     } catch (failure) {
       toast.show(errorMessage(failure));
     }
@@ -295,7 +304,7 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
   );
 }
 
-/** The review of a session, a saved game or a loaded file. */
+/** The review of a session, a saved game, an arena game or a loaded file. */
 export function ReviewPage({ kind, id }: { kind: ReviewKind; id: string }) {
   const { model, error } = useReview(kind, id);
   if (model === null) {

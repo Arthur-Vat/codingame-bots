@@ -1,9 +1,15 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { arenaRow, serveArena } from './arena';
 
 // The browser engine as GitHub Pages serves it: static files from `npm run preview`, which has
 // no /api and sets no headers. Nothing is mocked: the rules, the bots (the real releases, built
-// to WebAssembly by `npm run wasm`) and the saved games (IndexedDB) are the real ones.
+// to WebAssembly by `npm run wasm`) and the saved games (IndexedDB) are the real ones. The one
+// exception is the block "the arena games (ADR 0031)": it serves a fixture archive of
+// `arena-games/` by intercepting those requests (e2e/arena.ts), since the preview site has none.
+// Playwright cannot intercept a request that a service worker handles, so that block runs with
+// the service worker blocked (the page is then not isolated, which the arena games do not need);
+// the rules, the saved games and the filters in it are still the real ones.
 
 async function isolated(page: Page): Promise<boolean> {
   try {
@@ -246,4 +252,155 @@ test.describe('where the page cannot be isolated', () => {
       'This browser does not let bots run on this page (cross-origin isolation is unavailable)',
     );
   });
+});
+
+test.describe('the arena games (ADR 0031)', () => {
+  // Playwright's interception does not see the requests that a service worker handles, so these
+  // tests run without ours: on a full load the page waits ten seconds for it, and the history and
+  // the reviews work all the same.
+  test.use({ serviceWorkers: 'block' });
+
+  test('the arena games are read from the site itself, filtered by the rules, reviewed, saved and exported', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    // A real record to publish: a game between friends, played by the Rust rules, saved and exported
+    // from the history, then deleted from it.
+    await page.goto('/#/game/uttt');
+    await expect(page.getByRole('button', { name: /Play with a friend/ })).toBeVisible({
+      timeout: 30_000,
+    });
+    await startGame(page, 'Play with a friend');
+    await page.getByRole('button', { name: 'play row 4 column 4' }).click();
+    await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
+    await page.getByRole('button', { name: '⚑ Resign' }).click();
+    await expect(page.getByTestId('result')).toBeVisible();
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Saved to your history' }),
+    ).toBeVisible();
+    await page.getByRole('link', { name: 'History', exact: true }).click();
+    const mine = page.getByTestId('history-row');
+    await expect(mine).toHaveCount(1);
+    const exported = page.waitForEvent('download');
+    await mine.first().getByRole('button', { name: 'Export' }).click();
+    const download = await exported;
+    const id = download.suggestedFilename().replace(/\.json$/, '');
+    expect(id).toMatch(/^uttt-\d+-[0-9a-f]{12}$/);
+    const text = await readFile(await download.path(), 'utf8');
+    const parsed = JSON.parse(text) as {
+      unix_time: number;
+      source: string;
+      winner: number | null;
+      end: { kind: string };
+      turns: unknown[];
+      players: { name: string }[];
+    };
+    await mine.first().getByRole('button', { name: 'Delete', exact: true }).click();
+    await mine.first().getByRole('button', { name: 'Delete for good' }).click();
+    await expect(page.getByTestId('history-empty')).toContainText('No saved games yet');
+
+    // The archive: that game, and an older one with the other winner (no record is needed to list).
+    const real = arenaRow({
+      id,
+      unix_time: parsed.unix_time,
+      players: [parsed.players[0]?.name ?? '', parsed.players[1]?.name ?? ''],
+      winner: parsed.winner,
+      end: parsed.end.kind,
+      turns: parsed.turns.length,
+      source: parsed.source,
+    });
+    const decoy = arenaRow({
+      id: 'uttt-1-decoy',
+      unix_time: 1,
+      winner: parsed.winner === 0 ? 1 : 0,
+      end: 'finished',
+    });
+    const arena = await serveArena(page.context(), {
+      index: { format: 1, rows: [real, decoy] },
+      records: { [id]: text },
+    });
+    await page.getByRole('link', { name: 'Arena games' }).click();
+    await expect(page).toHaveURL(/#\/history\/arena$/);
+    const listed = page.getByTestId('history-row');
+    await expect(listed).toHaveCount(2);
+    // Relative to the page: the site's own folder, nothing from github.io.
+    expect(arena.requests).toEqual(['http://127.0.0.1:4173/arena-games/index.json']);
+    await expect(page.getByLabel('Source')).toHaveCount(0);
+    await expect(page.getByLabel('Load game files')).toHaveCount(0);
+
+    // The filters are the rules' own: the winner narrows the list to one game, or to none.
+    const winnerFilter = parsed.winner === 0 ? 'X wins' : 'O wins';
+    const otherFilter = parsed.winner === 0 ? 'O wins' : 'X wins';
+    await page.getByLabel('Result').selectOption({ label: winnerFilter });
+    await expect(listed).toHaveCount(1);
+    await expect(listed.first().getByRole('link', { name: 'Review' })).toHaveAttribute(
+      'href',
+      `#/review/arena/${id}`,
+    );
+    await page.getByLabel('Result').selectOption({ label: 'Draw' });
+    await expect(page.getByTestId('history-empty')).toHaveText(
+      'No saved game matches these filters.',
+    );
+    await page.getByLabel('Result').selectOption({ label: otherFilter });
+    await expect(listed).toHaveCount(1);
+    await expect(listed.first().getByRole('link', { name: 'Review' })).toHaveAttribute(
+      'href',
+      '#/review/arena/uttt-1-decoy',
+    );
+    await page.getByLabel('Result').selectOption('');
+    await expect(listed).toHaveCount(2);
+
+    // Export gives the published file, byte for byte.
+    const fromList = page.waitForEvent('download');
+    await listed.first().getByRole('button', { name: 'Export' }).click();
+    const file = await fromList;
+    expect(file.suggestedFilename()).toBe(`${id}.json`);
+    expect(await readFile(await file.path(), 'utf8')).toBe(text);
+
+    // Review replays the record with the rules, from the published text.
+    await listed.first().getByRole('link', { name: 'Review' }).click();
+    await expect(page).toHaveURL(new RegExp(`#/review/arena/${id}$`));
+    await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
+    await expect(page.getByTestId('result')).toBeVisible();
+    expect(arena.requests.at(-1)).toBe(`http://127.0.0.1:4173/arena-games/records/${id}.json`);
+
+    // Save copies it to my games, as a game of the studio like any other.
+    await page.getByRole('button', { name: 'Save to history' }).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Saved to your history' }),
+    ).toBeVisible();
+    await page.getByRole('link', { name: 'History', exact: true }).click();
+    await page.getByRole('link', { name: 'My games' }).click();
+    await expect(mine).toHaveCount(1);
+    await expect(mine.first()).toContainText('studio');
+    await page.getByLabel('Source').selectOption({ label: 'Played in the studio' });
+    await expect(mine).toHaveCount(1);
+    // Saved again, it is the same game.
+    await page.goto(`/#/review/arena/${id}`);
+    await page.getByRole('button', { name: 'Save to history' }).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Already in your history' }),
+    ).toBeVisible();
+
+    // A site without arena games (a 404, as GitHub Pages answers) says so.
+    arena.index = null;
+    await page.goto('/#/history/arena');
+    await page.reload();
+    await expect(page.getByTestId('history-empty')).toHaveText('No arena games published yet.', {
+      timeout: 30_000,
+    });
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+});
+
+test("without arena-games files, the static host's fallback page counts as nothing published", async ({
+  page,
+}) => {
+  // `npm run preview` answers an unknown path with index.html and a 200, as a single-page app
+  // host may; the front end must not call that an unreadable index. Here the service worker
+  // handles the request, as on the site.
+  await open(page, '/#/history/arena');
+  await expect(page.getByTestId('history-empty')).toHaveText('No arena games published yet.');
+  await expect(page.getByRole('alert')).toHaveCount(0);
 });

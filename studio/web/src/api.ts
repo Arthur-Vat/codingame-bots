@@ -135,11 +135,12 @@ async function transport(
 }
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const answer = await transport(
-    method,
-    path,
-    body === undefined ? undefined : JSON.stringify(body),
-  );
+  return callText(method, path, body === undefined ? undefined : JSON.stringify(body));
+}
+
+/** `call` with a body that is already text, sent exactly as it is. */
+async function callText<T>(method: string, path: string, bodyText: string | undefined): Promise<T> {
+  const answer = await transport(method, path, bodyText);
   if (answer.status === 204) {
     return undefined as T;
   }
@@ -253,6 +254,14 @@ export function postView(record: unknown): Promise<RecordView> {
   return call('POST', '/api/view', record);
 }
 
+/**
+ * The view of a record given as text, sent as it is: numbers beyond 2^53 (a bot's seed) would
+ * change if the text were parsed in JavaScript and written again.
+ */
+export function postViewText(recordText: string): Promise<RecordView> {
+  return callText('POST', '/api/view', recordText);
+}
+
 /** The saved record, as it is exported to a file. */
 export function getHistoryRecord(id: string): Promise<unknown> {
   return call('GET', `/api/history/${encodeURIComponent(id)}`);
@@ -277,6 +286,14 @@ export function listHistory(query: string): Promise<HistoryEntry[]> {
   return call('GET', `/api/history${query}`);
 }
 
+/**
+ * The rows that pass the filter `query` (`''` or a query string starting with `?`, as for
+ * `listHistory`), newest first. The rows are the caller's, not the saved games: the arena games.
+ */
+export function filterRows(query: string, rows: readonly HistoryEntry[]): Promise<HistoryEntry[]> {
+  return call('POST', `/api/filter${query}`, rows);
+}
+
 /** Deletes a saved game. */
 export async function deleteHistory(id: string): Promise<void> {
   await call('DELETE', `/api/history/${encodeURIComponent(id)}`);
@@ -285,4 +302,9 @@ export async function deleteHistory(id: string): Promise<void> {
 /** Saves a record in the history. `duplicate` is true when it was there already. */
 export function postHistory(record: unknown): Promise<{ id: string; duplicate: boolean }> {
   return call('POST', '/api/history', record);
+}
+
+/** Saves a record given as text, sent as it is (see `postViewText`). */
+export function postHistoryText(recordText: string): Promise<{ id: string; duplicate: boolean }> {
+  return callText('POST', '/api/history', recordText);
 }

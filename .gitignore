@@ -6,6 +6,7 @@
 /studio/web/node_modules/
 /studio/web/dist/
 /studio/web/public/wasm/
+/studio/web/public/arena-games/
 /studio/web/test-results/
 /studio/web/playwright-report/
 /studio/data/

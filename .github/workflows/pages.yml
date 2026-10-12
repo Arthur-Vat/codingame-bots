@@ -44,6 +44,9 @@ jobs:
   build:
     name: Build the site
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # to download the arena games archives (ADR 0031)
     defaults:
       run:
         working-directory: studio/web
@@ -68,6 +71,20 @@ jobs:
         # build instead of silently missing from the site. Writes public/wasm/.
         run: |
           "$GITHUB_WORKSPACE/scripts/annotate.sh" run "WebAssembly build" "$GITHUB_WORKSPACE/scripts/build-studio-wasm.sh" --strict
+      - name: Build studio-archive
+        run: |
+          "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Build studio-archive" cargo build --locked --release -p studio --bin studio-archive
+      - name: Gather the arena games
+        # The archives of the arena games (ADR 0031), checked and merged into
+        # public/arena-games/, which the build copies into the site. Without an
+        # archive it only warns. It reads the repository's artifacts with the
+        # job's token (actions: read); nothing is written back.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ARCHIVE_TOOL: ${{ github.workspace }}/target/release/studio-archive
+        run: |
+          "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Arena games" "$GITHUB_WORKSPACE/scripts/arena-archive.sh" site public/arena-games
       - name: Build the front end
         run: |
           "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Build" npm run build

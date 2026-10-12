@@ -95,6 +95,21 @@ export function emptyText(filtered: boolean): string {
     : 'No saved games yet. Save one from a review, or load game files.';
 }
 
+/** What the table says in the arena games when it has no row. */
+export function arenaEmptyText(filtered: boolean): string {
+  return filtered ? emptyText(true) : 'No arena games published yet.';
+}
+
+/** The note under the switch of the arena games. */
+export const ARENA_NOTE =
+  'Games played by the releases on GitHub (SPRT and league samples). Read-only: save one to add it to your games.';
+
+/** What is said of the rows of the published index that were left out, or null. */
+export function droppedText(dropped: number): string | null {
+  if (dropped <= 0) return null;
+  return `${dropped} ${dropped === 1 ? 'entry' : 'entries'} of the published index ${dropped === 1 ? 'is' : 'are'} not valid and not listed.`;
+}
+
 /** A file to load: its name and its text, or null when it could not be read. */
 export interface ImportInput {
   name: string;

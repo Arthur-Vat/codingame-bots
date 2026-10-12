@@ -21,8 +21,11 @@ describe('parseRoute', () => {
     });
   });
 
-  it('reads the history page', () => {
-    expect(parseRoute('#/history')).toEqual({ page: 'history' });
+  it('reads the history page, of my games and of the arena games', () => {
+    expect(parseRoute('#/history')).toEqual({ page: 'history', set: 'mine' });
+    expect(parseRoute('#/history/')).toEqual({ page: 'history', set: 'mine' });
+    expect(parseRoute('#/history/arena')).toEqual({ page: 'history', set: 'arena' });
+    expect(parseRoute('#/history/arena?x=1')).toEqual({ page: 'history', set: 'arena' });
   });
 
   it('reads the review page of each kind', () => {
@@ -37,6 +40,11 @@ describe('parseRoute', () => {
       id: 'uttt-1-abc',
     });
     expect(parseRoute('#/review/file/f1')).toEqual({ page: 'review', kind: 'file', id: 'f1' });
+    expect(parseRoute('#/review/arena/uttt-1-abc')).toEqual({
+      page: 'review',
+      kind: 'arena',
+      id: 'uttt-1-abc',
+    });
   });
 
   it('sends a review without a known kind or an id to the home page', () => {
@@ -50,6 +58,8 @@ describe('parseRoute', () => {
     expect(parseRoute('#/game')).toEqual({ page: 'home' });
     expect(parseRoute('#/game/uttt/a/b')).toEqual({ page: 'home' });
     expect(parseRoute('#/history/extra')).toEqual({ page: 'home' });
+    expect(parseRoute('#/history/arena/extra')).toEqual({ page: 'home' });
+    expect(parseRoute('#/history/mine')).toEqual({ page: 'home' });
     expect(parseRoute('#/nowhere')).toEqual({ page: 'home' });
   });
 
@@ -68,10 +78,12 @@ describe('routeHash', () => {
     for (const hash of [
       '#/',
       '#/history',
+      '#/history/arena',
       '#/game/uttt',
       '#/game/uttt/ab12',
       '#/review/session/ab12',
       '#/review/saved/uttt-1-abc',
+      '#/review/arena/uttt-1-abc',
     ]) {
       expect(routeHash(parseRoute(hash))).toBe(hash);
     }

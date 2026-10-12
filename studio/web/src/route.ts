@@ -1,12 +1,18 @@
-/** What a review shows: a session of the server, a saved game, or a file loaded in the browser. */
-export type ReviewKind = 'session' | 'saved' | 'file';
+/**
+ * What a review shows: a session of the server, a saved game, a file loaded in the browser, or an
+ * arena game published with the site (ADR 0031).
+ */
+export type ReviewKind = 'session' | 'saved' | 'file' | 'arena';
 
-const REVIEW_KINDS: readonly string[] = ['session', 'saved', 'file'];
+const REVIEW_KINDS: readonly string[] = ['session', 'saved', 'file', 'arena'];
+
+/** Whose games the history lists: the visitor's own, or the arena games published with the site. */
+export type HistorySet = 'mine' | 'arena';
 
 /** Where the app is, read from the URL hash. */
 export type Route =
   | { page: 'home' }
-  | { page: 'history' }
+  | { page: 'history'; set: HistorySet }
   | { page: 'review'; kind: ReviewKind; id: string }
   | { page: 'game'; gameId: string; sessionId: string | null };
 
@@ -22,7 +28,10 @@ export function parseRoute(hash: string): Route {
     .map(decodeSegment);
   const [first, gameId, sessionId] = segments;
   if (first === 'history' && segments.length === 1) {
-    return { page: 'history' };
+    return { page: 'history', set: 'mine' };
+  }
+  if (first === 'history' && segments.length === 2 && gameId === 'arena') {
+    return { page: 'history', set: 'arena' };
   }
   if (first === 'review' && segments.length === 3 && gameId && sessionId) {
     // The second segment is the kind and the third the id.
@@ -50,7 +59,7 @@ export function routeHash(route: Route): string {
     case 'home':
       return '#/';
     case 'history':
-      return '#/history';
+      return route.set === 'arena' ? '#/history/arena' : '#/history';
     case 'review':
       return `#/review/${route.kind}/${encodeURIComponent(route.id)}`;
     case 'game': {

@@ -167,6 +167,14 @@ describe('reviewOfRecord', () => {
     expect(model.saved).toBe(false);
   });
 
+  it('shows an arena game as not saved, from the arena', () => {
+    const model = reviewOfRecord(view(), { kind: 'arena', id: 'uttt-1-abc' });
+    expect(model.kind).toBe('arena');
+    expect(model.id).toBe('uttt-1-abc');
+    expect(model.source).toBe('Arena game (arena match)');
+    expect(model.saved).toBe(false);
+  });
+
   it('describes iterations for a fixed bot, and nothing for a human', () => {
     const model = reviewOfRecord(
       view(
@@ -340,6 +348,8 @@ describe('formatDate and exportName', () => {
     expect(exportName(base, now)).toBe('uttt-2026-10-10-7.json');
     const saved = reviewOfRecord(view(), { kind: 'saved', id: 'uttt-1-abc' });
     expect(exportName(saved, now)).toBe('uttt-1-abc.json');
+    const arena = reviewOfRecord(view(), { kind: 'arena', id: 'uttt-2-def' });
+    expect(exportName(arena, now)).toBe('uttt-2-def.json');
     const file = reviewOfRecord(view(), { kind: 'file', id: 'f1', name: 'sample' });
     expect(exportName(file, now)).toBe('sample.json');
     const named = reviewOfRecord(view(), { kind: 'file', id: 'f1', name: 'a.json' });

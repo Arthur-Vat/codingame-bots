@@ -126,6 +126,11 @@ export function createEngine(deps: EngineDeps): Engine {
         if (first === 'sessions') return json(200, await sessions.create(parseBody(bodyText)));
         if (first === 'history') return save(bodyText ?? '');
         if (first === 'view') return json(200, ask({ op: 'view', record_text: bodyText ?? '' }));
+        if (first === 'filter') {
+          // The rows come in the body (they are not the saved games). The rules program reads
+          // the query, then the body, as the server does: same filter, same refusals.
+          return json(200, ask({ op: 'filter_body', query, body: bodyText ?? '' }));
+        }
         break;
       case 'GET 2':
         if (first === 'sessions' && id !== undefined) return json(200, sessions.view(id));
@@ -215,7 +220,13 @@ function known(segments: string[]): boolean {
   const [first, , action] = segments;
   switch (segments.length) {
     case 1:
-      return first === 'games' || first === 'history' || first === 'view' || first === 'sessions';
+      return (
+        first === 'games' ||
+        first === 'history' ||
+        first === 'view' ||
+        first === 'filter' ||
+        first === 'sessions'
+      );
     case 2:
       return first === 'sessions' || first === 'history';
     case 3:

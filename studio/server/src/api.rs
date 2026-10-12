@@ -92,11 +92,13 @@ fn api(state: &State, method: &str, path: &str, query: &str, body: &[u8]) -> Res
         ("DELETE", ["history", id]) => history::delete(state, id),
         ("GET", ["history", id, "view"]) => history::view(state, id),
         ("POST", ["view"]) => history::view_body(state, body),
+        ("POST", ["filter"]) => history::filter_rows(query, body),
         (_, ["games"])
         | (_, ["history"])
         | (_, ["history", _])
         | (_, ["history", _, "view"])
         | (_, ["view"])
+        | (_, ["filter"])
         | (_, ["sessions"])
         | (_, ["sessions", _])
         | (_, ["sessions", _, "move" | "takeback" | "end" | "record" | "save"]) => {

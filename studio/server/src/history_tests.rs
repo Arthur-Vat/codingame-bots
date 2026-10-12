@@ -501,6 +501,8 @@ fn only_the_documented_methods_are_allowed() {
         ("POST", "/api/history/abc"),
         ("POST", "/api/history/abc/view"),
         ("GET", "/api/view"),
+        ("GET", "/api/filter"),
+        ("DELETE", "/api/filter"),
         ("GET", "/api/sessions/abc/save"),
     ] {
         let (status, _) = call(&state, method, path, &Value::Null);
@@ -642,4 +644,154 @@ fn a_deleted_game_answers_204_with_nothing() {
     assert_eq!(response.status, 204);
     assert!(response.body.is_empty());
     assert!(response.content_type.is_empty());
+}
+
+fn row(id: &str, unix_time: u64, players: [&str; 2], winner: Value, source: &str) -> Value {
+    json!({
+        "id": id, "game": "uttt", "unix_time": unix_time, "players": players,
+        "winner": winner, "end": "finished", "turns": 40, "source": source,
+    })
+}
+
+#[test]
+fn rows_in_the_body_are_filtered_like_the_saved_games() {
+    let dir = TempDir::new("history-filter");
+    let state = new_state(&dir);
+    let rows = json!([
+        row(
+            "uttt-100-aaaaaaaaaaaa",
+            100,
+            ["uttt-v001", "uttt-v002"],
+            json!(0),
+            "arena match"
+        ),
+        row(
+            "uttt-300-cccccccccccc",
+            300,
+            ["uttt-v002", "uttt-v003"],
+            json!(1),
+            "arena sprt"
+        ),
+        row(
+            "uttt-200-bbbbbbbbbbbb",
+            200,
+            ["You", "uttt-v002"],
+            Value::Null,
+            "studio"
+        ),
+        // The same time as the one above: the later id comes first.
+        row(
+            "uttt-200-dddddddddddd",
+            200,
+            ["uttt-v001", "uttt-v003"],
+            json!(0),
+            "arena match"
+        ),
+    ]);
+    let ids_of = |query: &str| {
+        let (status, body) = call(&state, "POST", &format!("/api/filter{query}"), &rows);
+        assert_eq!(status, 200, "{query}: {body}");
+        body.as_array()
+            .unwrap()
+            .iter()
+            .map(|item| item["id"].as_str().unwrap().to_string())
+            .collect::<Vec<_>>()
+    };
+    // Newest first, ties by id, last first.
+    assert_eq!(
+        ids_of(""),
+        [
+            "uttt-300-cccccccccccc",
+            "uttt-200-dddddddddddd",
+            "uttt-200-bbbbbbbbbbbb",
+            "uttt-100-aaaaaaaaaaaa"
+        ]
+    );
+    assert_eq!(
+        ids_of("?release=uttt-v002"),
+        [
+            "uttt-300-cccccccccccc",
+            "uttt-200-bbbbbbbbbbbb",
+            "uttt-100-aaaaaaaaaaaa"
+        ]
+    );
+    assert_eq!(ids_of("?result=o"), ["uttt-300-cccccccccccc"]);
+    assert_eq!(ids_of("?result=draw"), ["uttt-200-bbbbbbbbbbbb"]);
+    assert_eq!(ids_of("?source=studio"), ["uttt-200-bbbbbbbbbbbb"]);
+    assert!(ids_of("?game=chess").is_empty());
+    assert!(ids_of("?from=2030-01-01").is_empty());
+    // A row comes back as it went in.
+    let (_, all) = call(&state, "POST", "/api/filter", &rows);
+    assert_eq!(all[0], rows[1]);
+    // An empty list is an empty answer, and nothing is read from or written to the history.
+    let (status, none) = call(&state, "POST", "/api/filter?result=x", &json!([]));
+    assert_eq!((status, none), (200, json!([])));
+    assert_eq!(files(&dir), 0);
+}
+
+#[test]
+fn a_bad_filter_body_or_query_is_a_400_with_the_usual_error() {
+    let dir = TempDir::new("history-filter-bad");
+    let state = new_state(&dir);
+    let good = json!([row(
+        "uttt-1-aaaaaaaaaaaa",
+        1,
+        ["a", "b"],
+        json!(0),
+        "studio"
+    )]);
+    for query in [
+        "?result=won",
+        "?source=web",
+        "?from=yesterday",
+        "?release=%zz",
+    ] {
+        let (status, error) = call(&state, "POST", &format!("/api/filter{query}"), &good);
+        assert_eq!(status, 400, "{query}: {error}");
+        assert!(error["error"].is_string(), "{error}");
+    }
+    // The texts the browser engine's tests check too (studio/web/src/engine/routes.test.ts).
+    let bodies: [(&str, &str); 5] = [
+        ("", "EOF while parsing a value at line 1 column 0"),
+        ("not json", "expected ident at line 1 column 2"),
+        (
+            r#"{"rows":[]}"#,
+            "invalid type: map, expected a sequence at line 1 column 0",
+        ),
+        (
+            "[1]",
+            "invalid type: integer `1`, expected struct Row at line 1 column 2",
+        ),
+        (
+            r#"[{"id":"x"}]"#,
+            "missing field `game` at line 1 column 11",
+        ),
+    ];
+    for (body, message) in bodies {
+        let response = crate::handle(&state, "POST", "/api/filter", body.as_bytes());
+        assert_eq!(response.status, 400, "{body}");
+        let error: Value = serde_json::from_slice(&response.body).unwrap();
+        assert_eq!(
+            error["error"],
+            format!("invalid request body: {message}"),
+            "{body}"
+        );
+    }
+    // A number that is not a time is refused too.
+    let negative = r#"[{"id":"x","game":"uttt","unix_time":-1,"players":["a","b"],"winner":null,"end":"finished","turns":1,"source":"s"}]"#;
+    let response = crate::handle(&state, "POST", "/api/filter", negative.as_bytes());
+    assert_eq!(response.status, 400);
+    // The query is read before the body.
+    for (query, message) in [
+        (
+            "?result=bogus",
+            "result must be x, o, draw, fault or unfinished",
+        ),
+        ("?source=web", "source must be studio or arena"),
+    ] {
+        let response = crate::handle(&state, "POST", &format!("/api/filter{query}"), b"not json");
+        assert_eq!(response.status, 400);
+        let error: Value = serde_json::from_slice(&response.body).unwrap();
+        assert_eq!(error["error"], message);
+    }
 }

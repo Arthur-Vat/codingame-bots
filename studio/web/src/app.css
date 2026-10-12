@@ -905,6 +905,32 @@
   margin: -6px 0 12px;
 }
 
+/* The switch between my games and the arena games. */
+.hist-sets {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.hist-sets a {
+  padding: 8px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--panel);
+}
+
+.hist-sets a[aria-current='page'],
+.hist-sets a:hover {
+  color: var(--fg-strong);
+  background: var(--panel-2);
+}
+
+.hist-sets a[aria-current='page'] {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
 .filters {
   display: flex;
   gap: 12px;
