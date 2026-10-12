@@ -188,8 +188,8 @@ fn every_bad_file_is_named_and_nothing_is_written() {
     };
     for (path, reason_part) in [
         (input.join("not-a-record.json"), "invalid game record"),
-        (input.join("nested/unknown.json"), "unknown game"),
-        (input.join("nested/wrong.json"), "winner"),
+        (input.join("nested").join("unknown.json"), "unknown game"),
+        (input.join("nested").join("wrong.json"), "winner"),
         (other.join("empty.json"), "invalid game record"),
     ] {
         let line = reason(&path.display().to_string());
@@ -258,10 +258,49 @@ fn an_output_folder_that_is_not_empty_is_refused() {
     fs::write(&file, "x").unwrap();
     assert!(build(&options(&file, None, &[&input])).is_err());
 
-    // An empty folder is fine.
+    // An empty folder is fine, and no temporary folder is left next to it.
     let empty = dir.path().join("empty");
     fs::create_dir_all(&empty).unwrap();
     assert_eq!(build(&options(&empty, None, &[&input])).unwrap().written, 1);
+    assert!(empty.join("index.json").is_file());
+    for entry in fs::read_dir(dir.path()).unwrap() {
+        let name = entry.unwrap().file_name().into_string().unwrap();
+        assert!(!name.starts_with('.'), "{name} was left behind");
+    }
+}
+
+#[test]
+fn the_output_problem_is_listed_with_the_bad_files() {
+    let dir = TempDir::new("archive-all-problems");
+    let input = dir.path().join("in");
+    put_text(&input, "bad.json", "nope");
+    let full = dir.path().join("full");
+    put_text(&full, "keep.txt", "mine");
+    let errors = build(&options(
+        &full,
+        None,
+        &[&input, &dir.path().join("missing")],
+    ))
+    .unwrap_err();
+    assert_eq!(errors.len(), 3, "{errors:?}");
+    assert!(errors[0].contains("not empty"), "{errors:?}");
+    assert!(errors[1].contains("bad.json"), "{errors:?}");
+    assert!(errors[2].contains("missing"), "{errors:?}");
+    assert_eq!(fs::read_dir(&full).unwrap().count(), 1);
+}
+
+#[test]
+fn an_output_that_cannot_be_created_leaves_nothing_behind() {
+    let dir = TempDir::new("archive-no-room");
+    let a = record(&dir, 1, 2, 1000);
+    let input = dir.path().join("in");
+    put(&input, "a.json", &a);
+    // A file where the output's parent folder should be.
+    let blocker = dir.path().join("blocker");
+    fs::write(&blocker, "x").unwrap();
+    let errors = build(&options(&blocker.join("out"), None, &[&input])).unwrap_err();
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    assert!(blocker.is_file());
 }
 
 #[test]
@@ -270,7 +309,7 @@ fn no_records_give_the_empty_index_and_an_empty_records_folder() {
     let input = dir.path().join("in");
     fs::create_dir_all(&input).unwrap();
     put_text(&input, "readme.txt", "nothing here");
-    let out = dir.path().join("deeper/out");
+    let out = dir.path().join("deeper").join("out");
 
     let built = build(&options(&out, None, &[&input])).unwrap();
     assert_eq!(built.written, 0);

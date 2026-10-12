@@ -142,8 +142,10 @@ fn check_out(out: &Path) -> Result<(), String> {
 /// Builds the archive. On failure, nothing is written and the messages say
 /// every problem found, one per entry (`<path>: <reason>` for a file).
 pub fn build(options: &Options) -> Result<Summary, Vec<String>> {
-    check_out(&options.out).map_err(|message| vec![message])?;
     let mut errors = Vec::new();
+    if let Err(message) = check_out(&options.out) {
+        errors.push(message);
+    }
     let mut seen = HashSet::new();
     let mut kept: Vec<(String, Record)> = Vec::new();
     let mut summaries = Vec::new();
@@ -194,9 +196,38 @@ pub fn build(options: &Options) -> Result<Summary, Vec<String>> {
     })
 }
 
-/// Writes the records and the index into `out`.
+/// Writes the records and the index into `out`: all in a temporary folder
+/// next to it, renamed into place at the end, so that a failure leaves
+/// nothing behind.
 fn write(out: &Path, kept: &[(String, Record)]) -> Result<(), String> {
-    let records = out.join("records");
+    let name = out
+        .file_name()
+        .ok_or_else(|| format!("{}: not a usable folder name", out.display()))?
+        .to_string_lossy()
+        .into_owned();
+    let parent = out.parent().unwrap_or_else(|| Path::new(""));
+    fs::create_dir_all(parent)
+        .map_err(|error| format!("{}: cannot create: {error}", parent.display()))?;
+    let temporary = parent.join(format!(".{name}.tmp-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&temporary);
+    let built = write_into(&temporary, kept).and_then(|()| {
+        // An empty folder is replaced; the rename cannot do it on every system.
+        if out.is_dir() {
+            fs::remove_dir(out)
+                .map_err(|error| format!("{}: cannot replace: {error}", out.display()))?;
+        }
+        fs::rename(&temporary, out)
+            .map_err(|error| format!("{}: cannot write: {error}", out.display()))
+    });
+    if built.is_err() {
+        let _ = fs::remove_dir_all(&temporary);
+    }
+    built
+}
+
+/// Writes the records and the index into the new folder `dir`.
+fn write_into(dir: &Path, kept: &[(String, Record)]) -> Result<(), String> {
+    let records = dir.join("records");
     fs::create_dir_all(&records)
         .map_err(|error| format!("{}: cannot create: {error}", records.display()))?;
     let mut rows = Vec::with_capacity(kept.len());
@@ -213,6 +244,6 @@ fn write(out: &Path, kept: &[(String, Record)]) -> Result<(), String> {
         rows: &rows,
     };
     let bytes = serde_json::to_vec(&index).map_err(|error| error.to_string())?;
-    let path = out.join("index.json");
+    let path = dir.join("index.json");
     fs::write(&path, bytes).map_err(|error| format!("{}: cannot write: {error}", path.display()))
 }
