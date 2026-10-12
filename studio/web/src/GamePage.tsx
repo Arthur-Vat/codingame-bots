@@ -12,6 +12,8 @@ import {
   type SessionRequest,
 } from './api';
 import { BoardOverlay } from './BoardOverlay';
+import { botsPlaying, unplayedView } from './botGame';
+import { PlayingOverlay } from './PlayingOverlay';
 import { download, errorMessage, typesText } from './browser';
 import { BoardSlot } from './BoardSlot';
 import { clockSeed } from './setup';
@@ -61,7 +63,7 @@ import { useSession } from './useSession';
 const LOBBY: { mode: Mode; hint: string }[] = [
   { mode: 'friend', hint: 'Two people, one screen' },
   { mode: 'computer', hint: 'Any release, any think time' },
-  { mode: 'bots', hint: 'Plays a full game in a few seconds' },
+  { mode: 'bots', hint: 'Watch the game once it is played' },
 ];
 
 const GAME_BLURBS: Record<string, string> = {
@@ -84,12 +86,15 @@ function InfoCard({
   game,
   gameId,
   session,
+  move,
   clock,
   problem,
 }: {
   game: GameSummary | null;
   gameId: string;
   session: Session | null;
+  /** The number of the move being played, from the real session (a game of two bots hides its moves). */
+  move: number | null;
   clock: ClockSettings | null;
   problem: string | null;
 }) {
@@ -121,9 +126,7 @@ function InfoCard({
         {bots === 1 && bot?.kind === 'bot' && (
           <Row term="Bot" value={`${bot.release}, ${thinkLabel(bot.think_ms)}`} />
         )}
-        {bots === 2 && moveBeingPlayed(session) !== null && (
-          <Row term="Move" value={String(moveBeingPlayed(session))} />
-        )}
+        {bots === 2 && move !== null && <Row term="Move" value={String(move)} />}
         {clock && <Row term="Clock" value={clockLabel(clock)} />}
         <Row term="Seed" value={String(session.seed)} />
       </dl>
@@ -158,22 +161,29 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
   // A page that is not shown opens no dialog.
   if (!active && dialogMode !== null) setDialogMode(null);
 
-  const clocks = useClocks(session, clock);
-  const running = clock === null ? null : runningSeat(session);
+  // While two bots play, nothing of their game is shown (a spinner is, over the empty board); the
+  // actions below keep using the real session.
+  const shownSession = session === null ? null : unplayedView(session);
+  const playing = session !== null && botsPlaying(session);
 
-  const frames = session?.frames ?? [];
+  const clocks = useClocks(shownSession, clock);
+  const running = clock === null ? null : runningSeat(shownSession);
+
+  const frames = shownSession?.frames ?? [];
   const latest = frames.length - 1;
   const pinnedFrame = pinned !== null && pinned.sessionId === sessionId ? pinned.frame : null;
   const looked = pinnedFrame === null ? latest : Math.min(pinnedFrame, latest);
-  // A game that is over is its own review: the playback starts on the frame that was looked at.
-  const over = session?.status === 'over';
-  const playback = usePlayback(latest, looked, over ? session.id : null, {
+  // A game that is over is its own review: the playback starts on the frame that was looked at,
+  // and a game between two bots on its first frame, paused.
+  const over = shownSession?.status === 'over';
+  const reviewStart = over && sessionMode(shownSession) === 'bots' ? 0 : looked;
+  const playback = usePlayback(latest, reviewStart, over ? shownSession.id : null, {
     active,
     keys: active && dialogMode === null,
   });
   const shown = over ? playback.cursor : looked;
   const atLatest = shown === latest;
-  const shownTurn = session === null ? -1 : turnOfFrame(shown, session.opening_turns);
+  const shownTurn = shownSession === null ? -1 : turnOfFrame(shown, shownSession.opening_turns);
 
   const launch = async (request: SessionRequest, newClock: ClockSettings | null) => {
     if (launching.current) return;
@@ -213,7 +223,7 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
     }
   };
 
-  const playable = canPlay(session, pending, atLatest);
+  const playable = canPlay(shownSession, pending, atLatest);
   const onAction = (action: unknown) => {
     if (session === null || !playable) return;
     const index = findMoveIndex(session.human_moves, action);
@@ -222,7 +232,7 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
     void run((current) => postMove(current.id, seat, index));
   };
 
-  const controls = controlsFor(session, pending);
+  const controls = controlsFor(shownSession, pending);
   const takeback = () => {
     const keep = controls.takebackTo;
     if (keep === null) return;
@@ -296,8 +306,8 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
   }, []);
 
   const pickTurn = (turn: number) => {
-    if (session === null) return;
-    const frame = frameAfterTurn(turn, session.opening_turns);
+    if (shownSession === null) return;
+    const frame = frameAfterTurn(turn, shownSession.opening_turns);
     if (over) {
       playback.goto(frame);
       return;
@@ -305,7 +315,7 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
     setPinned(frame >= latest ? null : { sessionId, frame });
   };
 
-  const bottom = bottomSeat(session);
+  const bottom = bottomSeat(shownSession);
   const problem = gameMissing
     ? `The server has no game called ${gameId}.`
     : error && session === null
@@ -318,10 +328,10 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
   const shownFrame = frame ?? emptyFrameFor(gameId);
   const finalFrame = frames[latest];
   const detail =
-    session?.result?.end.kind === 'finished' && finalFrame !== undefined
+    shownSession?.result?.end.kind === 'finished' && finalFrame !== undefined
       ? resultDetailFor(gameId, finalFrame)
       : null;
-  const mode = session === null ? null : sessionMode(session);
+  const mode = shownSession === null ? null : sessionMode(shownSession);
   const gameInProgress = hasGameInProgress(session);
 
   return (
@@ -336,7 +346,8 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
           <InfoCard
             game={game}
             gameId={gameId}
-            session={session}
+            session={shownSession}
+            move={session === null ? null : moveBeingPlayed(session)}
             clock={clock}
             problem={gameMissing ? problem : null}
           />
@@ -379,7 +390,14 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
               showCoordinates={coordinates}
               label={`${game?.name ?? gameId} board`}
               bare={Renderer !== undefined}
-              overlay={session === null ? null : <BoardOverlay overlay={overlayFor(session)} />}
+              overlay={
+                shownSession === null ? null : (
+                  <>
+                    <BoardOverlay overlay={overlayFor(shownSession)} />
+                    {playing && <PlayingOverlay />}
+                  </>
+                )
+              }
             >
               {Renderer !== undefined && shownFrame !== undefined ? (
                 <Renderer
@@ -408,9 +426,14 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
 
         <aside className="side side-right">
           <section className="panel table">
-            <PlayerStrip session={session} seat={1 - bottom} clocks={clocks} running={running} />
+            <PlayerStrip
+              session={shownSession}
+              seat={1 - bottom}
+              clocks={clocks}
+              running={running}
+            />
             <MoveList
-              session={session}
+              session={shownSession}
               problem={problem}
               lost={session !== null && error !== null}
               shownTurn={shownTurn}
@@ -440,7 +463,7 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
                 onNewGame={() => setDialogMode(mode)}
               />
             )}
-            <PlayerStrip session={session} seat={bottom} clocks={clocks} running={running} />
+            <PlayerStrip session={shownSession} seat={bottom} clocks={clocks} running={running} />
           </section>
           {over && <div className="analysis-slot" data-testid="analysis-slot" />}
         </aside>

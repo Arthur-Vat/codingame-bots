@@ -320,11 +320,14 @@ test('two bots that finish while watched stay on the page and become its review'
   await expect(page.getByTestId('playback')).toHaveCount(0);
 
   current = sessionOver();
-  // The address stays; the playback bar appears, on the frame that was on the board (the last).
+  // The address stays; the playback bar appears, on the first frame (a game between two bots is
+  // not shown while it is played).
   await expect(page.getByTestId('playback')).toBeVisible();
   await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
-  await expect(page.getByRole('button', { name: 'Last move' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'First move' })).toBeDisabled();
   await expect(page.getByTestId('result')).toContainText('0–1 · O wins');
+  await expect(cell(page, 4, 4, 'X')).toHaveCount(0);
+  await page.keyboard.press('End');
   await expect(cell(page, 3, 7, 'O')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Review', exact: true })).toHaveCount(0);
   // Nothing moves the address later on either.
@@ -347,7 +350,11 @@ test('a finished game is its review in place: no Review button, the keys and the
   await expect(page.getByTestId('playback-slot')).toHaveCount(0);
   await expect(page.getByTestId('analysis-slot')).toBeAttached();
   await expect(page.getByText('Keys: ← → step, Home/End jump, Space plays.')).toBeVisible();
-  // It opens on the last frame.
+  // It opens on the first frame, paused (a game between two bots is not shown while it is played).
+  await expect(cell(page, 4, 4, 'X')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'First move' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Pause' })).toHaveCount(0);
+  await page.keyboard.press('End');
   await expect(cell(page, 3, 7, 'O')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Last move' })).toBeDisabled();
 
