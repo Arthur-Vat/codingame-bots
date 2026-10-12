@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- The wording pass's list (given in the chat 2026-10-12: remove the home intro, the Next game and More games cards, the default blurb, "Fixed iterations, so takebacks replay exactly.", "Otherwise taken from the clock.", "Loading adds games to your history."; arena note becomes "Bot games played on GitHub (SPRT and league samples)."; also reword any "a release plays" text: a release is a frozen file, a bot built from it plays (owner, 2026-10-12)): awaiting the owner's validation. (#101, step G5, merged 2026-10-12: "Merge 101 please".)
+None. (#102, the wording pass, merged 2026-10-12 on the owner's approval in the chat: "Merge #102".)
 
 ## Open questions
 
@@ -16,9 +16,10 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 - **Arena games done** (ADR 0031; #92 to #95 merged 2026-10-12 on the owner's approvals in the chat). The archive `arena-games-uttt` (544 games, expires 2027-01-10) is published at https://arthur-vat.github.io/codingame-bots/ (History, "Arena games"). Watch the first release after this: the workflow_run path (league sample + the release branch's SPRT sample) has only been proved read-only. Follow-ups: the daily report should warn when an `arena-games-<game>` artifact has under 30 days left (skill `daily-report`, not done); the review page shows 64-bit seeds rounded (JavaScript numbers), and the front end's file import/export re-serialises records (both pre-existing; arena records are kept as text); scheduled workflows stop after 60 days without commits in a public repository.
 - **Step G (interface) done** (2026-10-12): G1 (#96), G2 (#97), G3 (#99) merged on the owner's approvals in the chat. G3 as the owner changed it (2026-10-12; the paced display, #98, closed): a game between two bots is shown once it is played: an empty board with a spinner (no veil) while the bots play, Save and Export disabled until the end, then its review in place on the first frame, paused (`src/botGame.ts`, `PlayingOverlay.tsx`); think times unchanged (no 5 s or 10 s wanted). Keep the test "the review keeps its board where the game page has it". E2e tip: the hidden Play tab stays in the DOM, so locators use `filter({ visible: true })`. Step F follow-ups (Firefox, 64-bit seeds on import/export) later, separately (owner, 2026-10-12).
 - **Step G4 merged** (#100, 2026-10-12): tabs Play | History; a finished game offers Rematch, New game, Analysis board; the analysis board `#/game/<game>/analysis/<session|saved|file|arena>/<id>` (no engine yet, a note says it comes later); games from the History open on it without Rematch or New game (owner, 2026-10-12: say "analysis", not "review"). Review nits kept: Play marked current on a session's board after a reload; "Back to the game" on an unknown session.
-- **Wording rule** (owner, 2026-10-12): in the studio, no text that brings no information (subtitles, intros, restated labels) where it can be avoided. A wording pass is proposed as its own pull request after #101; list of texts given to the owner, not yet validated.
+- **Wording rule** (owner, 2026-10-12): in the studio, no text that brings no information (subtitles, intros, placeholders, restated labels) where it can be avoided; a release is a file, the bot built from it plays (never "a release plays"). Applied in #102 (merged).
 - **Step G5 merged** (#101, 2026-10-12): one Game setup menu; modes Human vs human, Human vs bot, Bot vs bot, no subtitles.
-- **Then: phase 6 step D, analysis** (see Notes), in its own session(s), following the updated `land-work` (#82). Ask the owner before starting: it is heavy work.
+- **Next: phase 6 step D, analysis**, in a new session (this one ended at 282k context). The analysis board's panel (`analysis-slot`) and `#/game/<game>/analysis/...` exist since G4.
+  Step D details: (see Notes), in its own session(s), following the updated `land-work` (#82). Ask the owner before starting: it is heavy work.
 - ADR 0023 still says the SPRT is not a required check, which is no longer true. The owner keeps the current merge policy (2026-10-09) and wants no new record; the line stays as is unless he asks for a fix.
 - Record the CodinGame ranks of `uttt-v009` and `uttt-v010` when the owner reports them (skill `deliver-release`); the owner will report them later (2026-10-11).
 
@@ -35,6 +36,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Usage
 
+- 2026-10-12 22:15 (Paris) | wording pass: #102 merged (after #101) | main session 45 steps since 21:45 (10.8M read, context 216k to 282k: a long conversation), 1 agent (0.05M read, light review)
 - 2026-10-12 21:45 (Paris) | G5: modes renamed, #101 merged | main session 24 steps (5.30M read, context 216k to 246k: a long conversation)
 - 2026-10-12 21:15 (Paris) | step G5: #101 opened (setup menu) | main session 25 steps (4.74M read, context 175k to 207k), 2 agents (4.09M read; the implementer 3.36M over 41 steps, the deep review 0.73M)
 - 2026-10-12 20:40 (Paris) | step G4: owner's after-game and setup flow decided, #100 merged | main session 56 steps (6.73M read, context 68k to 178k), 2 agents (9.38M read; the implementer 7.77M over 66 steps, the deep review 1.61M)
