@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   answer,
   frame,
@@ -20,8 +20,11 @@ async function mockSaved(page: Page, view: unknown = recordView()) {
   await page.route(`**/api/history/${SAVED}`, (route) => route.fulfill({ json: record() }));
 }
 
+/** The part of a locator that is on screen: the Play tab stays in the page, hidden, behind the others. */
+const shown = (locator: Locator) => locator.filter({ visible: true });
+
 async function slotBox(page: Page) {
-  const box = await page.getByTestId('board-slot').boundingBox();
+  const box = await shown(page.getByTestId('board-slot')).boundingBox();
   expect(box).not.toBeNull();
   return box;
 }
@@ -70,7 +73,7 @@ test('a saved game starts at the first frame and steps with the buttons and the 
   page,
 }) => {
   await mockSaved(page);
-  await page.goto(`/#/review/saved/${SAVED}`);
+  await page.goto(`/#/game/uttt/review/saved/${SAVED}`);
 
   // Info card and players.
   await expect(page.getByText('Saved (arena match)')).toBeVisible();
@@ -116,12 +119,12 @@ test("the arrows step from anywhere, and Space is the browser's on a button, a s
   page,
 }) => {
   await mockSaved(page);
-  await page.goto(`/#/review/saved/${SAVED}`);
+  await page.goto(`/#/game/uttt/review/saved/${SAVED}`);
   await page.getByRole('button', { name: 'Next move' }).click();
   await expect(cell(page, 4, 4, 'X')).toBeVisible();
 
   // The switch is not text entry; the arrows still step, and Space toggles the switch only.
-  const coordinates = page.getByLabel('Show coordinates');
+  const coordinates = shown(page.getByLabel('Show coordinates'));
   await coordinates.focus();
   await page.keyboard.press('ArrowRight');
   await expect(cell(page, 4, 5, 'O')).toBeVisible();
@@ -158,7 +161,7 @@ test("the arrows step from anywhere, and Space is the browser's on a button, a s
 test('jumping to the last frame while playing stops the playback', async ({ page }) => {
   await page.clock.install();
   await mockSaved(page);
-  await page.goto(`/#/review/saved/${SAVED}`);
+  await page.goto(`/#/game/uttt/review/saved/${SAVED}`);
   await page.getByRole('button', { name: 'Play' }).click();
   await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
   await page.getByRole('button', { name: 'Last move' }).click();
@@ -169,7 +172,7 @@ test('jumping to the last frame while playing stops the playback', async ({ page
 test('playback at 4× reaches the end and stops; a speed change keeps playing', async ({ page }) => {
   await page.clock.install();
   await mockSaved(page);
-  await page.goto(`/#/review/saved/${SAVED}`);
+  await page.goto(`/#/game/uttt/review/saved/${SAVED}`);
   const start = await slotBox(page);
 
   // 5 frames: at 1× a step takes 120 s / 4 = 30 s, at 4× 7.5 s.
@@ -219,8 +222,8 @@ test('a game whose last answer was invalid shows the turns that replay', async (
       3,
     ),
   );
-  await page.goto(`/#/review/saved/${SAVED}`);
-  const moves = page.getByLabel('Moves', { exact: true });
+  await page.goto(`/#/game/uttt/review/saved/${SAVED}`);
+  const moves = shown(page.getByLabel('Moves', { exact: true }));
   await expect(moves).toContainText('5 3');
   await expect(moves).not.toContainText('0 0');
   await expect(page.getByTestId('result')).toContainText('1–0 · X wins');
@@ -229,7 +232,7 @@ test('a game whose last answer was invalid shows the turns that replay', async (
   await expect(cell(page, 5, 3, 'X')).toBeVisible();
 });
 
-test('a session is reviewed, saved, and exported', async ({ page }) => {
+test('a finished session is its own review, and is saved and exported there', async ({ page }) => {
   await mockGames(page);
   const posts: string[] = [];
 
@@ -239,17 +242,16 @@ test('a session is reviewed, saved, and exported', async ({ page }) => {
     return route.fulfill({ json: { id: SAVED, duplicate: false } });
   });
   await page.route('**/api/sessions/ab12/record', (route) => route.fulfill({ json: record() }));
-  await page.goto('/#/review/session/ab12');
+  await page.goto('/#/game/uttt/ab12');
 
-  await expect(page.getByText('Played here')).toBeVisible();
-  await expect(page.getByText('≈ 100 ms, real time').first()).toBeVisible();
+  await expect(page.getByText('uttt-v010, ≈ 100 ms').first()).toBeVisible();
   await expect(page.getByTestId('result')).toContainText('0–1 · O wins');
+  await expect(page.getByTestId('playback')).toBeVisible();
   const start = await slotBox(page);
 
-  await page.getByRole('button', { name: 'Save to history' }).click();
+  await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Saved to your history' })).toBeVisible();
   expect(posts).toEqual(['POST']);
-  await expect(page.getByRole('button', { name: 'In your history' })).toBeDisabled();
   expect(await slotBox(page)).toEqual(start);
 
   const exported = page.waitForEvent('download');
@@ -263,8 +265,8 @@ test('saving a game that is in the history already says so', async ({ page }) =>
   await page.route('**/api/sessions/ab12/save', (route) =>
     route.fulfill({ json: { id: SAVED, duplicate: true } }),
   );
-  await page.goto('/#/review/session/ab12');
-  await page.getByRole('button', { name: 'Save to history' }).click();
+  await page.goto('/#/game/uttt/ab12');
+  await page.getByRole('button', { name: 'Save' }).click();
   await expect(
     page.getByRole('status').filter({ hasText: 'Already in your history' }),
   ).toBeVisible();
@@ -272,7 +274,7 @@ test('saving a game that is in the history already says so', async ({ page }) =>
 
 test('a saved game is already in the history and exports its record', async ({ page }) => {
   await mockSaved(page);
-  await page.goto(`/#/review/saved/${SAVED}`);
+  await page.goto(`/#/game/uttt/review/saved/${SAVED}`);
   await expect(page.getByRole('button', { name: 'In your history' })).toBeDisabled();
   const exported = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export file' }).click();
@@ -284,14 +286,19 @@ test('a game that cannot be shown says why', async ({ page }) => {
   await page.route('**/api/history/nope/view', (route) =>
     route.fulfill({ status: 404, json: { error: 'no saved game "nope"' } }),
   );
-  await page.goto('/#/review/saved/nope');
+  await page.goto('/#/game/uttt/review/saved/nope');
   await expect(page.getByRole('alert')).toHaveText('no saved game "nope"');
 
-  await page.goto('/#/review/file/f99');
+  await page.goto('/#/game/uttt/review/file/f99');
   await expect(page.getByRole('alert')).toContainText('no longer loaded');
 });
 
-test('the end block of a finished game has a Review button, and two bots open it by themselves', async ({
+const HUMANS = [
+  { kind: 'human', name: 'Player 1' },
+  { kind: 'human', name: 'Player 2' },
+];
+
+test('two bots that finish while watched stay on the page and become its review', async ({
   page,
 }) => {
   await mockGames(page);
@@ -307,35 +314,91 @@ test('the end block of a finished game has a Review button, and two bots open it
   // The move number is in the info card, not over the board.
   await expect(page.locator('.info dt:text-is("Move") + dd')).toHaveText('2');
   await expect(page.getByTestId('board-overlay')).toHaveCount(0);
+  await expect(page.getByTestId('playback')).toHaveCount(0);
 
   current = sessionOver();
-  await expect(page).toHaveURL(/#\/review\/session\/ab12$/);
-  await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
+  // The address stays; the playback bar appears, on the frame that was on the board (the last).
+  await expect(page.getByTestId('playback')).toBeVisible();
+  await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
+  await expect(page.getByRole('button', { name: 'Last move' })).toBeDisabled();
   await expect(page.getByTestId('result')).toContainText('0–1 · O wins');
+  await expect(cell(page, 3, 7, 'O')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Review', exact: true })).toHaveCount(0);
+  // Nothing moves the address later on either.
+  await page.keyboard.press('Home');
   await expect(cell(page, 4, 4, 'X')).toHaveCount(0);
-
-  // Back on the game page, a finished game stays there, with its Review button.
-  await page.goBack();
   await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
-  await expect(page.getByTestId('end-block')).toBeVisible();
-  await page.waitForTimeout(500);
-  await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
-  await page.getByRole('button', { name: 'Review' }).click();
-  await expect(page).toHaveURL(/#\/review\/session\/ab12$/);
 });
 
-test('a game against a person ends with a Review button and no automatic jump', async ({
+test('a finished game is its review in place: no Review button, the keys and the bar work', async ({
   page,
 }) => {
+  await mockGames(page);
+  await page.route('**/api/sessions/ab12', (route) => route.fulfill({ json: sessionOver() }));
+  await page.goto('/#/game/uttt/ab12');
+  await expect(page.getByTestId('end-block')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Rematch' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'New game' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Review', exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('playback')).toBeVisible();
+  await expect(page.getByTestId('playback-slot')).toHaveCount(0);
+  await expect(page.getByTestId('analysis-slot')).toBeAttached();
+  await expect(page.getByText('Keys: ← → step, Home/End jump, Space plays.')).toBeVisible();
+  // It opens on the last frame.
+  await expect(cell(page, 3, 7, 'O')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Last move' })).toBeDisabled();
+
+  await page.keyboard.press('ArrowLeft');
+  await expect(cell(page, 3, 7, 'O')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '5 3' })).toHaveAttribute('aria-current', 'true');
+  await page.getByRole('button', { name: '4 5' }).click();
+  await expect(cell(page, 4, 5, 'O')).toBeVisible();
+  await expect(cell(page, 5, 3, 'X')).toHaveCount(0);
+
+  // Space plays from here, and at the end plays again from the first frame.
+  await page.mouse.click(30, 700);
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await expect(cell(page, 4, 4, 'X')).toHaveCount(0);
+  await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
+});
+
+test('a finished game opens on the frame that was pinned when it ended', async ({ page }) => {
+  await mockGames(page);
+  let current: Record<string, unknown> = sessionOver({
+    seats: HUMANS,
+    status: 'waiting_human',
+    to_act: [0],
+    result: null,
+    turns: gameTurns(3),
+    frames: gameFrames(3),
+  });
+  await page.route('**/api/sessions/ab12', (route) => route.fulfill({ json: current }));
+  await page.goto('/#/game/uttt/ab12');
+  await expect(cell(page, 5, 3, 'X')).toBeVisible();
+  await page.keyboard.press('ArrowLeft');
+  await expect(cell(page, 5, 3, 'X')).toHaveCount(0);
+
+  current = sessionOver({ seats: HUMANS });
+  await expect(page.getByTestId('playback')).toBeVisible();
+  // Still on the second frame, not carried to the last.
+  await expect(cell(page, 4, 5, 'O')).toBeVisible();
+  await expect(cell(page, 3, 7, 'O')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Next move' })).toBeEnabled();
+});
+
+test('a game against a person ends with the end block and no Review button', async ({ page }) => {
   await mockGames(page);
   const f = frame([[4, 4, 0]], 0, [5, 3]);
   await page.route('**/api/sessions/ab12', (route) =>
     route.fulfill({
       json: sessionOver({
-        seats: [
-          { kind: 'human', name: 'Player 1' },
-          { kind: 'human', name: 'Player 2' },
-        ],
+        seats: HUMANS,
         turns: [answer(0, '4 4')],
         frames: [frame(), f],
         result: { winner: 0, end: { kind: 'finished' } },
@@ -344,64 +407,89 @@ test('a game against a person ends with a Review button and no automatic jump', 
   );
   await page.goto('/#/game/uttt/ab12');
   await expect(page.getByTestId('end-block')).toBeVisible();
-  await page.getByRole('button', { name: 'Review' }).click();
-  await expect(page).toHaveURL(/#\/review\/session\/ab12$/);
+  await expect(page.getByRole('button', { name: 'Review', exact: true })).toHaveCount(0);
   await expect(page.getByTestId('result')).toContainText('1–0 · X wins');
+  await expect(page.getByTestId('playback')).toBeVisible();
+  await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
 });
 
-test('the review keeps its board where the game page has it', async ({ page }) => {
-  await mockSaved(page);
-  await page.route('**/api/sessions/ab12', (route) => route.fulfill({ json: sessionOver() }));
-  await page.goto('/#/game/uttt/ab12');
-  const onGame = await slotBox(page);
-  await page.goto('/#/review/session/ab12');
-  await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
-  expect(await slotBox(page)).toEqual(onGame);
-});
-
-test('the review page fits the window, with the playback bar and a table as tall as the board', async ({
+test('the board keeps its place: running game, finished game, saved game in the Review tab', async ({
   page,
 }) => {
   await mockSaved(page);
-  for (const viewport of [
-    { width: 1536, height: 730 },
-    { width: 1366, height: 650 },
-    { width: 1920, height: 970 },
-  ]) {
-    await page.setViewportSize(viewport);
-    await page.goto(`/#/review/saved/${SAVED}`);
-    await expect(page.getByRole('button', { name: 'Next move' })).toBeVisible();
-    const name = `${viewport.width}x${viewport.height}`;
-    const fit = await pageHeights(page);
-    expect(fit.scroll, name).toBeLessThanOrEqual(fit.inner);
-    const bar = await page.getByTestId('playback').boundingBox();
-    expect(bar!.y + bar!.height, name).toBeLessThanOrEqual(viewport.height);
-    const squares = await page.locator('.uttt-board').boundingBox();
-    const table = await page.locator('.panel.table').boundingBox();
-    expect(Math.abs(table!.y - squares!.y), name).toBeLessThanOrEqual(1);
-    expect(
-      Math.abs(table!.y + table!.height - (squares!.y + squares!.height)),
-      name,
-    ).toBeLessThanOrEqual(1);
+  let current: Record<string, unknown> = sessionOver({
+    seats: HUMANS,
+    status: 'waiting_human',
+    to_act: [0],
+    result: null,
+    turns: gameTurns(2),
+    frames: gameFrames(2),
+  });
+  await page.route('**/api/sessions/ab12', (route) => route.fulfill({ json: current }));
+  await page.goto('/#/game/uttt/ab12');
+  await expect(page.getByTestId('playback-slot')).toBeAttached();
+  const running = await slotBox(page);
+
+  current = sessionOver({ seats: HUMANS });
+  await expect(page.getByTestId('playback')).toBeVisible();
+  expect(await slotBox(page)).toEqual(running);
+
+  await page.goto(`/#/game/uttt/review/saved/${SAVED}`);
+  await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
+  expect(await slotBox(page)).toEqual(running);
+});
+
+test('the review fits the window, with the playback bar and a table as tall as the board', async ({
+  page,
+}) => {
+  await mockSaved(page);
+  await page.route('**/api/sessions/ab12', (route) => route.fulfill({ json: sessionOver() }));
+  const pages = [
+    { name: 'review tab', hash: `/#/game/uttt/review/saved/${SAVED}` },
+    { name: 'finished game', hash: '/#/game/uttt/ab12' },
+  ];
+  for (const { name: where, hash } of pages) {
+    for (const viewport of [
+      { width: 1536, height: 730 },
+      { width: 1366, height: 650 },
+      { width: 1920, height: 970 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto(hash);
+      await expect(page.getByRole('button', { name: 'Next move' })).toBeVisible();
+      const name = `${where} ${viewport.width}x${viewport.height}`;
+      const fit = await pageHeights(page);
+      expect(fit.scroll, name).toBeLessThanOrEqual(fit.inner);
+      const bar = await shown(page.getByTestId('playback')).boundingBox();
+      expect(bar!.y + bar!.height, name).toBeLessThanOrEqual(viewport.height);
+      const squares = await shown(page.locator('.uttt-board')).boundingBox();
+      const table = await shown(page.locator('.panel.table')).boundingBox();
+      expect(Math.abs(table!.y - squares!.y), name).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(table!.y + table!.height - (squares!.y + squares!.height)),
+        name,
+      ).toBeLessThanOrEqual(1);
+    }
   }
 });
 
-test('in a narrower window the review’s board and playback bar still fit the height', async ({
-  page,
-}) => {
+test('in a narrower window the board and playback bar still fit the height', async ({ page }) => {
   await mockSaved(page);
-  for (const viewport of [
-    { width: 1100, height: 700 },
-    { width: 1024, height: 768 },
-  ]) {
-    await page.setViewportSize(viewport);
-    await page.goto(`/#/review/saved/${SAVED}`);
-    await expect(page.getByRole('button', { name: 'Next move' })).toBeVisible();
-    const name = `${viewport.width}x${viewport.height}`;
-    const squares = await page.locator('.uttt-board').boundingBox();
-    const bar = await page.getByTestId('playback').boundingBox();
-    expect(squares!.y + squares!.height, name).toBeLessThanOrEqual(viewport.height);
-    expect(bar!.y + bar!.height, name).toBeLessThanOrEqual(viewport.height);
+  await page.route('**/api/sessions/ab12', (route) => route.fulfill({ json: sessionOver() }));
+  for (const hash of [`/#/game/uttt/review/saved/${SAVED}`, '/#/game/uttt/ab12']) {
+    for (const viewport of [
+      { width: 1100, height: 700 },
+      { width: 1024, height: 768 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto(hash);
+      await expect(page.getByRole('button', { name: 'Next move' })).toBeVisible();
+      const name = `${hash} ${viewport.width}x${viewport.height}`;
+      const squares = await shown(page.locator('.uttt-board')).boundingBox();
+      const bar = await shown(page.getByTestId('playback')).boundingBox();
+      expect(squares!.y + squares!.height, name).toBeLessThanOrEqual(viewport.height);
+      expect(bar!.y + bar!.height, name).toBeLessThanOrEqual(viewport.height);
+    }
   }
 });
 
@@ -416,7 +504,7 @@ test('the final frame of a game won by three small boards has the dashed line, t
   const frames = gameFrames();
   const last = { ...frames[frames.length - 1]!, small };
   await mockSaved(page, { ...recordView(), frames: [...frames.slice(0, -1), last] });
-  await page.goto(`/#/review/saved/${SAVED}`);
+  await page.goto(`/#/game/uttt/review/saved/${SAVED}`);
   await expect(page.getByRole('button', { name: 'Next move' })).toBeVisible();
   await expect(page.getByTestId('win-lines')).toHaveCount(0);
   await page.keyboard.press('End');

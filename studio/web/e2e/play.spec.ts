@@ -306,7 +306,7 @@ test('compiling and measuring say what the server does', async ({ page }) => {
   );
 });
 
-test('bot against bot shows the move number in the info card, then the review', async ({
+test('bot against bot shows the move number in the info card, then becomes its review', async ({
   page,
 }) => {
   const f1 = frame({ marks: [[4, 4, 0]], last: [4, 4] });
@@ -337,8 +337,10 @@ test('bot against bot shows the move number in the info card, then the review', 
     frames: [frame(), f1, frame({ marks: [[4, 4, 0]], points: [2, 3], winner: 1 })],
     turns: [answer(0, '4 4', 12), answer(1, '4 5', 9)],
   };
-  // The game ended: the review opens by itself, with the same result and the board in place.
-  await expect(page).toHaveURL(/#\/review\/session\/ab12$/);
+  // The game ended: it becomes its review in place, with the same result and the board in
+  // place; the address stays.
+  await expect(page.getByTestId('playback')).toBeVisible();
+  await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
   await expect(page.getByTestId('result')).toContainText('0–1 · O wins');
   await expect(page.getByTestId('result')).toContainText('Small boards won: 2–3');
   await expect(page.getByTestId('board-overlay')).toHaveCount(0);
@@ -586,6 +588,44 @@ test('a timeout report that fails is made again', async ({ page }) => {
   await expect(page.getByTestId('result')).toContainText('Out of time');
   await page.clock.runFor(5_000);
   expect(ends.length).toBe(2);
+});
+
+test('the Play tab goes on while another tab is shown: its clock runs and its timeout is reported', async ({
+  page,
+}) => {
+  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+  const mock = await mockApi(page, session({}));
+  mock.next = OVER_BY_TIMEOUT();
+  await page.route(
+    (url) => url.pathname === '/api/history',
+    (route) => route.fulfill({ json: [] }),
+  );
+  await startTimedFriendGame(page);
+  await page.getByLabel('Show coordinates').check();
+  await page.clock.runFor(5_000);
+  await expect(page.getByTestId('clock-0')).toHaveText('0:25');
+
+  const tabs = page.getByRole('navigation', { name: 'Game' });
+  await tabs.getByRole('link', { name: 'History' }).click();
+  await expect(page).toHaveURL(/#\/game\/uttt\/history$/);
+  await expect(page.getByTestId('play-tab')).toBeHidden();
+  await page.clock.runFor(10_000);
+  await tabs.getByRole('link', { name: 'Play' }).click();
+  await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
+  // The clock kept running while the tab was hidden: it was not started again from the settings.
+  await expect(page.getByTestId('clock-0')).toHaveText('0:15');
+  await expect(page.getByLabel('Show coordinates')).toBeChecked();
+  expect(mock.posts).toEqual([]);
+
+  // A clock that runs out while another tab is shown is reported all the same.
+  await tabs.getByRole('link', { name: 'History' }).click();
+  await page.clock.runFor(16_000);
+  await expect
+    .poll(() => mock.posts)
+    .toEqual([{ path: '/end', body: { seat: 0, reason: 'timeout' } }]);
+  await tabs.getByRole('link', { name: 'Play' }).click();
+  await expect(page.getByTestId('result')).toContainText('Out of time');
+  await expect(page.getByTestId('playback')).toBeVisible();
 });
 
 test('a double click on Rematch creates one session', async ({ page }) => {

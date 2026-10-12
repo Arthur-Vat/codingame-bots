@@ -191,7 +191,7 @@ Decided with the owner on 2026-10-11 ([ADR 0030](adr/0030-studio-on-github-pages
 Planned with the owner on 2026-10-12, from his trial on Windows: the game page fits the window, a finished game becomes its review on the same page, the history is a tab of each game, and two bots play at a chosen pace.
 
 - [x] The board fits the window, the panels match it, the new logo, an empty board before a game, the winning line, and confirmations before resigning or leaving a running game
-- [ ] One page per game: play, review and history in tabs; a finished game becomes its review in place
+- [x] One page per game: play, review and history in tabs; a finished game becomes its review in place
 - [ ] Bot against bot shown move by move at a chosen pace, changeable while it plays
 
 Order: A, B, C, E, then F, then the interface rework (G), then D. Later: each bot's own evaluation from future releases, more games.

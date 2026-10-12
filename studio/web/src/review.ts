@@ -198,6 +198,29 @@ export function playbackReducer(state: PlaybackState, action: PlaybackAction): P
   }
 }
 
+/** What a playback holds: its state, and the game it was started for (null before any). */
+export interface HeldPlayback {
+  key: string | null;
+  state: PlaybackState;
+}
+
+export const NO_PLAYBACK: HeldPlayback = { key: null, state: PLAYBACK_START };
+
+/**
+ * The playback to use for the game `key`: the one held when it is for that game, else a new one,
+ * stopped at normal speed on frame `start`. A game going on has no key until it is over; then its
+ * review starts on the frame that was on the board.
+ */
+export function playbackFor(held: HeldPlayback, key: string | null, start: number): HeldPlayback {
+  if (held.key === key) return held;
+  return { key, state: { ...PLAYBACK_START, cursor: Math.max(0, start) } };
+}
+
+/** The cursor to draw: the state's, kept within the frames there are. */
+export function shownCursor(state: PlaybackState, last: number): number {
+  return clamp(state.cursor, last);
+}
+
 /** What a key does in the review: a frame to go to, `'toggle'` for Space, or undefined. */
 export function reviewKey(
   key: string,

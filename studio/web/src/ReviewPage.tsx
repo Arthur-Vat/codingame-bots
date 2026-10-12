@@ -1,30 +1,21 @@
-import { useEffect, useEffectEvent, useReducer, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { getHistoryRecord, getRecord, postHistory, postHistoryText, saveSession } from './api';
 import { arenaRecordText } from './arena';
 import { BoardSlot } from './BoardSlot';
-import { download, downloadText, errorMessage, takesSpace, typesText } from './browser';
+import { download, downloadText, errorMessage } from './browser';
 import { emptyFrames, renderers, resultDetails } from './games/registry';
 import { Row, useKeepInView } from './GameTable';
 import { SeatMark } from './Marks';
 import { recallFile } from './loadedFiles';
 import { frameAfterTurn, timeUsed, turnOfFrame } from './play';
 import { PlaybackBar } from './PlaybackBar';
-import {
-  exportName,
-  formatDate,
-  lastFrame,
-  playbackInterval,
-  playbackReducer,
-  PLAYBACK_START,
-  retime,
-  reviewKey,
-  type ReviewModel,
-  type ReviewPlayer,
-} from './review';
-import type { ReviewKind } from './route';
+import { exportName, formatDate, lastFrame, type ReviewModel, type ReviewPlayer } from './review';
+import { routeHash, type ReviewKind } from './route';
 import { formatSpent } from './clock';
 import { moveRows, resultText, seatMark } from './sessionView';
 import { Toast, useToast } from './Toast';
+import { Redirect, StatusPanel } from './Panels';
+import { usePlayback } from './usePlayback';
 import { useReview } from './useReview';
 
 /** One player's strip: mark, name, how it played, and the time its answers took. */
@@ -140,45 +131,11 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
   const [coordinates, setCoordinates] = useState(false);
   const [savedHere, setSavedHere] = useState(false);
   const last = lastFrame(model);
-  const [playback, dispatch] = useReducer(playbackReducer, PLAYBACK_START);
-  const cursor = Math.max(0, Math.min(playback.cursor, last));
-  const wanted = playbackInterval(model.frames.length, playback.speed);
-  // The delay in use changes with the speed, not with every frame of a game still going on.
-  const [delay, setDelay] = useState(wanted);
-  const kept = retime(delay, wanted);
-  if (kept !== delay) setDelay(kept);
-
-  const tick = useEffectEvent(() => dispatch({ type: 'tick', last }));
-  // One timer for as long as the game plays at one delay: a step moves the cursor, and the one
-  // that reaches the last frame stops playing.
-  useEffect(() => {
-    if (!playback.playing || delay === null) return;
-    const timer = setInterval(tick, delay);
-    return () => clearInterval(timer);
-  }, [playback.playing, delay]);
-
-  const toggle = () => dispatch({ type: 'toggle', last });
-  const goto = (frame: number) => dispatch({ type: 'goto', frame, last });
-
-  const onKey = useEffectEvent((event: KeyboardEvent) => {
-    if (typesText(event.target)) return;
-    if (event.altKey || event.ctrlKey || event.metaKey) return;
-    const action = reviewKey(event.key, cursor, last);
-    if (action === undefined) return;
-    // Space on a button, a link, a checkbox or a radio button is theirs.
-    if (action === 'toggle' && takesSpace(event.target)) return;
-    event.preventDefault();
-    if (action === 'toggle') {
-      if (!event.repeat) toggle();
-    } else {
-      goto(action);
-    }
-  });
-  useEffect(() => {
-    const down = (event: KeyboardEvent) => onKey(event);
-    window.addEventListener('keydown', down);
-    return () => window.removeEventListener('keydown', down);
-  }, []);
+  // A review opened here starts at the first frame.
+  const playback = usePlayback(last, 0, `${model.kind}/${model.id}`, { active: true, keys: true });
+  const cursor = playback.cursor;
+  const goto = playback.goto;
+  const toggle = playback.toggle;
 
   const Renderer = renderers[model.game];
   const frame = model.frames[cursor] ?? emptyFrames[model.game]?.();
@@ -261,7 +218,7 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
             speed={playback.speed}
             onGoto={goto}
             onToggle={toggle}
-            onSpeed={(speed) => dispatch({ type: 'speed', speed })}
+            onSpeed={playback.setSpeed}
           />
         </section>
 
@@ -304,18 +261,80 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
   );
 }
 
-/** The review of a session, a saved game, an arena game or a loaded file. */
-export function ReviewPage({ kind, id }: { kind: ReviewKind; id: string }) {
+/** The game a review route names, loaded; its page when the game is loaded. */
+function ReviewLoader({ gameId, kind, id }: { gameId: string; kind: ReviewKind; id: string }) {
   const { model, error } = useReview(kind, id);
   if (model === null) {
+    return error === null ? (
+      <StatusPanel text="Loading the game…" />
+    ) : (
+      <StatusPanel text={error} alert />
+    );
+  }
+  // A hand-typed address with another game's id: the review belongs to its own game's page.
+  if (model.game !== gameId) {
     return (
-      <main className="wrap">
-        <section className="panel empty-page" role={error === null ? 'status' : 'alert'}>
-          {error ?? 'Loading the game…'}
-        </section>
-      </main>
+      <Redirect
+        hash={routeHash({
+          page: 'game',
+          gameId: model.game,
+          tab: 'review',
+          review: { kind, id },
+        })}
+      />
     );
   }
   // A new game starts from its first frame, with its own playback.
   return <ReviewScreen key={`${model.kind}/${model.id}`} model={model} />;
+}
+
+/** The Review tab of a game: the game open for review, or a way to open one. */
+export function ReviewTab({
+  gameId,
+  review,
+}: {
+  gameId: string;
+  review: { kind: ReviewKind; id: string } | null;
+}) {
+  if (review === null) {
+    return (
+      <main className="wrap">
+        <section className="panel empty-page" data-testid="review-empty">
+          <p>No game open for review.</p>
+          <p>
+            <a href={routeHash({ page: 'game', gameId, tab: 'history', set: 'mine' })}>
+              Open one from the history
+            </a>
+          </p>
+        </section>
+      </main>
+    );
+  }
+  // A session is reviewed in place, in the Play tab.
+  if (review.kind === 'session') {
+    return (
+      <Redirect hash={routeHash({ page: 'game', gameId, tab: 'play', sessionId: review.id })} />
+    );
+  }
+  return <ReviewLoader gameId={gameId} kind={review.kind} id={review.id} />;
+}
+
+/**
+ * An address of the time before the tabs, `#/review/<kind>/<id>`: found once the game is loaded,
+ * then replaced with the address of its own game's page.
+ */
+export function OldReviewRedirect({ kind, id }: { kind: ReviewKind; id: string }) {
+  const { model, error } = useReview(kind, id);
+  if (model === null) {
+    return error === null ? (
+      <StatusPanel text="Loading the game…" />
+    ) : (
+      <StatusPanel text={error} alert />
+    );
+  }
+  const hash =
+    kind === 'session'
+      ? routeHash({ page: 'game', gameId: model.game, tab: 'play', sessionId: id })
+      : routeHash({ page: 'game', gameId: model.game, tab: 'review', review: { kind, id } });
+  return <Redirect hash={hash} text="Loading the game…" />;
 }

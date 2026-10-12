@@ -84,12 +84,36 @@
   font-size: 13px;
 }
 
+/* The tabs of a game's page, in the same style as the main navigation. */
+.nav.tabs {
+  flex-wrap: wrap;
+}
+
 /* Which engine answers, when it is not the local server's. */
 .engine {
   margin-left: auto;
   color: var(--muted);
   font-size: 12px;
   opacity: 0.8;
+}
+
+/* At phone width the bar may take a second line (never a horizontal scroll). */
+@media (max-width: 640px) {
+  .top {
+    height: auto;
+    min-height: 52px;
+    flex-wrap: wrap;
+    gap: 0 12px;
+    padding-block: 4px;
+  }
+
+  .nav a {
+    padding: 8px;
+  }
+
+  .engine {
+    margin-left: 0;
+  }
 }
 
 .wrap {

@@ -30,34 +30,40 @@ const entry = (patch: Partial<HistoryEntry> = {}): HistoryEntry => ({
 });
 
 describe('historyQuery', () => {
-  it('is empty without filters', () => {
-    expect(historyQuery(NO_FILTERS)).toBe('');
+  it('always names the game', () => {
+    expect(historyQuery(NO_FILTERS, 'uttt')).toBe('?game=uttt');
     expect(filtersActive(NO_FILTERS)).toBe(false);
   });
 
   it('maps each filter to the server parameter', () => {
-    expect(historyQuery({ ...NO_FILTERS, release: 'uttt-v009' })).toBe('?release=uttt-v009');
-    expect(historyQuery({ ...NO_FILTERS, result: 'x' })).toBe('?result=x');
-    expect(historyQuery({ ...NO_FILTERS, result: 'o' })).toBe('?result=o');
-    expect(historyQuery({ ...NO_FILTERS, result: 'draw' })).toBe('?result=draw');
-    expect(historyQuery({ ...NO_FILTERS, result: 'unfinished' })).toBe('?result=unfinished');
-    expect(historyQuery({ ...NO_FILTERS, result: 'fault' })).toBe('?result=fault');
-    expect(historyQuery({ ...NO_FILTERS, source: 'studio' })).toBe('?source=studio');
-    expect(historyQuery({ ...NO_FILTERS, source: 'arena' })).toBe('?source=arena');
-    expect(historyQuery({ ...NO_FILTERS, from: '2026-10-01' })).toBe('?from=2026-10-01');
-    expect(historyQuery({ ...NO_FILTERS, to: '2026-10-10' })).toBe('?to=2026-10-10');
+    const query = (patch: Partial<typeof NO_FILTERS>) =>
+      historyQuery({ ...NO_FILTERS, ...patch }, 'uttt');
+    expect(query({ release: 'uttt-v009' })).toBe('?game=uttt&release=uttt-v009');
+    expect(query({ result: 'x' })).toBe('?game=uttt&result=x');
+    expect(query({ result: 'o' })).toBe('?game=uttt&result=o');
+    expect(query({ result: 'draw' })).toBe('?game=uttt&result=draw');
+    expect(query({ result: 'unfinished' })).toBe('?game=uttt&result=unfinished');
+    expect(query({ result: 'fault' })).toBe('?game=uttt&result=fault');
+    expect(query({ source: 'studio' })).toBe('?game=uttt&source=studio');
+    expect(query({ source: 'arena' })).toBe('?game=uttt&source=arena');
+    expect(query({ from: '2026-10-01' })).toBe('?game=uttt&from=2026-10-01');
+    expect(query({ to: '2026-10-10' })).toBe('?game=uttt&to=2026-10-10');
   });
 
   it('joins several filters and encodes the values', () => {
-    const query = historyQuery({
-      release: 'my bot&co',
-      result: 'fault',
-      source: 'arena',
-      from: '2026-10-01',
-      to: '2026-10-10',
-    });
+    const query = historyQuery(
+      {
+        release: 'my bot&co',
+        result: 'fault',
+        source: 'arena',
+        from: '2026-10-01',
+        to: '2026-10-10',
+      },
+      'uttt',
+    );
     const params = new URLSearchParams(query);
     expect(query.startsWith('?')).toBe(true);
+    expect(params.get('game')).toBe('uttt');
     expect(params.get('release')).toBe('my bot&co');
     expect(params.get('result')).toBe('fault');
     expect(params.get('source')).toBe('arena');
@@ -65,6 +71,12 @@ describe('historyQuery', () => {
     expect(params.get('to')).toBe('2026-10-10');
     expect(query).not.toContain('&co');
     expect(filtersActive({ ...NO_FILTERS, from: '2026-10-01' })).toBe(true);
+  });
+
+  it('encodes a game id that is not a plain word', () => {
+    const query = historyQuery(NO_FILTERS, 'a b&c=d');
+    expect(query).toBe('?game=a+b%26c%3Dd');
+    expect(new URLSearchParams(query).get('game')).toBe('a b&c=d');
   });
 });
 
@@ -111,14 +123,19 @@ describe('table cells', () => {
 });
 
 describe('releaseOptions', () => {
-  it('lists the releases of all games once', () => {
-    expect(
-      releaseOptions([
-        { id: 'uttt', name: 'U', releases: ['uttt-v010', 'uttt-v009'] },
-        { id: 'other', name: 'O', releases: ['uttt-v009', 'other-v001'] },
-      ]),
-    ).toEqual(['uttt-v010', 'uttt-v009', 'other-v001']);
-    expect(releaseOptions(null)).toEqual([]);
+  const games = [
+    { id: 'uttt', name: 'U', releases: ['uttt-v010', 'uttt-v009', 'uttt-v010'] },
+    { id: 'other', name: 'O', releases: ['uttt-v009', 'other-v001'] },
+  ];
+
+  it('lists the releases of the game only, once each', () => {
+    expect(releaseOptions(games, 'uttt')).toEqual(['uttt-v010', 'uttt-v009']);
+    expect(releaseOptions(games, 'other')).toEqual(['uttt-v009', 'other-v001']);
+  });
+
+  it('lists none for an unknown game or before the games are loaded', () => {
+    expect(releaseOptions(games, 'nope')).toEqual([]);
+    expect(releaseOptions(null, 'uttt')).toEqual([]);
   });
 });
 

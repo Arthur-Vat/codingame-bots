@@ -5,6 +5,8 @@ import {
   exportName,
   formatDate,
   lastFrame,
+  NO_PLAYBACK,
+  playbackFor,
   playbackInterval,
   playbackReducer,
   PLAYBACK_START,
@@ -12,6 +14,7 @@ import {
   reviewKey,
   reviewOfRecord,
   reviewOfSession,
+  shownCursor,
   SPEEDS,
   speedLabel,
   type PlaybackState,
@@ -313,6 +316,49 @@ describe('playbackReducer', () => {
     expect(playbackReducer(at({}), { type: 'goto', frame: -3, last: 5 }).cursor).toBe(0);
     expect(playbackReducer(at({}), { type: 'goto', frame: 9, last: 5 }).cursor).toBe(5);
     expect(playbackReducer(at({}), { type: 'goto', frame: 1, last: -1 }).cursor).toBe(0);
+  });
+});
+
+describe('playbackFor', () => {
+  it('starts a new playback on the frame that was on the board', () => {
+    const fresh = playbackFor(NO_PLAYBACK, 'ab12', 7);
+    expect(fresh).toEqual({ key: 'ab12', state: { cursor: 7, playing: false, speed: 1 } });
+  });
+
+  it('keeps the playback held for the same game, so a poll does not move the cursor', () => {
+    const held = playbackFor(NO_PLAYBACK, 'ab12', 7);
+    const moved = { key: 'ab12', state: { ...held.state, cursor: 2, playing: true, speed: 4 } };
+    expect(playbackFor(moved, 'ab12', 9)).toBe(moved);
+  });
+
+  it('starts again for another game, and when the game goes on again (key null)', () => {
+    const moved = { key: 'ab12', state: { cursor: 2, playing: true, speed: 4 } };
+    expect(playbackFor(moved, 'cd34', 5).state).toEqual({ cursor: 5, playing: false, speed: 1 });
+    expect(playbackFor(moved, null, 5)).toEqual({
+      key: null,
+      state: { cursor: 5, playing: false, speed: 1 },
+    });
+  });
+
+  it('never starts before the first frame', () => {
+    expect(playbackFor(NO_PLAYBACK, 'x', -3).state.cursor).toBe(0);
+  });
+
+  it('plays from the last frame by starting over, as the review does', () => {
+    const atEnd = playbackFor(NO_PLAYBACK, 'x', 4).state;
+    expect(playbackReducer(atEnd, { type: 'toggle', last: 4 })).toEqual({
+      cursor: 0,
+      playing: true,
+      speed: 1,
+    });
+  });
+});
+
+describe('shownCursor', () => {
+  it('keeps the cursor within the frames there are', () => {
+    expect(shownCursor({ cursor: 3, playing: false, speed: 1 }, 5)).toBe(3);
+    expect(shownCursor({ cursor: 9, playing: false, speed: 1 }, 5)).toBe(5);
+    expect(shownCursor({ cursor: 2, playing: false, speed: 1 }, -1)).toBe(0);
   });
 });
 
