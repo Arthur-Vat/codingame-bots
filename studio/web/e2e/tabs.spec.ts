@@ -257,59 +257,19 @@ test('a playing review stops when its tab is left and goes on when it is shown a
   await expect(cell(page, 4, 4, 'X')).toBeVisible();
 });
 
-test('the old addresses redirect once, and Back does not return to them', async ({ page }) => {
+test('the addresses of the time before the tabs are unknown: the home page', async ({ page }) => {
   await mockAll(page, over());
-  await serveArena(page.context(), { index: null });
-  await page.addInitScript(
-    'window.seen = []; window.addEventListener("hashchange", (event) => window.seen.push(new URL(event.newURL).hash));',
-  );
-  const seen = () => page.evaluate<string[]>('window.seen');
-  const settled = () =>
-    page.evaluate(
-      'new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 50))))',
-    );
-
-  await page.goto('/#/game/uttt');
-  const redirects: [string, RegExp][] = [
-    ['/#/history', /#\/game\/uttt\/history$/],
-    ['/#/history/arena', /#\/game\/uttt\/history\/arena$/],
-    [`/#/review/saved/${SAVED}`, new RegExp(`#/game/uttt/review/saved/${SAVED}$`)],
-    ['/#/review/session/ab12', /#\/game\/uttt\/ab12$/],
-    ['/#/game/uttt/review/session/ab12', /#\/game\/uttt\/ab12$/],
-  ];
-  for (const [old, target] of redirects) {
-    await page.goto('/#/game/uttt');
-    const before = (await seen()).length;
-    await page.goto(old);
-    await expect(page).toHaveURL(target);
-    await settled();
-    // The old address, then the new one: no loop between two routes.
-    expect((await seen()).slice(before), old).toHaveLength(2);
-    // Back leaves the redirect behind: it goes to where the visitor came from.
-    await page.goBack();
-    await expect(page).toHaveURL(/#\/game\/uttt$/);
+  for (const hash of [
+    '/#/history',
+    '/#/history/arena',
+    `/#/review/saved/${SAVED}`,
+    '/#/review/session/ab12',
+    '/#/game/uttt/review/session/ab12',
+  ]) {
+    await page.goto(hash);
+    await expect(page.getByRole('heading', { name: 'Choose a game' }), hash).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Game' })).toHaveCount(0);
   }
-});
-
-test('an old review of a game that cannot be shown says why, and does not redirect', async ({
-  page,
-}) => {
-  await mockGames(page);
-  await page.route('**/api/history/nope/view', (route) =>
-    route.fulfill({ status: 404, json: { error: 'no saved game "nope"' } }),
-  );
-  await page.goto('/#/review/saved/nope');
-  await expect(page.getByRole('alert')).toHaveText('no saved game "nope"');
-  await expect(page).toHaveURL(/#\/review\/saved\/nope$/);
-});
-
-test('an old history address shows the home page’s notice when the games cannot be loaded', async ({
-  page,
-}) => {
-  await page.route('**/api/games', (route) => route.abort());
-  await page.goto('/#/history');
-  await expect(page.getByText('Start the server: cargo run --release -p studio')).toBeVisible();
-  await expect(page).toHaveURL(/#\/history$/);
 });
 
 test('a review of another game’s record moves to that game’s page', async ({ page }) => {
@@ -325,10 +285,19 @@ test('a review of another game’s record moves to that game’s page', async ({
   await page.route(`**/api/history/${SAVED}/view`, (route) =>
     route.fulfill({ json: recordView({ game: 'other' }) }),
   );
+  await page.addInitScript(
+    'window.seen = []; window.addEventListener("hashchange", (event) => window.seen.push(new URL(event.newURL).hash));',
+  );
+  await page.goto('/#/game/uttt');
   await page.goto(`/#/game/uttt/review/saved/${SAVED}`);
   await expect(page).toHaveURL(new RegExp(`#/game/other/review/saved/${SAVED}$`));
   await expect(page.locator('.crumb')).toHaveText('Other');
   await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
+  // Replaced once, with no loop between two routes, and Back leaves it behind.
+  const seen = await page.evaluate<string[]>('window.seen');
+  expect(seen).toEqual([`#/game/uttt/review/saved/${SAVED}`, `#/game/other/review/saved/${SAVED}`]);
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/game\/uttt$/);
 });
 
 test('a game the server does not have is said on every tab', async ({ page }) => {

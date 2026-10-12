@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ApiError, getHistoryView, postView, postViewText, type RecordView } from './api';
 import { arenaRecordText } from './arena';
 import { recallFile } from './loadedFiles';
-import { reviewOfRecord, reviewOfSession, type ReviewModel } from './review';
+import { reviewOfRecord, type ReviewModel } from './review';
 import type { ReviewKind } from './route';
-import { useSession } from './useSession';
 
 export interface ReviewState {
   /** Null while loading, or when it failed. */
@@ -44,16 +43,13 @@ async function loadView(kind: 'saved' | 'file' | 'arena', id: string): Promise<R
 }
 
 /**
- * The game of a review route as one model. A session is polled (it may still be going on); a
- * saved game and a file are loaded once.
+ * The game of a review route as one model: a saved game, an arena game or a file, loaded once.
  */
 export function useReview(kind: ReviewKind, id: string): ReviewState {
-  const { session, error: sessionError } = useSession(kind === 'session' ? id : null);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const key = `${kind}/${id}`;
 
   useEffect(() => {
-    if (kind === 'session') return;
     let live = true;
     loadView(kind, id).then(
       (model) => {
@@ -68,17 +64,6 @@ export function useReview(kind: ReviewKind, id: string): ReviewState {
     };
   }, [kind, id, key]);
 
-  const sessionModel = useMemo(
-    () => (session === null ? null : reviewOfSession(session)),
-    [session],
-  );
-
-  if (kind === 'session') {
-    return {
-      model: sessionModel,
-      error: sessionModel === null ? (sessionError?.message ?? null) : null,
-    };
-  }
   if (loaded === null || loaded.key !== key) return { model: null, error: null };
   return { model: loaded.model, error: loaded.error };
 }

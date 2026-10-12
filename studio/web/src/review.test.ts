@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Answer, GameRecord, RecordPlayer, RecordView, Session } from './api';
+import type { Answer, GameRecord, RecordPlayer, RecordView } from './api';
 import { recallFile, rememberFile } from './loadedFiles';
 import {
   exportName,
@@ -13,7 +13,6 @@ import {
   retime,
   reviewKey,
   reviewOfRecord,
-  reviewOfSession,
   shownCursor,
   SPEEDS,
   speedLabel,
@@ -21,35 +20,6 @@ import {
 } from './review';
 
 const turn = (seat: number, line: string, ms = 5): Answer[] => [{ seat, lines: [line], ms }];
-
-const sessionSeat = {
-  kind: 'bot',
-  name: 'uttt-v010',
-  release: 'uttt-v010',
-  think_ms: 100,
-  mode: 'fixed',
-  fixed_iters: 2500,
-} as const;
-
-function session(patch: Partial<Session> = {}): Session {
-  return {
-    id: 'ab12',
-    game: 'uttt',
-    seed: 7,
-    opening_plies: 0,
-    seats: [{ kind: 'human', name: 'You' }, sessionSeat],
-    status: 'over',
-    error: null,
-    to_act: [],
-    opening_turns: 0,
-    turns: [turn(0, '4 4'), turn(1, '4 5')],
-    frames: ['f0', 'f1', 'f2'],
-    human_moves: [],
-    result: { winner: 1, end: { kind: 'finished' } },
-    progress: null,
-    ...patch,
-  };
-}
 
 const botPlayer = (name: string, patch: Partial<RecordPlayer> = {}): RecordPlayer => ({
   name,
@@ -86,40 +56,6 @@ function view(patch: Partial<RecordView> = {}, recordPatch: Partial<GameRecord> 
     ...patch,
   };
 }
-
-describe('reviewOfSession', () => {
-  it('turns a finished session into the model', () => {
-    const model = reviewOfSession(session());
-    expect(model.kind).toBe('session');
-    expect(model.id).toBe('ab12');
-    expect(model.game).toBe('uttt');
-    expect(model.players[0]).toEqual({ name: 'You', kind: 'human', settings: null });
-    expect(model.players[1]).toEqual({ name: 'uttt-v010', kind: 'bot', settings: '≈ 100 ms' });
-    expect(model.turns).toHaveLength(2);
-    expect(model.frames).toHaveLength(3);
-    expect(model.result).toEqual({ winner: 1, end: { kind: 'finished' } });
-    expect(model.seed).toBe(7);
-    expect(model.source).toBe('Played here');
-    expect(model.unixTime).toBeNull();
-    expect(model.saved).toBe(false);
-    expect(model.hiddenTurns).toBe(0);
-    expect(model.error).toBeNull();
-  });
-
-  it('says real time for a bot that plays on a clock', () => {
-    const model = reviewOfSession(
-      session({ seats: [{ ...sessionSeat, mode: 'realtime' }, sessionSeat] }),
-    );
-    expect(model.players[0].settings).toBe('≈ 100 ms, real time');
-  });
-
-  it('has no result while the game goes on, and carries the error of a failed one', () => {
-    const going = reviewOfSession(session({ status: 'bot_thinking', result: null }));
-    expect(going.result).toBeNull();
-    const failed = reviewOfSession(session({ status: 'failed', error: 'the bot crashed' }));
-    expect(failed.error).toBe('the bot crashed');
-  });
-});
 
 describe('reviewOfRecord', () => {
   it('turns a saved game into the model', () => {
@@ -388,18 +324,15 @@ describe('formatDate and exportName', () => {
     expect(formatDate(local.getTime() / 1000)).toBe('2026-10-10 14:05');
   });
 
-  it('names an export after the saved id, the file, or the game', () => {
-    const now = new Date('2026-10-10T12:00:00Z');
-    const base = reviewOfSession(session());
-    expect(exportName(base, now)).toBe('uttt-2026-10-10-7.json');
+  it('names an export after the saved or arena id, or the file', () => {
     const saved = reviewOfRecord(view(), { kind: 'saved', id: 'uttt-1-abc' });
-    expect(exportName(saved, now)).toBe('uttt-1-abc.json');
+    expect(exportName(saved)).toBe('uttt-1-abc.json');
     const arena = reviewOfRecord(view(), { kind: 'arena', id: 'uttt-2-def' });
-    expect(exportName(arena, now)).toBe('uttt-2-def.json');
+    expect(exportName(arena)).toBe('uttt-2-def.json');
     const file = reviewOfRecord(view(), { kind: 'file', id: 'f1', name: 'sample' });
-    expect(exportName(file, now)).toBe('sample.json');
+    expect(exportName(file)).toBe('sample.json');
     const named = reviewOfRecord(view(), { kind: 'file', id: 'f1', name: 'a.json' });
-    expect(exportName(named, now)).toBe('a.json');
+    expect(exportName(named)).toBe('a.json');
   });
 });
 

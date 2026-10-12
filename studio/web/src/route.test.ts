@@ -40,7 +40,6 @@ describe('parseRoute', () => {
       review: null,
     });
     for (const [kind, id] of [
-      ['session', 'ab12'],
       ['saved', 'uttt-1-abc'],
       ['file', 'f1'],
       ['arena', 'uttt-1-abc'],
@@ -81,33 +80,22 @@ describe('parseRoute', () => {
     });
   });
 
-  it('keeps the old history and review hashes as routes to redirect', () => {
-    expect(parseRoute('#/history')).toEqual({ page: 'old-history', set: 'mine' });
-    expect(parseRoute('#/history/')).toEqual({ page: 'old-history', set: 'mine' });
-    expect(parseRoute('#/history/arena')).toEqual({ page: 'old-history', set: 'arena' });
-    expect(parseRoute('#/review/session/ab12')).toEqual({
-      page: 'old-review',
-      kind: 'session',
-      id: 'ab12',
-    });
-    expect(parseRoute('#/review/saved/uttt-1-abc')).toEqual({
-      page: 'old-review',
-      kind: 'saved',
-      id: 'uttt-1-abc',
-    });
-    expect(parseRoute('#/review/file/f1')).toEqual({ page: 'old-review', kind: 'file', id: 'f1' });
-    expect(parseRoute('#/review/arena/uttt-1-abc')).toEqual({
-      page: 'old-review',
-      kind: 'arena',
-      id: 'uttt-1-abc',
-    });
+  it('sends the addresses of the time before the tabs to the home page', () => {
+    for (const hash of [
+      '#/history',
+      '#/history/',
+      '#/history/arena',
+      '#/review/saved/uttt-1-abc',
+      '#/review/file/f1',
+      '#/review/arena/uttt-1-abc',
+      '#/review/session/ab12',
+    ]) {
+      expect(parseRoute(hash), hash).toEqual({ page: 'home' });
+    }
   });
 
-  it('sends a malformed old review to the home page', () => {
-    expect(parseRoute('#/review')).toEqual({ page: 'home' });
-    expect(parseRoute('#/review/session')).toEqual({ page: 'home' });
-    expect(parseRoute('#/review/other/x')).toEqual({ page: 'home' });
-    expect(parseRoute('#/review/session/a/b')).toEqual({ page: 'home' });
+  it('sends the review of a session to the home page: a session is reviewed in the Play tab', () => {
+    expect(parseRoute('#/game/uttt/review/session/ab12')).toEqual({ page: 'home' });
   });
 
   it('sends anything unknown or malformed to the home page', () => {
@@ -117,15 +105,14 @@ describe('parseRoute', () => {
       '#/game/uttt/a/b',
       '#/game/uttt/review/bogus/x',
       '#/game/uttt/review/session',
-      '#/game/uttt/review/session/a/b',
+      '#/game/uttt/review/session/a',
       '#/game/uttt/review/saved/x/extra',
       '#/game/uttt/history/other',
       '#/game/uttt/history/arena/extra',
       '#/game/uttt/history/mine',
       '#/game/uttt/abcd/review',
-      '#/history/extra',
-      '#/history/arena/extra',
-      '#/history/mine',
+      '#/review',
+      '#/review/other/x',
       '#/nowhere',
     ]) {
       expect(parseRoute(hash), hash).toEqual({ page: 'home' });
@@ -158,15 +145,9 @@ describe('routeHash', () => {
   it('is the inverse of parseRoute', () => {
     for (const hash of [
       '#/',
-      '#/history',
-      '#/history/arena',
-      '#/review/session/ab12',
-      '#/review/saved/uttt-1-abc',
-      '#/review/arena/uttt-1-abc',
       '#/game/uttt',
       '#/game/uttt/ab12',
       '#/game/uttt/review',
-      '#/game/uttt/review/session/ab12',
       '#/game/uttt/review/saved/uttt-1-abc',
       '#/game/uttt/review/file/f1',
       '#/game/uttt/review/arena/uttt-1-abc',

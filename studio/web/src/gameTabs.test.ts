@@ -42,11 +42,9 @@ describe('remember', () => {
     expect(tabHashes(memory, 'uttt').play).toBe('#/game/uttt');
   });
 
-  it('keeps the last review when the Review tab shows nothing, and never keeps a session', () => {
+  it('keeps the last review when the Review tab shows nothing', () => {
     let memory = seen(NO_MEMORY, '#/game/uttt/review/file/f1');
     memory = seen(memory, '#/game/uttt/review');
-    expect(tabHashes(memory, 'uttt').review).toBe('#/game/uttt/review/file/f1');
-    memory = seen(memory, '#/game/uttt/review/session/ab12');
     expect(tabHashes(memory, 'uttt').review).toBe('#/game/uttt/review/file/f1');
   });
 

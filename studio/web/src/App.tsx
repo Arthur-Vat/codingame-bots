@@ -3,10 +3,9 @@ import { GamePage } from './GamePage';
 import { memoryOf, NO_MEMORY, remember, tabHashes, type GameMemory } from './gameTabs';
 import { HistoryPage } from './HistoryPage';
 import { HomePage } from './HomePage';
-import { useGames, useRoute, type GamesState } from './hooks';
-import { Redirect, StatusPanel } from './Panels';
-import { OldReviewRedirect, ReviewTab } from './ReviewPage';
-import { routeHash, type HistorySet } from './route';
+import { useGames, useRoute } from './hooks';
+import { StatusPanel } from './Panels';
+import { ReviewTab } from './ReviewPage';
 import type { ClockSettings } from './setup';
 import { TopBar } from './TopBar';
 
@@ -14,22 +13,6 @@ import { TopBar } from './TopBar';
 interface SessionClock {
   sessionId: string;
   clock: ClockSettings | null;
-}
-
-/**
- * The old address of the history, `#/history`, which listed every game: replaced with the history
- * tab of the first game once the games are known. If they cannot be loaded, the page says what
- * the home page does.
- */
-function OldHistoryRedirect({ set, state }: { set: HistorySet; state: GamesState }) {
-  if (state.error !== null) return <HomePage state={state} />;
-  if (state.games === null) return <StatusPanel text="Loading…" />;
-  const first = state.games[0];
-  const hash =
-    first === undefined
-      ? routeHash({ page: 'home' })
-      : routeHash({ page: 'game', gameId: first.id, tab: 'history', set });
-  return <Redirect hash={hash} />;
 }
 
 export default function App() {
@@ -57,10 +40,6 @@ export default function App() {
     <>
       <TopBar route={route} games={games} tabs={tabs} />
       {route.page === 'home' && <HomePage state={gamesState} />}
-      {route.page === 'old-history' && <OldHistoryRedirect set={route.set} state={gamesState} />}
-      {route.page === 'old-review' && (
-        <OldReviewRedirect key={`${route.kind}/${route.id}`} kind={route.kind} id={route.id} />
-      )}
       {route.page === 'game' && (
         // One page for the game. The Play tab stays mounted while the Review or the History tab
         // is shown, so a game goes on (polling, human clocks, a timeout is still reported).

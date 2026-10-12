@@ -1,10 +1,10 @@
 /**
- * What a review shows: a session of the server, a saved game, a file loaded in the browser, or an
- * arena game published with the site (ADR 0031).
+ * What a review shows: a saved game, a file loaded in the browser, or an arena game published with
+ * the site (ADR 0031). A game played here is reviewed in place, in the Play tab.
  */
-export type ReviewKind = 'session' | 'saved' | 'file' | 'arena';
+export type ReviewKind = 'saved' | 'file' | 'arena';
 
-const REVIEW_KINDS: readonly string[] = ['session', 'saved', 'file', 'arena'];
+const REVIEW_KINDS: readonly string[] = ['saved', 'file', 'arena'];
 
 /** Whose games the history lists: the visitor's own, or the arena games published with the site. */
 export type HistorySet = 'mine' | 'arena';
@@ -17,10 +17,7 @@ export type Route =
   | { page: 'home' }
   | { page: 'game'; gameId: string; tab: 'play'; sessionId: string | null }
   | { page: 'game'; gameId: string; tab: 'review'; review: { kind: ReviewKind; id: string } | null }
-  | { page: 'game'; gameId: string; tab: 'history'; set: HistorySet }
-  // The pages that came before the tabs, kept working by a redirect.
-  | { page: 'old-history'; set: HistorySet }
-  | { page: 'old-review'; kind: ReviewKind; id: string };
+  | { page: 'game'; gameId: string; tab: 'history'; set: HistorySet };
 
 /**
  * Reads a hash such as `#/game/uttt/ab12` into a route. Anything unknown is the home page.
@@ -32,17 +29,7 @@ export function parseRoute(hash: string): Route {
     .split('/')
     .filter((segment) => segment !== '')
     .map(decodeSegment);
-  const [first, second, third] = segments;
-  if (first === 'history' && segments.length === 1) {
-    return { page: 'old-history', set: 'mine' };
-  }
-  if (first === 'history' && segments.length === 2 && second === 'arena') {
-    return { page: 'old-history', set: 'arena' };
-  }
-  if (first === 'review' && segments.length === 3 && second && third) {
-    // The second segment is the kind and the third the id.
-    return isReviewKind(second) ? { page: 'old-review', kind: second, id: third } : HOME;
-  }
+  const [first, second] = segments;
   if (first === 'game' && second) {
     return parseGame(second, segments.slice(2));
   }
@@ -87,15 +74,11 @@ function decodeSegment(segment: string): string {
   }
 }
 
-/** The hash of a route, the inverse of [`parseRoute`] (the two old pages get their old hashes). */
+/** The hash of a route, the inverse of [`parseRoute`]. */
 export function routeHash(route: Route): string {
   switch (route.page) {
     case 'home':
       return '#/';
-    case 'old-history':
-      return route.set === 'arena' ? '#/history/arena' : '#/history';
-    case 'old-review':
-      return `#/review/${route.kind}/${encodeURIComponent(route.id)}`;
     case 'game': {
       const game = `#/game/${encodeURIComponent(route.gameId)}`;
       switch (route.tab) {

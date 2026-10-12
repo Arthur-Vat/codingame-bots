@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { getHistoryRecord, getRecord, postHistory, postHistoryText, saveSession } from './api';
+import { getHistoryRecord, postHistory, postHistoryText } from './api';
 import { arenaRecordText } from './arena';
 import { BoardSlot } from './BoardSlot';
 import { download, downloadText, errorMessage } from './browser';
@@ -42,17 +42,17 @@ function playerLine(player: ReviewPlayer): string {
   return player.settings === null ? player.name : `${player.name}, ${player.settings}`;
 }
 
-function InfoCard({ model, resultLine }: { model: ReviewModel; resultLine: string | null }) {
+function InfoCard({ model, resultLine }: { model: ReviewModel; resultLine: string }) {
   return (
     <section className="panel info">
       <h3>Review</h3>
       <dl>
         <Row term="Source" value={model.source} />
-        {model.unixTime !== null && <Row term="Date" value={formatDate(model.unixTime)} />}
+        <Row term="Date" value={formatDate(model.unixTime)} />
         <Row term="Seed" value={String(model.seed)} />
         <Row term="X" value={playerLine(model.players[0])} />
         <Row term="O" value={playerLine(model.players[1])} />
-        {resultLine !== null && <Row term="Result" value={resultLine} />}
+        <Row term="Result" value={resultLine} />
       </dl>
     </section>
   );
@@ -69,11 +69,11 @@ function ReviewMoves({
   model: ReviewModel;
   shownTurn: number;
   atLatest: boolean;
-  headline: string | null;
+  headline: string;
   detail: string;
   onPick: (turn: number) => void;
 }) {
-  const list = useKeepInView(shownTurn, model.turns.length, model.result !== null, atLatest);
+  const list = useKeepInView(shownTurn, model.turns.length, true, atLatest);
   const cell = (move: { turn: number; text: string }) => (
     <button
       type="button"
@@ -92,17 +92,10 @@ function ReviewMoves({
           {row.moves[1] === null ? <span /> : cell(row.moves[1])}
         </MoveRow>
       ))}
-      {model.error !== null && (
-        <div className="failed" role="alert">
-          {model.error}
-        </div>
-      )}
-      {headline !== null && (
-        <div className="result" data-testid="result">
-          <b>{headline}</b>
-          {detail !== '' && <span>{detail}</span>}
-        </div>
-      )}
+      <div className="result" data-testid="result">
+        <b>{headline}</b>
+        {detail !== '' && <span>{detail}</span>}
+      </div>
     </div>
   );
 }
@@ -118,7 +111,6 @@ function MoveRow({ number, children }: { number: number; children: ReactNode }) 
 
 /** The record to save or export, whatever the game came from but an arena game (kept as text). */
 async function recordOf(model: ReviewModel): Promise<unknown> {
-  if (model.kind === 'session') return getRecord(model.id);
   if (model.kind === 'saved') return getHistoryRecord(model.id);
   if (model.kind === 'arena') throw new Error('An arena game is kept as text.');
   const file = recallFile(model.id);
@@ -141,13 +133,12 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
   const frame = model.frames[cursor] ?? emptyFrameFor(model.game);
   const finalFrame = model.frames[last];
   const detail =
-    model.result?.end.kind === 'finished' && finalFrame !== undefined
+    model.result.end.kind === 'finished' && finalFrame !== undefined
       ? resultDetailFor(model.game, finalFrame)
       : null;
-  const text = model.result === null ? null : resultText(model.result, model.players, detail);
-  const endDetail =
-    text === null ? '' : model.hiddenTurns > 0 ? `${text.detail}, not shown` : text.detail;
-  const resultLine = text === null ? null : `${text.headline}${endDetail ? `, ${endDetail}` : ''}`;
+  const text = resultText(model.result, model.players, detail);
+  const endDetail = model.hiddenTurns > 0 ? `${text.detail}, not shown` : text.detail;
+  const resultLine = `${text.headline}${endDetail ? `, ${endDetail}` : ''}`;
 
   const shownTurn = turnOfFrame(cursor, model.openingTurns);
   const saved = model.saved || savedHere;
@@ -156,11 +147,9 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
     try {
       // An arena game is saved as the text it was published in.
       const { duplicate } =
-        model.kind === 'session'
-          ? await saveSession(model.id)
-          : model.kind === 'arena'
-            ? await postHistoryText(await arenaRecordText(model.id))
-            : await postHistory(await recordOf(model));
+        model.kind === 'arena'
+          ? await postHistoryText(await arenaRecordText(model.id))
+          : await postHistory(await recordOf(model));
       setSavedHere(true);
       toast.show(duplicate ? 'Already in your history' : 'Saved to your history');
     } catch (failure) {
@@ -170,9 +159,9 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
   const exportFile = async () => {
     try {
       if (model.kind === 'arena') {
-        downloadText(exportName(model, new Date()), await arenaRecordText(model.id));
+        downloadText(exportName(model), await arenaRecordText(model.id));
       } else {
-        download(exportName(model, new Date()), await recordOf(model));
+        download(exportName(model), await recordOf(model));
       }
     } catch (failure) {
       toast.show(errorMessage(failure));
@@ -229,7 +218,7 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
               model={model}
               shownTurn={shownTurn}
               atLatest={cursor >= last}
-              headline={text?.headline ?? null}
+              headline={text.headline}
               detail={endDetail}
               onPick={(turn) => goto(frameAfterTurn(turn, model.openingTurns))}
             />
@@ -310,31 +299,5 @@ export function ReviewTab({
       </main>
     );
   }
-  // A session is reviewed in place, in the Play tab.
-  if (review.kind === 'session') {
-    return (
-      <Redirect hash={routeHash({ page: 'game', gameId, tab: 'play', sessionId: review.id })} />
-    );
-  }
   return <ReviewLoader gameId={gameId} kind={review.kind} id={review.id} />;
-}
-
-/**
- * An address of the time before the tabs, `#/review/<kind>/<id>`: found once the game is loaded,
- * then replaced with the address of its own game's page.
- */
-export function OldReviewRedirect({ kind, id }: { kind: ReviewKind; id: string }) {
-  const { model, error } = useReview(kind, id);
-  if (model === null) {
-    return error === null ? (
-      <StatusPanel text="Loading the game…" />
-    ) : (
-      <StatusPanel text={error} alert />
-    );
-  }
-  const hash =
-    kind === 'session'
-      ? routeHash({ page: 'game', gameId: model.game, tab: 'play', sessionId: id })
-      : routeHash({ page: 'game', gameId: model.game, tab: 'review', review: { kind, id } });
-  return <Redirect hash={hash} text="Loading the game…" />;
 }

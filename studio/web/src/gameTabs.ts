@@ -28,8 +28,8 @@ export function memoryOf(memory: GameMemory, gameId: string): TabMemory {
 /**
  * The memory after the app showed `route`. The same object when nothing changes, so that the app
  * can keep its state. The Play tab follows its route exactly (a new game replaces the session, a
- * page without one forgets it); the Review tab keeps the last game that was open (a session's
- * review lives in the Play tab); the History tab keeps its set.
+ * page without one forgets it); the Review tab keeps the last game that was open; the History
+ * tab keeps its set.
  */
 export function remember(memory: GameMemory, route: Route): GameMemory {
   if (route.page !== 'game') return memory;
@@ -41,7 +41,6 @@ export function remember(memory: GameMemory, route: Route): GameMemory {
     const review = route.review;
     if (
       review !== null &&
-      review.kind !== 'session' &&
       (before.review?.kind !== review.kind || before.review.id !== review.id)
     ) {
       after = { ...before, review };
