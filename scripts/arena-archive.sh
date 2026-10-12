@@ -8,6 +8,7 @@
 #   scripts/arena-archive.sh plan
 #   scripts/arena-archive.sh gather GAME WORK_DIR
 #   scripts/arena-archive.sh prune GAME KEEP_ID
+#   scripts/arena-archive.sh site OUT_DIR
 #
 # plan: decides the games to archive and writes `games=<JSON array>` and
 # `adding=<true|false>` to $GITHUB_OUTPUT (and stdout). For EVENT_NAME
@@ -37,14 +38,27 @@
 # not listed. With DRY_RUN=true (the default) it only prints what it would
 # delete.
 #
+# site: collects the archives for the site (ADR 0031, decision 5), read-only:
+# it deletes and uploads nothing. Lists the artifacts of the repository, keeps
+# the unexpired ones called exactly arena-games-<name> (never the dry-run
+# copies), the newest of each name, downloads each into a folder of its own,
+# and runs ARCHIVE_TOOL --out OUT_DIR over the folders (no --game): OUT_DIR
+# then holds index.json and records/<id>.json of every game, as the Pages
+# build publishes them under arena-games/. OUT_DIR is relative to where the
+# script is called from, must not exist or must be empty, and is not touched
+# when there is no archive: then a warning annotation is printed and the exit
+# status is 0. A failed listing, download or tool fails the step.
+#
 # Environment: REPO (owner/name) and GH_TOKEN for the gh CLI; DRY_RUN
-# (default true, prune only); ARCHIVE_TOOL (gather); ADDING, LEAGUE_RUN_ID and
+# (default true, prune only); ARCHIVE_TOOL (gather, site); ADDING, LEAGUE_RUN_ID and
 # HEAD_SHA (gather, when adding); EVENT_NAME (plan); NOW (unix seconds,
 # default: now; for tests); GITHUB_OUTPUT and GITHUB_STEP_SUMMARY, written
 # only when set. Needs gh, jq and unzip.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
+# Paths given on the command line are relative to here.
+caller="$PWD"
 cd "$here/.."
 
 # A refresh is due when the current archive expires in less than this.
@@ -328,6 +342,48 @@ mode_prune() {
   echo "$game: kept artifact $keep; $deleted other(s) $([[ $dry_run == true ]] && echo 'would be deleted' || echo deleted)"
 }
 
+# ---- site --------------------------------------------------------------
+
+# Prints "<name> <id>" for the newest unexpired archive of each game: the
+# artifacts called exactly arena-games-<name>, not dry-run-arena-games-<name>.
+# The listing holds every artifact of the repository (the SPRT and league
+# samples too), so each page is cut down by jq before the next arrives.
+site_archives() {
+  local rows
+  rows="$(gh api --paginate "repos/$REPO/actions/artifacts?per_page=100" |
+    jq -r '.artifacts[]
+      | select((.expired | not) and (.name | test("^arena-games-[a-z0-9-]+$")))
+      | [.name, (.id | tostring), .created_at] | @tsv')" || return 1
+  # Newest first within a name (the timestamps are ISO 8601), then the first of each.
+  LC_ALL=C sort -t$'\t' -k1,1 -k3,3r <<<"$rows" | awk -F'\t' 'NF && !seen[$1]++ { print $1, $2 }'
+}
+
+mode_site() {
+  local out="${1-}"
+  [[ -n $out ]] || usage
+  : "${REPO:?set REPO to owner/name}"
+  : "${ARCHIVE_TOOL:?set ARCHIVE_TOOL to the studio-archive binary}"
+  [[ $out == /* ]] || out="$caller/$out"
+  local archives name id
+  archives="$(site_archives)" || die "cannot list the artifacts of $REPO"
+  if [[ -z $archives ]]; then
+    echo "::warning title=Arena games::no arena games archive is published yet: the site has no arena games"
+    return 0
+  fi
+  local work
+  work="$(mktemp -d)"
+  # shellcheck disable=SC2064 # the folder is fixed now
+  trap "rm -rf '$work'" EXIT
+  local -a inputs=()
+  while read -r name id; do
+    [[ -n $name ]] || continue
+    download "$work" "$id" "$work/inputs/$name"
+    inputs+=("$work/inputs/$name")
+  done <<<"$archives"
+  "$ARCHIVE_TOOL" --out "$out" "${inputs[@]}" || die "studio-archive failed; the site has no arena games"
+  notice "the site has the arena games of ${#inputs[@]} archive(s): $(cut -d' ' -f1 <<<"$archives" | paste -sd, -)"
+}
+
 # ---- main --------------------------------------------------------------
 
 (($# >= 1)) || usage
@@ -337,5 +393,6 @@ case $mode in
   plan) mode_plan ;;
   gather) mode_gather "$@" ;;
   prune) mode_prune "$@" ;;
+  site) mode_site "$@" ;;
   *) usage ;;
 esac

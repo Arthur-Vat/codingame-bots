@@ -56,15 +56,21 @@ file="$STUB/api/$key.json"
 cat "$file"
 EOF
 
-# studio-archive --game G --out DIR INPUT...: one row and one record file per
+# studio-archive [--game G] --out DIR INPUT...: one row and one record file per
 # distinct record file name under the inputs; fails when STUB_TOOL_FAIL is set.
 cat >"$stub/bin/studio-archive" <<'EOF'
 #!/usr/bin/env bash
 echo "studio-archive $*" >>"$STUB/tool.log"
 [[ -z ${STUB_TOOL_FAIL:-} ]] || exit 1
-shift 3 # --game, its value, --out
-out=$1
-shift
+out=""
+while (($#)); do
+  case $1 in
+    --game) shift 2 ;;
+    --out) out=$2; shift 2 ;;
+    *) break ;;
+  esac
+done
+[[ -n $out ]] || exit 2
 mkdir -p "$out/records"
 for input in "$@"; do
   while IFS= read -r file; do
@@ -429,6 +435,116 @@ for keep in '' abc 12x 9; do
   status_is "prune: keep id '$keep'" true
   expect "prune: keep id '$keep': nothing deleted" "$(lacks "$stub/gh.log" DELETE && echo 0 || echo 1)"
 done
+
+# ---- site ----
+
+# site <out dir> [VAR=value...]: runs the site mode from a folder of its own, so
+# that a relative output folder is relative to where it is called from.
+site_dir="$tmp_dir/caller"
+mkdir -p "$site_dir"
+site() {
+  local out="$1"
+  shift
+  status=0
+  (cd "$site_dir" && env "$@" "$repo_root/scripts/arena-archive.sh" site "$out" >"$tmp_dir/stdout" 2>"$tmp_dir/stderr") || status=$?
+}
+
+artifacts_path='repos/owner/repo/actions/artifacts?per_page=100'
+named() { # named <name> <id> <expired> <created>: an artifact of the listing
+  jq -nc --arg name "$1" --argjson id "$2" --argjson expired "$3" --arg created "$4" \
+    '{id: $id, name: $name, expired: $expired, created_at: $created, expires_at: "2027-01-01T00:00:00Z"}'
+}
+
+# Several games over two pages: the newest of each name by date (not by id),
+# the dry-run copies, the expired ones, the samples and odd names are ignored.
+begin
+rm -rf "$site_dir/site"
+canned "$artifacts_path" "$(listing \
+  "$(named arena-games-uttt 130 false 2026-08-01T00:00:00Z)" \
+  "$(named arena-games-uttt 120 false 2026-10-01T00:00:00Z)" \
+  "$(named dry-run-arena-games-uttt 400 false 2026-10-11T00:00:00Z)" \
+  "$(named game-records-uttt 410 false 2026-10-11T00:00:00Z)")
+$(listing \
+  "$(named arena-games-other 300 false 2026-09-01T00:00:00Z)" \
+  "$(named arena-games-uttt 110 false 2026-09-01T00:00:00Z)" \
+  "$(named arena-games-gone 500 true 2026-10-02T00:00:00Z)" \
+  "$(named arena-games-Upper_Case 510 false 2026-10-02T00:00:00Z)" \
+  "$(named arena-games-uttt-extra.zip 520 false 2026-10-02T00:00:00Z)" \
+  "$(named x-arena-games-uttt 530 false 2026-10-02T00:00:00Z)")"
+archive_zip 120 uttt-1 uttt-2
+archive_zip 300 other-1
+site site
+status_is "site: several games" false
+expect "site: the tool ran once over the newest archive of each name, without --game" \
+  "$(grep -qE "^studio-archive --out $site_dir/site .*inputs/arena-games-other .*inputs/arena-games-uttt\$" "$stub/tool.log" && [[ "$(wc -l <"$stub/tool.log")" -eq 1 ]] && lacks "$stub/tool.log" '--game' && echo 0 || echo 1)"
+expect "site: the archive is written relative to the caller" "$([[ -f $site_dir/site/index.json && -f $site_dir/site/records/uttt-1.json && -f $site_dir/site/records/other-1.json ]] && echo 0 || echo 1)"
+expect "site: only the two archives are downloaded" \
+  "$([[ "$(grep -c 'artifacts/.*/zip' "$stub/gh.log")" == 2 ]] && has "$stub/gh.log" 'artifacts/120/zip' && has "$stub/gh.log" 'artifacts/300/zip' && echo 0 || echo 1)"
+for id in 130 110 400 410 500 510 520 530; do
+  expect "site: artifact $id is not downloaded" "$(lacks "$stub/gh.log" "artifacts/$id/zip" && echo 0 || echo 1)"
+done
+expect "site: nothing is deleted or uploaded" "$(lacks "$stub/gh.log" ' -X ' && echo 0 || echo 1)"
+expect "site: a notice says which archives" "$(has "$tmp_dir/stdout" 'arena-games-other,arena-games-uttt' && echo 0 || echo 1)"
+
+# An absolute output folder is used as it is.
+rm -rf "$stub/tool.log" "$tmp_dir/absolute"
+site "$tmp_dir/absolute"
+status_is "site: an absolute output folder" false
+expect "site: the absolute folder is written" "$([[ -f $tmp_dir/absolute/index.json ]] && echo 0 || echo 1)"
+
+# No archive at all, only copies and expired ones: a warning, success, nothing written.
+for case in empty only-copies; do
+  begin
+  rm -rf "$site_dir/site"
+  if [[ $case == empty ]]; then
+    canned "$artifacts_path" "$(listing)"
+  else
+    canned "$artifacts_path" "$(listing \
+      "$(named dry-run-arena-games-uttt 400 false 2026-10-11T00:00:00Z)" \
+      "$(named arena-games-gone 500 true 2026-10-02T00:00:00Z)" \
+      "$(named league-game-records-uttt 600 false 2026-10-02T00:00:00Z)")"
+  fi
+  site site
+  status_is "site: no archive ($case)" false
+  expect "site: no archive ($case): the warning" "$(has "$tmp_dir/stdout" '::warning title=Arena games::' && echo 0 || echo 1)"
+  expect "site: no archive ($case): nothing written" "$([[ ! -e $site_dir/site && ! -e $stub/tool.log ]] && echo 0 || echo 1)"
+  expect "site: no archive ($case): nothing downloaded" "$(lacks "$stub/gh.log" '/zip' && echo 0 || echo 1)"
+done
+
+# A download that fails fails the step, and the tool does not run.
+begin
+rm -rf "$site_dir/site"
+canned "$artifacts_path" "$(listing \
+  "$(named arena-games-uttt 120 false 2026-10-01T00:00:00Z)" \
+  "$(named arena-games-other 300 false 2026-09-01T00:00:00Z)")"
+archive_zip 300 other-1
+site site
+status_is "site: a download fails" true
+expect "site: download failure: the tool did not run" "$([[ ! -e $stub/tool.log && ! -e $site_dir/site ]] && echo 0 || echo 1)"
+expect "site: download failure: an error annotation" "$(has "$tmp_dir/stdout" '::error title=Arena archive::cannot download artifact 120' && echo 0 || echo 1)"
+
+# A listing that fails fails the step.
+begin
+rm -rf "$site_dir/site"
+site site
+status_is "site: the listing fails" true
+expect "site: listing failure: the tool did not run" "$([[ ! -e $stub/tool.log ]] && echo 0 || echo 1)"
+
+# The tool fails: the step fails.
+begin
+rm -rf "$site_dir/site"
+canned "$artifacts_path" "$(listing "$(named arena-games-uttt 120 false 2026-10-01T00:00:00Z)")"
+archive_zip 120 uttt-1
+export STUB_TOOL_FAIL=1
+site site
+unset STUB_TOOL_FAIL
+status_is "site: the tool fails" true
+
+# No output folder is a usage error.
+begin
+status=0
+"$repo_root/scripts/arena-archive.sh" site >"$tmp_dir/stdout" 2>"$tmp_dir/stderr" || status=$?
+status_is "site: no output folder" true
 
 if ((failures > 0)); then
   echo "FAIL arena-archive: $failures of $checks checks failed" >&2
