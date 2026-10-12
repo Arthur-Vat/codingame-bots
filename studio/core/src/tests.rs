@@ -227,6 +227,50 @@ fn rows_are_filtered_and_listed_newest_first() {
 }
 
 #[test]
+fn the_release_filter_matches_league_names_without_the_game() {
+    let row = |id: &str, game: &str, players: [&str; 2]| Row {
+        id: id.to_string(),
+        game: game.to_string(),
+        unix_time: 1,
+        players: players.map(str::to_string),
+        winner: Some(0),
+        end: "finished".to_string(),
+        turns: 3,
+        source: "arena league".to_string(),
+    };
+    let rows = vec![
+        // A league record: the names have no game in front.
+        row("league", "uttt", ["v009", "v010"]),
+        // An SPRT record: the names are the releases.
+        row("sprt", "uttt", ["uttt-v010", "uttt-v009"]),
+        row("studio", "uttt", ["Ann", "uttt-v001"]),
+        // Another game's league record with the same short names.
+        row("other", "chess", ["v009", "v010"]),
+        // A name that only ends like the release is not the release.
+        row("suffix", "uttt", ["xv009", "v0090"]),
+    ];
+    let ids = |query: &str| -> Vec<String> {
+        Filter::parse(query)
+            .unwrap()
+            .select(rows.clone())
+            .into_iter()
+            .map(|row| row.id)
+            .collect()
+    };
+    assert_eq!(ids("release=uttt-v009"), ["sprt", "league"]);
+    assert_eq!(ids("release=uttt-v010"), ["sprt", "league"]);
+    assert_eq!(ids("release=uttt-v001"), ["studio"]);
+    // The short name itself still matches, for the row it is in.
+    assert_eq!(ids("release=v009"), ["other", "league"]);
+    // The prefix is the row's game, not any game.
+    assert_eq!(ids("release=chess-v009"), ["other"]);
+    assert_eq!(ids("release=uttt-v0090"), ["suffix"]);
+    assert_eq!(ids("release=uttt-v00"), Vec::<String>::new());
+    assert_eq!(ids("release=uttt-"), Vec::<String>::new());
+    assert_eq!(ids("release=Ann&release=uttt-v009"), ["sprt", "league"]);
+}
+
+#[test]
 fn a_record_has_a_stable_id() {
     let game = uttt();
     let mut state = GameState::new(game.as_ref(), 5, 0, humans());

@@ -541,6 +541,25 @@ describe('the saved games', () => {
     expect((await request(engine, 'POST', '/api/filter', [])).body).toEqual([]);
   });
 
+  it('lets the release filter find the league names, which leave out the game', async () => {
+    const { engine } = await testEngine({ store: null });
+    const row = (id: string, players: [string, string]) => ({
+      id,
+      game: 'uttt',
+      unix_time: 1,
+      players,
+      winner: 0,
+      end: 'finished',
+      turns: 40,
+      source: 'arena league',
+    });
+    const rows = [row('league', ['v009', 'v010']), row('sprt', ['uttt-v010', 'uttt-v009'])];
+    const found = await request(engine, 'POST', '/api/filter?release=uttt-v009', rows);
+    expect((found.body as { id: string }[]).map((entry) => entry.id)).toEqual(['sprt', 'league']);
+    const none = await request(engine, 'POST', '/api/filter?release=uttt-v001', rows);
+    expect(none.body).toEqual([]);
+  });
+
   it('refuses a filter with a bad query or body with a 400, and other methods with a 405', async () => {
     const { engine } = await testEngine();
     for (const query of ['?result=bogus', '?source=web', '?from=yesterday', '?release=%zz']) {
