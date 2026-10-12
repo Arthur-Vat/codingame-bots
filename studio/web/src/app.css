@@ -1179,7 +1179,7 @@ td .res + .tag {
   }
 }
 
-/* The bots are playing: a light veil over the board, and a spinning ring in the middle. */
+/* The bots are playing: a spinning ring in the middle of the board. */
 .playing {
   position: absolute;
   inset: 0;

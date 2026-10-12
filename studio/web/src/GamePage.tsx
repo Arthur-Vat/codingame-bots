@@ -448,7 +448,7 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
                 showPlayControls={mode !== 'bots' && !over}
                 takebackTo={controls.takebackTo}
                 resignSeat={controls.resignSeat}
-                canSave={session.turns.length > 0}
+                canSave={!playing && session.turns.length > 0}
                 saved={over && savedSession === session.id}
                 onTakeback={takeback}
                 onResign={resign}

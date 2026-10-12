@@ -95,6 +95,9 @@ test('while the bots play: a spinner over the empty board, nothing of the game, 
   await expect(page.getByTestId('player-0')).toContainText('0.0 s');
   await expect(page.getByTestId('player-1')).toContainText('0.0 s');
   await expect(page.getByRole('button', { name: /Takeback|Resign/ })).toHaveCount(0);
+  // Saving or exporting would show the game before it ends.
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Export file' })).toBeDisabled();
   // The status and the move being played are the only hints of progress.
   await expect(page.locator('.info dd').first()).toHaveText('uttt-v010 is thinking…');
   await expect(moveRow(page)).toHaveText('3');
@@ -105,9 +108,12 @@ test('while the bots play: a spinner over the empty board, nothing of the game, 
   await expect(moves(page)).toHaveCount(0);
   await expect(spinner).toBeVisible();
   // The keys have nothing to look back at.
-  await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('End');
+  for (const key of ['ArrowLeft', 'Home', 'ArrowRight', 'End', ' ']) {
+    await page.keyboard.press(key);
+  }
   await expect(marks(page)).toHaveCount(0);
+  await expect(moves(page)).toHaveCount(0);
+  await expect(spinner).toBeVisible();
 });
 
 test('the game ends: the spinner goes, the moves and the result come, the review opens on its first move', async ({
@@ -125,6 +131,8 @@ test('the game ends: the spinner goes, the moves and the result come, the review
   await expect(moves(page)).toHaveCount(4);
   await expect(page.getByTestId('result')).toContainText('0–1 · O wins');
   await expect(page.getByTestId('end-block')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Export file' })).toBeEnabled();
   await expect(page.getByTestId('player-1')).toContainText('0.0 s');
   // The first move, paused: the board is still empty.
   await expect(marks(page)).toHaveCount(0);
@@ -189,6 +197,8 @@ test('no spinner while the bots are compiled, nor in a game with a person', asyn
 
   mock.current = botGoing(2, { seats: [{ kind: 'human', name: 'Alice' }, bot('uttt-v009')] });
   await page.goto('/#/game/uttt/ab12');
+  // The same address does not reload the page: wait for the game against the computer.
+  await expect(page.getByTestId('player-1')).toContainText('uttt-v009');
   await expect(page.getByTestId('player-0')).toContainText('Alice');
   await expect(moves(page)).toHaveCount(2);
   await expect(page.getByTestId('playing')).toHaveCount(0);
