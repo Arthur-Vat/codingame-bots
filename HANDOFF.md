@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-None. (#96, step G1, merged 2026-10-12 on the owner's approval in the chat.)
+- #97 `feat(studio): one page per game with play, review and history tabs` (step G2): https://github.com/Arthur-Vat/codingame-bots/pull/97, head b010f13, CI green, deep review handled; asked 2026-10-12.
 
 ## Open questions
 
