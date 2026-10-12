@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- Try the site, https://arthur-vat.github.io/codingame-bots/ (asked 2026-10-11): Pages source set to GitHub Actions by the owner, deployed by run 38176747370 (success). Sessions cannot open github.io (network policy), so only the owner can confirm it loads.
+None. (The owner tried the site on 2026-10-11: "it works perfectly".)
 
 ## Open questions
 
@@ -13,6 +13,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 ## Follow-ups
 
 - **Phase 6 step F merged** (2026-10-11): ADR 0030 (#88), the rules in WebAssembly with studio-core (#89), the browser engine (#90), Pages deployment and license notices (#91), on the owner's approvals in the chat. Try the site in Firefox too (only Chromium was tested). Follow-ups noted by reviews: the front end parses and re-stringifies records on export/import, which can lose 64-bit seed digits (both engines); `npm run dev` without a local server silently uses the browser engine; the WebAssembly files are built twice in CI's front-end job; `actions/deploy-pages@v4` targets the deprecated Node 20 (move to a newer major when one exists).
+- **Next: games played on GitHub in the site's history** (asked 2026-10-11, answered in the conversation: "Could you do option 1 (bundled from artifacts) and add triggers to replay games and create artifacts when the previous would expire?"). Option 1 as proposed: the Pages build downloads the `game-records-<game>` / `league-game-records-<game>` artifacts of recent SPRT and league runs (still within 30 days; needs `actions: read`), publishes them with the site with an index, and rebuilds after each such run (`workflow_run`); the history shows them as a read-only source "From GitHub" (review, export, filter, copy into one's own history), in both engines where it makes sense. Plus a scheduled workflow that, before the newest records expire, creates fresh artifacts so the site never runs empty: confirm with the owner first whether that means re-uploading the same records (no compute) or playing new games (a small league sample); recommend re-uploading, and playing a sample only when none exist. Probably completes ADR 0027 decision 2 and ADR 0030: write the record (skill write-adr) once the owner has confirmed. Heavy work: give the plan and cost first (skill land-work).
 - **Then step G (interface)**, to be planned with the owner.
 - **Then: phase 6 step D, analysis** (see Notes), in its own session(s), following the updated `land-work` (#82). Ask the owner before starting: it is heavy work.
 - ADR 0023 still says the SPRT is not a required check, which is no longer true. The owner keeps the current merge policy (2026-10-09) and wants no new record; the line stays as is unless he asks for a fix.
