@@ -127,9 +127,9 @@ export function createEngine(deps: EngineDeps): Engine {
         if (first === 'history') return save(bodyText ?? '');
         if (first === 'view') return json(200, ask({ op: 'view', record_text: bodyText ?? '' }));
         if (first === 'filter') {
-          // The rows come in the body (they are not the saved games): the same filter, so the
-          // two engines list the arena games alike.
-          return json(200, ask({ op: 'filter', query, rows: parseBody(bodyText) }));
+          // The rows come in the body (they are not the saved games). The rules program reads
+          // the query, then the body, as the server does: same filter, same refusals.
+          return json(200, ask({ op: 'filter_body', query, body: bodyText ?? '' }));
         }
         break;
       case 'GET 2':

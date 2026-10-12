@@ -181,22 +181,16 @@ pub fn list(state: &State, query: &str) -> Response {
 /// saved game: the studio filters the arena games, which it fetched from the
 /// published site, with the same rules as its own.
 pub fn filter_rows(query: &str, body: &[u8]) -> Response {
-    let filter = match Filter::parse(query) {
-        Ok(filter) => filter,
-        Err(message) => return Response::error(400, &message),
-    };
-    let rows: Vec<Row> = match serde_json::from_slice(body) {
-        Ok(rows) => rows,
-        Err(error) => {
-            return Response::error(400, &format!("invalid request body: {error}"));
+    match history::filter_body(query, body) {
+        Ok(rows) => {
+            let rows: Vec<Value> = rows
+                .iter()
+                .map(|row| serde_json::to_value(row).unwrap_or(Value::Null))
+                .collect();
+            Response::json(200, &Value::Array(rows))
         }
-    };
-    let selected: Vec<Value> = filter
-        .select(rows)
-        .iter()
-        .map(|row| serde_json::to_value(row).unwrap_or(Value::Null))
-        .collect();
-    Response::json(200, &Value::Array(selected))
+        Err(message) => Response::error(400, &message),
+    }
 }
 
 /// The record `id`, or the response saying why there is none.

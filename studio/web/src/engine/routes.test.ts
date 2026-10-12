@@ -562,15 +562,36 @@ describe('the saved games', () => {
 
   it('refuses a filter with a bad query or body with a 400, and other methods with a 405', async () => {
     const { engine } = await testEngine();
-    for (const query of ['?result=bogus', '?source=web', '?from=yesterday', '?release=%zz']) {
+    // The texts are the server's (studio/server/src/history_tests.rs checks the same ones): the
+    // query is read first, then the body.
+    const queries: [string, string][] = [
+      ['?result=bogus', 'result must be x, o, draw, fault or unfinished'],
+      ['?source=web', 'source must be studio or arena'],
+    ];
+    for (const [query, message] of queries) {
+      for (const body of [[], 'not json']) {
+        const refused = await request(engine, 'POST', `/api/filter${query}`, body);
+        expect(refused.status).toBe(400);
+        expect(refused.body).toEqual({ error: message });
+      }
+    }
+    for (const query of ['?from=yesterday', '?release=%zz']) {
       const refused = await request(engine, 'POST', `/api/filter${query}`, []);
       expect(refused.status).toBe(400);
       expect(typeof (refused.body as { error: string }).error).toBe('string');
     }
-    for (const body of [undefined, '', 'not json', '{"rows":[]}', '[1]', '[{"id":"x"}]']) {
+    const bodies: [string | undefined, string][] = [
+      [undefined, 'EOF while parsing a value at line 1 column 0'],
+      ['', 'EOF while parsing a value at line 1 column 0'],
+      ['not json', 'expected ident at line 1 column 2'],
+      ['{"rows":[]}', 'invalid type: map, expected a sequence at line 1 column 0'],
+      ['[1]', 'invalid type: integer `1`, expected struct Row at line 1 column 2'],
+      ['[{"id":"x"}]', 'missing field `game` at line 1 column 11'],
+    ];
+    for (const [body, message] of bodies) {
       const refused = await request(engine, 'POST', '/api/filter', body);
       expect(refused.status).toBe(400);
-      expect(typeof (refused.body as { error: string }).error).toBe('string');
+      expect(refused.body).toEqual({ error: `invalid request body: ${message}` });
     }
     for (const method of ['GET', 'PUT', 'DELETE']) {
       const wrong = await request(engine, method, '/api/filter');

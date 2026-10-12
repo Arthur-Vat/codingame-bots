@@ -271,6 +271,28 @@ fn the_release_filter_matches_league_names_without_the_game() {
 }
 
 #[test]
+fn a_filter_body_is_checked_after_its_query() {
+    use crate::history::filter_body;
+    let row = r#"{"id":"a","game":"uttt","unix_time":1,"players":["x","y"],"winner":0,"end":"finished","turns":3,"source":"studio"}"#;
+    let listed = filter_body("result=x", format!("[{row}]").as_bytes()).unwrap();
+    assert_eq!(listed.len(), 1);
+    assert!(filter_body("result=o", format!("[{row}]").as_bytes())
+        .unwrap()
+        .is_empty());
+    // The query is read first: its error wins over the body's.
+    let error = filter_body("result=bogus", b"not json").unwrap_err();
+    assert!(error.starts_with("result must be"), "{error}");
+    let error = filter_body("", b"not json").unwrap_err();
+    assert!(
+        error.starts_with("invalid request body: expected ident"),
+        "{error}"
+    );
+    assert!(filter_body("", b"{}")
+        .unwrap_err()
+        .starts_with("invalid request body: invalid type: map, expected a sequence"));
+}
+
+#[test]
 fn a_record_has_a_stable_id() {
     let game = uttt();
     let mut state = GameState::new(game.as_ref(), 5, 0, humans());

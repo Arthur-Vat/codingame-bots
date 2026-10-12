@@ -208,6 +208,16 @@ impl Filter {
     }
 }
 
+/// The rows in `body`, a JSON array of rows as the listing writes them, that pass the filter
+/// `query`, newest first: the answer of `POST /api/filter`, for both engines. The query is checked
+/// before the body.
+pub fn filter_body(query: &str, body: &[u8]) -> Result<Vec<Row>, String> {
+    let filter = Filter::parse(query)?;
+    let rows: Vec<Row> =
+        serde_json::from_slice(body).map_err(|error| format!("invalid request body: {error}"))?;
+    Ok(filter.select(rows))
+}
+
 /// A query value with its `%XX` escapes and `+` (a space) decoded.
 pub fn percent_decode(value: &str) -> Result<String, String> {
     let bytes = value.as_bytes();

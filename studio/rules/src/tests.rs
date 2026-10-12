@@ -543,6 +543,40 @@ fn filter_agrees_with_the_servers_list() {
             assert_eq!(answer["error"], listed["error"], "query {query:?}");
         }
     }
+    // The filter of a request body answers like the server's `POST /api/filter`, errors included.
+    let body = serde_json::to_string(&rows).unwrap();
+    let negative = r#"[{"id":"x","game":"uttt","unix_time":-1,"players":["a","b"],"winner":null,"end":"finished","turns":1,"source":"s"}]"#;
+    let bodies = [
+        body.as_str(),
+        "[]",
+        "",
+        "not json",
+        r#"{"rows": []}"#,
+        "[1]",
+        r#"[{"id": "x"}]"#,
+        negative,
+    ];
+    for query in [
+        "",
+        "result=x",
+        "release=A+nn",
+        "result=bogus",
+        "release=%zz",
+    ] {
+        for body in bodies {
+            let (status, listed) =
+                server.call("POST", &format!("/api/filter?{query}"), body.as_bytes());
+            let answer = call(&json!({"op": "filter_body", "query": query, "body": body}));
+            if status == 200 {
+                assert_eq!(answer["ok"], listed, "query {query:?}, body {body:?}");
+            } else {
+                assert_eq!(
+                    answer["error"], listed["error"],
+                    "query {query:?}, body {body:?}"
+                );
+            }
+        }
+    }
     // The order is newest first, and two records of one second are told
     // apart by their ids, last first.
     let all = ok(json!({"op": "filter", "query": "", "rows": rows}));
@@ -606,6 +640,9 @@ fn a_bad_request_is_an_error_and_never_a_panic() {
         r#"{"op":"filter","query":"a=b"}"#.to_string(),
         r#"{"op":"filter","query":5,"rows":[]}"#.to_string(),
         r#"{"op":"filter","query":"","rows":[{"id":1}]}"#.to_string(),
+        r#"{"op":"filter_body","query":"a=b"}"#.to_string(),
+        r#"{"op":"filter_body","query":5,"body":""}"#.to_string(),
+        r#"{"op":"filter_body","query":"","body":"[{\"id\":1}]"}"#.to_string(),
         json!({"op": "settle", "state": bad_seat}).to_string(),
         json!({"op": "settle", "state": bad_think}).to_string(),
         json!({"op": "settle", "state": bad_result}).to_string(),

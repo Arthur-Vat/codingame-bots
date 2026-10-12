@@ -27,6 +27,7 @@ pub fn run(op: &str, request: &Value) -> Result<Value, String> {
         "check" => check(args(request)?),
         "view" => view(args(request)?),
         "filter" => filter(args(request)?),
+        "filter_body" => filter_body(args(request)?),
         _ => Err(format!("unknown op {op:?}")),
     }
 }
@@ -248,4 +249,17 @@ struct FilterArgs {
 fn filter(args: FilterArgs) -> Result<Value, String> {
     let filter = Filter::parse(&args.query)?;
     serde_json::to_value(filter.select(args.rows)).map_err(|error| error.to_string())
+}
+
+#[derive(Deserialize)]
+struct FilterBodyArgs {
+    query: String,
+    body: String,
+}
+
+/// `POST /api/filter`: the rows come as the text of the request body, so that a body that is not
+/// a list of rows is refused with the server's own message.
+fn filter_body(args: FilterBodyArgs) -> Result<Value, String> {
+    let rows = history::filter_body(&args.query, args.body.as_bytes())?;
+    serde_json::to_value(rows).map_err(|error| error.to_string())
 }

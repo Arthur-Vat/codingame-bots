@@ -750,25 +750,48 @@ fn a_bad_filter_body_or_query_is_a_400_with_the_usual_error() {
         assert_eq!(status, 400, "{query}: {error}");
         assert!(error["error"].is_string(), "{error}");
     }
-    let negative = r#"[{"id":"x","game":"uttt","unix_time":-1,"players":["a","b"],"winner":null,"end":"finished","turns":1,"source":"s"}]"#;
-    let bodies: [&str; 6] = [
-        "",
-        "not json",
-        r#"{"rows": []}"#,
-        "[1]",
-        r#"[{"id": "x"}]"#,
-        negative,
+    // The texts the browser engine's tests check too (studio/web/src/engine/routes.test.ts).
+    let bodies: [(&str, &str); 5] = [
+        ("", "EOF while parsing a value at line 1 column 0"),
+        ("not json", "expected ident at line 1 column 2"),
+        (
+            r#"{"rows":[]}"#,
+            "invalid type: map, expected a sequence at line 1 column 0",
+        ),
+        (
+            "[1]",
+            "invalid type: integer `1`, expected struct Row at line 1 column 2",
+        ),
+        (
+            r#"[{"id":"x"}]"#,
+            "missing field `game` at line 1 column 11",
+        ),
     ];
-    for body in bodies {
+    for (body, message) in bodies {
         let response = crate::handle(&state, "POST", "/api/filter", body.as_bytes());
         assert_eq!(response.status, 400, "{body}");
         let error: Value = serde_json::from_slice(&response.body).unwrap();
-        assert!(
-            error["error"]
-                .as_str()
-                .unwrap()
-                .starts_with("invalid request body"),
-            "{error}"
+        assert_eq!(
+            error["error"],
+            format!("invalid request body: {message}"),
+            "{body}"
         );
+    }
+    // A number that is not a time is refused too.
+    let negative = r#"[{"id":"x","game":"uttt","unix_time":-1,"players":["a","b"],"winner":null,"end":"finished","turns":1,"source":"s"}]"#;
+    let response = crate::handle(&state, "POST", "/api/filter", negative.as_bytes());
+    assert_eq!(response.status, 400);
+    // The query is read before the body.
+    for (query, message) in [
+        (
+            "?result=bogus",
+            "result must be x, o, draw, fault or unfinished",
+        ),
+        ("?source=web", "source must be studio or arena"),
+    ] {
+        let response = crate::handle(&state, "POST", &format!("/api/filter{query}"), b"not json");
+        assert_eq!(response.status, 400);
+        let error: Value = serde_json::from_slice(&response.body).unwrap();
+        assert_eq!(error["error"], message);
     }
 }

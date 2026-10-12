@@ -132,7 +132,7 @@ JSON in and out; errors are `{"error": "..."}`. Ids are short random hex strings
 | `GET /api/history/{id}` | The saved record, as the front end offers it for export. Ids are file names without `.json`, made of `a-z`, `0-9` and `-`. |
 | `GET /api/history/{id}/view` | `{"record", "frames", "opening_turns", "shown_turns"}`: the record with the game's frames. `shown_turns` is the number of turns that replay: all, or all but a final invalid one. |
 | `POST /api/view` | The same view for a record in the body that is not saved, to review a loaded file before saving it. |
-| `POST /api/filter?...` | The rows in the body, a JSON array of rows as `GET /api/history` lists them, that pass the same filters (the same query as `GET /api/history`), newest first. It reads no saved game: the front end uses it for the arena games, which it fetched from the site. 400 for a bad query, or a body that is not an array of rows. |
+| `POST /api/filter?...` | The rows in the body, a JSON array of rows as `GET /api/history` lists them, that pass the same filters (the same query as `GET /api/history`), newest first. It reads no saved game: the front end uses it for the arena games, which it fetched from the site. 400 for a bad query (read first), or a body that is not an array of rows (`invalid request body: ...`, with serde's message, the same in both engines). The local server reads up to 64 MiB for this route, 1 MiB (413 above) for every other: the archive has no size limit. |
 | `DELETE /api/history/{id}` | Deletes a saved game: 204, or 404. |
 | `DELETE /api/sessions/{id}` | Stops the bots and forgets the session. Sessions untouched for two hours are dropped. |
 
@@ -186,7 +186,8 @@ A request is a JSON object with a string field `op`; the response is `{"ok": val
 | `record` | `state`, `unix_time` | `{"record_text"}`: the game record, as `GET /api/sessions/{id}/record` writes it |
 | `check` | `record_text` | `{"id", "row"}`: the checks of `POST /api/history`, and the id the server would save it under |
 | `view` | `record_text` | `{"record", "frames", "opening_turns", "shown_turns"}`, as `POST /api/view` |
-| `filter` | `query`, `rows` | the rows `GET /api/history?query` would list, newest first (the browser engine's `POST /api/filter?query` answers this for the rows of its body) |
+| `filter` | `query`, `rows` | the rows `GET /api/history?query` would list, newest first |
+| `filter_body` | `query`, `body` | the rows of the text `body`, a JSON array of rows, that pass the filter: the answer of `POST /api/filter?query`, with its refusals (the query first, then `invalid request body: ...`), shared with the server |
 
 `scripts/build-studio-wasm.sh [OUT] [--strict]` builds `OUT/rules.wasm`, every release of every game as `OUT/<game>/<release>.wasm` (compiled unchanged with `rustc --target wasm32-wasip1`), and `OUT/manifest.json` listing the releases that compiled, newest first. `OUT` is `studio/web/public/wasm` by default (not committed). A release that does not compile is skipped with a warning; `--strict`, used by CI, fails instead. It needs the target: `rustup target add wasm32-wasip1`. To try the program without a browser: `echo '{"op":"games"}' | cargo run -q -p studio-rules`.
 
