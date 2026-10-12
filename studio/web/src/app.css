@@ -1179,7 +1179,56 @@ td .res + .tag {
   }
 }
 
+/* The bots are playing: a spinning ring in the middle of the board. */
+.playing {
+  position: absolute;
+  inset: 0;
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* No veil: the board keeps its shade, so nothing but the spinner changes when the game ends. */
+  pointer-events: none;
+  z-index: 5;
+}
+
+.playing-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  background: rgba(22, 21, 18, 0.72);
+  border-radius: 8px;
+}
+
+.playing small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.spinner {
+  box-sizing: border-box;
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.22);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+
   .bar.indeterminate i {
     animation: none;
     width: 100%;

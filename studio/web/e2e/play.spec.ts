@@ -322,10 +322,12 @@ test('bot against bot shows the move number in the info card, then becomes its r
     }),
   );
   await page.goto('/#/game/uttt/ab12');
-  // Nothing is drawn over the board; the card tells the move being played.
+  // The game is not shown while the bots play: the empty board with a spinner over it; the card
+  // tells the move being played.
   await expect(page.locator('.info dt:text-is("Move") + dd')).toHaveText('2');
   await expect(page.getByTestId('board-overlay')).toHaveCount(0);
-  await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
+  await expect(page.getByTestId('playing')).toBeVisible();
+  await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Takeback|Resign/ })).toHaveCount(0);
   const live = await box(page);
 
@@ -337,9 +339,12 @@ test('bot against bot shows the move number in the info card, then becomes its r
     frames: [frame(), f1, frame({ marks: [[4, 4, 0]], points: [2, 3], winner: 1 })],
     turns: [answer(0, '4 4', 12), answer(1, '4 5', 9)],
   };
-  // The game ended: it becomes its review in place, with the same result and the board in
+  // The game ended: it becomes its review in place, from its first move, with the board in
   // place; the address stays.
   await expect(page.getByTestId('playback')).toBeVisible();
+  await expect(page.getByTestId('playing')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'First move' })).toBeDisabled();
+  await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toHaveCount(0);
   await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
   await expect(page.getByTestId('result')).toContainText('0–1 · O wins');
   await expect(page.getByTestId('result')).toContainText('Small boards won: 2–3');
