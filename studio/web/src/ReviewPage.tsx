@@ -3,7 +3,7 @@ import { getHistoryRecord, getRecord, postHistory, postHistoryText, saveSession 
 import { arenaRecordText } from './arena';
 import { BoardSlot } from './BoardSlot';
 import { download, downloadText, errorMessage, takesSpace, typesText } from './browser';
-import { renderers, resultDetails } from './games/registry';
+import { emptyFrames, renderers, resultDetails } from './games/registry';
 import { Row, useKeepInView } from './GameTable';
 import { SeatMark } from './Marks';
 import { recallFile } from './loadedFiles';
@@ -181,7 +181,7 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
   }, []);
 
   const Renderer = renderers[model.game];
-  const frame = model.frames[cursor];
+  const frame = model.frames[cursor] ?? emptyFrames[model.game]?.();
   const finalFrame = model.frames[last];
   const detail =
     model.result?.end.kind === 'finished' && finalFrame !== undefined

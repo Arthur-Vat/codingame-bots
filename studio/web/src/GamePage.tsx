@@ -15,7 +15,7 @@ import { BoardOverlay } from './BoardOverlay';
 import { download, errorMessage, typesText } from './browser';
 import { BoardSlot } from './BoardSlot';
 import { clockSeed } from './setup';
-import { renderers, resultDetails } from './games/registry';
+import { emptyFrames, renderers, resultDetails } from './games/registry';
 import { Controls, EndBlock, MoveList, PlayerStrip, Row } from './GameTable';
 import type { GamesState } from './hooks';
 import { ServerNotice } from './HomePage';
@@ -34,7 +34,14 @@ import {
 } from './play';
 import { SetupDialog, type SetupResult } from './SetupDialog';
 import { routeHash } from './route';
-import { bottomSeat, overlayFor, seatMark, sessionTitle, statusText } from './sessionView';
+import {
+  bottomSeat,
+  moveBeingPlayed,
+  overlayFor,
+  seatMark,
+  sessionTitle,
+  statusText,
+} from './sessionView';
 import {
   buildSessionRequest,
   clockLabel,
@@ -107,6 +114,9 @@ function InfoCard({
           ))}
         {bots === 1 && bot?.kind === 'bot' && (
           <Row term="Bot" value={`${bot.release}, ${thinkLabel(bot.think_ms)}`} />
+        )}
+        {bots === 2 && moveBeingPlayed(session) !== null && (
+          <Row term="Move" value={String(moveBeingPlayed(session))} />
         )}
         {clock && <Row term="Clock" value={clockLabel(clock)} />}
         <Row term="Seed" value={String(session.seed)} />
@@ -281,6 +291,8 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
 
   const Renderer = renderers[gameId];
   const frame = frames[shown];
+  // With no frame yet (no game, or a session still compiling) the game's empty board is drawn.
+  const shownFrame = frame ?? emptyFrames[gameId]?.();
   const finalFrame = frames[latest];
   const detail =
     session?.result?.end.kind === 'finished' && finalFrame !== undefined
@@ -288,6 +300,12 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
       : null;
   const mode = session === null ? null : sessionMode(session);
   const over = session?.status === 'over';
+  // Starting another game would drop this one: it has moves and is neither over nor dead.
+  const gameInProgress =
+    session !== null &&
+    session.status !== 'over' &&
+    session.status !== 'failed' &&
+    session.turns.length > 0;
 
   const openReview = useCallback(() => {
     if (sessionId !== null) {
@@ -347,10 +365,6 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
                 onChange={(event) => setCoordinates(event.target.checked)}
               />
             </label>
-            <label className="switch" title="Available with analysis">
-              Heatmap of best moves
-              <input type="checkbox" disabled />
-            </label>
             <p className="hint">Keys: ← → step, Home/End jump.</p>
           </section>
         </aside>
@@ -364,10 +378,10 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
               bare={Renderer !== undefined}
               overlay={session === null ? null : <BoardOverlay overlay={overlayFor(session)} />}
             >
-              {Renderer !== undefined && frame !== undefined ? (
+              {Renderer !== undefined && shownFrame !== undefined ? (
                 <Renderer
-                  frame={frame}
-                  interactive={playable}
+                  frame={shownFrame}
+                  interactive={playable && frame !== undefined}
                   onAction={onAction}
                   showCoordinates={coordinates}
                 />
@@ -391,6 +405,7 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
             />
             {session !== null && (
               <Controls
+                sessionId={session.id}
                 showPlayControls={mode !== 'bots' && !over}
                 takebackTo={controls.takebackTo}
                 resignSeat={controls.resignSeat}
@@ -421,6 +436,7 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
           releases={game.releases}
           onStart={start}
           onClose={closeDialog}
+          endsRunningGame={gameInProgress}
         />
       )}
     </>

@@ -40,6 +40,8 @@ interface Props {
   /** Starts the game; a rejected promise shows its message in the dialog. */
   onStart: (result: SetupResult) => Promise<void>;
   onClose: () => void;
+  /** A game is in progress and Start would end it: the dialog says so. */
+  endsRunningGame?: boolean;
 }
 
 function ReleaseSelect({
@@ -94,7 +96,7 @@ function ThinkSlider({
 }
 
 /** The modal that sets a game up. It is mounted for one opening, so its fields start afresh. */
-export function SetupDialog({ mode, releases, onStart, onClose }: Props) {
+export function SetupDialog({ mode, releases, onStart, onClose, endsRunningGame = false }: Props) {
   const ids = useId();
   const id = (name: string) => `${ids}-${name}`;
   const startRef = useRef<HTMLButtonElement>(null);
@@ -330,6 +332,9 @@ export function SetupDialog({ mode, releases, onStart, onClose }: Props) {
               {error}
             </p>
           )}
+          {endsRunningGame && (
+            <p className="hint ends-game">Starting a new game ends the one in progress.</p>
+          )}
         </div>
         <footer>
           <button
@@ -339,7 +344,7 @@ export function SetupDialog({ mode, releases, onStart, onClose }: Props) {
             disabled={busy}
             onClick={() => void start()}
           >
-            {busy ? 'Starting…' : 'Start'}
+            {busy ? 'Starting…' : endsRunningGame ? 'End this game and start' : 'Start'}
           </button>
         </footer>
       </div>

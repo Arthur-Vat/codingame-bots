@@ -72,7 +72,8 @@ test('a card opens the game page with the three ways to start', async ({ page })
     await expect(page.getByRole('button', { name: new RegExp(name) })).toBeVisible();
   }
   await expect(page.getByText('Choose a mode on the left to start a game.')).toBeVisible();
-  await expect(page.getByLabel('Heatmap of best moves')).toBeDisabled();
+  // Analysis does not exist yet: no switch for its heat map.
+  await expect(page.getByLabel('Heatmap of best moves')).toHaveCount(0);
 });
 
 test('playing the computer sends a human seat and a fixed bot seat', async ({ page }) => {

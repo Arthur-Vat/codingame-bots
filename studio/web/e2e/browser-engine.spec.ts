@@ -29,6 +29,12 @@ async function open(page: Page, hash = '/'): Promise<void> {
 const moves = (page: Page): Locator => page.getByLabel('Moves', { exact: true }).locator('button');
 const cells = (page: Page): Locator => page.getByRole('button', { name: /^play row/ });
 
+/** Resigning asks twice: the button, then its confirmation. */
+async function resign(page: Page) {
+  await page.getByRole('button', { name: '⚑ Resign' }).click();
+  await page.getByRole('button', { name: 'Confirm resign' }).click();
+}
+
 async function startGame(page: Page, mode: string, adjust?: (dialog: Locator) => Promise<void>) {
   await page.getByRole('button', { name: new RegExp(mode) }).click();
   const dialog = page.getByRole('dialog', { name: mode });
@@ -74,7 +80,7 @@ test('a friend game is played in the browser, by the Rust rules', async ({ page 
   await expect(moves(page)).toHaveCount(1);
   await expect(cells(page)).toHaveCount(8);
 
-  await page.getByRole('button', { name: '⚑ Resign' }).click();
+  await resign(page);
   await expect(page.getByTestId('result')).toBeVisible();
   await expect(cells(page)).toHaveCount(0);
 });
@@ -237,7 +243,7 @@ test.describe('where the page cannot be isolated', () => {
     await startGame(page, 'Play with a friend');
     await page.getByRole('button', { name: 'play row 4 column 4' }).click();
     await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
-    await page.getByRole('button', { name: '⚑ Resign' }).click();
+    await resign(page);
     await expect(page.getByTestId('result')).toBeVisible();
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(
@@ -273,7 +279,7 @@ test.describe('the arena games (ADR 0031)', () => {
     await startGame(page, 'Play with a friend');
     await page.getByRole('button', { name: 'play row 4 column 4' }).click();
     await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
-    await page.getByRole('button', { name: '⚑ Resign' }).click();
+    await resign(page);
     await expect(page.getByTestId('result')).toBeVisible();
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(

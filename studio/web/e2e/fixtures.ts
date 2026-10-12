@@ -97,3 +97,10 @@ export function recordView(patch: Record<string, unknown> = {}, shown = MOVES.le
     shown_turns: shown,
   };
 }
+
+/** How far the page's content reaches, and how tall the window is: the page scrolls when the first is larger. */
+export async function pageHeights(page: Page): Promise<{ scroll: number; inner: number }> {
+  return await page.evaluate<{ scroll: number; inner: number }>(
+    '({ scroll: document.documentElement.scrollHeight, inner: window.innerHeight })',
+  );
+}

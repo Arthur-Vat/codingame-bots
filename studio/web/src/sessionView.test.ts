@@ -3,6 +3,7 @@ import type { Answer, Session } from './api';
 import {
   bottomSeat,
   moveRows,
+  moveBeingPlayed,
   overlayFor,
   resultText,
   sessionTitle,
@@ -140,7 +141,6 @@ describe('overlayFor', () => {
     expect(
       overlayFor(session({ status: 'rewinding', seed: 42, progress: { done: 3, total: 12 } })),
     ).toEqual({
-      kind: 'notice',
       title: 'Rewinding uttt-v010',
       text: 'Replaying 12 moves with seed 42.',
       fraction: 0.25,
@@ -149,7 +149,6 @@ describe('overlayFor', () => {
 
   it('restarts from the first move when the bot has nothing to replay', () => {
     expect(overlayFor(session({ status: 'rewinding', progress: { done: 0, total: 0 } }))).toEqual({
-      kind: 'notice',
       title: 'Rewinding uttt-v010',
       text: 'Restarting uttt-v010 from the first move.',
       fraction: 0,
@@ -168,17 +167,17 @@ describe('overlayFor', () => {
     });
   });
 
-  it('shows a compact line while two bots play, and nothing in other games', () => {
-    const other = { ...bot, name: 'uttt-v009', release: 'uttt-v009' };
-    const bots = session({
-      seats: [bot, other],
-      status: 'bot_thinking',
-      to_act: [0],
-      turns: [turn(0, '4 4'), turn(1, '4 5')],
-    });
-    expect(overlayFor(bots)).toEqual({ kind: 'pill', text: 'uttt-v010 vs uttt-v009 · move 3' });
+  it('has no overlay while a bot thinks or when the game is over', () => {
     expect(overlayFor(session({ status: 'bot_thinking', to_act: [0] }))).toBeNull();
     expect(overlayFor(session({}))).toBeNull();
     expect(overlayFor(session({ status: 'over' }))).toBeNull();
+  });
+
+  it('numbers the move being played, and none once the game is over or failed', () => {
+    const played = [turn(0, '4 4'), turn(1, '4 5')];
+    expect(moveBeingPlayed(session({ status: 'bot_thinking', turns: played }))).toBe(3);
+    expect(moveBeingPlayed(session({ status: 'compiling' }))).toBe(1);
+    expect(moveBeingPlayed(session({ status: 'over', turns: played }))).toBeNull();
+    expect(moveBeingPlayed(session({ status: 'failed', turns: played }))).toBeNull();
   });
 });

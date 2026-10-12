@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   asUtttFrame,
   cellState,
+  emptyFrame as blankFrame,
   prepareHeat,
   resultDetail,
   smallBoardState,
+  winningLines,
   type Cell,
   type UtttFrame,
 } from './view';
@@ -149,5 +151,91 @@ describe('resultDetail', () => {
   it('says nothing when the frame has no points', () => {
     const frame = { ...emptyFrame(), points: undefined } as unknown as UtttFrame;
     expect(resultDetail(frame)).toBeNull();
+  });
+});
+
+describe('emptyFrame', () => {
+  it('is a frame with nothing played and nothing playable', () => {
+    const frame = blankFrame();
+    expect(asUtttFrame(frame)).not.toBeNull();
+    expect(frame.cells.flat().every((cell) => cell === null)).toBe(true);
+    expect(frame.small.flat().every((cell) => cell === null)).toBe(true);
+    expect(frame).toMatchObject({ last: null, playable: [], to_move: null, result: null });
+    expect(cellState(frame, 4, 4)).toMatchObject({ mark: null, status: null, playable: false });
+  });
+});
+
+describe('winningLines', () => {
+  const won = (winner: 0 | 1 | null, ...owned: [number, number][]): UtttFrame => {
+    const frame = emptyFrame();
+    frame.result = { winner };
+    for (const [r, c] of owned) frame.small[r]![c] = winner;
+    return frame;
+  };
+
+  it('finds each row', () => {
+    for (const r of [0, 1, 2]) {
+      expect(winningLines(won(0, [r, 0], [r, 1], [r, 2]))).toEqual([{ from: [r, 0], to: [r, 2] }]);
+    }
+  });
+
+  it('finds each column', () => {
+    for (const c of [0, 1, 2]) {
+      expect(winningLines(won(1, [0, c], [1, c], [2, c]))).toEqual([{ from: [0, c], to: [2, c] }]);
+    }
+  });
+
+  it('finds both diagonals', () => {
+    expect(winningLines(won(0, [0, 0], [1, 1], [2, 2]))).toEqual([{ from: [0, 0], to: [2, 2] }]);
+    expect(winningLines(won(1, [0, 2], [1, 1], [2, 0]))).toEqual([{ from: [0, 2], to: [2, 0] }]);
+  });
+
+  it('gives every line when several exist', () => {
+    const frame = won(0, [0, 0], [0, 1], [0, 2], [1, 1], [2, 2]);
+    expect(winningLines(frame)).toEqual([
+      { from: [0, 0], to: [0, 2] },
+      { from: [0, 0], to: [2, 2] },
+    ]);
+  });
+
+  it('ignores the other seat, drawn boards and open ones', () => {
+    const frame = won(0, [0, 0], [0, 1]);
+    frame.small[0]![2] = 1;
+    expect(winningLines(frame)).toEqual([]);
+    frame.small[0]![2] = 'draw';
+    expect(winningLines(frame)).toEqual([]);
+    frame.small[0]![2] = null;
+    expect(winningLines(frame)).toEqual([]);
+  });
+
+  it('draws no line for a win on the count of small boards', () => {
+    expect(winningLines(won(1, [0, 0], [0, 1], [1, 2], [2, 0]))).toEqual([]);
+  });
+
+  it('draws no line for a draw, a game in progress or no result', () => {
+    const owned: [number, number][] = [
+      [0, 0],
+      [0, 1],
+      [0, 2],
+    ];
+    expect(winningLines(won(null, ...owned))).toEqual([]);
+    const running = won(0, ...owned);
+    running.result = null;
+    expect(winningLines(running)).toEqual([]);
+  });
+
+  it('does not throw on a malformed frame', () => {
+    const base = won(0, [0, 0], [0, 1], [0, 2]);
+    const bad: unknown[] = [
+      { ...base, small: undefined },
+      { ...base, small: [] },
+      { ...base, small: [null, 5, 'x'] },
+      { ...base, small: [[0], [], [0, 0, 0]] },
+      { ...base, result: undefined },
+      { ...base, result: { winner: 7 } },
+      {},
+      null,
+    ];
+    for (const frame of bad) expect(winningLines(frame as UtttFrame)).toEqual([]);
   });
 });

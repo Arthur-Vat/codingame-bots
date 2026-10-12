@@ -1,6 +1,10 @@
 import { createElement, type ComponentType } from 'react';
 import UtttBoard from './uttt/Board';
-import { asUtttFrame, resultDetail as utttResultDetail } from './uttt/view';
+import {
+  asUtttFrame,
+  emptyFrame as utttEmptyFrame,
+  resultDetail as utttResultDetail,
+} from './uttt/view';
 
 /* A game's renderer lives in `games/<game>/` and is listed here by the game's id (its folder
    name). The shell looks a game up with `renderers[id]`; a new game plugs in by adding one entry. */
@@ -46,4 +50,13 @@ export const resultDetails: Record<string, (frame: unknown) => string | null> = 
     const checked = asUtttFrame(frame);
     return checked ? utttResultDetail(checked) : null;
   },
+};
+
+/**
+ * A game's board with nothing played and nothing to play, drawn where there is no frame yet (no
+ * game started, or a session still compiling). Optional: a game without one keeps the shell's
+ * placeholder.
+ */
+export const emptyFrames: Record<string, () => unknown> = {
+  uttt: utttEmptyFrame,
 };

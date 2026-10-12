@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { pageHeights } from './fixtures';
 
 // The server is not run by this job: the API is mocked with page.route. The session below is
 // what the server would send; the mock changes it by hand where the server would.
@@ -15,6 +16,8 @@ interface FrameOptions {
   last?: [number, number] | null;
   points?: [number, number];
   winner?: 0 | 1 | null | undefined;
+  /** The small boards won, `[row, col, seat]`. */
+  small?: [number, number, 0 | 1][];
 }
 
 function frame({
@@ -23,6 +26,7 @@ function frame({
   last = null,
   points = [0, 0],
   winner,
+  small = [],
 }: FrameOptions = {}) {
   const cells: Mark[][] = Array.from({ length: 9 }, () => Array<Mark>(9).fill(null));
   for (const [row, col, seat] of marks) cells[row]![col] = seat;
@@ -30,9 +34,11 @@ function frame({
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++) if (cells[r]![c] === null) all.push([r, c]);
   const list = playable === 'all' ? all : playable;
+  const smallBoards: Mark[][] = Array.from({ length: 3 }, () => Array<Mark>(3).fill(null));
+  for (const [row, col, seat] of small) smallBoards[row]![col] = seat;
   return {
     cells,
-    small: Array.from({ length: 3 }, () => Array<Mark>(3).fill(null)),
+    small: smallBoards,
     last,
     playable: winner === undefined ? list : [],
     to_move: winner === undefined ? marks.length % 2 : null,
@@ -247,6 +253,7 @@ test('a takeback against the computer removes the reply too, and resigning is th
   await page.getByRole('button', { name: '↶ Takeback' }).click();
   await expect.poll(() => mock.posts).toEqual([{ path: '/takeback', body: { turns: 1 } }]);
   await page.getByRole('button', { name: '⚑ Resign' }).click();
+  await page.getByRole('button', { name: 'Confirm resign' }).click();
   await expect.poll(() => mock.posts.length).toBe(2);
   expect(mock.posts[1]).toEqual({ path: '/end', body: { seat: 1, reason: 'resign' } });
 });
@@ -299,7 +306,9 @@ test('compiling and measuring say what the server does', async ({ page }) => {
   );
 });
 
-test('bot against bot shows a compact line over the board, then the review', async ({ page }) => {
+test('bot against bot shows the move number in the info card, then the review', async ({
+  page,
+}) => {
   const f1 = frame({ marks: [[4, 4, 0]], last: [4, 4] });
   const mock = await mockApi(
     page,
@@ -313,7 +322,9 @@ test('bot against bot shows a compact line over the board, then the review', asy
     }),
   );
   await page.goto('/#/game/uttt/ab12');
-  await expect(page.getByTestId('board-overlay')).toHaveText('uttt-v010 vs uttt-v009 · move 2');
+  // Nothing is drawn over the board; the card tells the move being played.
+  await expect(page.locator('.info dt:text-is("Move") + dd')).toHaveText('2');
+  await expect(page.getByTestId('board-overlay')).toHaveCount(0);
   await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Takeback|Resign/ })).toHaveCount(0);
   const live = await box(page);
@@ -614,4 +625,218 @@ test('the arrow keys look back when a switch has the focus', async ({ page }) =>
   await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toHaveCount(0);
   await page.keyboard.press('End');
   await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
+});
+
+const VIEWPORTS = [
+  { width: 1536, height: 730 },
+  { width: 1366, height: 650 },
+  { width: 1920, height: 970 },
+];
+
+// The squares of the board, without the room kept for the coordinates.
+const board = (page: Page) => page.locator('.uttt-board');
+
+test('the game page fits the window, and its table is as tall as the board', async ({ page }) => {
+  const f1 = frame({ marks: [[4, 4, 0]], last: [4, 4] });
+  await mockApi(
+    page,
+    session({
+      to_act: [1],
+      turns: [answer(0, '4 4')],
+      frames: [frame(), f1],
+      human_moves: humanMoves(f1),
+    }),
+  );
+  for (const viewport of VIEWPORTS) {
+    await page.setViewportSize(viewport);
+    await page.goto('/#/game/uttt/ab12');
+    await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
+    const fit = await pageHeights(page);
+    expect(fit.scroll, `${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(fit.inner);
+    const squares = await board(page).boundingBox();
+    const table = await page.locator('.panel.table').boundingBox();
+    expect(squares).not.toBeNull();
+    expect(table).not.toBeNull();
+    expect(Math.abs(table!.y - squares!.y)).toBeLessThanOrEqual(1);
+    expect(Math.abs(table!.y + table!.height - (squares!.y + squares!.height))).toBeLessThanOrEqual(
+      1,
+    );
+    expect(Math.abs(squares!.width - squares!.height)).toBeLessThanOrEqual(1);
+    // It uses the room: the board is more than the old 640 px where the window is tall enough.
+    if (viewport.height === 970) expect(squares!.height).toBeGreaterThan(640);
+  }
+});
+
+test('resigning takes a second click, and the question goes away', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+  const f1 = frame({ marks: [[4, 4, 0]], last: [4, 4] });
+  const mock = await mockApi(
+    page,
+    session({
+      to_act: [1],
+      turns: [answer(0, '4 4')],
+      frames: [frame(), f1],
+      human_moves: humanMoves(f1),
+    }),
+  );
+  mock.next = session({
+    status: 'over',
+    to_act: [],
+    human_moves: [],
+    result: { winner: 0, end: { kind: 'resigned', seat: 1 } },
+  });
+  await page.goto('/#/game/uttt/ab12');
+  const resign = page.getByRole('button', { name: '⚑ Resign' });
+  const confirm = page.getByRole('button', { name: 'Confirm resign' });
+
+  await resign.click();
+  await expect(confirm).toBeVisible();
+  expect(mock.posts).toEqual([]);
+  await page.keyboard.press('Escape');
+  await expect(resign).toBeVisible();
+  await expect(confirm).toHaveCount(0);
+
+  await resign.click();
+  await expect(confirm).toBeVisible();
+  await page.clock.runFor(4_100);
+  await expect(resign).toBeVisible();
+  expect(mock.posts).toEqual([]);
+
+  await resign.click();
+  await confirm.click();
+  await expect
+    .poll(() => mock.posts)
+    .toEqual([{ path: '/end', body: { seat: 1, reason: 'resign' } }]);
+});
+
+test('a new game asks first only while a game is in progress', async ({ page }) => {
+  const f1 = frame({ marks: [[4, 4, 0]], last: [4, 4] });
+  const running = session({
+    to_act: [1],
+    turns: [answer(0, '4 4')],
+    frames: [frame(), f1],
+    human_moves: humanMoves(f1),
+  });
+  const mock = await mockApi(page, running);
+  const warning = 'Starting a new game ends the one in progress.';
+
+  await page.goto('/#/game/uttt/ab12');
+  await page.getByRole('button', { name: /Play with a friend/ }).click();
+  const dialog = page.getByRole('dialog', { name: 'Play with a friend' });
+  await expect(dialog.getByText(warning)).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'End this game and start' })).toBeVisible();
+  // Closing the dialog keeps the game.
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
+  expect(mock.posts).toEqual([]);
+
+  // A game with no move yet is not worth a warning.
+  mock.current = session({});
+  await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toHaveCount(0);
+  await page.getByRole('button', { name: /Play with a friend/ }).click();
+  await expect(dialog.getByText(warning)).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  // Nor is a game that is over.
+  mock.current = session({
+    status: 'over',
+    to_act: [],
+    turns: [answer(0, '4 4')],
+    frames: [frame(), f1],
+    human_moves: [],
+    result: { winner: 0, end: { kind: 'resigned', seat: 1 } },
+  });
+  await expect(page.getByTestId('end-block')).toBeVisible();
+  await page.getByRole('button', { name: 'New game', exact: true }).click();
+  await expect(dialog.getByText(warning)).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
+
+  // No game at all.
+  await page.goto('/#/game/uttt');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: /Play with a friend/ }).click();
+  await expect(dialog.getByText(warning)).toHaveCount(0);
+});
+
+test('without a frame the game’s own empty board is drawn, and nothing can be played', async ({
+  page,
+}) => {
+  const mock = await mockApi(page, session({}));
+  await page.goto('/#/game/uttt');
+  await expect(page.getByText('The board appears here.')).toHaveCount(0);
+  const cells = page.getByRole('img', { name: /^row \d column \d$/ });
+  await expect(cells).toHaveCount(81);
+  await expect(page.getByRole('button', { name: /^play row/ })).toHaveCount(0);
+  await cells.nth(40).click({ force: true });
+  expect(mock.posts).toEqual([]);
+
+  // A session still compiling has no frame either: the notice covers the empty board.
+  await page.goto('/#/game/uttt/ab12');
+  mock.current = session({
+    seats: [human('You'), bot('uttt-v010')],
+    status: 'compiling',
+    to_act: [],
+    frames: [],
+    human_moves: [],
+  });
+  await page.reload();
+  await expect(page.getByTestId('board-overlay')).toContainText('Compiling uttt-v010…');
+  await expect(cells).toHaveCount(81);
+  await expect(page.getByText('The board appears here.')).toHaveCount(0);
+});
+
+test('a game won with three small boards in a row has a dashed line through them', async ({
+  page,
+}) => {
+  const won = (small: [number, number, 0 | 1][], winner: 0 | 1 | null) => [
+    frame(),
+    frame({ marks: [[4, 4, 0]], small, winner, points: [small.length, 0] }),
+  ];
+  const diagonal: [number, number, 0 | 1][] = [
+    [0, 0, 1],
+    [1, 1, 1],
+    [2, 2, 1],
+    [0, 2, 1],
+  ];
+  const mock = await mockApi(
+    page,
+    session({
+      status: 'over',
+      to_act: [],
+      turns: [answer(0, '4 4')],
+      frames: won(diagonal, 1),
+      human_moves: [],
+      result: { winner: 1, end: { kind: 'finished' } },
+    }),
+  );
+  await page.goto('/#/game/uttt/ab12');
+  const lines = page.getByTestId('win-lines');
+  await expect(lines).toBeVisible();
+  await expect(lines).toHaveAttribute('aria-hidden', 'true');
+  // One line: an edge and a dash.
+  await expect(lines.locator('line')).toHaveCount(2);
+  const squares = await board(page).boundingBox();
+  const drawn = await lines.boundingBox();
+  expect(Math.abs(drawn!.x - squares!.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(drawn!.width - squares!.width)).toBeLessThanOrEqual(1);
+  // The line takes no click: the cell under it is still the target.
+  await expect(lines).toHaveCSS('pointer-events', 'none');
+
+  // A win on the count of small boards has no line, and neither has a game in progress.
+  mock.current = {
+    ...mock.current,
+    frames: won(
+      [
+        [0, 0, 1],
+        [0, 1, 1],
+        [2, 0, 1],
+      ],
+      1,
+    ),
+  };
+  await page.reload();
+  await expect(page.getByRole('img', { name: 'row 4 column 4 X' })).toBeVisible();
+  await expect(lines).toHaveCount(0);
 });
