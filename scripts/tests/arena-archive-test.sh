@@ -244,16 +244,23 @@ zip_of 600 records/r2.json records/r3.json
 # Pull requests of the commit: a fork's with the same merge commit, a merged
 # one of the repository, and another commit's.
 canned "repos/owner/repo/commits/$sha_a/pulls?per_page=100" "$(jq -nc --arg a "$sha_a" --arg b "$sha_b" --arg c "$sha_c" '[
-  {number: 1, merge_commit_sha: $a, head: {sha: $c, repo: {full_name: "fork/repo"}}},
-  {number: 2, merge_commit_sha: $a, head: {sha: $b, repo: {full_name: "owner/repo"}}},
-  {number: 3, merge_commit_sha: $b, head: {sha: $b, repo: {full_name: "owner/repo"}}},
-  {number: 4, merge_commit_sha: $a, head: {sha: $b, repo: null}}]')"
-canned "repos/owner/repo/actions/workflows/sprt.yml/runs?head_sha=$sha_b&event=pull_request&per_page=20" "$(jq -nc '{workflow_runs: [
-  {id: 71, created_at: "2026-10-01T00:00:00Z", head_repository: {full_name: "owner/repo"}},
-  {id: 72, created_at: "2026-10-02T00:00:00Z", head_repository: {full_name: "owner/repo"}},
-  {id: 73, created_at: "2026-10-03T00:00:00Z", head_repository: {full_name: "fork/repo"}}]}')"
-canned "repos/owner/repo/actions/runs/72/artifacts?name=game-records-uttt&per_page=100" \
-  "$(listing "$(artifact 810 true 2026-10-02T00:00:00Z '' 72 main 7 7)")"
+  {number: 1, merge_commit_sha: $a, head: {sha: $c, ref: "forked", repo: {full_name: "fork/repo"}}},
+  {number: 2, merge_commit_sha: $a, head: {sha: $b, ref: "claude/feature", repo: {full_name: "owner/repo"}}},
+  {number: 3, merge_commit_sha: $b, head: {sha: $b, ref: "claude/other", repo: {full_name: "owner/repo"}}},
+  {number: 4, merge_commit_sha: $a, head: {sha: $b, ref: "gone", repo: null}}]')"
+# The runs of the branch, on two pages: the newest (73) is a fork's on a branch
+# of the same name, the head run (72) reused the cached result and kept no
+# sample, 74 has only an expired one, and 71 has the sample.
+sprt_runs="repos/owner/repo/actions/workflows/sprt.yml/runs?branch=claude/feature&event=pull_request&per_page=100"
+canned "$sprt_runs" "$(jq -nc '{workflow_runs: [
+  {id: 73, created_at: "2026-10-03T00:00:00Z", head_repository: {full_name: "fork/repo"}},
+  {id: 72, created_at: "2026-10-02T00:00:00Z", head_repository: {full_name: "owner/repo"}}]}')
+$(jq -nc '{workflow_runs: [
+  {id: 74, created_at: "2026-10-01T12:00:00Z", head_repository: {full_name: "owner/repo"}},
+  {id: 71, created_at: "2026-10-01T00:00:00Z", head_repository: {full_name: "owner/repo"}}]}')"
+canned "repos/owner/repo/actions/runs/72/artifacts?name=game-records-uttt&per_page=100" "$(listing)"
+canned "repos/owner/repo/actions/runs/74/artifacts?name=game-records-uttt&per_page=100" \
+  "$(listing "$(artifact 810 true 2026-10-01T12:00:00Z '' 74 main 7 7)")"
 canned "repos/owner/repo/actions/runs/71/artifacts?name=game-records-uttt&per_page=100" \
   "$(listing "$(artifact 800 false 2026-10-01T00:00:00Z 2026-11-01T00:00:00Z 71 main 7 7)")"
 zip_of 800 records/r4.json records/r5.json
@@ -280,6 +287,25 @@ output_is "gather: no samples" upload false
 output_is "gather: no samples" added 0
 expect "gather: no samples: a warning" "$(has "$tmp_dir/stdout" '::warning title=Arena archive::uttt: league run 500 has no unexpired' && echo 0 || echo 1)"
 expect "gather: no samples: a notice about the SPRT" "$(has "$tmp_dir/stdout" 'no SPRT sample added: no pull request of this repository was merged' && echo 0 || echo 1)"
+
+# An API failure while looking for the SPRT sample fails the step: the pull
+# requests of the commit cannot be listed, then the runs of its branch.
+rm "$stub/api/$(printf '%s' "repos/owner/repo/commits/$sha_a/pulls?per_page=100" | tr '/?&=' '____').json"
+rm -rf "$tmp_dir/work" "$stub/tool.log"
+gather uttt ADDING=true LEAGUE_RUN_ID=500 HEAD_SHA="$sha_a"
+status_is "gather: the pull requests cannot be listed" true
+expect "gather: pull request failure: the tool did not run" "$([[ ! -e $stub/tool.log ]] && echo 0 || echo 1)"
+canned "repos/owner/repo/commits/$sha_a/pulls?per_page=100" "$(jq -nc --arg a "$sha_a" --arg b "$sha_b" \
+  '[{number: 2, merge_commit_sha: $a, head: {sha: $b, ref: "claude/feature", repo: {full_name: "owner/repo"}}}]')"
+rm "$stub/api/$(printf '%s' "$sprt_runs" | tr '/?&=' '____').json"
+rm -rf "$tmp_dir/work" "$stub/tool.log"
+gather uttt ADDING=true LEAGUE_RUN_ID=500 HEAD_SHA="$sha_a"
+status_is "gather: the SPRT runs cannot be listed" true
+expect "gather: runs failure: the tool did not run" "$([[ ! -e $stub/tool.log ]] && echo 0 || echo 1)"
+canned "$sprt_runs" "$(jq -nc '{workflow_runs: [{id: 75, created_at: "2026-10-01T00:00:00Z", head_repository: {full_name: "owner/repo"}}]}')"
+rm -rf "$tmp_dir/work" "$stub/tool.log"
+gather uttt ADDING=true LEAGUE_RUN_ID=500 HEAD_SHA="$sha_a"
+status_is "gather: the SPRT run's artifacts cannot be listed" true
 
 # The current archive expires in 10 days and nothing is new: refresh. In 60 days: not.
 for case in "$in_10 true" "$in_60 false"; do

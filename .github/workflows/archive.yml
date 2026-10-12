@@ -29,11 +29,6 @@ on:
 
 permissions: {}
 
-# One run at a time: an archive is built from the one before.
-concurrency:
-  group: arena-archive
-  cancel-in-progress: false
-
 defaults:
   run:
     shell: bash
@@ -75,6 +70,12 @@ jobs:
     if: needs.plan.outputs.games != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # One run at a time per game: an archive is built from the one before. A
+    # run that archives nothing never queues, and a dry run never waits for
+    # or cancels a real one.
+    concurrency:
+      group: arena-archive-${{ matrix.game }}${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '-dry-run' || '' }}
+      cancel-in-progress: false
     permissions:
       actions: write # to delete the older archives
       contents: read
@@ -125,7 +126,9 @@ jobs:
   pages:
     name: Rebuild the site
     needs: archive
-    if: always() && needs.archive.result == 'success' && (github.event_name != 'workflow_dispatch' || !inputs.dry_run)
+    # The count of uploaded archives below guards the dispatch: one game
+    # failing does not block another's rebuild.
+    if: ${{ !cancelled() && needs.archive.result != 'skipped' && (github.event_name != 'workflow_dispatch' || !inputs.dry_run) }}
     runs-on: ubuntu-latest
     permissions:
       actions: write # to start the Pages workflow

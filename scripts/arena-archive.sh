@@ -132,46 +132,58 @@ mode_plan() {
 
 # ---- gather ------------------------------------------------------------
 
+# Every command substitution below ends in `|| return 1`: these functions run
+# inside `$(...) || ...`, where set -e is off, and an API failure must not
+# pass for "nothing found".
+
 # Prints the id of the unexpired artifact <name> of the run <run id>, or
 # nothing.
 run_artifact() { # run_artifact <run id> <name>
   gh api "repos/$REPO/actions/runs/$1/artifacts?name=$2&per_page=100" |
-    jq -r '[.artifacts[] | select(.expired | not)] | sort_by(.created_at) | last | .id // empty'
+    jq -r '[.artifacts[] | select(.expired | not)] | sort_by(.created_at) | last | .id // empty' || return 1
 }
 
-# Prints the head of the merged pull request of the commit $HEAD_SHA, from a
+# Prints the branch of the merged pull request of the commit $HEAD_SHA, from a
 # branch of this repository, or nothing.
-merged_pull_head() {
+merged_pull_branch() {
   gh api "repos/$REPO/commits/$HEAD_SHA/pulls?per_page=100" |
     jq -r --arg sha "$HEAD_SHA" --arg repo "$REPO" \
-      '[.[] | select(.merge_commit_sha == $sha and ((.head.repo.full_name // "") == $repo))] | first | .head.sha // empty'
+      '[.[] | select(.merge_commit_sha == $sha and ((.head.repo.full_name // "") == $repo))] | first | .head.ref // empty' || return 1
 }
 
 # The SPRT sample to add: prints the artifact id and the run id, space
-# separated, or nothing and the reason on stderr.
+# separated, or nothing and the reason on stderr. The last commit of a pull
+# request is often a journal one, whose SPRT run reused the cached result and
+# uploaded no sample: the runs of the pull request's branch are searched,
+# newest first, for the first that kept one.
 sprt_sample() { # sprt_sample <game>
-  local pr_head runs run id
-  pr_head="$(merged_pull_head)"
-  if [[ -z $pr_head ]]; then
+  local branch runs run id
+  branch="$(merged_pull_branch)" || return 1
+  if [[ -z $branch ]]; then
     echo "no pull request of this repository was merged as $HEAD_SHA" >&2
     return 0
   fi
-  runs="$(gh api "repos/$REPO/actions/workflows/sprt.yml/runs?head_sha=$pr_head&event=pull_request&per_page=20" |
-    jq -r --arg repo "$REPO" \
-      '[.workflow_runs[] | select((.head_repository.full_name // "") == $repo)] | sort_by(.created_at) | reverse | .[].id')"
+  if [[ ! $branch =~ ^[A-Za-z0-9._/-]+$ ]]; then
+    echo "the pull request's branch '$branch' has an unsupported name" >&2
+    return 0
+  fi
+  # Runs of this repository's branch only: a fork may use the same name.
+  runs="$(gh api --paginate "repos/$REPO/actions/workflows/sprt.yml/runs?branch=$branch&event=pull_request&per_page=100" |
+    jq -s -r --arg repo "$REPO" \
+      '[.[].workflow_runs[] | select((.head_repository.full_name // "") == $repo)] | sort_by(.created_at) | reverse | .[].id')" || return 1
   if [[ -z $runs ]]; then
-    echo "the pull request's head $pr_head has no SPRT run (reused from the cache, or expired)" >&2
+    echo "the branch $branch has no SPRT run" >&2
     return 0
   fi
   while read -r run; do
     [[ -n $run ]] || continue
-    id="$(run_artifact "$run" "game-records-$1")"
+    id="$(run_artifact "$run" "game-records-$1")" || return 1
     if [[ -n $id ]]; then
       echo "$id $run"
       return 0
     fi
   done <<<"$runs"
-  echo "no SPRT run of the pull request's head $pr_head has an unexpired game-records-$1 sample" >&2
+  echo "no SPRT run of the branch $branch has an unexpired game-records-$1 sample (the result was reused from the cache, or the samples expired)" >&2
 }
 
 mode_gather() {
