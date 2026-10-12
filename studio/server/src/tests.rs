@@ -7,7 +7,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use cg_arena::record::{PlayerKind, Record};
 use serde_json::{json, Value};
 
-use crate::server::{bind_address, request_allowed, BIND_ADDRESS};
+use crate::server::{
+    bind_address, body_limit, request_allowed, serve, BIND_ADDRESS, MAX_BODY, MAX_FILTER_BODY,
+};
 use crate::{handle, State};
 
 /// A folder under the system's temporary one, removed on drop.
@@ -413,4 +415,76 @@ fn requests_must_come_from_the_studios_own_page() {
         Some("127.0.0.1:8411"),
         Some("http://evil.example")
     ));
+}
+
+#[test]
+fn only_the_filter_route_takes_a_large_body() {
+    assert_eq!(MAX_BODY, 1 << 20);
+    assert_eq!(MAX_FILTER_BODY, 64 << 20);
+    assert_eq!(body_limit("POST", "/api/filter"), MAX_FILTER_BODY);
+    assert_eq!(
+        body_limit("POST", "/api/filter?release=uttt-v001"),
+        MAX_FILTER_BODY
+    );
+    for (method, url) in [
+        ("POST", "/api/view"),
+        ("POST", "/api/history"),
+        ("POST", "/api/sessions"),
+        ("POST", "/api/filter/x"),
+        ("POST", "/api/filters"),
+        ("POST", "/x?/api/filter"),
+        ("GET", "/api/filter"),
+    ] {
+        assert_eq!(body_limit(method, url), MAX_BODY, "{method} {url}");
+    }
+}
+
+/// Sends a POST over a socket and returns the status code and the body of the reply.
+fn post(port: u16, path: &str, body: &str) -> (u16, String) {
+    use std::io::{Read, Write};
+    let mut stream = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
+    let head = format!(
+        "POST {path} HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        body.len()
+    );
+    stream.write_all(head.as_bytes()).unwrap();
+    stream.write_all(body.as_bytes()).unwrap();
+    let mut reply = String::new();
+    stream.read_to_string(&mut reply).unwrap();
+    let status = reply.split(' ').nth(1).unwrap().parse().unwrap();
+    let body = reply.split("\r\n\r\n").nth(1).unwrap_or("").to_string();
+    (status, body)
+}
+
+#[test]
+fn the_server_takes_over_a_mebibyte_for_the_filter_only() {
+    let dir = TempDir::new("body-limit");
+    let state = plain_state(&dir);
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    std::thread::spawn(move || {
+        let _ = serve(&state, port);
+    });
+    // Wait for the server to listen.
+    let mut waited = 0;
+    while std::net::TcpStream::connect(("127.0.0.1", port)).is_err() {
+        waited += 1;
+        assert!(waited < 200, "the server did not start");
+        std::thread::sleep(std::time::Duration::from_millis(25));
+    }
+    // More than 1 MiB of rows, as the archive has after some 6,000 games.
+    let row = r#"{"id":"uttt-1-aaaaaaaaaaaa","game":"uttt","unix_time":1,"players":["a","b"],"winner":0,"end":"finished","turns":3,"source":"arena match"}"#;
+    let count = (2 << 20) / row.len() + 1;
+    let rows = format!("[{}]", vec![row; count].join(","));
+    assert!(rows.len() > 2 << 20);
+    let (status, body) = post(port, "/api/filter?result=x", &rows);
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(body.matches("uttt-1-aaaaaaaaaaaa").count(), count);
+    // Everything else still stops at 1 MiB.
+    let (status, body) = post(port, "/api/view", &rows);
+    assert_eq!(status, 413);
+    assert!(body.contains("larger than 1 MiB"), "{body}");
 }

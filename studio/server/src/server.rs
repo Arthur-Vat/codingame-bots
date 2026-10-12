@@ -16,7 +16,26 @@ pub const BIND_ADDRESS: &str = "127.0.0.1";
 const WORKERS: usize = 4;
 
 /// The largest request body read.
-const MAX_BODY: u64 = 1 << 20;
+pub(crate) const MAX_BODY: u64 = 1 << 20;
+
+/// The largest body of `POST /api/filter`, which carries the rows of the arena games: the archive
+/// has no size limit (ADR 0031), and a row is about 170 bytes.
+pub(crate) const MAX_FILTER_BODY: u64 = 64 << 20;
+
+/// The largest body read for a request, by its method and URL.
+pub(crate) fn body_limit(method: &str, url: &str) -> u64 {
+    let path = url.split(['?', '#']).next().unwrap_or("");
+    if method == "POST" && path == "/api/filter" {
+        MAX_FILTER_BODY
+    } else {
+        MAX_BODY
+    }
+}
+
+/// What the 413 says for a body over `limit`.
+fn too_large(limit: u64) -> String {
+    format!("the request body is larger than {} MiB", limit >> 20)
+}
 
 /// The socket address for `port`.
 pub fn bind_address(port: u16) -> String {
@@ -80,16 +99,14 @@ fn answer(state: &State, port: u16, mut request: Request) {
     let host = header(&request, "Host");
     let origin = header(&request, "Origin");
     let response = if request_allowed(port, host.as_deref(), origin.as_deref()) {
+        let method = request.method().as_str().to_string();
+        let url = request.url().to_string();
+        let limit = body_limit(&method, &url);
         let mut body = Vec::new();
-        let _ = request
-            .as_reader()
-            .take(MAX_BODY + 1)
-            .read_to_end(&mut body);
-        if body.len() as u64 > MAX_BODY {
-            Response::error(413, "the request body is larger than 1 MiB")
+        let _ = request.as_reader().take(limit + 1).read_to_end(&mut body);
+        if body.len() as u64 > limit {
+            Response::error(413, &too_large(limit))
         } else {
-            let method = request.method().as_str().to_string();
-            let url = request.url().to_string();
             // `handle` splits the query string off itself.
             let path = url.split('#').next().unwrap_or("");
             handle(state, &method, path, &body)
