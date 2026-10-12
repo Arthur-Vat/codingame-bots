@@ -391,6 +391,9 @@ test('a finished game shows the end block with Rematch, New game, Analysis board
 
   await page.getByTestId('end-block').getByRole('button', { name: 'New game' }).click();
   await expect(setupMenu(page)).toBeVisible();
+  await expect(
+    setupMenu(page).getByRole('button', { name: 'A friend', exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('a duplicate save and the reasons of an end', async ({ page }) => {
@@ -826,6 +829,8 @@ test('a new game asks first only while a game is in progress', async ({ page }) 
   await expect(dialog.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
 
   // No game at all: the menu opens by itself.
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
   await page.goto('/#/game/uttt');
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText(warning)).toHaveCount(0);

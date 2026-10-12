@@ -269,6 +269,24 @@ test('bot against bot: one think time for both, or one for each in advanced mode
   await expect(menu.getByLabel(/^Think time/)).toHaveValue('2');
 });
 
+test('the times of the two bots survive a switch of mode and advanced mode off and on', async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.goto('/#/game/uttt');
+  const menu = await chooseMode(setupMenu(page), 'Bot against bot');
+  await menu.getByLabel('Advanced mode').check();
+  await menu.getByLabel(/^X think/).fill('0');
+  await menu.getByLabel(/^O think/).fill('6');
+
+  await chooseMode(menu, 'A release');
+  await menu.getByLabel('Advanced mode').uncheck();
+  await menu.getByLabel('Advanced mode').check();
+  await chooseMode(menu, 'Bot against bot');
+  await expect(menu.getByLabel(/^X think/)).toHaveValue('0');
+  await expect(menu.getByLabel(/^O think/)).toHaveValue('6');
+});
+
 test('a game against a release sends the request of the choices made', async ({ page }) => {
   const created = await mockApi(page);
   await page.goto('/#/game/uttt');

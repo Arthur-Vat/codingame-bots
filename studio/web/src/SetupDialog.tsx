@@ -135,6 +135,7 @@ export function SetupDialog({
   const [botsThinkIndex, setBotsThinkIndex] = useState(DEFAULT_THINK_INDEX);
   const [xThinkIndex, setXThinkIndex] = useState(DEFAULT_THINK_INDEX);
   const [oThinkIndex, setOThinkIndex] = useState(DEFAULT_THINK_INDEX);
+  const [perBotEdited, setPerBotEdited] = useState(false);
   // The clock of each mode that has one.
   const [friendClock, setFriendClock] = useState<ClockIndexes>(DEFAULT_CLOCK);
   const [computerClock, setComputerClock] = useState<ClockIndexes>(DEFAULT_CLOCK);
@@ -171,9 +172,10 @@ export function SetupDialog({
     setMode(picked);
     onModeChange?.(picked);
   };
-  // Turning advanced mode on starts the two bots' times from the shared one.
+  // Turning advanced mode on starts the two bots' times from the shared one, unless one of them
+  // was edited already: those times are kept.
   const setAdvancedMode = (on: boolean) => {
-    if (on) {
+    if (on && !perBotEdited) {
       setXThinkIndex(botsThinkIndex);
       setOThinkIndex(botsThinkIndex);
     }
@@ -229,24 +231,58 @@ export function SetupDialog({
                 key={choice}
                 type="button"
                 aria-pressed={mode === choice}
-                aria-label={MODE_TITLES[choice]}
+                aria-labelledby={id(`mode-${choice}`)}
+                aria-describedby={id(`hint-${choice}`)}
                 onClick={() => pickMode(choice)}
               >
-                <strong>{MODE_TITLES[choice]}</strong>
-                <span>{MODE_HINTS[choice]}</span>
+                <strong id={id(`mode-${choice}`)}>{MODE_TITLES[choice]}</strong>
+                <span id={id(`hint-${choice}`)}>{MODE_HINTS[choice]}</span>
               </button>
             ))}
           </div>
           {mode === 'computer' && (
-            <div className="pair">
-              <div className="field">
-                <label htmlFor={id('release')}>Release</label>
-                <ReleaseSelect
-                  id={id('release')}
-                  value={release}
-                  releases={releases}
-                  onChange={setRelease}
-                />
+            <>
+              <div className="pair">
+                <div className="field">
+                  <label htmlFor={id('release')}>Release</label>
+                  <ReleaseSelect
+                    id={id('release')}
+                    value={release}
+                    releases={releases}
+                    onChange={setRelease}
+                  />
+                </div>
+                <div className="field">
+                  <span className="flabel">Your side</span>
+                  <div className="sides" role="group" aria-label="Your side">
+                    <button
+                      type="button"
+                      aria-pressed={side === 'x'}
+                      aria-label="Play X"
+                      onClick={() => setSide('x')}
+                    >
+                      <SeatMark seat={0} />
+                    </button>
+                    <button
+                      type="button"
+                      className="rnd"
+                      aria-pressed={side === 'random'}
+                      aria-label="Random side"
+                      onClick={() => setSide('random')}
+                    >
+                      ?
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={side === 'o'}
+                      aria-label="Play O"
+                      onClick={() => setSide('o')}
+                    >
+                      <SeatMark seat={1} />
+                    </button>
+                  </div>
+                  <div className="side-cap">{SIDE_CAPTIONS[side]}</div>
+                </div>
               </div>
               <div className="field">
                 <ThinkSlider
@@ -257,7 +293,7 @@ export function SetupDialog({
                 />
                 <p className="hint">Fixed iterations, so takebacks replay exactly.</p>
               </div>
-            </div>
+            </>
           )}
           {mode === 'bots' && (
             <>
@@ -328,39 +364,6 @@ export function SetupDialog({
               </div>
             </div>
           )}
-          {mode === 'computer' && (
-            <div className="field">
-              <span className="flabel">Your side</span>
-              <div className="sides" role="group" aria-label="Your side">
-                <button
-                  type="button"
-                  aria-pressed={side === 'x'}
-                  aria-label="Play X"
-                  onClick={() => setSide('x')}
-                >
-                  <SeatMark seat={0} />
-                </button>
-                <button
-                  type="button"
-                  className="rnd"
-                  aria-pressed={side === 'random'}
-                  aria-label="Random side"
-                  onClick={() => setSide('random')}
-                >
-                  ?
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={side === 'o'}
-                  aria-label="Play O"
-                  onClick={() => setSide('o')}
-                >
-                  <SeatMark seat={1} />
-                </button>
-              </div>
-              <div className="side-cap">{SIDE_CAPTIONS[side]}</div>
-            </div>
-          )}
           <label className="switch" htmlFor={id('advanced')}>
             Advanced mode
             <input
@@ -379,7 +382,10 @@ export function SetupDialog({
                       id={id('x-think')}
                       label="X think"
                       index={xThinkIndex}
-                      onChange={setXThinkIndex}
+                      onChange={(index) => {
+                        setXThinkIndex(index);
+                        setPerBotEdited(true);
+                      }}
                     />
                   </div>
                   <div className="field">
@@ -387,7 +393,10 @@ export function SetupDialog({
                       id={id('o-think')}
                       label="O think"
                       index={oThinkIndex}
-                      onChange={setOThinkIndex}
+                      onChange={(index) => {
+                        setOThinkIndex(index);
+                        setPerBotEdited(true);
+                      }}
                     />
                   </div>
                 </div>
