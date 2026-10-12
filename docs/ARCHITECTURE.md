@@ -66,7 +66,7 @@ codingame-bots/
 │  ├─ core/                 the studio's logic that needs the rules, shared by the server and the browser (ADR 0030)
 │  ├─ game/                 the interface a game implements for the studio
 │  ├─ rules/                the rules as a WebAssembly program (JSON requests in, JSON out) for the browser
-│  ├─ server/               Rust server on 127.0.0.1: bots, games, history
+│  ├─ server/               Rust server on 127.0.0.1: bots, games, history; `studio-archive` builds an archive of arena games (ADR 0031)
 │  └─ web/                  front end: TypeScript, React, Vite; a board renderer per game
 ├─ .claude/                 agents/ and skills/ of Claude's sessions; worktrees/ ignored
 └─ .github/

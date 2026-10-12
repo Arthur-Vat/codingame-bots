@@ -22,7 +22,7 @@ fn history_dir(dir: &TempDir) -> PathBuf {
 
 /// The record of a friend game of `plies` moves (always the first legal
 /// move) that seat 1 then resigned.
-fn friend_record(state: &State, seed: u64, plies: usize) -> Value {
+pub(crate) fn friend_record(state: &State, seed: u64, plies: usize) -> Value {
     let (status, created) = call(
         state,
         "POST",
@@ -60,7 +60,7 @@ fn friend_record(state: &State, seed: u64, plies: usize) -> Value {
 
 /// A friend game played to the end by the rules, each move chosen by a
 /// small generator seeded with `seed`.
-fn finished_record(state: &State, seed: u64) -> Value {
+pub(crate) fn finished_record(state: &State, seed: u64) -> Value {
     let (status, created) = call(
         state,
         "POST",

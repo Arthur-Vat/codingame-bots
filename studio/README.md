@@ -148,6 +148,14 @@ The history is one JSON file per game in `studio/data/history/` (or `<data>/hist
 
 The SPRT and league workflows keep a sample of the games they play (about 10 per step or per pair of bots, [ADR 0027](../docs/adr/0027-game-records.md)). In the run's page on GitHub, download the artifact `game-records-<game>` (`league-game-records-<game>` for the league), unzip it, then in the studio open History, then Load game files, and choose the unzipped files. Artifacts expire after 30 days.
 
+### Building an archive of arena games
+
+```sh
+cargo run --release -p studio --bin studio-archive -- --out DIR [--game GAME] INPUT...
+```
+
+The tool that builds the archive of a game's arena games ([ADR 0031](../docs/adr/0031-arena-games-archive.md)) from folders of records, such as unzipped workflow artifacts or an earlier archive. It reads every `.json` file in the `INPUT` folders and their subfolders (not `index.json`, names starting with a dot or symbolic links), replays each record with the game's referee as `POST /api/history` does, and keeps each game once, by its id (the first input wins). If any file fails, nothing is written, the exit status is 1, and stderr names every failing file and why. Otherwise it writes `DIR/records/<id>.json`, each as the history saves it, and `DIR/index.json`, `{"format":1,"rows":[...]}` with the rows of `GET /api/history`, newest first. `DIR` must not exist or must be empty. With `--game`, only records of that game are accepted. Run it with `--help` for the details.
+
 ## The rules in WebAssembly
 
 The browser engine of the static site ([ADR 0030](../docs/adr/0030-studio-on-github-pages.md)) holds no rules: it calls a WebAssembly program built from the same Rust code as the server.

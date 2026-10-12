@@ -1,5 +1,6 @@
 [package]
 name = "studio"
+default-run = "studio"
 description = "The studio's local server: games, bots, takebacks and records, with the front end."
 version.workspace = true
 authors.workspace = true
