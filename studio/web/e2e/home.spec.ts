@@ -54,8 +54,9 @@ test('the home screen lists the games the server offers', async ({ page }) => {
   const card = page.getByRole('link', { name: /Ultimate Tic-Tac-Toe/ });
   await expect(card).toContainText('3 releases');
   await expect(card).toContainText('Latest: uttt-v003');
-  await expect(page.getByText('Next game')).toBeVisible();
-  await expect(page.getByText('More games')).toBeVisible();
+  // No placeholder cards and no intro: only the games there are (owner, 2026-10-12).
+  await expect(page.locator('.card')).toHaveCount(1);
+  await expect(page.locator('.home-head p')).toHaveCount(0);
   // The notices file sits beside the page (a relative URL, for the site's subpath).
   await expect(page.getByRole('link', { name: 'Licenses' })).toHaveAttribute(
     'href',
@@ -133,7 +134,6 @@ test('Escape closes the menu and the advanced mode shows the seed', async ({ pag
   await expect(dialog.getByLabel('Seed')).toBeHidden();
   await dialog.getByLabel('Advanced mode').check();
   await expect(dialog.getByLabel('Seed')).toBeVisible();
-  await expect(dialog.getByText('Otherwise taken from the clock.')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
 });

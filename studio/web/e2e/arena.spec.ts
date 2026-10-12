@@ -136,9 +136,7 @@ test('the arena games are listed read-only, beside my games', async ({ page }) =
     'page',
   );
   await expect(
-    page.getByText(
-      'Games played by the releases on GitHub (SPRT and league samples). Read-only: save one to add it to your games.',
-    ),
+    page.getByText('Bot games played on GitHub (SPRT and league samples).'),
   ).toBeVisible();
 
   // Read-only: no import, no delete, no source filter; the other filters stay.
