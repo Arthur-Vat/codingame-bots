@@ -1,10 +1,8 @@
-/* What the review screen needs, as pure functions: the one model a session, a saved game and a
-   file are turned into, and the timing and the stepping of the playback. */
+/* What the review screen needs, as pure functions: the one model a saved game, an arena game and
+   a file are turned into, and the timing and the stepping of the playback. */
 
-import type { Answer, GameRecord, RecordPlayer, RecordView, Session, SessionResult } from './api';
-import { exportFileName } from './play';
+import type { Answer, GameRecord, RecordPlayer, RecordView, SessionResult } from './api';
 import type { ReviewKind } from './route';
-import { thinkLabel } from './setup';
 
 /** One player of a reviewed game. */
 export interface ReviewPlayer {
@@ -17,7 +15,7 @@ export interface ReviewPlayer {
 /** A reviewed game, whatever it came from. */
 export interface ReviewModel {
   kind: ReviewKind;
-  /** The session id, the saved game's id, or the id of the loaded file. */
+  /** The saved game's id, the arena game's id, or the id of the loaded file. */
   id: string;
   game: string;
   players: [ReviewPlayer, ReviewPlayer];
@@ -28,43 +26,14 @@ export interface ReviewModel {
   /** The board's frames: frame 0 is the position after the opening. */
   frames: unknown[];
   openingTurns: number;
-  /** Null while a session is still being played. */
-  result: SessionResult | null;
+  result: SessionResult;
   seed: number;
   /** Where the game comes from, as the info card says it. */
   source: string;
-  /** Seconds since the Unix epoch, when known. */
-  unixTime: number | null;
+  /** Seconds since the Unix epoch. */
+  unixTime: number;
   /** Whether the game is in the history already. */
   saved: boolean;
-  /** The failure of a session that failed, if any. */
-  error: string | null;
-}
-
-function sessionPlayer(seat: Session['seats'][number]): ReviewPlayer {
-  if (seat.kind === 'human') return { name: seat.name, kind: 'human', settings: null };
-  const mode = seat.mode === 'realtime' ? ', real time' : '';
-  return { name: seat.name, kind: 'bot', settings: `${thinkLabel(seat.think_ms)}${mode}` };
-}
-
-/** The review of a session of the server, which may still be going on. */
-export function reviewOfSession(session: Session): ReviewModel {
-  return {
-    kind: 'session',
-    id: session.id,
-    game: session.game,
-    players: [sessionPlayer(session.seats[0]), sessionPlayer(session.seats[1])],
-    turns: session.turns,
-    hiddenTurns: 0,
-    frames: session.frames,
-    openingTurns: session.opening_turns,
-    result: session.result,
-    seed: session.seed,
-    source: 'Played here',
-    unixTime: null,
-    saved: false,
-    error: session.status === 'failed' ? (session.error ?? 'The game failed.') : null,
-  };
 }
 
 function recordPlayer(player: RecordPlayer): ReviewPlayer {
@@ -108,7 +77,6 @@ export function reviewOfRecord(view: RecordView, origin: RecordOrigin): ReviewMo
     source: sourceText(origin, record),
     unixTime: record.unix_time,
     saved: origin.kind === 'saved',
-    error: null,
   };
 }
 
@@ -198,6 +166,29 @@ export function playbackReducer(state: PlaybackState, action: PlaybackAction): P
   }
 }
 
+/** What a playback holds: its state, and the game it was started for (null before any). */
+export interface HeldPlayback {
+  key: string | null;
+  state: PlaybackState;
+}
+
+export const NO_PLAYBACK: HeldPlayback = { key: null, state: PLAYBACK_START };
+
+/**
+ * The playback to use for the game `key`: the one held when it is for that game, else a new one,
+ * stopped at normal speed on frame `start`. A game going on has no key until it is over; then its
+ * review starts on the frame that was on the board.
+ */
+export function playbackFor(held: HeldPlayback, key: string | null, start: number): HeldPlayback {
+  if (held.key === key) return held;
+  return { key, state: { ...PLAYBACK_START, cursor: Math.max(0, start) } };
+}
+
+/** The cursor to draw: the state's, kept within the frames there are. */
+export function shownCursor(state: PlaybackState, last: number): number {
+  return clamp(state.cursor, last);
+}
+
 /** What a key does in the review: a frame to go to, `'toggle'` for Space, or undefined. */
 export function reviewKey(
   key: string,
@@ -229,11 +220,8 @@ export function formatDate(unixSeconds: number): string {
   return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())} ${two(date.getHours())}:${two(date.getMinutes())}`;
 }
 
-/** The name a record is exported under: `uttt-1-ab…` for a saved or an arena game, else the game and seed. */
-export function exportName(model: ReviewModel, now: Date): string {
+/** The name a record is exported under: `uttt-1-ab…` for a saved or an arena game, else the file's own. */
+export function exportName(model: ReviewModel): string {
   if (model.kind === 'saved' || model.kind === 'arena') return `${model.id}.json`;
-  if (model.kind === 'file') {
-    return model.source.toLowerCase().endsWith('.json') ? model.source : `${model.source}.json`;
-  }
-  return exportFileName(model.game, model.seed, now);
+  return model.source.toLowerCase().endsWith('.json') ? model.source : `${model.source}.json`;
 }

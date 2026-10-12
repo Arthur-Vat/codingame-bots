@@ -123,7 +123,7 @@ const rows = (page: Page) => page.getByTestId('history-row');
 
 test('the table shows the saved games with their results and tags', async ({ page }) => {
   await mockHistory(page);
-  await page.goto('/#/history');
+  await page.goto('/#/game/uttt/history');
   await expect(rows(page)).toHaveCount(5);
   await expect(page.getByRole('link', { name: 'History' })).toHaveAttribute('aria-current', 'page');
 
@@ -145,20 +145,20 @@ test('the table shows the saved games with their results and tags', async ({ pag
 
 test('the filters send their query, and an empty answer says nothing matches', async ({ page }) => {
   const mock = await mockHistory(page);
-  await page.goto('/#/history');
+  await page.goto('/#/game/uttt/history');
   await expect(rows(page)).toHaveCount(5);
-  expect(mock.queries).toEqual(['']);
+  expect(mock.queries).toEqual(['?game=uttt']);
 
   await page.getByLabel('Release').selectOption('uttt-v009');
-  await expect.poll(() => mock.queries.at(-1)).toBe('?release=uttt-v009');
+  await expect.poll(() => mock.queries.at(-1)).toBe('?game=uttt&release=uttt-v009');
   await page.getByLabel('Result').selectOption({ label: 'Faults' });
-  await expect.poll(() => mock.queries.at(-1)).toBe('?release=uttt-v009&result=fault');
+  await expect.poll(() => mock.queries.at(-1)).toBe('?game=uttt&release=uttt-v009&result=fault');
   await page.getByLabel('Source').selectOption({ label: 'Arena samples' });
   await page.getByLabel('From (UTC)').fill('2026-10-01');
   await page.getByLabel('To (UTC)').fill('2026-10-10');
   await expect
     .poll(() => mock.queries.at(-1))
-    .toBe('?release=uttt-v009&result=fault&source=arena&from=2026-10-01&to=2026-10-10');
+    .toBe('?game=uttt&release=uttt-v009&result=fault&source=arena&from=2026-10-01&to=2026-10-10');
 
   mock.rows = [];
   await page.getByLabel('Result').selectOption({ label: 'X wins' });
@@ -172,13 +172,13 @@ test('the filters send their query, and an empty answer says nothing matches', a
   await page.getByLabel('Source').selectOption('');
   await page.getByLabel('From (UTC)').fill('');
   await page.getByLabel('To (UTC)').fill('');
-  await expect.poll(() => mock.queries.at(-1)).toBe('');
+  await expect.poll(() => mock.queries.at(-1)).toBe('?game=uttt');
   await expect(page.getByTestId('history-empty')).toContainText('No saved games yet');
 });
 
 test('the release filter offers the releases of the games', async ({ page }) => {
   await mockHistory(page);
-  await page.goto('/#/history');
+  await page.goto('/#/game/uttt/history');
   await expect(page.getByLabel('Release').locator('option')).toHaveText([
     'All releases',
     'uttt-v010',
@@ -187,18 +187,49 @@ test('the release filter offers the releases of the games', async ({ page }) => 
   ]);
 });
 
+test('the history is the game’s own: its query, its releases, its links', async ({ page }) => {
+  const mock = await mockHistory(page);
+  await page.route('**/api/games', (route) =>
+    route.fulfill({
+      json: [
+        { id: 'uttt', name: 'Ultimate Tic-Tac-Toe', releases: ['uttt-v010', 'uttt-v009'] },
+        { id: 'other', name: 'Other', releases: ['other-v001'] },
+      ],
+    }),
+  );
+  await page.goto('/#/game/other/history');
+  await expect(rows(page)).toHaveCount(5);
+  expect(mock.queries).toEqual(['?game=other']);
+  await expect(page.getByLabel('Release').locator('option')).toHaveText([
+    'All releases',
+    'other-v001',
+  ]);
+  await expect(page.getByRole('link', { name: 'Arena games' })).toHaveAttribute(
+    'href',
+    '#/game/other/history/arena',
+  );
+  await expect(page.getByRole('link', { name: 'My games' })).toHaveAttribute(
+    'href',
+    '#/game/other/history',
+  );
+  await expect(rows(page).first().getByRole('link', { name: 'Review' })).toHaveAttribute(
+    'href',
+    '#/game/other/review/saved/uttt-1760000000-aaaaaaaaaaaa',
+  );
+});
+
 test('Review opens the saved game', async ({ page }) => {
   await mockHistory(page);
-  await page.goto('/#/history');
+  await page.goto('/#/game/uttt/history');
   await rows(page).nth(1).getByRole('link', { name: 'Review' }).click();
-  await expect(page).toHaveURL(/#\/review\/saved\/uttt-1759990000-bbbbbbbbbbbb$/);
+  await expect(page).toHaveURL(/#\/game\/uttt\/review\/saved\/uttt-1759990000-bbbbbbbbbbbb$/);
   await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
   await expect(page.getByTestId('result')).toBeVisible();
 });
 
 test('Export downloads the record', async ({ page }) => {
   await mockHistory(page);
-  await page.goto('/#/history');
+  await page.goto('/#/game/uttt/history');
   const exported = page.waitForEvent('download');
   await rows(page).nth(2).getByRole('button', { name: 'Export' }).click();
   const download = await exported;
@@ -214,7 +245,7 @@ test('Delete asks again in the row, and only the second click deletes', async ({
     dialogs += 1;
     void dialog.dismiss();
   });
-  await page.goto('/#/history');
+  await page.goto('/#/game/uttt/history');
   await expect(rows(page)).toHaveCount(5);
 
   const second = rows(page).nth(1);
@@ -250,7 +281,7 @@ test('loading three files shows what was imported, what was there, and what was 
     }
     return { status: 200, json: { id: 'x', duplicate: false } };
   };
-  await page.goto('/#/history');
+  await page.goto('/#/game/uttt/history');
   await expect(rows(page)).toHaveCount(5);
   await expect(page.getByText('Workflow artifacts come zipped: unzip them first.')).toBeVisible();
 
@@ -277,7 +308,7 @@ test('loading three files shows what was imported, what was there, and what was 
 
 test('a file that is not JSON is refused without asking the server', async ({ page }) => {
   const mock = await mockHistory(page);
-  await page.goto('/#/history');
+  await page.goto('/#/game/uttt/history');
   await expect(rows(page)).toHaveCount(5);
   await page.getByLabel('Load game files').setInputFiles({
     name: 'artifact.zip.json',
@@ -295,14 +326,14 @@ test('a file that is not JSON is refused without asking the server', async ({ pa
 
 test('a file can be reviewed without being saved, then saved from the review', async ({ page }) => {
   const mock = await mockHistory(page);
-  await page.goto('/#/history');
+  await page.goto('/#/game/uttt/history');
   const loaded = record({ seed: 777 });
   await page.getByLabel('Review a file').setInputFiles({
     name: 'sample.json',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(loaded)),
   });
-  await expect(page).toHaveURL(/#\/review\/file\/f[0-9a-z]+$/);
+  await expect(page).toHaveURL(/#\/game\/uttt\/review\/file\/f[0-9a-z]+$/);
   await expect(page.getByText('sample.json')).toBeVisible();
   expect(mock.viewed).toEqual([loaded]);
   expect(mock.posted).toEqual([]);
@@ -317,11 +348,67 @@ test('a file can be reviewed without being saved, then saved from the review', a
   expect((await exported).suggestedFilename()).toBe('sample.json');
 });
 
+test('a file names its game: the review opens on that game’s page when the app has it', async ({
+  page,
+}) => {
+  await mockHistory(page);
+  await page.route('**/api/games', (route) =>
+    route.fulfill({
+      json: [
+        { id: 'uttt', name: 'Ultimate Tic-Tac-Toe', releases: ['uttt-v001'] },
+        { id: 'other', name: 'Other', releases: [] },
+      ],
+    }),
+  );
+  // The rules' view of a record of that game names it, so the page does not move it elsewhere.
+  await page.route('**/api/view', (route) =>
+    route.fulfill({ json: recordView({ game: 'other' }) }),
+  );
+  await page.goto('/#/game/uttt/history');
+  await expect(rows(page)).toHaveCount(5);
+  // The games are loaded once their releases are offered.
+  await expect(page.getByLabel('Release').locator('option')).toHaveCount(2);
+  await page.getByLabel('Review a file').setInputFiles({
+    name: 'other.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(record({ game: 'other' }))),
+  });
+  await expect(page).toHaveURL(/#\/game\/other\/review\/file\/f[0-9a-z]+$/);
+  await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
+  await expect(page).toHaveURL(/#\/game\/other\/review\/file\/f[0-9a-z]+$/);
+});
+
+test('a file naming a game the app does not have opens on the current game, as plain text', async ({
+  page,
+}) => {
+  await mockHistory(page);
+  await page.goto('/#/game/uttt/history');
+  await expect(rows(page)).toHaveCount(5);
+  await page.getByLabel('Review a file').setInputFiles({
+    name: 'odd.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(record({ game: '<img src=x onerror=alert(1)> ../a b' }))),
+  });
+  await expect(page).toHaveURL(/#\/game\/uttt\/review\/file\/f[0-9a-z]+$/);
+  await expect(page.locator('img[src="x"]')).toHaveCount(0);
+});
+
+test('a file whose game is not a name opens on the current game', async ({ page }) => {
+  await mockHistory(page);
+  await page.goto('/#/game/uttt/history');
+  await page.getByLabel('Review a file').setInputFiles({
+    name: 'nameless.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(record({ game: 7 }))),
+  });
+  await expect(page).toHaveURL(/#\/game\/uttt\/review\/file\/f[0-9a-z]+$/);
+});
+
 test('a double click on Delete for good sends one request', async ({ page }) => {
   const mock = await mockHistory(page);
   let release: () => void = () => {};
   mock.gate = new Promise<void>((resolve) => (release = resolve));
-  await page.goto('/#/history');
+  await page.goto('/#/game/uttt/history');
   const first = rows(page).nth(0);
   await first.getByRole('button', { name: 'Delete', exact: true }).click();
   const confirm = first.getByRole('button', { name: 'Delete for good' });
@@ -341,7 +428,7 @@ test('the list of refused files goes away with a filter change or a later import
     seed === 3
       ? { status: 400, json: { error: 'invalid game record: nope' } }
       : { status: 200, json: { id: 'x', duplicate: false } };
-  await page.goto('/#/history');
+  await page.goto('/#/game/uttt/history');
   await expect(rows(page)).toHaveCount(5);
   const file = (name: string, seed: number) => ({
     name,

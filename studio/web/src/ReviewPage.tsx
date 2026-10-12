@@ -1,30 +1,21 @@
-import { useEffect, useEffectEvent, useReducer, useState, type ReactNode } from 'react';
-import { getHistoryRecord, getRecord, postHistory, postHistoryText, saveSession } from './api';
+import { useState, type ReactNode } from 'react';
+import { getHistoryRecord, postHistory, postHistoryText } from './api';
 import { arenaRecordText } from './arena';
 import { BoardSlot } from './BoardSlot';
-import { download, downloadText, errorMessage, takesSpace, typesText } from './browser';
-import { emptyFrames, renderers, resultDetails } from './games/registry';
+import { download, downloadText, errorMessage } from './browser';
+import { emptyFrameFor, renderers, resultDetailFor } from './games/registry';
 import { Row, useKeepInView } from './GameTable';
 import { SeatMark } from './Marks';
 import { recallFile } from './loadedFiles';
 import { frameAfterTurn, timeUsed, turnOfFrame } from './play';
 import { PlaybackBar } from './PlaybackBar';
-import {
-  exportName,
-  formatDate,
-  lastFrame,
-  playbackInterval,
-  playbackReducer,
-  PLAYBACK_START,
-  retime,
-  reviewKey,
-  type ReviewModel,
-  type ReviewPlayer,
-} from './review';
-import type { ReviewKind } from './route';
+import { exportName, formatDate, lastFrame, type ReviewModel, type ReviewPlayer } from './review';
+import { routeHash, type ReviewKind } from './route';
 import { formatSpent } from './clock';
 import { moveRows, resultText, seatMark } from './sessionView';
 import { Toast, useToast } from './Toast';
+import { Redirect, StatusPanel } from './Panels';
+import { usePlayback } from './usePlayback';
 import { useReview } from './useReview';
 
 /** One player's strip: mark, name, how it played, and the time its answers took. */
@@ -51,17 +42,17 @@ function playerLine(player: ReviewPlayer): string {
   return player.settings === null ? player.name : `${player.name}, ${player.settings}`;
 }
 
-function InfoCard({ model, resultLine }: { model: ReviewModel; resultLine: string | null }) {
+function InfoCard({ model, resultLine }: { model: ReviewModel; resultLine: string }) {
   return (
     <section className="panel info">
       <h3>Review</h3>
       <dl>
         <Row term="Source" value={model.source} />
-        {model.unixTime !== null && <Row term="Date" value={formatDate(model.unixTime)} />}
+        <Row term="Date" value={formatDate(model.unixTime)} />
         <Row term="Seed" value={String(model.seed)} />
         <Row term="X" value={playerLine(model.players[0])} />
         <Row term="O" value={playerLine(model.players[1])} />
-        {resultLine !== null && <Row term="Result" value={resultLine} />}
+        <Row term="Result" value={resultLine} />
       </dl>
     </section>
   );
@@ -78,11 +69,11 @@ function ReviewMoves({
   model: ReviewModel;
   shownTurn: number;
   atLatest: boolean;
-  headline: string | null;
+  headline: string;
   detail: string;
   onPick: (turn: number) => void;
 }) {
-  const list = useKeepInView(shownTurn, model.turns.length, model.result !== null, atLatest);
+  const list = useKeepInView(shownTurn, model.turns.length, true, atLatest);
   const cell = (move: { turn: number; text: string }) => (
     <button
       type="button"
@@ -101,17 +92,10 @@ function ReviewMoves({
           {row.moves[1] === null ? <span /> : cell(row.moves[1])}
         </MoveRow>
       ))}
-      {model.error !== null && (
-        <div className="failed" role="alert">
-          {model.error}
-        </div>
-      )}
-      {headline !== null && (
-        <div className="result" data-testid="result">
-          <b>{headline}</b>
-          {detail !== '' && <span>{detail}</span>}
-        </div>
-      )}
+      <div className="result" data-testid="result">
+        <b>{headline}</b>
+        {detail !== '' && <span>{detail}</span>}
+      </div>
     </div>
   );
 }
@@ -127,7 +111,6 @@ function MoveRow({ number, children }: { number: number; children: ReactNode }) 
 
 /** The record to save or export, whatever the game came from but an arena game (kept as text). */
 async function recordOf(model: ReviewModel): Promise<unknown> {
-  if (model.kind === 'session') return getRecord(model.id);
   if (model.kind === 'saved') return getHistoryRecord(model.id);
   if (model.kind === 'arena') throw new Error('An arena game is kept as text.');
   const file = recallFile(model.id);
@@ -140,57 +123,22 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
   const [coordinates, setCoordinates] = useState(false);
   const [savedHere, setSavedHere] = useState(false);
   const last = lastFrame(model);
-  const [playback, dispatch] = useReducer(playbackReducer, PLAYBACK_START);
-  const cursor = Math.max(0, Math.min(playback.cursor, last));
-  const wanted = playbackInterval(model.frames.length, playback.speed);
-  // The delay in use changes with the speed, not with every frame of a game still going on.
-  const [delay, setDelay] = useState(wanted);
-  const kept = retime(delay, wanted);
-  if (kept !== delay) setDelay(kept);
-
-  const tick = useEffectEvent(() => dispatch({ type: 'tick', last }));
-  // One timer for as long as the game plays at one delay: a step moves the cursor, and the one
-  // that reaches the last frame stops playing.
-  useEffect(() => {
-    if (!playback.playing || delay === null) return;
-    const timer = setInterval(tick, delay);
-    return () => clearInterval(timer);
-  }, [playback.playing, delay]);
-
-  const toggle = () => dispatch({ type: 'toggle', last });
-  const goto = (frame: number) => dispatch({ type: 'goto', frame, last });
-
-  const onKey = useEffectEvent((event: KeyboardEvent) => {
-    if (typesText(event.target)) return;
-    if (event.altKey || event.ctrlKey || event.metaKey) return;
-    const action = reviewKey(event.key, cursor, last);
-    if (action === undefined) return;
-    // Space on a button, a link, a checkbox or a radio button is theirs.
-    if (action === 'toggle' && takesSpace(event.target)) return;
-    event.preventDefault();
-    if (action === 'toggle') {
-      if (!event.repeat) toggle();
-    } else {
-      goto(action);
-    }
-  });
-  useEffect(() => {
-    const down = (event: KeyboardEvent) => onKey(event);
-    window.addEventListener('keydown', down);
-    return () => window.removeEventListener('keydown', down);
-  }, []);
+  // A review opened here starts at the first frame.
+  const playback = usePlayback(last, 0, `${model.kind}/${model.id}`, { active: true, keys: true });
+  const cursor = playback.cursor;
+  const goto = playback.goto;
+  const toggle = playback.toggle;
 
   const Renderer = renderers[model.game];
-  const frame = model.frames[cursor] ?? emptyFrames[model.game]?.();
+  const frame = model.frames[cursor] ?? emptyFrameFor(model.game);
   const finalFrame = model.frames[last];
   const detail =
-    model.result?.end.kind === 'finished' && finalFrame !== undefined
-      ? (resultDetails[model.game]?.(finalFrame) ?? null)
+    model.result.end.kind === 'finished' && finalFrame !== undefined
+      ? resultDetailFor(model.game, finalFrame)
       : null;
-  const text = model.result === null ? null : resultText(model.result, model.players, detail);
-  const endDetail =
-    text === null ? '' : model.hiddenTurns > 0 ? `${text.detail}, not shown` : text.detail;
-  const resultLine = text === null ? null : `${text.headline}${endDetail ? `, ${endDetail}` : ''}`;
+  const text = resultText(model.result, model.players, detail);
+  const endDetail = model.hiddenTurns > 0 ? `${text.detail}, not shown` : text.detail;
+  const resultLine = `${text.headline}${endDetail ? `, ${endDetail}` : ''}`;
 
   const shownTurn = turnOfFrame(cursor, model.openingTurns);
   const saved = model.saved || savedHere;
@@ -199,11 +147,9 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
     try {
       // An arena game is saved as the text it was published in.
       const { duplicate } =
-        model.kind === 'session'
-          ? await saveSession(model.id)
-          : model.kind === 'arena'
-            ? await postHistoryText(await arenaRecordText(model.id))
-            : await postHistory(await recordOf(model));
+        model.kind === 'arena'
+          ? await postHistoryText(await arenaRecordText(model.id))
+          : await postHistory(await recordOf(model));
       setSavedHere(true);
       toast.show(duplicate ? 'Already in your history' : 'Saved to your history');
     } catch (failure) {
@@ -213,9 +159,9 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
   const exportFile = async () => {
     try {
       if (model.kind === 'arena') {
-        downloadText(exportName(model, new Date()), await arenaRecordText(model.id));
+        downloadText(exportName(model), await arenaRecordText(model.id));
       } else {
-        download(exportName(model, new Date()), await recordOf(model));
+        download(exportName(model), await recordOf(model));
       }
     } catch (failure) {
       toast.show(errorMessage(failure));
@@ -261,7 +207,7 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
             speed={playback.speed}
             onGoto={goto}
             onToggle={toggle}
-            onSpeed={(speed) => dispatch({ type: 'speed', speed })}
+            onSpeed={playback.setSpeed}
           />
         </section>
 
@@ -272,7 +218,7 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
               model={model}
               shownTurn={shownTurn}
               atLatest={cursor >= last}
-              headline={text?.headline ?? null}
+              headline={text.headline}
               detail={endDetail}
               onPick={(turn) => goto(frameAfterTurn(turn, model.openingTurns))}
             />
@@ -304,18 +250,54 @@ function ReviewScreen({ model }: { model: ReviewModel }) {
   );
 }
 
-/** The review of a session, a saved game, an arena game or a loaded file. */
-export function ReviewPage({ kind, id }: { kind: ReviewKind; id: string }) {
+/** The game a review route names, loaded; its page when the game is loaded. */
+function ReviewLoader({ gameId, kind, id }: { gameId: string; kind: ReviewKind; id: string }) {
   const { model, error } = useReview(kind, id);
   if (model === null) {
+    return error === null ? (
+      <StatusPanel text="Loading the game…" />
+    ) : (
+      <StatusPanel text={error} alert />
+    );
+  }
+  // A hand-typed address with another game's id: the review belongs to its own game's page.
+  if (model.game !== gameId) {
     return (
-      <main className="wrap">
-        <section className="panel empty-page" role={error === null ? 'status' : 'alert'}>
-          {error ?? 'Loading the game…'}
-        </section>
-      </main>
+      <Redirect
+        hash={routeHash({
+          page: 'game',
+          gameId: model.game,
+          tab: 'review',
+          review: { kind, id },
+        })}
+      />
     );
   }
   // A new game starts from its first frame, with its own playback.
   return <ReviewScreen key={`${model.kind}/${model.id}`} model={model} />;
+}
+
+/** The Review tab of a game: the game open for review, or a way to open one. */
+export function ReviewTab({
+  gameId,
+  review,
+}: {
+  gameId: string;
+  review: { kind: ReviewKind; id: string } | null;
+}) {
+  if (review === null) {
+    return (
+      <main className="wrap">
+        <section className="panel empty-page" data-testid="review-empty">
+          <p>No game open for review.</p>
+          <p>
+            <a href={routeHash({ page: 'game', gameId, tab: 'history', set: 'mine' })}>
+              Open one from the history
+            </a>
+          </p>
+        </section>
+      </main>
+    );
+  }
+  return <ReviewLoader gameId={gameId} kind={review.kind} id={review.id} />;
 }

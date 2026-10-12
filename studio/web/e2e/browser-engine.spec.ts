@@ -134,14 +134,15 @@ test('bot against bot in real time to the end, its review, and the history kept 
     await dialog.getByLabel(/^X think/).fill('0');
     await dialog.getByLabel(/^O think/).fill('0');
   });
-  // A game between two bots opens its review by itself when it is over.
-  await expect(page).toHaveURL(/#\/review\/session\//, { timeout: 180_000 });
+  // A game between two bots becomes its review, in place, when it is over.
+  await expect(page.getByTestId('playback')).toBeVisible({ timeout: 180_000 });
+  await expect(page).toHaveURL(/#\/game\/uttt\/[0-9a-f]+$/);
   await expect(page.getByTestId('result')).toBeVisible();
   await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
   await expect(page.getByTestId('player-0')).toContainText('uttt-v001');
   await expect(page.getByTestId('player-1')).toContainText('uttt-v002');
 
-  await page.getByRole('button', { name: 'Save to history' }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Saved to your history' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'In your history' })).toBeDisabled();
 
@@ -168,7 +169,7 @@ test('bot against bot in real time to the end, its review, and the history kept 
 
   // Review opens it from the browser's storage.
   await rows.first().getByRole('link', { name: 'Review' }).click();
-  await expect(page).toHaveURL(/#\/review\/saved\/uttt-\d+-[0-9a-f]{12}$/);
+  await expect(page).toHaveURL(/#\/game\/uttt\/review\/saved\/uttt-\d+-[0-9a-f]{12}$/);
   await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
   await page.getByRole('link', { name: 'History' }).click();
 
@@ -220,7 +221,7 @@ test('bot against bot in real time to the end, its review, and the history kept 
 
   // ... and a file can be reviewed without being saved.
   await page.getByLabel('Review a file').setInputFiles(loadable);
-  await expect(page).toHaveURL(/#\/review\/file\/f[0-9a-z]+$/);
+  await expect(page).toHaveURL(/#\/game\/uttt\/review\/file\/f[0-9a-z]+$/);
   await expect(page.getByText('game.json')).toBeVisible();
   await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
 });
@@ -327,7 +328,7 @@ test.describe('the arena games (ADR 0031)', () => {
       records: { [id]: text },
     });
     await page.getByRole('link', { name: 'Arena games' }).click();
-    await expect(page).toHaveURL(/#\/history\/arena$/);
+    await expect(page).toHaveURL(/#\/game\/uttt\/history\/arena$/);
     const listed = page.getByTestId('history-row');
     await expect(listed).toHaveCount(2);
     // Relative to the page: the site's own folder, nothing from github.io.
@@ -342,7 +343,7 @@ test.describe('the arena games (ADR 0031)', () => {
     await expect(listed).toHaveCount(1);
     await expect(listed.first().getByRole('link', { name: 'Review' })).toHaveAttribute(
       'href',
-      `#/review/arena/${id}`,
+      `#/game/uttt/review/arena/${id}`,
     );
     await page.getByLabel('Result').selectOption({ label: 'Draw' });
     await expect(page.getByTestId('history-empty')).toHaveText(
@@ -352,7 +353,7 @@ test.describe('the arena games (ADR 0031)', () => {
     await expect(listed).toHaveCount(1);
     await expect(listed.first().getByRole('link', { name: 'Review' })).toHaveAttribute(
       'href',
-      '#/review/arena/uttt-1-decoy',
+      '#/game/uttt/review/arena/uttt-1-decoy',
     );
     await page.getByLabel('Result').selectOption('');
     await expect(listed).toHaveCount(2);
@@ -366,9 +367,9 @@ test.describe('the arena games (ADR 0031)', () => {
 
     // Review replays the record with the rules, from the published text.
     await listed.first().getByRole('link', { name: 'Review' }).click();
-    await expect(page).toHaveURL(new RegExp(`#/review/arena/${id}$`));
+    await expect(page).toHaveURL(new RegExp(`#/game/uttt/review/arena/${id}$`));
     await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
-    await expect(page.getByTestId('result')).toBeVisible();
+    await expect(page.getByTestId('result').filter({ visible: true })).toBeVisible();
     expect(arena.requests.at(-1)).toBe(`http://127.0.0.1:4173/arena-games/records/${id}.json`);
 
     // Save copies it to my games, as a game of the studio like any other.
@@ -383,7 +384,7 @@ test.describe('the arena games (ADR 0031)', () => {
     await page.getByLabel('Source').selectOption({ label: 'Played in the studio' });
     await expect(mine).toHaveCount(1);
     // Saved again, it is the same game.
-    await page.goto(`/#/review/arena/${id}`);
+    await page.goto(`/#/game/uttt/review/arena/${id}`);
     await page.getByRole('button', { name: 'Save to history' }).click();
     await expect(
       page.getByRole('status').filter({ hasText: 'Already in your history' }),
@@ -391,7 +392,7 @@ test.describe('the arena games (ADR 0031)', () => {
 
     // A site without arena games (a 404, as GitHub Pages answers) says so.
     arena.index = null;
-    await page.goto('/#/history/arena');
+    await page.goto('/#/game/uttt/history/arena');
     await page.reload();
     await expect(page.getByTestId('history-empty')).toHaveText('No arena games published yet.', {
       timeout: 30_000,
@@ -406,7 +407,7 @@ test("without arena-games files, the static host's fallback page counts as nothi
   // `npm run preview` answers an unknown path with index.html and a 200, as a single-page app
   // host may; the front end must not call that an unreadable index. Here the service worker
   // handles the request, as on the site.
-  await open(page, '/#/history/arena');
+  await open(page, '/#/game/uttt/history/arena');
   await expect(page.getByTestId('history-empty')).toHaveText('No arena games published yet.');
   await expect(page.getByRole('alert')).toHaveCount(0);
 });

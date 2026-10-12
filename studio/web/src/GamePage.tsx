@@ -15,7 +15,7 @@ import { BoardOverlay } from './BoardOverlay';
 import { download, errorMessage, typesText } from './browser';
 import { BoardSlot } from './BoardSlot';
 import { clockSeed } from './setup';
-import { emptyFrames, renderers, resultDetails } from './games/registry';
+import { emptyFrameFor, ownEntry, renderers, resultDetailFor } from './games/registry';
 import { Controls, EndBlock, MoveList, PlayerStrip, Row } from './GameTable';
 import type { GamesState } from './hooks';
 import { ServerNotice } from './HomePage';
@@ -34,6 +34,7 @@ import {
   turnOfFrame,
 } from './play';
 import { SetupDialog, type SetupResult } from './SetupDialog';
+import { PlaybackBar } from './PlaybackBar';
 import { routeHash } from './route';
 import {
   bottomSeat,
@@ -54,6 +55,7 @@ import {
 } from './setup';
 import { Toast, useToast } from './Toast';
 import { useClocks } from './useClocks';
+import { usePlayback } from './usePlayback';
 import { useSession } from './useSession';
 
 const LOBBY: { mode: Mode; hint: string }[] = [
@@ -70,6 +72,8 @@ const DEFAULT_BLURB = 'Play a friend, play a release, or watch two releases play
 interface Props {
   gameId: string;
   sessionId: string | null;
+  /** Whether the Play tab is the one shown. The page stays mounted while another tab is shown, so a game goes on (its clocks, its bots), but it takes no key and opens no dialog. */
+  active: boolean;
   gamesState: GamesState;
   /** The clock chosen for this session, kept by the app until a later change runs it. */
   clock: ClockSettings | null;
@@ -93,7 +97,7 @@ function InfoCard({
     return (
       <section className="panel info">
         <h3>{game?.name ?? gameId}</h3>
-        <p className="hint">{problem ?? GAME_BLURBS[gameId] ?? DEFAULT_BLURB}</p>
+        <p className="hint">{problem ?? ownEntry(GAME_BLURBS, gameId) ?? DEFAULT_BLURB}</p>
       </section>
     );
   }
@@ -105,6 +109,7 @@ function InfoCard({
       <dl>
         <dt>Status</dt>
         <dd>{statusText(session)}</dd>
+        {session.status === 'over' && <Row term="Source" value="Played here" />}
         {bots === 2 &&
           session.seats.map((seat, index) => (
             <Row
@@ -129,7 +134,7 @@ function InfoCard({
 /** How long to wait before reporting a timeout again after a failure. */
 const TIMEOUT_RETRY_MS = 1000;
 
-export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Props) {
+export function GamePage({ gameId, sessionId, active, gamesState, clock, onStarted }: Props) {
   const { session, error, apply } = useSession(sessionId);
   const [dialogMode, setDialogMode] = useState<Mode | null>(null);
   const [coordinates, setCoordinates] = useState(false);
@@ -142,12 +147,16 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
   // After a failed timeout report, the next try waits a moment.
   const [backingOff, setBackingOff] = useState(false);
   // The frame the user looks at while looking back; null follows the latest frame.
+  // The session whose finished game was saved from this page (it reads "In your history").
+  const [savedSession, setSavedSession] = useState<string | null>(null);
   const [pinned, setPinned] = useState<{ sessionId: string | null; frame: number } | null>(null);
   const toast = useToast();
 
   const game = gamesState.games?.find((candidate) => candidate.id === gameId) ?? null;
   const gameMissing = gamesState.games !== null && game === null;
   const closeDialog = useCallback(() => setDialogMode(null), []);
+  // A page that is not shown opens no dialog.
+  if (!active && dialogMode !== null) setDialogMode(null);
 
   const clocks = useClocks(session, clock);
   const running = clock === null ? null : runningSeat(session);
@@ -155,7 +164,14 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
   const frames = session?.frames ?? [];
   const latest = frames.length - 1;
   const pinnedFrame = pinned !== null && pinned.sessionId === sessionId ? pinned.frame : null;
-  const shown = pinnedFrame === null ? latest : Math.min(pinnedFrame, latest);
+  const looked = pinnedFrame === null ? latest : Math.min(pinnedFrame, latest);
+  // A game that is over is its own review: the playback starts on the frame that was looked at.
+  const over = session?.status === 'over';
+  const playback = usePlayback(latest, looked, over ? session.id : null, {
+    active,
+    keys: active && dialogMode === null,
+  });
+  const shown = over ? playback.cursor : looked;
   const atLatest = shown === latest;
   const shownTurn = session === null ? -1 : turnOfFrame(shown, session.opening_turns);
 
@@ -171,7 +187,7 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
       }
       onStarted(id, newClock);
       setDialogMode(null);
-      window.location.hash = routeHash({ page: 'game', gameId, sessionId: id });
+      window.location.hash = routeHash({ page: 'game', gameId, tab: 'play', sessionId: id });
     } finally {
       launching.current = false;
       setStarting(false);
@@ -223,6 +239,8 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
     if (session === null) return;
     try {
       const { duplicate } = await saveSession(session.id);
+      // Only a game that is over is saved whole: a game saved while it went on is not "in" the history.
+      if (session.status === 'over') setSavedSession(session.id);
       toast.show(duplicate ? 'Already in your history' : 'Saved to your history');
     } catch (failure) {
       toast.show(errorMessage(failure));
@@ -264,7 +282,7 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
 
   // ← → Home End look back and forward, as on Lichess.
   const onKey = useEffectEvent((event: KeyboardEvent) => {
-    if (dialogMode !== null || latest < 0 || typesText(event.target)) return;
+    if (!active || over || dialogMode !== null || latest < 0 || typesText(event.target)) return;
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     const next = cursorAfterKey(event.key, shown, latest);
     if (next === undefined) return;
@@ -280,6 +298,10 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
   const pickTurn = (turn: number) => {
     if (session === null) return;
     const frame = frameAfterTurn(turn, session.opening_turns);
+    if (over) {
+      playback.goto(frame);
+      return;
+    }
     setPinned(frame >= latest ? null : { sessionId, frame });
   };
 
@@ -293,42 +315,23 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
   const Renderer = renderers[gameId];
   const frame = frames[shown];
   // With no frame yet (no game, or a session still compiling) the game's empty board is drawn.
-  const shownFrame = frame ?? emptyFrames[gameId]?.();
+  const shownFrame = frame ?? emptyFrameFor(gameId);
   const finalFrame = frames[latest];
   const detail =
     session?.result?.end.kind === 'finished' && finalFrame !== undefined
-      ? (resultDetails[gameId]?.(finalFrame) ?? null)
+      ? resultDetailFor(gameId, finalFrame)
       : null;
   const mode = session === null ? null : sessionMode(session);
-  const over = session?.status === 'over';
   const gameInProgress = hasGameInProgress(session);
-
-  const openReview = useCallback(() => {
-    if (sessionId !== null) {
-      window.location.hash = routeHash({ page: 'review', kind: 'session', id: sessionId });
-    }
-  }, [sessionId]);
-  // A game between two bots opens its review when it ends, if it was seen going on.
-  const seenGoing = useRef<string | null>(null);
-  const status = session?.status;
-  useEffect(() => {
-    if (sessionId === null || status === undefined) return;
-    if (status !== 'over') {
-      seenGoing.current = sessionId;
-    } else if (seenGoing.current === sessionId && mode === 'bots') {
-      seenGoing.current = null;
-      openReview();
-    }
-  }, [sessionId, status, mode, openReview]);
 
   return (
     <>
       {gamesState.error?.unreachable && (
-        <div className="wrap" style={{ paddingBlock: '24px 0' }}>
+        <div className="wrap" hidden={!active} style={{ paddingBlock: '24px 0' }}>
           <ServerNotice />
         </div>
       )}
-      <main className="wrap game">
+      <main className="wrap game" hidden={!active} data-testid="play-tab">
         <aside className="side side-left">
           <InfoCard
             game={game}
@@ -361,7 +364,11 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
                 onChange={(event) => setCoordinates(event.target.checked)}
               />
             </label>
-            <p className="hint">Keys: ← → step, Home/End jump.</p>
+            <p className="hint">
+              {over
+                ? 'Keys: ← → step, Home/End jump, Space plays.'
+                : 'Keys: ← → step, Home/End jump.'}
+            </p>
           </section>
         </aside>
 
@@ -384,7 +391,19 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
               ) : undefined}
             </BoardSlot>
           </div>
-          <div className="playback" data-testid="playback-slot" hidden />
+          {over ? (
+            <PlaybackBar
+              cursor={playback.cursor}
+              last={latest}
+              playing={playback.playing}
+              speed={playback.speed}
+              onGoto={playback.goto}
+              onToggle={playback.toggle}
+              onSpeed={playback.setSpeed}
+            />
+          ) : (
+            <div className="playback" data-testid="playback-slot" hidden />
+          )}
         </section>
 
         <aside className="side side-right">
@@ -397,6 +416,7 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
               shownTurn={shownTurn}
               atLatest={atLatest}
               detail={detail}
+              active={active}
               onPick={pickTurn}
             />
             {session !== null && (
@@ -406,6 +426,7 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
                 takebackTo={controls.takebackTo}
                 resignSeat={controls.resignSeat}
                 canSave={session.turns.length > 0}
+                saved={over && savedSession === session.id}
                 onTakeback={takeback}
                 onResign={resign}
                 onSave={() => void save()}
@@ -417,15 +438,15 @@ export function GamePage({ gameId, sessionId, gamesState, clock, onStarted }: Pr
                 disabled={pending || starting}
                 onRematch={() => void rematch()}
                 onNewGame={() => setDialogMode(mode)}
-                onReview={openReview}
               />
             )}
             <PlayerStrip session={session} seat={bottom} clocks={clocks} running={running} />
           </section>
+          {over && <div className="analysis-slot" data-testid="analysis-slot" />}
         </aside>
       </main>
-      <Toast text={toast.text} />
-      {dialogMode !== null && game !== null && (
+      <Toast text={active ? toast.text : null} />
+      {active && dialogMode !== null && game !== null && (
         <SetupDialog
           key={dialogMode}
           mode={dialogMode}

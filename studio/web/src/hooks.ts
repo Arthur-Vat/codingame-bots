@@ -3,6 +3,23 @@ import { ApiError, listGames, type GameSummary } from './api';
 import { startPoller } from './poller';
 import { parseRoute, type Route } from './route';
 
+/**
+ * Replaces the current history entry with another hash, so that Back does not return to the one
+ * that redirected. The hash change is a navigation inside the page: `useRoute` follows it.
+ */
+export function replaceHash(hash: string): void {
+  const url = new URL(window.location.href);
+  url.hash = hash;
+  window.location.replace(url.href);
+}
+
+/** Replaces the hash once `hash` is known (null: not yet). */
+export function useReplaceHash(hash: string | null): void {
+  useEffect(() => {
+    if (hash !== null) replaceHash(hash);
+  }, [hash]);
+}
+
 /** The current route, following the URL hash. */
 export function useRoute(): Route {
   const [hash, setHash] = useState(() => window.location.hash);

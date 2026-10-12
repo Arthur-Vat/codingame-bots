@@ -1,6 +1,6 @@
 import type { GameSummary } from './api';
 import { engineKind } from './engine/detect';
-import { routeHash, type Route } from './route';
+import type { GameTab, Route } from './route';
 
 /** The mark: nine small squares, the centre one in the accent colour (the favicon is the same). */
 function LogoMark() {
@@ -22,18 +22,31 @@ function LogoMark() {
   );
 }
 
-/** The top bar: brand, navigation, and the current game as a crumb. */
-export function TopBar({ route, games }: { route: Route; games: GameSummary[] | null }) {
+const TABS: { tab: GameTab; label: string }[] = [
+  { tab: 'play', label: 'Play' },
+  { tab: 'review', label: 'Review' },
+  { tab: 'history', label: 'History' },
+];
+
+/**
+ * The top bar: brand, navigation, and on a game's page the game as a crumb with its three tabs.
+ * `tabs` holds where each tab's link leads (what the tab showed last); the board loses no height
+ * to them.
+ */
+export function TopBar({
+  route,
+  games,
+  tabs,
+}: {
+  route: Route;
+  games: GameSummary[] | null;
+  tabs: Record<GameTab, string> | null;
+}) {
   const gameName =
     route.page === 'game'
       ? (games?.find((game) => game.id === route.gameId)?.name ?? route.gameId)
       : null;
   const inBrowser = engineKind() === 'browser';
-  // From an arena game, History leads back to the arena games.
-  const historyLink = routeHash({
-    page: 'history',
-    set: route.page === 'review' && route.kind === 'arena' ? 'arena' : 'mine',
-  });
   return (
     <header
       className="top"
@@ -44,14 +57,20 @@ export function TopBar({ route, games }: { route: Route; games: GameSummary[] | 
         studio
       </a>
       <nav className="nav" aria-label="Main">
-        <a href="#/" aria-current={route.page === 'history' ? undefined : 'page'}>
+        <a href="#/" aria-current={route.page === 'home' ? 'page' : undefined}>
           Games
-        </a>
-        <a href={historyLink} aria-current={route.page === 'history' ? 'page' : undefined}>
-          History
         </a>
       </nav>
       {gameName !== null && <span className="crumb">{gameName}</span>}
+      {route.page === 'game' && tabs !== null && (
+        <nav className="nav tabs" aria-label="Game">
+          {TABS.map(({ tab, label }) => (
+            <a key={tab} href={tabs[tab]} aria-current={route.tab === tab ? 'page' : undefined}>
+              {label}
+            </a>
+          ))}
+        </nav>
+      )}
       {inBrowser && <span className="engine">in your browser</span>}
     </header>
   );

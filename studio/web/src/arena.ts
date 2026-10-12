@@ -25,9 +25,6 @@ export function validArenaId(id: string): boolean {
   return /^[a-z0-9-]+$/.test(id);
 }
 
-/** The message of a list with no game, for the history page. */
-export const NOT_PUBLISHED = 'No arena games published yet.';
-
 function isCount(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }

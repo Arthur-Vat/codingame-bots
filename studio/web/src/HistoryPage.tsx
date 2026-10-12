@@ -85,6 +85,7 @@ async function readText(file: File): Promise<string | null> {
 }
 
 function Row({
+  gameId,
   set,
   entry,
   confirming,
@@ -94,6 +95,7 @@ function Row({
   onDelete,
   onExport,
 }: {
+  gameId: string;
   set: HistorySet;
   entry: HistoryEntry;
   confirming: boolean;
@@ -123,9 +125,10 @@ function Row({
           <a
             className="ctrl"
             href={routeHash({
-              page: 'review',
-              kind: set === 'arena' ? 'arena' : 'saved',
-              id: entry.id,
+              page: 'game',
+              gameId,
+              tab: 'review',
+              review: { kind: set === 'arena' ? 'arena' : 'saved', id: entry.id },
             })}
           >
             Review
@@ -154,10 +157,10 @@ function Row({
 }
 
 /** The switch between the visitor's own games and the arena games published with the site. */
-function SetSwitch({ set }: { set: HistorySet }) {
+function SetSwitch({ gameId, set }: { gameId: string; set: HistorySet }) {
   const link = (target: HistorySet, text: string) => (
     <a
-      href={routeHash({ page: 'history', set: target })}
+      href={routeHash({ page: 'game', gameId, tab: 'history', set: target })}
       aria-current={set === target ? 'page' : undefined}
     >
       {text}
@@ -171,7 +174,16 @@ function SetSwitch({ set }: { set: HistorySet }) {
   );
 }
 
-export function HistoryPage({ set, gamesState }: { set: HistorySet; gamesState: GamesState }) {
+/** The History tab of a game: its saved games, or the arena games, with their filters. */
+export function HistoryPage({
+  gameId,
+  set,
+  gamesState,
+}: {
+  gameId: string;
+  set: HistorySet;
+  gamesState: GamesState;
+}) {
   const [filters, setFilters] = useState<HistoryFilters>(NO_FILTERS);
   const [refresh, setRefresh] = useState(0);
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -181,10 +193,10 @@ export function HistoryPage({ set, gamesState }: { set: HistorySet; gamesState: 
   const [deletingNow, setDeletingNow] = useState(false);
   const toast = useToast();
 
-  const query = historyQuery(filters);
+  const query = historyQuery(filters, gameId);
   const listing = useHistoryList(set, query, refresh);
   const arena = set === 'arena';
-  const releases = releaseOptions(gamesState.games);
+  const releases = releaseOptions(gamesState.games, gameId);
   const change = (patch: Partial<HistoryFilters>) => {
     setFilters((previous) => ({ ...previous, ...patch }));
     setConfirming(null);
@@ -250,7 +262,18 @@ export function HistoryPage({ set, gamesState }: { set: HistorySet; gamesState: 
     const { record } = parsed;
     setRefused([]);
     const id = rememberFile({ name: file.name, record });
-    window.location.hash = routeHash({ page: 'review', kind: 'file', id });
+    // The record names its game; what it holds is untrusted, so the name counts only when it is
+    // the id of a game the app has. Otherwise the file opens on the current game, and the view
+    // request says what is wrong.
+    const named = (record as { game?: unknown }).game;
+    const known =
+      typeof named === 'string' && (gamesState.games ?? []).some((game) => game.id === named);
+    window.location.hash = routeHash({
+      page: 'game',
+      gameId: known ? named : gameId,
+      tab: 'review',
+      review: { kind: 'file', id },
+    });
   };
 
   const entries = listing?.entries ?? null;
@@ -283,7 +306,7 @@ export function HistoryPage({ set, gamesState }: { set: HistorySet; gamesState: 
           </div>
         )}
       </div>
-      <SetSwitch set={set} />
+      <SetSwitch gameId={gameId} set={set} />
       {arena ? (
         <p className="hint hist-hint">{ARENA_NOTE}</p>
       ) : (
@@ -400,6 +423,7 @@ export function HistoryPage({ set, gamesState }: { set: HistorySet; gamesState: 
                 {entries.map((entry) => (
                   <Row
                     key={entry.id}
+                    gameId={gameId}
                     set={set}
                     entry={entry}
                     confirming={confirming === entry.id}

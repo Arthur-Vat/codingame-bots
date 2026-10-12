@@ -41,26 +41,37 @@ export const NO_FILTERS: HistoryFilters = {
   to: '',
 };
 
-/** The query of `GET /api/history` for the filters: '' or a string starting with `?`. */
-export function historyQuery(filters: HistoryFilters): string {
+/** The filters as query parameters, the game's aside. */
+function filterParams(filters: HistoryFilters): URLSearchParams {
   const params = new URLSearchParams();
   if (filters.release !== '') params.set('release', filters.release);
   if (filters.result !== '') params.set('result', filters.result);
   if (filters.source !== '') params.set('source', filters.source);
   if (filters.from !== '') params.set('from', filters.from);
   if (filters.to !== '') params.set('to', filters.to);
-  const text = params.toString();
-  return text === '' ? '' : `?${text}`;
+  return params;
 }
 
+/**
+ * The query of `GET /api/history` (and of `POST /api/filter`) for the filters of one game's
+ * history: always `game=<id>` first, then the filters that are set. Starts with `?`.
+ */
+export function historyQuery(filters: HistoryFilters, game: string): string {
+  const params = new URLSearchParams({ game });
+  for (const [key, value] of filterParams(filters)) params.set(key, value);
+  return `?${params.toString()}`;
+}
+
+/** Whether any filter is set (the game is not a filter the visitor chose). */
 export function filtersActive(filters: HistoryFilters): boolean {
-  return historyQuery(filters) !== '';
+  return filterParams(filters).size > 0;
 }
 
-/** The release names of all games, each once, in the order the server gave them. */
-export function releaseOptions(games: readonly GameSummary[] | null): string[] {
+/** The release names of one game, each once, in the order the server gave them. */
+export function releaseOptions(games: readonly GameSummary[] | null, gameId: string): string[] {
   const names: string[] = [];
   for (const game of games ?? []) {
+    if (game.id !== gameId) continue;
     for (const release of game.releases) {
       if (!names.includes(release)) names.push(release);
     }

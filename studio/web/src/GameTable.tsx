@@ -72,6 +72,7 @@ export function useKeepInView(
   turnCount: number,
   over: boolean,
   atLatest: boolean,
+  active = true,
 ): RefObject<HTMLDivElement | null> {
   const list = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -91,7 +92,7 @@ export function useKeepInView(
     ) {
       element.scrollTop = current.offsetTop + current.offsetHeight - element.clientHeight;
     }
-  }, [shownTurn, turnCount, over, atLatest]);
+  }, [shownTurn, turnCount, over, atLatest, active]);
   return list;
 }
 
@@ -114,6 +115,8 @@ interface MoveListProps {
   atLatest: boolean;
   /** The game's words for how a finished game ended, if it has any. */
   detail: string | null;
+  /** Whether the list is on screen: a list brought back keeps the shown move in view. */
+  active?: boolean;
   onPick: (turn: number) => void;
 }
 
@@ -125,11 +128,12 @@ export function MoveList({
   shownTurn,
   atLatest,
   detail,
+  active = true,
   onPick,
 }: MoveListProps) {
   const turnCount = session?.turns.length ?? 0;
   const over = session?.result != null;
-  const list = useKeepInView(shownTurn, turnCount, over, atLatest);
+  const list = useKeepInView(shownTurn, turnCount, over, atLatest, active);
 
   if (problem !== null && session === null) {
     return (
@@ -249,6 +253,8 @@ interface ControlsProps {
   takebackTo: number | null;
   resignSeat: number | null;
   canSave: boolean;
+  /** The finished game is in the history already. */
+  saved?: boolean;
   onTakeback: () => void;
   onResign: () => void;
   onSave: () => void;
@@ -262,6 +268,7 @@ export function Controls({
   takebackTo,
   resignSeat,
   canSave,
+  saved = false,
   onTakeback,
   onResign,
   onSave,
@@ -282,8 +289,8 @@ export function Controls({
           <ResignButton key={sessionId} disabled={resignSeat === null} onResign={onResign} />
         </>
       )}
-      <button className="ctrl" type="button" disabled={!canSave} onClick={onSave}>
-        Save
+      <button className="ctrl" type="button" disabled={!canSave || saved} onClick={onSave}>
+        {saved ? 'In your history' : 'Save'}
       </button>
       <button className="ctrl" type="button" disabled={!canSave} onClick={onExport}>
         Export file
@@ -292,16 +299,14 @@ export function Controls({
   );
 }
 
-/** What to do after a game: play again with the same settings, or choose new ones. */
+/** What to do after a game: play again with the same settings, or choose new ones. The game itself is its review. */
 export function EndBlock({
   onRematch,
   onNewGame,
-  onReview,
   disabled,
 }: {
   onRematch: () => void;
   onNewGame: () => void;
-  onReview: () => void;
   disabled: boolean;
 }) {
   return (
@@ -311,9 +316,6 @@ export function EndBlock({
       </button>
       <button className="btn" type="button" disabled={disabled} onClick={onNewGame}>
         New game
-      </button>
-      <button className="btn primary wide" type="button" onClick={onReview}>
-        Review
       </button>
     </div>
   );
