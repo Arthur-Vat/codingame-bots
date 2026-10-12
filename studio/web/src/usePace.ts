@@ -23,6 +23,8 @@ export function usePacedCursor(
   launchedId: string | null,
 ): number {
   const [held, setHeld] = useState<Held | null>(null);
+  // The launched sessions already shown: one starts from its first frame the first time only.
+  const [begun, setBegun] = useState<readonly string[]>([]);
   // When the shown frame was shown: the next step is timed from it.
   const shownAt = useRef(0);
 
@@ -32,7 +34,9 @@ export function usePacedCursor(
   // A state adjusted while rendering: it only changes when the session does, or at its first frames.
   let current = held !== null && held.id === id ? held : null;
   if (session !== null && current === null) {
-    const start = launchedId === session.id ? 0 : latest >= 0 ? latest : null;
+    const fresh = launchedId === session.id && !begun.includes(session.id);
+    const start = fresh ? 0 : latest >= 0 ? latest : null;
+    if (fresh) setBegun([...begun, session.id]);
     if (start !== null) {
       current = { id: session.id, cursor: start };
       setHeld(current);

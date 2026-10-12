@@ -93,8 +93,14 @@ const pace = (page: Page) => page.getByTestId('pace');
 const setPace = (page: Page, label: string) =>
   pace(page).getByRole('button', { name: label }).click();
 
-/** Starts a game between two bots from the page, as the viewer does: it is shown from its first move. */
-async function startBots(page: Page) {
+/**
+ * Starts a game between two bots from the page, as the viewer does: it is shown from its first
+ * move. The server first answers with the first frame only, so that the pace can be chosen before
+ * any move is due; then it answers with the game (`mock.current` as it was when this was called).
+ */
+async function startBots(page: Page, mock: Mock, label?: string) {
+  const game = mock.current;
+  mock.current = botGoing(0);
   await page.goto('/#/game/uttt');
   await page.getByRole('button', { name: /Bot against bot/ }).click();
   await page
@@ -103,6 +109,8 @@ async function startBots(page: Page) {
     .click();
   await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
   await expect(pace(page)).toBeVisible();
+  if (label !== undefined) await setPace(page, label);
+  mock.current = game;
 }
 
 test('the lobby says what the bot game is', async ({ page }) => {
@@ -173,9 +181,8 @@ test('moves are shown one by one; the result comes when the shown game ends, not
   page,
 }) => {
   const mock = await mockApi(page, botGame());
-  await startBots(page);
   // The server's game is over already; the page shows it from its first move.
-  await setPace(page, '2 s');
+  await startBots(page, mock, '2 s');
   await expect(moves(page)).toHaveCount(0);
   await expect(status(page)).toHaveText('uttt-v010 is thinking…');
   await expect(page.locator('.info dt:text-is("Move") + dd')).toHaveText('1');
@@ -213,9 +220,8 @@ test('moves are shown one by one; the result comes when the shown game ends, not
 test('a pace shorter than the wait is timed from the last move, and a slower pace takes effect at once', async ({
   page,
 }) => {
-  await mockApi(page, botGame());
-  await startBots(page);
-  await setPace(page, '2 s');
+  const mock = await mockApi(page, botGame());
+  await startBots(page, mock, '2 s');
   await expect(moves(page)).toHaveCount(0);
   // Faster: the moves follow each other at 0.25 s; at 2 s the four would take eight seconds.
   await setPace(page, '0.25 s');
@@ -225,8 +231,7 @@ test('a pace shorter than the wait is timed from the last move, and a slower pac
 
 test('Max shows the latest frame at once', async ({ page }) => {
   const mock = await mockApi(page, botGoing(3));
-  await startBots(page);
-  await setPace(page, '2 s');
+  await startBots(page, mock, '2 s');
   await expect(moves(page)).toHaveCount(0);
   await setPace(page, 'Max');
   await expect(moves(page)).toHaveCount(3);
@@ -246,23 +251,21 @@ test('Max shows the latest frame at once', async ({ page }) => {
 
 test('a frame that arrives late is shown as it arrives', async ({ page }) => {
   const mock = await mockApi(page, botGoing(0));
-  await startBots(page);
-  await setPace(page, '1 s');
+  await startBots(page, mock, '2 s');
   await expect(moves(page)).toHaveCount(0);
-  // The bot is slower than the pace: well past one second, the next frame arrives.
-  await page.waitForTimeout(1500);
+  // The bot is slower than the pace: well past two seconds, the next frame arrives.
+  await page.waitForTimeout(2300);
   mock.current = botGoing(1);
-  // Shown after the next poll (every 0.2 s), not one more pace later.
-  await expect(moves(page)).toHaveCount(1, { timeout: 700 });
+  // Shown after the next poll (every 0.2 s), not one more pace (2 s) later.
+  await expect(moves(page)).toHaveCount(1, { timeout: 1500 });
   await expect(cell(page, 4, 4, 'X')).toBeVisible();
   mock.current = botGoing(2);
-  await expect(moves(page)).toHaveCount(2, { timeout: 1900 });
+  await expect(moves(page)).toHaveCount(2);
 });
 
 test('a game that fails while pacing is shown failed at once', async ({ page }) => {
   const mock = await mockApi(page, botGoing(4));
-  await startBots(page);
-  await setPace(page, '2 s');
+  await startBots(page, mock, '2 s');
   await expect(moves(page)).toHaveCount(0);
   mock.current = botGoing(2, { status: 'failed', to_act: [], error: 'the bot crashed' });
   await expect(page.getByRole('alert')).toHaveText('the bot crashed');
@@ -299,9 +302,8 @@ test('a game opened while it goes on is shown from its latest frame, then paced'
 });
 
 test('the keys look back from the shown frame and End follows the pace again', async ({ page }) => {
-  await mockApi(page, botGame());
-  await startBots(page);
-  await setPace(page, '2 s');
+  const mock = await mockApi(page, botGame());
+  await startBots(page, mock, '2 s');
   await expect(moves(page)).toHaveCount(1);
   await expect(cell(page, 4, 4, 'X')).toBeVisible();
   await page.keyboard.press('ArrowLeft');
@@ -318,8 +320,8 @@ test('the keys look back from the shown frame and End follows the pace again', a
 });
 
 test('the pacing goes on while another tab is shown', async ({ page }) => {
-  await mockApi(page, botGame());
-  await startBots(page);
+  const mock = await mockApi(page, botGame());
+  await startBots(page, mock);
   await page.getByRole('link', { name: 'History' }).click();
   await expect(page).toHaveURL(/#\/game\/uttt\/history/);
   // Four moves at 0.5 s take two seconds; the game is over and shown when the tab is back.
@@ -332,8 +334,7 @@ test('the pacing goes on while another tab is shown', async ({ page }) => {
 
 test('a new game on the page keeps the pace and starts from its first move', async ({ page }) => {
   const mock = await mockApi(page, botGame());
-  await startBots(page);
-  await setPace(page, 'Max');
+  await startBots(page, mock, 'Max');
   await expect(page.getByTestId('end-block')).toBeVisible();
   mock.current = botGoing(1);
   await page.getByRole('button', { name: 'Rematch' }).click();
@@ -344,4 +345,24 @@ test('a new game on the page keeps the pace and starts from its first move', asy
     'aria-pressed',
     'true',
   );
+});
+
+test('a game started here is shown from its first move only once; coming back is like opening it', async ({
+  page,
+}) => {
+  const mock = await mockApi(page, botGame());
+  await startBots(page, mock, '2 s');
+  await expect(moves(page)).toHaveCount(0);
+  await expect(page.getByTestId('playback')).toHaveCount(0);
+
+  // Another game is opened by its address, then Back to the first one: it is shown from its
+  // latest frame, and a game that is over is its review at once.
+  await page.goto('/#/game/uttt/cd34');
+  await expect(page.getByTestId('playback')).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
+  await expect(page.getByTestId('playback')).toBeVisible();
+  await expect(page.getByTestId('result')).toContainText('0–1 · O wins');
+  await expect(moves(page)).toHaveCount(4);
+  await expect(pace(page)).toHaveCount(0);
 });
