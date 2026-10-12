@@ -532,6 +532,15 @@
   padding: 2px;
 }
 
+.pace-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.playback .pace-label + .speed {
+  margin-left: 0;
+}
+
 .playback .speed button {
   padding: 6px 9px;
   min-width: 0;

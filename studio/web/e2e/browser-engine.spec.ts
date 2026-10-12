@@ -134,6 +134,9 @@ test('bot against bot in real time to the end, its review, and the history kept 
     await dialog.getByLabel(/^X think/).fill('0');
     await dialog.getByLabel(/^O think/).fill('0');
   });
+  // The game is shown move by move at 0.5 s by default; this test is about the real bots playing
+  // to the end, so show it as fast as they play.
+  await page.getByTestId('pace').getByRole('button', { name: 'Max' }).click();
   // A game between two bots becomes its review, in place, when it is over.
   await expect(page.getByTestId('playback')).toBeVisible({ timeout: 180_000 });
   await expect(page).toHaveURL(/#\/game\/uttt\/[0-9a-f]+$/);

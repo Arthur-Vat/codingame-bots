@@ -318,6 +318,9 @@ test('two bots that finish while watched stay on the page and become its review'
   await expect(page.locator('.info dt:text-is("Move") + dd')).toHaveText('2');
   await expect(page.getByTestId('board-overlay')).toHaveCount(0);
   await expect(page.getByTestId('playback')).toHaveCount(0);
+  // The frames that come now would be shown at 0.5 s each; this test is about what happens when
+  // the game ends, not about the pace, so show them as they come.
+  await page.getByTestId('pace').getByRole('button', { name: 'Max' }).click();
 
   current = sessionOver();
   // The address stays; the playback bar appears, on the frame that was on the board (the last).

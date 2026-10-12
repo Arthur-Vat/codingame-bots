@@ -34,6 +34,8 @@ import {
   turnOfFrame,
 } from './play';
 import { SetupDialog, type SetupResult } from './SetupDialog';
+import { DEFAULT_PACE, pacedSession, type Pace } from './pace';
+import { PaceBar } from './PaceBar';
 import { PlaybackBar } from './PlaybackBar';
 import { routeHash } from './route';
 import {
@@ -56,12 +58,13 @@ import {
 import { Toast, useToast } from './Toast';
 import { useClocks } from './useClocks';
 import { usePlayback } from './usePlayback';
+import { usePacedCursor } from './usePace';
 import { useSession } from './useSession';
 
 const LOBBY: { mode: Mode; hint: string }[] = [
   { mode: 'friend', hint: 'Two people, one screen' },
   { mode: 'computer', hint: 'Any release, any think time' },
-  { mode: 'bots', hint: 'Plays a full game in a few seconds' },
+  { mode: 'bots', hint: 'Watch two releases play, move by move' },
 ];
 
 const GAME_BLURBS: Record<string, string> = {
@@ -149,6 +152,10 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
   // The frame the user looks at while looking back; null follows the latest frame.
   // The session whose finished game was saved from this page (it reads "In your history").
   const [savedSession, setSavedSession] = useState<string | null>(null);
+  // How fast a game between two bots is shown; kept for the games that follow on this page.
+  const [pace, setPace] = useState<Pace>(DEFAULT_PACE);
+  // The session this page started itself: its game is shown from the first move.
+  const [launchedId, setLaunchedId] = useState<string | null>(null);
   const [pinned, setPinned] = useState<{ sessionId: string | null; frame: number } | null>(null);
   const toast = useToast();
 
@@ -158,22 +165,27 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
   // A page that is not shown opens no dialog.
   if (!active && dialogMode !== null) setDialogMode(null);
 
-  const clocks = useClocks(session, clock);
-  const running = clock === null ? null : runningSeat(session);
+  // The game as shown: two bots' game is shown at a pace, behind the real session, which the
+  // actions below keep using.
+  const pacedCursor = usePacedCursor(session, pace, launchedId);
+  const shownSession = session === null ? null : pacedSession(session, pacedCursor);
 
-  const frames = session?.frames ?? [];
+  const clocks = useClocks(shownSession, clock);
+  const running = clock === null ? null : runningSeat(shownSession);
+
+  const frames = shownSession?.frames ?? [];
   const latest = frames.length - 1;
   const pinnedFrame = pinned !== null && pinned.sessionId === sessionId ? pinned.frame : null;
   const looked = pinnedFrame === null ? latest : Math.min(pinnedFrame, latest);
   // A game that is over is its own review: the playback starts on the frame that was looked at.
-  const over = session?.status === 'over';
-  const playback = usePlayback(latest, looked, over ? session.id : null, {
+  const over = shownSession?.status === 'over';
+  const playback = usePlayback(latest, looked, over ? shownSession.id : null, {
     active,
     keys: active && dialogMode === null,
   });
   const shown = over ? playback.cursor : looked;
   const atLatest = shown === latest;
-  const shownTurn = session === null ? -1 : turnOfFrame(shown, session.opening_turns);
+  const shownTurn = shownSession === null ? -1 : turnOfFrame(shown, shownSession.opening_turns);
 
   const launch = async (request: SessionRequest, newClock: ClockSettings | null) => {
     if (launching.current) return;
@@ -185,6 +197,7 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
         // The old game is forgotten; if the server cannot do it, it drops the session itself.
         deleteSession(sessionId).catch(() => undefined);
       }
+      setLaunchedId(id);
       onStarted(id, newClock);
       setDialogMode(null);
       window.location.hash = routeHash({ page: 'game', gameId, tab: 'play', sessionId: id });
@@ -213,7 +226,7 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
     }
   };
 
-  const playable = canPlay(session, pending, atLatest);
+  const playable = canPlay(shownSession, pending, atLatest);
   const onAction = (action: unknown) => {
     if (session === null || !playable) return;
     const index = findMoveIndex(session.human_moves, action);
@@ -222,7 +235,7 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
     void run((current) => postMove(current.id, seat, index));
   };
 
-  const controls = controlsFor(session, pending);
+  const controls = controlsFor(shownSession, pending);
   const takeback = () => {
     const keep = controls.takebackTo;
     if (keep === null) return;
@@ -296,8 +309,8 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
   }, []);
 
   const pickTurn = (turn: number) => {
-    if (session === null) return;
-    const frame = frameAfterTurn(turn, session.opening_turns);
+    if (shownSession === null) return;
+    const frame = frameAfterTurn(turn, shownSession.opening_turns);
     if (over) {
       playback.goto(frame);
       return;
@@ -305,7 +318,7 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
     setPinned(frame >= latest ? null : { sessionId, frame });
   };
 
-  const bottom = bottomSeat(session);
+  const bottom = bottomSeat(shownSession);
   const problem = gameMissing
     ? `The server has no game called ${gameId}.`
     : error && session === null
@@ -318,11 +331,13 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
   const shownFrame = frame ?? emptyFrameFor(gameId);
   const finalFrame = frames[latest];
   const detail =
-    session?.result?.end.kind === 'finished' && finalFrame !== undefined
+    shownSession?.result?.end.kind === 'finished' && finalFrame !== undefined
       ? resultDetailFor(gameId, finalFrame)
       : null;
-  const mode = session === null ? null : sessionMode(session);
-  const gameInProgress = hasGameInProgress(session);
+  const mode = shownSession === null ? null : sessionMode(shownSession);
+  const gameInProgress = hasGameInProgress(shownSession);
+  // Two bots play on: the pace bar takes the playback bar's place until the game shown is over.
+  const pacing = mode === 'bots' && !over && shownSession?.status !== 'failed' && latest >= 0;
 
   return (
     <>
@@ -336,7 +351,7 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
           <InfoCard
             game={game}
             gameId={gameId}
-            session={session}
+            session={shownSession}
             clock={clock}
             problem={gameMissing ? problem : null}
           />
@@ -379,7 +394,9 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
               showCoordinates={coordinates}
               label={`${game?.name ?? gameId} board`}
               bare={Renderer !== undefined}
-              overlay={session === null ? null : <BoardOverlay overlay={overlayFor(session)} />}
+              overlay={
+                shownSession === null ? null : <BoardOverlay overlay={overlayFor(shownSession)} />
+              }
             >
               {Renderer !== undefined && shownFrame !== undefined ? (
                 <Renderer
@@ -401,6 +418,8 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
               onToggle={playback.toggle}
               onSpeed={playback.setSpeed}
             />
+          ) : pacing ? (
+            <PaceBar pace={pace} onPace={setPace} />
           ) : (
             <div className="playback" data-testid="playback-slot" hidden />
           )}
@@ -408,9 +427,14 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
 
         <aside className="side side-right">
           <section className="panel table">
-            <PlayerStrip session={session} seat={1 - bottom} clocks={clocks} running={running} />
+            <PlayerStrip
+              session={shownSession}
+              seat={1 - bottom}
+              clocks={clocks}
+              running={running}
+            />
             <MoveList
-              session={session}
+              session={shownSession}
               problem={problem}
               lost={session !== null && error !== null}
               shownTurn={shownTurn}
@@ -440,7 +464,7 @@ export function GamePage({ gameId, sessionId, active, gamesState, clock, onStart
                 onNewGame={() => setDialogMode(mode)}
               />
             )}
-            <PlayerStrip session={session} seat={bottom} clocks={clocks} running={running} />
+            <PlayerStrip session={shownSession} seat={bottom} clocks={clocks} running={running} />
           </section>
           {over && <div className="analysis-slot" data-testid="analysis-slot" />}
         </aside>
