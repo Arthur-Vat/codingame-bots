@@ -9,6 +9,7 @@ None. (#102, the wording pass, merged 2026-10-12 on the owner's approval in the 
 ## Open questions
 
 - (Phase 5's step D comes after phase 6, as in the plan approved 2026-10-10; leagues to be decided later.)
+- Server route for analysis on Windows: the local server runs the analysis natively, so `npm run wasm` (Git Bash) is not needed for it.
 
 ## Follow-ups
 
@@ -18,8 +19,8 @@ None. (#102, the wording pass, merged 2026-10-12 on the owner's approval in the 
 - **Step G4 merged** (#100, 2026-10-12): tabs Play | History; a finished game offers Rematch, New game, Analysis board; the analysis board `#/game/<game>/analysis/<session|saved|file|arena>/<id>` (no engine yet, a note says it comes later); games from the History open on it without Rematch or New game (owner, 2026-10-12: say "analysis", not "review"). Review nits kept: Play marked current on a session's board after a reload; "Back to the game" on an unknown session.
 - **Wording rule** (owner, 2026-10-12): in the studio, no text that brings no information (subtitles, intros, placeholders, restated labels) where it can be avoided; a release is a file, the bot built from it plays (never "a release plays"). Applied in #102 (merged).
 - **Step G5 merged** (#101, 2026-10-12): one Game setup menu; modes Human vs human, Human vs bot, Bot vs bot, no subtitles.
-- **Next: phase 6 step D, analysis**, in a new session (this one ended at 282k context). The analysis board's panel (`analysis-slot`) and `#/game/<game>/analysis/...` exist since G4.
-  Step D details: (see Notes), in its own session(s), following the updated `land-work` (#82). Ask the owner before starting: it is heavy work.
+- **Phase 6 step D in progress** (owner's go, 2026-10-13: analysis built as WebAssembly, the server route second; current code with the latest release's settings; chart in the background). Stack of linear PRs, merge commits: (1) #103 `claude/search-report`, cg-search `report`/`think`/opt-in draw count, bots proven identical; (2) `claude/uttt-analysis`: ADR 0032 (written, commit 91fff38) + `games/uttt/analysis` program (lib `analyse(request, emit)` + WASI binary), protocol in studio/README "The analysis program", `wasm/uttt/analysis.wasm`, manifest `"analysis"` flag; must merge `claude/search-report` (a5b122d) into it before opening; (3) routes `POST /api/analysis`, `GET /api/analysis/<id>`, `DELETE /api/analysis/<id>` in both engines (server: library on a thread via an optional `StudioGame` hook; browser: a Worker per request), `GET /api/games` gains `analysis`; (4) the panel on the analysis board; (5) side lines on the analysis board. Batches: #103 + PR 2, then 3 + 4, then 5.
+  Answered in the conversation, 2026-10-13 (form): side lines as a 5th PR after the panel; the engine on by default on the analysis board, remembered; heatmap off by default, remembered; about 2 s per position (1,000,000 iterations), then Keep thinking until stopped or 3 million nodes. Chart: 50,000 iterations per position, seed 1 (ADR 0032).
 - ADR 0023 still says the SPRT is not a required check, which is no longer true. The owner keeps the current merge policy (2026-10-09) and wants no new record; the line stays as is unless he asks for a fix.
 - Record the CodinGame ranks of `uttt-v009` and `uttt-v010` when the owner reports them (skill `deliver-release`); the owner will report them later (2026-10-11).
 
