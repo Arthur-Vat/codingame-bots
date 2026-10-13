@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- 2026-10-13: approval of the stack #113 (usage removal, ADR 0034) -> #114 (ADR 0035, new-game lifecycle) -> #115 (playbook, templates, stage skills) -> #116 (UTTT worked example) -> #117 (ADR 0036, ranks optional); all green, reviewed, merge commits in that order.
+None.
 
 ## Open questions
 
@@ -12,10 +12,8 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Follow-ups
 
-- **New-game lifecycle** (owner's answers of 2026-10-13): recorded in ADR 0035 (#114) and the playbook (#115). Owner also: README fine as is; no doc splitting; real workflow decisions go into ADRs; keep docs/WORKFLOW.md up to date.
-- **Ranks** (owner, 2026-10-13: "Do not expect a rank when publishing a release ... I may do it from time to time though"): ADR 0036 in #117; never ask for a rank.
-- **Stop monitoring usage** (owner, 2026-10-13, all of it): done in #113 (ADR 0034). Once it merges, delete this file's Usage section.
-
+- Merged 2026-10-13 on the owner's approval in the chat ("Merge #113, then #114, then #115, then #116, then #117"): ADR 0034 no usage monitoring (#113), ADR 0035 new-game lifecycle (#114), playbook docs/NEW_GAME.md, templates and stage skills (#115), UTTT worked example (#116), ADR 0036 ranks optional (#117). Phase 7 in progress: the next step is a second game, named by the owner (skill `new-game`); the owner pastes CodinGame pages. Owner also (2026-10-13): README fine as is; no doc splitting; real workflow decisions go into ADRs; keep docs/WORKFLOW.md up to date.
+- Retrospective proposals in games/uttt/RETROSPECTIVE.md (studio seat names per game, turns built command by command, shared rules-check skeleton, speed example early) wait for the owner's choice; the first two only when a game needs them.
 - Merged 2026-10-13 on the owner's approval in the chat ("Merge #109, then #110, #111, #112"): phase 6 done (#109), ADR 0033 no daily scheduled session (#110), exact 64-bit seeds (#111), dev notice without a server (#112).
 - **Phase 6 step F merged** (2026-10-11): ADR 0030 (#88), the rules in WebAssembly with studio-core (#89), the browser engine (#90), Pages deployment and license notices (#91), on the owner's approvals in the chat. Follow-ups noted by reviews: the front end parses and re-stringifies records on export/import, which can lose 64-bit seed digits (both engines); `npm run dev` without a local server silently uses the browser engine; the WebAssembly files are built twice in CI's front-end job; `actions/deploy-pages@v4` targets the deprecated Node 20 (move to a newer major when one exists).
 - **Arena games done** (ADR 0031; #92 to #95 merged 2026-10-12 on the owner's approvals in the chat). The archive `arena-games-uttt` (544 games, expires 2027-01-10) is published at https://arthur-vat.github.io/codingame-bots/ (History, "Arena games"). Watch the first release after this: the workflow_run path (league sample + the release branch's SPRT sample) has only been proved read-only. Follow-ups: the review page shows 64-bit seeds rounded (JavaScript numbers), and the front end's file import/export re-serialises records (both pre-existing; arena records are kept as text); scheduled workflows stop after 60 days without commits in a public repository.
@@ -42,27 +40,3 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 - In cloud sessions, `sudo dockerd` starts Docker, so actionlint can run locally as in CI.
 - Phase 5's one-week trial is dropped (owner, 2026-10-09); the daily report itself stops (owner, 2026-10-13, #110).
 - Ultimate Tic-Tac-Toe strength work stays paused; no training or league run by hand.
-
-## Usage
-
-- 2026-10-13 17:15 (Paris) | owner's answers on next steps; #109 to #112 opened (phase 6 done, ADR 0033, exact seeds, dev notice) | main session 80 steps (12.0M read, context 66k to 209k), 5 agents (7.85M read; the seeds implementer 5.23M over 61 steps; three deep reviews 1.84M)
-- 2026-10-13 16:15 (Paris) | side lines: #108 merged (step D done) | main session 48 steps (6.80M read, context 88k to 185k), 2 agents (10.0M read; the implementer 9.18M over 67 steps, two rounds; the deep review 0.87M)
-- 2026-10-13 13:55 (Paris) | step D: #105, #103, #104, #106, #107 merged (ADR 0032, search reporting, analysis program, routes, panel) | main session 205 steps (59.0M read, context 66k to 478k: a long conversation over three batches and a session limit), 10 agents (70.6M read; implementers 26.7M (panel, 133 steps), 15.8M (program), 12.9M (routes), 11.5M (search, three rounds incl. the owner's no-growth rework); six reviews 3.7M)
-- 2026-10-12 22:15 (Paris) | wording pass: #102 merged (after #101) | main session 45 steps since 21:45 (10.8M read, context 216k to 282k: a long conversation), 1 agent (0.05M read, light review)
-- 2026-10-12 21:45 (Paris) | G5: modes renamed, #101 merged | main session 24 steps (5.30M read, context 216k to 246k: a long conversation)
-- 2026-10-12 21:15 (Paris) | step G5: #101 opened (setup menu) | main session 25 steps (4.74M read, context 175k to 207k), 2 agents (4.09M read; the implementer 3.36M over 41 steps, the deep review 0.73M)
-- 2026-10-12 20:40 (Paris) | step G4: owner's after-game and setup flow decided, #100 merged | main session 56 steps (6.73M read, context 68k to 178k), 2 agents (9.38M read; the implementer 7.77M over 66 steps, the deep review 1.61M)
-- 2026-10-12 15:00 (Paris) | step G3: #98 (paced display) closed on the owner's redesign, #99 merged (bot games shown once played) | main session 48 steps (7.79M read, context 119k to 193k), 3 agents (6.27M read; the implementer 4.89M over 36 steps, two designs; two deep reviews 0.70M and 0.68M)
-- 2026-10-12 13:50 (Paris) | step G2: #97 merged (tabs, review in place, old addresses dropped) | main session 67 steps (9.58M read, context 67k to 207k), 2 agents (21.1M read; the implementer 19.7M over 114 steps, resumed after the plan's session limit stopped it once; the deep review 1.35M)
-- 2026-10-12 10:25 (Paris) | step G planned with the owner; G1 (#96) merged | main session 65 steps (8.64M read, context 66k to 195k), 2 agents (13.1M read; the G1 implementer 11.9M over 96 steps)
-- 2026-10-12 09:40 (Paris) | arena games: ADR 0031 (#92), studio-archive (#93), archive.yml (#94), studio history (#95), all merged; archive seeded and published | main session 117 steps (21.5M read, context 68k to 269k), 7 agents (41.3M read; the studio implementer 33.9M over 167 steps, above the 30-45M total estimated)
-- 2026-10-11 21:30 (Paris) | phase 6 step F: feasibility test, ADR 0030 (#88), #89 to #91 merged | main session 138 steps (29.2M read, context 68k to 324k), 7 agents (36.0M read; implementers 20.5M for the browser engine, 7.7M for the rules, 4.0M for Pages)
-- 2026-10-11 18:15 (Paris) | CI scoped by area and game: ADR 0029 and #83 to #85 merged, proofs #86 and #87 closed | main session 81 steps (13.7M read, context 66k to 245k), 5 agents (10.8M read; the two implementers 4.8M and 4.6M over three rounds each)
-- 2026-10-11 15:45 (Paris) | CI review and the plan to scope CI by area and game (no PR yet) | main session 13 steps (1.90M read, context 130k to 172k)
-- 2026-10-11 15:15 (Paris) | process fixes in the skills (#82 merged) | main session 17 steps (1.91M read, context 101k to 130k), 1 agent (0.20M read)
-- 2026-10-11 14:40 (Paris) | Dependabot: npm majors by hand (#81 merged), #78 closed | main session 28 steps (2.35M read, context 66k to 97k), 1 agent (0.15M read)
-- 2026-10-11 14:30 (Paris) | step 1, CI failures as annotations (#79) and ADR 0028 (#80), both merged | main session 93 steps (16.0M read, context 66k to 261k), 4 agents (3.2M read; the implementer 2.2M over three rounds)
-- 2026-10-11 09:10 (Paris) | merges of #62 to #76 (three approval rounds after GitHub conflicts), flaky e2e fix, #77, retrospective and next plan | since 2026-10-10 21:00 Paris (overlapping the line below by about two hours): main session 123 steps (73.3M read; context 526k to 689k, every step re-reading a very long conversation), 7 agents (16.3M read)
-- 2026-10-10 21:00 (Paris) | phase 6 steps A, B, C, E: #62 to #76 | main session 260 steps (88.6M read, context up to 588k: a very long conversation), 28 agents (54.6M read; the largest: play modes 13.0M and review/history pages 10.2M); agents hit the plan's session limit once
-- 2026-10-09 22:05 (Paris) | step E light items (#58, #59) | main session 22 steps (1.93M read), 1 agent (0.22M read)
-- 2026-10-09 21:50 (Paris) | agent guard hook (#52), roadmap line (#53), session setup (#54), handoff (#55), land-work and two-turn approvals (#57, #56 closed into it), all merged | main session 85 steps (10.79M read), 4 agents (0.49M read); the main session's context reached 185k over a long conversation
