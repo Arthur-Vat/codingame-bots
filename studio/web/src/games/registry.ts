@@ -93,6 +93,21 @@ export const moveCells: Record<string, (text: string) => MoveCell | null> = byId
 });
 
 /**
+ * A game's writing of an action of its renderer (what `onAction` gives) as the move's answer text,
+ * the inverse of `moveCells`; null for something that is no action of the game. The shell does not
+ * know an action's shape.
+ */
+export const actionTexts: Record<string, (action: unknown) => string | null> = byId({
+  uttt: (action: unknown) => {
+    if (typeof action !== 'object' || action === null) return null;
+    const { row, col } = action as { row?: unknown; col?: unknown };
+    const inside = (n: unknown): n is number =>
+      Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 8;
+    return inside(row) && inside(col) ? `${row} ${col}` : null;
+  },
+});
+
+/**
  * The entry of a map keyed by a game's id, or undefined. A game id comes from the address or from
  * a loaded file, so it may be a name every object inherits (`constructor`, `__proto__`): only an
  * entry the map owns counts.
@@ -109,6 +124,16 @@ export function resultDetailFor(gameId: string, frame: unknown): string | null {
 /** The cell a move of a game plays, if the game can tell. */
 export function moveCellFor(gameId: string, text: string): MoveCell | null {
   return ownEntry(moveCells, gameId)?.(text) ?? null;
+}
+
+/** The answer text of an action of a game's renderer, if the game can tell. */
+export function actionTextFor(gameId: string, action: unknown): string | null {
+  return ownEntry(actionTexts, gameId)?.(action) ?? null;
+}
+
+/** Whether a game can write its renderer's actions as moves (it can have side lines). */
+export function hasActionTexts(gameId: string): boolean {
+  return ownEntry(actionTexts, gameId) !== undefined;
 }
 
 /** A game's empty board, if it has one. */

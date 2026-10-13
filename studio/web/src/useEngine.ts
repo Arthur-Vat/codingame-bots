@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { chartRequests, requestMoves } from './analysisView';
+import { chartRequests } from './analysisView';
 import { lastFrame, type AnalysisModel } from './analysis';
 import { cachedChart, ChartRunner, type ChartState } from './chartAnalysis';
 import {
@@ -45,7 +45,7 @@ export function driveChart(
 }
 
 export interface Engine {
-  /** The live analysis of the frame on the board: idle when the engine is off or has not started on this frame yet. */
+  /** The live analysis of the position on the board: idle when the engine is off or has not started on this frame yet. */
   live: LiveState;
   /** X's win chance by frame, as far as computed; null when there is no chart to draw. */
   chart: ChartState | null;
@@ -54,21 +54,22 @@ export interface Engine {
 }
 
 /**
- * The engine of the analysis board for the frame `cursor`: the live analysis of that position,
- * stopped when the position changes, after 2 seconds unless asked to keep thinking, when the
- * engine is switched off and when the page is left; and the evaluation chart, filled in the
- * background, one position at a time, while the engine is on. `available` is false for a game
- * without an analysis program.
+ * The engine of the analysis board for the position on the board, given as its `moves` (the
+ * request's, from the game's start; null when it cannot be asked; the same array while the position
+ * is the same, as the effect restarts on a new one): the live analysis of that position, stopped
+ * when the position changes, after 2 seconds unless asked to keep thinking, when the engine is
+ * switched off and when the page is left; and the evaluation chart of the game (never of a side
+ * line), filled in the background, one position at a time, while the engine is on. `available` is
+ * false for a game without an analysis program.
  */
 export function useEngine(
   model: AnalysisModel,
-  cursor: number,
+  moves: string[] | null,
   available: boolean,
   on: boolean,
   api: EngineApi = engineApi,
 ): Engine {
   const active = available && on;
-  const moves = useMemo(() => requestMoves(model, cursor), [model, cursor]);
   const position = moves === null ? null : moves.join('|');
 
   const [live, setLive] = useState<LiveState>(IDLE);

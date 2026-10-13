@@ -1,5 +1,14 @@
 import type { CSSProperties } from 'react';
-import { chipOf, chipTitle, lineTokens, positionText, selectLines, statLine } from './analysisView';
+import {
+  chipOf,
+  chipTitle,
+  lineTokens,
+  positionText,
+  selectLines,
+  statLine,
+  type Chip,
+  type ShownLine,
+} from './analysisView';
 import type { LineCount } from './analysisSettings';
 import type { LiveState } from './liveAnalysis';
 
@@ -17,7 +26,65 @@ interface Props {
   ply: number;
   /** The line the pointer is over, if any (its first move is outlined on the board). */
   onHover: (move: string | null) => void;
+  /** A line was clicked: its moves. Null when the board cannot follow a line (the lines are then plain text). */
+  onPick: ((line: string[]) => void) | null;
+  /** Clicks on the lines are ignored for now (a side line is on its way). */
+  pickDisabled: boolean;
   onKeep: (keep: boolean) => void;
+}
+
+/** What a line shows: its chip and its moves; a button when the board can follow the line. */
+function LineBody({
+  line,
+  chip,
+  index,
+  ply,
+  onPick,
+  disabled,
+}: {
+  line: ShownLine;
+  chip: Chip;
+  index: number;
+  ply: number;
+  onPick: ((line: string[]) => void) | null;
+  disabled: boolean;
+}) {
+  const content = (
+    <>
+      <span
+        className={`engine-chip ${chip.side === 'X' ? 'x' : 'o'}`}
+        title={chipTitle(line)}
+        data-testid="engine-chip"
+      >
+        {chip.text}
+      </span>
+      <span className="engine-moves" data-testid={`engine-moves-${index}`}>
+        {lineTokens(line.line, ply).map((token, at) =>
+          token.kind === 'number' ? (
+            <span key={at} className="n">
+              {token.text}
+            </span>
+          ) : (
+            <span key={at} className={token.first ? 'first' : undefined}>
+              {token.text}{' '}
+            </span>
+          ),
+        )}
+      </span>
+    </>
+  );
+  return onPick === null ? (
+    <div className="engine-pick">{content}</div>
+  ) : (
+    <button
+      type="button"
+      className="engine-pick"
+      disabled={disabled}
+      onClick={() => onPick(line.line)}
+    >
+      {content}
+    </button>
+  );
 }
 
 /** The engine's panel: its switch, its stat line, Keep thinking, the best lines and the position's chances. */
@@ -31,6 +98,8 @@ export function EnginePanel({
   onLines,
   ply,
   onHover,
+  onPick,
+  pickDisabled,
   onKeep,
 }: Props) {
   const { report } = live;
@@ -92,26 +161,14 @@ export function EnginePanel({
                 onMouseEnter={() => onHover(line.move)}
                 onMouseLeave={() => onHover(null)}
               >
-                <span
-                  className={`engine-chip ${chip.side === 'X' ? 'x' : 'o'}`}
-                  title={chipTitle(line)}
-                  data-testid="engine-chip"
-                >
-                  {chip.text}
-                </span>
-                <span className="engine-moves" data-testid={`engine-moves-${index}`}>
-                  {lineTokens(line.line, ply).map((token, at) =>
-                    token.kind === 'number' ? (
-                      <span key={at} className="n">
-                        {token.text}
-                      </span>
-                    ) : (
-                      <span key={at} className={token.first ? 'first' : undefined}>
-                        {token.text}{' '}
-                      </span>
-                    ),
-                  )}
-                </span>
+                <LineBody
+                  line={line}
+                  chip={chip}
+                  index={index}
+                  ply={ply}
+                  onPick={onPick}
+                  disabled={pickDisabled}
+                />
               </li>
             );
           })}

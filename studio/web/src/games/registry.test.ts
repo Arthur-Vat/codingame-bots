@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { emptyFrameFor, moveCellFor, ownEntry, renderers, resultDetailFor } from './registry';
+import {
+  actionTextFor,
+  emptyFrameFor,
+  hasActionTexts,
+  moveCellFor,
+  ownEntry,
+  renderers,
+  resultDetailFor,
+} from './registry';
 
 describe('the registry lookups', () => {
   it('find the entries of a registered game', () => {
@@ -24,6 +32,32 @@ describe('the registry lookups', () => {
     }
     expect(moveCellFor('nope', '4 5')).toBeNull();
     expect(moveCellFor('constructor', '4 5')).toBeNull();
+  });
+
+  it('writes an action of the renderer as its move, the inverse of reading a move as a cell', () => {
+    expect(actionTextFor('uttt', { row: 4, col: 5 })).toBe('4 5');
+    for (const text of ['0 0', '4 5', '8 8']) {
+      const at = moveCellFor('uttt', text)?.at;
+      expect(actionTextFor('uttt', { row: at?.[0], col: at?.[1] })).toBe(text);
+    }
+    for (const action of [
+      null,
+      undefined,
+      3,
+      'x',
+      {},
+      { row: 9, col: 0 },
+      { row: 0, col: -1 },
+      { row: 1.5, col: 0 },
+      { row: '1', col: 2 },
+    ]) {
+      expect(actionTextFor('uttt', action), JSON.stringify(action)).toBeNull();
+    }
+    expect(actionTextFor('nope', { row: 4, col: 5 })).toBeNull();
+    expect(actionTextFor('constructor', { row: 4, col: 5 })).toBeNull();
+    expect(hasActionTexts('uttt')).toBe(true);
+    expect(hasActionTexts('nope')).toBe(false);
+    expect(hasActionTexts('constructor')).toBe(false);
   });
 
   it('own entries only, for any map', () => {

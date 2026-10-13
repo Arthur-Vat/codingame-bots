@@ -4,6 +4,7 @@ import { chartRequests, requestMoves } from './analysisView';
 import { ChartRunner, clearChartCache, type ChartState } from './chartAnalysis';
 import { LiveAnalysis, type LiveState } from './liveAnalysis';
 import { driveChart, driveLive } from './useEngine';
+import { shownMoves, withCursor, type Variation } from './variation';
 
 // The hook's effects, driven as React drives them. There is no page here (the project has no DOM
 // test library): `driveLive` and `driveChart` are what the hook's effects call, so the sequences
@@ -113,6 +114,44 @@ describe('the live effect', () => {
     expect(analysis.current.position).toBe('4 4|4 5|5 3');
     expect(analysis.current.report).toEqual(fakeReport());
     clean?.();
+  });
+});
+
+describe('the live effect in a side line', () => {
+  const line: Variation = { from: 2, moves: ['0 0', '1 1'], frames: ['a', 'b'], cursor: 0 };
+
+  it('analyses the position of the side line, the game up to its branch then its moves', async () => {
+    const { engine, analysis } = setup();
+    const first = driveLive(analysis, true, 'uttt', shownMoves(model, withCursor(line, 1)));
+    await advance(0);
+    expect(engine.started[0]?.body.moves).toEqual(['4 4', '4 5', '0 0']);
+    first?.();
+    const second = driveLive(analysis, true, 'uttt', shownMoves(model, withCursor(line, 2)));
+    await advance(0);
+    expect(engine.stopped).toContain('a1');
+    expect(engine.started[1]?.body.moves).toEqual(['4 4', '4 5', '0 0', '1 1']);
+    expect(analysis.current.position).toBe('4 4|4 5|0 0|1 1');
+    second?.();
+  });
+
+  it('starts a new analysis when stepping back to a position already seen, as on the game', async () => {
+    const { engine, analysis } = setup();
+    driveLive(analysis, true, 'uttt', shownMoves(model, withCursor(line, 2)))?.();
+    driveLive(analysis, true, 'uttt', shownMoves(model, withCursor(line, 1)))?.();
+    const clean = driveLive(analysis, true, 'uttt', shownMoves(model, withCursor(line, 2)));
+    await advance(0);
+    expect(engine.started.map((s) => s.body.moves.length).slice(-1)).toEqual([4]);
+    expect(analysis.current.status).toBe('running');
+    clean?.();
+    await advance(0);
+    expect(engine.live).toEqual([]);
+  });
+
+  it('asks nothing once a side line is left for a position that cannot be asked', async () => {
+    const { engine, analysis } = setup();
+    expect(driveLive(analysis, true, 'uttt', null)).toBeUndefined();
+    await advance(10);
+    expect(engine.started).toEqual([]);
   });
 });
 
