@@ -86,6 +86,7 @@ name = "cg-search"
 version = "0.0.0"
 dependencies = [
  "cg-core",
+ "cg-search",
 ]
 
 [[package]]

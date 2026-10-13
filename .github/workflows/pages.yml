@@ -12,6 +12,8 @@ on:
       - "studio/**"
       - "games/*/releases/**"
       - "games/*/analysis/**"
+      - "games/*/engine/**"
+      - "games/*/bots/**"
       - "games/*/studio/**"
       - "games/*/referee/**"
       - "crates/**"

@@ -499,27 +499,15 @@ fn chances_are_exact_for_proven_moves_and_add_up_to_one() {
         proven,
         line: Vec::new(),
     };
-    assert_eq!(
-        chances(&entry(1.0, Some(0.0), Some(true)), 0),
-        [1.0, 0.0, 0.0]
-    );
-    assert_eq!(
-        chances(&entry(1.0, Some(0.0), Some(true)), 1),
-        [0.0, 0.0, 1.0]
-    );
-    assert_eq!(
-        chances(&entry(0.0, Some(0.0), Some(false)), 0),
-        [0.0, 0.0, 1.0]
-    );
-    assert_eq!(
-        chances(&entry(0.0, Some(0.0), Some(false)), 1),
-        [1.0, 0.0, 0.0]
-    );
+    assert_eq!(chances(&entry(1.0, 0.0, Some(true)), 0), [1.0, 0.0, 0.0]);
+    assert_eq!(chances(&entry(1.0, 0.0, Some(true)), 1), [0.0, 0.0, 1.0]);
+    assert_eq!(chances(&entry(0.0, 0.0, Some(false)), 0), [0.0, 0.0, 1.0]);
+    assert_eq!(chances(&entry(0.0, 0.0, Some(false)), 1), [1.0, 0.0, 0.0]);
     // Score 0.6 with a fifth of draws: wins 0.5, loses 0.3.
-    assert_eq!(chances(&entry(0.6, Some(0.2), None), 0), [0.5, 0.2, 0.3]);
-    assert_eq!(chances(&entry(0.6, Some(0.2), None), 1), [0.3, 0.2, 0.5]);
+    assert_eq!(chances(&entry(0.6, 0.2, None), 0), [0.5, 0.2, 0.3]);
+    assert_eq!(chances(&entry(0.6, 0.2, None), 1), [0.3, 0.2, 0.5]);
     // Drift (more draws than the score allows) is clamped and renormalised.
-    let drift = chances(&entry(0.1, Some(0.5), None), 0);
+    let drift = chances(&entry(0.1, 0.5, None), 0);
     assert_eq!(drift, [0.0, 0.4348, 0.5652]);
     assert_eq!(
         drift
@@ -529,6 +517,24 @@ fn chances_are_exact_for_proven_moves_and_add_up_to_one() {
         10_000
     );
     assert!(drift.iter().all(|n| *n >= 0.0));
-    // Without counted draws, none.
-    assert_eq!(chances(&entry(0.75, None, None), 0), [0.75, 0.0, 0.25]);
+}
+
+#[test]
+fn a_move_the_search_has_not_tried_has_no_wdl() {
+    // One iteration tries one of the 81 moves.
+    let out = lines(r#"{"moves":[],"iterations":1}"#);
+    let report = report(&out[0]);
+    let moves = report["moves"].as_array().unwrap();
+    assert_eq!(moves.len(), 81);
+    let untried: Vec<&Value> = moves.iter().filter(|m| m["visits"] == 0).collect();
+    assert_eq!(untried.len(), 80);
+    for entry in untried {
+        assert_eq!(entry["wdl"], Value::Null);
+        assert_eq!(entry["proven"], Value::Null);
+        assert_eq!(entry["line"], json!([entry["move"]]));
+    }
+    // The position's chances are those of the first move, which was tried.
+    assert_eq!(moves[0]["visits"], 1);
+    assert_eq!(report["wdl"], moves[0]["wdl"]);
+    assert!(report["wdl"].is_array());
 }

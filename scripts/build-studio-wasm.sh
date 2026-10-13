@@ -94,6 +94,8 @@ for game_dir in games/*/; do
   )
   ((${#names[@]} > 0)) || continue
   mkdir -p "$out/$game"
+  # A game without an analysis program must not keep an old file.
+  rm -f "$out/$game/analysis.wasm"
   analysis=false
   if [[ -f games/$game/analysis/Cargo.toml ]]; then
     CARGO_PROFILE_RELEASE_STRIP=symbols cargo build --locked --release --target "$target" -p "$game-analysis"

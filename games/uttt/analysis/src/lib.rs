@@ -10,7 +10,7 @@
 //! This crate never ends up in a bot: it may use a crate from outside the
 //! workspace and the bots' pattern weights by path.
 
-use cg_search::{Budget, CountDraws, Mcts, MoveReport, Report};
+use cg_search::{Budget, Mcts, MoveReport, Report};
 use serde::Serialize;
 use std::sync::OnceLock;
 use uttt_engine::search::PatternBoard;
@@ -33,7 +33,7 @@ const PRIOR_WEIGHT: f64 = 0.0;
 const PLIES: u32 = 16;
 
 /// The search stops, with the stop `"nodes"`, once the tree holds this many
-/// nodes. With `CountDraws` a node takes 36 bytes (a move, its mover, its
+/// nodes. With the `analysis` feature a node takes 36 bytes (a move, its mover, its
 /// proof and whether it is expanded, one byte each, then eight 4-byte
 /// numbers), so the limit is 288 MB of nodes. It is under 2^23 = 8,388,608
 /// on purpose: the nodes vector doubles its capacity when full, so it stays
@@ -96,7 +96,8 @@ struct MoveJson {
     #[serde(rename = "move")]
     mv: String,
     visits: u32,
-    wdl: [f64; 3],
+    /// `None` for a move the search has not tried.
+    wdl: Option<[f64; 3]>,
     proven: Option<u8>,
     line: Vec<String>,
 }
@@ -138,7 +139,7 @@ fn search(request: &Request, node_limit: usize, emit: &mut dyn FnMut(&str) -> bo
         board,
         policy: policy(),
     };
-    let mut mcts = Mcts::<PatternBoard, CountDraws>::counting_draws(EXPLORATION, request.seed);
+    let mut mcts = Mcts::<PatternBoard>::new(EXPLORATION, request.seed);
     mcts.priors = PRIORS;
     mcts.prior_weight = PRIOR_WEIGHT;
     let mut done = 0;
@@ -206,7 +207,7 @@ fn moves(report: &Report<uttt_engine::Move>, to_move: usize) -> Vec<MoveJson> {
         .map(|entry| MoveJson {
             mv: entry.mv.to_string(),
             visits: entry.visits,
-            wdl: chances(entry, to_move),
+            wdl: (entry.visits > 0).then(|| chances(entry, to_move)),
             proven: entry.proven.map(|wins| seat(to_move, wins)),
             line: entry.line.iter().map(ToString::to_string).collect(),
         })
@@ -225,7 +226,7 @@ fn chances(entry: &MoveReport<uttt_engine::Move>, to_move: usize) -> [f64; 3] {
         Some(false) => (0.0, 0.0, 1.0),
         None => {
             let score = entry.score.clamp(0.0, 1.0);
-            let draws = entry.draws.unwrap_or(0.0).clamp(0.0, 1.0);
+            let draws = entry.draws.clamp(0.0, 1.0);
             (
                 (score - draws / 2.0).max(0.0),
                 draws,
