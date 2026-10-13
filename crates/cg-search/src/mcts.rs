@@ -85,6 +85,8 @@ struct Node<M> {
     prior: f32,
     /// `prior_weight · prior / (visits + 1)`, kept for selection.
     bias: f32,
+    #[cfg(feature = "analysis")]
+    draws: f32, // the share of the visits' results that were draws
 }
 
 /// What a search found.
@@ -127,6 +129,8 @@ pub struct Mcts<G: Game> {
     weights: Vec<f32>,
     ranked: Vec<(f32, G::Move)>,
     path: Vec<u32>,
+    #[cfg(feature = "analysis")]
+    current: bool, // whether the tree is at the root of the last search
     /// [`sqrt_ln_table`], shared by all searches.
     sqrt_ln: &'static [f64],
 }
@@ -146,6 +150,8 @@ impl<G: Game> Mcts<G> {
             weights: Vec::new(),
             ranked: Vec::new(),
             path: Vec::new(),
+            #[cfg(feature = "analysis")]
+            current: false,
             sqrt_ln: sqrt_ln_table(),
         }
     }
@@ -172,6 +178,8 @@ impl<G: Game> Mcts<G> {
             let mut next = root.clone();
             next.play(mv);
             if next.score() == Some(win) {
+                #[cfg(feature = "analysis")]
+                self.set_current(false);
                 return SearchResult {
                     best: mv,
                     iterations: 0,
@@ -187,6 +195,8 @@ impl<G: Game> Mcts<G> {
             self.start(root, candidates);
         }
         self.root = Some(root.clone());
+        #[cfg(feature = "analysis")]
+        self.set_current(true);
         let reused = u64::from(self.nodes[0].visits);
 
         let mut iterations = 0;
@@ -257,6 +267,8 @@ impl<G: Game> Mcts<G> {
             inv_sqrt_visits: 0.0,
             prior: 0.0,
             bias: 0.0,
+            #[cfg(feature = "analysis")]
+            draws: 0.0,
         });
         self.moves.clear();
         self.moves.extend_from_slice(candidates);
@@ -411,6 +423,8 @@ impl<G: Game> Mcts<G> {
             node.value += (mover_score as f32 - node.value) / visits;
             node.inv_sqrt_visits = visits.sqrt().recip();
             node.bias = prior_weight * node.prior / (visits + 1.0);
+            #[cfg(feature = "analysis")]
+            analysis::record_draw(&mut node.draws, score, visits);
         }
         if proved {
             self.prove_ancestors();
@@ -486,6 +500,8 @@ impl<G: Game> Mcts<G> {
                 inv_sqrt_visits: 0.0,
                 prior,
                 bias: prior_weight * prior,
+                #[cfg(feature = "analysis")]
+                draws: 0.0,
             });
         }
         let parent = &mut self.nodes[node];
@@ -528,6 +544,9 @@ impl<G: Game> Mcts<G> {
         first + best
     }
 }
+
+#[cfg(feature = "analysis")]
+mod analysis;
 
 #[cfg(test)]
 mod tests;

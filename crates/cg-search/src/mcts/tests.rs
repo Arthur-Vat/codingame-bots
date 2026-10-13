@@ -347,3 +347,95 @@ fn games_without_priors_search_as_before_when_priors_are_asked_for() {
     let asked = mcts.search(&nim(30), &[1, 2, 3], Budget::Iterations(2_000));
     assert_eq!(asked, plain);
 }
+
+#[test]
+fn a_node_is_as_small_as_before_analysis_existed() {
+    // 32 bytes with a one-byte move, as on origin/main before the analysis
+    // feature: the size of a node of a bot's tree, on which its memory and
+    // speed depend. With the feature a node also holds the share of draws.
+    // CI builds this crate's tests with the feature on (a dependency on the
+    // crate itself turns it on), so only the 36 bytes are checked there; the
+    // 32 are checked by `cargo test -p cg-search` after removing that
+    // dependency, and bots' bundles, identical to the release, cover them.
+    #[cfg(not(feature = "analysis"))]
+    assert_eq!(std::mem::size_of::<Node<u8>>(), 32);
+    #[cfg(feature = "analysis")]
+    assert_eq!(std::mem::size_of::<Node<u8>>(), 36);
+}
+
+// Pinned results: what searches answered before the analysis feature existed.
+
+/// What a few searches in a row, with the tree kept between them, answer.
+fn pinned_run() -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut mcts = Mcts::new(1.0, 5);
+    let mut game = nim(60);
+    for (iterations, reply) in [(2_000, 1), (1_000, 2), (500, 3), (700, 1), (300, 1)] {
+        let result = mcts.search(&game, &[1, 2, 3], Budget::Iterations(iterations));
+        lines.push(format!("{result:?}"));
+        lines.push(format!("{:?}", mcts.root_visits().collect::<Vec<_>>()));
+        // The same position again continues the whole tree.
+        let again = mcts.search(&game, &[1, 2, 3], Budget::Iterations(50));
+        lines.push(format!("{again:?}"));
+        game.play(result.best);
+        game.play(reply);
+    }
+    // Priors, draws and a candidate list that is not all the legal moves.
+    let mut mcts = Mcts::new(0.5, 3);
+    mcts.priors = true;
+    mcts.prior_weight = 1.0;
+    let result = mcts.search(
+        &Choice { played: false },
+        &[0, 1, 2],
+        Budget::Iterations(300),
+    );
+    lines.push(format!("{result:?}"));
+    lines.push(format!("{:?}", mcts.root_visits().collect::<Vec<_>>()));
+    let mut mcts = Mcts::new(1.0, 8);
+    let result = mcts.search(&nim(10), &[1, 3], Budget::Iterations(400));
+    lines.push(format!("{result:?}"));
+    lines.push(format!("{:?}", mcts.root_visits().collect::<Vec<_>>()));
+    lines
+}
+
+/// The results below were produced by running `pinned_run` against the
+/// search as it was on `origin/main` before the `analysis` feature existed
+/// (a scratch copy of that tree). They hold with the feature off, which is
+/// what bots run, and with it on, whose draw counting must not touch the
+/// random stream: the same moves, scores, visits and node counts for the
+/// same seed and iterations. CI runs it with the feature on only (the crate's
+/// tests turn it on); the feature-off run was done by hand, without the
+/// dev-dependency on the crate itself, and the byte-identical bundles of the
+/// bots cover that path.
+#[test]
+fn a_search_answers_as_it_did_before_the_analysis_feature() {
+    const BEFORE: [&str; 19] = [
+        "SearchResult { best: 2, iterations: 2000, reused: 0, proven: None, expected_score: 0.4916864335536957, nodes: 2626 }",
+        "[(3, 636), (2, 842), (1, 522)]",
+        "SearchResult { best: 2, iterations: 50, reused: 2000, proven: None, expected_score: 0.49371418356895447, nodes: 2692 }",
+        "SearchResult { best: 3, iterations: 1000, reused: 331, proven: None, expected_score: 0.5188915729522705, nodes: 1720 }",
+        "[(3, 794), (1, 254), (2, 282)]",
+        "SearchResult { best: 3, iterations: 50, reused: 1331, proven: None, expected_score: 0.5237529873847961, nodes: 1768 }",
+        "SearchResult { best: 1, iterations: 500, reused: 186, proven: None, expected_score: 0.5104166269302368, nodes: 907 }",
+        "[(3, 230), (1, 288), (2, 167)]",
+        "SearchResult { best: 1, iterations: 50, reused: 686, proven: None, expected_score: 0.5050846934318542, nodes: 952 }",
+        "SearchResult { best: 1, iterations: 700, reused: 56, proven: None, expected_score: 0.5738916993141174, nodes: 991 }",
+        "[(2, 153), (1, 406), (3, 196)]",
+        "SearchResult { best: 1, iterations: 50, reused: 756, proven: None, expected_score: 0.5664337277412415, nodes: 1042 }",
+        "SearchResult { best: 2, iterations: 300, reused: 150, proven: None, expected_score: 0.5422885417938232, nodes: 592 }",
+        "[(2, 201), (3, 106), (1, 142)]",
+        "SearchResult { best: 2, iterations: 50, reused: 450, proven: None, expected_score: 0.5296803116798401, nodes: 655 }",
+        "SearchResult { best: 2, iterations: 300, reused: 0, proven: None, expected_score: 0.5, nodes: 4 }",
+        "[(2, 106), (1, 98), (0, 96)]",
+        "SearchResult { best: 1, iterations: 134, reused: 0, proven: Some(false), expected_score: 0.0, nodes: 155 }",
+        "[(3, 23), (1, 111)]",
+    ];
+    let now = pinned_run();
+    for (index, (expected, got)) in BEFORE.iter().zip(&now).enumerate() {
+        assert_eq!(expected, got, "line {index}");
+    }
+    assert_eq!(now.len(), BEFORE.len());
+}
+
+#[cfg(feature = "analysis")]
+mod analysis;

@@ -13,5 +13,16 @@ rust-version.workspace = true
 [dependencies]
 cg-core.workspace = true
 
+# Analysis code, which bots do not use: the bundler drops the lines that
+# `#[cfg(feature = "analysis")]` marks. A crate that analyses positions turns
+# it on in its dependency on this one.
+[features]
+analysis = []
+
+# This crate's own tests cover the analysis code, so they turn the feature
+# on through a dependency on the crate itself (which only tests build).
+[dev-dependencies]
+cg-search = { path = ".", features = ["analysis"] }
+
 [lints]
 workspace = true

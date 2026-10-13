@@ -11,7 +11,11 @@
 pub mod budget;
 pub mod game;
 pub mod mcts;
+#[cfg(feature = "analysis")]
+pub mod report;
 
 pub use budget::Budget;
 pub use game::Game;
 pub use mcts::{Mcts, SearchResult};
+#[cfg(feature = "analysis")]
+pub use report::{MoveReport, Report};
