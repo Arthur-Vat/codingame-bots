@@ -36,6 +36,7 @@ Every bot change is judged by CI: unit tests, a check that the bot compiles on C
 - [Architecture](docs/ARCHITECTURE.md): components, evaluation pipeline, journal, CI
 - [Roadmap](docs/ROADMAP.md): phases, gates, risks
 - [Workflow](docs/WORKFLOW.md): how work is proposed, judged and approved
+- [New game playbook](docs/NEW_GAME.md): the stages a new game goes through
 - [CodinGame platform facts](docs/CODINGAME.md): compiler version, limits, how to re-check them
 - [Decision records](docs/adr/)
 

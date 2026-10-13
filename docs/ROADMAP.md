@@ -104,7 +104,7 @@ Gate: every item below done. The one-week trial of daily scheduled sessions that
 - [x] Agents limited by a hook (owner, 2026-10-09): `.claude/settings.json` runs `scripts/agent-guard.sh` before every agent start and refuses all but `implementer`, `pr-reviewer`, `rules-reviewer` and the read-only built-in agents (`Explore`, `Plan`, `claude-code-guide`); CI tests the script
 - [x] Cloud sessions install what CI uses and their image lacks (owner, 2026-10-09): `scripts/session-setup.sh`, a `SessionStart` hook, installs shellcheck at CI's version, so sessions lint scripts before they push
 - [x] Skills carry the recipes that work in Claude's sessions: pull requests through GitHub's REST API, fetches with explicit refspecs (`github-api`)
-- [x] Project skills in `.claude/skills/`: `land-work` (plan, dispatch, stack and merge), `review-pr`, `github-api`, `ask-decision`, `write-adr`, `run-experiment`, `deliver-release`, `training-run`, `docs-refresh` (`daily-report` removed with the daily session, [ADR 0033](adr/0033-no-daily-scheduled-session.md), and `session-usage` with usage monitoring, [ADR 0034](adr/0034-no-usage-monitoring.md)); later `new-game`
+- [x] Project skills in `.claude/skills/`: `land-work` (plan, dispatch, stack and merge), `review-pr`, `github-api`, `ask-decision`, `write-adr`, `run-experiment`, `deliver-release`, `training-run`, `docs-refresh` (`daily-report` removed with the daily session, [ADR 0033](adr/0033-no-daily-scheduled-session.md), and `session-usage` with usage monitoring, [ADR 0034](adr/0034-no-usage-monitoring.md)); the new-game skills in phase 7
 - [x] The owner approves merges in the conversation and Claude carries them out ([ADR 0023](adr/0023-chat-approved-merges.md))
 - [x] No new merge policy (owner, 2026-10-09): the current one stands, with the owner approving merges in the conversation ([ADR 0006](adr/0006-human-approves-merges.md), [ADR 0023](adr/0023-chat-approved-merges.md))
 - [x] `Docs and scripts` and the SPRT are required checks, so that broken docs or a rejected release cannot be merged (set by the owner, 2026-10-09; Claude's sessions cannot edit rulesets)
@@ -198,6 +198,17 @@ Planned with the owner on 2026-10-12, from his trial on Windows: the game page f
 - [x] One setup menu, opened by Play when no game is shown: the mode first (three buttons), then the opponents and the time, then an optional advanced mode (owner, 2026-10-12)
 
 Order: A, B, C, E, then F, then the interface rework (G), then D. Later: each bot's own evaluation from future releases, more games.
+
+## Phase 7: second game
+
+Planned with the owner on 2026-10-13 ([ADR 0035](adr/0035-new-game-lifecycle.md)). Goal: a lifecycle every new game follows, from its statement to Legend, written once and carried by skills; then a second game, named by the owner, through its stages. Each game's progress is in its own roadmap, `games/<game>/ROADMAP.md`, with one line here.
+
+Gate: the owner passes each stage of the second game.
+
+- [x] Decision record on the lifecycle ([ADR 0035](adr/0035-new-game-lifecycle.md))
+- [x] The [playbook](NEW_GAME.md), the templates of a game's roadmap, model and research, the shared [research notes](research/README.md), and the skills `new-game`, `game-intake`, `game-model`, `rules-check`, `game-research` and `game-retrospective`
+- [ ] Ultimate Tic-Tac-Toe as the worked example: its model, research note, roadmap and retrospective
+- [ ] A second game, named by the owner
 
 ## Risks
 

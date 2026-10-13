@@ -23,7 +23,7 @@ codingame-bots/
 ├─ CLAUDE.md                rules for every Claude session
 ├─ LICENSE-MIT, LICENSE-APACHE
 ├─ deny.toml                dependency license and source policy
-├─ docs/                    this file, ROADMAP, WORKFLOW, CODINGAME, adr/
+├─ docs/                    this file, ROADMAP, WORKFLOW, CODINGAME, NEW_GAME (the new-game playbook), adr/, research/ (methods shared by games), templates/ (a game's roadmap, model and research)
 ├─ scripts/
 │  ├─ bundle-bots.sh        every bot -> target/cg/<game>-<bot>.rs
 │  ├─ cg-check.sh           size and standalone build of paste-ready files
@@ -52,6 +52,7 @@ codingame-bots/
 │  └─ uttt/
 │     ├─ README.md          layout, bots, how to play matches
 │     ├─ RULES.md           the rules in our own words, with sources
+│     ├─ MODEL.md           new games (ADR 0035): the problem modelled, the framework gaps; also ROADMAP.md, research/, RETROSPECTIVE.md
 │     ├─ evaluation.env     SPRT, league and arena settings
 │     ├─ ci.sh              the CI steps only this game needs: arena games, evaluation controls, engine speed (ADR 0029)
 │     ├─ referee/           readable reference rules, implements Referee
