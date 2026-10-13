@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- 2026-10-13: approval of the stack #113 (usage removal, ADR 0034) -> #114 (ADR 0035, new-game lifecycle) -> #115 (playbook, templates, stage skills) -> #116 (UTTT worked example); all green, reviewed, merge commits in that order.
+- 2026-10-13: approval of the stack #113 (usage removal, ADR 0034) -> #114 (ADR 0035, new-game lifecycle) -> #115 (playbook, templates, stage skills) -> #116 (UTTT worked example) -> #117 (ADR 0036, ranks optional); all green, reviewed, merge commits in that order.
 
 ## Open questions
 
@@ -13,7 +13,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 ## Follow-ups
 
 - **New-game lifecycle** (owner's answers of 2026-10-13): recorded in ADR 0035 (#114) and the playbook (#115). Owner also: README fine as is; no doc splitting; real workflow decisions go into ADRs; keep docs/WORKFLOW.md up to date.
-- **Ranks:** the owner no longer reports CodinGame ranks (2026-10-13, earlier session), but docs/WORKFLOW.md, skill deliver-release and the journal README still expect a rank after pasting; ask the owner before changing them.
+- **Ranks** (owner, 2026-10-13: "Do not expect a rank when publishing a release ... I may do it from time to time though"): ADR 0036 in #117; never ask for a rank.
 - **Stop monitoring usage** (owner, 2026-10-13, all of it): done in #113 (ADR 0034). Once it merges, delete this file's Usage section.
 
 - Merged 2026-10-13 on the owner's approval in the chat ("Merge #109, then #110, #111, #112"): phase 6 done (#109), ADR 0033 no daily scheduled session (#110), exact 64-bit seeds (#111), dev notice without a server (#112).
