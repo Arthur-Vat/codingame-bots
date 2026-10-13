@@ -18,7 +18,7 @@ Take its items as the work in hand, beside what the owner says; the owner's word
 
 ## Update
 
-When an item is added, answered or done, and at the end of each piece of work. The daily scheduled session only reads.
+When an item is added, answered or done, and at the end of each piece of work.
 
 ```sh
 W="$(mktemp -d)/handoff"

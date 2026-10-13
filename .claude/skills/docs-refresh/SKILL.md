@@ -1,6 +1,6 @@
 ---
 name: docs-refresh
-description: Brings the repository's docs back in line with what the repository holds - READMEs, architecture, workflow, roadmap and platform facts. Use when the docs check fails, after a roadmap step, or when a daily report finds drift.
+description: Brings the repository's docs back in line with what the repository holds - READMEs, architecture, workflow, roadmap and platform facts. Use when the docs check fails, after a roadmap step, or when a session finds drift.
 ---
 
 # Refresh the docs

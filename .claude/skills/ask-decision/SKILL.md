@@ -1,6 +1,6 @@
 ---
 name: ask-decision
-description: Brings a decision to the owner with options, pros and cons and a recommendation, in the conversation; when he is away, the daily report and one push notification tell him it is waiting. Use whenever work needs a choice that is the owner's to make.
+description: Brings a decision to the owner with options, pros and cons and a recommendation, in the conversation; when he is away, one push notification and HANDOFF.md tell him it is waiting. Use whenever work needs a choice that is the owner's to make.
 ---
 
 # Ask the owner to decide
@@ -20,7 +20,7 @@ Each decision gets:
 
 Ask in the conversation: with the question tool if it is available, else in plain text, grouping all pending decisions in one message. Wait for the answer before acting on that point; keep working on what does not depend on it.
 
-When the owner is away (he said so, or the question went unanswered), write the decision as above in the session's final message, send one push notification naming it, and list it under "Waiting for you" in the next daily report. The daily scheduled session only lists decisions; it never acts on one.
+When the owner is away (he said so, or the question went unanswered), write the decision as above in the session's final message, send one push notification naming it, and list it under "Waiting for the owner" in `HANDOFF.md` (skill `handoff`).
 
 ## Only the conversation counts
 
