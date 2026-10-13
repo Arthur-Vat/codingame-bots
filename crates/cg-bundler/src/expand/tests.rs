@@ -110,3 +110,126 @@ fn reports_missing_ambiguous_and_path_modules() {
     let error = expand_crate(&path.join("src/lib.rs")).unwrap_err();
     assert!(error.contains("#[path]"), "{error}");
 }
+
+const ANALYSIS: &str = "#[cfg(feature = \"analysis\")]";
+
+#[test]
+fn drops_analysis_lines_with_the_attribute_line() {
+    // `report.rs` does not exist: the module is dropped before its file is
+    // looked for.
+    let dir = crate_dir(&[
+        (
+            "src/lib.rs",
+            &format!(
+                "pub mod search;\n\
+                 {ANALYSIS}\n\
+                 pub mod report;\n\
+                 {ANALYSIS}\n\
+                 pub use report::Report;\n"
+            ),
+        ),
+        (
+            "src/search.rs",
+            &format!(
+                "pub struct Node {{\n    \
+                     visits: u32,\n    \
+                     {ANALYSIS}\n    \
+                     draws: f32,\n    \
+                     value: f32,\n\
+                 }}\n\
+                 pub fn new() -> Node {{\n    \
+                     let mut node = Node {{\n        \
+                         visits: 0,\n        \
+                         {ANALYSIS}\n        \
+                         draws: 0.0,\n        \
+                         value: 0.0,\n    \
+                     }};\n    \
+                     {ANALYSIS}\n    \
+                     record(&mut node.draws);\n    \
+                     node.visits += 1;\n    \
+                     node\n\
+                 }}\n"
+            ),
+        ),
+    ]);
+    let source = expand_crate(&dir.join("src/lib.rs")).unwrap();
+    assert!(!source.contains("analysis"), "{source}");
+    assert!(!source.contains("report") && !source.contains("draws"));
+    assert!(source.contains("visits: u32,\n    value: f32,"), "{source}");
+    assert!(
+        source.contains("visits: 0,\n        value: 0.0,"),
+        "{source}"
+    );
+    assert!(source.contains("    };\n    node.visits += 1;"), "{source}");
+}
+
+#[test]
+fn text_with_analysis_lines_dropped_compiles_alone() {
+    let dir = crate_dir(&[
+        (
+            "src/lib.rs",
+            &format!(
+                "pub mod core;\n\
+                 {ANALYSIS}\n\
+                 pub mod extra;\n\
+                 pub fn run() -> u32 {{\n    \
+                     let node = core::Node {{\n        \
+                         visits: 1,\n        \
+                         {ANALYSIS}\n        \
+                         extra: 0.0,\n    \
+                     }};\n    \
+                     {ANALYSIS}\n    \
+                     extra::touch(&node.extra);\n    \
+                     node.visits\n\
+                 }}\n"
+            ),
+        ),
+        (
+            "src/core.rs",
+            &format!(
+                "pub struct Node {{\n    \
+                     pub visits: u32,\n    \
+                     {ANALYSIS}\n    \
+                     pub extra: f32,\n\
+                 }}\n"
+            ),
+        ),
+    ]);
+    let source = expand_crate(&dir.join("src/lib.rs")).unwrap();
+    let file = dir.join("bundle.rs");
+    fs::write(&file, &source).unwrap();
+    let compiled = std::process::Command::new("rustc")
+        .args([
+            "--edition",
+            "2021",
+            "--crate-type",
+            "lib",
+            "--emit",
+            "metadata",
+        ])
+        .arg("-o")
+        .arg(dir.join("bundle.rmeta"))
+        .arg("-D")
+        .arg("warnings")
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(
+        compiled.status.success(),
+        "{source}\n{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+}
+
+#[test]
+fn an_analysis_line_must_mark_a_line_and_not_follow_cfg_test() {
+    let dangling = crate_dir(&[("src/lib.rs", &format!("fn a() {{}}\n{ANALYSIS}\n"))]);
+    let error = expand_crate(&dangling.join("src/lib.rs")).unwrap_err();
+    assert!(
+        error.contains("lib.rs:2") && error.contains("marks nothing"),
+        "{error}"
+    );
+    let stacked = crate_dir(&[("src/lib.rs", &format!("#[cfg(test)]\n{ANALYSIS}\nmod a;\n"))]);
+    let error = expand_crate(&stacked.join("src/lib.rs")).unwrap_err();
+    assert!(error.contains("cannot follow"), "{error}");
+}

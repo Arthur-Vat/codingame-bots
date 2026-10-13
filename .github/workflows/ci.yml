@@ -94,6 +94,10 @@ jobs:
         run: scripts/annotate.sh run Format cargo fmt --all -- --check
       - name: Lint
         run: scripts/annotate.sh run Lint cargo clippy --workspace --all-targets --locked -- -D warnings
+      # The line above builds cg-search's tests, which turn its `analysis`
+      # feature on for the whole workspace. Bots run without it: lint that.
+      - name: Lint without analysis
+        run: scripts/annotate.sh run "Lint without analysis" cargo clippy -p cg-search --lib --locked -- -D warnings
 
   framework-tests:
     name: "Framework: tests"

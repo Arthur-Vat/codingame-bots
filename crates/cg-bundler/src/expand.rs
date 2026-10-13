@@ -3,9 +3,14 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// The attribute line that marks analysis-only code: the line is dropped
+/// with the line that follows it.
+const ANALYSIS_CFG: &str = "#[cfg(feature = \"analysis\")]";
+
 /// The source of the crate rooted at `root` (`lib.rs` or `main.rs`), with
 /// every `mod name;` replaced by `mod name { ... }` holding that module's
-/// file, recursively. Test modules are dropped.
+/// file, recursively. Test modules are dropped, and so is every line
+/// marked `#[cfg(feature = "analysis")]` (with the attribute line).
 pub fn expand_crate(root: &Path) -> Result<String, String> {
     expand_file(root, true)
 }
@@ -26,8 +31,24 @@ fn expand_file(path: &Path, owns_directory: bool) -> Result<String, String> {
     let mut out = String::with_capacity(source.len());
     // A `#[cfg(test)]` line is held back until we know what it applies to.
     let mut held_cfg_test: Option<&str> = None;
+    // The line after an analysis marker is dropped, whatever it is.
+    let mut marked: Option<usize> = None;
     for (index, line) in source.lines().enumerate() {
         let trimmed = line.trim();
+        if marked.take().is_some() {
+            continue;
+        }
+        if trimmed == ANALYSIS_CFG {
+            if held_cfg_test.is_some() {
+                return Err(format!(
+                    "{}:{}: {ANALYSIS_CFG} cannot follow #[cfg(test)]",
+                    path.display(),
+                    index + 1
+                ));
+            }
+            marked = Some(index + 1);
+            continue;
+        }
         if trimmed.starts_with("#[path") {
             return Err(format!(
                 "{}:{}: #[path] attributes are not supported",
@@ -68,6 +89,12 @@ fn expand_file(path: &Path, owns_directory: bool) -> Result<String, String> {
     }
     if let Some(held) = held_cfg_test {
         push_line(&mut out, held);
+    }
+    if let Some(line) = marked {
+        return Err(format!(
+            "{}:{line}: {ANALYSIS_CFG} marks nothing: it ends the file",
+            path.display()
+        ));
     }
     Ok(out)
 }
