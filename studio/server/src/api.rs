@@ -13,6 +13,7 @@ use cg_arena::runner::EndReason;
 use studio_core::request::{self, CreateRequest};
 use studio_core::session::GameState;
 
+use crate::analysis;
 use crate::history;
 use crate::runner::{spawn_drive, spawn_launch};
 use crate::session::{other, GameResult, Mode, Progress, SeatConfig, Session, Status};
@@ -93,12 +94,17 @@ fn api(state: &State, method: &str, path: &str, query: &str, body: &[u8]) -> Res
         ("GET", ["history", id, "view"]) => history::view(state, id),
         ("POST", ["view"]) => history::view_body(state, body),
         ("POST", ["filter"]) => history::filter_rows(query, body),
+        ("POST", ["analysis"]) => analysis::start(state, body),
+        ("GET", ["analysis", id]) => analysis::get(state, id),
+        ("DELETE", ["analysis", id]) => analysis::delete(state, id),
         (_, ["games"])
         | (_, ["history"])
         | (_, ["history", _])
         | (_, ["history", _, "view"])
         | (_, ["view"])
         | (_, ["filter"])
+        | (_, ["analysis"])
+        | (_, ["analysis", _])
         | (_, ["sessions"])
         | (_, ["sessions", _])
         | (_, ["sessions", _, "move" | "takeback" | "end" | "record" | "save"]) => {
@@ -143,6 +149,7 @@ fn list_games(state: &State) -> Response {
                 "id": info.id,
                 "name": info.name,
                 "releases": state.releases().list(info.id),
+                "analysis": game.has_analysis(),
             })
         })
         .collect();

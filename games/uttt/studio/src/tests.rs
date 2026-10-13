@@ -248,3 +248,28 @@ fn an_invalid_turn_inside_the_opening_has_no_frame() {
 fn a_game_without_an_opening_has_none() {
     assert_eq!(Uttt.opening_turns(&setup(0)), 0);
 }
+
+/// The analysis program is linked with the feature `analysis` (the local server turns it on).
+#[cfg(feature = "analysis")]
+#[test]
+fn the_analysis_is_the_analysis_programs() {
+    assert!(Uttt.has_analysis());
+    let mut lines = Vec::new();
+    Uttt.analyse(
+        r#"{"moves":["4 4"],"iterations":1000,"report_every":1000}"#,
+        &mut |line| {
+            lines.push(line.to_string());
+            true
+        },
+        &|| false,
+    );
+    assert_eq!(lines.len(), 1);
+    assert!(lines[0].starts_with(r#"{"report":"#), "{}", lines[0]);
+}
+
+/// Without the feature the game has no analysis, so the browser's rules program stays small.
+#[cfg(not(feature = "analysis"))]
+#[test]
+fn without_the_feature_there_is_no_analysis() {
+    assert!(!Uttt.has_analysis());
+}

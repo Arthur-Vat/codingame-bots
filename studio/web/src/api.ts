@@ -8,6 +8,8 @@ export interface GameSummary {
   name: string;
   /** Release names, newest first. */
   releases: string[];
+  /** Whether the game has an analysis program (ADR 0032). */
+  analysis: boolean;
 }
 
 export type BotMode = 'fixed' | 'realtime';
@@ -307,4 +309,77 @@ export function postHistory(record: unknown): Promise<{ id: string; duplicate: b
 /** Saves a record given as text, sent as it is (see `postViewText`). */
 export function postHistoryText(recordText: string): Promise<{ id: string; duplicate: boolean }> {
   return callText('POST', '/api/history', recordText);
+}
+
+/**
+ * A request of the analysis program (studio/README.md, "The analysis program"): the moves played
+ * from the start, each the answer the player printed in that turn (lines joined by "\n"), and the
+ * program's limits. A field left out has the program's default.
+ */
+export interface AnalysisRequest {
+  moves: string[];
+  /** From 1 to 100000000; the search stops after this many. */
+  iterations?: number;
+  /** From 1000 to 10000000: a report after every this many iterations. */
+  report_every?: number;
+  /** From 1 to 40: the longest line reported. */
+  depth?: number;
+  /** A decimal string of an unsigned 64-bit number. */
+  seed?: string;
+}
+
+/** `[seat 0 wins, draw, seat 1 wins]`, from 0 to 1 and adding up to 1 in ten-thousandths. */
+export type Chances = [number, number, number];
+
+/** A move the search tried. */
+export interface AnalysisMove {
+  /** The answer text, for example "4 4". */
+  move: string;
+  visits: number;
+  /** Null for a move with no visit. */
+  wdl: Chances | null;
+  /** The seat proven to win after this move, 0 or 1, else null. */
+  proven: 0 | 1 | null;
+  /** The move, then the most visited answer at each ply. */
+  line: string[];
+}
+
+/** One report of the program: the value under `report` in a line of its answer. */
+export interface AnalysisReport {
+  iterations: number;
+  nodes: number;
+  /** The seat to move; null when the game is over. */
+  to_move: 0 | 1 | null;
+  proven: 0 | 1 | null;
+  wdl: Chances;
+  /** Every legal move, the one the search would play first, then by visits. */
+  moves: AnalysisMove[];
+  done: boolean;
+  /** On the last report, why it stopped. */
+  stop: 'iterations' | 'proven' | 'nodes' | 'over' | null;
+}
+
+/** The body of `GET /api/analysis/{id}`. */
+export interface AnalysisState {
+  status: 'running' | 'done' | 'error';
+  /** The latest report; null before the first. */
+  report: AnalysisReport | null;
+  /** The program's error message (or that it crashed); null unless the status is `error`. */
+  error: string | null;
+}
+
+/** Starts an analysis of `body.game` and returns its id. */
+export async function startAnalysis(body: AnalysisRequest & { game: string }): Promise<string> {
+  const { id } = await call<{ id: string }>('POST', '/api/analysis', body);
+  return id;
+}
+
+/** The latest state of an analysis. Reading it keeps the analysis alive (10 s without a read). */
+export function getAnalysis(id: string): Promise<AnalysisState> {
+  return call('GET', `/api/analysis/${encodeURIComponent(id)}`);
+}
+
+/** Stops an analysis and forgets it. */
+export async function stopAnalysis(id: string): Promise<void> {
+  await call('DELETE', `/api/analysis/${encodeURIComponent(id)}`);
 }

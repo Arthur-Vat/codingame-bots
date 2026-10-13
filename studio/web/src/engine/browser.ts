@@ -2,6 +2,7 @@
    Workers, saved games in IndexedDB, speeds in localStorage. Loaded only when the front end uses
    this engine. */
 
+import { workerAnalysisFactory } from './analysisFactory';
 import { botsAvailable, workerBotFactory } from './bot';
 import type { Reply } from './http';
 import { createEngine, type Engine } from './routes';
@@ -30,6 +31,7 @@ function theEngine(): Engine {
       now: () => Date.now(),
       newId: randomId,
       store: () => openGameStore(),
+      makeAnalysis: workerAnalysisFactory,
     });
   }
   return engine;

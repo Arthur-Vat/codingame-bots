@@ -13,7 +13,13 @@ rust-version.workspace = true
 cg-arena.workspace = true
 serde_json.workspace = true
 studio-game.workspace = true
+uttt-analysis = { workspace = true, optional = true }
 uttt-referee.workspace = true
+
+[features]
+# The analysis program (ADR 0032), for the local server. Off by default, so
+# that the rules program for the browser (studio-rules) does not grow by it.
+analysis = ["dep:uttt-analysis"]
 
 [lints]
 workspace = true

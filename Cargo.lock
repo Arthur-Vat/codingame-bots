@@ -261,6 +261,7 @@ dependencies = [
  "studio-core",
  "studio-game",
  "tiny_http",
+ "uttt-studio",
 ]
 
 [[package]]
@@ -417,6 +418,7 @@ dependencies = [
  "cg-arena",
  "serde_json",
  "studio-game",
+ "uttt-analysis",
  "uttt-referee",
 ]
 

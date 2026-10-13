@@ -193,6 +193,18 @@ impl StudioGame for Uttt {
             })
             .collect())
     }
+
+    // The analysis program is linked only with the feature `analysis`, which
+    // the local server turns on and the browser's rules program does not.
+    #[cfg(feature = "analysis")]
+    fn has_analysis(&self) -> bool {
+        true
+    }
+
+    #[cfg(feature = "analysis")]
+    fn analyse(&self, request: &str, emit: &mut dyn FnMut(&str) -> bool, stop: &dyn Fn() -> bool) {
+        uttt_analysis::analyse_with_stop(request, emit, stop);
+    }
 }
 
 #[cfg(test)]

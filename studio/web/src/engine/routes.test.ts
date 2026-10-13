@@ -4,7 +4,7 @@ import { createRules } from './rules';
 import { Speed, memorySpeedCache } from './speed';
 import { BOTS_UNAVAILABLE } from './bot';
 import { STORE_UNAVAILABLE, memoryGameStore } from './storage';
-import { fakeWasm, request, rulesModule, testEngine } from './testSupport';
+import { fakeWasm, inProcessAnalysis, request, rulesModule, testEngine } from './testSupport';
 
 const friends = {
   game: 'uttt',
@@ -76,14 +76,21 @@ describe('the routes', () => {
     const games = await request(engine, 'GET', '/api/games');
     expect(games.status).toBe(200);
     expect(games.body).toEqual([
-      { id: 'uttt', name: 'Ultimate Tic-Tac-Toe', releases: ['uttt-v002', 'uttt-v001'] },
+      {
+        id: 'uttt',
+        name: 'Ultimate Tic-Tac-Toe',
+        releases: ['uttt-v002', 'uttt-v001'],
+        analysis: true,
+      },
     ]);
   });
 
   it('gives a game that is not in the manifest no releases', async () => {
     const { engine } = await testEngine({ releases: [] });
     const games = await request(engine, 'GET', '/api/games');
-    expect(games.body).toEqual([{ id: 'uttt', name: 'Ultimate Tic-Tac-Toe', releases: [] }]);
+    expect(games.body).toEqual([
+      { id: 'uttt', name: 'Ultimate Tic-Tac-Toe', releases: [], analysis: true },
+    ]);
   });
 });
 
@@ -101,6 +108,7 @@ describe('when the WebAssembly files are missing', () => {
       makeBot: null,
       now: () => 0,
       newId: () => 'a',
+      makeAnalysis: inProcessAnalysis,
       store: async () => memoryGameStore(),
     });
     const failed = await request(engine, 'GET', '/api/games');

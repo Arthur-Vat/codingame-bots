@@ -74,6 +74,22 @@ pub trait StudioGame: Send + Sync {
         turns: &[Vec<RecordedAnswer>],
         seat: usize,
     ) -> Result<Vec<HumanMove>, ReplayError>;
+
+    /// Whether the game has an analysis program (ADR 0032).
+    fn has_analysis(&self) -> bool {
+        false
+    }
+
+    /// Answers one request of the analysis protocol (studio/README.md, "The
+    /// analysis program"): calls `emit` with each line, without its newline,
+    /// and stops after the line for which `emit` returns false. `stop` is
+    /// asked between steps of the search, much more often than `emit` is
+    /// called: when it says true the search ends at once, with no more
+    /// lines. A game whose program cannot be interrupted may ignore it.
+    fn analyse(&self, request: &str, emit: &mut dyn FnMut(&str) -> bool, stop: &dyn Fn() -> bool) {
+        let _ = (request, stop);
+        emit(r#"{"error":"this game has no analysis"}"#);
+    }
 }
 
 /// The game at the position after `turns`, replayed with a fresh referee.
