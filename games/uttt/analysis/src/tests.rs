@@ -499,27 +499,15 @@ fn chances_are_exact_for_proven_moves_and_add_up_to_one() {
         proven,
         line: Vec::new(),
     };
-    assert_eq!(
-        chances(&entry(1.0, Some(0.0), Some(true)), 0),
-        [1.0, 0.0, 0.0]
-    );
-    assert_eq!(
-        chances(&entry(1.0, Some(0.0), Some(true)), 1),
-        [0.0, 0.0, 1.0]
-    );
-    assert_eq!(
-        chances(&entry(0.0, Some(0.0), Some(false)), 0),
-        [0.0, 0.0, 1.0]
-    );
-    assert_eq!(
-        chances(&entry(0.0, Some(0.0), Some(false)), 1),
-        [1.0, 0.0, 0.0]
-    );
+    assert_eq!(chances(&entry(1.0, 0.0, Some(true)), 0), [1.0, 0.0, 0.0]);
+    assert_eq!(chances(&entry(1.0, 0.0, Some(true)), 1), [0.0, 0.0, 1.0]);
+    assert_eq!(chances(&entry(0.0, 0.0, Some(false)), 0), [0.0, 0.0, 1.0]);
+    assert_eq!(chances(&entry(0.0, 0.0, Some(false)), 1), [1.0, 0.0, 0.0]);
     // Score 0.6 with a fifth of draws: wins 0.5, loses 0.3.
-    assert_eq!(chances(&entry(0.6, Some(0.2), None), 0), [0.5, 0.2, 0.3]);
-    assert_eq!(chances(&entry(0.6, Some(0.2), None), 1), [0.3, 0.2, 0.5]);
+    assert_eq!(chances(&entry(0.6, 0.2, None), 0), [0.5, 0.2, 0.3]);
+    assert_eq!(chances(&entry(0.6, 0.2, None), 1), [0.3, 0.2, 0.5]);
     // Drift (more draws than the score allows) is clamped and renormalised.
-    let drift = chances(&entry(0.1, Some(0.5), None), 0);
+    let drift = chances(&entry(0.1, 0.5, None), 0);
     assert_eq!(drift, [0.0, 0.4348, 0.5652]);
     assert_eq!(
         drift
@@ -529,8 +517,6 @@ fn chances_are_exact_for_proven_moves_and_add_up_to_one() {
         10_000
     );
     assert!(drift.iter().all(|n| *n >= 0.0));
-    // Without counted draws, none.
-    assert_eq!(chances(&entry(0.75, None, None), 0), [0.75, 0.0, 0.25]);
 }
 
 #[test]

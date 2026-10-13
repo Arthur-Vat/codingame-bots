@@ -226,7 +226,7 @@ fn chances(entry: &MoveReport<uttt_engine::Move>, to_move: usize) -> [f64; 3] {
         Some(false) => (0.0, 0.0, 1.0),
         None => {
             let score = entry.score.clamp(0.0, 1.0);
-            let draws = entry.draws.unwrap_or(0.0).clamp(0.0, 1.0);
+            let draws = entry.draws.clamp(0.0, 1.0);
             (
                 (score - draws / 2.0).max(0.0),
                 draws,
