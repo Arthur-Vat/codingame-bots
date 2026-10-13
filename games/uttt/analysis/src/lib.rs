@@ -35,16 +35,20 @@ const PLIES: u32 = 16;
 /// The search stops, with the stop `"nodes"`, once the tree holds this many
 /// nodes. With `CountDraws` a node takes 36 bytes (a move, its mover, its
 /// proof and whether it is expanded, one byte each, then eight 4-byte
-/// numbers), so the limit is 108 MB of nodes. The vector doubles its
-/// capacity (4,194,304 nodes, 151 MB, reserved), and copies its nodes when
-/// it grows; measured natively, the peak resident memory at the limit is
-/// 108 MB. The search checks after at most [`STEP`] iterations, and one
-/// iteration adds at most 81 nodes.
-const NODE_LIMIT: usize = 3_000_000;
+/// numbers), so the limit is 288 MB of nodes. It is under 2^23 = 8,388,608
+/// on purpose: the nodes vector doubles its capacity when full, so it stays
+/// at 2^23 nodes (302 MB) and never doubles to 2^24 (604 MB, with a copy
+/// peak of about 900 MB while it grows). The search looks at the tree after
+/// at most [`STEP`] iterations and one iteration adds at most 81 nodes, so
+/// the tree passes the limit by at most 81,000 nodes, far below 2^23.
+const NODE_LIMIT: usize = 8_000_000;
 
 /// The most iterations run between two looks at the size of the tree, so
 /// that a large `report_every` cannot fill the memory.
 const STEP: u64 = 1_000;
+
+// The tree never needs more than 2^23 nodes of room (see `NODE_LIMIT`).
+const _: () = assert!(NODE_LIMIT + 81 * STEP as usize <= 1 << 23);
 
 /// The pattern policy, decoded once.
 fn policy() -> &'static PatternPolicy {
