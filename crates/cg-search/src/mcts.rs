@@ -28,23 +28,21 @@
 //! child's bound, a bias that fades as the child is visited (progressive
 //! bias). Without priors, children are tried in random order.
 //!
-//! The search can describe what it knows without changing what it does:
-//! [`Mcts::report`] gives every root move's visits, average score, proof
-//! and most visited line ([`crate::report`]), and [`Mcts::think`] keeps
-//! iterating on one position, with no minimum of iterations and without
-//! playing a winning move at once, for an analysis that wants to see the
-//! whole root. Counting how many results were draws costs a number per
-//! node, so only a search built with [`Mcts::counting_draws`] pays for it;
-//! a bot's [`Mcts::new`] does not, and both choose the same moves.
+//! With the crate's `analysis` feature, which bots do not use (the bundler
+//! drops the lines marked `#[cfg(feature = "analysis")]`), the search can
+//! also describe what it knows without changing what it does: `report`
+//! gives every root move's visits, average score, draws, proof and most
+//! likely line, and `think` keeps iterating on one position, with no
+//! minimum of iterations and without playing a winning move at once, for an
+//! analysis that wants to see the whole root. The code is in the `analysis`
+//! module; this file holds only the few lines that it needs.
 
-use std::marker::PhantomData;
 use std::sync::OnceLock;
 
 use cg_core::rng::Rng;
 
 use crate::budget::Budget;
 use crate::game::Game;
-use crate::report::{MoveReport, Report};
 
 /// Visit counts below this have `sqrt(ln(visits))` in a table.
 const SQRT_LN_TABLE_LEN: usize = 1 << 16;
@@ -71,58 +69,9 @@ enum Proof {
     MoverLoses,
 }
 
-/// Whether a search counts the draws among its results. A search that does
-/// not ([`NoDraws`], the default) keeps nothing per node, so its tree is
-/// as large as if the feature did not exist.
-pub trait Draws {
-    /// What a node keeps; nothing for [`NoDraws`].
-    type Cell: Copy + Default + std::fmt::Debug;
-
-    /// Adds one result to `cell`, which now holds `visits` of them.
-    fn record(cell: &mut Self::Cell, draw: bool, visits: f32);
-
-    /// The share of the results that were draws, if counted.
-    fn share(cell: &Self::Cell) -> Option<f64>;
-}
-
-/// Does not count draws: no cost, for bots.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct NoDraws;
-
-impl Draws for NoDraws {
-    type Cell = ();
-
-    #[inline(always)]
-    fn record(_cell: &mut (), _draw: bool, _visits: f32) {}
-
-    fn share(_cell: &()) -> Option<f64> {
-        None
-    }
-}
-
-/// Counts draws: a result is a draw when its score is exactly 0.5. Each node
-/// keeps the average of the draw indicator, updated like its value. It never
-/// touches the random stream, so the search plays the same moves.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct CountDraws;
-
-impl Draws for CountDraws {
-    type Cell = f32;
-
-    #[inline]
-    fn record(cell: &mut f32, draw: bool, visits: f32) {
-        *cell += (f32::from(u8::from(draw)) - *cell) / visits;
-    }
-
-    fn share(cell: &f32) -> Option<f64> {
-        Some(f64::from(*cell))
-    }
-}
-
-/// One position of the tree, reached by `mv`. `C` is what the search keeps
-/// to count draws ([`Draws::Cell`]).
+/// One position of the tree, reached by `mv`.
 #[derive(Clone, Copy, Debug)]
-struct Node<M, C> {
+struct Node<M> {
     /// The move that leads here; unused at the root.
     mv: M,
     /// The player who played `mv`, whose point of view `value` and `proof`
@@ -145,8 +94,9 @@ struct Node<M, C> {
     prior: f32,
     /// `prior_weight · prior / (visits + 1)`, kept for selection.
     bias: f32,
-    /// The share of the visits' results that were draws, if counted.
-    draws: C,
+    // Analysis only: the share of the visits' results that were draws.
+    #[cfg(feature = "analysis")]
+    draws: f32,
 }
 
 /// What a search found.
@@ -167,9 +117,8 @@ pub struct SearchResult<M> {
     pub nodes: usize,
 }
 
-/// A Monte Carlo tree search, reusable from turn to turn. `D` says whether
-/// it counts draws: [`NoDraws`] by default, [`CountDraws`] to report them.
-pub struct Mcts<G: Game, D: Draws = NoDraws> {
+/// A Monte Carlo tree search, reusable from turn to turn.
+pub struct Mcts<G: Game> {
     /// The exploration constant `c` of UCB1: a child's bound is its average
     /// score plus `c · sqrt(ln(parent visits) / visits)`.
     pub exploration: f64,
@@ -178,44 +127,27 @@ pub struct Mcts<G: Game, D: Draws = NoDraws> {
     /// The weight of the priors' bias in a child's bound; 0 for none.
     pub prior_weight: f64,
     rng: Rng,
-    nodes: Vec<Node<G::Move, D::Cell>>,
+    nodes: Vec<Node<G::Move>>,
     /// The position at the root of `nodes`, once a search has run.
     root: Option<G>,
-    /// Whether the last search or `think` left the tree at its own root,
-    /// which is what [`Mcts::report`] describes: a search that returns a
-    /// winning move at once leaves the tree as it was, and clears it.
-    current: bool,
     /// Spare storage for moving a subtree to the front, kept to avoid
     /// allocating every turn.
-    spare: Vec<Node<G::Move, D::Cell>>,
+    spare: Vec<Node<G::Move>>,
     origin: Vec<u32>,
     moves: Vec<G::Move>,
     /// The priors of `moves`, and the moves sorted by them.
     weights: Vec<f32>,
     ranked: Vec<(f32, G::Move)>,
     path: Vec<u32>,
+    // Analysis only: whether the tree is at the root of the last search.
+    #[cfg(feature = "analysis")]
+    current: bool,
     /// [`sqrt_ln_table`], shared by all searches.
     sqrt_ln: &'static [f64],
-    counting: PhantomData<D>,
 }
 
-impl<G: Game> Mcts<G, NoDraws> {
-    /// A search that does not count draws.
+impl<G: Game> Mcts<G> {
     pub fn new(exploration: f64, seed: u64) -> Self {
-        Self::with_draws(exploration, seed)
-    }
-}
-
-impl<G: Game> Mcts<G, CountDraws> {
-    /// A search that counts draws, for reports; it chooses the same moves
-    /// as [`Mcts::new`] with the same seed.
-    pub fn counting_draws(exploration: f64, seed: u64) -> Self {
-        Self::with_draws(exploration, seed)
-    }
-}
-
-impl<G: Game, D: Draws> Mcts<G, D> {
-    fn with_draws(exploration: f64, seed: u64) -> Self {
         Mcts {
             exploration,
             priors: false,
@@ -223,15 +155,15 @@ impl<G: Game, D: Draws> Mcts<G, D> {
             rng: Rng::new(seed),
             nodes: Vec::new(),
             root: None,
-            current: false,
             spare: Vec::new(),
             origin: Vec::new(),
             moves: Vec::new(),
             weights: Vec::new(),
             ranked: Vec::new(),
             path: Vec::new(),
+            #[cfg(feature = "analysis")]
+            current: false,
             sqrt_ln: sqrt_ln_table(),
-            counting: PhantomData,
         }
     }
 
@@ -257,7 +189,8 @@ impl<G: Game, D: Draws> Mcts<G, D> {
             let mut next = root.clone();
             next.play(mv);
             if next.score() == Some(win) {
-                self.current = false;
+                #[cfg(feature = "analysis")]
+                self.set_current(false);
                 return SearchResult {
                     best: mv,
                     iterations: 0,
@@ -269,12 +202,39 @@ impl<G: Game, D: Draws> Mcts<G, D> {
             }
         }
 
-        self.prepare(root, candidates);
+        if !self.reuse(root, candidates) {
+            self.start(root, candidates);
+        }
+        self.root = Some(root.clone());
+        #[cfg(feature = "analysis")]
+        self.set_current(true);
         let reused = u64::from(self.nodes[0].visits);
-        let iterations = self.run(root, candidates.len(), budget);
 
-        let best = &self.nodes[self.choose(0).expect("the root has children")];
-        let proven = self.proven();
+        let mut iterations = 0;
+        while self.nodes[0].proof == Proof::Unknown
+            && ((iterations as usize) < candidates.len() || !budget.is_spent(iterations))
+        {
+            self.iterate(root);
+            iterations += 1;
+        }
+
+        // A proven win, else the most tried answer not proven lost.
+        let children = || self.children(0).map(|index| &self.nodes[index]);
+        let best = children()
+            .find(|child| child.proof == Proof::MoverWins)
+            .or_else(|| {
+                children()
+                    .filter(|child| child.proof != Proof::MoverLoses)
+                    .max_by_key(|child| child.visits)
+            })
+            .or_else(|| children().max_by_key(|child| child.visits))
+            .expect("the root has children");
+        let proven = match self.nodes[0].proof {
+            Proof::Unknown => None,
+            // The root's mover is the opponent of the player to move.
+            Proof::MoverWins => Some(false),
+            Proof::MoverLoses => Some(true),
+        };
         let expected_score = match best.proof {
             Proof::MoverWins => 1.0,
             Proof::MoverLoses => 0.0,
@@ -287,127 +247,6 @@ impl<G: Game, D: Draws> Mcts<G, D> {
             proven,
             expected_score,
             nodes: self.nodes.len(),
-        }
-    }
-
-    /// Runs iterations on `root` with all its legal moves until `budget` is
-    /// spent or the root is proven, keeping and reusing the tree exactly as
-    /// [`Mcts::search`] does (a root equal to the previous one continues its
-    /// tree, so calling `think` again keeps thinking). Unlike `search`, it
-    /// never returns early on a move that wins at once and needs no minimum
-    /// of iterations. Returns the iterations run by this call.
-    ///
-    /// # Panics
-    ///
-    /// If the game is over.
-    pub fn think(&mut self, root: &G, budget: Budget) -> u64 {
-        assert!(root.score().is_none(), "the game is over");
-        let mut moves = Vec::new();
-        root.legal_moves(&mut moves);
-        self.prepare(root, &moves);
-        self.run(root, 0, budget)
-    }
-
-    /// The root's report, with lines of at most `depth` moves; `None` before
-    /// any search or [`Mcts::think`] ran iterations, and after a `search`
-    /// that returned a winning move at once, which leaves the tree as it
-    /// was (the report would describe an earlier root).
-    pub fn report(&self, depth: usize) -> Option<Report<G::Move>> {
-        if !self.current || self.nodes.is_empty() || self.nodes[0].visits == 0 {
-            return None;
-        }
-        let best = self.choose(0).expect("the root has children");
-        let mut others: Vec<usize> = self.children(0).filter(|&index| index != best).collect();
-        // Stable: ties stay in tree order.
-        others.sort_by_key(|&index| std::cmp::Reverse(self.nodes[index].visits));
-        let moves = std::iter::once(best)
-            .chain(others)
-            .map(|index| self.move_report(index, depth))
-            .collect();
-        Some(Report {
-            visits: u64::from(self.nodes[0].visits),
-            nodes: self.nodes.len(),
-            proven: self.proven(),
-            moves,
-        })
-    }
-
-    /// The report of the root move held by node `index`.
-    fn move_report(&self, index: usize, depth: usize) -> MoveReport<G::Move> {
-        let child = &self.nodes[index];
-        let (score, proven) = match child.proof {
-            Proof::MoverWins => (1.0, Some(true)),
-            Proof::MoverLoses => (0.0, Some(false)),
-            Proof::Unknown => (f64::from(child.value), None),
-        };
-        let draws = D::share(&child.draws).map(|share| if proven.is_some() { 0.0 } else { share });
-        let mut line = Vec::new();
-        let mut current = index;
-        while line.len() < depth {
-            line.push(self.nodes[current].mv);
-            // The reply `search` would choose, if it has visits: a proven
-            // win, which is the refutation of a move that loses.
-            match self.choose(current) {
-                Some(reply) if self.nodes[reply].visits > 0 => current = reply,
-                _ => break,
-            }
-        }
-        MoveReport {
-            mv: child.mv,
-            visits: child.visits,
-            score,
-            draws,
-            proven,
-            line,
-        }
-    }
-
-    /// Makes the tree start at `root`: the kept one when it holds `root`,
-    /// otherwise a fresh one with `candidates`, which must be legal there.
-    fn prepare(&mut self, root: &G, candidates: &[G::Move]) {
-        if !self.reuse(root, candidates) {
-            self.start(root, candidates);
-        }
-        self.root = Some(root.clone());
-        self.current = true;
-    }
-
-    /// Iterates on `root` until the root is proven, or `budget` is spent
-    /// after at least `minimum` iterations. Returns the iterations run.
-    fn run(&mut self, root: &G, minimum: usize, budget: Budget) -> u64 {
-        let mut iterations = 0;
-        while self.nodes[0].proof == Proof::Unknown
-            && ((iterations as usize) < minimum || !budget.is_spent(iterations))
-        {
-            self.iterate(root);
-            iterations += 1;
-        }
-        iterations
-    }
-
-    /// The child of `node` that a player there would choose, as `search`
-    /// chooses at the root: a proven win, else the most tried not proven
-    /// lost, else the most tried. `None` when `node` has no children.
-    fn choose(&self, node: usize) -> Option<usize> {
-        let children = || self.children(node);
-        children()
-            .find(|&index| self.nodes[index].proof == Proof::MoverWins)
-            .or_else(|| {
-                children()
-                    .filter(|&index| self.nodes[index].proof != Proof::MoverLoses)
-                    .max_by_key(|&index| self.nodes[index].visits)
-            })
-            .or_else(|| children().max_by_key(|&index| self.nodes[index].visits))
-    }
-
-    /// `Some(true)` when the player to move at the root is proven to win,
-    /// `Some(false)` to lose.
-    fn proven(&self) -> Option<bool> {
-        match self.nodes[0].proof {
-            Proof::Unknown => None,
-            // The root's mover is the opponent of the player to move.
-            Proof::MoverWins => Some(false),
-            Proof::MoverLoses => Some(true),
         }
     }
 
@@ -439,7 +278,8 @@ impl<G: Game, D: Draws> Mcts<G, D> {
             inv_sqrt_visits: 0.0,
             prior: 0.0,
             bias: 0.0,
-            draws: D::Cell::default(),
+            #[cfg(feature = "analysis")]
+            draws: 0.0,
         });
         self.moves.clear();
         self.moves.extend_from_slice(candidates);
@@ -594,7 +434,8 @@ impl<G: Game, D: Draws> Mcts<G, D> {
             node.value += (mover_score as f32 - node.value) / visits;
             node.inv_sqrt_visits = visits.sqrt().recip();
             node.bias = prior_weight * node.prior / (visits + 1.0);
-            D::record(&mut node.draws, score == 0.5, visits);
+            #[cfg(feature = "analysis")]
+            analysis::record_draw(&mut node.draws, score, visits);
         }
         if proved {
             self.prove_ancestors();
@@ -670,7 +511,8 @@ impl<G: Game, D: Draws> Mcts<G, D> {
                 inv_sqrt_visits: 0.0,
                 prior,
                 bias: prior_weight * prior,
-                draws: D::Cell::default(),
+                #[cfg(feature = "analysis")]
+                draws: 0.0,
             });
         }
         let parent = &mut self.nodes[node];
@@ -713,6 +555,9 @@ impl<G: Game, D: Draws> Mcts<G, D> {
         first + best
     }
 }
+
+#[cfg(feature = "analysis")]
+mod analysis;
 
 #[cfg(test)]
 mod tests;

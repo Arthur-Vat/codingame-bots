@@ -1,4 +1,4 @@
-//! What a search knows of its root, for analysis.
+//! What a search knows of its root, for analysis (cargo feature `analysis`).
 //!
 //! The types here are read from [`Mcts::report`](crate::Mcts::report) after
 //! a search or [`Mcts::think`](crate::Mcts::think). Reading them changes
@@ -13,8 +13,9 @@ pub struct MoveReport<M> {
     /// Average score for the player to move: 1 a win, 0.5 a draw, 0 a loss.
     /// Exactly 1 or 0 when the move is proven.
     pub score: f64,
-    /// Share of the visits' results that were draws, when the search
-    /// counts draws (see `CountDraws`); `None` otherwise. 0 when proven.
+    /// Share of the visits' results that were draws (a result is a draw
+    /// when its score is exactly 0.5); 0 when proven. Always `Some`: the
+    /// search counts draws whenever it can report.
     pub draws: Option<f64>,
     /// `Some(true)` when the move is proven to win for the player to move,
     /// `Some(false)` proven to lose, `None` when not proven.
