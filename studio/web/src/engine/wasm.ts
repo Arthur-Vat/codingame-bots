@@ -17,6 +17,8 @@ export interface WasmSource {
   manifest: () => Promise<Manifest>;
   rules: () => Promise<WebAssembly.Module>;
   release: (game: string, release: string) => Promise<LoadedRelease>;
+  /** The game's analysis program (`wasm/<game>/analysis.wasm`), compiled once and reused. */
+  analysis: (game: string) => Promise<WebAssembly.Module>;
 }
 
 /** The hex SHA-256 of `bytes`, or null when `crypto.subtle` is not there (an insecure page). */
@@ -80,6 +82,7 @@ export function fetchedWasm(base: string, fetcher: typeof fetch = fetch): WasmSo
   const manifests = new Map<string, Promise<Manifest>>();
   const rules = new Map<string, Promise<WebAssembly.Module>>();
   const releases = new Map<string, Promise<LoadedRelease>>();
+  const analyses = new Map<string, Promise<WebAssembly.Module>>();
   return {
     manifest: () =>
       once(manifests, 'manifest', async () => {
@@ -95,5 +98,7 @@ export function fetchedWasm(base: string, fetcher: typeof fetch = fetch): WasmSo
         const bytes = await bytesOf(`${game}/${release}.wasm`);
         return { module: await WebAssembly.compile(bytes), hash: await sha256Hex(bytes) };
       }),
+    analysis: (game) =>
+      once(analyses, game, async () => WebAssembly.compile(await bytesOf(`${game}/analysis.wasm`))),
   };
 }

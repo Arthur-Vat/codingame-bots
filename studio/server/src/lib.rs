@@ -11,6 +11,8 @@
 //!
 //! - [`state`]: the registered games, paths and sessions.
 //! - [`api`]: routing and the endpoints.
+//! - [`analysis`]: the analyses, a game's analysis program run natively on
+//!   its own thread ([ADR 0032](../../../docs/adr/0032-analysis-engine.md)).
 //! - [`history`]: the saved games, one file each.
 //! - [`archive`]: builds an archive of arena games from folders of records
 //!   (the `studio-archive` tool, [ADR 0031](../../../docs/adr/0031-arena-games-archive.md)).
@@ -21,6 +23,7 @@
 //! - [`web`]: serves the front end's files.
 //! - [`server`]: the sockets.
 
+pub mod analysis;
 pub mod api;
 pub mod archive;
 pub mod history;
@@ -40,6 +43,9 @@ mod tests;
 
 #[cfg(test)]
 mod history_tests;
+
+#[cfg(test)]
+mod analysis_tests;
 
 #[cfg(test)]
 mod archive_tests;

@@ -9,6 +9,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use studio_game::StudioGame;
 
+use crate::analysis::{Analyses, ANALYSIS_IDLE};
 use crate::history::History;
 use crate::releases::Releases;
 use crate::session::Session;
@@ -36,6 +37,7 @@ struct Inner {
     speed: Speed,
     history: History,
     sessions: Mutex<HashMap<String, SharedSession>>,
+    analyses: Analyses,
     last_sweep: Mutex<Instant>,
 }
 
@@ -50,7 +52,23 @@ impl State {
     /// end built in `web`, and keeping compiled bots and measurements in
     /// `data`.
     pub fn new(repo: PathBuf, web: PathBuf, data: PathBuf) -> State {
-        let games = studio_core::games::registered();
+        State::build(
+            repo,
+            web,
+            data,
+            studio_core::games::registered(),
+            Analyses::new(ANALYSIS_IDLE, Arc::new(Instant::now)),
+        )
+    }
+
+    /// A state with the given games and analyses (the tests choose them).
+    pub(crate) fn build(
+        repo: PathBuf,
+        web: PathBuf,
+        data: PathBuf,
+        games: Vec<Box<dyn StudioGame>>,
+        analyses: Analyses,
+    ) -> State {
         State {
             inner: Arc::new(Inner {
                 games,
@@ -59,6 +77,7 @@ impl State {
                 speed: Speed::new(data.join("speed.json")),
                 history: History::new(data.join("history")),
                 sessions: Mutex::new(HashMap::new()),
+                analyses,
                 last_sweep: Mutex::new(Instant::now()),
             }),
         }
@@ -82,6 +101,10 @@ impl State {
 
     pub fn history(&self) -> &History {
         &self.inner.history
+    }
+
+    pub fn analyses(&self) -> &Analyses {
+        &self.inner.analyses
     }
 
     pub fn web_dir(&self) -> &Path {

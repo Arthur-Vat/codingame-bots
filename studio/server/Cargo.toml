@@ -18,6 +18,8 @@ serde_json.workspace = true
 studio-core.workspace = true
 studio-game.workspace = true
 tiny_http.workspace = true
+# The games' analysis programs run natively in the server (ADR 0032).
+uttt-studio = { workspace = true, features = ["analysis"] }
 
 [lints]
 workspace = true

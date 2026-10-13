@@ -4,11 +4,13 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import type { AnalysisEnd, AnalysisFactory } from './analyses';
 import type { Bot, BotFactory } from './bot';
 import { createEngine, type Engine } from './routes';
 import { createRules, type Rules } from './rules';
 import { Speed, memorySpeedCache, type MeasureOptions } from './speed';
 import { memoryGameStore, type GameStore } from './storage';
+import { runOnce } from './wasi';
 import type { LoadedRelease, WasmSource } from './wasm';
 
 const WASM_DIR = fileURLToPath(new URL('../../public/wasm/', import.meta.url));
@@ -42,11 +44,20 @@ export async function loadedRules(): Promise<Rules> {
 }
 
 /** The files, with a manifest of the given releases (the real release files are not read). */
-export function fakeWasm(releases: string[], broken: string[] = []): WasmSource {
+export function fakeWasm(releases: string[], broken: string[] = [], analysis = true): WasmSource {
   const rules = rulesModule();
+  const analyses = new Map<string, Promise<WebAssembly.Module>>();
   return {
-    manifest: async () => ({ games: [{ id: 'uttt', releases, analysis: false }] }),
+    manifest: async () => ({ games: [{ id: 'uttt', releases, analysis }] }),
     rules: () => rules,
+    analysis: (game) => {
+      let module = analyses.get(game);
+      if (module === undefined) {
+        module = analysisModule(game);
+        analyses.set(game, module);
+      }
+      return module;
+    },
     release: async (game, release): Promise<LoadedRelease> => {
       if (!releases.includes(release) || broken.includes(release)) {
         throw new Error(`cannot load wasm/${game}/${release}.wasm (HTTP 404)`);
@@ -105,6 +116,58 @@ export function scriptedFactory(scripts: Script[]): {
   return { factory, envs, bots };
 }
 
+/**
+ * The real analysis program, run in this process instead of a Worker: a little later than the
+ * start (a timer), all its lines at once, then its exit. `terminate` before that cancels it.
+ */
+export const inProcessAnalysis: AnalysisFactory = (module, request, onLine, onEnd) => {
+  let stopped = false;
+  const timer = setTimeout(() => {
+    if (stopped) return;
+    let end: AnalysisEnd;
+    try {
+      const { code, stdout } = runOnce(module, request);
+      for (const line of stdout.split('\n').filter((text) => text !== '')) {
+        if (!stopped) onLine(line);
+      }
+      end = { exit: code };
+    } catch (error) {
+      end = { error: error instanceof Error ? error.message : String(error) };
+    }
+    if (!stopped) onEnd(end);
+  }, 0);
+  return {
+    terminate: () => {
+      stopped = true;
+      clearTimeout(timer);
+    },
+  };
+};
+
+/** One analysis a scripted factory started: the test sends its lines and its end by hand. */
+export interface ScriptedAnalysis {
+  request: string;
+  /** How many times `terminate` was called. */
+  terminated: number;
+  line: (text: string) => void;
+  end: (end: AnalysisEnd) => void;
+}
+
+/** A factory whose programs say only what the test makes them say. */
+export function scriptedAnalysis(): { factory: AnalysisFactory; runs: ScriptedAnalysis[] } {
+  const runs: ScriptedAnalysis[] = [];
+  const factory: AnalysisFactory = (_module, request, onLine, onEnd) => {
+    const run: ScriptedAnalysis = { request, terminated: 0, line: onLine, end: onEnd };
+    runs.push(run);
+    return {
+      terminate: () => {
+        run.terminated += 1;
+      },
+    };
+  };
+  return { factory, runs };
+}
+
 export interface TestEngine {
   engine: Engine;
   store: GameStore | null | (() => Promise<GameStore>);
@@ -121,6 +184,10 @@ export async function testEngine(
     /** The store, `null` for none, or what opens it. */
     store?: GameStore | null | (() => Promise<GameStore>);
     measure?: (options: MeasureOptions) => Promise<number>;
+    /** Runs the analysis programs; the real ones, in this process, by default. */
+    makeAnalysis?: AnalysisFactory;
+    /** Whether the manifest says the game has an analysis program. */
+    analysis?: boolean;
   } = {},
 ): Promise<TestEngine> {
   const rules = await loadedRules();
@@ -129,11 +196,16 @@ export async function testEngine(
   let counter = 0;
   const engine = createEngine({
     rules,
-    wasm: fakeWasm(options.releases ?? ['uttt-v002', 'uttt-v001'], options.broken),
+    wasm: fakeWasm(
+      options.releases ?? ['uttt-v002', 'uttt-v001'],
+      options.broken,
+      options.analysis,
+    ),
     speed: new Speed(memorySpeedCache(), options.measure ?? (async () => 2)),
     makeBot: options.makeBot ?? null,
     now: () => clock.now,
     newId: () => `s${(counter++).toString(16)}`,
+    makeAnalysis: options.makeAnalysis ?? inProcessAnalysis,
     store:
       store === null
         ? () => Promise.reject(new Error('no IndexedDB'))

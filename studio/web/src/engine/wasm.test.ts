@@ -71,4 +71,18 @@ describe('fetching the files', () => {
     answers.set(`${base}rules.wasm`, new Response('<!doctype html>'));
     await expect(fetchedWasm(base, fetcher).rules()).rejects.toThrow();
   });
+
+  it('compiles the analysis program once for each game, and tries again after a failure', async () => {
+    answers.clear();
+    asked.length = 0;
+    const source = fetchedWasm(base, fetcher);
+    await expect(source.analysis('uttt')).rejects.toThrow(
+      'cannot load wasm/uttt/analysis.wasm (HTTP 404)',
+    );
+    answers.set(`${base}uttt/analysis.wasm`, new Response(EMPTY_MODULE));
+    const module = await source.analysis('uttt');
+    expect(module).toBeInstanceOf(WebAssembly.Module);
+    expect(await source.analysis('uttt')).toBe(module);
+    expect(asked).toEqual([`${base}uttt/analysis.wasm`, `${base}uttt/analysis.wasm`]);
+  });
 });

@@ -8,17 +8,21 @@
 import { HttpError, errorReply, json, messageOf, type Reply } from './http';
 import { RulesError, type HistoryRow } from './rules';
 import { STORE_UNAVAILABLE, type GameStore } from './storage';
+import { Analyses, type AnalysisFactory } from './analyses';
 import { Sessions, type SessionDeps } from './sessions';
 import { MISSING_FILES } from './wasm';
 
 export interface EngineDeps extends SessionDeps {
   /** Opens the saved games' store; rejects where the browser has none. */
   store: () => Promise<GameStore>;
+  /** Runs an analysis program (a Web Worker in the page). */
+  makeAnalysis: AnalysisFactory;
 }
 
 export interface Engine {
   handle: (method: string, path: string, bodyText: string | undefined) => Promise<Reply>;
   sessions: Sessions;
+  analyses: Analyses;
 }
 
 /** Whether `id` can be a saved game's id: `a-z`, `0-9` and `-`, as on the server. */
@@ -52,6 +56,7 @@ function index(body: unknown, name: string): number {
 export function createEngine(deps: EngineDeps): Engine {
   const { rules } = deps;
   const sessions = new Sessions(deps);
+  const analyses = new Analyses({ factory: deps.makeAnalysis, now: deps.now, newId: deps.newId });
   let opened: Promise<GameStore> | null = null;
 
   const store = async (): Promise<GameStore> => {
@@ -82,8 +87,33 @@ export function createEngine(deps: EngineDeps): Engine {
       games.map((game) => ({
         ...game,
         releases: manifest.games.find((entry) => entry.id === game.id)?.releases ?? [],
+        analysis: manifest.games.find((entry) => entry.id === game.id)?.analysis === true,
       })),
     );
+  };
+
+  /** `POST /api/analysis`: the program's request plus `game`. */
+  const startAnalysis = async (body: unknown): Promise<Reply> => {
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      throw new HttpError(400, 'invalid request body: the request must be a JSON object');
+    }
+    const { game, ...request } = body as Record<string, unknown>;
+    if (typeof game !== 'string') {
+      throw new HttpError(400, 'invalid request body: game must be a string');
+    }
+    const known = rules.call<{ id: string }[]>({ op: 'games' }).some((entry) => entry.id === game);
+    if (!known) throw new HttpError(400, `unknown game ${JSON.stringify(game)}`);
+    const manifest = await deps.wasm.manifest();
+    if (manifest.games.find((entry) => entry.id === game)?.analysis !== true) {
+      throw new HttpError(400, `the game ${JSON.stringify(game)} has no analysis`);
+    }
+    let module: WebAssembly.Module;
+    try {
+      module = await deps.wasm.analysis(game);
+    } catch (error) {
+      throw new HttpError(500, `cannot load the analysis program: ${messageOf(error)}`);
+    }
+    return json(200, { id: analyses.start(module, JSON.stringify(request)) });
   };
 
   /** Saves a record given as text. */
@@ -124,6 +154,7 @@ export function createEngine(deps: EngineDeps): Engine {
         break;
       case 'POST 1':
         if (first === 'sessions') return json(200, await sessions.create(parseBody(bodyText)));
+        if (first === 'analysis') return startAnalysis(parseBody(bodyText));
         if (first === 'history') return save(bodyText ?? '');
         if (first === 'view') return json(200, ask({ op: 'view', record_text: bodyText ?? '' }));
         if (first === 'filter') {
@@ -134,12 +165,17 @@ export function createEngine(deps: EngineDeps): Engine {
         break;
       case 'GET 2':
         if (first === 'sessions' && id !== undefined) return json(200, sessions.view(id));
+        if (first === 'analysis' && id !== undefined) return json(200, analyses.read(id));
         if (first === 'history' && id !== undefined)
           return { status: 200, bodyText: await stored(id) };
         break;
       case 'DELETE 2':
         if (first === 'sessions' && id !== undefined) {
           sessions.remove(id);
+          return json(200, { deleted: true });
+        }
+        if (first === 'analysis' && id !== undefined) {
+          analyses.remove(id);
           return json(200, { deleted: true });
         }
         if (first === 'history' && id !== undefined) {
@@ -184,6 +220,7 @@ export function createEngine(deps: EngineDeps): Engine {
 
   return {
     sessions,
+    analyses,
     async handle(method, fullPath, bodyText) {
       try {
         const [path = '', query = ''] = splitOnce(fullPath, '?');
@@ -225,10 +262,11 @@ function known(segments: string[]): boolean {
         first === 'history' ||
         first === 'view' ||
         first === 'filter' ||
-        first === 'sessions'
+        first === 'sessions' ||
+        first === 'analysis'
       );
     case 2:
-      return first === 'sessions' || first === 'history';
+      return first === 'sessions' || first === 'history' || first === 'analysis';
     case 3:
       return (
         (first === 'sessions' &&
