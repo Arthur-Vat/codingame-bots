@@ -52,7 +52,7 @@ At the end of each piece of work, and between the steps or batches of a longer p
 
 Finishing a pull request is not a reason by itself. The file carries the state over.
 
-When the first one holds, the line is also a stopping point: recommend the new session and do not start the next step in this one unless the owner says to (the 2026-10-11 retrospective: sessions went on far too long).
+When the first one holds, the line is also a stopping point: recommend the new session and do not start the next step in this one unless the owner says to (the 2026-10-11 retrospective: sessions went on to contexts of 588k and 689k tokens).
 
 ## The file
 
