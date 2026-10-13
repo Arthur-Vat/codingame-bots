@@ -18,5 +18,5 @@ Phase 5 set up one quick scheduled session a day, at 06:45 Paris time, whose fin
 
 - The daily report's usage stops, and nothing summarises the day unless the owner asks.
 - What ADR 0023 and ADR 0024 say about scheduled sessions still holds should one come back: it would read `HANDOFF.md` only, and never merge.
-- No one warns any more when an arena-games archive is close to expiring ([ADR 0031](0031-arena-games-archive.md)); if it is lost, it starts again from the next release, as that record accepts.
+- [ADR 0031](0031-arena-games-archive.md) expected the daily report to warn when an arena-games archive is close to expiring; that warning was never added and is dropped. If an archive is lost, it starts again from the next release, as that record accepts.
 - Bringing a scheduled session back is a new decision.

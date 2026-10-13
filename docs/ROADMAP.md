@@ -83,7 +83,7 @@ Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes 
 
 ## Phase 5: autonomy and workflow
 
-Planned with the owner on 2026-10-09. Goal: the owner only arbitrates. Claude plans and reviews with a strong model, implements with cheaper ones, runs on a schedule within the owner's usage limits, and merges what the owner has delegated. Ultimate Tic-Tac-Toe strength work is paused meanwhile, and no training or league run is started by hand, at the owner's request; the League workflow's automatic triggers stay.
+Planned with the owner on 2026-10-09. Goal: the owner only arbitrates. Claude plans and reviews with a strong model, implements with cheaper ones, stays within the owner's usage limits, and merges what the owner has delegated. Ultimate Tic-Tac-Toe strength work is paused meanwhile, and no training or league run is started by hand, at the owner's request; the League workflow's automatic triggers stay.
 
 Gate: every item below done. The one-week trial of daily scheduled sessions that was the gate is dropped (owner, 2026-10-09), and so is the daily scheduled session itself (owner, 2026-10-13, [ADR 0033](adr/0033-no-daily-scheduled-session.md)).
 
@@ -112,8 +112,8 @@ Gate: every item below done. The one-week trial of daily scheduled sessions that
 
 ### C. Autonomous operation
 
-- [x] Usage guard: the 7-day usage of the owner's plan is not readable from cloud sessions. The status line carries it (`rate_limits.seven_day.used_percentage`), but it does not run in them (tested 2026-10-09). The owner's pause switch replaces the guard: he pauses the scheduled task in the Claude app when his usage runs high, and the run is kept quick and read-only
-- [x] One quick scheduled session a day, reduced from four on 2026-10-09 to spare the owner's usage: every day at 06:45, Paris time, the daily report (`daily-report`) of the day's work, areas of improvement, and hot fixes and evolutions to propose (the owner's brief, 2026-10-09). Its final message reaches the owner's phone as a push notification. It changes nothing and never merges ([ADR 0023](adr/0023-chat-approved-merges.md)). Set up 2026-10-09 as the scheduled task "CodinGame bots: daily report", on Sonnet 5.5 at the owner's request. Stopped on 2026-10-13 at the owner's request: no scheduled session runs ([ADR 0033](adr/0033-no-daily-scheduled-session.md))
+- [x] Usage guard: the 7-day usage of the owner's plan is not readable from cloud sessions. The status line carries it (`rate_limits.seven_day.used_percentage`), but it does not run in them (tested 2026-10-09). The owner's pause switch replaces the guard: he paused the scheduled task in the Claude app when his usage ran high, and the run was kept quick and read-only; no scheduled task since 2026-10-13 ([ADR 0033](adr/0033-no-daily-scheduled-session.md))
+- [x] One quick scheduled session a day, reduced from four on 2026-10-09 to spare the owner's usage: every day at 06:45, Paris time, the daily report (`daily-report`) of the day's work, areas of improvement, and hot fixes and evolutions to propose (the owner's brief, 2026-10-09). Its final message reached the owner's phone as a push notification. It changed nothing and never merged ([ADR 0023](adr/0023-chat-approved-merges.md)). Set up 2026-10-09 as the scheduled task "CodinGame bots: daily report", on Sonnet 5.5 at the owner's request. Stopped on 2026-10-13 at the owner's request: no scheduled session runs ([ADR 0033](adr/0033-no-daily-scheduled-session.md))
 - [x] Sessions hand work over through `HANDOFF.md` on the standing branch `claude/handoff` (owner, 2026-10-09, [ADR 0024](adr/0024-handoff-branch.md)): read at the start of every session, updated by the sessions, with one usage line per piece of work
 - [x] No trial period (owner, 2026-10-09); the daily report itself was stopped on 2026-10-13
 
