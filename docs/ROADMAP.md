@@ -9,7 +9,7 @@ Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes 
 | 2. UTTT engine | Fast engine for bots, property tests, parity with the referee, rules checked against real CodinGame games | Parity on 10,000 random games; speed baseline recorded | Done (2026-10-07) |
 | 3. Evaluation | Openings, smoke tests, SPRT, ratings, league, journal, releases | A/A test passes; a weakened bot is rejected by the SPRT | Done (2026-10-07) |
 | 4. First real bot | MCTS `uttt-v001`, then the weekly experiment loop | v001 pasted and ranked; 3 experiments run end to end | Done (2026-10-07) |
-| 5. Autonomy and workflow | Conventions, CI checks, project agents and skills, merge policy, a daily scheduled session within the owner's usage limits, arena and ratings | Every item below done (the owner dropped the one-week trial on 2026-10-09) | In progress (2026-10-09) |
+| 5. Autonomy and workflow | Conventions, CI checks, project agents and skills, merge policy, arena and ratings | Every item below done (the owner dropped the one-week trial on 2026-10-09) | In progress (2026-10-09) |
 | 6. Studio | A Lichess-style app, local and on GitHub Pages: play a friend or any release, bot against bot, review with analysis, game history | The first version works on the owner's Windows computer; every item below done | Done (2026-10-13) |
 | 7. Second game | A game with an official referee; `new-game` skill | Phase 3 gates met, changes mostly inside the game folder | Not started |
 | Ongoing | Iterate every game toward Legend, then up the Legend ranking | | Ultimate Tic-Tac-Toe: Legend since 2026-10-07 (`uttt-v001`, 182 of 443); 59th with `uttt-v008` (2026-10-08); current release `uttt-v010`; strength work paused (2026-10-09) |
@@ -83,9 +83,9 @@ Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes 
 
 ## Phase 5: autonomy and workflow
 
-Planned with the owner on 2026-10-09. Goal: the owner only arbitrates. Claude plans and reviews with a strong model, implements with cheaper ones, runs on a schedule within the owner's usage limits, and merges what the owner has delegated. Ultimate Tic-Tac-Toe strength work is paused meanwhile, and no training or league run is started by hand, at the owner's request; the League workflow's automatic triggers stay.
+Planned with the owner on 2026-10-09. Goal: the owner only arbitrates. Claude plans and reviews with a strong model, implements with cheaper ones, stays within the owner's usage limits, and merges what the owner has delegated. Ultimate Tic-Tac-Toe strength work is paused meanwhile, and no training or league run is started by hand, at the owner's request; the League workflow's automatic triggers stay.
 
-Gate: every item below done. The one-week trial of daily scheduled sessions that was the gate is dropped (owner, 2026-10-09); the daily report keeps running.
+Gate: every item below done. The one-week trial of daily scheduled sessions that was the gate is dropped (owner, 2026-10-09), and so is the daily scheduled session itself (owner, 2026-10-13, [ADR 0033](adr/0033-no-daily-scheduled-session.md)).
 
 ### A. Repository refresh and conventions
 
@@ -104,18 +104,18 @@ Gate: every item below done. The one-week trial of daily scheduled sessions that
 - [x] Agents limited by a hook (owner, 2026-10-09): `.claude/settings.json` runs `scripts/agent-guard.sh` before every agent start and refuses all but `implementer`, `pr-reviewer`, `rules-reviewer` and the read-only built-in agents (`Explore`, `Plan`, `claude-code-guide`); CI tests the script
 - [x] Cloud sessions install what CI uses and their image lacks (owner, 2026-10-09): `scripts/session-setup.sh`, a `SessionStart` hook, installs shellcheck at CI's version, so sessions lint scripts before they push
 - [x] Skills carry the recipes that work in Claude's sessions: pull requests through GitHub's REST API, fetches with explicit refspecs (`github-api`)
-- [x] Project skills in `.claude/skills/`: `land-work` (plan, dispatch, stack and merge), `review-pr`, `github-api`, `ask-decision`, `write-adr`, `run-experiment`, `deliver-release`, `training-run`, `docs-refresh`, `daily-report`, `session-usage`; later `new-game`
+- [x] Project skills in `.claude/skills/`: `land-work` (plan, dispatch, stack and merge), `review-pr`, `github-api`, `ask-decision`, `write-adr`, `run-experiment`, `deliver-release`, `training-run`, `docs-refresh`, `session-usage` (`daily-report` removed with the daily session, [ADR 0033](adr/0033-no-daily-scheduled-session.md)); later `new-game`
 - [x] The owner approves merges in the conversation and Claude carries them out ([ADR 0023](adr/0023-chat-approved-merges.md))
 - [x] No new merge policy (owner, 2026-10-09): the current one stands, with the owner approving merges in the conversation ([ADR 0006](adr/0006-human-approves-merges.md), [ADR 0023](adr/0023-chat-approved-merges.md))
 - [x] `Docs and scripts` and the SPRT are required checks, so that broken docs or a rejected release cannot be merged (set by the owner, 2026-10-09; Claude's sessions cannot edit rulesets)
-- [x] Decisions reach the owner in the conversation, each with options and a recommendation (`ask-decision`); when he is away, one push notification and the daily report say one is waiting. Answers count only in the conversation: GitHub issues were dropped after review, since Claude's sessions post under the owner's account
+- [x] Decisions reach the owner in the conversation, each with options and a recommendation (`ask-decision`); when he is away, one push notification and `HANDOFF.md` say one is waiting. Answers count only in the conversation: GitHub issues were dropped after review, since Claude's sessions post under the owner's account
 
 ### C. Autonomous operation
 
-- [x] Usage guard: the 7-day usage of the owner's plan is not readable from cloud sessions. The status line carries it (`rate_limits.seven_day.used_percentage`), but it does not run in them (tested 2026-10-09). The owner's pause switch replaces the guard: he pauses the scheduled task in the Claude app when his usage runs high, and the run is kept quick and read-only
-- [x] One quick scheduled session a day, reduced from four on 2026-10-09 to spare the owner's usage: every day at 06:45, Paris time, the daily report (`daily-report`) of the day's work, areas of improvement, and hot fixes and evolutions to propose (the owner's brief, 2026-10-09). Its final message reaches the owner's phone as a push notification. It changes nothing and never merges ([ADR 0023](adr/0023-chat-approved-merges.md)). Set up 2026-10-09 as the scheduled task "CodinGame bots: daily report", on Sonnet 5.5 at the owner's request
-- [x] Sessions hand work over through `HANDOFF.md` on the standing branch `claude/handoff` (owner, 2026-10-09, [ADR 0024](adr/0024-handoff-branch.md)): read at the start of every session and by the daily report, updated by the sessions, with one usage line per piece of work
-- [x] No trial period (owner, 2026-10-09): the daily report keeps running, and its form and frequency are adjusted with the owner as needs arise
+- [x] Usage guard: the 7-day usage of the owner's plan is not readable from cloud sessions. The status line carries it (`rate_limits.seven_day.used_percentage`), but it does not run in them (tested 2026-10-09). The owner's pause switch replaces the guard: he paused the scheduled task in the Claude app when his usage ran high, and the run was kept quick and read-only; no scheduled task since 2026-10-13 ([ADR 0033](adr/0033-no-daily-scheduled-session.md))
+- [x] One quick scheduled session a day, reduced from four on 2026-10-09 to spare the owner's usage: every day at 06:45, Paris time, the daily report (`daily-report`) of the day's work, areas of improvement, and hot fixes and evolutions to propose (the owner's brief, 2026-10-09). Its final message reached the owner's phone as a push notification. It changed nothing and never merged ([ADR 0023](adr/0023-chat-approved-merges.md)). Set up 2026-10-09 as the scheduled task "CodinGame bots: daily report", on Sonnet 5.5 at the owner's request. Stopped on 2026-10-13 at the owner's request: no scheduled session runs ([ADR 0033](adr/0033-no-daily-scheduled-session.md))
+- [x] Sessions hand work over through `HANDOFF.md` on the standing branch `claude/handoff` (owner, 2026-10-09, [ADR 0024](adr/0024-handoff-branch.md)): read at the start of every session, updated by the sessions, with one usage line per piece of work
+- [x] No trial period (owner, 2026-10-09); the daily report itself was stopped on 2026-10-13
 
 ### D. Arena and ratings
 
@@ -206,7 +206,7 @@ Order: A, B, C, E, then F, then the interface rework (G), then D. Later: each bo
 | CodinGame changes its Rust version | Code that builds locally fails on CodinGame | `rust-version` plus CI on 1.90.0 and the standalone compile; re-run the probe in [CODINGAME.md](CODINGAME.md) after language updates |
 | Our engine differs from CodinGame's | The bot wins locally and loses on CodinGame | Parity tests, checks against real CodinGame games, dedicated tiebreak tests |
 | Timing noise on shared runners | Timeouts and wrong SPRT verdicts | One game per core, A/A test in CI, time limits revisited with the first real bot ([ADR 0013](adr/0013-evaluation-time-limits.md)), CodinGame's exact limits for games in Legend ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)) |
-| Claude plan usage limits | Slower iteration | Actions does the compute; one quick daily scheduled session, which the owner pauses when his usage runs high (phase 5); cheaper models implement |
+| Claude plan usage limits | Slower iteration | Actions does the compute; no scheduled session ([ADR 0033](adr/0033-no-daily-scheduled-session.md)); cheaper models implement |
 | CodinGame rules on outside help | Problems in prize contests | Multiplayer leaderboards only; read a contest's rules before entering it ([ADR 0009](adr/0009-manual-submission.md)) |
 | A release does not replay identically | A wrong takeback against that release | Each release is tested; one that fails offers no takeback ([ADR 0025](adr/0025-studio.md)) |
 | npm supply chain | A harmful package in the studio's front end | Few dependencies, lockfile, `npm ci`, license check ([ADR 0026](adr/0026-node-for-the-studio.md)) |

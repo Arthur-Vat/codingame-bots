@@ -11,7 +11,7 @@ How the owner and Claude work together. The owner spends a few hours a week deci
 
 ## A round of work
 
-The owner starts each round in the conversation; a daily scheduled session comes with phase 5 (below). For bot strength, a round looks like this (about one to two hours of the owner's time):
+The owner starts each round in the conversation; no scheduled session runs ([ADR 0033](adr/0033-no-daily-scheduled-session.md)). For bot strength, a round looks like this (about one to two hours of the owner's time):
 
 1. Claude reports the results since the last round and proposes two or three experiments, or the owner describes an idea.
 2. Claude implements each experiment in its own pull request; CI runs the tests and the SPRT workflow runs the smoke test and the SPRT.
@@ -45,7 +45,7 @@ Phase 5 has been in progress since 2026-10-09. Its goal is that the owner only a
 
 - **Instructions:** `CLAUDE.md` holds the rules for every session.
 - **Agents** in `.claude/agents/`: `implementer` (Sonnet) codes to a precise spec; `pr-reviewer` (Opus) reviews every pull request at a depth matched to its risk; `rules-reviewer` (Opus) checks engine and referee changes against the game's `RULES.md`. Claude's main session plans, splits the work, checks the results and merges what the owner approved.
-- **Skills** in `.claude/skills/`: the steps that repeat. `land-work` plans and lands work across pull requests, `review-pr` chooses the review's depth, `github-api` has the recipes that work from Claude's sessions, `ask-decision` and `write-adr` bring decisions to the owner and record them; `run-experiment`, `deliver-release`, `training-run`, `docs-refresh` and `daily-report` cover the rest, `session-usage` measures the tokens each piece of work used, and `handoff` keeps `HANDOFF.md` on the branch `claude/handoff`: what waits for the owner, open questions, follow-ups and each piece of work's usage, read at the start of every session ([ADR 0024](adr/0024-handoff-branch.md)).
+- **Skills** in `.claude/skills/`: the steps that repeat. `land-work` plans and lands work across pull requests, `review-pr` chooses the review's depth, `github-api` has the recipes that work from Claude's sessions, `ask-decision` and `write-adr` bring decisions to the owner and record them; `run-experiment`, `deliver-release`, `training-run` and `docs-refresh` cover the rest, `session-usage` measures the tokens each piece of work used, and `handoff` keeps `HANDOFF.md` on the branch `claude/handoff`: what waits for the owner, open questions, follow-ups and each piece of work's usage, read at the start of every session ([ADR 0024](adr/0024-handoff-branch.md)).
 - **Merge policy:** the owner approves every merge in the conversation and Claude carries it out ([ADR 0023](adr/0023-chat-approved-merges.md)). The plan lets Claude merge some classes of change without asking, in a later decision record, and keeps the rest with the owner.
-- **Decisions:** asked in the conversation, each with options and a recommendation; when the owner is away, one push notification and the daily report say one is waiting. Only answers in the conversation count.
-- **Scheduled session:** one quick session a day at 06:45, Paris time, paused by the owner when his usage runs high: a daily report of the day's work, areas of improvement, and hot fixes and evolutions to propose; it changes nothing and never merges ([ADR 0023](adr/0023-chat-approved-merges.md)).
+- **Decisions:** asked in the conversation, each with options and a recommendation; when the owner is away, one push notification and `HANDOFF.md` say one is waiting. Only answers in the conversation count.
+- **No scheduled session:** the daily report stopped on 2026-10-13 at the owner's request ([ADR 0033](adr/0033-no-daily-scheduled-session.md)); the owner learns what waits for him in the conversation and from `HANDOFF.md`.
