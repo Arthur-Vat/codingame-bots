@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import { mockGames, record, recordView } from './fixtures';
 
@@ -451,4 +452,75 @@ test('the list of refused files goes away with a filter change or a later import
     page.getByRole('status').filter({ hasText: 'Imported 1, 0 already there, 0 refused' }),
   ).toBeVisible();
   await expect(refused).toHaveCount(0);
+});
+
+test('a seed beyond 2^53 is sent, shown and exported with its exact digits', async ({ page }) => {
+  const mock = await mockHistory(page);
+  const BIG = '18446744073709551557';
+  const BOT = '9007199254740993';
+  // Text, not objects: a JavaScript number cannot hold these digits.
+  const withSeeds = (json: string) =>
+    json.replace('"seed":99,', `"seed":${BIG},`).replace('"bot_seed":1,', `"bot_seed":${BOT},`);
+  const text = withSeeds(JSON.stringify(record()));
+  expect(text).toContain(BIG);
+  expect(text).toContain(BOT);
+  const bodies: (string | null)[] = [];
+  const viewText = withSeeds(JSON.stringify(recordView()));
+  await page.route('**/api/view', async (route) => {
+    bodies.push(route.request().postData());
+    await route.fulfill({ contentType: 'application/json', body: viewText });
+  });
+  await page.route(
+    (url) => url.pathname === '/api/history',
+    async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback();
+      bodies.push(route.request().postData());
+      return route.fulfill({ json: { id: 'x', duplicate: false } });
+    },
+  );
+  await page.route(/\/api\/history\/[a-z0-9-]+$/, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    return route.fulfill({ contentType: 'application/json', body: text });
+  });
+  await page.route(/\/api\/history\/[a-z0-9-]+\/view$/, (route) =>
+    route.fulfill({ contentType: 'application/json', body: viewText }),
+  );
+  await page.goto('/#/game/uttt/history');
+  await expect(rows(page)).toHaveCount(5);
+
+  // Load game files: the text of the file goes to the server unchanged (CRLF included).
+  const crlf = text.replace(/,/g, ',\r\n');
+  await page.getByLabel('Load game files').setInputFiles({
+    name: 'big.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(crlf),
+  });
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Imported 1, 0 already there, 0 refused' }),
+  ).toBeVisible();
+  expect(bodies).toEqual([crlf]);
+
+  // Export of a saved game: the server's text, byte for byte.
+  const fromList = page.waitForEvent('download');
+  await rows(page).nth(2).getByRole('button', { name: 'Export' }).click();
+  expect(await readFile(await (await fromList).path(), 'utf8')).toBe(text);
+
+  // A saved game's board shows the seed.
+  await rows(page).nth(2).getByRole('link', { name: 'Analysis board' }).click();
+  await expect(page.getByText(BIG)).toBeVisible();
+  await page.getByRole('link', { name: 'History', exact: true }).click();
+
+  // A file opened without saving: viewed from its text, shown with the seed, exported unchanged.
+  bodies.length = 0;
+  await page.getByLabel('Open a file').setInputFiles({
+    name: 'big.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(crlf),
+  });
+  await expect(page.getByText(BIG)).toBeVisible();
+  expect(bodies).toEqual([crlf]);
+  const fromFile = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export file' }).click();
+  expect(await readFile(await (await fromFile).path(), 'utf8')).toBe(crlf);
+  expect(mock.posted).toEqual([]);
 });

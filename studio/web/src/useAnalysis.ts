@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react';
 import {
   ApiError,
   getHistoryView,
-  getRecord,
+  getRecordText,
   getSession,
-  postView,
   postViewText,
   type RecordView,
 } from './api';
@@ -45,7 +44,7 @@ async function loadView(kind: AnalysisKind, id: string): Promise<AnalysisModel |
     const session = await getSession(id);
     if (session.status === 'failed') throw new Error(session.error ?? 'The game failed.');
     if (session.result === null) return null;
-    return analysisOfRecord(await postView(await getRecord(id)), { kind: 'session', id });
+    return analysisOfRecord(await postViewText(await getRecordText(id)), { kind: 'session', id });
   }
   if (kind === 'saved') {
     return analysisOfRecord(await getHistoryView(id), { kind: 'saved', id });
@@ -57,7 +56,7 @@ async function loadView(kind: AnalysisKind, id: string): Promise<AnalysisModel |
   if (file === null) {
     throw new Error('This file is no longer loaded. Load it again from the history page.');
   }
-  const view: RecordView = await postView(file.record);
+  const view: RecordView = await postViewText(file.text);
   return analysisOfRecord(view, { kind: 'file', id, name: file.name });
 }
 

@@ -147,6 +147,17 @@ describe('the runner', () => {
     expect(rules.call({ op: 'games' })).toHaveLength(1);
   });
 
+  it('gives an answer as the text the program wrote, and refuses as call does', async () => {
+    const rules = createRules(rulesModule);
+    expect(() => rules.callText({ op: 'games' })).toThrow('not loaded');
+    await rules.ready();
+    const text = rules.callText({ op: 'games' });
+    expect(text.startsWith('[{')).toBe(true);
+    expect(JSON.parse(text)).toEqual(rules.call({ op: 'games' }));
+    expect(() => rules.callText({ op: 'nope' })).toThrow(RulesError);
+    expect(() => rules.call({ op: 'nope' })).toThrow(RulesError);
+  });
+
   it('tries again after a failed load', async () => {
     let attempts = 0;
     const rules = createRules(async () => {

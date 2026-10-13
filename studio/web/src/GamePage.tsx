@@ -2,7 +2,7 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import {
   createSession,
   deleteSession,
-  getRecord,
+  getRecordText,
   postEnd,
   postMove,
   postTakeback,
@@ -15,7 +15,7 @@ import type { AfterRequest } from './afterRequest';
 import { BoardOverlay } from './BoardOverlay';
 import { botsPlaying, unplayedView } from './botGame';
 import { PlayingOverlay } from './PlayingOverlay';
-import { download, errorMessage, typesText } from './browser';
+import { downloadText, errorMessage, typesText } from './browser';
 import { BoardSlot } from './BoardSlot';
 import { clockSeed } from './setup';
 import { emptyFrameFor, ownEntry, renderers, resultDetailFor } from './games/registry';
@@ -285,7 +285,10 @@ export function GamePage({
   const exportFile = async () => {
     if (session === null) return;
     try {
-      download(exportFileName(session.game, session.seed, new Date()), await getRecord(session.id));
+      downloadText(
+        exportFileName(session.game, session.seed, new Date()),
+        await getRecordText(session.id),
+      );
     } catch (failure) {
       toast.show(errorMessage(failure));
     }

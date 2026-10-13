@@ -2,6 +2,7 @@
     the browser engine (`src/engine/`), which answer the same routes. */
 
 import { engineKind } from './engine/detect';
+import { parseKeepingSeeds } from './exactSeeds';
 
 export interface GameSummary {
   id: string;
@@ -69,7 +70,8 @@ export interface Progress {
 export interface Session {
   id: string;
   game: string;
-  seed: number;
+  /** A string when the number is beyond 2^53: its exact digits (see `parseKeepingSeeds`). */
+  seed: number | string;
   opening_plies: number;
   seats: [SeatInfo, SeatInfo];
   status: SessionStatus;
@@ -140,15 +142,41 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
   return callText(method, path, body === undefined ? undefined : JSON.stringify(body));
 }
 
-/** `call` with a body that is already text, sent exactly as it is. */
-async function callText<T>(method: string, path: string, bodyText: string | undefined): Promise<T> {
+/**
+ * `call` with a body that is already text, sent exactly as it is. `exactSeeds` reads the answer
+ * with `parseKeepingSeeds`: only for an answer that is shown and never sent back.
+ */
+async function callText<T>(
+  method: string,
+  path: string,
+  bodyText: string | undefined,
+  exactSeeds = false,
+): Promise<T> {
+  return (await exchange<T>(method, path, bodyText, exactSeeds)).value;
+}
+
+/**
+ * `call` for an answer that is a game record, given as the text it came in, byte for byte. The
+ * text is checked to be JSON and a failure is raised as `call` raises it.
+ */
+async function callRecordText(method: string, path: string): Promise<string> {
+  return (await exchange<unknown>(method, path, undefined, false)).text;
+}
+
+/** An answer: its text and the JSON it holds (`undefined` for a 204). */
+async function exchange<T>(
+  method: string,
+  path: string,
+  bodyText: string | undefined,
+  exactSeeds: boolean,
+): Promise<{ text: string; value: T }> {
   const answer = await transport(method, path, bodyText);
   if (answer.status === 204) {
-    return undefined as T;
+    return { text: '', value: undefined as T };
   }
   let json: unknown;
   try {
-    json = JSON.parse(answer.text);
+    json = exactSeeds ? parseKeepingSeeds(answer.text) : JSON.parse(answer.text);
   } catch {
     const who = engineKind() === 'browser' ? 'The browser engine' : 'The server';
     throw new ApiError(`${who} sent something that is not JSON (HTTP ${answer.status}).`, true);
@@ -156,7 +184,7 @@ async function callText<T>(method: string, path: string, bodyText: string | unde
   if (answer.status < 200 || answer.status >= 300) {
     throw new ApiError(errorText(json) ?? `HTTP ${answer.status}`, false);
   }
-  return json as T;
+  return { text: answer.text, value: json as T };
 }
 
 /** The text of a `{"error": ...}` body, if it is one. */
@@ -179,7 +207,7 @@ export async function createSession(request: SessionRequest): Promise<string> {
 }
 
 export function getSession(id: string): Promise<Session> {
-  return call('GET', `/api/sessions/${encodeURIComponent(id)}`);
+  return callText('GET', `/api/sessions/${encodeURIComponent(id)}`, undefined, true);
 }
 
 export async function deleteSession(id: string): Promise<void> {
@@ -188,19 +216,34 @@ export async function deleteSession(id: string): Promise<void> {
 
 /** Plays `human_moves[index]` for the human in `seat`. Answers with the session. */
 export function postMove(id: string, seat: number, index: number): Promise<Session> {
-  return call('POST', `/api/sessions/${encodeURIComponent(id)}/move`, { seat, index });
+  return callText(
+    'POST',
+    `/api/sessions/${encodeURIComponent(id)}/move`,
+    JSON.stringify({ seat, index }),
+    true,
+  );
 }
 
 /** Keeps the first `turns` turns. Answers with the session. */
 export function postTakeback(id: string, turns: number): Promise<Session> {
-  return call('POST', `/api/sessions/${encodeURIComponent(id)}/takeback`, { turns });
+  return callText(
+    'POST',
+    `/api/sessions/${encodeURIComponent(id)}/takeback`,
+    JSON.stringify({ turns }),
+    true,
+  );
 }
 
 export type EndKind = 'resign' | 'timeout';
 
 /** Ends the game with `seat` resigning or out of time; the other seat wins. */
 export function postEnd(id: string, seat: number, reason: EndKind): Promise<Session> {
-  return call('POST', `/api/sessions/${encodeURIComponent(id)}/end`, { seat, reason });
+  return callText(
+    'POST',
+    `/api/sessions/${encodeURIComponent(id)}/end`,
+    JSON.stringify({ seat, reason }),
+    true,
+  );
 }
 
 /** Saves the session's record in the history. `duplicate` is true when it was there already. */
@@ -208,16 +251,21 @@ export function saveSession(id: string): Promise<{ id: string; duplicate: boolea
   return call('POST', `/api/sessions/${encodeURIComponent(id)}/save`, {});
 }
 
-/** The session's game record (format 1), as it is exported to a file. */
-export function getRecord(id: string): Promise<unknown> {
-  return call('GET', `/api/sessions/${encodeURIComponent(id)}/record`);
+/**
+ * The session's game record (format 1) as text, as it is exported to a file or shown: the text is
+ * kept as it came, because a number beyond 2^53 (a bot's seed) would change if it were parsed in
+ * JavaScript and written again.
+ */
+export function getRecordText(id: string): Promise<string> {
+  return callRecordText('GET', `/api/sessions/${encodeURIComponent(id)}/record`);
 }
 
 /** A player of a game record. */
 export interface RecordPlayer {
   name: string;
   kind: 'human' | 'bot';
-  bot_seed: number | null;
+  /** A string when the number is beyond 2^53: its exact digits (see `parseKeepingSeeds`). */
+  bot_seed: number | string | null;
   command: string | null;
   time_scale: number;
   fixed_iters: number | null;
@@ -227,7 +275,8 @@ export interface RecordPlayer {
 export interface GameRecord {
   format: number;
   game: string;
-  seed: number;
+  /** A string when the number is beyond 2^53: its exact digits (see `parseKeepingSeeds`). */
+  seed: number | string;
   opening_plies: number;
   /** Seconds since the Unix epoch. */
   unix_time: number;
@@ -247,13 +296,14 @@ export interface RecordView {
   shown_turns: number;
 }
 
+/** The seeds of the view's record are read with `parseKeepingSeeds`: the view is shown, not sent back. */
 export function getHistoryView(id: string): Promise<RecordView> {
-  return call('GET', `/api/history/${encodeURIComponent(id)}/view`);
+  return callText('GET', `/api/history/${encodeURIComponent(id)}/view`, undefined, true);
 }
 
-/** The view of a record that is not saved. */
+/** The view of a record that is not saved (an object that has no number beyond 2^53). */
 export function postView(record: unknown): Promise<RecordView> {
-  return call('POST', '/api/view', record);
+  return callText('POST', '/api/view', JSON.stringify(record), true);
 }
 
 /**
@@ -261,12 +311,12 @@ export function postView(record: unknown): Promise<RecordView> {
  * change if the text were parsed in JavaScript and written again.
  */
 export function postViewText(recordText: string): Promise<RecordView> {
-  return callText('POST', '/api/view', recordText);
+  return callText('POST', '/api/view', recordText, true);
 }
 
-/** The saved record, as it is exported to a file. */
-export function getHistoryRecord(id: string): Promise<unknown> {
-  return call('GET', `/api/history/${encodeURIComponent(id)}`);
+/** The saved record as text, as it is exported to a file (see `getRecordText`). */
+export function getHistoryRecordText(id: string): Promise<string> {
+  return callRecordText('GET', `/api/history/${encodeURIComponent(id)}`);
 }
 
 /** One saved game in the history list. */
@@ -299,11 +349,6 @@ export function filterRows(query: string, rows: readonly HistoryEntry[]): Promis
 /** Deletes a saved game. */
 export async function deleteHistory(id: string): Promise<void> {
   await call('DELETE', `/api/history/${encodeURIComponent(id)}`);
-}
-
-/** Saves a record in the history. `duplicate` is true when it was there already. */
-export function postHistory(record: unknown): Promise<{ id: string; duplicate: boolean }> {
-  return call('POST', '/api/history', record);
 }
 
 /** Saves a record given as text, sent as it is (see `postViewText`). */

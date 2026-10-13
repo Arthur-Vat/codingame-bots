@@ -28,7 +28,8 @@ export interface AnalysisModel {
   frames: unknown[];
   openingTurns: number;
   result: SessionResult;
-  seed: number;
+  /** Its exact digits when the number is beyond 2^53 (see `parseKeepingSeeds`). */
+  seed: number | string;
   /** Where the game comes from, as the info card says it. */
   source: string;
   /** Seconds since the Unix epoch. */

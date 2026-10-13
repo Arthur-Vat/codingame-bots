@@ -1,8 +1,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-  getHistoryRecord,
-  getRecord,
-  postHistory,
+  getHistoryRecordText,
+  getRecordText,
   postHistoryText,
   postView,
   saveSession,
@@ -27,7 +26,7 @@ import {
 } from './analysis';
 import { arenaRecordText } from './arena';
 import { BoardSlot } from './BoardSlot';
-import { download, downloadText, errorMessage, takesSpace, typesText } from './browser';
+import { downloadText, errorMessage, takesSpace, typesText } from './browser';
 import {
   actionTextFor,
   emptyFrameFor,
@@ -197,14 +196,18 @@ function MoveRow({ number, children }: { number: number; children: ReactNode }) 
   );
 }
 
-/** The record to export, whatever the game came from but an arena game (kept as text). */
-async function recordOf(model: AnalysisModel): Promise<unknown> {
-  if (model.kind === 'saved') return getHistoryRecord(model.id);
-  if (model.kind === 'session') return getRecord(model.id);
-  if (model.kind === 'arena') throw new Error('An arena game is kept as text.');
+/**
+ * The text of the record to save or export, whatever the game came from: as the server or the page
+ * has it, byte for byte (a number beyond 2^53, a seed, would change if it were parsed and written
+ * again).
+ */
+async function recordTextOf(model: AnalysisModel): Promise<string> {
+  if (model.kind === 'saved') return getHistoryRecordText(model.id);
+  if (model.kind === 'session') return getRecordText(model.id);
+  if (model.kind === 'arena') return arenaRecordText(model.id);
   const file = recallFile(model.id);
   if (file === null) throw new Error('This file is no longer loaded.');
-  return file.record;
+  return file.text;
 }
 
 /** Where the way back leads, and what it says. */
@@ -408,13 +411,11 @@ function AnalysisScreen({
 
   const save = async () => {
     try {
-      // An arena game is saved as the text it was published in.
+      // Any other game is saved as the text it came in (an arena game as it was published).
       const { duplicate } =
-        model.kind === 'arena'
-          ? await postHistoryText(await arenaRecordText(model.id))
-          : model.kind === 'session'
-            ? await saveSession(model.id)
-            : await postHistory(await recordOf(model));
+        model.kind === 'session'
+          ? await saveSession(model.id)
+          : await postHistoryText(await recordTextOf(model));
       setSavedHere(true);
       toast.show(duplicate ? 'Already in your history' : 'Saved to your history');
     } catch (failure) {
@@ -423,11 +424,7 @@ function AnalysisScreen({
   };
   const exportFile = async () => {
     try {
-      if (model.kind === 'arena') {
-        downloadText(exportName(model), await arenaRecordText(model.id));
-      } else {
-        download(exportName(model), await recordOf(model));
-      }
+      downloadText(exportName(model), await recordTextOf(model));
     } catch (failure) {
       toast.show(errorMessage(failure));
     }
