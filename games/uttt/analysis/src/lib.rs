@@ -64,8 +64,20 @@ fn policy() -> &'static PatternPolicy {
 /// analysis program"): calls `emit` with each line, without its newline,
 /// and stops after the line for which `emit` returns false.
 pub fn analyse(request: &str, emit: &mut dyn FnMut(&str) -> bool) {
+    analyse_with_stop(request, emit, &|| false);
+}
+
+/// [`analyse`], which also asks `stop` before each step of the search, at
+/// most [`STEP`] (1000) iterations apart, whatever `report_every` is: when
+/// it says true the search ends at once, with no further line. The lines
+/// are the same as `analyse`'s up to there.
+pub fn analyse_with_stop(
+    request: &str,
+    emit: &mut dyn FnMut(&str) -> bool,
+    stop: &dyn Fn() -> bool,
+) {
     match Request::parse(request) {
-        Ok(request) => search(&request, NODE_LIMIT, emit),
+        Ok(request) => search(&request, NODE_LIMIT, emit, stop),
         Err(message) => {
             let line = serde_json::json!({ "error": message });
             emit(&line.to_string());
@@ -110,7 +122,12 @@ fn send(report: ReportJson, emit: &mut dyn FnMut(&str) -> bool) -> bool {
 
 /// Searches the request's position, stopping when the tree holds
 /// `node_limit` nodes (the tests lower it).
-fn search(request: &Request, node_limit: usize, emit: &mut dyn FnMut(&str) -> bool) {
+fn search(
+    request: &Request,
+    node_limit: usize,
+    emit: &mut dyn FnMut(&str) -> bool,
+    stop: &dyn Fn() -> bool,
+) {
     let board = request.board;
     let over = match board.status() {
         Status::Ongoing => None,
@@ -150,6 +167,9 @@ fn search(request: &Request, node_limit: usize, emit: &mut dyn FnMut(&str) -> bo
         let mut proven = false;
         let mut full = false;
         while done < target {
+            if stop() {
+                return;
+            }
             let step = (target - done).min(STEP);
             let ran = mcts.think(&root, Budget::Iterations(step));
             done += ran;

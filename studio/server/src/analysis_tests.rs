@@ -130,7 +130,7 @@ impl Driver {
 fn driven(analyses: &Analyses) -> (String, Driver) {
     let (lines, incoming) = channel::<String>();
     let (answer, answers) = channel::<bool>();
-    let id = analyses.start(move |emit| {
+    let id = analyses.start(move |emit, _stop| {
         for line in incoming {
             let keep = emit(&line);
             let _ = answer.send(keep);
@@ -179,10 +179,14 @@ fn the_games_list_says_which_games_have_an_analysis() {
 #[test]
 fn a_game_without_analysis_reports_it_through_the_default() {
     let mut lines = Vec::new();
-    NoAnalysis.analyse("{}", &mut |line| {
-        lines.push(line.to_string());
-        true
-    });
+    NoAnalysis.analyse(
+        "{}",
+        &mut |line| {
+            lines.push(line.to_string());
+            true
+        },
+        &|| false,
+    );
     assert_eq!(lines, [r#"{"error":"this game has no analysis"}"#]);
     assert!(!NoAnalysis.has_analysis());
 }
@@ -431,7 +435,7 @@ fn an_error_line_ends_the_analysis_even_as_the_first_line() {
 fn a_program_that_crashes_or_stops_early_is_an_error() {
     let clock = FakeClock::new();
     let analyses = analyses(&clock);
-    let id = analyses.start(|emit| {
+    let id = analyses.start(|emit, _stop| {
         emit(STEP);
         panic!("boom");
     });
@@ -439,7 +443,7 @@ fn a_program_that_crashes_or_stops_early_is_an_error() {
     let view = analyses.read(&id).unwrap();
     assert_eq!(view["error"], "the analysis program crashed");
     assert_eq!(view["report"]["iterations"], 1000);
-    let id = analyses.start(|emit| {
+    let id = analyses.start(|emit, _stop| {
         emit(STEP);
     });
     until(|| analyses.read(&id).unwrap()["status"] == "error");
@@ -555,4 +559,70 @@ fn a_delete_racing_the_last_line_does_not_deadlock() {
         drop(program);
     }
     until(|| analyses.threads() == 0);
+}
+
+#[test]
+fn a_stopped_search_ends_between_reports() {
+    let clock = FakeClock::new();
+    let analyses = analyses(&clock);
+    // A program that thinks for ever between two reports, looking at `stop` as the search does.
+    let id = analyses.start(|emit, stop| {
+        emit(STEP);
+        while !stop() {
+            thread::yield_now();
+        }
+    });
+    until(|| {
+        analyses
+            .read(&id)
+            .is_some_and(|view| view["report"].is_object())
+    });
+    assert_eq!(analyses.threads(), 1);
+    assert!(analyses.remove(&id));
+    until(|| analyses.threads() == 0);
+}
+
+#[test]
+fn an_unread_search_ends_between_reports() {
+    let clock = FakeClock::new();
+    let analyses = analyses(&clock);
+    let id = analyses.start(|_emit, stop| {
+        while !stop() {
+            thread::yield_now();
+        }
+    });
+    assert_eq!(analyses.ids(), std::slice::from_ref(&id));
+    clock.advance(ANALYSIS_IDLE + Duration::from_millis(1));
+    // No request, no report: the thread sees it by itself.
+    until(|| analyses.threads() == 0);
+    assert!(analyses.ids().is_empty());
+}
+
+#[test]
+fn evicted_and_deleted_searches_end_even_with_huge_reports() {
+    let dir = TempDir::new("analysis-huge");
+    let clock = FakeClock::new();
+    let state = uttt_state(&dir, &clock);
+    // One report would come after ten million iterations, minutes away in a debug build.
+    let long = small(json!({"iterations": 100_000_000, "report_every": 10_000_000}));
+    let ids: Vec<String> = (0..2 * MAX_ANALYSES)
+        .map(|_| {
+            let (status, created) = call(&state, "POST", "/api/analysis", &long);
+            assert_eq!(status, 200);
+            created["id"].as_str().unwrap().to_string()
+        })
+        .collect();
+    assert_eq!(state.analyses().ids(), ids[MAX_ANALYSES..]);
+    // The four evicted ones end within a step of 1000 iterations: four threads are left.
+    until(|| state.analyses().threads() == MAX_ANALYSES);
+    for id in &ids[MAX_ANALYSES..] {
+        let (status, _) = call(
+            &state,
+            "DELETE",
+            &format!("/api/analysis/{id}"),
+            &Value::Null,
+        );
+        assert_eq!(status, 200);
+    }
+    until(|| state.analyses().threads() == 0);
 }

@@ -301,6 +301,11 @@ jobs:
             args+=(-p "$package")
           done
           scripts/annotate.sh run "Studio tests" cargo test --locked "${args[@]}"
+      - name: Test the adapter without its analysis feature
+        # The step above builds uttt-studio together with the server, which
+        # turns its feature "analysis" on. Alone it is built without, as in the
+        # rules program, and its test of that case runs only here.
+        run: scripts/annotate.sh run "Adapter without analysis" cargo test --locked -p uttt-studio
       - name: Build the rules and the releases to WebAssembly
         # --strict: a release that does not compile to WebAssembly fails the
         # step, so that none is left out of the browser's list unnoticed.
@@ -401,6 +406,11 @@ jobs:
         # The studio's server tests compile a release with rustc and play bot
         # games; the arena's unix-only tests are skipped on Windows.
         run: scripts/annotate.sh run "Test the studio and the arena" cargo test --locked -p studio -p studio-core -p studio-rules -p studio-game -p uttt-studio -p cg-arena
+      - name: Test the adapter without its analysis feature
+        # The step above builds uttt-studio together with the server, which
+        # turns its feature "analysis" on. Alone it is built without, as in the
+        # rules program, and its test of that case runs only here.
+        run: scripts/annotate.sh run "Adapter without analysis" cargo test --locked -p uttt-studio
       - name: Build the server
         run: scripts/annotate.sh run "Build the server" cargo build --locked --release -p studio
       - name: Play a bot against a bot through the server

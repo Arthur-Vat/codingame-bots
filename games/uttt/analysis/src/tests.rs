@@ -317,10 +317,15 @@ fn the_tree_stops_at_the_node_limit() {
     let request = Request::parse(r#"{"moves":[],"iterations":1000000,"report_every":1000}"#)
         .expect("a request");
     let mut out = Vec::new();
-    search(&request, 5_000, &mut |line| {
-        out.push(line.to_string());
-        true
-    });
+    search(
+        &request,
+        5_000,
+        &mut |line| {
+            out.push(line.to_string());
+            true
+        },
+        &|| false,
+    );
     let last = report(out.last().unwrap());
     assert_eq!(last["stop"], "nodes");
     assert_eq!(last["done"], true);
@@ -537,4 +542,41 @@ fn a_move_the_search_has_not_tried_has_no_wdl() {
     assert_eq!(moves[0]["visits"], 1);
     assert_eq!(report["wdl"], moves[0]["wdl"]);
     assert!(report["wdl"].is_array());
+}
+
+#[test]
+fn a_stop_ends_the_search_within_a_step_and_writes_no_line() {
+    // One report would come after 10 million iterations.
+    let request = r#"{"moves":[],"iterations":100000000,"report_every":10000000}"#;
+    let asked = std::cell::Cell::new(0_u32);
+    let mut out = Vec::new();
+    analyse_with_stop(
+        request,
+        &mut |line| {
+            out.push(line.to_string());
+            true
+        },
+        &|| {
+            asked.set(asked.get() + 1);
+            // Say stop at the third look: 2 steps of 1000 iterations were run.
+            asked.get() >= 3
+        },
+    );
+    assert!(out.is_empty(), "{out:?}");
+    assert_eq!(asked.get(), 3);
+}
+
+#[test]
+fn a_stop_that_never_comes_gives_the_lines_of_analyse() {
+    let request = r#"{"moves":["4 4"],"iterations":3000,"report_every":1000}"#;
+    let mut with_stop = Vec::new();
+    analyse_with_stop(
+        request,
+        &mut |line| {
+            with_stop.push(line.to_string());
+            true
+        },
+        &|| false,
+    );
+    assert_eq!(with_stop, lines(request));
 }
