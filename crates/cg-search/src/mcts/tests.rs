@@ -412,14 +412,11 @@ fn without_draws(report: &Report<u32>) -> Report<u32> {
     report
 }
 
-/// The most visited child of `node` with visits, the first on ties.
-fn most_visited<G: Game, D: Draws>(mcts: &Mcts<G, D>, node: usize) -> Option<usize> {
-    mcts.children(node)
+/// The reply a line takes below `node`: the child the search would choose
+/// there, if it has visits.
+fn reply<G: Game, D: Draws>(mcts: &Mcts<G, D>, node: usize) -> Option<usize> {
+    mcts.choose(node)
         .filter(|&child| mcts.nodes[child].visits > 0)
-        .fold(None, |best, child| match best {
-            Some(b) if mcts.nodes[b].visits >= mcts.nodes[child].visits => Some(b),
-            _ => Some(child),
-        })
 }
 
 #[test]
@@ -498,13 +495,13 @@ fn ties_keep_the_tree_order() {
     let tree: Vec<u32> = mcts.root_visits().map(|(mv, _)| mv).collect();
     let report = mcts.report(0).unwrap();
     let listed: Vec<u32> = report.moves.iter().map(|m| m.mv).collect();
-    assert_eq!(listed[0], mcts.nodes[mcts.best_child()].mv);
+    assert_eq!(listed[0], mcts.nodes[mcts.choose(0).unwrap()].mv);
     let others: Vec<u32> = tree.into_iter().filter(|&mv| mv != listed[0]).collect();
     assert_eq!(&listed[1..], &others[..]);
 }
 
 #[test]
-fn lines_follow_the_most_visited_children_and_respect_the_depth() {
+fn lines_follow_the_chosen_replies_and_respect_the_depth() {
     let mut mcts = Mcts::new(1.0, 2);
     mcts.search(&nim(30), &[1, 2, 3], iterations(5_000));
     for depth in [0, 1, 2, 5, 40] {
@@ -522,13 +519,13 @@ fn lines_follow_the_most_visited_children_and_respect_the_depth() {
                 .find(|&child| mcts.nodes[child].mv == mv.mv)
                 .unwrap();
             for step in mv.line.iter().skip(1) {
-                node = most_visited(&mcts, node).expect("the line stops at unvisited nodes");
+                node = reply(&mcts, node).expect("the line stops at unvisited nodes");
                 assert_eq!(*step, mcts.nodes[node].mv);
             }
             // A line that ends before the depth has reached a node without
             // visited children.
             if depth > 0 && mv.line.len() < depth {
-                assert!(most_visited(&mcts, node).is_none());
+                assert!(reply(&mcts, node).is_none());
             }
         }
         if depth >= 4 {
@@ -541,6 +538,46 @@ fn lines_follow_the_most_visited_children_and_respect_the_depth() {
     for mv in mcts.report(5).unwrap().moves {
         assert_eq!(mv.line, vec![mv.mv]);
     }
+}
+
+#[test]
+fn a_move_that_loses_is_followed_by_its_refutation() {
+    // From 12 stones every move loses; the answer that proves it leaves a
+    // multiple of 4. Following the most visited reply could show another,
+    // because the proven reply stops being visited once it is proven.
+    for seed in 0..8 {
+        let mut mcts = Mcts::new(1.0, seed);
+        mcts.think(&nim(12), iterations(50_000));
+        let report = mcts.report(4).unwrap();
+        assert_eq!(report.proven, Some(false));
+        for mv in &report.moves {
+            assert_eq!(mv.proven, Some(false));
+            assert!(mv.line.len() >= 2, "seed {seed}: {mv:?}");
+            assert_eq!(mv.line[0], mv.mv);
+            assert_eq!(mv.line[1], (12 - mv.mv) % 4, "seed {seed}: {mv:?}");
+        }
+    }
+}
+
+#[test]
+fn a_report_describes_the_last_root_the_tree_was_left_at() {
+    let mut mcts = Mcts::new(1.0, 1);
+    mcts.search(&nim(30), &[1, 2, 3], iterations(500));
+    assert_eq!(mcts.report(1).unwrap().visits, 500);
+    // A winning move is answered at once and the tree stays as it was: the
+    // report would describe the earlier root, so there is none.
+    let result = mcts.search(&nim(3), &[1, 2, 3], iterations(500));
+    assert_eq!((result.best, result.iterations), (3, 0));
+    assert_eq!(mcts.report(1), None);
+    // The earlier root is still continued, and reported again.
+    let again = mcts.search(&nim(30), &[1, 2, 3], iterations(100));
+    assert_eq!(again.reused, 500);
+    assert_eq!(mcts.report(1).unwrap().visits, 600);
+    // Thinking on the winning position searches it, and reports it.
+    mcts.search(&nim(3), &[1, 2, 3], iterations(500));
+    assert_eq!(mcts.report(1), None);
+    assert!(mcts.think(&nim(3), iterations(500)) >= 1);
+    assert_eq!(mcts.report(1).unwrap().moves[0].mv, 3);
 }
 
 #[test]
@@ -658,7 +695,8 @@ fn draws_are_counted_only_when_asked_for() {
 
 #[test]
 fn counted_draws_are_plausible() {
-    // Move 2 wins at once, so thinking proves the root and stops.
+    // Move 2 wins after either reply, which proves it and so the root:
+    // thinking stops.
     let mut mcts = Mcts::counting_draws(1.0, 5);
     mcts.think(&table(), iterations(3_000));
     let report = mcts.report(2).unwrap();
@@ -748,4 +786,75 @@ fn counting_draws_does_not_change_the_search() {
         plain.report(2).as_ref().map(without_draws),
         counting.report(2).as_ref().map(without_draws)
     );
+}
+
+// Pinned results: what searches answered before reports and draws existed.
+
+/// What a few searches in a row, with the tree kept between them, answer.
+fn pinned_run() -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut mcts = Mcts::new(1.0, 5);
+    let mut game = nim(60);
+    for (iterations, reply) in [(2_000, 1), (1_000, 2), (500, 3), (700, 1), (300, 1)] {
+        let result = mcts.search(&game, &[1, 2, 3], Budget::Iterations(iterations));
+        lines.push(format!("{result:?}"));
+        lines.push(format!("{:?}", mcts.root_visits().collect::<Vec<_>>()));
+        // The same position again continues the whole tree.
+        let again = mcts.search(&game, &[1, 2, 3], Budget::Iterations(50));
+        lines.push(format!("{again:?}"));
+        game.play(result.best);
+        game.play(reply);
+    }
+    // Priors, draws and a candidate list that is not all the legal moves.
+    let mut mcts = Mcts::new(0.5, 3);
+    mcts.priors = true;
+    mcts.prior_weight = 1.0;
+    let result = mcts.search(
+        &Choice { played: false },
+        &[0, 1, 2],
+        Budget::Iterations(300),
+    );
+    lines.push(format!("{result:?}"));
+    lines.push(format!("{:?}", mcts.root_visits().collect::<Vec<_>>()));
+    let mut mcts = Mcts::new(1.0, 8);
+    let result = mcts.search(&nim(10), &[1, 3], Budget::Iterations(400));
+    lines.push(format!("{result:?}"));
+    lines.push(format!("{:?}", mcts.root_visits().collect::<Vec<_>>()));
+    lines
+}
+
+/// The results below were produced by running `pinned_run` against the
+/// search as it was on `origin/main` before reports, `think` and draw
+/// counting were added (a scratch copy of that tree), so this test proves a
+/// search without draw counting, which is what bots run, answers, grows and
+/// reuses its tree as it did: the same moves, scores, visits and node
+/// counts for the same seed and iterations.
+#[test]
+fn a_search_without_draws_answers_as_it_did_before_reports() {
+    const BEFORE: [&str; 19] = [
+        "SearchResult { best: 2, iterations: 2000, reused: 0, proven: None, expected_score: 0.4916864335536957, nodes: 2626 }",
+        "[(3, 636), (2, 842), (1, 522)]",
+        "SearchResult { best: 2, iterations: 50, reused: 2000, proven: None, expected_score: 0.49371418356895447, nodes: 2692 }",
+        "SearchResult { best: 3, iterations: 1000, reused: 331, proven: None, expected_score: 0.5188915729522705, nodes: 1720 }",
+        "[(3, 794), (1, 254), (2, 282)]",
+        "SearchResult { best: 3, iterations: 50, reused: 1331, proven: None, expected_score: 0.5237529873847961, nodes: 1768 }",
+        "SearchResult { best: 1, iterations: 500, reused: 186, proven: None, expected_score: 0.5104166269302368, nodes: 907 }",
+        "[(3, 230), (1, 288), (2, 167)]",
+        "SearchResult { best: 1, iterations: 50, reused: 686, proven: None, expected_score: 0.5050846934318542, nodes: 952 }",
+        "SearchResult { best: 1, iterations: 700, reused: 56, proven: None, expected_score: 0.5738916993141174, nodes: 991 }",
+        "[(2, 153), (1, 406), (3, 196)]",
+        "SearchResult { best: 1, iterations: 50, reused: 756, proven: None, expected_score: 0.5664337277412415, nodes: 1042 }",
+        "SearchResult { best: 2, iterations: 300, reused: 150, proven: None, expected_score: 0.5422885417938232, nodes: 592 }",
+        "[(2, 201), (3, 106), (1, 142)]",
+        "SearchResult { best: 2, iterations: 50, reused: 450, proven: None, expected_score: 0.5296803116798401, nodes: 655 }",
+        "SearchResult { best: 2, iterations: 300, reused: 0, proven: None, expected_score: 0.5, nodes: 4 }",
+        "[(2, 106), (1, 98), (0, 96)]",
+        "SearchResult { best: 1, iterations: 134, reused: 0, proven: Some(false), expected_score: 0.0, nodes: 155 }",
+        "[(3, 23), (1, 111)]",
+    ];
+    let now = pinned_run();
+    for (index, (expected, got)) in BEFORE.iter().zip(&now).enumerate() {
+        assert_eq!(expected, got, "line {index}");
+    }
+    assert_eq!(now.len(), BEFORE.len());
 }

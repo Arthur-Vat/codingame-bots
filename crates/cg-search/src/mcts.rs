@@ -181,6 +181,10 @@ pub struct Mcts<G: Game, D: Draws = NoDraws> {
     nodes: Vec<Node<G::Move, D::Cell>>,
     /// The position at the root of `nodes`, once a search has run.
     root: Option<G>,
+    /// Whether the last search or `think` left the tree at its own root,
+    /// which is what [`Mcts::report`] describes: a search that returns a
+    /// winning move at once leaves the tree as it was, and clears it.
+    current: bool,
     /// Spare storage for moving a subtree to the front, kept to avoid
     /// allocating every turn.
     spare: Vec<Node<G::Move, D::Cell>>,
@@ -219,6 +223,7 @@ impl<G: Game, D: Draws> Mcts<G, D> {
             rng: Rng::new(seed),
             nodes: Vec::new(),
             root: None,
+            current: false,
             spare: Vec::new(),
             origin: Vec::new(),
             moves: Vec::new(),
@@ -252,6 +257,7 @@ impl<G: Game, D: Draws> Mcts<G, D> {
             let mut next = root.clone();
             next.play(mv);
             if next.score() == Some(win) {
+                self.current = false;
                 return SearchResult {
                     best: mv,
                     iterations: 0,
@@ -267,7 +273,7 @@ impl<G: Game, D: Draws> Mcts<G, D> {
         let reused = u64::from(self.nodes[0].visits);
         let iterations = self.run(root, candidates.len(), budget);
 
-        let best = &self.nodes[self.best_child()];
+        let best = &self.nodes[self.choose(0).expect("the root has children")];
         let proven = self.proven();
         let expected_score = match best.proof {
             Proof::MoverWins => 1.0,
@@ -303,12 +309,14 @@ impl<G: Game, D: Draws> Mcts<G, D> {
     }
 
     /// The root's report, with lines of at most `depth` moves; `None` before
-    /// any search or [`Mcts::think`] ran iterations.
+    /// any search or [`Mcts::think`] ran iterations, and after a `search`
+    /// that returned a winning move at once, which leaves the tree as it
+    /// was (the report would describe an earlier root).
     pub fn report(&self, depth: usize) -> Option<Report<G::Move>> {
-        if self.nodes.is_empty() || self.nodes[0].visits == 0 {
+        if !self.current || self.nodes.is_empty() || self.nodes[0].visits == 0 {
             return None;
         }
-        let best = self.best_child();
+        let best = self.choose(0).expect("the root has children");
         let mut others: Vec<usize> = self.children(0).filter(|&index| index != best).collect();
         // Stable: ties stay in tree order.
         others.sort_by_key(|&index| std::cmp::Reverse(self.nodes[index].visits));
@@ -337,18 +345,11 @@ impl<G: Game, D: Draws> Mcts<G, D> {
         let mut current = index;
         while line.len() < depth {
             line.push(self.nodes[current].mv);
-            // The most visited child that has visits; the first on ties.
-            let mut next = None;
-            let mut most = 0;
-            for candidate in self.children(current) {
-                if self.nodes[candidate].visits > most {
-                    most = self.nodes[candidate].visits;
-                    next = Some(candidate);
-                }
-            }
-            match next {
-                Some(candidate) => current = candidate,
-                None => break,
+            // The reply `search` would choose, if it has visits: a proven
+            // win, which is the refutation of a move that loses.
+            match self.choose(current) {
+                Some(reply) if self.nodes[reply].visits > 0 => current = reply,
+                _ => break,
             }
         }
         MoveReport {
@@ -368,6 +369,7 @@ impl<G: Game, D: Draws> Mcts<G, D> {
             self.start(root, candidates);
         }
         self.root = Some(root.clone());
+        self.current = true;
     }
 
     /// Iterates on `root` until the root is proven, or `budget` is spent
@@ -383,10 +385,11 @@ impl<G: Game, D: Draws> Mcts<G, D> {
         iterations
     }
 
-    /// The root child that `search` plays: a proven win, else the most
-    /// tried answer not proven lost, else the most tried.
-    fn best_child(&self) -> usize {
-        let children = || self.children(0);
+    /// The child of `node` that a player there would choose, as `search`
+    /// chooses at the root: a proven win, else the most tried not proven
+    /// lost, else the most tried. `None` when `node` has no children.
+    fn choose(&self, node: usize) -> Option<usize> {
+        let children = || self.children(node);
         children()
             .find(|&index| self.nodes[index].proof == Proof::MoverWins)
             .or_else(|| {
@@ -395,7 +398,6 @@ impl<G: Game, D: Draws> Mcts<G, D> {
                     .max_by_key(|&index| self.nodes[index].visits)
             })
             .or_else(|| children().max_by_key(|&index| self.nodes[index].visits))
-            .expect("the root has children")
     }
 
     /// `Some(true)` when the player to move at the root is proven to win,
