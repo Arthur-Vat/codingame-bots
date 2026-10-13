@@ -20,7 +20,10 @@
   --x: #222428;
   --o: #fbfbfb;
   --o-edge: #3b4650;
+  --wdl-x: #2a2c30;
   --wdl-d: #8d9399;
+  --wdl-o: #f1f1f1;
+  --amber: #e0a50d;
   --font: 'Noto Sans', 'Segoe UI', system-ui, sans-serif;
   --mono: 'Noto Sans Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
 }

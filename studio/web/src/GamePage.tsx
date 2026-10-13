@@ -434,7 +434,6 @@ export function GamePage({
 
         <section className="board-col">
           <div className="board-row">
-            <div className="evalbar off" title="Win / draw / loss" aria-hidden="true" />
             <BoardSlot
               showCoordinates={coordinates}
               label={`${game?.name ?? gameId} board`}
@@ -457,6 +456,8 @@ export function GamePage({
                 />
               ) : undefined}
             </BoardSlot>
+            {/* The bar's place, right of the board, kept so that the board is where the analysis board has it. */}
+            <div className="evalbar off" aria-hidden="true" />
           </div>
           {over ? (
             <PlaybackBar
