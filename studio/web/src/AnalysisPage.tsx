@@ -332,7 +332,7 @@ function AnalysisScreen({
                 writeEngineOn(on);
               }}
               live={engine.live}
-              problem={engine.chart?.error ?? null}
+              chartProblem={engine.chart?.error ?? null}
               lines={lineCount}
               onLines={(count) => {
                 setLineCount(count);

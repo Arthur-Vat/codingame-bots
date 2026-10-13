@@ -94,6 +94,37 @@ describe('a position', () => {
     expect(engine.started).toHaveLength(1);
   });
 
+  it('thinks for its 2.0 s from when its request was accepted, not from when it was asked', async () => {
+    const { engine, live } = setup();
+    engine.hold = true;
+    live.begin('p', request('4 4'));
+    await advance(1500);
+    expect(engine.started).toHaveLength(0);
+    engine.release();
+    await advance(THINK_MS - 100);
+    expect(live.current.status).toBe('running');
+    await advance(100);
+    expect(live.current.status).toBe('stopped');
+    expect(live.current.elapsedMs).toBe(THINK_MS);
+    expect(engine.stopped).toEqual(['a1']);
+  });
+
+  it('gives a position that waited for the one before its whole 2.0 s', async () => {
+    const { engine, live } = setup();
+    engine.hold = true;
+    live.begin('p1', request('1'));
+    await advance(0);
+    live.begin('p2', request('2'));
+    await advance(1000);
+    engine.hold = false;
+    engine.release();
+    await advance(THINK_MS - 1);
+    expect(live.current.position).toBe('p2');
+    expect(live.current.status).toBe('running');
+    await advance(1);
+    expect(live.current.status).toBe('stopped');
+  });
+
   it('is replaced by the next position: the old one stopped, its late answers ignored', async () => {
     const { engine, live } = setup();
     live.begin('p1', request('4 4'));

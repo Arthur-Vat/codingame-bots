@@ -160,7 +160,26 @@ describe('the chart', () => {
     expect(engine.reads).toHaveLength(0);
   });
 
-  it('stops with the program’s message, keeping the values it has', async () => {
+  it('tries a position that failed once more, and goes on when that works', async () => {
+    const engine = new FakeEngine();
+    let failed = false;
+    engine.onStart = (id, body) => {
+      if (body.moves.length === 1 && !failed) {
+        failed = true;
+        engine.set(id, { status: 'error', report: null, error: 'unknown analysis' });
+      } else {
+        engine.finish(id, { wdl: [0.5, 0, 0.5] });
+      }
+    };
+    const { runner, last } = setup(engine);
+    runner.start('k', 'uttt', requests(4));
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(last()).toEqual({ values: [0.5, 0.5, 0.5, 0.5], error: null });
+    expect(engine.started.map((s) => s.body.moves.length)).toEqual([0, 1, 1, 2, 3]);
+    expect(engine.live).toEqual([]);
+  });
+
+  it('stops after a second failure of the same position, with the message, keeping the values', async () => {
     const engine = new FakeEngine();
     engine.onStart = (id, body) => {
       if (body.moves.length === 2) {
@@ -173,16 +192,28 @@ describe('the chart', () => {
     runner.start('k', 'uttt', requests(5));
     await vi.advanceTimersByTimeAsync(3000);
     expect(last()).toEqual({ values: [0.5, 0.5, null, null, null], error: 'move 2 is not legal' });
-    expect(engine.started).toHaveLength(3);
+    // Frame 2 was asked twice, and nothing after it.
+    expect(engine.started.map((s) => s.body.moves.length)).toEqual([0, 1, 2, 2]);
+    expect(engine.live).toEqual([]);
+    // Started again (the engine switched off and on), it goes on from the frame that failed.
+    engine.onStart = (id) => engine.finish(id, { wdl: [0.1, 0, 0.9] });
+    runner.start('k', 'uttt', requests(5));
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(last()).toEqual({ values: [0.5, 0.5, 0.1, 0.1, 0.1], error: null });
   });
 
   it('stops with the message of a refused request', async () => {
     const engine = new FakeEngine();
-    engine.startError = new Error('too many analyses');
+    const start = vi.fn(async () => {
+      throw new Error('too many analyses');
+    });
+    engine.start = start;
     const { runner, last } = setup(engine);
     runner.start('k', 'uttt', requests(3));
     await vi.advanceTimersByTimeAsync(100);
     expect(last().error).toBe('too many analyses');
+    // Asked twice for the first position, then given up.
+    expect(start).toHaveBeenCalledTimes(2);
   });
 
   it('waits for a running analysis, reading it until it is done', async () => {

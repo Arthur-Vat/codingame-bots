@@ -22,6 +22,10 @@ export interface MockedAnalysis {
   reads: Map<string, number>;
   /** The ids that exist: started and not stopped. */
   live: () => string[];
+  /** The most analyses that were alive at once (started, not yet stopped), counted at each request. */
+  maxLive: number;
+  /** Reads of an analysis that was stopped already (a read on its way when the stop was sent). */
+  lateReads: number;
   /** The text of an error the next read answers with, for a live analysis. */
   failWith: (message: string | null) => void;
 }
@@ -31,6 +35,10 @@ interface Options {
   overAt?: number;
   /** X's win chance of a position with `n` moves, for the chart. */
   chance?: (moves: number) => number;
+  /** How many reads a chart analysis answers "running" before it is done (default 0: done at once). */
+  chartReads?: number;
+  /** The chart's analyses are unknown to the server when read, as after an eviction. */
+  failChart?: boolean;
 }
 
 /** The lines the mocked program reports for a position: the move to play, then two more. */
@@ -87,6 +95,8 @@ export async function mockAnalysis(page: Page, options: Options = {}): Promise<M
     posts: [],
     deletes: [],
     reads: new Map(),
+    maxLive: 0,
+    lateReads: 0,
     live: () => [...bodies.keys()].filter((id) => !mock.deletes.includes(id)),
     failWith: (message) => {
       failure = message;
@@ -100,6 +110,7 @@ export async function mockAnalysis(page: Page, options: Options = {}): Promise<M
       mock.posts.push(body);
       const created = `m${next++}`;
       bodies.set(created, body);
+      mock.maxLive = Math.max(mock.maxLive, mock.live().length);
       await route.fulfill({ json: { id: created } });
     } else if (request.method() === 'DELETE') {
       mock.deletes.push(id);
@@ -107,11 +118,20 @@ export async function mockAnalysis(page: Page, options: Options = {}): Promise<M
     } else {
       const body = bodies.get(id);
       if (body === undefined || mock.deletes.includes(id)) {
+        if (body !== undefined) mock.lateReads += 1;
         await route.fulfill({ status: 404, json: { error: 'unknown analysis' } });
         return;
       }
       const reads = (mock.reads.get(id) ?? 0) + 1;
       mock.reads.set(id, reads);
+      if (body.iterations === 50_000 && options.failChart === true) {
+        await route.fulfill({ status: 404, json: { error: 'unknown analysis' } });
+        return;
+      }
+      if (body.iterations === 50_000 && reads <= (options.chartReads ?? 0)) {
+        await route.fulfill({ json: { status: 'running', report: null, error: null } });
+        return;
+      }
       if (failure !== null && body.iterations !== 50_000) {
         await route.fulfill({ json: { status: 'error', report: null, error: failure } });
         return;

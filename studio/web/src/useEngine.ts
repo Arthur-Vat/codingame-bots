@@ -11,6 +11,39 @@ import {
   type LiveState,
 } from './liveAnalysis';
 
+/**
+ * What the live analysis's effect does: starts on the position (the engine on, the position
+ * askable) or stops everything, and gives back what the effect cleans up with. Written as a
+ * function of its own so that the sequence React runs in strict mode (start, clean up, start) and
+ * when the page is left can be tested with no page.
+ */
+export function driveLive(
+  analysis: LiveAnalysis,
+  active: boolean,
+  game: string,
+  moves: string[] | null,
+): (() => void) | undefined {
+  if (!active || moves === null) {
+    analysis.reset();
+    return undefined;
+  }
+  analysis.begin(moves.join('|'), liveRequest(game, moves));
+  return () => analysis.reset(false);
+}
+
+/** The same for the evaluation chart: it computes the game's frames while the engine is on. */
+export function driveChart(
+  runner: ChartRunner,
+  active: boolean,
+  key: string,
+  game: string,
+  requests: string[][] | null,
+): (() => void) | undefined {
+  if (!active || requests === null || requests.length < 2) return undefined;
+  runner.start(key, game, requests);
+  return () => runner.stop();
+}
+
 export interface Engine {
   /** The live analysis of the frame on the board: idle when the engine is off or has not started on this frame yet. */
   live: LiveState;
@@ -40,14 +73,10 @@ export function useEngine(
 
   const [live, setLive] = useState<LiveState>(IDLE);
   const [analysis] = useState(() => new LiveAnalysis(api, setLive));
-  useEffect(() => {
-    if (!active || moves === null || position === null) {
-      analysis.reset();
-      return;
-    }
-    analysis.begin(position, liveRequest(model.game, moves));
-    return () => analysis.reset(false);
-  }, [analysis, active, moves, position, model.game]);
+  useEffect(
+    () => driveLive(analysis, active, model.game, moves),
+    [analysis, active, moves, model.game],
+  );
 
   const requests = useMemo(() => chartRequests(model, lastFrame(model)), [model]);
   const chartKey = `${model.kind}/${model.id}`;
@@ -56,11 +85,10 @@ export function useEngine(
     error: null,
   }));
   const [runner] = useState(() => new ChartRunner(api, setChart));
-  useEffect(() => {
-    if (!active || requests === null || requests.length < 2) return;
-    runner.start(chartKey, model.game, requests);
-    return () => runner.stop();
-  }, [runner, active, requests, chartKey, model.game]);
+  useEffect(
+    () => driveChart(runner, active, chartKey, model.game, requests),
+    [runner, active, requests, chartKey, model.game],
+  );
 
   return {
     live: active && live.position === position ? live : IDLE,

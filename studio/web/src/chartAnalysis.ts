@@ -105,7 +105,7 @@ export class ChartRunner {
         if (values[frame] !== null) continue;
         const moves = requests[frame];
         if (moves === undefined) return;
-        const chance = await this.analyse(generation, chartRequest(game, moves));
+        const chance = await this.analyseWithRetry(generation, chartRequest(game, moves));
         if (chance === null || generation !== this.generation) return;
         values[frame] = chance;
         remember(key, values);
@@ -115,6 +115,25 @@ export class ChartRunner {
       if (generation === this.generation) {
         this.onChange({ values: values.slice(), error: errorMessage(error) });
       }
+    }
+  }
+
+  /**
+   * `analyse`, and once more when it fails (an analysis the server dropped, a network blip): a
+   * second failure for the same position is the chart's end.
+   */
+  private async analyseWithRetry(
+    generation: number,
+    request: AnalysisRequest & { game: string },
+  ): Promise<number | null> {
+    try {
+      return await this.analyse(generation, request);
+    } catch {
+      if (generation !== this.generation) return null;
+      const failed = this.id;
+      this.id = null;
+      if (failed !== null) this.api.stop(failed).catch(ignore);
+      return await this.analyse(generation, request);
     }
   }
 
@@ -132,7 +151,12 @@ export class ChartRunner {
     for (;;) {
       const state = await this.api.get(id);
       if (generation !== this.generation) return null;
-      if (state.status === 'error') throw new Error(state.error ?? 'The analysis failed.');
+      if (state.status === 'error') {
+        // Its slot is freed before the error is dealt with.
+        this.id = null;
+        this.api.stop(id).catch(ignore);
+        throw new Error(state.error ?? 'The analysis failed.');
+      }
       if (state.status === 'done' || state.report?.done === true) {
         this.id = null;
         this.api.stop(id).catch(ignore);

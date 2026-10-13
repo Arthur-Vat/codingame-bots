@@ -73,7 +73,8 @@ export class LiveAnalysis {
   private limit: ReturnType<typeof setTimeout> | undefined;
   private request: (AnalysisRequest & { game: string }) | null = null;
   private state: LiveState = IDLE;
-  private startedAt = 0;
+  /** When the analysis started (its request was accepted); null until then. */
+  private startedAt: number | null = null;
   /** Time spent on this position by runs that were stopped, and what they had found. */
   private carriedMs = 0;
   private carried: AnalysisReport | null = null;
@@ -147,7 +148,7 @@ export class LiveAnalysis {
     if (request === null) return;
     this.halt();
     const generation = ++this.generation;
-    this.startedAt = this.now();
+    this.startedAt = null;
     this.state = {
       status: 'running',
       position,
@@ -157,9 +158,6 @@ export class LiveAnalysis {
       keep,
     };
     this.onChange(this.state);
-    if (!keep) {
-      this.limit = setTimeout(() => this.timeUp(generation), THINK_MS);
-    }
     this.wanted = { generation, request };
     this.send();
   }
@@ -197,6 +195,12 @@ export class LiveAnalysis {
       return;
     }
     this.id = id;
+    // The position's time starts now, not when it was asked for: a request that waited for the one
+    // before it still gets all of its 2 seconds.
+    this.startedAt = this.now();
+    if (!this.state.keep) {
+      this.limit = setTimeout(() => this.timeUp(generation), THINK_MS);
+    }
     this.stopPolling = startPoller<AnalysisState>({
       fetch: () => this.api.get(id),
       delayAfter: (value) => (value.status === 'running' ? POLL_MS : null),
@@ -265,7 +269,9 @@ export class LiveAnalysis {
   }
 
   private elapsed(): number {
-    return this.carriedMs + Math.max(0, this.now() - this.startedAt);
+    return (
+      this.carriedMs + (this.startedAt === null ? 0 : Math.max(0, this.now() - this.startedAt))
+    );
   }
 
   private emit(patch: Partial<LiveState>): void {

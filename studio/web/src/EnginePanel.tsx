@@ -9,8 +9,8 @@ interface Props {
   on: boolean;
   onToggle: (on: boolean) => void;
   live: LiveState;
-  /** The program's own message, or the chart's, when something went wrong. */
-  problem: string | null;
+  /** Why the evaluation chart stopped, if it did: said in the footer, and the lines go on. */
+  chartProblem: string | null;
   lines: LineCount;
   onLines: (count: LineCount) => void;
   /** The number of turns played on the shown position: the ply the lines start at. */
@@ -26,7 +26,7 @@ export function EnginePanel({
   on,
   onToggle,
   live,
-  problem,
+  chartProblem,
   lines,
   onLines,
   ply,
@@ -41,7 +41,8 @@ export function EnginePanel({
   // The program's own stop (its node limit, a proven position) leaves nothing to keep thinking about.
   const finished = live.status === 'done';
   const keeping = live.keep && live.status === 'running';
-  const error = on ? (live.error ?? problem) : null;
+  // The program's message about this position replaces its lines; the chart's problem does not.
+  const error = on ? live.error : null;
 
   return (
     <section className="panel engine" aria-label="Engine analysis" data-testid="engine-panel">
@@ -129,6 +130,11 @@ export function EnginePanel({
             </button>
           )}
         </div>
+      )}
+      {on && chartProblem !== null && (
+        <p className="engine-problem" data-testid="chart-problem">
+          Chart stopped: {chartProblem}
+        </p>
       )}
     </section>
   );

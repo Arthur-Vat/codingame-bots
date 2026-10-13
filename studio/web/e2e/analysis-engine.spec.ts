@@ -9,7 +9,10 @@ import { mockGames, pageHeights, record, recordView } from './fixtures';
 const SAVED = 'uttt-1760000000-abcdef123456';
 const BOARD = `/#/game/uttt/analysis/saved/${SAVED}`;
 
-async function open(page: Page, options: { analysis?: boolean; over?: boolean } = {}) {
+async function open(
+  page: Page,
+  options: { analysis?: boolean; over?: boolean; chartReads?: number; failChart?: boolean } = {},
+) {
   await mockGames(page, options.analysis ?? true);
   await page.route(`**/api/history/${SAVED}/view`, (route) =>
     route.fulfill({ json: recordView() }),
@@ -18,6 +21,8 @@ async function open(page: Page, options: { analysis?: boolean; over?: boolean } 
   const mock = await mockAnalysis(page, {
     overAt: options.over === false ? undefined : 4,
     chance: (moves) => moves / 4,
+    chartReads: options.chartReads,
+    failChart: options.failChart,
   });
   await page.goto(BOARD);
   await expect(page.getByRole('button', { name: 'Next move' })).toBeVisible();
@@ -101,11 +106,13 @@ test('the engine thinks for 2 seconds, then stops and keeps what it found', asyn
   await expect(panel(page).getByRole('button', { name: 'Keep thinking' })).toBeVisible();
   await expect.poll(() => mock.deletes.includes(idOf(0)), { timeout: 8000 }).toBe(true);
   await expect(panel(page).getByTestId('engine-stat')).toHaveText(/^2\.\d s · /);
-  // Nothing is read any more, and what was found stays.
-  const reads = mock.reads.get(idOf(0));
+  // What was found stays, and nothing is read any more (a read already on its way may arrive).
   await expect(lines(page)).toHaveCount(1);
   await expect(bar(page)).toBeVisible();
+  const reads = mock.reads.get(idOf(0));
+  await page.waitForTimeout(500);
   expect(mock.reads.get(idOf(0))).toBe(reads);
+  expect(mock.lateReads).toBeLessThanOrEqual(1);
 });
 
 test('Keep thinking goes on past 2 seconds until Stop', async ({ page }) => {
@@ -120,7 +127,7 @@ test('Keep thinking goes on past 2 seconds until Stop', async ({ page }) => {
 
   await panel(page).getByRole('button', { name: 'Stop' }).click();
   await expect(panel(page).getByRole('button', { name: 'Keep thinking' })).toBeVisible();
-  expect(mock.deletes).toContain(idOf(0));
+  await expect.poll(() => mock.deletes.includes(idOf(0))).toBe(true);
   await expect(lines(page)).toHaveCount(1);
 });
 
@@ -272,12 +279,31 @@ test('the chart fills in the background, one analysis at a time, and jumps to a 
   expect(mock.posts.filter((post) => post.iterations === 50_000)).toHaveLength(5);
 });
 
-test('at most two analyses run at once: the live one and the chart', async ({ page }) => {
-  const mock = await open(page, { over: false });
-  await expect(page.getByTestId('chart-pending')).toHaveCount(0);
+test('at most two analyses run at once, the live one and the chart, however fast the positions change', async ({
+  page,
+}) => {
+  // Each position of the chart takes a few reads, so that it is still going while the keys are pressed.
+  const mock = await open(page, { over: false, chartReads: 4 });
+  await expect(page.getByTestId('chart-pending')).toHaveCount(1);
   for (let step = 0; step < 4; step++) await page.keyboard.press('ArrowRight');
   await expect(lines(page)).toHaveCount(1);
-  expect(mock.live().length).toBeLessThanOrEqual(2);
+  await expect(page.getByTestId('chart-pending')).toHaveCount(0, { timeout: 15_000 });
+  // Both ran together, and never more.
+  expect(mock.maxLive).toBe(2);
+});
+
+test('a chart that fails twice says so in the panel, and the lines go on', async ({ page }) => {
+  const mock = await open(page, { over: false, failChart: true });
+  await expect(page.getByTestId('chart-problem')).toHaveText('Chart stopped: unknown analysis');
+  await expect(lines(page)).toHaveCount(1);
+  await expect(panel(page).getByRole('alert')).toHaveCount(0);
+  // The first position was tried twice, and the chart gave up.
+  expect(mock.posts.filter((post) => post.iterations === 50_000)).toHaveLength(2);
+  // No text on the chart itself.
+  await expect(chart(page)).toHaveText('');
+  // The live analysis still follows the position.
+  await page.keyboard.press('ArrowRight');
+  await expect(lines(page).getByTestId('engine-moves-0')).toHaveText(/^1…4 4/);
 });
 
 test('the board, the bar, the panel and the chart are level with the squares', async ({ page }) => {
