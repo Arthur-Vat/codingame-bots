@@ -11,6 +11,9 @@ on:
     paths:
       - "studio/**"
       - "games/*/releases/**"
+      - "games/*/analysis/**"
+      - "games/*/engine/**"
+      - "games/*/bots/**"
       - "games/*/studio/**"
       - "games/*/referee/**"
       - "crates/**"
@@ -95,7 +98,7 @@ jobs:
           "$GITHUB_WORKSPACE/scripts/annotate.sh" run "License notices" npm run notices
       - name: Check the site
         run: |
-          for file in index.html wasm/rules.wasm wasm/manifest.json coi-sw.js THIRD-PARTY-NOTICES.txt rust-library-copyright.html; do
+          for file in index.html wasm/rules.wasm wasm/uttt/analysis.wasm wasm/manifest.json coi-sw.js THIRD-PARTY-NOTICES.txt rust-library-copyright.html; do
             test -s "dist/$file" || { echo "::error title=Check the site::dist/$file is missing or empty"; exit 1; }
           done
           ls -l dist dist/wasm

@@ -3,7 +3,8 @@
    to the page (the site may live under a subpath), compiled once, and kept for the page's life. */
 
 export interface Manifest {
-  games: { id: string; releases: string[] }[];
+  /** `analysis`: whether `wasm/<game>/analysis.wasm`, the game's analysis program, is there. */
+  games: { id: string; releases: string[]; analysis: boolean }[];
 }
 
 /** A compiled release and the SHA-256 of its file (null where the browser cannot compute it). */
@@ -40,11 +41,19 @@ export function parseManifest(text: string): Manifest {
   if (!Array.isArray(games)) throw new Error('wasm/manifest.json has no list of games');
   return {
     games: games.map((entry: unknown) => {
-      const { id, releases } = (entry ?? {}) as { id?: unknown; releases?: unknown };
+      const { id, releases, analysis } = (entry ?? {}) as {
+        id?: unknown;
+        releases?: unknown;
+        analysis?: unknown;
+      };
       if (typeof id !== 'string' || !Array.isArray(releases)) {
         throw new Error('wasm/manifest.json lists a game wrongly');
       }
-      return { id, releases: releases.filter((name): name is string => typeof name === 'string') };
+      return {
+        id,
+        releases: releases.filter((name): name is string => typeof name === 'string'),
+        analysis: analysis === true,
+      };
     }),
   };
 }

@@ -6,8 +6,9 @@
 // It gathers, from local files only:
 // - the npm packages whose code is in the production bundle: the production dependencies of
 //   package.json and, from package-lock.json, their transitive ones (no devDependencies);
-// - the Rust crates in the WebAssembly files: the dependency graph of the package studio-rules for
-//   the target wasm32-wasip1, from `cargo metadata`, without this workspace's own crates;
+// - the Rust crates in the WebAssembly files: the dependency graph of the package studio-rules and
+//   of each game's analysis program (the packages in games/<game>/analysis, ADR 0032) for the
+//   target wasm32-wasip1, from `cargo metadata`, without this workspace's own crates;
 // - the Rust standard library and wasi-libc (which the target links in), compiled into every
 //   WebAssembly file, from the toolchain's share/doc/rust: its COPYRIGHT-library.html is copied
 //   unchanged beside the notices as rust-library-copyright.html.
@@ -173,6 +174,34 @@ export function rustClosure(metadata, rootName) {
     .sort(compareEntries);
 }
 
+/**
+ * The workspace packages compiled to WebAssembly: the rules program and each game's analysis
+ * program, the package whose manifest is games/<game>/analysis/Cargo.toml.
+ */
+export function wasmPackages(metadata) {
+  const members = new Set(metadata.workspace_members);
+  const analyses = metadata.packages
+    .filter(
+      (pkg) =>
+        members.has(pkg.id) &&
+        /[\\/]games[\\/][^\\/]+[\\/]analysis[\\/]Cargo\.toml$/.test(pkg.manifest_path),
+    )
+    .map((pkg) => pkg.name)
+    .sort(compareText);
+  return [RULES_PACKAGE, ...analyses];
+}
+
+/** The crates of several roots together (see `rustClosure`), each crate once. */
+export function rustClosures(metadata, rootNames) {
+  const all = new Map();
+  for (const rootName of rootNames) {
+    for (const crate of rustClosure(metadata, rootName)) {
+      all.set(`${crate.name}@${crate.version}`, crate);
+    }
+  }
+  return [...all.values()].sort(compareEntries);
+}
+
 /** The text of a file with LF line endings and no trailing blank lines. */
 export function readText(path) {
   return readFileSync(path, 'utf8').replace(/\r\n?/g, '\n').trimEnd();
@@ -221,9 +250,9 @@ ${REPOSITORY_URL}
 
 The page also bundles the software below, under its own licenses, whose notices follow:
 - the npm packages in the page's JavaScript;
-- the Rust crates compiled into the rules' WebAssembly file;
+- the Rust crates compiled into the rules' and the analysis programs' WebAssembly files;
 - the Rust standard library and wasi-libc, compiled and linked into every WebAssembly file (the
-  rules and each bot); the Rust project's own notice for the library and the crates it contains
+  rules, the analysis programs and each bot); the Rust project's own notice for the library and the crates it contains
   is the file ${LIBRARY_COPYRIGHT_NAME}, beside this one.`;
 
 export function renderNotices({ npm, crates, std }) {
@@ -280,7 +309,8 @@ function cargoMetadata(root) {
 }
 
 function crateEntries(root) {
-  return rustClosure(cargoMetadata(root), RULES_PACKAGE).map((crate) => {
+  const metadata = cargoMetadata(root);
+  return rustClosures(metadata, wasmPackages(metadata)).map((crate) => {
     const label = `Rust crate ${crate.name}@${crate.version}`;
     const license = crate.license ?? (crate.licenseFile ? `see ${crate.licenseFile}` : null);
     if (license === null) throw new Error(`${label} declares no license`);

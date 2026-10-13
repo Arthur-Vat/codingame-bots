@@ -3,6 +3,7 @@
 resolver = "3"
 members = [
     "crates/*",
+    "games/*/analysis",
     "games/*/engine",
     "games/*/referee",
     "games/*/arena",
@@ -34,6 +35,7 @@ cg-core = { path = "crates/cg-core" }
 cg-search = { path = "crates/cg-search" }
 studio-core = { path = "studio/core" }
 studio-game = { path = "studio/game" }
+uttt-analysis = { path = "games/uttt/analysis" }
 uttt-engine = { path = "games/uttt/engine" }
 uttt-referee = { path = "games/uttt/referee" }
 uttt-studio = { path = "games/uttt/studio" }

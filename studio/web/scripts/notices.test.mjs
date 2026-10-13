@@ -13,9 +13,11 @@ import {
   renderNotices,
   resolveLockDependency,
   rustClosure,
+  rustClosures,
   rustToolchainEntries,
   WASI_LIBC_COMMIT,
   WASI_LIBC_FILES,
+  wasmPackages,
 } from './notices.mjs';
 
 describe('isLicenseFileName', () => {
@@ -222,6 +224,44 @@ describe('rustClosure', () => {
 
   it('fails when the root is not a workspace package', () => {
     expect(() => rustClosure(metadata, 'serde')).toThrow(/serde/);
+  });
+});
+
+describe('the analysis programs', () => {
+  const analysis = (game) => ({
+    ...workspaceCrate(`${game}-analysis`),
+    manifest_path: `/repo/games/${game}/analysis/Cargo.toml`,
+  });
+  const metadata = {
+    workspace_members: ['path studio-rules', 'path uttt-analysis', 'path uttt-engine'],
+    packages: [
+      workspaceCrate('studio-rules'),
+      analysis('uttt'),
+      { ...workspaceCrate('uttt-engine'), manifest_path: '/repo/games/uttt/engine/Cargo.toml' },
+      registryCrate('serde', '1.0.0'),
+      registryCrate('memchr', '2.0.0'),
+    ],
+    resolve: {
+      nodes: [
+        { id: 'path studio-rules', deps: [edge('registry serde 1.0.0', null)] },
+        {
+          id: 'path uttt-analysis',
+          deps: [edge('registry serde 1.0.0', null), edge('registry memchr 2.0.0', null)],
+        },
+        { id: 'registry serde 1.0.0', deps: [] },
+        { id: 'registry memchr 2.0.0', deps: [] },
+      ],
+    },
+  };
+
+  it('are the workspace packages in games/<game>/analysis, after the rules', () => {
+    expect(wasmPackages(metadata)).toEqual(['studio-rules', 'uttt-analysis']);
+  });
+
+  it('add their crates to the rules, each crate once', () => {
+    expect(
+      rustClosures(metadata, wasmPackages(metadata)).map((c) => `${c.name}@${c.version}`),
+    ).toEqual(['memchr@2.0.0', 'serde@1.0.0']);
   });
 });
 

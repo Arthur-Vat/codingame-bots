@@ -28,8 +28,9 @@
 #   5  Cargo.toml elsewhere                            licenses, and rules 6 to 9
 #   6  crates/, scripts/                               framework
 #   7  games/<g>/ for a directory games/<g>            game <g>; also web for
-#      games/<g>/studio/, games/<g>/referee/ and
-#      games/<g>/releases/
+#      games/<g>/studio/, games/<g>/referee/,
+#      games/<g>/releases/, games/<g>/analysis/,
+#      games/<g>/engine/ and games/<g>/bots/
 #   8  studio/web/                                     web
 #   9  studio/core/, studio/rules/, studio/game/       studio and web
 #      studio/server/                                  studio
@@ -37,7 +38,9 @@
 # framework means rust, framework, studio, web and every game; a game means
 # rust, studio and that game; studio means rust and studio; web means the
 # front end's checks only. The front end's browser engine (ADR 0030) runs the
-# studio's rules, the games' referees and adapters, and every release as
+# studio's rules, the games' referees and adapters, their analysis programs
+# (ADR 0032, built from the engine and the bots' pattern weights) and every
+# release as
 # WebAssembly, and its browser tests use them: that is why rules 7 and 9 add
 # web for those paths, and why crates/ (cg-arena) and scripts/
 # (build-studio-wasm.sh), the framework, include it. Everything means
@@ -160,7 +163,7 @@ area_effect() { # area_effect <path>
           f_studio=true
           f_games["$id"]=1
           case $path in
-            games/*/studio/* | games/*/referee/* | games/*/releases/*) f_web=true ;;
+            games/*/studio/* | games/*/referee/* | games/*/releases/* | games/*/analysis/* | games/*/engine/* | games/*/bots/*) f_web=true ;;
           esac
           return 0
         fi

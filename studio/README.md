@@ -12,7 +12,7 @@ The studio is published at <https://arthur-vat.github.io/codingame-bots/>. Anyon
 - **Browsers.** Tested in Chromium (Chrome, Edge). Others should work if they support cross-origin isolation and module Web Workers; Firefox and Safari have not been tested. Where the page cannot be isolated (a private window without service workers, for example), games between people, the history and the analysis board work, and a game with a bot is refused with a message.
 - **Saved games** live in the browser's storage (IndexedDB) on that computer, for that site only: another browser, another computer and the local server do not see them, and clearing the browser's data for the site deletes them. To keep a game, press Export file (on the game's page, or for a saved game in the game's History tab) and keep the `.json` file; "Load game files" in the History tab imports it again, here or with the local server.
 - **Licenses.** A "Licenses" link at the foot of the home page opens `THIRD-PARTY-NOTICES.txt`, with the licenses of the npm packages, the Rust crates, the Rust standard library and wasi-libc (which Rust's WebAssembly target links in) that the site bundles ([ADR 0030](../docs/adr/0030-studio-on-github-pages.md), decision 7). Beside it, `rust-library-copyright.html` is the Rust project's own notice for the standard library and the crates it contains, copied unchanged from the toolchain. wasi-libc's license files are not in the toolchain: they are kept in `web/scripts/licenses/wasi-libc/`, from a named commit of its repository. Vite is listed too, since it adds its module preload helpers to the bundle. `npm run notices` (in `web/`, after `npm run build`, with Rust installed) writes both into `dist/`; it fails if a package or a crate has no license file, or if the toolchain lacks the notice or a license text. `npm run build` does not need Rust, so with the local server the link leads to a missing file (a 404) unless `npm run notices` was run too.
-- **How it is built.** The [Pages workflow](../.github/workflows/pages.yml) rebuilds and redeploys the site from `main` whenever something it contains changes (the studio, the games' releases, referees and adapters, the shared crates, the lockfile), and by hand from the Actions tab. Pull requests never deploy: CI builds the same site and runs `npm run notices`.
+- **How it is built.** The [Pages workflow](../.github/workflows/pages.yml) rebuilds and redeploys the site from `main` whenever something it contains changes (the studio, the games' releases, analysis programs, engines, bots (the analysis uses their pattern weights), referees and adapters, the shared crates, the lockfile), and by hand from the Actions tab. Pull requests never deploy: CI builds the same site and runs `npm run notices`.
 - **The owner's one-time setting**, which Claude's sessions cannot make: in the repository's **Settings → Pages → Build and deployment → Source**, choose **GitHub Actions**. Until then the workflow's deployment fails.
 
 ## Status
@@ -75,6 +75,44 @@ The front end calls one API (the routes below) and has two engines behind it ([A
 **Where the browser engine keeps data.** In that browser, on that computer, for that site: saved games in IndexedDB (database `studio`, store `games`; each value holds the record text exactly as saved), and measured speeds in `localStorage` (key `studio.speed.v1`, by release name and the SHA-256 of its WebAssembly file). Clearing the site's data deletes the saved games: export what matters (Export, in the History tab). Nothing is sent anywhere; the only requests are for the site's own files, among them the arena games. The local server's saved games and the browser's are separate, until exported and loaded. Where IndexedDB is unavailable, saving and the history answer 409 with a message, and playing still works.
 
 **What differs from the server.** Bots run about 1.3 to 1.45 times slower in WebAssembly than natively, so a bot plays a little weaker at real time limits; fixed-iteration play is unaffected. A release that does not compile to WebAssembly is not in `wasm/manifest.json`, so the browser does not offer it. A release's speed is measured in the browser, not taken from the server's `speed.json`.
+
+## The analysis program
+
+Each game has one analysis program, `games/<game>/analysis` ([ADR 0032](../docs/adr/0032-analysis-engine.md)): a library with a small command around it, built from the current code with the settings of the game's latest release (a test fails when they differ). The browser engine runs it as WebAssembly (`wasm/<game>/analysis.wasm`, a WASI command, a fresh instance for each request); the local server will link the library and run it natively. The command reads all of its standard input, writes the answer on its standard output, flushing after each line, and exits with status 0 after a report or an error line. The library is `analyse(request, emit)`: it calls `emit` with each line, without its newline, and stops after the line for which `emit` returns false. Ultimate Tic-Tac-Toe's is the crate `uttt-analysis` (see [its README](../games/uttt/README.md)). Nothing else uses it yet: the routes and the analysis board come in later pull requests.
+
+A request is one JSON object:
+
+```json
+{"moves": ["4 4", "4 3"], "iterations": 1000000, "report_every": 20000, "depth": 10, "seed": "1"}
+```
+
+- `moves` (required): the turns played from the start of the game, each the answer the player printed in that turn (its lines joined by "\n"; one line "row col" for Ultimate Tic-Tac-Toe), openings included. At most 200 entries.
+- `iterations` (default 1000000, from 1 to 100000000): the search stops after this many.
+- `report_every` (default 20000, from 1000 to 10000000): a report after every this many iterations.
+- `depth` (default 10, from 1 to 40): the longest line reported.
+- `seed` (default "1"): the search's seed, a decimal string of an unsigned 64-bit number.
+- Any other field, a missing `moves`, a value of the wrong type or out of range is an error.
+
+The answer is JSON lines, each one object on one line. A report:
+
+```json
+{"report": {"iterations": 20000, "nodes": 35210, "to_move": 0, "proven": null,
+  "wdl": [0.4512, 0.1003, 0.4485],
+  "moves": [{"move": "4 4", "visits": 5012, "wdl": [0.4512, 0.1003, 0.4485], "proven": null, "line": ["4 4", "4 3", "3 1"]}],
+  "done": false, "stop": null}}
+```
+
+- `iterations`: the iterations run so far for this request; `nodes`: the tree's nodes.
+- `to_move`: the seat to move, 0 (X, who moves first) or 1 (O); `null` when the game is over.
+- `proven`: the seat proven to win, 0 or 1, or `null`.
+- `wdl`: `[seat 0 wins, draw, seat 1 wins]`, three numbers from 0 to 1, rounded to 4 decimals, that add up to 1 in ten-thousandths (as floats the sum may differ from 1 by rounding, so a UI must not test equality); the position's are those of the first move.
+- `moves`: every legal move, the one the search would play first, then by visits, most first; each with its `move` (the answer text), `visits`, `wdl` (`null` for a move the search has not tried, `visits` 0, which happens when `iterations` is below the number of moves; its `line` is just the move), `proven` (as above) and `line`: the move, then the most visited answer at each ply, at most `depth` moves.
+- `done`: `true` on the last report only; `stop`: on the last report, why it stopped: `"iterations"`, `"proven"` (the position is proven), `"nodes"` (the tree reached the program's limit of nodes) or `"over"` (the game is over: the only report, with `iterations` 0, `nodes` 0, no moves, and `wdl` the result: `[1,0,0]`, `[0,1,0]` or `[0,0,1]`); `null` before.
+- An error is one line `{"error": "message"}` and nothing else (for example an invalid request, or a move that is not legal: "move 3 (\"9 9\") is not legal"). The command exits with status 0 after a report or an error line.
+
+The same request gives the same lines (the search is seeded and counts iterations, not time).
+
+Notes on the implementation, which the protocol does not promise. The moves are numbered from 1 in error messages, written as the game prints them ("row col", one space, one digit each), and a move after the game is over is an error ("comes after the game is over"). For Ultimate Tic-Tac-Toe the node limit is 8,000,000 (288 MB of nodes, 284 MB resident at the limit natively, under the 2^23 nodes after which the tree's vector would double to 600 MB); the search looks at the tree's size every 1000 iterations at most, whatever `report_every` is, so a large value cannot fill the memory. A report's `wdl` for a move comes from its average score and its share of draws, kept by `cg-search` with its `analysis` feature, which bots never enable; a move proven to win or lose is exactly `[1,0,0]` or `[0,0,1]` for its seat. In the report of a game that is over, `proven` is `null`.
 
 ## Dependencies
 
@@ -197,7 +235,7 @@ A request is a JSON object with a string field `op`; the response is `{"ok": val
 | `filter` | `query`, `rows` | the rows `GET /api/history?query` would list, newest first |
 | `filter_body` | `query`, `body` | the rows of the text `body`, a JSON array of rows, that pass the filter: the answer of `POST /api/filter?query`, with its refusals (the query first, then `invalid request body: ...`), shared with the server |
 
-`scripts/build-studio-wasm.sh [OUT] [--strict]` builds `OUT/rules.wasm`, every release of every game as `OUT/<game>/<release>.wasm` (compiled unchanged with `rustc --target wasm32-wasip1`), and `OUT/manifest.json` listing the releases that compiled, newest first. `OUT` is `studio/web/public/wasm` by default (not committed). A release that does not compile is skipped with a warning; `--strict`, used by CI, fails instead. It needs the target: `rustup target add wasm32-wasip1`. To try the program without a browser: `echo '{"op":"games"}' | cargo run -q -p studio-rules`.
+`scripts/build-studio-wasm.sh [OUT] [--strict]` builds `OUT/rules.wasm`, every release of every game as `OUT/<game>/<release>.wasm` (compiled unchanged with `rustc --target wasm32-wasip1`), the analysis program of each game that has one as `OUT/<game>/analysis.wasm` (see "The analysis program"; one that does not build fails the script), and `OUT/manifest.json` listing the releases that compiled, newest first, and `"analysis": true|false` for each game. `OUT` is `studio/web/public/wasm` by default (not committed). A release that does not compile is skipped with a warning; `--strict`, used by CI, fails instead. It needs the target: `rustup target add wasm32-wasip1`. To try the program without a browser: `echo '{"op":"games"}' | cargo run -q -p studio-rules`.
 
 ## Running the studio on Windows
 

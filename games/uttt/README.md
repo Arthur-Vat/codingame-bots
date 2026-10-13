@@ -11,6 +11,7 @@ CodinGame's [Ultimate Tic-Tac-Toe](https://www.codingame.com/multiplayer/bot-pro
 | [RULES.md](RULES.md) | The rules in our own words, with sources |
 | [referee/](referee/) | Readable reference implementation of the rules, driven by the arena |
 | [engine/](engine/) | Fast implementation of the rules for bots: bitboards, no allocation, random and decisive playouts, playouts guided by the class policy (32 move classes) or the pattern policy (E015), and the value network's inputs and evaluation |
+| [analysis/](analysis/) | `uttt-analysis`: the analysis program (see "Analysis" below): a JSON request in, JSON lines of reports out, natively or as WebAssembly for the studio ([ADR 0032](../../docs/adr/0032-analysis-engine.md)) |
 | [arena/](arena/) | `uttt-arena`: plays bots against each other through the referee |
 | [trainer/](trainer/) | `uttt-trainer`: self-play data, and training of the playout policy, the value network and the move models ([ADR 0016](../../docs/adr/0016-self-play-training.md), [ADR 0017](../../docs/adr/0017-value-network.md)) |
 | [studio/](studio/) | `uttt-studio`: the game's adapter for the studio, with no rules of its own: frames come from replaying the referee, a human's legal moves from its turn input ([ADR 0025](../../docs/adr/0025-studio.md)) |
@@ -66,6 +67,16 @@ The engine's value network (`uttt_engine::value`, [ADR 0017](../../docs/adr/0017
 - The [Train workflow](../../.github/workflows/train.yml), started by hand from the Actions tab, runs these on GitHub: self-play in up to 20 parallel jobs, then the fit of the chosen stage (`policy`, `value` or `patterns`), whose results it commits to a new branch `claude/train/<run id>`. Weights reach a bot only through an experiment and its SPRT. Reports of the runs used are kept in [training/runs/](training/runs/), after which the Prune branches workflow deletes the run's branch ([ADR 0021](../../docs/adr/0021-prune-finished-branches.md)).
 
 On one core, a game at 10,000 iterations per move takes about a quarter of a second with decisive playouts (0.37 s with the bot's playouts, measured on a slower processor) and gives about 42 positions.
+
+## Analysis
+
+`uttt-analysis` ([analysis/](analysis/)) is the game's analysis program ([ADR 0032](../../docs/adr/0032-analysis-engine.md)): it searches a position with the current engine and the settings of the latest release (`uttt-v010`: exploration 0.5, pattern priors, the first 16 playout moves from the pattern policy; the bot's own pattern weights file is reused, and a test fails when the settings differ from the newest file in `releases/`), counts draws, and streams, as JSON lines, the best moves with their visits, win, draw and loss chances and expected lines. The protocol is in [studio/README.md](../../studio/README.md), "The analysis program". Try it:
+
+```sh
+echo '{"moves":["4 4"]}' | cargo run --release -p uttt-analysis
+```
+
+It counts iterations, not time, so the same request gives the same lines. Speed, measured on 2026-10-13 from the start position on one thread of the shared machine (it varies by about 10% between runs): about 360,000 iterations per second natively from the start (500,000 iterations in 1.4 s). For the default request (1,000,000 iterations, a report every 20,000) on a mid-game position (`["4 4","4 3","3 1","1 5"]`), the whole answer takes about 2.3 s natively (2,068,686 nodes, 76 MB resident). The tree stops at its limit of 8,000,000 nodes, which that position reaches after 3,886,000 iterations in about 9.7 s natively, at a peak of 284 MB resident (a node takes 36 bytes; the limit stays under 2^23 nodes so that the nodes' vector never doubles to 2^24, which would take 600 MB and a copy peak of 900 MB). In the browser, about 200,000 to 260,000 per second as WebAssembly under Node (V8) through the studio's own WASI layer, so roughly 1.4 to 1.8 times slower. `scripts/build-studio-wasm.sh` builds it as `analysis.wasm` for the browser engine. The test that compares the settings with the newest release checks the constants it knows (exploration, priors, prior weight, plies, the pattern weights) only: it does not catch a setting that a later release adds, so whoever makes a release must check that the analysis program still searches as the bot does.
 
 ## Engine speed
 

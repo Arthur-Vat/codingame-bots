@@ -6,13 +6,18 @@
 # - OUT/<game>/<release>.wasm: every release, games/<game>/releases/<release>.rs,
 #   compiled unchanged with rustc (edition 2021, opt-level 3, symbols
 #   stripped);
-# - OUT/manifest.json: {"games":[{"id":"uttt","releases":["uttt-v010",...]}]},
+# - OUT/<game>/analysis.wasm: the game's analysis program, the crate
+#   <game>-analysis (ADR 0032), for each game with a games/<game>/analysis
+#   folder, built with cargo like the rules program (symbols stripped);
+# - OUT/manifest.json:
+#   {"games":[{"id":"uttt","releases":["uttt-v010",...],"analysis":true}]},
 #   the releases that compiled, newest first (the order of the server's
-#   list of releases).
+#   list of releases), and whether the game has an analysis program.
 #
 # A release that does not compile to WebAssembly is skipped with a warning on
 # stderr and left out of the manifest: it is not offered in the browser. The
-# release files are never changed.
+# release files are never changed. An analysis program that does not build is
+# an error, not skipped.
 #
 # Usage: scripts/build-studio-wasm.sh [OUT] [--strict]
 #   OUT       the output folder, relative to the current folder (default:
@@ -69,6 +74,7 @@ cp "${CARGO_TARGET_DIR:-target}/$target/release/studio-rules.wasm" "$out/rules.w
 shopt -s nullglob
 total=0
 built=0
+analyses=0
 manifest='{"games":['
 separator=
 for game_dir in games/*/; do
@@ -88,6 +94,15 @@ for game_dir in games/*/; do
   )
   ((${#names[@]} > 0)) || continue
   mkdir -p "$out/$game"
+  # A game without an analysis program must not keep an old file.
+  rm -f "$out/$game/analysis.wasm"
+  analysis=false
+  if [[ -f games/$game/analysis/Cargo.toml ]]; then
+    CARGO_PROFILE_RELEASE_STRIP=symbols cargo build --locked --release --target "$target" -p "$game-analysis"
+    cp "${CARGO_TARGET_DIR:-target}/$target/release/$game-analysis.wasm" "$out/$game/analysis.wasm"
+    analysis=true
+    analyses=$((analyses + 1))
+  fi
   compiled=()
   for name in "${names[@]}"; do
     total=$((total + 1))
@@ -106,7 +121,7 @@ for game_dir in games/*/; do
   for name in ${compiled[@]+"${compiled[@]}"}; do
     list+="${list:+,}\"$name\""
   done
-  manifest+="$separator{\"id\":\"$game\",\"releases\":[$list]}"
+  manifest+="$separator{\"id\":\"$game\",\"releases\":[$list],\"analysis\":$analysis}"
   separator=,
 done
 manifest+=']}'
@@ -116,4 +131,4 @@ if ((strict == 1 && built < total)); then
   echo "build-studio-wasm: only $built of $total releases are in the manifest (--strict)" >&2
   exit 1
 fi
-echo "ok   studio wasm: rules.wasm and $built of $total releases in $out"
+echo "ok   studio wasm: rules.wasm, analysis.wasm for $analyses game(s) and $built of $total releases in $out"

@@ -6,12 +6,12 @@ describe('the manifest', () => {
   it('lists the games and their releases', () => {
     expect(
       parseManifest(
-        '{"games":[{"id":"uttt","releases":["uttt-v002","uttt-v001"]},{"id":"x","releases":[]}]}',
+        '{"games":[{"id":"uttt","releases":["uttt-v002","uttt-v001"],"analysis":true},{"id":"x","releases":[]}]}',
       ),
     ).toEqual({
       games: [
-        { id: 'uttt', releases: ['uttt-v002', 'uttt-v001'] },
-        { id: 'x', releases: [] },
+        { id: 'uttt', releases: ['uttt-v002', 'uttt-v001'], analysis: true },
+        { id: 'x', releases: [], analysis: false },
       ],
     });
   });
@@ -25,6 +25,7 @@ describe('the manifest', () => {
   it('is the real one when the files are built', () => {
     const manifest = parseManifest(wasmBytes('manifest.json').toString('utf8'));
     expect(manifest.games.find((game) => game.id === 'uttt')?.releases).toContain('uttt-v001');
+    expect(manifest.games.find((game) => game.id === 'uttt')?.analysis).toBe(true);
   });
 });
 
