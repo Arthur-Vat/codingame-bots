@@ -11,7 +11,7 @@ elo: +109.5 [+70.9, +151.0] at 20 ms
 pairs: 154
 full_time: +78.4 [+59.4, +98.0] over 500 pairs, no fault, slowest answer 87.0 ms
 decision: promoted
-cg_rank: pending
+cg_rank: not reported
 ---
 
 The idea comes from Teytaud and Teytaud, "On the huge benefit of

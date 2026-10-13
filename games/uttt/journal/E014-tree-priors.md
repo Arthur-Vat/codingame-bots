@@ -11,7 +11,7 @@ elo: +35.6 [+15.5, +55.9] at 20 ms
 pairs: 382
 full_time: +9.7 [-6.1, +25.6] over 500 pairs, 1 timeout in 1,000 games, 99.9% of answers within 92.7 ms
 decision: promoted
-cg_rank: pending
+cg_rank: not reported
 ---
 
 Option C of the owner's choice on 2026-10-08: the learned policy as a
