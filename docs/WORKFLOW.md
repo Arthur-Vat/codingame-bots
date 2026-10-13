@@ -7,7 +7,7 @@ How the owner and Claude work together. The owner spends a few hours a week deci
 - **Conversation:** the owner and Claude work in a claude.ai conversation, the hub, until Claude Code Projects is available on the owner's account, then in a project named "CodinGame Bot Lab" ([ADR 0008](adr/0008-claude-hub.md)). The owner asks for work, reads results and decides there.
 - **Repository:** the durable record. Decisions go into ADRs, plans into `docs/`, experiment results into the journal, reports of training runs into `games/<game>/training/`. Nothing important lives only in a conversation.
 - **GitHub:** Claude opens a pull request from a `claude/` branch for every change. CI and the SPRT workflow judge it; the owner approves the merge in the conversation and Claude carries it out ([ADR 0023](adr/0023-chat-approved-merges.md)). The owner rarely needs to open GitHub for anything else; notifications for this repository are set to "Participating" to avoid duplicates.
-- **CodinGame:** the owner pastes released bots and reports their rank ([ADR 0009](adr/0009-manual-submission.md)). Claude records the rank in the release's journal entry.
+- **CodinGame:** the owner pastes released bots ([ADR 0009](adr/0009-manual-submission.md)). Reporting a rank is optional and never asked for; Claude records one the owner reports in the release's journal entry ([ADR 0036](adr/0036-ranks-optional.md)).
 
 ## A round of work
 
@@ -16,7 +16,7 @@ The owner starts each round in the conversation; no scheduled session runs ([ADR
 1. Claude reports the results since the last round and proposes two or three experiments, or the owner describes an idea.
 2. Claude implements each experiment in its own pull request; CI runs the tests and the SPRT workflow runs the smoke test and the SPRT.
 3. The owner approves merging accepted candidates. A rejected one comes back reduced to its journal entry, which is merged too, so the failure stays on record.
-4. When a release is published, the owner pastes its file (attached to its GitHub release) into CodinGame and reports the rank.
+4. When a release is published, the owner pastes its file (attached to its GitHub release) into CodinGame, and reports its rank only if he wishes.
 
 Other work, such as tooling, documentation or training runs, takes the same path: a pull request from a `claude/` branch, CI as judge, the owner approving the merge. Bot strength work is paused from 2026-10-09 while phase 5 is built.
 

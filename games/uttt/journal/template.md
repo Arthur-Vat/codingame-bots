@@ -11,7 +11,7 @@ elo: the SPRT's Elo estimate with its 95% interval
 pairs: pairs played by the SPRT
 full_time: the Elo with its 95% interval at CodinGame's limits: the SPRT's own since ADR 0020, the confirmation's before
 decision: pending | promoted | dropped
-cg_rank: rank and league on CodinGame, once pasted
+cg_rank: rank and league on CodinGame if the owner reports one, else empty
 ---
 
 What was tried, what the results say, and anything worth remembering.
