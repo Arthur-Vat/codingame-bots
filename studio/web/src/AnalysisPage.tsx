@@ -270,10 +270,12 @@ function AnalysisScreen({
   const cursor = playback.cursor;
 
   // What is asked of the engine: the position on the board, the game's or the side line's.
-  const moves = useMemo(
-    () => (variation === null ? requestMoves(model, cursor) : shownMoves(model, variation)),
-    [model, cursor, variation],
-  );
+  // The same array for as long as the position is the same (the game's cursor does not matter in a
+  // side line, and a side line at its start is the game's frame it branches from), so that the
+  // engine keeps its analysis, its time and its report.
+  const wanted = variation === null ? requestMoves(model, cursor) : shownMoves(model, variation);
+  const position = JSON.stringify(wanted);
+  const moves = useMemo(() => JSON.parse(position) as string[] | null, [position]);
   const sideLines =
     renderers[model.game] !== undefined && hasActionTexts(model.game) && moves !== null;
 
@@ -322,6 +324,8 @@ function AnalysisScreen({
   /** Back to the game, on a frame of it: the side line is discarded. */
   const showFrame = (frame: number) => {
     cancel();
+    // Leaving a side line never resumes the game's playback.
+    if (variation !== null && playback.playing) playback.toggle();
     setVariation(null);
     playback.goto(frame);
   };
@@ -490,7 +494,7 @@ function AnalysisScreen({
             cursor={variation === null ? cursor : variation.cursor}
             last={variation === null ? last : variation.moves.length}
             playing={variation === null && playback.playing}
-            canPlay={variation === null}
+            canPlay={variation === null && !pending}
             speed={playback.speed}
             onGoto={variation === null ? showFrame : showCursor}
             onToggle={playback.toggle}

@@ -756,6 +756,8 @@ test('while a side line is on its way the board and the lines are not clickable,
   await expect(lines(page).locator('button')).toBeDisabled();
   await lines(page).locator('button').click({ force: true });
   expect(rules.records).toHaveLength(1);
+  // Nothing plays along meanwhile: the game's playback cannot be started under the side line.
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeDisabled();
 
   // Leaving before the answer: the answer comes and is ignored.
   await page.keyboard.press('Escape');
@@ -827,4 +829,46 @@ test('a long side line wraps in its strip: the board keeps its place and the pag
   await sideLine(page).getByRole('button', { name: 'Back to the game' }).click();
   await expect(sideLine(page)).toHaveCount(0);
   expect(await box(page.locator('.panel.table'))).toEqual(table);
+});
+
+test('playback never runs under a side line, and leaving one keeps the game paused', async ({
+  page,
+}) => {
+  const { rules } = await openSide(page);
+  const play = page.getByRole('button', { name: 'Play', exact: true });
+  await play.click();
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  // Entering a side line pauses the game; the answer comes later.
+  const release = rules.hold();
+  await playCell(page, 0, 0).click();
+  await expect(play).toBeDisabled();
+  release();
+  await expect(sideLine(page)).toBeVisible();
+  await expect(play).toBeDisabled();
+  await sideLine(page).getByRole('button', { name: 'Back to the game' }).click();
+  await expect(sideLine(page)).toHaveCount(0);
+  // Paused: the button offers Play again, not Pause.
+  await expect(play).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Pause' })).toHaveCount(0);
+});
+
+test('leaving a side line at its start keeps the analysis of the same position', async ({
+  page,
+}) => {
+  const { analysis } = await openSide(page, { over: false });
+  await page.keyboard.press('ArrowRight');
+  await expect(lines(page)).toHaveCount(1);
+  await playCell(page, 0, 0).click();
+  await expect(sideLine(page)).toBeVisible();
+  await page.keyboard.press('Home');
+  await expect(sideMoves(page).locator('[aria-current="true"]')).toHaveCount(0);
+  await expect(lines(page)).toHaveCount(1);
+  const live = () => analysis.posts.filter((post) => post.iterations > 50_000).length;
+  const started = live();
+  await page.keyboard.press('Escape');
+  await expect(sideLine(page)).toHaveCount(0);
+  await expect(gameMoves(page).nth(0)).toHaveAttribute('aria-current', 'true');
+  await expect(lines(page)).toHaveCount(1);
+  await page.waitForTimeout(300);
+  expect(live()).toBe(started);
 });
