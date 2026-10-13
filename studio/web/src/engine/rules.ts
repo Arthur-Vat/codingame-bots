@@ -109,7 +109,9 @@ export function createRules(load: () => Promise<WebAssembly.Module>): Rules {
   const callText = (request: Request): string => {
     if (module === null) throw new Error('the rules are not loaded yet');
     const { code, stdout } = runOnce(module, JSON.stringify(request));
-    // The program writes `{"ok":<answer>}` in one line, so the answer is what lies between.
+    // The program writes `{"ok":<answer>}` in one line (serde_json::to_string, compact), so the
+    // answer is what lies between, kept as text: its seeds keep every digit. The parse below is a
+    // fallback for other output; it would round a seed beyond 2^53.
     const line = stdout.trim();
     if (line.startsWith(OK_PREFIX) && line.endsWith('}')) return line.slice(OK_PREFIX.length, -1);
     let response: unknown;
