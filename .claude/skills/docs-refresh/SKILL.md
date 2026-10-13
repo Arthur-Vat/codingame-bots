@@ -15,6 +15,7 @@ description: Brings the repository's docs back in line with what the repository 
    - scripts in the architecture's tree and `README.md` against `scripts/`;
    - crates, game folders and bots against the tree;
    - releases, ranks and dates in `README.md`, `games/<game>/README.md` and the roadmap against the journal;
+   - each game's `ROADMAP.md` stages, and the playbook's stage list (`docs/NEW_GAME.md`) against its skills;
    - roadmap check boxes against what is merged; required checks against the "Protect main" ruleset (`gh api repos/<repo>/rulesets`).
 3. Look for statements that were true once: phases, counts, "not yet", "planned".
 
