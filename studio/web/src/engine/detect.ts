@@ -42,9 +42,27 @@ export function devNoServerNotice(input: {
   return input.dev && !input.forced && !input.serverFound;
 }
 
+/** The notice about a missing server in development, in parts; the `code` ones show as code. */
+export function noServerParts(): { text: string; code?: boolean }[] {
+  return [
+    {
+      text: 'No studio server answered on port 8411, so this page uses the browser engine. Start the server with ',
+    },
+    { text: 'cargo run --release -p studio', code: true },
+    { text: ' and reload, or set ' },
+    { text: "localStorage['studio.engine']", code: true },
+    { text: ' to ' },
+    { text: "'browser'", code: true },
+    { text: ' to use the browser engine on purpose.' },
+  ];
+}
+
 /** The notice about a missing server in development, as plain text (the console's). */
-export const NO_SERVER_TEXT =
-  "No studio server answered on port 8411, so this page uses the browser engine. Start the server with cargo run --release -p studio and reload, or set localStorage['studio.engine'] to 'browser' to use the browser engine on purpose.";
+export function noServerText(): string {
+  return noServerParts()
+    .map((part) => part.text)
+    .join('');
+}
 
 /** The key of localStorage that forces an engine (`server` or `browser`), to diagnose or to test. */
 export const FORCE_KEY = 'studio.engine';
