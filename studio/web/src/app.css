@@ -219,8 +219,11 @@
 /* Game screen */
 .game {
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr) 330px;
-  gap: 16px;
+  /* The board's column is as wide as the board row (see --row-max), so that the right column
+     follows the eval bar closely, and the three columns are centred in the page. */
+  grid-template-columns: 250px minmax(0, var(--row-max)) 330px;
+  justify-content: center;
+  gap: 16px 14px;
   align-items: start;
 }
 
@@ -340,15 +343,15 @@
 .board-row,
 .chart-row {
   /* As wide as the column allows, up to 900 px for the board, and no taller than the window leaves:
-     its height is its width less the 24 px of the eval bar, right of the board, and its gap (see
+     its height is its width less the 30 px of the eval bar, right of the board, and its gap (see
      "The game page and the analysis board fit the window" below). The chart under the board has the
      board's row to itself, and keeps to the squares inside it. */
-  width: min(100%, 924px, max(280px, 100dvh - 85px - var(--bar)) + 24px);
+  width: min(100%, var(--row-max));
 }
 
 .board-row {
   display: flex;
-  gap: 8px;
+  gap: 14px;
 }
 
 /* The win, draw and loss bar: as tall as the squares and level with them (the coordinates' 18 px
@@ -389,10 +392,10 @@
 }
 
 /* The evaluation chart: under the playback bar, as wide as the squares and level with them (the
-   18 px of the left coordinates before them, the bar's 24 px after). */
+   18 px of the left coordinates before them, the bar's 30 px after). */
 .chart-row {
   padding-left: 18px;
-  padding-right: 24px;
+  padding-right: 30px;
   box-sizing: border-box;
 }
 
@@ -1375,13 +1378,16 @@ td .res + .tag {
 /* The game page and the analysis board fit the window at every width: the board is as large as the
    column and the window's height allow, up to 900 px. The height left for the board is the
    window's, less the top bar (53 px with its border), the page's padding (16 px twice) and the
-   playback bar's room (--bar); the 24 px more in the width are the reserved eval bar and its gap.
+   playback bar's room (--bar); the 30 px more in the width are the eval bar and its gap.
    In the wide layout the panels at its sides are exactly as tall as the squares; below 1181 px
    they stack under or beside the board and the page may scroll for them, never for the board. */
 .game {
   /* The playback bar's room (40 px and the 12 px above it) is kept on the game page too, so the
      board stays where it is when a finished game opens the analysis board. */
   --bar: 52px;
+  /* The widest the board's row gets: 900 px for the board, and no wider than the window's height
+     leaves (the board is square), plus the eval bar and its gap. */
+  --row-max: min(930px, max(280px, 100dvh - 85px - var(--bar)) + 30px);
   padding-block: 16px;
 }
 
@@ -1466,7 +1472,7 @@ html {
 
 @media (max-width: 1180px) {
   .game {
-    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-columns: minmax(0, var(--row-max)) 320px;
   }
 
   .game > .side-left {
