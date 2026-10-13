@@ -353,6 +353,10 @@ fn a_node_is_as_small_as_before_analysis_existed() {
     // 32 bytes with a one-byte move, as on origin/main before the analysis
     // feature: the size of a node of a bot's tree, on which its memory and
     // speed depend. With the feature a node also holds the share of draws.
+    // CI builds this crate's tests with the feature on (a dependency on the
+    // crate itself turns it on), so only the 36 bytes are checked there; the
+    // 32 are checked by `cargo test -p cg-search` after removing that
+    // dependency, and bots' bundles, identical to the release, cover them.
     #[cfg(not(feature = "analysis"))]
     assert_eq!(std::mem::size_of::<Node<u8>>(), 32);
     #[cfg(feature = "analysis")]
@@ -399,7 +403,10 @@ fn pinned_run() -> Vec<String> {
 /// (a scratch copy of that tree). They hold with the feature off, which is
 /// what bots run, and with it on, whose draw counting must not touch the
 /// random stream: the same moves, scores, visits and node counts for the
-/// same seed and iterations.
+/// same seed and iterations. CI runs it with the feature on only (the crate's
+/// tests turn it on); the feature-off run was done by hand, without the
+/// dev-dependency on the crate itself, and the byte-identical bundles of the
+/// bots cover that path.
 #[test]
 fn a_search_answers_as_it_did_before_the_analysis_feature() {
     const BEFORE: [&str; 19] = [

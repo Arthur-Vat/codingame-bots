@@ -11,12 +11,17 @@
 //!   (optionally `pub` or `pub(...)`). `#[path]` attributes are not allowed.
 //! - A `mod name;` line preceded by a `#[cfg(test)]` line is dropped, so tests
 //!   belong in their own files (`#[cfg(test)] mod tests;`).
-//! - A line that is exactly `#[cfg(feature = "analysis")]` is dropped with the
-//!   line after it, whatever that line is (a field, a field initializer, a
-//!   `mod name;`, a `use`, a one-line statement). Analysis-only code goes
-//!   there, so bots do not carry it. Rustc ignores the marked item when the
-//!   feature is off, so a wrong drop can only stop the bundle from
-//!   compiling, never change what a bot does.
+//! - A line that is exactly `#[cfg(feature = "analysis")]` is dropped with
+//!   the line after it, which must be the item itself on one line (a field,
+//!   a field initializer, a `mod name;`, a `use`, a statement ending on that
+//!   line), with no attribute, comment or blank line between. Analysis-only
+//!   code goes there, so bots do not carry it. The bundler rejects, with the
+//!   file and line, a marker whose next line is blank, an attribute (another
+//!   marker included), a comment, or has unbalanced `()`, `[]` or `{}`. It
+//!   reads lines, not Rust, so it cannot tell a marker inside a multi-line
+//!   string literal from code: markers belong on lines of code. Rustc
+//!   ignores the marked item when the feature is off, so a wrong drop of a
+//!   plain line can only stop the bundle from compiling.
 //! - A bot may only depend on workspace crates, and those crates may only
 //!   depend on other workspace crates: CodinGame offers no crates.io.
 //! - Code refers to other workspace crates by their crate name (`cg_core::`)
