@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Reads and updates HANDOFF.md on the standing branch claude/handoff - what waits for the owner, open questions, follow-ups, notes of the phase in progress and each piece of work's usage line. Use at the start of every session, whenever one of those changes, at the end of each piece of work, and between the steps or batches of a longer plan.
+description: Reads and updates HANDOFF.md on the standing branch claude/handoff - what waits for the owner, open questions, follow-ups and notes of the phase in progress. Use at the start of every session, whenever one of those changes, at the end of each piece of work, and between the steps or batches of a longer plan.
 ---
 
 # Hand work over between sessions
@@ -42,26 +42,25 @@ git push origin "$commit:refs/heads/claude/handoff"
 
 ## Suggest a fresh session
 
-Every step of a session re-reads its whole context from the cache, so a long conversation costs more on each step. A new session is not free either: it starts at about 65k tokens (system prompt, tools, skills) and writes that, plus `CLAUDE.md`, the roadmap and this file, to the cache again. Measured on 2026-10-09, a session at 106k saves only 30k to 40k of reads per step; since a cache write costs far more than a read, the owner and Claude estimated about 30 further steps to repay the cold start (the owner's question, 2026-10-09).
+Every step of a session re-reads its whole context from the cache, so a long conversation costs more on each step. A new session is not free either: it starts with the system prompt, tools and skills, then reads `CLAUDE.md`, the roadmap and this file again. Token use is not measured ([ADR 0034](../../../docs/adr/0034-no-usage-monitoring.md)); judge from the conversation itself.
 
-At the end of each piece of work, and between the steps or batches of a longer plan, measure the context (skill `session-usage`). Once this file is up to date, tell the owner in one line that it is a good time to start a new session only when one of these holds:
+At the end of each piece of work, and between the steps or batches of a longer plan, once this file is up to date, tell the owner in one line that it is a good time to start a new session only when one of these holds:
 
-- the main session's context (skill `session-usage` shows it) is above about 150k tokens and more work is waiting;
+- the conversation has grown long (many pieces of work, or long files and logs read) and more work is waiting;
 - the next work is unrelated to the conversation;
 - the owner will be away for over an hour (the cache expires after an hour idle).
 
 Finishing a pull request is not a reason by itself. The file carries the state over.
 
-When the first one holds, the line is also a stopping point: recommend the new session and do not start the next step in this one unless the owner says to (the 2026-10-11 retrospective: sessions went on to 588k and 689k).
+When the first one holds, the line is also a stopping point: recommend the new session and do not start the next step in this one unless the owner says to (the 2026-10-11 retrospective: sessions went on far too long).
 
 ## The file
 
-At most about 100 lines, in English, in these sections; empty ones say "None.":
+At most about 100 lines, in English, in these four sections; empty ones say "None.":
 
 1. **Waiting for the owner:** pull requests to approve and decisions to take, each with its link and the date it was asked.
 2. **Open questions:** asked or to ask, not yet answered.
 3. **Follow-ups:** things to do later, with what they wait for (a step, a date, the owner).
 4. **Notes:** facts about the phase in progress that the next session needs (a paused area).
-5. **Usage:** one line per piece of work, newest first: `YYYY-MM-DD HH:MM (Paris) | <work, with pull request numbers> | <the line from skill session-usage>`. Lines older than 14 days are removed.
 
 Remove what is done, decided or merged; the history keeps it. Record an owner's answer as "answered in the conversation, <date>: <his words>", then act on it from the conversation's record, not the file's.
