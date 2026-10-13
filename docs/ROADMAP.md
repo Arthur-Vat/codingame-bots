@@ -11,7 +11,7 @@ Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes 
 | 4. First real bot | MCTS `uttt-v001`, then the weekly experiment loop | v001 pasted and ranked; 3 experiments run end to end | Done (2026-10-07) |
 | 5. Autonomy and workflow | Conventions, CI checks, project agents and skills, merge policy, arena and ratings | Every item below done (the owner dropped the one-week trial on 2026-10-09) | In progress (2026-10-09) |
 | 6. Studio | A Lichess-style app, local and on GitHub Pages: play a friend or any release, bot against bot, review with analysis, game history | The first version works on the owner's Windows computer; every item below done | Done (2026-10-13) |
-| 7. Second game | The new-game lifecycle ([ADR 0035](adr/0035-new-game-lifecycle.md)): playbook, stage skills, Ultimate Tic-Tac-Toe as the worked example; then a game the owner names, stage by stage | The owner passes each stage of that game; changes mostly inside the game folder | Not started |
+| 7. Second game | The new-game lifecycle ([ADR 0035](adr/0035-new-game-lifecycle.md)): playbook, stage skills, Ultimate Tic-Tac-Toe as the worked example; then a game the owner names, stage by stage | The owner passes each stage of that game; changes mostly inside the game folder | In progress (2026-10-13) |
 | Ongoing | Iterate every game toward Legend, then up the Legend ranking | | Ultimate Tic-Tac-Toe: Legend since 2026-10-07 (`uttt-v001`, 182 of 443); 59th with `uttt-v008` (2026-10-08); current release `uttt-v010`; strength work paused (2026-10-09) |
 
 ## Phase 0: foundations
@@ -218,7 +218,7 @@ Gate: the owner passes each stage of the second game.
 | Our engine differs from CodinGame's | The bot wins locally and loses on CodinGame | Parity tests, checks against real CodinGame games, dedicated tiebreak tests |
 | Timing noise on shared runners | Timeouts and wrong SPRT verdicts | One game per core, A/A test in CI, time limits revisited with the first real bot ([ADR 0013](adr/0013-evaluation-time-limits.md)), CodinGame's exact limits for games in Legend ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)) |
 | Claude plan usage limits | Slower iteration | Actions does the compute; no scheduled session ([ADR 0033](adr/0033-no-daily-scheduled-session.md)); cheaper models implement |
-| CodinGame rules on outside help | Problems in prize contests | Multiplayer leaderboards only, no contests ([ADR 0009](adr/0009-manual-submission.md), [ADR 0035](adr/0035-new-game-lifecycle.md)) |
+| CodinGame rules on outside help | Problems in prize contests | Multiplayer leaderboards only, no contests ([ADR 0035](adr/0035-new-game-lifecycle.md)) |
 | A release does not replay identically | A wrong takeback against that release | Each release is tested; one that fails offers no takeback ([ADR 0025](adr/0025-studio.md)) |
 | npm supply chain | A harmful package in the studio's front end | Few dependencies, lockfile, `npm ci`, license check ([ADR 0026](adr/0026-node-for-the-studio.md)) |
 | Projects beta not available | No single hub with an Overview | One long claude.ai conversation meanwhile ([ADR 0008](adr/0008-claude-hub.md)) |
