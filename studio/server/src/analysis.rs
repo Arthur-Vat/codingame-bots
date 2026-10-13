@@ -4,17 +4,20 @@
 //!
 //! The program calls `emit` with each line it writes (studio/README.md, "The
 //! analysis program"); `emit` keeps the latest report for `GET`, and says
-//! false once the analysis was stopped, which ends the search.
+//! false once the analysis was stopped, which ends the search. The program
+//! also asks `stop` between its steps (at most 1000 iterations apart for
+//! Ultimate Tic-Tac-Toe), which says true as soon as the analysis was stopped.
 //!
 //! - At most [`MAX_ANALYSES`] exist at once; starting one more stops and
 //!   removes the oldest.
 //! - One that no request has read for [`ANALYSIS_IDLE`] is stopped and
 //!   removed (a closed page frees the processor). Every analysis request
 //!   sweeps the idle ones, and the thread of an analysis checks its own
-//!   reads at each report, so that nothing needs a timer thread.
+//!   reads at each step, so that nothing needs a timer thread.
 //! - A stop (`DELETE`, eviction, idle) takes effect at the program's next
-//!   call of `emit`, that is its next report: the search is not interrupted
-//!   between reports, so a large `report_every` delays it.
+//!   look at `stop`, within a step of the search (1000 iterations for
+//!   Ultimate Tic-Tac-Toe), whatever `report_every` is, and at its next
+//!   `emit` at the latest.
 //! - Locks: the list of analyses and an analysis's progress are never held
 //!   together, and none is held while the search runs, so a `DELETE` racing
 //!   the thread's last `emit` cannot deadlock.
@@ -172,10 +175,14 @@ impl Analyses {
             .collect()
     }
 
-    /// Starts `run` on a new thread, giving it the `emit` of a new analysis,
+    /// Starts `run` on a new thread, giving it the `emit` and the `stop` of a
+    /// new analysis,
     /// and returns the analysis's id. The oldest analyses beyond
     /// [`MAX_ANALYSES`] are stopped and removed.
-    pub fn start(&self, run: impl FnOnce(&mut dyn FnMut(&str) -> bool) + Send + 'static) -> String {
+    pub fn start(
+        &self,
+        run: impl FnOnce(&mut dyn FnMut(&str) -> bool, &dyn Fn() -> bool) + Send + 'static,
+    ) -> String {
         self.sweep();
         let (analysis, evicted) = {
             let mut list = lock(&self.shared.list);
@@ -222,22 +229,33 @@ impl Analyses {
         id
     }
 
+    /// Whether the analysis must end: it was stopped, or nobody has read it
+    /// for too long, in which case it is removed here.
+    fn should_stop(&self, analysis: &Analysis) -> bool {
+        if analysis.stopped.load(Ordering::Acquire) {
+            return true;
+        }
+        if self.now().saturating_duration_since(analysis.last_read()) > self.shared.idle {
+            self.remove(&analysis.id);
+            return true;
+        }
+        false
+    }
+
     /// The body of an analysis thread.
-    fn run(&self, analysis: &Analysis, run: impl FnOnce(&mut dyn FnMut(&str) -> bool)) {
+    fn run(
+        &self,
+        analysis: &Analysis,
+        run: impl FnOnce(&mut dyn FnMut(&str) -> bool, &dyn Fn() -> bool),
+    ) {
         let mut emit = |line: &str| -> bool {
             if analysis.stopped.load(Ordering::Acquire) {
                 return false;
             }
-            if !analysis.record(line) {
-                return false;
-            }
-            if self.now().saturating_duration_since(analysis.last_read()) > self.shared.idle {
-                self.remove(&analysis.id);
-                return false;
-            }
-            !analysis.stopped.load(Ordering::Acquire)
+            analysis.record(line) && !self.should_stop(analysis)
         };
-        let outcome = catch_unwind(AssertUnwindSafe(|| run(&mut emit)));
+        let stop = || self.should_stop(analysis);
+        let outcome = catch_unwind(AssertUnwindSafe(|| run(&mut emit, &stop)));
         analysis.ended(outcome.is_err());
     }
 
@@ -328,10 +346,10 @@ pub fn start(state: &State, body: &[u8]) -> Response {
     let request = Value::Object(request).to_string();
     let analyses = state.analyses().clone();
     let state = state.clone();
-    let id = analyses.start(move |emit| {
+    let id = analyses.start(move |emit, stop| {
         // The game was found a moment ago, and games are never unregistered.
         if let Some(game) = state.game(&game_id) {
-            game.analyse(&request, emit);
+            game.analyse(&request, emit, stop);
         }
     });
     Response::json(200, &json!({ "id": id }))

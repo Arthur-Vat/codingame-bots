@@ -202,8 +202,8 @@ impl StudioGame for Uttt {
     }
 
     #[cfg(feature = "analysis")]
-    fn analyse(&self, request: &str, emit: &mut dyn FnMut(&str) -> bool) {
-        uttt_analysis::analyse(request, emit);
+    fn analyse(&self, request: &str, emit: &mut dyn FnMut(&str) -> bool, stop: &dyn Fn() -> bool) {
+        uttt_analysis::analyse_with_stop(request, emit, stop);
     }
 }
 

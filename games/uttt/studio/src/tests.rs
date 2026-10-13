@@ -261,6 +261,7 @@ fn the_analysis_is_the_analysis_programs() {
             lines.push(line.to_string());
             true
         },
+        &|| false,
     );
     assert_eq!(lines.len(), 1);
     assert!(lines[0].starts_with(r#"{"report":"#), "{}", lines[0]);
