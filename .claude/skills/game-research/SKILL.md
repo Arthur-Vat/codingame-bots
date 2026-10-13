@@ -10,7 +10,7 @@ Stage 8 of [docs/NEW_GAME.md](../../../docs/NEW_GAME.md); the policy is [ADR 003
 ## Depth
 
 - **Default, a focused scan:** about 10 to 15 sources, read by the main session.
-- **Deep research:** a multi-agent research, only when the owner asks; say first that it costs much more. The agent guard (`scripts/agent-guard.sh`) allows only the project's agents and the read-only built-in ones, so research agents run as `Explore` agents (they can search the web); a skill that starts other agents is refused, and allowing it is a change to ask the owner.
+- **Deep research:** a multi-agent research, only when the owner asks; say first that it costs much more. The agent guard (`scripts/agent-guard.sh`) allows only the project's agents and the read-only built-in ones, so research agents run as `Explore` agents (they can search the web); a research skill or tool that starts general-purpose agents is refused by the guard, and allowing it is a change to ask the owner.
 
 ## Sources
 
