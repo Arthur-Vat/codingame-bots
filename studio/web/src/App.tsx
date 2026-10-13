@@ -1,6 +1,8 @@
 import { Fragment, useState } from 'react';
 import { requestIsLive, type AfterRequest } from './afterRequest';
 import { AnalysisTab } from './AnalysisPage';
+import { DevNotice } from './DevNotice';
+import { engineChoice } from './engine/detect';
 import { GamePage } from './GamePage';
 import { memoryOf, NO_MEMORY, remember, tabHashes, type GameMemory } from './gameTabs';
 import { HistoryPage } from './HistoryPage';
@@ -60,6 +62,7 @@ export default function App() {
   return (
     <>
       <TopBar route={route} games={games} tabs={tabs} />
+      {import.meta.env.DEV && engineChoice().notice && <DevNotice />}
       {route.page === 'home' && <HomePage state={gamesState} />}
       {route.page === 'game' && (
         // One page for the game. The Play tab stays mounted while the analysis board or the

@@ -15,6 +15,55 @@ export function setEngineKind(kind: EngineKind): void {
   chosen = kind;
 }
 
+/** How the engine was chosen: forced through localStorage, or by the probe (and what it found). */
+export interface EngineChoice {
+  forced: boolean;
+  serverFound: boolean;
+  /** Whether the page tells the developer that no server answered (`devNoServerNotice`). */
+  notice: boolean;
+}
+
+let choice: EngineChoice = { forced: false, serverFound: true, notice: false };
+
+/** How the last `chooseEngine` decided. */
+export function engineChoice(): EngineChoice {
+  return choice;
+}
+
+/**
+ * Whether to tell the developer that no studio server answered: only in development (`dev`),
+ * when the probe chose (`forced` is false) and found no server.
+ */
+export function devNoServerNotice(input: {
+  dev: boolean;
+  forced: boolean;
+  serverFound: boolean;
+}): boolean {
+  return input.dev && !input.forced && !input.serverFound;
+}
+
+/** The notice about a missing server in development, in parts; the `code` ones show as code. */
+export function noServerParts(): { text: string; code?: boolean }[] {
+  return [
+    {
+      text: 'No studio server answered on port 8411, so this page uses the browser engine. Start the server with ',
+    },
+    { text: 'cargo run --release -p studio', code: true },
+    { text: ' and reload, or set ' },
+    { text: "localStorage['studio.engine']", code: true },
+    { text: ' to ' },
+    { text: "'browser'", code: true },
+    { text: ' to use the browser engine on purpose.' },
+  ];
+}
+
+/** The notice about a missing server in development, as plain text (the console's). */
+export function noServerText(): string {
+  return noServerParts()
+    .map((part) => part.text)
+    .join('');
+}
+
 /** The key of localStorage that forces an engine (`server` or `browser`), to diagnose or to test. */
 export const FORCE_KEY = 'studio.engine';
 
@@ -41,8 +90,22 @@ export async function serverIsThere(fetcher: typeof fetch = fetch): Promise<bool
   }
 }
 
-/** Decides the engine and remembers it. */
-export async function chooseEngine(fetcher: typeof fetch = fetch): Promise<EngineKind> {
-  chosen = forced() ?? ((await serverIsThere(fetcher)) ? 'server' : 'browser');
+/**
+ * Decides the engine and remembers it, and whether it was forced or probed. `dev` is whether this
+ * is a development build, which the notice about a missing server depends on.
+ */
+export async function chooseEngine(
+  fetcher: typeof fetch = fetch,
+  dev: boolean = import.meta.env.DEV,
+): Promise<EngineKind> {
+  const force = forced();
+  const serverFound = force === null ? await serverIsThere(fetcher) : force === 'server';
+  chosen = force ?? (serverFound ? 'server' : 'browser');
+  const isForced = force !== null;
+  choice = {
+    forced: isForced,
+    serverFound,
+    notice: devNoServerNotice({ dev, forced: isForced, serverFound }),
+  };
   return chosen;
 }

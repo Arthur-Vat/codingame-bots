@@ -1377,7 +1377,8 @@ td .res + .tag {
 
 /* The game page and the analysis board fit the window at every width: the board is as large as the
    column and the window's height allow, up to 900 px. The height left for the board is the
-   window's, less the top bar (53 px with its border), the page's padding (16 px twice) and the
+   window's, less the top bar (53 px with its border) and the development notice if any (--notice),
+   the page's padding (16 px twice) and the
    playback bar's room (--bar); the 30 px more in the width are the eval bar and its gap.
    In the wide layout the panels at its sides are exactly as tall as the squares; below 1181 px
    they stack under or beside the board and the page may scroll for them, never for the board. */
@@ -1387,7 +1388,7 @@ td .res + .tag {
   --bar: 52px;
   /* The widest the board's row gets: 900 px for the board, and no wider than the window's height
      leaves (the board is square), plus the eval bar and its gap. */
-  --row-max: min(930px, max(280px, 100dvh - 85px - var(--bar)) + 30px);
+  --row-max: min(930px, max(280px, 100dvh - 85px - var(--bar) - var(--notice, 0px)) + 30px);
   padding-block: 16px;
 }
 
@@ -1499,6 +1500,36 @@ html {
   .moves {
     height: 180px;
   }
+}
+
+/* Development only: shown under the top bar when no studio server answered. */
+/* The notice of `npm run dev` without a server. Its rules ship in every build, but only a
+   development build renders it. One line of a fixed height, which the board's height leaves out. */
+:root:has(.dev-notice) {
+  --notice: 37px;
+}
+
+.dev-notice {
+  box-sizing: border-box;
+  height: 37px;
+  margin: 0;
+  padding: 8px 16px;
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  border-left: 4px solid var(--amber);
+  color: var(--fg-strong);
+  font-size: 13px;
+}
+
+.dev-notice code {
+  font-family: var(--mono);
+  background: var(--bg);
+  padding: 2px 6px;
+  border-radius: 3px;
 }
 
 .starting {

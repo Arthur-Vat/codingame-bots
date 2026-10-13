@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { FORCE_KEY, chooseEngine, engineKind, serverIsThere, setEngineKind } from './detect';
+import {
+  FORCE_KEY,
+  chooseEngine,
+  devNoServerNotice,
+  engineChoice,
+  engineKind,
+  serverIsThere,
+  setEngineKind,
+} from './detect';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -67,5 +75,47 @@ describe('the choice of engine', () => {
       },
     });
     expect(await chooseEngine(answering(404, ''))).toBe('browser');
+  });
+});
+
+describe('the notice about a missing server', () => {
+  it('is for development, a probe that found no server, and nothing else', () => {
+    expect(devNoServerNotice({ dev: true, forced: false, serverFound: false })).toBe(true);
+    expect(devNoServerNotice({ dev: true, forced: false, serverFound: true })).toBe(false);
+    expect(devNoServerNotice({ dev: true, forced: true, serverFound: false })).toBe(false);
+    expect(devNoServerNotice({ dev: true, forced: true, serverFound: true })).toBe(false);
+    expect(devNoServerNotice({ dev: false, forced: false, serverFound: false })).toBe(false);
+    expect(devNoServerNotice({ dev: false, forced: false, serverFound: true })).toBe(false);
+    expect(devNoServerNotice({ dev: false, forced: true, serverFound: false })).toBe(false);
+  });
+
+  it('is recorded by chooseEngine, with whether the choice was forced or probed', async () => {
+    await chooseEngine(answering(404, '<html>'), true);
+    expect(engineChoice()).toEqual({ forced: false, serverFound: false, notice: true });
+    await chooseEngine(answering(404, '<html>'), false);
+    expect(engineChoice()).toEqual({ forced: false, serverFound: false, notice: false });
+    await chooseEngine(answering(200, '[]'), true);
+    expect(engineChoice()).toEqual({ forced: false, serverFound: true, notice: false });
+  });
+
+  it('is not shown when an engine is forced, whatever the probe would find', async () => {
+    const stored = new Map<string, string>();
+    vi.stubGlobal('localStorage', { getItem: (key: string) => stored.get(key) ?? null });
+    stored.set(FORCE_KEY, 'browser');
+    await chooseEngine(answering(404, ''), true);
+    expect(engineChoice()).toMatchObject({ forced: true, notice: false });
+    stored.set(FORCE_KEY, 'server');
+    await chooseEngine(answering(404, ''), true);
+    expect(engineChoice()).toMatchObject({ forced: true, notice: false });
+  });
+
+  it('is shown when storage is blocked, which counts as not forced', async () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new Error('blocked');
+      },
+    });
+    await chooseEngine(answering(404, ''), true);
+    expect(engineChoice().notice).toBe(true);
   });
 });
