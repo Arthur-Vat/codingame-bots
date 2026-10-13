@@ -3,7 +3,8 @@
    send and gives what it would receive.
 
    Records travel as text: a record is stored and given back exactly as it came, and only the
-   rules program reads inside it. */
+   rules program reads inside it. A view, which holds a record's seeds (64-bit numbers), is sent on
+   as the rules program wrote it, never parsed and written again. */
 
 import { HttpError, errorReply, json, messageOf, type Reply } from './http';
 import { RulesError, type HistoryRow } from './rules';
@@ -73,6 +74,16 @@ export function createEngine(deps: EngineDeps): Engine {
   const ask = <T>(request: { op: string } & Record<string, unknown>): T => {
     try {
       return rules.call<T>(request);
+    } catch (error) {
+      if (error instanceof RulesError) throw new HttpError(400, error.message);
+      throw error;
+    }
+  };
+
+  /** `ask` for an answer sent on as the rules wrote it: a record's seeds stay exact. */
+  const askText = (request: { op: string } & Record<string, unknown>): string => {
+    try {
+      return rules.callText(request);
     } catch (error) {
       if (error instanceof RulesError) throw new HttpError(400, error.message);
       throw error;
@@ -156,7 +167,9 @@ export function createEngine(deps: EngineDeps): Engine {
         if (first === 'sessions') return json(200, await sessions.create(parseBody(bodyText)));
         if (first === 'analysis') return startAnalysis(parseBody(bodyText));
         if (first === 'history') return save(bodyText ?? '');
-        if (first === 'view') return json(200, ask({ op: 'view', record_text: bodyText ?? '' }));
+        if (first === 'view') {
+          return { status: 200, bodyText: askText({ op: 'view', record_text: bodyText ?? '' }) };
+        }
         if (first === 'filter') {
           // The rows come in the body (they are not the saved games). The rules program reads
           // the query, then the body, as the server does: same filter, same refusals.
@@ -209,7 +222,7 @@ export function createEngine(deps: EngineDeps): Engine {
           return { status: 200, bodyText: sessions.record(id) };
         }
         if (first === 'history' && id !== undefined && action === 'view') {
-          return json(200, ask({ op: 'view', record_text: await stored(id) }));
+          return { status: 200, bodyText: askText({ op: 'view', record_text: await stored(id) }) };
         }
         break;
     }

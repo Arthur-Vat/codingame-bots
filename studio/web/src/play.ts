@@ -199,7 +199,7 @@ export function rematchRequest(session: Session, seed: number): SessionRequest {
 }
 
 /** `uttt-2026-10-10-123456.json`: the game, the UTC day, the seed. */
-export function exportFileName(game: string, seed: number, now: Date): string {
+export function exportFileName(game: string, seed: number | string, now: Date): string {
   return `${game}-${now.toISOString().slice(0, 10)}-${seed}.json`;
 }
 

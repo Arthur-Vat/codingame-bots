@@ -139,7 +139,16 @@ describe('releaseOptions', () => {
 
 describe('parseRecordText', () => {
   it('accepts a JSON object', () => {
-    expect(parseRecordText('{"format":1}')).toEqual({ record: { format: 1 } });
+    expect(parseRecordText('{"format":1}')).toEqual({
+      record: { format: 1 },
+      text: '{"format":1}',
+    });
+  });
+
+  it('keeps the text of the file as it is, big seeds and CRLF included', () => {
+    const text = '{\r\n  "seed": 18446744073709551557,\r\n  "bot_seed": 9007199254740993\r\n}\r\n';
+    const parsed = parseRecordText(text);
+    expect(parsed).toMatchObject({ text });
   });
 
   it('refuses what is not a JSON object', () => {
@@ -164,9 +173,9 @@ describe('importFiles', () => {
         { name: 'bad.json', text: '{"seed":3}' },
         { name: 'zip.json', text: 'not json' },
       ],
-      async (record) => {
-        saved.push(record);
-        const seed = (record as { seed: number }).seed;
+      async (text) => {
+        saved.push(text);
+        const seed = (JSON.parse(text) as { seed: number }).seed;
         if (seed === 3)
           throw new ApiError('the record does not replay: turn 5 is not legal', false);
         return { id: `id-${seed}`, duplicate: seed === 2 };
@@ -181,7 +190,7 @@ describe('importFiles', () => {
       ],
     });
     // A file that is not JSON never reaches the server.
-    expect(saved).toEqual([{ seed: 1 }, { seed: 2 }, { seed: 3 }]);
+    expect(saved).toEqual(['{"seed":1}', '{"seed":2}', '{"seed":3}']);
     expect(summaryText(summary)).toBe('Imported 1, 1 already there, 2 refused');
   });
 
@@ -200,6 +209,25 @@ describe('importFiles', () => {
     expect(summary.refused).toEqual([{ name: 'a', reason: 'no' }]);
   });
 
+  it('sends the text of each file as it was validated, seeds beyond 2^53 included', async () => {
+    const texts = [
+      '{"seed":18446744073709551557,"players":[{"bot_seed":9007199254740993},{"bot_seed":null}]}',
+      '{\r\n  "seed": 18446744073709551615,\r\n  "other": -1.5\r\n}\r\n',
+      '{"seed":0}',
+      '{"seed":9007199254740992}',
+    ];
+    const sent: string[] = [];
+    const summary = await importFiles(
+      texts.map((text, index) => ({ name: `f${index}`, text })),
+      async (text) => {
+        sent.push(text);
+        return { id: `id-${sent.length}`, duplicate: false };
+      },
+    );
+    expect(summary.imported).toBe(4);
+    expect(sent).toEqual(texts);
+  });
+
   it('saves the files one after the other', async () => {
     const order: string[] = [];
     await importFiles(
@@ -207,8 +235,8 @@ describe('importFiles', () => {
         { name: 'a', text: '{"n":1}' },
         { name: 'b', text: '{"n":2}' },
       ],
-      async (record) => {
-        const n = (record as { n: number }).n;
+      async (text) => {
+        const n = (JSON.parse(text) as { n: number }).n;
         order.push(`start ${n}`);
         await Promise.resolve();
         order.push(`end ${n}`);

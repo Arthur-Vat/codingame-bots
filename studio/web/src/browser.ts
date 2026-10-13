@@ -29,11 +29,6 @@ export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** Downloads `data` as a JSON file. */
-export function download(name: string, data: unknown): void {
-  downloadText(name, JSON.stringify(data, null, 2));
-}
-
 /** Downloads `text` as a JSON file, byte for byte. */
 export function downloadText(name: string, text: string): void {
   const blob = new Blob([text], { type: 'application/json' });

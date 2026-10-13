@@ -2,13 +2,13 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import {
   ApiError,
   deleteHistory,
-  getHistoryRecord,
+  getHistoryRecordText,
   listHistory,
-  postHistory,
+  postHistoryText,
   type HistoryEntry,
 } from './api';
 import { arenaRecordText, listArena } from './arena';
-import { download, downloadText, errorMessage } from './browser';
+import { downloadText, errorMessage } from './browser';
 import {
   ARENA_NOTE,
   arenaEmptyText,
@@ -205,8 +205,7 @@ export function HistoryPage({
 
   const exportGame = async (id: string) => {
     try {
-      if (arena) downloadText(`${id}.json`, await arenaRecordText(id));
-      else download(`${id}.json`, await getHistoryRecord(id));
+      downloadText(`${id}.json`, await (arena ? arenaRecordText(id) : getHistoryRecordText(id)));
     } catch (failure) {
       toast.show(errorMessage(failure));
     }
@@ -239,7 +238,7 @@ export function HistoryPage({
       const inputs = await Promise.all(
         files.map(async (file) => ({ name: file.name, text: await readText(file) })),
       );
-      const summary = await importFiles(inputs, postHistory);
+      const summary = await importFiles(inputs, postHistoryText);
       setRefused(summary.refused);
       toast.show(summaryText(summary));
       setRefresh((n) => n + 1);
@@ -259,9 +258,9 @@ export function HistoryPage({
       setRefused([{ name: file.name, reason: parsed.reason }]);
       return;
     }
-    const { record } = parsed;
+    const { record, text } = parsed;
     setRefused([]);
-    const id = rememberFile({ name: file.name, record });
+    const id = rememberFile({ name: file.name, text });
     // The record names its game; what it holds is untrusted, so the name counts only when it is
     // the id of a game the app has. Otherwise the file opens on the current game, and the view
     // request says what is wrong.

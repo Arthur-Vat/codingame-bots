@@ -228,6 +228,45 @@ test('bot against bot in real time to the end, its playback, and the history kep
   await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
 });
 
+test('64-bit seeds stay exact when a file is loaded, shown and exported', async ({ page }) => {
+  const text = gameFile(6)
+    .toString()
+    .replace('"seed":7,', '"seed":18446744073709551557,')
+    .replace('"bot_seed":1,', '"bot_seed":9007199254740993,');
+  expect(text).toContain('18446744073709551557');
+  expect(text).toContain('9007199254740993');
+  const file = { name: 'big.json', mimeType: 'application/json', buffer: Buffer.from(text) };
+  await open(page, '/#/game/uttt/history');
+
+  // Load game files, then Export: the text comes back unchanged.
+  await page.getByLabel('Load game files').setInputFiles(file);
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Imported 1, 0 already there, 0 refused' }),
+  ).toBeVisible();
+  const fromList = page.waitForEvent('download');
+  await page.getByTestId('history-row').first().getByRole('button', { name: 'Export' }).click();
+  expect(await readFile(await (await fromList).path(), 'utf8')).toBe(text);
+
+  // The saved game's board shows the seed, and exports the same text.
+  await page
+    .getByTestId('history-row')
+    .first()
+    .getByRole('link', { name: 'Analysis board' })
+    .click();
+  await expect(page.getByText('18446744073709551557')).toBeVisible();
+  const fromSaved = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export file' }).click();
+  expect(await readFile(await (await fromSaved).path(), 'utf8')).toBe(text);
+
+  // A file opened without saving it: same seed shown, same text exported.
+  await page.getByRole('link', { name: 'History', exact: true }).click();
+  await page.getByLabel('Open a file').setInputFiles(file);
+  await expect(page.getByText('18446744073709551557')).toBeVisible();
+  const fromFile = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export file' }).click();
+  expect(await readFile(await (await fromFile).path(), 'utf8')).toBe(text);
+});
+
 test.describe('where the page cannot be isolated', () => {
   // No service worker, so no isolation: games between people, the history and the analysis board work, and
   // what needs a bot says why it cannot.

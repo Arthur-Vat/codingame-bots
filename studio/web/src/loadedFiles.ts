@@ -3,8 +3,11 @@
 
 export interface LoadedFile {
   name: string;
-  /** The parsed JSON of the file, which the server checks when it is shown or saved. */
-  record: unknown;
+  /**
+   * The text of the file, which the server checks when it is shown or saved. It is kept as it was
+   * read, never parsed and written again: a number beyond 2^53 (a seed) would change.
+   */
+  text: string;
 }
 
 const files = new Map<string, LoadedFile>();

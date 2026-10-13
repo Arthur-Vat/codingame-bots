@@ -502,6 +502,41 @@ describe('the saved games', () => {
     expect(bad.status).toBe(400);
   });
 
+  it('keeps 64-bit seeds exact when it saves, gives back and views a record', async () => {
+    const { engine } = await testEngine();
+    const id = await start(engine);
+    await playOut(engine, id);
+    const played = (await request(engine, 'GET', `/api/sessions/${id}/record`)).text;
+    expect(played).toContain('"seed":7,');
+    expect(played).toContain('"bot_seed":null');
+    for (const [seed, botSeed] of [
+      ['18446744073709551557', '9007199254740993'],
+      ['18446744073709551615', '18446744073709551615'],
+      ['9007199254740993', '9007199254740992'],
+      ['0', '1'],
+    ] as const) {
+      const { engine: fresh } = await testEngine();
+      // CRLF line ends, as a file written on Windows may have.
+      const text = played
+        .replace('"seed":7,', `"seed":${seed},`)
+        .replace('"bot_seed":null', `"bot_seed":${botSeed}`)
+        .replace(/,/g, ',\r\n');
+      const saved = await request(fresh, 'POST', '/api/history', text);
+      expect(saved.status).toBe(200);
+      const gameId = (saved.body as { id: string }).id;
+      expect((await request(fresh, 'GET', `/api/history/${gameId}`)).text).toBe(text);
+      const views = [
+        await request(fresh, 'GET', `/api/history/${gameId}/view`),
+        await request(fresh, 'POST', '/api/view', text),
+      ];
+      for (const shown of views) {
+        expect(shown.status).toBe(200);
+        expect(shown.text).toContain(`"seed":${seed},`);
+        expect(shown.text).toContain(`"bot_seed":${botSeed},`);
+      }
+    }
+  });
+
   it('filters the rows of the body like the list of saved games, without the store', async () => {
     const { engine } = await testEngine({ store: null });
     const row = (

@@ -139,9 +139,13 @@ export interface ImportSummary {
 
 /**
  * The JSON of a file's text, which must be an object; the server checks that it is a game record.
- * `reason` says why a file is refused here.
+ * `reason` says why a file is refused here. The parsed `record` is for reading a field (the game's
+ * name); what is kept, shown or sent is `text`, the file's own: a number beyond 2^53 (a seed) is
+ * rounded in `record`.
  */
-export function parseRecordText(text: string | null): { record: object } | { reason: string } {
+export function parseRecordText(
+  text: string | null,
+): { record: object; text: string } | { reason: string } {
   if (text === null) return { reason: 'the file cannot be read' };
   let record: unknown;
   try {
@@ -152,17 +156,17 @@ export function parseRecordText(text: string | null): { record: object } | { rea
   if (typeof record !== 'object' || record === null || Array.isArray(record)) {
     return { reason: 'not a game record (the JSON is not an object)' };
   }
-  return { record };
+  return { record, text };
 }
 
 /**
  * Loads files into the history, one after the other. A file that is not JSON, or not an object,
- * is refused here; the rest goes to `save`, and a failure of `save` is the file's refusal, with
- * the server's reason.
+ * is refused here; the rest goes to `save` as the file's own text, and a failure of `save` is the
+ * file's refusal, with the server's reason.
  */
 export async function importFiles(
   inputs: readonly ImportInput[],
-  save: (record: unknown) => Promise<{ id: string; duplicate: boolean }>,
+  save: (recordText: string) => Promise<{ id: string; duplicate: boolean }>,
 ): Promise<ImportSummary> {
   const summary: ImportSummary = { imported: 0, duplicates: 0, refused: [] };
   for (const { name, text } of inputs) {
@@ -171,9 +175,10 @@ export async function importFiles(
       summary.refused.push({ name, reason: parsed.reason });
       continue;
     }
-    const { record } = parsed;
     try {
-      const { duplicate } = await save(record);
+      // The text that was checked, unchanged: parsing and writing it again would round a seed
+      // beyond 2^53.
+      const { duplicate } = await save(parsed.text);
       if (duplicate) summary.duplicates += 1;
       else summary.imported += 1;
     } catch (failure) {

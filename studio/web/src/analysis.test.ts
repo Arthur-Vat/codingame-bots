@@ -349,12 +349,12 @@ describe('formatDate and exportName', () => {
 
 describe('loaded files', () => {
   it('keeps a file under a generated id, one id per file', () => {
-    const first = rememberFile({ name: 'a.json', record: { a: 1 } });
-    const second = rememberFile({ name: 'a.json', record: { a: 1 } });
+    const first = rememberFile({ name: 'a.json', text: '{"a":1}' });
+    const second = rememberFile({ name: 'a.json', text: '{"a":1}' });
     expect(first).not.toBe(second);
     // Not a counter that starts again after a reload.
     expect(first).toMatch(/^f[0-9a-z]{8,}$/);
-    expect(recallFile(first)).toEqual({ name: 'a.json', record: { a: 1 } });
+    expect(recallFile(first)).toEqual({ name: 'a.json', text: '{"a":1}' });
     expect(recallFile('missing')).toBeNull();
   });
 });
