@@ -19,8 +19,10 @@ pub struct MoveReport<M> {
     /// `Some(true)` when the move is proven to win for the player to move,
     /// `Some(false)` proven to lose, `None` when not proven.
     pub proven: Option<bool>,
-    /// The move, then the most visited child at each ply below it, while
-    /// the child has visits, up to `depth` moves in all.
+    /// The move, then the reply the search would choose at each ply below
+    /// it (a proven win, else the most visited not proven lost, else the
+    /// most visited; so a move that loses is followed by its refutation),
+    /// while the reply has visits, up to `depth` moves in all.
     pub line: Vec<M>,
 }
 
@@ -36,6 +38,7 @@ pub struct Report<M> {
     pub proven: Option<bool>,
     /// Every root move: first the one `search` would choose (a proven win,
     /// else the most visited not proven lost, else the most visited), then
-    /// the others by visits, most first (ties in tree order).
+    /// the others by visits, most first (ties in tree order). The lines
+    /// below each move follow the same choice at every ply.
     pub moves: Vec<MoveReport<M>>,
 }
