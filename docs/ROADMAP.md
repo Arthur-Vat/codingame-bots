@@ -10,7 +10,7 @@ Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes 
 | 3. Evaluation | Openings, smoke tests, SPRT, ratings, league, journal, releases | A/A test passes; a weakened bot is rejected by the SPRT | Done (2026-10-07) |
 | 4. First real bot | MCTS `uttt-v001`, then the weekly experiment loop | v001 pasted and ranked; 3 experiments run end to end | Done (2026-10-07) |
 | 5. Autonomy and workflow | Conventions, CI checks, project agents and skills, merge policy, a daily scheduled session within the owner's usage limits, arena and ratings | Every item below done (the owner dropped the one-week trial on 2026-10-09) | In progress (2026-10-09) |
-| 6. Studio | A Lichess-style app, local and on GitHub Pages: play a friend or any release, bot against bot, review with analysis, game history | The first version works on the owner's Windows computer; every item below done | In progress (2026-10-10) |
+| 6. Studio | A Lichess-style app, local and on GitHub Pages: play a friend or any release, bot against bot, review with analysis, game history | The first version works on the owner's Windows computer; every item below done | Done (2026-10-13) |
 | 7. Second game | A game with an official referee; `new-game` skill | Phase 3 gates met, changes mostly inside the game folder | Not started |
 | Ongoing | Iterate every game toward Legend, then up the Legend ranking | | Ultimate Tic-Tac-Toe: Legend since 2026-10-07 (`uttt-v001`, 182 of 443); 59th with `uttt-v008` (2026-10-08); current release `uttt-v010`; strength work paused (2026-10-09) |
 
@@ -129,7 +129,7 @@ Background runs stay off until the owner turns them on.
 
 - [ ] Speed regression check (tier 5 of the evaluation pipeline): the pull request against `main` in the same job, to cancel the runner's noise
 - [x] CI scoped by area and game (owner, 2026-10-11, [ADR 0029](adr/0029-ci-scoped-by-area-and-game.md)): a pull request runs only the checks of what it changes, documentation-only ones included, behind aggregate required checks; the SPRT and the league run per game
-- [ ] Agentic checks stay in Claude's sessions (owner's choice, 2026-10-09): no Claude job in GitHub Actions
+- [x] Agentic checks stay in Claude's sessions (owner's choice, 2026-10-09): no Claude job in GitHub Actions; none runs there (checked 2026-10-13)
 - [x] The docs check also verifies that the architecture lists every workflow and script, and the README every workflow (the README names scripts by area)
 - [x] Shellcheck also lints the scripts' tests, `scripts/tests/*.sh` (owner, 2026-10-09)
 - [x] Every workflow's failures are reported as annotations with an excerpt of the output, readable without the job's log (owner, 2026-10-11)
@@ -141,7 +141,7 @@ Order: A, then B, then C and E side by side, then D.
 
 Planned with the owner on 2026-10-10 ([ADR 0025](adr/0025-studio.md), [ADR 0026](adr/0026-node-for-the-studio.md), [ADR 0027](adr/0027-game-records.md)). Goal: an app in the browser, in the style of Lichess, served locally and on GitHub Pages ([ADR 0030](adr/0030-studio-on-github-pages.md)), to choose a game, play it against a friend on the same screen or against any release, watch two releases play each other, and review games with a bot's evaluation and best moves. Phase 5's step D comes after this phase, as in the plan the owner approved on 2026-10-10; the owner will decide later about leagues.
 
-Gate: the first version (steps A to C) works on the owner's Windows computer, then every item below is done.
+Gate: the first version (steps A to C) works on the owner's Windows computer, then every item below is done. Met (owner, 2026-10-13): the owner tried an earlier version on Windows, which worked as expected, and needs no new trial.
 
 ### A. Foundations
 
