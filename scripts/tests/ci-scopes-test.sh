@@ -87,6 +87,11 @@ scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licens
   games/uttt/releases/uttt-v011.rs
 scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licenses=false' \
   games/uttt/ci.sh
+# The analysis program runs in the browser engine (ADR 0032).
+scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=false' \
+  games/uttt/analysis/src/lib.rs
+scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=true' \
+  games/uttt/analysis/Cargo.toml
 
 # The studio.
 scopes_are 'rust=false framework=false games=[] studio=false web=true licenses=false' studio/web/src/App.tsx

@@ -29,6 +29,11 @@ export async function rulesModule(): Promise<WebAssembly.Module> {
   return WebAssembly.compile(new Uint8Array(wasmBytes('rules.wasm')));
 }
 
+/** A game's analysis program (ADR 0032), as built into `public/wasm/<game>/analysis.wasm`. */
+export async function analysisModule(game: string): Promise<WebAssembly.Module> {
+  return WebAssembly.compile(new Uint8Array(wasmBytes(`${game}/analysis.wasm`)));
+}
+
 /** The real rules program, ready to call. */
 export async function loadedRules(): Promise<Rules> {
   const rules = createRules(rulesModule);
@@ -40,7 +45,7 @@ export async function loadedRules(): Promise<Rules> {
 export function fakeWasm(releases: string[], broken: string[] = []): WasmSource {
   const rules = rulesModule();
   return {
-    manifest: async () => ({ games: [{ id: 'uttt', releases }] }),
+    manifest: async () => ({ games: [{ id: 'uttt', releases, analysis: false }] }),
     rules: () => rules,
     release: async (game, release): Promise<LoadedRelease> => {
       if (!releases.includes(release) || broken.includes(release)) {
