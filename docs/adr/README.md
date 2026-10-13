@@ -28,7 +28,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0021](0021-prune-finished-branches.md) | Delete finished branches, keeping their content | Accepted |
 | [0022](0022-scopes-and-names.md) | Scopes for decision records and pull requests | Accepted; decision 2 completed by 0025 |
 | [0023](0023-chat-approved-merges.md) | The owner approves merges in the conversation; Claude carries them out | Accepted |
-| [0024](0024-handoff-branch.md) | A handoff file on a standing branch carries state between sessions | Accepted |
+| [0024](0024-handoff-branch.md) | A handoff file on a standing branch carries state between sessions | Accepted; the usage line of decision 3 superseded by 0034 |
 | [0025](0025-studio.md) | A local studio to play and review games in the browser | Accepted; decision 1 superseded by 0030; decisions 2, 3, 4 and 5 completed by 0030, decision 6 by 0032 |
 | [0026](0026-node-for-the-studio.md) | Node and npm build the studio's front end | Accepted; decision 3 completed by 0030 |
 | [0027](0027-game-records.md) | Game records: one format, a sample of each run, kept on the owner's computer | Accepted; decision 3 completed by 0030, decisions 2 and 3 by 0031 |
@@ -37,7 +37,8 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0030](0030-studio-on-github-pages.md) | The studio also runs in the browser, published on GitHub Pages | Accepted; decision 6 completed by 0031, decision 2 by 0032 |
 | [0031](0031-arena-games-archive.md) | Arena games: one archive per game on GitHub, shown read-only in the studio | Accepted |
 | [0032](0032-analysis-engine.md) | Analysis: one program per game, run as WebAssembly in the page or natively by the local server | Accepted |
-| [0033](0033-no-daily-scheduled-session.md) | No daily scheduled session | Accepted |
+| [0033](0033-no-daily-scheduled-session.md) | No daily scheduled session | Accepted; the usage line of decision 3 superseded by 0034 |
+| [0034](0034-no-usage-monitoring.md) | No usage monitoring | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 

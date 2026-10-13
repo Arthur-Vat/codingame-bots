@@ -57,4 +57,4 @@ Only what the owner approved in the conversation, naming its number or approving
 
 ## 6. Afterwards
 
-Clean up scratch worktrees. Measure the work's token use (skill `session-usage`) and give the owner its one line. Tell the owner, with that line, what went wrong or cost too much ([ADR 0033](../../../docs/adr/0033-no-daily-scheduled-session.md)). Between batches or steps, follow "Suggest a fresh session" in skill `handoff`.
+Clean up scratch worktrees. Tell the owner what went wrong or cost too much, judged without measuring ([ADR 0033](../../../docs/adr/0033-no-daily-scheduled-session.md); no usage line, [ADR 0034](../../../docs/adr/0034-no-usage-monitoring.md)). Between batches or steps, follow "Suggest a fresh session" in skill `handoff`.

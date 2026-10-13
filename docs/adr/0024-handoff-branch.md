@@ -1,6 +1,6 @@
 # 0024. A handoff file on a standing branch carries state between sessions
 
-- Status: accepted (owner, 2026-10-09)
+- Status: accepted (owner, 2026-10-09); the usage line of decision 3 superseded by [0034](0034-no-usage-monitoring.md)
 - Date: 2026-10-09
 - Scope: framework
 
