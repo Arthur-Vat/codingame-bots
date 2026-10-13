@@ -39,6 +39,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0032](0032-analysis-engine.md) | Analysis: one program per game, run as WebAssembly in the page or natively by the local server | Accepted |
 | [0033](0033-no-daily-scheduled-session.md) | No daily scheduled session | Accepted; the usage line of decision 3 superseded by 0034 |
 | [0034](0034-no-usage-monitoring.md) | No usage monitoring | Accepted |
+| [0035](0035-new-game-lifecycle.md) | A lifecycle for each new game | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 
