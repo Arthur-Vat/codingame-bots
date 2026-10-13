@@ -71,13 +71,13 @@ scopes_are "$none" README.md games/uttt/README.md crates/cg-core/README.md
 scopes_are "$none" docs/adr/0029-x.md docs/some/image.png
 
 # A game.
-scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licenses=false' \
+scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=false' \
   games/uttt/bots/mcts/src/main.rs
-scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licenses=true' \
+scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=true' \
   games/uttt/bots/mcts/Cargo.toml
-scopes_are 'rust=true framework=false games=["other","uttt"] studio=true web=false licenses=false' \
+scopes_are 'rust=true framework=false games=["other","uttt"] studio=true web=true licenses=false' \
   games/other/engine/src/lib.rs games/uttt/evaluation.env
-scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licenses=false' \
+scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=false' \
   games/uttt/engine/src/lib.rs games/uttt/journal/E001-x.md
 scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=false' \
   games/uttt/studio/src/lib.rs
@@ -87,11 +87,14 @@ scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licens
   games/uttt/releases/uttt-v011.rs
 scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licenses=false' \
   games/uttt/ci.sh
-# The analysis program runs in the browser engine (ADR 0032).
+# The analysis program runs in the browser engine (ADR 0032), and is built
+# from the game's engine and the bots' pattern weights.
 scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=false' \
   games/uttt/analysis/src/lib.rs
 scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=true' \
   games/uttt/analysis/Cargo.toml
+scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=false' \
+  games/uttt/bots/mcts/src/pattern_weights.rs
 
 # The studio.
 scopes_are 'rust=false framework=false games=[] studio=false web=true licenses=false' studio/web/src/App.tsx
@@ -137,9 +140,9 @@ scopes_are "$all_true" docs/ROADMAP.md .gitignore
 scopes_are "$all_true" games/uttt/bots/mcts/src/main.rs .github/workflows/ci.yml studio/web/src/App.tsx
 
 # Path forms.
-scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licenses=false' ./games/uttt/bots/mcts/src/main.rs
+scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=false' ./games/uttt/bots/mcts/src/main.rs
 scopes_are "$none" ./docs/ROADMAP.md
-scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licenses=false' 'games/uttt/bots/a b/src/main.rs'
+scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=false' 'games/uttt/bots/a b/src/main.rs'
 scopes_are "$none" 'docs/a file with spaces.txt'
 scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licenses=false' -- games/uttt/x.rs
 scopes_are "$none" ''

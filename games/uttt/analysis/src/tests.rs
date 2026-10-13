@@ -532,3 +532,23 @@ fn chances_are_exact_for_proven_moves_and_add_up_to_one() {
     // Without counted draws, none.
     assert_eq!(chances(&entry(0.75, None, None), 0), [0.75, 0.0, 0.25]);
 }
+
+#[test]
+fn a_move_the_search_has_not_tried_has_no_wdl() {
+    // One iteration tries one of the 81 moves.
+    let out = lines(r#"{"moves":[],"iterations":1}"#);
+    let report = report(&out[0]);
+    let moves = report["moves"].as_array().unwrap();
+    assert_eq!(moves.len(), 81);
+    let untried: Vec<&Value> = moves.iter().filter(|m| m["visits"] == 0).collect();
+    assert_eq!(untried.len(), 80);
+    for entry in untried {
+        assert_eq!(entry["wdl"], Value::Null);
+        assert_eq!(entry["proven"], Value::Null);
+        assert_eq!(entry["line"], json!([entry["move"]]));
+    }
+    // The position's chances are those of the first move, which was tried.
+    assert_eq!(moves[0]["visits"], 1);
+    assert_eq!(report["wdl"], moves[0]["wdl"]);
+    assert!(report["wdl"].is_array());
+}

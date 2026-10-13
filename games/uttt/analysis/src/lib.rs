@@ -96,7 +96,8 @@ struct MoveJson {
     #[serde(rename = "move")]
     mv: String,
     visits: u32,
-    wdl: [f64; 3],
+    /// `None` for a move the search has not tried.
+    wdl: Option<[f64; 3]>,
     proven: Option<u8>,
     line: Vec<String>,
 }
@@ -206,7 +207,7 @@ fn moves(report: &Report<uttt_engine::Move>, to_move: usize) -> Vec<MoveJson> {
         .map(|entry| MoveJson {
             mv: entry.mv.to_string(),
             visits: entry.visits,
-            wdl: chances(entry, to_move),
+            wdl: (entry.visits > 0).then(|| chances(entry, to_move)),
             proven: entry.proven.map(|wins| seat(to_move, wins)),
             line: entry.line.iter().map(ToString::to_string).collect(),
         })
