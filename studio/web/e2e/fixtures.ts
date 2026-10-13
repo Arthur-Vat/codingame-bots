@@ -4,11 +4,19 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
 export const GAMES = [
-  { id: 'uttt', name: 'Ultimate Tic-Tac-Toe', releases: ['uttt-v010', 'uttt-v009', 'uttt-v001'] },
+  {
+    id: 'uttt',
+    name: 'Ultimate Tic-Tac-Toe',
+    releases: ['uttt-v010', 'uttt-v009', 'uttt-v001'],
+    analysis: false,
+  },
 ];
 
-export async function mockGames(page: Page): Promise<void> {
-  await page.route('**/api/games', (route) => route.fulfill({ json: GAMES }));
+/** The games list; `analysis` says whether the game has an analysis program. */
+export async function mockGames(page: Page, analysis = false): Promise<void> {
+  await page.route('**/api/games', (route) =>
+    route.fulfill({ json: GAMES.map((game) => ({ ...game, analysis })) }),
+  );
 }
 
 type Mark = 0 | 1 | null;

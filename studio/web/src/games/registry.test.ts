@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyFrameFor, ownEntry, renderers, resultDetailFor } from './registry';
+import { emptyFrameFor, moveCellFor, ownEntry, renderers, resultDetailFor } from './registry';
 
 describe('the registry lookups', () => {
   it('find the entries of a registered game', () => {
@@ -14,6 +14,16 @@ describe('the registry lookups', () => {
       expect(emptyFrameFor(id), id).toBeUndefined();
       expect(resultDetailFor(id, {}), id).toBeNull();
     }
+  });
+
+  it('reads a move as its cell, and nothing else as one', () => {
+    expect(moveCellFor('uttt', '4 5')).toEqual({ key: '4,5', at: [4, 5] });
+    expect(moveCellFor('uttt', ' 0 8 ')).toEqual({ key: '0,8', at: [0, 8] });
+    for (const text of ['', '9 0', '4', '4 5 6', '4,5', 'a b', '-1 0']) {
+      expect(moveCellFor('uttt', text), text).toBeNull();
+    }
+    expect(moveCellFor('nope', '4 5')).toBeNull();
+    expect(moveCellFor('constructor', '4 5')).toBeNull();
   });
 
   it('own entries only, for any map', () => {

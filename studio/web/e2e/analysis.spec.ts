@@ -10,13 +10,14 @@ import {
   recordView,
   setupMenu,
 } from './fixtures';
+import { mockAnalysis } from './analysisMock';
 
 // The server is not run by this job: the API is mocked with page.route.
 
 const SAVED = 'uttt-1760000000-abcdef123456';
 
-async function mockSaved(page: Page, view: unknown = recordView()) {
-  await mockGames(page);
+async function mockSaved(page: Page, view: unknown = recordView(), analysis = false) {
+  await mockGames(page, analysis);
   await page.route(`**/api/history/${SAVED}/view`, (route) => route.fulfill({ json: view }));
   await page.route(`**/api/history/${SAVED}`, (route) => route.fulfill({ json: record() }));
 }
@@ -121,10 +122,6 @@ test('a saved game starts at the first frame and steps with the buttons and the 
   await expect(cell(page, 4, 4, 'X')).toHaveCount(0);
 
   expect(await slotBox(page)).toEqual(start);
-  // The place of the engine's analysis is reserved, with a line saying it comes later.
-  await expect(shown(page.getByTestId('analysis-slot'))).toHaveText(
-    "The engine's analysis comes in a later version.",
-  );
 });
 
 test('the analysis board has its heading, no Rematch or New game, and a way back to the history', async ({
@@ -387,8 +384,8 @@ test('a finished game stays in the Play tab: three after-game actions, the keys 
   await expect(page.getByTestId('end-block').getByRole('link')).toHaveText('Analysis board');
   await expect(page.getByTestId('playback')).toBeVisible();
   await expect(page.getByTestId('playback-slot')).toHaveCount(0);
-  // The analysis panel lives on the analysis board now.
-  await expect(page.getByTestId('analysis-slot')).toHaveCount(0);
+  // The engine's panel lives on the analysis board, never on the Play tab.
+  await expect(page.getByTestId('engine-panel')).toHaveCount(0);
   await expect(page.getByText('Keys: ← → step, Home/End jump, Space plays.')).toBeVisible();
   // It opens on the first frame, paused (a game between two bots is not shown while it is played).
   await expect(cell(page, 4, 4, 'X')).toHaveCount(0);
@@ -465,35 +462,41 @@ test('a game against a person ends with the end block and the Analysis board lin
   await expect(page).toHaveURL(/#\/game\/uttt\/ab12$/);
 });
 
-test('the board keeps its place: running game, finished game, analysis board', async ({ page }) => {
-  await mockSaved(page);
-  let current: Record<string, unknown> = sessionOver({
-    seats: HUMANS,
-    status: 'waiting_human',
-    to_act: [0],
-    result: null,
-    turns: gameTurns(2),
-    frames: gameFrames(2),
+// With the engine's panel, bar and chart on the analysis board the board is where the game page has it.
+for (const analysis of [false, true]) {
+  test(`the board keeps its place: running game, finished game, analysis board${analysis ? ' with the engine' : ''}`, async ({
+    page,
+  }) => {
+    await mockSaved(page, recordView(), analysis);
+    if (analysis) await mockAnalysis(page);
+    let current: Record<string, unknown> = sessionOver({
+      seats: HUMANS,
+      status: 'waiting_human',
+      to_act: [0],
+      result: null,
+      turns: gameTurns(2),
+      frames: gameFrames(2),
+    });
+    await page.route('**/api/sessions/ab12', (route) => route.fulfill({ json: current }));
+    await page.goto('/#/game/uttt/ab12');
+    await expect(page.getByTestId('playback-slot')).toBeAttached();
+    const running = await slotBox(page);
+
+    current = sessionOver({ seats: HUMANS });
+    await expect(page.getByTestId('playback')).toBeVisible();
+    expect(await slotBox(page)).toEqual(running);
+
+    await page.goto(`/#/game/uttt/analysis/saved/${SAVED}`);
+    await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
+    expect(await slotBox(page)).toEqual(running);
+
+    // The analysis board of the game just played, too.
+    await mockSessionView(page);
+    await page.goto('/#/game/uttt/analysis/session/ab12');
+    await expect(shown(page.getByText('Played here'))).toBeVisible();
+    expect(await slotBox(page)).toEqual(running);
   });
-  await page.route('**/api/sessions/ab12', (route) => route.fulfill({ json: current }));
-  await page.goto('/#/game/uttt/ab12');
-  await expect(page.getByTestId('playback-slot')).toBeAttached();
-  const running = await slotBox(page);
-
-  current = sessionOver({ seats: HUMANS });
-  await expect(page.getByTestId('playback')).toBeVisible();
-  expect(await slotBox(page)).toEqual(running);
-
-  await page.goto(`/#/game/uttt/analysis/saved/${SAVED}`);
-  await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
-  expect(await slotBox(page)).toEqual(running);
-
-  // The analysis board of the game just played, too.
-  await mockSessionView(page);
-  await page.goto('/#/game/uttt/analysis/session/ab12');
-  await expect(shown(page.getByText('Played here'))).toBeVisible();
-  expect(await slotBox(page)).toEqual(running);
-});
+}
 
 test('the analysis board fits the window, with the playback bar and a table as tall as the board', async ({
   page,
@@ -600,9 +603,6 @@ test('the end block of a finished game leads to its analysis board and back', as
   await expect(page.getByRole('button', { name: 'First move' })).toBeDisabled();
   await expect(tabLink(page, 'Play')).toHaveAttribute('aria-current', 'page');
   await expect(tabLink(page, 'History')).not.toHaveAttribute('aria-current', 'page');
-  await expect(shown(page.getByTestId('analysis-slot'))).toHaveText(
-    "The engine's analysis comes in a later version.",
-  );
   await expect(shown(page.getByTestId('result'))).toContainText('0–1 · O wins');
 
   await page.getByRole('link', { name: 'Back to the game' }).click();

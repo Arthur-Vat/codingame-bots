@@ -1,5 +1,22 @@
-import { useState, type ReactNode } from 'react';
-import { getHistoryRecord, getRecord, postHistory, postHistoryText, saveSession } from './api';
+import { useMemo, useState, type ReactNode } from 'react';
+import {
+  getHistoryRecord,
+  getRecord,
+  postHistory,
+  postHistoryText,
+  saveSession,
+  type GameSummary,
+} from './api';
+import { heatShares, selectLines } from './analysisView';
+import {
+  readEngineOn,
+  readHeat,
+  readLines,
+  writeEngineOn,
+  writeHeat,
+  writeLines,
+  type LineCount,
+} from './analysisSettings';
 import {
   exportName,
   formatDate,
@@ -10,7 +27,10 @@ import {
 import { arenaRecordText } from './arena';
 import { BoardSlot } from './BoardSlot';
 import { download, downloadText, errorMessage } from './browser';
-import { emptyFrameFor, renderers, resultDetailFor } from './games/registry';
+import { emptyFrameFor, moveCellFor, renderers, resultDetailFor } from './games/registry';
+import { EnginePanel } from './EnginePanel';
+import { EvalBar } from './EvalBar';
+import { EvalChart } from './EvalChart';
 import { EndBlock, Row, useKeepInView } from './GameTable';
 import { SeatMark } from './Marks';
 import { recallFile } from './loadedFiles';
@@ -23,6 +43,7 @@ import { Toast, useToast } from './Toast';
 import { Redirect, StatusPanel } from './Panels';
 import { usePlayback } from './usePlayback';
 import { useAnalysis } from './useAnalysis';
+import { useEngine } from './useEngine';
 
 /** One player's strip: mark, name, how it played, and the time its answers took. */
 function AnalysisStrip({ model, seat }: { model: AnalysisModel; seat: number }) {
@@ -147,15 +168,23 @@ function Back({ back }: { back: BackLink }) {
 
 function AnalysisScreen({
   model,
+  game,
   back,
   actions,
 }: {
   model: AnalysisModel;
+  /** The game's entry in the server's list (null until it is loaded): its releases and whether it has analysis. */
+  game: GameSummary | null;
   back: BackLink;
   actions: AfterActions | null;
 }) {
   const toast = useToast();
   const [coordinates, setCoordinates] = useState(false);
+  const [engineOn, setEngineOn] = useState(readEngineOn);
+  const [heatOn, setHeatOn] = useState(readHeat);
+  const [lineCount, setLineCount] = useState<LineCount>(readLines);
+  // The first move of the line the pointer is over.
+  const [hovered, setHovered] = useState<string | null>(null);
   const [savedHere, setSavedHere] = useState(false);
   const last = lastFrame(model);
   // The analysis board opens on the first frame.
@@ -163,6 +192,25 @@ function AnalysisScreen({
   const cursor = playback.cursor;
   const goto = playback.goto;
   const toggle = playback.toggle;
+
+  const available = game?.analysis === true;
+  const engine = useEngine(model, cursor, available, engineOn);
+  const report = engine.live.report;
+  const shownLines = useMemo(() => selectLines(report, lineCount), [report, lineCount]);
+  const heat = useMemo(
+    () =>
+      available && engineOn && heatOn
+        ? heatShares(report, (text) => moveCellFor(model.game, text))
+        : null,
+    [available, engineOn, heatOn, report, model.game],
+  );
+  // A line that is no longer shown outlines nothing, whatever the pointer did.
+  const highlight =
+    hovered !== null && shownLines.some((line) => line.move === hovered)
+      ? (moveCellFor(model.game, hovered)?.at ?? null)
+      : null;
+  const release = game?.releases[0];
+  const engineName = release === undefined ? 'Engine' : `${release} engine`;
 
   const Renderer = renderers[model.game];
   const frame = model.frames[cursor] ?? emptyFrameFor(model.game);
@@ -221,22 +269,42 @@ function AnalysisScreen({
                 onChange={(event) => setCoordinates(event.target.checked)}
               />
             </label>
+            {available && (
+              <label className="switch">
+                Heatmap of best moves
+                <input
+                  type="checkbox"
+                  checked={heatOn}
+                  disabled={!engineOn}
+                  onChange={(event) => {
+                    setHeatOn(event.target.checked);
+                    writeHeat(event.target.checked);
+                  }}
+                />
+              </label>
+            )}
             <p className="hint">Keys: ← → step, Home/End jump, Space plays.</p>
           </section>
         </aside>
 
         <section className="board-col">
           <div className="board-row">
-            <div className="evalbar off" title="Win / draw / loss" aria-hidden="true" />
             <BoardSlot
               showCoordinates={coordinates}
               label={`${model.game} board`}
               bare={Renderer !== undefined}
             >
               {Renderer !== undefined && frame !== undefined ? (
-                <Renderer frame={frame} interactive={false} showCoordinates={coordinates} />
+                <Renderer
+                  frame={frame}
+                  interactive={false}
+                  showCoordinates={coordinates}
+                  heat={heat}
+                  highlight={highlight}
+                />
               ) : undefined}
             </BoardSlot>
+            <EvalBar report={available && engineOn ? report : null} />
           </div>
           <PlaybackBar
             cursor={cursor}
@@ -247,9 +315,34 @@ function AnalysisScreen({
             onToggle={toggle}
             onSpeed={playback.setSpeed}
           />
+          {engine.chart !== null && (
+            <div className="chart-row">
+              <EvalChart values={engine.chart.values} cursor={cursor} onGoto={goto} />
+            </div>
+          )}
         </section>
 
         <aside className="side side-right">
+          {available && (
+            <EnginePanel
+              name={engineName}
+              on={engineOn}
+              onToggle={(on) => {
+                setEngineOn(on);
+                writeEngineOn(on);
+              }}
+              live={engine.live}
+              chartProblem={engine.chart?.error ?? null}
+              lines={lineCount}
+              onLines={(count) => {
+                setLineCount(count);
+                writeLines(count);
+              }}
+              ply={model.openingTurns + cursor}
+              onHover={setHovered}
+              onKeep={engine.keep}
+            />
+          )}
           <section className="panel table">
             <AnalysisStrip model={model} seat={1} />
             <AnalysisMoves
@@ -288,9 +381,6 @@ function AnalysisScreen({
             )}
             <AnalysisStrip model={model} seat={0} />
           </section>
-          <div className="analysis-slot" data-testid="analysis-slot">
-            <p className="hint">The engine&apos;s analysis comes in a later version.</p>
-          </div>
         </aside>
       </main>
       <Toast text={toast.text} />
@@ -301,12 +391,14 @@ function AnalysisScreen({
 /** The game an analysis board route names, loaded; its page when the game is loaded. */
 function AnalysisLoader({
   gameId,
+  game,
   kind,
   id,
   back,
   actions,
 }: {
   gameId: string;
+  game: GameSummary | null;
   kind: AnalysisKind;
   id: string;
   back: BackLink;
@@ -344,7 +436,13 @@ function AnalysisLoader({
   }
   // A new game starts from its first frame, with its own playback.
   return (
-    <AnalysisScreen key={`${model.kind}/${model.id}`} model={model} back={back} actions={actions} />
+    <AnalysisScreen
+      key={`${model.kind}/${model.id}`}
+      model={model}
+      game={game}
+      back={back}
+      actions={actions}
+    />
   );
 }
 
@@ -355,16 +453,25 @@ function AnalysisLoader({
  */
 export function AnalysisTab({
   gameId,
+  game,
   board,
   back,
   actions,
 }: {
   gameId: string;
+  game: GameSummary | null;
   board: { kind: AnalysisKind; id: string };
   back: BackLink;
   actions: AfterActions | null;
 }) {
   return (
-    <AnalysisLoader gameId={gameId} kind={board.kind} id={board.id} back={back} actions={actions} />
+    <AnalysisLoader
+      gameId={gameId}
+      game={game}
+      kind={board.kind}
+      id={board.id}
+      back={back}
+      actions={actions}
+    />
   );
 }

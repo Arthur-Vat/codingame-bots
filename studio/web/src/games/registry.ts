@@ -2,6 +2,7 @@ import { createElement, type ComponentType } from 'react';
 import UtttBoard from './uttt/Board';
 import {
   asUtttFrame,
+  cellKey as utttCellKey,
   emptyFrame as utttEmptyFrame,
   resultDetail as utttResultDetail,
 } from './uttt/view';
@@ -70,6 +71,27 @@ export const emptyFrames: Record<string, () => unknown> = byId({
   uttt: utttEmptyFrame,
 });
 
+/** Where a move is on the board: the renderer's cell key (for its heat map) and the cell to outline. */
+export interface MoveCell {
+  key: string;
+  at: [number, number];
+}
+
+/**
+ * A game's reading of a move's answer text (as the analysis program writes it) into the cell it
+ * plays, for the heat map and the outline; null for a text that is no move of the game. The shell
+ * does not know a move's shape.
+ */
+export const moveCells: Record<string, (text: string) => MoveCell | null> = byId({
+  uttt: (text: string) => {
+    const match = /^([0-8]) ([0-8])$/.exec(text.trim());
+    if (match === null) return null;
+    const row = Number(match[1]);
+    const col = Number(match[2]);
+    return { key: utttCellKey(row, col), at: [row, col] };
+  },
+});
+
 /**
  * The entry of a map keyed by a game's id, or undefined. A game id comes from the address or from
  * a loaded file, so it may be a name every object inherits (`constructor`, `__proto__`): only an
@@ -82,6 +104,11 @@ export function ownEntry<T>(map: Readonly<Record<string, T>>, gameId: string): T
 /** A game's words for how a finished game ended, from the last frame, if it has any. */
 export function resultDetailFor(gameId: string, frame: unknown): string | null {
   return ownEntry(resultDetails, gameId)?.(frame) ?? null;
+}
+
+/** The cell a move of a game plays, if the game can tell. */
+export function moveCellFor(gameId: string, text: string): MoveCell | null {
+  return ownEntry(moveCells, gameId)?.(text) ?? null;
 }
 
 /** A game's empty board, if it has one. */

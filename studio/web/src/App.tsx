@@ -85,6 +85,7 @@ export default function App() {
             <AnalysisTab
               key={`${route.board.kind}/${route.board.id}`}
               gameId={route.gameId}
+              game={games?.find((candidate) => candidate.id === route.gameId) ?? null}
               board={route.board}
               back={
                 route.board.kind === 'session'

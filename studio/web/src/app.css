@@ -219,8 +219,11 @@
 /* Game screen */
 .game {
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr) 330px;
-  gap: 16px;
+  /* The board's column is as wide as the board row (see --row-max), so that the right column
+     follows the eval bar closely, and the three columns are centred in the page. */
+  grid-template-columns: 250px minmax(0, var(--row-max)) 330px;
+  justify-content: center;
+  gap: 16px 14px;
   align-items: start;
 }
 
@@ -337,18 +340,27 @@
   min-width: 0;
 }
 
-.board-row {
-  display: flex;
-  gap: 8px;
+.board-row,
+.chart-row {
   /* As wide as the column allows, up to 900 px for the board, and no taller than the window leaves:
-     its height is its width less the 24 px of the eval bar and its gap (see "The game page and
-     the analysis board fit the window" below). */
-  width: min(100%, 924px, max(280px, 100dvh - 85px - var(--bar)) + 24px);
+     its height is its width less the 30 px of the eval bar, right of the board, and its gap (see
+     "The game page and the analysis board fit the window" below). The chart under the board has the
+     board's row to itself, and keeps to the squares inside it. */
+  width: min(100%, var(--row-max));
 }
 
+.board-row {
+  display: flex;
+  gap: 14px;
+}
+
+/* The win, draw and loss bar: as tall as the squares and level with them (the coordinates' 18 px
+   are above them), O on top, draw, X at the bottom. */
 .evalbar {
   width: 16px;
   flex: none;
+  align-self: stretch;
+  margin-top: 18px;
   display: flex;
   flex-direction: column;
   border-radius: 2px;
@@ -356,8 +368,88 @@
   background: var(--wdl-d);
 }
 
+.evalbar > div {
+  flex-basis: 0;
+  min-height: 0;
+  transition: flex-grow 0.2s;
+}
+
+.evalbar .o {
+  background: var(--wdl-o);
+}
+
+.evalbar .d {
+  background: var(--wdl-d);
+}
+
+.evalbar .x {
+  background: var(--wdl-x);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
 .evalbar.off {
   visibility: hidden;
+}
+
+/* The evaluation chart: under the playback bar, as wide as the squares and level with them (the
+   18 px of the left coordinates before them, the bar's 30 px after). */
+.chart-row {
+  padding-left: 18px;
+  padding-right: 30px;
+  box-sizing: border-box;
+}
+
+.chart {
+  padding: 10px 12px;
+}
+
+.chart svg {
+  display: block;
+  width: 100%;
+  height: 100px;
+  overflow: visible;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.chart svg * {
+  vector-effect: non-scaling-stroke;
+}
+
+.chart .grid line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.chart .grid .faint {
+  opacity: 0.45;
+}
+
+.chart .area {
+  fill: rgba(54, 146, 231, 0.14);
+}
+
+.chart .curve {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.chart .pending {
+  fill: rgba(255, 255, 255, 0.04);
+}
+
+.chart .cursor {
+  stroke: var(--amber);
+  stroke-width: 1.5;
+}
+
+.chart .dot {
+  stroke: var(--amber);
+  stroke-width: 9;
+  stroke-linecap: round;
 }
 
 .board-wrap {
@@ -493,11 +585,6 @@
 .playback .speed button[aria-pressed='true'] {
   background: var(--accent-soft);
   color: var(--fg-strong);
-}
-
-/* Room kept under the move list for the analysis panel. */
-.analysis-slot {
-  min-height: 0;
 }
 
 /* Right panel */
@@ -1291,19 +1378,22 @@ td .res + .tag {
 /* The game page and the analysis board fit the window at every width: the board is as large as the
    column and the window's height allow, up to 900 px. The height left for the board is the
    window's, less the top bar (53 px with its border), the page's padding (16 px twice) and the
-   playback bar's room (--bar); the 24 px more in the width are the reserved eval bar and its gap.
+   playback bar's room (--bar); the 30 px more in the width are the eval bar and its gap.
    In the wide layout the panels at its sides are exactly as tall as the squares; below 1181 px
    they stack under or beside the board and the page may scroll for them, never for the board. */
 .game {
   /* The playback bar's room (40 px and the 12 px above it) is kept on the game page too, so the
      board stays where it is when a finished game opens the analysis board. */
   --bar: 52px;
+  /* The widest the board's row gets: 900 px for the board, and no wider than the window's height
+     leaves (the board is square), plus the eval bar and its gap. */
+  --row-max: min(930px, max(280px, 100dvh - 85px - var(--bar)) + 30px);
   padding-block: 16px;
 }
 
 @media (min-width: 1181px) {
   .game {
-    grid-template-rows: auto auto;
+    grid-template-rows: auto auto auto;
     row-gap: 0;
   }
 
@@ -1323,6 +1413,15 @@ td .res + .tag {
     margin-top: 12px;
     height: 40px;
     flex-wrap: nowrap;
+  }
+
+  /* The chart is under the playback bar, where the page may scroll to it. The gap keeps it out of
+     the window: the page's bottom padding (16 px) is below the bar, and the chart starts past it. */
+  .chart-row {
+    grid-column: 2;
+    grid-row: 3;
+    justify-self: center;
+    margin-top: 24px;
   }
 
   /* The side panels take the board's height and no more (their content does not size the row),
@@ -1348,23 +1447,10 @@ td .res + .tag {
     grid-row: 1;
   }
 
-  /* The room kept for the analysis takes none (not even a gap) until it holds something. */
-  .side-right .analysis-slot:empty {
-    display: none;
-  }
-
-  /* The note in it sits under the table, in the room beside the playback bar, so that the table
-     stays as tall as the squares. */
-  .game > .side-right {
-    position: relative;
-  }
-
-  .side-right .analysis-slot {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    margin-top: 12px;
+  /* The engine's panel keeps its own height at the top of the column, level with the squares; the
+     table fills what is left down to their bottom. */
+  .side-right .engine {
+    flex: none;
   }
 
   .side-right .table {
@@ -1386,7 +1472,7 @@ html {
 
 @media (max-width: 1180px) {
   .game {
-    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-columns: minmax(0, var(--row-max)) 320px;
   }
 
   .game > .side-left {
@@ -1441,6 +1527,182 @@ html {
   margin-top: 12px;
 }
 
-.analysis-slot {
-  padding-inline: 2px;
+/* The engine's panel, at the top of the right column. */
+.engine {
+  display: flex;
+  flex-direction: column;
+}
+
+.engine-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+}
+
+.engine-switch {
+  flex: none;
+}
+
+.engine-name {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.engine-name b {
+  color: var(--fg-strong);
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.engine-name small {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.engine-keep {
+  flex: none;
+  border: 0;
+  border-radius: 4px;
+  padding: 6px 10px;
+  background: var(--panel-2);
+  color: var(--fg-strong);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.engine-keep:hover:not(:disabled) {
+  background: var(--line);
+}
+
+.engine-keep.on {
+  background: var(--accent);
+  color: #fff;
+}
+
+.engine-keep:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.engine-error {
+  margin: 0;
+  padding: 8px 12px;
+  border-top: 1px solid var(--line);
+  color: var(--bad);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.engine-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+  /* The room of the lines asked for is kept while they are waited for, so the table below does not jump. */
+  min-height: calc(var(--n) * 33px);
+}
+
+.engine-line {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.engine-line:last-child {
+  border-bottom: 0;
+}
+
+.engine-line:hover {
+  background: var(--panel-2);
+}
+
+.engine-chip {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 12px;
+  border-radius: 3px;
+  padding: 2px 5px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.engine-chip.x {
+  background: var(--wdl-x);
+  color: var(--fg-strong);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.engine-chip.o {
+  background: var(--wdl-o);
+  color: #222;
+}
+
+.engine-moves {
+  font-family: var(--mono);
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.engine-moves .n {
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+.engine-moves .first {
+  color: var(--fg-strong);
+  font-weight: 700;
+}
+
+.engine-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--line);
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.engine-foot > span {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.engine-more {
+  flex: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.engine-more:hover {
+  text-decoration: underline;
+}
+
+.engine-problem {
+  margin: 0;
+  padding: 6px 12px;
+  border-top: 1px solid var(--line);
+  color: var(--bad);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
 }

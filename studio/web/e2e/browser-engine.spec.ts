@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { arenaRow, serveArena } from './arena';
-import { chooseMode, setupMenu, type SetupMode } from './fixtures';
+import { chooseMode, pageHeights, setupMenu, type SetupMode } from './fixtures';
+import { gameFile } from './uttt-game';
 
 // The browser engine as GitHub Pages serves it: static files from `npm run preview`, which has
 // no /api and sets no headers. Nothing is mocked: the rules, the bots (the real releases, built
@@ -411,4 +412,129 @@ test("without arena-games files, the static host's fallback page counts as nothi
   await open(page, '/#/game/uttt/history/arena');
   await expect(page.getByTestId('history-empty')).toHaveText('No arena games published yet.');
   await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
+/** Opens a game file on the analysis board, as "Open a file" in the History does. */
+async function openGame(page: Page, turns: number): Promise<void> {
+  await open(page, '/#/game/uttt/history');
+  await page.getByLabel('Open a file').setInputFiles({
+    name: 'game.json',
+    mimeType: 'application/json',
+    buffer: gameFile(turns),
+  });
+  await expect(page).toHaveURL(/#\/game\/uttt\/analysis\/file\/f[0-9a-z]+$/);
+  await expect(page.getByRole('button', { name: 'Next move' })).toBeVisible();
+}
+
+const shownOnly = (locator: Locator) => locator.filter({ visible: true });
+
+test.describe('the engine on the analysis board (the real analysis program, in a Web Worker)', () => {
+  test('a line, the bar and the heat map, Keep thinking, three lines and the switch', async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    await page.setViewportSize({ width: 1536, height: 730 });
+    await openGame(page, 8);
+    const panel = page.getByTestId('engine-panel');
+    const lines = panel.getByTestId('engine-line');
+    await expect(panel.getByText('uttt-v010 engine')).toBeVisible();
+
+    // The engine is on by default: a line with its chip, the bar and the stat line appear.
+    await expect(lines).toHaveCount(1, { timeout: 60_000 });
+    await expect(lines.getByTestId('engine-chip')).toHaveText(/^[XO] \d+%$/);
+    await expect(page.getByTestId('evalbar')).toBeVisible();
+    await expect(panel.getByTestId('engine-stat')).toHaveText(/ · [\d,]+ iterations$/);
+    await expect(panel.getByTestId('engine-position')).toHaveText(
+      /^X to move · X \d+% · draw \d+% · O \d+%$/,
+    );
+
+    // Three lines can be shown.
+    await panel.getByRole('button', { name: 'Show 3 lines ▾' }).click();
+    await expect(lines).toHaveCount(3);
+    await panel.getByRole('button', { name: 'Show 1 line ▴' }).click();
+    await expect(lines).toHaveCount(1);
+
+    // The heat map: percentages on legal cells, and on those only.
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByRole('button', { name: '7 6' })).toHaveAttribute('aria-current', 'true');
+    await page.getByLabel('Heatmap of best moves').check();
+    const heated = shownOnly(page.locator('.uttt-cell.heat'));
+    await expect.poll(() => heated.count(), { timeout: 60_000 }).toBeGreaterThan(0);
+    await expect(shownOnly(page.locator('.uttt-cell.heat:not(.play)'))).toHaveCount(0);
+    await expect(shownOnly(page.locator('.uttt-cell.heat .pct')).first()).toHaveText(/^\d+$/);
+    await page.getByLabel('Heatmap of best moves').uncheck();
+    await expect(heated).toHaveCount(0);
+
+    // After about 2 seconds the engine stops by itself; Keep thinking goes on until Stop.
+    const iterations = async () =>
+      Number(
+        ((await panel.getByTestId('engine-stat').textContent()) ?? '')
+          .match(/([\d,]+) iterations/)?.[1]
+          ?.replace(/,/g, ''),
+      );
+    await expect(panel.getByRole('button', { name: 'Keep thinking' })).toBeEnabled();
+    await panel.getByRole('button', { name: 'Keep thinking' }).click();
+    await expect(panel.getByTestId('engine-stat')).toHaveText(/^(2\.[5-9]|[3-9]\.\d) s · /, {
+      timeout: 20_000,
+    });
+    const before = await iterations();
+    await expect.poll(iterations, { timeout: 20_000 }).toBeGreaterThan(before);
+    await panel.getByRole('button', { name: 'Stop' }).click();
+    await expect(panel.getByRole('button', { name: 'Keep thinking' })).toBeVisible();
+    const stopped = await panel.getByTestId('engine-stat').textContent();
+    await page.keyboard.press('ArrowRight');
+    await expect(lines).toHaveCount(1, { timeout: 60_000 });
+    expect(await panel.getByTestId('engine-stat').textContent()).not.toBe(stopped);
+
+    // The switch turns it off, and it stays off after a reload.
+    await panel.getByRole('checkbox', { name: 'uttt-v010 engine' }).uncheck();
+    await expect(lines).toHaveCount(0);
+    await expect(page.getByTestId('evalbar')).toHaveCount(0);
+    await expect(page.getByTestId('eval-chart')).toHaveCount(0);
+    expect(await page.evaluate(() => localStorage.getItem('studio.analysis.on'))).toBe('0');
+  });
+
+  test('the chart fills in the background and jumps to the frame clicked; the page scrolls to it', async ({
+    page,
+  }) => {
+    test.setTimeout(240_000);
+    await page.setViewportSize({ width: 1536, height: 730 });
+    await openGame(page, 8);
+    const chart = page.getByTestId('eval-chart');
+    await expect(chart).toBeVisible();
+    // The window shows the board and its playback bar; the chart is below, and the page scrolls to it.
+    const heights = await pageHeights(page);
+    expect(heights.scroll).toBeGreaterThan(heights.inner);
+    const squares = await shownOnly(page.locator('.uttt-board')).boundingBox();
+    const playback = await page.getByTestId('playback').boundingBox();
+    expect(playback!.y + playback!.height).toBeLessThanOrEqual(730);
+    expect(squares!.y + squares!.height).toBeLessThanOrEqual(730);
+
+    await expect(page.getByTestId('chart-pending')).toHaveCount(0, { timeout: 180_000 });
+    await chart.scrollIntoViewIfNeeded();
+    expect(await page.evaluate<number>('window.scrollY')).toBeGreaterThan(0);
+    const plot = await chart.locator('svg').boundingBox();
+    await page.mouse.click(plot!.x + plot!.width * 0.5, plot!.y + plot!.height / 2);
+    await expect(page.getByRole('button', { name: '4 2' })).toHaveAttribute('aria-current', 'true');
+    await expect(page.getByTestId('chart-cursor')).toHaveAttribute('x1', '500');
+  });
+
+  test('a finished game shows its result from the program and the bar at the result', async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    await openGame(page, 42);
+    await page.keyboard.press('End');
+    const panel = page.getByTestId('engine-panel');
+    await expect(panel.getByTestId('engine-position')).toHaveText('Game over · O wins', {
+      timeout: 60_000,
+    });
+    await expect(panel.getByTestId('engine-line')).toHaveCount(0);
+    await expect(page.getByTestId('evalbar')).toHaveAttribute(
+      'aria-label',
+      'Win, draw and loss: X 0% · draw 0% · O 100%',
+    );
+  });
 });

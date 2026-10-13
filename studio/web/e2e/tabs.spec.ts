@@ -188,7 +188,6 @@ test('a history row’s Analysis board: History stays current, no Rematch, and t
   await expect(
     page.getByRole('button', { name: 'New game', exact: true }).filter(onScreen),
   ).toHaveCount(0);
-  await expect(page.getByText("The engine's analysis comes in a later version.")).toBeVisible();
   await expect(page.getByText('Saved (arena match)')).toBeVisible();
 
   // The Play tab still leads to the session, and the way back to the history.
