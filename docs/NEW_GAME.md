@@ -22,7 +22,7 @@ How a new CodinGame game goes from its statement to a bot in Legend, stage by st
 | # | Stage | Skill | Output | Gate (the owner decides) |
 | --- | --- | --- | --- | --- |
 | 1 | Intake | `game-intake` | `games/<game>/README.md` facts with sources, `games/<game>/ROADMAP.md` | Facts complete; anything unknown named |
-| 2 | Rules | `rules-reviewer` agent | `games/<game>/RULES.md` | Every rule sourced; ambiguities listed |
+| 2 | Rules | `review-pr` | `games/<game>/RULES.md` | Every rule sourced; ambiguities listed |
 | 3 | Model | `game-model` | `games/<game>/MODEL.md` | The model and its numbers read |
 | 4 | Framework gaps | `game-model`, `write-adr` | Gap list in `MODEL.md`; a decision record per gap | Each gap decided |
 | 5 | Referee and engine | `land-work`, `rules-check` | Referee, engine, parity tests, speed baseline, `rules-check` bot | CI green; `rules-check` agrees with CodinGame |
@@ -44,7 +44,7 @@ Each stage's work goes through pull requests as usual. A stage ends when its out
 - Players, turn format (one after the other or simultaneous), what a turn's answer is (one command or many), hidden information, randomness.
 - Time limits for the first turn and the others; output format and what CodinGame accepts.
 - The leagues and when the full rules apply; the number of players on the leaderboard.
-- The owner's four criteria, as notes: interest and research value, source and license, how it shows in the studio, depth of the leaderboard.
+- Notes on the criteria the owner named on 2026-10-13: interest and research value, source and license, how it shows in the studio, depth of the leaderboard. They inform the owner; they do not grade the game he chose.
 - Anything unknown is listed as a question for the owner, never guessed.
 
 ### 2. Rules
@@ -53,7 +53,7 @@ Each stage's work goes through pull requests as usual. A stage ends when its out
 - The protocol: inputs, outputs, what makes an answer invalid.
 - End of game, scoring and tiebreaks, with their edge cases.
 - Every point the statement and the source disagree on, and which one applies.
-- Reviewed by the `rules-reviewer` agent.
+- Reviewed by `pr-reviewer`, briefed to check each rule against the pasted statement and the source; the `rules-reviewer` agent checks the referee and engine against `RULES.md` at stage 5.
 
 ### 3. Model
 
@@ -76,7 +76,7 @@ Check the game against what the framework assumes today, and list each gap:
 - The studio: two seats named X and O, and a human's legal moves listed as complete answers.
 - `cg-bundler` and the 100,000-byte limit.
 
-Each gap is a decision for the owner (skill `ask-decision`), recorded with skill `write-adr` before the game's code needs it.
+Each gap is a decision for the owner (skill `ask-decision`) before the game's code needs it, recorded with skill `write-adr` when it is costly to reverse.
 
 ### 5. Referee and engine
 
@@ -90,12 +90,13 @@ Each gap is a decision for the owner (skill `ask-decision`), recorded with skill
 - The game's arena binary and `evaluation.env`.
 - Bots: first valid, random, a greedy one.
 - The game's numbers from the arena: seat advantage, game length, draw rate, and how the SPRT's openings or seeds are drawn.
-- CI: the game's `ci.sh` and its scope in `scripts/ci-scopes.sh`.
+- CI: the game's `ci.sh` (`scripts/ci-scopes.sh` picks up a new `games/<game>/` folder by itself).
 
 ### 7. Studio
 
 - The adapter crate `games/<game>/studio` and the renderer in `studio/web/src/games/<game>/` ([studio/README.md](../studio/README.md), "How a game plugs in").
 - Replay and bot against bot first; human play when the turn format allows it.
+- The places that name Ultimate Tic-Tac-Toe's adapter and need the new game too: the studio jobs of `.github/workflows/ci.yml` (`-p uttt-studio`) and the site check of `.github/workflows/pages.yml` (`wasm/uttt/analysis.wasm`).
 - Any gap found at stage 4 for the studio is handled here.
 
 ### 8. Research

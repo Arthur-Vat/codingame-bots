@@ -19,7 +19,7 @@ Say why each is needed. Wait for them.
 
 ## 2. Gather the facts
 
-From the pasted pages and the source (attached read-only with `add_repo`, or read on GitHub), fill the intake checklist of the playbook. For each fact, keep its source: the statement, a file and line of the source, or a forum post.
+From the pasted pages and the source (a GitHub repository outside this one is attached read-only with the session's `add_repo` tool, then cloned), fill the intake checklist of the playbook. For each fact, keep its source: the statement, a file and line of the source, or a forum post.
 
 - **License of the source:** read its license file. GPL or no license: facts only, nothing translated or copied (ADR 0035). Say which in the README.
 - **Disagreements** between statement and source: list them; the statement and CodinGame's behaviour win, checked later by `rules-check`.
@@ -29,9 +29,9 @@ From the pasted pages and the source (attached read-only with `add_repo`, or rea
 
 One pull request, `docs(<game>): intake of <game name>`:
 
-- `games/<game>/README.md`: what the game is, its facts with sources (players, turn format, time limits, leagues, source and license), and the owner's four criteria as short notes.
+- `games/<game>/README.md`: what the game is, its facts with sources (players, turn format, time limits, leagues, source and license), and short notes on the criteria the owner named on 2026-10-13 (interest and research value, source and license, how it shows in the studio, depth of the leaderboard).
 - `games/<game>/ROADMAP.md` from [docs/templates/game-roadmap.md](../../../docs/templates/game-roadmap.md), stage 1 in progress, the open questions listed.
-- `docs/ROADMAP.md`: the game's line.
+- `docs/ROADMAP.md`: the game in its phase's checklist (phase 7 for the second game), and later its line in the "Ongoing" row once it has a release.
 - `scripts/check-docs.sh` passes; a light review (skill `review-pr`).
 
 Then the gate: skill `new-game`, "At a gate".
