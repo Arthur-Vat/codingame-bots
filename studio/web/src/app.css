@@ -1501,6 +1501,24 @@ html {
   }
 }
 
+/* Development only: shown under the top bar when no studio server answered. */
+.dev-notice {
+  margin: 0;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  border-left: 4px solid var(--amber);
+  color: var(--fg-strong);
+  font-size: 13px;
+}
+
+.dev-notice code {
+  font-family: var(--mono);
+  background: var(--bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
 .starting {
   margin: 2rem;
   color: var(--muted);
