@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- #108 `feat(studio): side lines on the analysis board` (https://github.com/Arthur-Vat/codingame-bots/pull/108), head bfefc43, CI green, deep review's bug fixed; approval asked 2026-10-13. Also asked: the strip's "Back to the game" button shares its name with the top-left link of a game played here.
+None. (#108, side lines, merged 2026-10-13 on the owner's approval in the chat: "Merge 108".)
 
 ## Open questions
 
@@ -20,7 +20,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 - **Step G5 merged** (#101, 2026-10-12): one Game setup menu; modes Human vs human, Human vs bot, Bot vs bot, no subtitles.
 - **Phase 6 step D: the roadmap's three items are merged** (2026-10-13, on the owner's approvals in the chat: "Merge 103, 104, 105, and keep doing the implementation"; "Merge 106 and 107 please"): #105 ADR 0032 (game-agnostic; bots carry no analysis code), #103 cg-search `think`/`report`/draw share behind Cargo feature `analysis` that the bundler drops (bundles byte-identical to releases; the bundler rejects a marker not followed by one plain line), #104 `games/uttt/analysis` (protocol in studio/README, `analysis.wasm`, node limit 8,000,000), #106 routes `POST/GET/DELETE /api/analysis` in both engines (server thread per analysis, stop within 1000 iterations; max 4, idle 10 s), #107 the analysis board's panel.
   Owner's choices (2026-10-13): engine on by default, heatmap off, lines 1 (or 3), all remembered (localStorage `studio.analysis.on|heat|lines`); thinking stops after 2 s unless Keep thinking; chart 50,000 iterations per position, seed 1, under the board, as wide as the squares, **no text at all**; vertical W/D/L bar between the board and the right column; engine panel at the top of the right column, level with the squares; each line = "X 58%" chip then its moves.
-- **Next: PR 5, side lines** (owner, 2026-10-13: a 5th PR after the panel), in a new session: clicking a line (or playing a move on the analysis board) enters the variation; the analysis follows it; a way back to the game. How variations are shown: answered in the conversation, 2026-10-13: "One at a time" (one variation, shown in a strip above the move list with its moves and a Back to the game button; playing inside it extends it; leaving discards it; nothing saved or exported). Opened as #108 (owner's go, 2026-10-13: "Do it please"), coded on `claude/analysis-side-lines` (one PR, `feat(studio): side lines on the analysis board`); positions of a side line come from `POST /api/view` with a record of the path (`opening_plies` 0, the opening turns as ordinary turns). Then step D is done: tick the roadmap's phase 6 status if every item is done, and check the gate (the owner's trial on Windows).
+- **Phase 6 step D done** (2026-10-13): side lines merged (#108): one at a time, from an engine line or a board move; positions from `POST /api/view` with a record of the path (`opening_plies` 0). Every phase 6 item is ticked; the phase's status stays "In progress" until its gate, the owner's trial on Windows: ask him for it. The owner merged with the strip's "Back to the game" label as it is, which shares its name with the top-left link on a game played here; rename only if he asks.
 - Follow-ups from step D: the chart's per-bot dashed lines (mockup) wait for releases that report their own evaluation; e2e of the analysis through a real Worker in Firefox is untested (Chromium only).
 - ADR 0023 still says the SPRT is not a required check, which is no longer true. The owner keeps the current merge policy (2026-10-09) and wants no new record; the line stays as is unless he asks for a fix.
 - Record the CodinGame ranks of `uttt-v009` and `uttt-v010` when the owner reports them (skill `deliver-release`); the owner will report them later (2026-10-11).
@@ -38,6 +38,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Usage
 
+- 2026-10-13 16:15 (Paris) | side lines: #108 merged (step D done) | main session 48 steps (6.80M read, context 88k to 185k), 2 agents (10.0M read; the implementer 9.18M over 67 steps, two rounds; the deep review 0.87M)
 - 2026-10-13 13:55 (Paris) | step D: #105, #103, #104, #106, #107 merged (ADR 0032, search reporting, analysis program, routes, panel) | main session 205 steps (59.0M read, context 66k to 478k: a long conversation over three batches and a session limit), 10 agents (70.6M read; implementers 26.7M (panel, 133 steps), 15.8M (program), 12.9M (routes), 11.5M (search, three rounds incl. the owner's no-growth rework); six reviews 3.7M)
 - 2026-10-12 22:15 (Paris) | wording pass: #102 merged (after #101) | main session 45 steps since 21:45 (10.8M read, context 216k to 282k: a long conversation), 1 agent (0.05M read, light review)
 - 2026-10-12 21:45 (Paris) | G5: modes renamed, #101 merged | main session 24 steps (5.30M read, context 216k to 246k: a long conversation)
