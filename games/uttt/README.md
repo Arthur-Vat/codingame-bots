@@ -9,6 +9,10 @@ CodinGame's [Ultimate Tic-Tac-Toe](https://www.codingame.com/multiplayer/bot-pro
 | Path | What it is |
 | --- | --- |
 | [RULES.md](RULES.md) | The rules in our own words, with sources |
+| [MODEL.md](MODEL.md) | The game as a search problem: numbers, a formal model, what follows for bots |
+| [ROADMAP.md](ROADMAP.md) | The game's stages in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md)) |
+| [research/](research/README.md) | Sources and approaches, set beside what the journal learned |
+| [RETROSPECTIVE.md](RETROSPECTIVE.md) | What worked, what cost more, and changes proposed for the next game |
 | [referee/](referee/) | Readable reference implementation of the rules, driven by the arena |
 | [engine/](engine/) | Fast implementation of the rules for bots: bitboards, no allocation, random and decisive playouts, playouts guided by the class policy (32 move classes) or the pattern policy (E015), and the value network's inputs and evaluation |
 | [analysis/](analysis/) | `uttt-analysis`: the analysis program (see "Analysis" below): a JSON request in, JSON lines of reports out, natively or as WebAssembly for the studio ([ADR 0032](../../docs/adr/0032-analysis-engine.md)) |

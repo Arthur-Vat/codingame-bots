@@ -207,7 +207,7 @@ Gate: the owner passes each stage of the second game.
 
 - [x] Decision record on the lifecycle ([ADR 0035](adr/0035-new-game-lifecycle.md))
 - [x] The [playbook](NEW_GAME.md), the templates of a game's roadmap, model and research, the shared [research notes](research/README.md), and the skills `new-game`, `game-intake`, `game-model`, `rules-check`, `game-research` and `game-retrospective`
-- [ ] Ultimate Tic-Tac-Toe as the worked example: its model, research note, roadmap and retrospective
+- [x] Ultimate Tic-Tac-Toe as the worked example: its [model](../games/uttt/MODEL.md), [research note](../games/uttt/research/README.md), [roadmap](../games/uttt/ROADMAP.md) and [retrospective](../games/uttt/RETROSPECTIVE.md)
 - [ ] A second game, named by the owner
 
 ## Risks
