@@ -30,5 +30,4 @@ None.
 ## Decisions
 
 - 2026-10-13: Ultimate Tic-Tac-Toe is documented to the lifecycle's standard as its worked example, documents only ([ADR 0035](../../docs/adr/0035-new-game-lifecycle.md)).
-- 2026-10-13: the owner no longer reports CodinGame ranks; none is asked for.
 - 2026-10-09: strength work paused while phase 5 is built; no training or league run by hand.

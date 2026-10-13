@@ -39,7 +39,3 @@ The routing rule is what makes the game hard: a move is judged by the small boar
 ## Framework gaps
 
 None: the framework was built for this game, two players taking turns with full information ([ADR 0011](../../docs/adr/0011-framework-structure.md)).
-
-| Gap | Where | Decision |
-| --- | --- | --- |
-| None | | |
