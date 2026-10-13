@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- The owner deletes the scheduled task "CodinGame bots: daily report" in the Claude app (sessions cannot see it), asked 2026-10-13.
+None. (The owner deleted the daily report's scheduled task, 2026-10-13.)
 
 ## Open questions
 
