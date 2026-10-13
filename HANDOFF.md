@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- #109 (phase 6 done, agentic checks ticked) and #110 (ADR 0033, no daily scheduled session; stacked on #109), opened 2026-10-13.
+- #109 (phase 6 done, agentic checks ticked), #110 (ADR 0033, no daily scheduled session; stacked on #109), #111 (exact 64-bit seeds) and #112 (dev notice when no server): all green and reviewed, asked 2026-10-13. Merge #109 before #110.
 - The owner deletes the scheduled task "CodinGame bots: daily report" in the Claude app (sessions cannot see it), asked 2026-10-13.
 
 ## Open questions
@@ -24,7 +24,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
   Owner's choices (2026-10-13): engine on by default, heatmap off, lines 1 (or 3), all remembered (localStorage `studio.analysis.on|heat|lines`); thinking stops after 2 s unless Keep thinking; chart 50,000 iterations per position, seed 1, under the board, as wide as the squares, **no text at all**; vertical W/D/L bar between the board and the right column; engine panel at the top of the right column, level with the squares; each line = "X 58%" chip then its moves.
 - **Phase 6 step D done** (2026-10-13): side lines merged (#108): one at a time, from an engine line or a board move; positions from `POST /api/view` with a record of the path (`opening_plies` 0). Every phase 6 item is ticked. Gate: answered in the conversation, 2026-10-13: "I don't want to try the studio in windows, I already did it with an earlier version and it worked as expected"; mark phase 6 done in the roadmap. The owner merged with the strip's "Back to the game" label as it is, which shares its name with the top-left link on a game played here; rename only if he asks.
 - Follow-ups from step D: the chart's per-bot dashed lines (mockup) wait for releases that report their own evaluation.
-- Agreed by the owner (2026-10-13), in progress on `claude/studio-exact-seeds` and `claude/studio-dev-no-server`: fix 64-bit seeds lost on export/import and rounded on the review page; make `npm run dev` without a local server fail visibly instead of silently using the browser engine. One pull request each.
+- Later, optional: the e2e arena tests hard-code port 4173 (`e2e/arena.ts`, `browser-engine.spec.ts`), so runs on another port fail (review of #111).
 - No Firefox testing of the studio (owner, 2026-10-13: not wanted).
 - ADR 0023 still says the SPRT is not a required check, which is no longer true. The owner keeps the current merge policy (2026-10-09) and wants no new record; the line stays as is unless he asks for a fix.
 - Never ask the owner for CodinGame ranks (owner, 2026-10-13: "I don't want to communicate the ranks, stop asking for it").
@@ -42,6 +42,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Usage
 
+- 2026-10-13 17:15 (Paris) | owner's answers on next steps; #109 to #112 opened (phase 6 done, ADR 0033, exact seeds, dev notice) | main session 80 steps (12.0M read, context 66k to 209k), 5 agents (7.85M read; the seeds implementer 5.23M over 61 steps; three deep reviews 1.84M)
 - 2026-10-13 16:15 (Paris) | side lines: #108 merged (step D done) | main session 48 steps (6.80M read, context 88k to 185k), 2 agents (10.0M read; the implementer 9.18M over 67 steps, two rounds; the deep review 0.87M)
 - 2026-10-13 13:55 (Paris) | step D: #105, #103, #104, #106, #107 merged (ADR 0032, search reporting, analysis program, routes, panel) | main session 205 steps (59.0M read, context 66k to 478k: a long conversation over three batches and a session limit), 10 agents (70.6M read; implementers 26.7M (panel, 133 steps), 15.8M (program), 12.9M (routes), 11.5M (search, three rounds incl. the owner's no-growth rework); six reviews 3.7M)
 - 2026-10-12 22:15 (Paris) | wording pass: #102 merged (after #101) | main session 45 steps since 21:45 (10.8M read, context 216k to 282k: a long conversation), 1 agent (0.05M read, light review)
