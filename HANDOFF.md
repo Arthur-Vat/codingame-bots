@@ -4,13 +4,16 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-None. (The owner deleted the daily report's scheduled task, 2026-10-13.)
+- 2026-10-13: approval to start the new-game lifecycle work (plan of pull requests proposed in the conversation). Nothing started.
 
 ## Open questions
 
 - Phase 5 step D, the phase 7 second game and watching the first release after the CI changes: later (owner, 2026-10-13).
 
 ## Follow-ups
+
+- **New-game lifecycle, answered in the conversation, 2026-10-13** (owner's form answers): stages 0 game given by the owner (no comparison), 1 intake, 2 rules, 3 model, 4 framework gaps, 5 referee+engine (rules-check bot pasted by the owner), 6 arena+baseline bots, 7 studio (required; replay first, human play when the turn format allows), 8 research, 9 approach by bake-off + first bot, 10 iteration (ML only once search plateaus), 11 retrospective. Organised as playbook `docs/NEW_GAME.md` + `games/<game>/ROADMAP.md` + small stage skills + thin `new-game` skill; one ADR (lifecycle, gates, license policy: GPL or unlicensed sources read for facts only). Owner decides at **every stage**. Goal: Legend first, then he may pause or continue; stopping rule his per game. Scope: multiplayer bot games, no contests; 3-4 players wanted (framework phase needed); hidden information yes but not yet; simultaneous moves undecided. One game at a time. Owner pastes CodinGame pages (no domain allowed). Others' work: ideas only, never copy; research sources: CodinGame write-ups and academic papers (not players' repos); focused scan, deep research on request; per game in `games/<game>/research/`, generic methods in shared `docs/research/`. MODEL.md: English then a short formal part. UTTT as the worked example (docs only). Selection criteria kept for intake: interest/research value, source and license, studio fit, leaderboard depth.
+- **Stop monitoring usage** (owner, 2026-10-13: "I don't want to monitor usage anymore. Remove it."; all of it): remove skill `session-usage`, this file's Usage section and usage lines in skills and docs; ADR 0024's usage part needs a superseding record. Until then, no usage lines are added.
 
 - Merged 2026-10-13 on the owner's approval in the chat ("Merge #109, then #110, #111, #112"): phase 6 done (#109), ADR 0033 no daily scheduled session (#110), exact 64-bit seeds (#111), dev notice without a server (#112).
 - **Phase 6 step F merged** (2026-10-11): ADR 0030 (#88), the rules in WebAssembly with studio-core (#89), the browser engine (#90), Pages deployment and license notices (#91), on the owner's approvals in the chat. Follow-ups noted by reviews: the front end parses and re-stringifies records on export/import, which can lose 64-bit seed digits (both engines); `npm run dev` without a local server silently uses the browser engine; the WebAssembly files are built twice in CI's front-end job; `actions/deploy-pages@v4` targets the deprecated Node 20 (move to a newer major when one exists).
