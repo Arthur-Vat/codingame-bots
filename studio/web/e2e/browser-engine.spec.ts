@@ -496,6 +496,44 @@ test.describe('the engine on the analysis board (the real analysis program, in a
     expect(await page.evaluate(() => localStorage.getItem('studio.analysis.on'))).toBe('0');
   });
 
+  test('a side line from the board and from a line: the real rules replay it and the engine follows', async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    await page.setViewportSize({ width: 1536, height: 730 });
+    await openGame(page, 8);
+    const panel = page.getByTestId('engine-panel');
+    const lines = panel.getByTestId('engine-line');
+    const side = page.getByTestId('side-line');
+    const sideMoves = side.locator('.sideline-moves button');
+    await expect(lines).toHaveCount(1, { timeout: 60_000 });
+
+    // A move the game did not play (its first is 1 0): X in the middle. The rules send O to the
+    // small board in the middle, which has 8 cells left.
+    await shownOnly(page.getByRole('button', { name: 'play row 4 column 4' })).click();
+    await expect(sideMoves).toHaveText(['4 4']);
+    await expect(shownOnly(page.getByRole('img', { name: 'row 4 column 4 X' }))).toBeVisible();
+    await expect(shownOnly(page.getByRole('button', { name: /^play row/ }))).toHaveCount(8);
+    await expect(panel.getByTestId('engine-position')).toHaveText(/^O to move · /, {
+      timeout: 60_000,
+    });
+
+    // The engine's line for O goes on the side line after that move.
+    await expect(lines).toHaveCount(1, { timeout: 60_000 });
+    await lines.first().click();
+    await expect(sideMoves).not.toHaveCount(1);
+    await expect(sideMoves.nth(1)).toHaveAttribute('aria-current', 'true');
+    await expect(sideMoves.first()).not.toHaveAttribute('aria-current', 'true');
+    await page.keyboard.press('Home');
+    await expect(shownOnly(page.getByRole('img', { name: 'row 4 column 4 X' }))).toHaveCount(0);
+
+    // Escape: back to the game's first frame.
+    await page.keyboard.press('Escape');
+    await expect(side).toHaveCount(0);
+    await expect(shownOnly(page.getByRole('img', { name: 'row 4 column 4 X' }))).toHaveCount(0);
+    await expect(lines).toHaveCount(1, { timeout: 60_000 });
+  });
+
   test('the chart fills in the background and jumps to the frame clicked; the page scrolls to it', async ({
     page,
   }) => {

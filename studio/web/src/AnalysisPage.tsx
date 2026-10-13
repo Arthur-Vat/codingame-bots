@@ -1,13 +1,14 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   getHistoryRecord,
   getRecord,
   postHistory,
   postHistoryText,
+  postView,
   saveSession,
   type GameSummary,
 } from './api';
-import { heatShares, selectLines } from './analysisView';
+import { heatShares, requestMoves, selectLines } from './analysisView';
 import {
   readEngineOn,
   readHeat,
@@ -26,8 +27,15 @@ import {
 } from './analysis';
 import { arenaRecordText } from './arena';
 import { BoardSlot } from './BoardSlot';
-import { download, downloadText, errorMessage } from './browser';
-import { emptyFrameFor, moveCellFor, renderers, resultDetailFor } from './games/registry';
+import { download, downloadText, errorMessage, takesSpace, typesText } from './browser';
+import {
+  actionTextFor,
+  emptyFrameFor,
+  hasActionTexts,
+  moveCellFor,
+  renderers,
+  resultDetailFor,
+} from './games/registry';
 import { EnginePanel } from './EnginePanel';
 import { EvalBar } from './EvalBar';
 import { EvalChart } from './EvalChart';
@@ -44,6 +52,18 @@ import { Redirect, StatusPanel } from './Panels';
 import { usePlayback } from './usePlayback';
 import { useAnalysis } from './useAnalysis';
 import { useEngine } from './useEngine';
+import {
+  fetchVariation,
+  planPath,
+  shownFrame,
+  shownMoves,
+  stripTokens,
+  variationKey,
+  withCursor,
+  type Branch,
+  type Plan,
+  type Variation,
+} from './variation';
 
 /** One player's strip: mark, name, how it played, and the time its answers took. */
 function AnalysisStrip({ model, seat }: { model: AnalysisModel; seat: number }) {
@@ -127,6 +147,47 @@ function AnalysisMoves({
   );
 }
 
+/** The side line on the board: its moves, the one at the cursor marked, and the way back to the game. */
+function SideLine({
+  model,
+  variation,
+  onGoto,
+  onBack,
+}: {
+  model: AnalysisModel;
+  variation: Variation;
+  onGoto: (cursor: number) => void;
+  onBack: () => void;
+}) {
+  const list = useKeepInView(variation.cursor, variation.moves.length, false, false);
+  return (
+    <div className="sideline" role="group" aria-label="Side line" data-testid="side-line">
+      <div className="sideline-moves" ref={list}>
+        {stripTokens(model, variation).map((token, at) =>
+          token.kind === 'number' ? (
+            <span key={at} className="n">
+              {token.text}
+            </span>
+          ) : (
+            <button
+              key={at}
+              type="button"
+              className={token.index + 1 === variation.cursor ? 'cur' : undefined}
+              aria-current={token.index + 1 === variation.cursor ? 'true' : undefined}
+              onClick={() => onGoto(token.index + 1)}
+            >
+              {token.text}
+            </button>
+          ),
+        )}
+      </div>
+      <button type="button" className="sideline-back" onClick={onBack}>
+        Back to the game
+      </button>
+    </div>
+  );
+}
+
 function MoveRow({ number, children }: { number: number; children: ReactNode }) {
   return (
     <>
@@ -186,15 +247,40 @@ function AnalysisScreen({
   // The first move of the line the pointer is over.
   const [hovered, setHovered] = useState<string | null>(null);
   const [savedHere, setSavedHere] = useState(false);
+  // The side line being explored (one at a time), and the ticket of the request for the frames of
+  // the next one while it is on its way. An answer whose ticket is no longer the newest is dropped.
+  const [variation, setVariation] = useState<Variation | null>(null);
+  const [ticket, setTicket] = useState<number | null>(null);
+  const newest = useRef(0);
+  const flying = useRef(false);
+  useEffect(
+    () => () => {
+      newest.current += 1;
+    },
+    [],
+  );
+  const pending = ticket !== null;
   const last = lastFrame(model);
-  // The analysis board opens on the first frame.
-  const playback = usePlayback(last, 0, `${model.kind}/${model.id}`, { active: true, keys: true });
+  // The analysis board opens on the first frame. In a side line, or while one is asked for, the
+  // keys are the page's own.
+  const playback = usePlayback(last, 0, `${model.kind}/${model.id}`, {
+    active: true,
+    keys: variation === null && !pending,
+  });
   const cursor = playback.cursor;
-  const goto = playback.goto;
-  const toggle = playback.toggle;
+
+  // What is asked of the engine: the position on the board, the game's or the side line's.
+  // The same array for as long as the position is the same (the game's cursor does not matter in a
+  // side line, and a side line at its start is the game's frame it branches from), so that the
+  // engine keeps its analysis, its time and its report.
+  const wanted = variation === null ? requestMoves(model, cursor) : shownMoves(model, variation);
+  const position = JSON.stringify(wanted);
+  const moves = useMemo(() => JSON.parse(position) as string[] | null, [position]);
+  const sideLines =
+    renderers[model.game] !== undefined && hasActionTexts(model.game) && moves !== null;
 
   const available = game?.analysis === true;
-  const engine = useEngine(model, cursor, available, engineOn);
+  const engine = useEngine(model, moves, available, engineOn);
   const report = engine.live.report;
   const shownLines = useMemo(() => selectLines(report, lineCount), [report, lineCount]);
   const heat = useMemo(
@@ -213,7 +299,9 @@ function AnalysisScreen({
   const engineName = release === undefined ? 'Engine' : `${release} engine`;
 
   const Renderer = renderers[model.game];
-  const frame = model.frames[cursor] ?? emptyFrameFor(model.game);
+  const frame =
+    (variation === null ? model.frames[cursor] : shownFrame(model, variation)) ??
+    emptyFrameFor(model.game);
   const finalFrame = model.frames[last];
   const detail =
     model.result.end.kind === 'finished' && finalFrame !== undefined
@@ -223,8 +311,100 @@ function AnalysisScreen({
   const endDetail = model.hiddenTurns > 0 ? `${text.detail}, not shown` : text.detail;
   const resultLine = `${text.headline}${endDetail ? `, ${endDetail}` : ''}`;
 
-  const shownTurn = turnOfFrame(cursor, model.openingTurns);
+  // No move of the game is current while a side line is on the board.
+  const shownTurn = variation === null ? turnOfFrame(cursor, model.openingTurns) : -1;
   const saved = model.saved || savedHere;
+
+  /** Drops the request for a side line that is on its way, if any: its answer is ignored. */
+  const cancel = () => {
+    newest.current += 1;
+    flying.current = false;
+    setTicket(null);
+  };
+  /** Back to the game, on a frame of it: the side line is discarded. */
+  const showFrame = (frame: number) => {
+    cancel();
+    // Leaving a side line never resumes the game's playback.
+    if (variation !== null && playback.playing) playback.toggle();
+    setVariation(null);
+    playback.goto(frame);
+  };
+  /** A cursor of the side line. */
+  const showCursor = (to: number) => {
+    cancel();
+    if (variation !== null) setVariation(withCursor(variation, to));
+  };
+  /** Asks the rules for the frames of a side line; the board changes when they come. */
+  const branchTo = (branch: Branch) => {
+    if (flying.current) return;
+    flying.current = true;
+    const mine = ++newest.current;
+    setTicket(mine);
+    // A side line is not played along: the game's playback stops.
+    if (playback.playing) playback.toggle();
+    fetchVariation(model, branch, postView).then(
+      (next) => {
+        if (newest.current !== mine) return;
+        flying.current = false;
+        setTicket(null);
+        setVariation(next);
+      },
+      (failure: unknown) => {
+        if (newest.current !== mine) return;
+        flying.current = false;
+        setTicket(null);
+        toast.show(errorMessage(failure));
+      },
+    );
+  };
+  const follow = (plan: Plan) => {
+    switch (plan.kind) {
+      case 'ignored':
+        return;
+      case 'refused':
+        toast.show(plan.message);
+        return;
+      case 'frame':
+        playback.goto(plan.frame);
+        return;
+      case 'cursor':
+        if (variation !== null) setVariation(withCursor(variation, plan.cursor));
+        return;
+      case 'branch':
+        branchTo(plan.branch);
+        return;
+    }
+  };
+  /** Plays moves on the board: one from a click on a cell, or a whole engine line. */
+  const play = (path: string[]) => {
+    if (!sideLines || pending) return;
+    follow(planPath(model, { frame: cursor, variation }, path));
+  };
+
+  // Keys of a side line: ← → Home End step through it, Escape leaves it; Space does nothing. The
+  // game's own keys are usePlayback's, off meanwhile.
+  const onKey = useEffectEvent((event: KeyboardEvent) => {
+    if (typesText(event.target)) return;
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.key === 'Escape') {
+      // A dialog (the setup menu) closes on Escape; the side line stays.
+      if (document.querySelector('[role="dialog"]') !== null) return;
+      if (variation === null && !pending) return;
+      event.preventDefault();
+      showFrame(variation?.from ?? cursor);
+      return;
+    }
+    if (variation === null || pending) return;
+    const action = variationKey(event.key, variation);
+    if (action === undefined) return;
+    if (action !== 'toggle' || !takesSpace(event.target)) event.preventDefault();
+    if (action !== 'toggle') showCursor(action);
+  });
+  useEffect(() => {
+    const down = (event: KeyboardEvent) => onKey(event);
+    window.addEventListener('keydown', down);
+    return () => window.removeEventListener('keydown', down);
+  }, []);
 
   const save = async () => {
     try {
@@ -297,7 +477,11 @@ function AnalysisScreen({
               {Renderer !== undefined && frame !== undefined ? (
                 <Renderer
                   frame={frame}
-                  interactive={false}
+                  interactive={sideLines && !pending}
+                  onAction={(action) => {
+                    const text = actionTextFor(model.game, action);
+                    if (text !== null) play([text]);
+                  }}
                   showCoordinates={coordinates}
                   heat={heat}
                   highlight={highlight}
@@ -307,17 +491,22 @@ function AnalysisScreen({
             <EvalBar report={available && engineOn ? report : null} />
           </div>
           <PlaybackBar
-            cursor={cursor}
-            last={last}
-            playing={playback.playing}
+            cursor={variation === null ? cursor : variation.cursor}
+            last={variation === null ? last : variation.moves.length}
+            playing={variation === null && playback.playing}
+            canPlay={variation === null && !pending}
             speed={playback.speed}
-            onGoto={goto}
-            onToggle={toggle}
+            onGoto={variation === null ? showFrame : showCursor}
+            onToggle={playback.toggle}
             onSpeed={playback.setSpeed}
           />
           {engine.chart !== null && (
             <div className="chart-row">
-              <EvalChart values={engine.chart.values} cursor={cursor} onGoto={goto} />
+              <EvalChart
+                values={engine.chart.values}
+                cursor={variation === null ? cursor : variation.from}
+                onGoto={showFrame}
+              />
             </div>
           )}
         </section>
@@ -338,20 +527,40 @@ function AnalysisScreen({
                 setLineCount(count);
                 writeLines(count);
               }}
-              ply={model.openingTurns + cursor}
+              ply={
+                model.openingTurns +
+                (variation === null ? cursor : variation.from + variation.cursor)
+              }
               onHover={setHovered}
+              onPick={
+                sideLines
+                  ? (line) => {
+                      setHovered(null);
+                      play(line);
+                    }
+                  : null
+              }
+              pickDisabled={pending}
               onKeep={engine.keep}
             />
           )}
           <section className="panel table">
             <AnalysisStrip model={model} seat={1} />
+            {variation !== null && (
+              <SideLine
+                model={model}
+                variation={variation}
+                onGoto={showCursor}
+                onBack={() => showFrame(variation.from)}
+              />
+            )}
             <AnalysisMoves
               model={model}
               shownTurn={shownTurn}
-              atLatest={cursor >= last}
+              atLatest={variation === null && cursor >= last}
               headline={text.headline}
               detail={endDetail}
-              onPick={(turn) => goto(frameAfterTurn(turn, model.openingTurns))}
+              onPick={(turn) => showFrame(frameAfterTurn(turn, model.openingTurns))}
             />
             <div className="controls">
               <button

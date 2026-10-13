@@ -170,6 +170,7 @@ Gate: the first version (steps A to C) works on the owner's Windows computer, th
 - [x] The search reports moves, win, draw and loss chances and lines, with bots' moves and speed unchanged
 - [x] An analysis engine built from the current code, streaming as it thinks
 - [x] Analysis panel: win, draw and loss bar, top moves with lines, heatmap on legal cells, keep thinking, evaluation chart filled in the background
+- [x] Side lines on the analysis board: one at a time, from an engine line or a move on the board (owner, 2026-10-13)
 
 ### E. Windows and runs from GitHub
 

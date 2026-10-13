@@ -4,6 +4,8 @@ interface Props {
   cursor: number;
   last: number;
   playing: boolean;
+  /** False in a side line, where there is nothing to play along. */
+  canPlay?: boolean;
   speed: number;
   onGoto: (frame: number) => void;
   onToggle: () => void;
@@ -11,7 +13,16 @@ interface Props {
 }
 
 /** The buttons under the board: first, previous, play or pause, next, last, and the speeds. */
-export function PlaybackBar({ cursor, last, playing, speed, onGoto, onToggle, onSpeed }: Props) {
+export function PlaybackBar({
+  cursor,
+  last,
+  playing,
+  canPlay = true,
+  speed,
+  onGoto,
+  onToggle,
+  onSpeed,
+}: Props) {
   const atStart = cursor <= 0;
   const atEnd = cursor >= last;
   return (
@@ -31,7 +42,7 @@ export function PlaybackBar({ cursor, last, playing, speed, onGoto, onToggle, on
         type="button"
         className="play"
         aria-label={playing ? 'Pause' : 'Play'}
-        disabled={last < 1}
+        disabled={last < 1 || !canPlay}
         onClick={onToggle}
       >
         {playing ? '❚❚' : '▶'}

@@ -1611,13 +1611,31 @@ html {
 }
 
 .engine-line {
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+/* The line's content, a button when the board can follow the line. */
+.engine-pick {
   display: grid;
   grid-template-columns: 62px minmax(0, 1fr);
   gap: 8px;
   align-items: baseline;
+  width: 100%;
   padding: 7px 12px;
-  border-bottom: 1px solid var(--line);
-  font-size: 13px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+button.engine-pick {
+  cursor: pointer;
+}
+
+button.engine-pick:disabled {
+  cursor: default;
 }
 
 .engine-line:last-child {
@@ -1705,4 +1723,73 @@ html {
   color: var(--bad);
   font-size: 11.5px;
   overflow-wrap: anywhere;
+}
+
+/* A side line on the analysis board: its moves (they wrap, and scroll past a few rows) and the way
+   back. It sits under the top player's strip and takes its room from the move list. */
+.sideline {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--panel-2);
+}
+
+.sideline-moves {
+  flex: 1;
+  min-width: 0;
+  max-height: 84px;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 4px;
+  font-family: var(--mono);
+  font-size: 13px;
+  position: relative;
+}
+
+.sideline-moves .n {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sideline-moves button {
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  padding: 2px 5px;
+  color: var(--fg-strong);
+  font: inherit;
+}
+
+.sideline-moves button:hover {
+  background: var(--panel);
+}
+
+.sideline-moves button.cur {
+  background: var(--accent-soft);
+  color: #fff;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.sideline-back {
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+  padding: 3px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.sideline-back:hover {
+  border-color: var(--accent);
+}
+
+.engine-pick:focus-visible,
+.sideline button:focus-visible {
+  outline-offset: -2px;
 }
