@@ -11,7 +11,7 @@ elo: +17.2 [+4.6, +29.8] at 20 ms
 pairs: 973
 full_time: +14.6 [-1.8, +31.1] over 500 pairs, 1 timeout in 1,000 games, 99.9% of answers within 92.1 ms
 decision: promoted
-cg_rank: pending
+cg_rank: not reported
 ---
 
 The owner's question was whether a timeout in 1 or 2 games out of 1,000

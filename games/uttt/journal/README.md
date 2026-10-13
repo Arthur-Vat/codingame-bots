@@ -5,7 +5,7 @@ One entry per experiment, failures included, so that ideas are not retried blind
 - **Entry:** `ENNN-short-name.md`, numbered in order, started from [template.md](template.md).
 - **Before the test:** the hypothesis, the change, and the candidate release the pull request adds.
 - **After the test:** the SPRT result from the pull request's comment, and the decision. A promoted experiment keeps the line naming its release, which CI requires; a dropped one says `none` there.
-- **After pasting:** the rank on CodinGame, reported by the owner.
+- **After pasting:** the rank on CodinGame, only when the owner reports one ([ADR 0036](../../../docs/adr/0036-ranks-optional.md)).
 
 ## Entries
 

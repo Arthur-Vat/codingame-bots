@@ -11,7 +11,7 @@ elo: +39.7 [+18.5, +61.3] at 20 ms
 pairs: 360
 full_time: +30.7 [+14.5, +46.9] over 500 pairs, no fault, slowest answer 88.7 ms
 decision: promoted
-cg_rank: pending
+cg_rank: not reported
 ---
 
 Where the time went, measured with callgrind on self-play games of

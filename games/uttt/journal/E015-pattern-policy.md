@@ -11,7 +11,7 @@ elo: +12.8 [+2.7, +23.0] at 20 ms
 pairs: 1746
 full_time: +5.6 [-11.1, +22.3] over 500 pairs, no timeout in 1,000 games, 99.9% of answers within 92.1 ms
 decision: promoted
-cg_rank: pending
+cg_rank: not reported
 ---
 
 The owner's request on 2026-10-08: use the bytes the bot leaves free

@@ -16,7 +16,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0006](0006-human-approves-merges.md) | A human approves every merge | Accepted; completed by 0023 |
 | [0007](0007-english.md) | English for all artifacts | Accepted |
 | [0008](0008-claude-hub.md) | A Claude conversation is the hub | Accepted |
-| [0009](0009-manual-submission.md) | Manual submission to CodinGame | Accepted |
+| [0009](0009-manual-submission.md) | Manual submission to CodinGame | Accepted; the rank reported after each submission superseded by 0036 |
 | [0010](0010-codingame-rust-toolchain.md) | Target CodinGame's Rust: 1.90.0, edition 2021 | Accepted |
 | [0011](0011-framework-structure.md) | Framework structure: text-protocol referees, reference rules, textual bundler | Accepted; the bundle's comments superseded by 0016 |
 | [0012](0012-evaluation.md) | Evaluation: SPRT on game pairs, seeded openings, frozen releases | Accepted; decision 7 superseded by 0013, part of decision 5 by 0015; decisions 10 and 12 completed by 0029 |
@@ -40,6 +40,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0033](0033-no-daily-scheduled-session.md) | No daily scheduled session | Accepted; the usage line of decision 3 superseded by 0034 |
 | [0034](0034-no-usage-monitoring.md) | No usage monitoring | Accepted |
 | [0035](0035-new-game-lifecycle.md) | A lifecycle for each new game | Accepted |
+| [0036](0036-ranks-optional.md) | CodinGame ranks are reported only when the owner wishes | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 
