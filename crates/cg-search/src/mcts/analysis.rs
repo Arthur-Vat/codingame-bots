@@ -8,6 +8,11 @@
 //! of it changes the random stream or what `search` does. The search counts
 //! the draws among its results (a result is a draw when its score is
 //! exactly 0.5) in a number kept by each node, updated like its value.
+//!
+//! `search` refers to this module in a few lines marked `#[cfg(feature =
+//! "analysis")]`: a field of the nodes and of the searcher, their initial
+//! values, a call that updates the draws and one that records whether the
+//! tree is at the root of the last search (see the `report` module).
 
 use super::{Mcts, Proof};
 use crate::budget::Budget;
@@ -103,7 +108,7 @@ impl<G: Game> Mcts<G> {
             mv: child.mv,
             visits: child.visits,
             score,
-            draws: Some(draws),
+            draws,
             proven,
             line,
         }

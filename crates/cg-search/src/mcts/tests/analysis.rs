@@ -97,7 +97,7 @@ fn the_report_lists_the_chosen_move_first_then_the_others_by_visits() {
         for mv in &report.moves {
             assert!((0.0..=1.0).contains(&mv.score));
             assert_eq!(mv.proven, None);
-            assert_eq!(mv.draws, Some(0.0), "nim has no draws");
+            assert_eq!(mv.draws, 0.0, "nim has no draws");
         }
     }
 }
@@ -218,11 +218,11 @@ fn proven_moves_score_one_or_zero() {
     assert_eq!(report.moves[0].mv, 1, "13 stones: take 1");
     assert_eq!(report.moves[0].score, 1.0);
     assert_eq!(report.moves[0].proven, Some(true));
-    assert_eq!(report.moves[0].draws, Some(0.0));
+    assert_eq!(report.moves[0].draws, 0.0);
     for mv in &report.moves {
         match mv.proven {
-            Some(true) => assert_eq!((mv.score, mv.draws), (1.0, Some(0.0))),
-            Some(false) => assert_eq!((mv.score, mv.draws), (0.0, Some(0.0))),
+            Some(true) => assert_eq!((mv.score, mv.draws), (1.0, 0.0)),
+            Some(false) => assert_eq!((mv.score, mv.draws), (0.0, 0.0)),
             None => assert!(mv.score > 0.0 && mv.score < 1.0, "{mv:?}"),
         }
     }
@@ -324,17 +324,16 @@ fn counted_draws_are_plausible() {
     let mut mcts = Mcts::new(1.0, 5);
     mcts.search(&table(), &[0, 1], iterations(3_000));
     let report = mcts.report(2).unwrap();
-    assert!(report.moves.iter().all(|m| m.draws.is_some()));
     let find = |mv: u32| report.moves.iter().find(|m| m.mv == mv).unwrap().clone();
     let (drawn, lost) = (find(0), find(1));
-    assert!(drawn.draws.unwrap() > 0.8, "{drawn:?}");
-    assert!(lost.draws.unwrap() < 0.2, "{lost:?}");
+    assert!(drawn.draws > 0.8, "{drawn:?}");
+    assert!(lost.draws < 0.2, "{lost:?}");
     assert!(drawn.score > 0.5 && drawn.score < 0.7, "{drawn:?}");
     assert!(lost.score < 0.1, "{lost:?}");
     for mv in &report.moves {
         // Results are wins, draws and losses: draws cannot exceed what the
         // score leaves room for (a little slack for rounding to f32).
-        let draws = mv.draws.unwrap();
+        let draws = mv.draws;
         assert!(draws <= 2.0 * mv.score + 1e-4, "{mv:?}");
         assert!(draws <= 2.0 * (1.0 - mv.score) + 1e-4, "{mv:?}");
     }
@@ -343,12 +342,12 @@ fn counted_draws_are_plausible() {
     mcts.think(&Choice { played: false }, iterations(300));
     for mv in mcts.report(1).unwrap().moves {
         assert!((mv.score - 0.5).abs() < 1e-6, "{mv:?}");
-        assert!((mv.draws.unwrap() - 1.0).abs() < 1e-6, "{mv:?}");
+        assert!((mv.draws - 1.0).abs() < 1e-6, "{mv:?}");
     }
     // A game without draws.
     let mut mcts = Mcts::new(1.0, 3);
     mcts.think(&nim(30), iterations(500));
     for mv in mcts.report(1).unwrap().moves {
-        assert_eq!(mv.draws, Some(0.0));
+        assert_eq!(mv.draws, 0.0);
     }
 }

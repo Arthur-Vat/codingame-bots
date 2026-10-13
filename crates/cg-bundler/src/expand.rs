@@ -35,7 +35,14 @@ fn expand_file(path: &Path, owns_directory: bool) -> Result<String, String> {
     let mut marked: Option<usize> = None;
     for (index, line) in source.lines().enumerate() {
         let trimmed = line.trim();
-        if marked.take().is_some() {
+        if let Some(marker) = marked.take() {
+            if let Err(reason) = check_marked_line(trimmed) {
+                return Err(format!(
+                    "{}:{marker}: {ANALYSIS_CFG} must be followed by one plain line \
+                     of code, but {reason}",
+                    path.display()
+                ));
+            }
             continue;
         }
         if trimmed == ANALYSIS_CFG {
@@ -97,6 +104,45 @@ fn expand_file(path: &Path, owns_directory: bool) -> Result<String, String> {
         ));
     }
     Ok(out)
+}
+
+/// Whether `line` (trimmed), which follows an analysis marker, is one plain
+/// line of code that can be dropped alone: not blank, not an attribute or
+/// another marker, not a comment, and with balanced brackets, so that it
+/// does not open something that continues on the next lines. The bundler
+/// reads lines, not Rust: a marker inside a string literal is not told apart,
+/// and brackets inside strings and characters count.
+fn check_marked_line(line: &str) -> Result<(), &'static str> {
+    if line.is_empty() {
+        return Err("the line is blank");
+    }
+    if line.starts_with('#') {
+        return Err("the line is an attribute");
+    }
+    if line.starts_with("//") || line.starts_with("/*") {
+        return Err("the line is a comment");
+    }
+    let mut open = Vec::new();
+    for c in line.chars() {
+        match c {
+            '(' | '[' | '{' => open.push(c),
+            ')' | ']' | '}' => {
+                let expected = match c {
+                    ')' => '(',
+                    ']' => '[',
+                    _ => '{',
+                };
+                if open.pop() != Some(expected) {
+                    return Err("the line closes a bracket it does not open");
+                }
+            }
+            _ => {}
+        }
+    }
+    if !open.is_empty() {
+        return Err("the line opens a bracket it does not close");
+    }
+    Ok(())
 }
 
 fn push_line(out: &mut String, line: &str) {

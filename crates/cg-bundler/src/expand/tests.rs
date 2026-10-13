@@ -233,3 +233,63 @@ fn an_analysis_line_must_mark_a_line_and_not_follow_cfg_test() {
     let error = expand_crate(&stacked.join("src/lib.rs")).unwrap_err();
     assert!(error.contains("cannot follow"), "{error}");
 }
+
+/// The error of expanding a crate whose `lib.rs` is `source`.
+fn analysis_error(source: &str) -> String {
+    let dir = crate_dir(&[("src/lib.rs", source)]);
+    expand_crate(&dir.join("src/lib.rs")).unwrap_err()
+}
+
+#[test]
+fn a_marker_must_precede_one_plain_line_of_code() {
+    for (after_marker, reason) in [
+        ("\n", "blank"),
+        ("   \n", "blank"),
+        ("#[inline]\n    fn one() {}\n", "attribute"),
+        (&format!("{ANALYSIS}\n    *x += 1;\n"), "attribute"),
+        ("// a comment\n    *x += 1;\n", "comment"),
+        ("/// a doc comment\n    fn one() {}\n", "comment"),
+        ("/* a comment */ *x += 1;\n", "comment"),
+        ("fn opens() {\n    *x += 1;\n}\n", "opens a bracket"),
+        ("let v = [\n    1,\n];\n", "opens a bracket"),
+        ("}\n", "closes a bracket"),
+        ("(a, b]\n", "closes a bracket"),
+    ] {
+        let error = analysis_error(&format!("fn a() {{}}\n{ANALYSIS}\n{after_marker}"));
+        assert!(
+            error.contains("lib.rs:2")
+                && error.contains("one plain line")
+                && error.contains(reason),
+            "{after_marker:?}: {error}"
+        );
+    }
+    // Plain lines are accepted: items, fields, statements, brackets that
+    // close on the line.
+    for plain in [
+        "mod analysis;",
+        "pub use report::{MoveReport, Report};",
+        "draws: f32, // the share of draws",
+        "record(&mut node.draws, [1, 2][0], {3});",
+    ] {
+        let dir = crate_dir(&[(
+            "src/lib.rs",
+            &format!("{ANALYSIS}\n{plain}\nfn kept() {{}}\n"),
+        )]);
+        let source = expand_crate(&dir.join("src/lib.rs")).unwrap();
+        assert_eq!(source, "fn kept() {}\n", "{plain}");
+    }
+}
+
+#[test]
+fn a_marker_inside_a_string_literal_is_not_told_apart_from_code() {
+    // The bundler reads lines, not Rust: it cannot know that this marker is
+    // text. This is why the markers belong on lines of code, and why the
+    // documentation asks for that rather than promising to catch it.
+    let source = format!("fn a() -> &'static str {{\n    \"x\n{ANALYSIS}\ny\"\n}}\n");
+    let dir = crate_dir(&[("src/lib.rs", &source)]);
+    let expanded = expand_crate(&dir.join("src/lib.rs")).unwrap();
+    assert_eq!(expanded, "fn a() -> &'static str {\n    \"x\n}\n");
+    // Where what follows is not a plain line, the marker is rejected.
+    let source = format!("fn a() -> &'static str {{\n    \"x\n{ANALYSIS}\n\ny\"\n}}\n");
+    assert!(analysis_error(&source).contains("blank"));
+}

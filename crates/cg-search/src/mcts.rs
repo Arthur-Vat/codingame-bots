@@ -27,15 +27,6 @@
 //! and selection adds `prior_weight · prior / (visits + 1)` to each
 //! child's bound, a bias that fades as the child is visited (progressive
 //! bias). Without priors, children are tried in random order.
-//!
-//! With the crate's `analysis` feature, which bots do not use (the bundler
-//! drops the lines marked `#[cfg(feature = "analysis")]`), the search can
-//! also describe what it knows without changing what it does: `report`
-//! gives every root move's visits, average score, draws, proof and most
-//! likely line, and `think` keeps iterating on one position, with no
-//! minimum of iterations and without playing a winning move at once, for an
-//! analysis that wants to see the whole root. The code is in the `analysis`
-//! module; this file holds only the few lines that it needs.
 
 use std::sync::OnceLock;
 
@@ -94,9 +85,8 @@ struct Node<M> {
     prior: f32,
     /// `prior_weight · prior / (visits + 1)`, kept for selection.
     bias: f32,
-    // Analysis only: the share of the visits' results that were draws.
     #[cfg(feature = "analysis")]
-    draws: f32,
+    draws: f32, // the share of the visits' results that were draws
 }
 
 /// What a search found.
@@ -139,9 +129,8 @@ pub struct Mcts<G: Game> {
     weights: Vec<f32>,
     ranked: Vec<(f32, G::Move)>,
     path: Vec<u32>,
-    // Analysis only: whether the tree is at the root of the last search.
     #[cfg(feature = "analysis")]
-    current: bool,
+    current: bool, // whether the tree is at the root of the last search
     /// [`sqrt_ln_table`], shared by all searches.
     sqrt_ln: &'static [f64],
 }
