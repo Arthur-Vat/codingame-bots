@@ -1409,12 +1409,13 @@ td .res + .tag {
     flex-wrap: nowrap;
   }
 
-  /* The chart is under the playback bar, where the page may scroll to it. */
+  /* The chart is under the playback bar, where the page may scroll to it. The gap keeps it out of
+     the window: the page's bottom padding (16 px) is below the bar, and the chart starts past it. */
   .chart-row {
     grid-column: 2;
     grid-row: 3;
     justify-self: center;
-    margin-top: 12px;
+    margin-top: 24px;
   }
 
   /* The side panels take the board's height and no more (their content does not size the row),

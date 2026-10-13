@@ -136,7 +136,7 @@ describe('the chart', () => {
     const { runner, last } = setup(engine);
     runner.start('k', 'uttt', requests(3));
     await vi.advanceTimersByTimeAsync(0);
-    const [{ id }] = engine.started as [{ id: string }];
+    const id = engine.started[0]!.id;
     runner.stop();
     engine.finish(id, { wdl: [0.9, 0, 0.1] });
     await vi.advanceTimersByTimeAsync(1000);
