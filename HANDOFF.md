@@ -4,16 +4,15 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- #109 (phase 6 done, agentic checks ticked), #110 (ADR 0033, no daily scheduled session; stacked on #109), #111 (exact 64-bit seeds) and #112 (dev notice when no server): all green and reviewed, asked 2026-10-13. Merge #109 before #110.
 - The owner deletes the scheduled task "CodinGame bots: daily report" in the Claude app (sessions cannot see it), asked 2026-10-13.
 
 ## Open questions
 
-- "Remove the daily report": answered in the conversation, 2026-10-13: "Option b" (stop the daily report itself); #110.
 - Phase 5 step D, the phase 7 second game and watching the first release after the CI changes: later (owner, 2026-10-13).
 
 ## Follow-ups
 
+- Merged 2026-10-13 on the owner's approval in the chat ("Merge #109, then #110, #111, #112"): phase 6 done (#109), ADR 0033 no daily scheduled session (#110), exact 64-bit seeds (#111), dev notice without a server (#112).
 - **Phase 6 step F merged** (2026-10-11): ADR 0030 (#88), the rules in WebAssembly with studio-core (#89), the browser engine (#90), Pages deployment and license notices (#91), on the owner's approvals in the chat. Follow-ups noted by reviews: the front end parses and re-stringifies records on export/import, which can lose 64-bit seed digits (both engines); `npm run dev` without a local server silently uses the browser engine; the WebAssembly files are built twice in CI's front-end job; `actions/deploy-pages@v4` targets the deprecated Node 20 (move to a newer major when one exists).
 - **Arena games done** (ADR 0031; #92 to #95 merged 2026-10-12 on the owner's approvals in the chat). The archive `arena-games-uttt` (544 games, expires 2027-01-10) is published at https://arthur-vat.github.io/codingame-bots/ (History, "Arena games"). Watch the first release after this: the workflow_run path (league sample + the release branch's SPRT sample) has only been proved read-only. Follow-ups: the review page shows 64-bit seeds rounded (JavaScript numbers), and the front end's file import/export re-serialises records (both pre-existing; arena records are kept as text); scheduled workflows stop after 60 days without commits in a public repository.
 - **Step G (interface) done** (2026-10-12): G1 (#96), G2 (#97), G3 (#99) merged on the owner's approvals in the chat. G3 as the owner changed it (2026-10-12; the paced display, #98, closed): a game between two bots is shown once it is played: an empty board with a spinner (no veil) while the bots play, Save and Export disabled until the end, then its review in place on the first frame, paused (`src/botGame.ts`, `PlayingOverlay.tsx`); think times unchanged (no 5 s or 10 s wanted). Keep the test "the review keeps its board where the game page has it". E2e tip: the hidden Play tab stays in the DOM, so locators use `filter({ visible: true })`. Step F follow-ups (Firefox, 64-bit seeds on import/export) later, separately (owner, 2026-10-12).
