@@ -19,6 +19,7 @@ mod data;
 mod duel;
 mod fit;
 mod head_start;
+mod nnue_fit;
 mod patterns_fit;
 mod selfplay;
 mod value_fit;
@@ -39,6 +40,17 @@ enum SizeArg {
     /// 128 then 32 units, about 32,000 parameters.
     #[value(name = "128-32")]
     Large,
+}
+
+/// The NNUE's accumulator width.
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+enum WidthArg {
+    #[value(name = "128")]
+    W128,
+    #[value(name = "256")]
+    W256,
+    #[value(name = "512")]
+    W512,
 }
 
 /// What the value network learns.
@@ -269,6 +281,47 @@ enum Command {
         #[arg(long, default_value = "local run")]
         origin: String,
     },
+    /// Trains the NNUE of `uttt_engine::nnue` on self-play games and writes
+    /// it quantized and packed.
+    FitNnue {
+        /// Data files written by `selfplay`.
+        #[arg(long = "data", required = true)]
+        data: Vec<PathBuf>,
+        /// The accumulator's width.
+        #[arg(long, value_enum, default_value_t = WidthArg::W256)]
+        width: WidthArg,
+        /// Passes over the fitted positions.
+        #[arg(long, default_value_t = 8)]
+        epochs: u32,
+        /// Positions per gradient step.
+        #[arg(long, default_value_t = 1024)]
+        batch: usize,
+        /// Adam's step size at the start; it falls to a twentieth of it.
+        #[arg(long, default_value_t = 0.001)]
+        rate: f32,
+        /// What the network learns: the game's result, the search's root
+        /// score, or their average.
+        #[arg(long, value_enum, default_value_t = TargetArg::Result)]
+        target: TargetArg,
+        /// Threads [default: one per core].
+        #[arg(long)]
+        threads: Option<usize>,
+        /// Seed of the starting weights and the order of positions.
+        #[arg(long, default_value_t = 1)]
+        seed: u64,
+        /// Held-out positions, spread evenly, of the report's second table.
+        #[arg(long, default_value_t = 50_000)]
+        compared_positions: usize,
+        /// Where to write the weights, as a Rust module of packed characters.
+        #[arg(long)]
+        weights_out: Option<PathBuf>,
+        /// Where to write the report, in Markdown.
+        #[arg(long)]
+        report_out: Option<PathBuf>,
+        /// Where the data came from, for the generated files.
+        #[arg(long, default_value = "local run")]
+        origin: String,
+    },
 }
 
 fn main() -> ExitCode {
@@ -441,6 +494,41 @@ fn main() -> ExitCode {
             },
             duel_shares,
             duel_exploration,
+            weights_out,
+            report_out,
+            origin,
+        }),
+        Command::FitNnue {
+            data,
+            width,
+            epochs,
+            batch,
+            rate,
+            target,
+            threads,
+            seed,
+            compared_positions,
+            weights_out,
+            report_out,
+            origin,
+        } => nnue_fit::fit(&nnue_fit::Options {
+            data,
+            width,
+            training: value_fit::Training {
+                epochs,
+                batch: batch.max(1),
+                rate,
+                penalty: 0.0,
+                target: match target {
+                    TargetArg::Result => value_fit::Target::Result,
+                    TargetArg::Score => value_fit::Target::Score,
+                    TargetArg::Mix => value_fit::Target::Mix,
+                },
+                threads: threads
+                    .unwrap_or_else(|| std::thread::available_parallelism().map_or(1, usize::from)),
+                seed,
+            },
+            compared_positions,
             weights_out,
             report_out,
             origin,

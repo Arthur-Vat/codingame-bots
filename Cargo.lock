@@ -440,6 +440,8 @@ name = "uttt-trainer"
 version = "0.0.0"
 dependencies = [
  "cg-core",
+ "cg-pack",
+ "cg-packer",
  "cg-search",
  "clap",
  "uttt-engine",

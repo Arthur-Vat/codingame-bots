@@ -57,7 +57,7 @@ An efficiently updatable network. Its first layer, the accumulator, changes by a
 
    Items 1 and 2 are in `uttt_engine::nnue` (inputs keep the cells of closed boards, so a move only adds features): quantized inference with incremental accumulators, byte layout and arithmetic in the module's documentation.
 3. **Data:** positions from self-play of the current bot, labelled with the game's result, read with all eight symmetries. The write-up used 300 million positions. The Train workflow gave 80 million from 2 million games in one run; how many runs is the owner's call.
-4. **Trainer:** fit the NNUE and export it quantized and packed.
+4. **Trainer:** fit the NNUE and export it quantized and packed. Done by `uttt-trainer fit-nnue` and the Train workflow's `nnue` stage (the split and the held-out measurements are those of `fit-value`, so the gate's numbers are comparable).
 
 Gate: on held-out positions, a lower error than run 37814220623's network. The cost of an update and of an evaluation is measured in the engine's speed example.
 
