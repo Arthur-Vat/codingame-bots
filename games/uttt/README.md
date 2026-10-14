@@ -2,7 +2,7 @@
 
 CodinGame's [Ultimate Tic-Tac-Toe](https://www.codingame.com/multiplayer/bot-programming/tic-tac-toe) is the first game of this framework ([ADR 0005](../../docs/adr/0005-first-game-uttt.md)). The rules, protocol and time limits are in [RULES.md](RULES.md).
 
-**Status:** Legend league on CodinGame since 2026-10-07; 59th with `uttt-v008` on 2026-10-08, the last rank recorded. **Current release:** [`uttt-v010`](releases/uttt-v010.rs) (E015, a pattern policy). Strength work resumed on 2026-10-14 with the NNUE plan of [ROADMAP.md](ROADMAP.md).
+**Status:** Legend league on CodinGame since 2026-10-07; 59th with `uttt-v008` on 2026-10-08, the last rank recorded. **Current release:** [`uttt-v011`](releases/uttt-v011.rs) (E017, an NNUE judges the search's leaves). Strength work resumed on 2026-10-14 with the NNUE plan of [ROADMAP.md](ROADMAP.md).
 
 ## Layout
 
