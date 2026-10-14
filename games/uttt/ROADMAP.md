@@ -25,7 +25,7 @@ Iteration is paused. When the owner resumes it, each experiment follows "An expe
 
 ## Plan for iteration
 
-Proposed on 2026-10-14 from the write-up of a player at the top of the arena, Tom Alard ([research](research/README.md#sources)). Not started. Strength work stays paused until the owner resumes it, and each step that runs experiments or training waits for his go-ahead. Each change to the bot is one experiment: a journal entry, a candidate release and an SPRT.
+Proposed on 2026-10-14 from the write-up of a player at the top of the arena ([research](research/README.md#sources)). Not started. Strength work stays paused until the owner resumes it, and each step that runs experiments or training waits for his go-ahead. Each change to the bot is one experiment: a journal entry, a candidate release and an SPRT.
 
 **Where we stand.** The bot is MCTS with playouts, guided by a small learned policy. `uttt-v008` reached 59th place. The write-up says this design reaches about the top 50 with excellent speed work, and that the top bots evaluate positions with a network instead. Its TrueSkill gap of about 9 between the first and the 50th means the first is expected to win over 90% of their games against each other. Our value network did not beat the playouts ([E012](journal/E012-value-network.md); run [37814220623](training/runs/37814220623/report.md) only tied them when mixed half and half). Three things differ from the write-up's network:
 
