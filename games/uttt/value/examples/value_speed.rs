@@ -16,8 +16,8 @@
 //! (`uttt_value`): the side to move's marks and the opponent's in
 //! each open small board, who won each closed board, the board it is sent
 //! to, and each side's threats. Hidden layers use clipped ReLU, the output a
-//! sigmoid: the side to move's expected score. Sizes other than the
-//! engine's are written here; the last row times the engine's own
+//! sigmoid: the side to move's expected score. Sizes other than
+//! `uttt-value`'s are written here; the last row times its own
 //! `ValueNetwork`.
 
 use std::time::{Duration, Instant};
