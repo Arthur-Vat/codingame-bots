@@ -339,7 +339,7 @@ pub struct Epoch {
 
 /// Trains from `parameters` on `fitted`, measuring on `held_out` after each
 /// epoch, and calls `report` then. `settings.penalty` weighs an L2 penalty
-/// as in `value_fit`.
+/// as in `value_fit`; `fit-nnue` sets it to 0.
 pub fn train<const N: usize>(
     mut parameters: Vec<f32>,
     fitted: &(impl Examples + ?Sized),
@@ -357,7 +357,8 @@ pub fn train<const N: usize>(
     let total_steps = (steps_per_epoch * settings.epochs as usize).max(1);
     let mut step: u32 = 0;
     let mut gradients = vec![vec![0.0f32; count]; threads];
-    let mut order: Vec<u32> = (0..fitted.len() as u32).collect();
+    let fitted_count = u32::try_from(fitted.len()).expect("fewer than 2^32 positions to fit");
+    let mut order: Vec<u32> = (0..fitted_count).collect();
     let mut training_seconds = 0.0;
     for number in 1..=settings.epochs {
         let start = Instant::now();
