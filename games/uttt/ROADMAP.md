@@ -74,9 +74,9 @@ The held-out error was still falling at the eighth epoch. The packed network tak
 
 One experiment each, judged by the SPRT.
 
-Room: the pattern policy's weights are packed and the value network is out of the engine, so the MCTS bot's bundle (`uttt-mcts`, with `uttt_engine::nnue`) takes 63,182 characters. A packed network of 27,264 characters leaves 9,554 of the 100,000.
+Room: the pattern policy's weights are packed and the value network is out of the engine, so the MCTS bot's bundle (`uttt-mcts`, with `uttt_engine::nnue`) took 63,182 characters before E017. With the network and `NnueBoard`, `uttt-v011` takes 91,929, leaving 8,071 of the 100,000 for steps C2 to C4.
 
-1. **MCTS with the network at the leaves**, accumulators built from scratch: the baseline for the next steps.
+1. **MCTS with the network at the leaves**, accumulators built from scratch: the baseline for the next steps. Done: [E017](journal/E017-nnue-leaves.md), `uttt-v011`, +38.0 Elo [+17.2, +59.0] against `uttt-v010` at CodinGame's limits (exploration 0.3; the pattern policy still orders children).
 2. **"jacekmax"**, named after the CodinGame player jacek, who made it popular. When the search reaches a leaf, it expands all its children at once. It builds the leaf's accumulator once and evaluates each child with an incremental update. It then backs up the minimax value of the children instead of one result. The write-up keeps accumulator checkpoints at nodes with many visits.
 3. **Selection on the average of backed-up values,** mixed with the minimax value by a weight. In the write-up, the best weight drifted to the average alone as the bot got stronger; its author does not know why. Screen the weight locally first.
 4. **Exploration constant and time budget,** tuned again for the new search.

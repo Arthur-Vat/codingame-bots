@@ -6,11 +6,11 @@ parent: uttt-v010
 hypothesis: An NNUE that predicts results better than the old value network (step B's gate) judges the search's new leaves better than the pattern policy's playouts, so the bot is stronger at CodinGame's limits.
 change: The MCTS bot searches `NnueBoard`: each new leaf gets the NNUE's estimate (accumulators built from scratch) instead of a playout, the pattern policy still orders each node's children, exploration 0.3 instead of 0.5.
 release: uttt-v011
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +38.0 [+17.2, +59.0] at CodinGame's limits
+pairs: 372
+full_time: +38.0 [+17.2, +59.0] (the SPRT's own, ADR 0020), no timeout in 744 games, 99.9% of answers within 92.7 ms
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -31,4 +31,24 @@ Screening against `uttt-v010` in the arena (4-ply openings, seed 1, 3 games at a
 
 Unlike E012's network, this one keeps its lead at full time. Iterations per 90 ms turn, averaged over 4 full-time games: 66,000 early, 38,000 in the middle and 83,000 late for the candidate, against 54,000, 69,000 and 74,000 for v010. Mid-game evaluations cost more than the short playouts there; step C2's incremental updates target that.
 
-The SPRT result goes here.
+SPRT at CodinGame's limits ([run 38575778146](https://github.com/Arthur-Vat/codingame-bots/actions/runs/38575778146), at 460259c):
+
+```
+Candidate: uttt-v011. Baseline: uttt-v010.
+Settings: time scale 1, tolerance 0 ms, opening plies 4, seed 1, timeouts allowed in up to 1% of games.
+
+Smoke test against uttt-random: 200 wins, 0 draws, 0 losses over 100 pairs; no faults.
+
+SPRT against uttt-v010:
+uttt-v011 vs uttt-v010: 744 games, 372 complete pairs
+  uttt-v011: 334 wins, 157 draws, 253 losses (score 55.4%)
+  Elo of uttt-v011 over uttt-v010: +38.0 [+17.2, +59.0] (95%, from pairs)
+  pairs by uttt-v011's points (0, 1/2, 1, 3/2, 2): [37, 44, 159, 65, 67]
+  uttt-v011 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  uttt-v010 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  answers after the first (median, 99%, 99.9%): uttt-v011 90.1, 90.8, 92.7 ms; uttt-v010 90.1, 90.7, 92.9 ms
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 2.97 (bounds -2.94, 2.94) after 372 pairs
+Verdict: ACCEPTED: uttt-v011 is stronger than uttt-v010
+```
+
+The largest gain at full time since E011 (+95.4), from the first network the bot keeps. It is smaller than the screening's +70, which had only 50 pairs. Next: step C2, incremental updates of the accumulators.
