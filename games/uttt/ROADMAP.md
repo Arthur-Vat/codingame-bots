@@ -38,7 +38,7 @@ Proposed on 2026-10-14 from the write-up of a player at the top of the arena ([r
 The networks below do not fit as base64 beside the bot's code: `uttt-v010` already takes 77,026 of the 100,000. [Packing into characters](../../docs/research/utf16-packing.md) gives about 2.6 times as much room.
 
 1. **Probe on CodinGame (the owner): done 2026-10-14.** A Rust bot of 95,713 characters and 125,475 bytes was accepted at submission, its packed data intact ([CODINGAME.md](../../docs/CODINGAME.md#submission-limits)). The processor has AVX2, but CodinGame does not compile for it.
-2. **Decision and ADR (the owner):** `scripts/cg-check.sh` counts UTF-16 units instead of bytes.
+2. **Decision and ADR (the owner): done 2026-10-14.** `scripts/cg-check.sh` counts UTF-16 units instead of bytes, at 100,000 (ADR 0037, pull request #120).
 3. **Tools, all in Rust (owner, 2026-10-14):** an encoder in the trainer, a decoder that bots share, and a round-trip test.
 4. **If more room is needed:** the bundler removes indentation ([ADR 0016](../../docs/adr/0016-self-play-training.md), point 4).
 
@@ -87,8 +87,7 @@ The write-up's bot is a Python file that writes and runs a compiled C program. T
 
 ## Open questions
 
-- Resume strength work with the plan above? (proposed 2026-10-14)
-- Step A2: count UTF-16 units instead of bytes in `cg-check.sh`, at 100,000? (proposed 2026-10-14, after the probe)
+- Resume strength work with the plan above? Answered 2026-10-14: not yet.
 
 ## Decisions
 
