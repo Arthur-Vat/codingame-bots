@@ -132,3 +132,18 @@ fn a_module_needs_a_constants_name() {
         assert!(rust_module(&[1], name, "x").is_ok(), "{name:?}");
     }
 }
+
+#[test]
+fn the_format_stays_the_one_codingame_accepted() {
+    // Every byte value, packed. The expected hash was taken from this
+    // encoder; the research note's decoder, the one of the probe CodinGame
+    // accepted, reads that output back (checked 2026-10-14).
+    // A change to the alphabet, the byte order, the length or the padding,
+    // on both sides at once, changes it.
+    let packed = pack(&(0..=255).collect::<Vec<u8>>());
+    let hash = packed.bytes().fold(0xCBF2_9CE4_8422_2325u64, |hash, byte| {
+        (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01B3)
+    });
+    assert_eq!(packed.chars().count(), 3 * BLOCK_CHARS);
+    assert_eq!(hash, 14_360_896_311_314_249_363);
+}

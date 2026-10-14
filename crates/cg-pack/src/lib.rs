@@ -42,6 +42,10 @@ pub fn in_alphabet(c: u32) -> bool {
 /// encoder: a length that is not a whole number of blocks, a character
 /// outside the alphabet, a block of 2^1016 or more, a length beyond the
 /// blocks, or padding that is not zero or fills a whole block.
+///
+/// Each call builds a table of 65,536 ranks (256 KB), which takes a fraction
+/// of a millisecond: a bot calls it once at start, with all its data packed
+/// together.
 pub fn unpack(packed: &str) -> Option<Vec<u8>> {
     let mut rank = vec![u32::MAX; 0x10000];
     let mut next = 0;

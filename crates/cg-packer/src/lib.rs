@@ -20,7 +20,7 @@ pub fn pack(data: &[u8]) -> String {
         .filter(|&c| in_alphabet(c))
         .map(|c| char::from_u32(c).expect("the alphabet has no surrogates"))
         .collect();
-    debug_assert_eq!(alphabet.len(), BASE as usize);
+    assert_eq!(alphabet.len(), BASE as usize, "cg-pack's alphabet and BASE");
 
     let mut bytes = Vec::with_capacity(data.len() + 4 + BLOCK_BYTES);
     bytes.extend_from_slice(&len.to_le_bytes());
