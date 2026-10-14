@@ -10,7 +10,8 @@ The CodinGame forum and the conference pages below could not be opened from Clau
 | --- | --- | --- |
 | This repository's [journal](../journal/README.md), E001 to E016 | our experiments | Which ideas gained strength here and which did not (below) |
 | [ADR 0017](../../../docs/adr/0017-value-network.md) to [ADR 0019](../../../docs/adr/0019-value-network-gate-at-time.md) | our decisions | How the value network was judged, and why it lost at the bot's time budget |
-| [uttt.ai](https://github.com/ar-nowaczynski/utttai) (Apache 2.0), its README read on 2026-10-13 | player's code and write-up | An AlphaZero-like bot for the browser: a policy-value network of about 5 million parameters guiding MCTS, trained in two rounds of self-play of about 8 million positions each; its author reports the second network beating plain MCTS that runs about 10,000 times more simulations. Such a network does not fit in a 100,000-byte bot |
+| [Fighting for #1 in the Ultimate Tic-Tac-Toe Arena](https://tomalard.github.io/posts/fighting-for-1-in-the-ultimate-tic-tac-toe-arena/), 2026-09-20, read on 2026-10-14 | write-up of the player second at the time | MCTS with random playouts reaches about the top 50, and a TrueSkill gap of about 9 separates the first from the 50th. The top bots evaluate with an NNUE: (189 → 1,024) × 2 → 10, inputs from the side to move, the next small board as 10 output buckets, about 215,000 parameters fitted on 300 million self-play positions. Its search is "jacekmax" (MCTS that expands every child of a leaf and backs up the minimax value), then selection on the average of backed-up values; MrSubZero, third, uses alpha-beta with an NNUE, and the author's own alpha-beta stalled at 40% against their MCTS. X wins about 73% of its self-play games, O 3.5%, with 23.5% draws. Plan in [ROADMAP.md](../ROADMAP.md#plan-for-iteration); packing in [utf16-packing.md](../../../docs/research/utf16-packing.md) |
+| [uttt.ai](https://github.com/ar-nowaczynski/utttai) (Apache 2.0), its README read on 2026-10-13 | player's code and write-up | An AlphaZero-like bot for the browser: a policy-value network of about 5 million parameters guiding MCTS, trained in two rounds of self-play of about 8 million positions each; its author reports the second network beating plain MCTS that runs about 10,000 times more simulations. Such a network does not fit in a bot of 100,000 characters |
 | [Forum thread of the game](https://forum.codingame.com/t/ultimate-tic-tac-toe-puzzle-discussion/22616) | forum, not read | Reported by the search: Legend bots use MCTS with a solver, tree reuse, a lowered exploration constant and a one-move win check in playouts; speed tricks matter |
 | [Ultimate Tic-Tac-Toe Bot Techniques](https://journals.flvc.org/FLAIRS/article/view/130698), FLAIRS 2022 | paper, not read | Reported by the search: compares random play, a heat map, MCTS and an AlphaZero-like method, the last one strongest |
 
@@ -21,6 +22,7 @@ The CodinGame forum and the conference pages below could not be opened from Clau
 - **Exact knowledge at the end:** proving wins and losses in the tree helped ([E003](../journal/E003-solver.md)); proving draws did not ([E009](../journal/E009-draw-proofs.md)).
 - **Better playouts:** taking a game-winning move when there is one ([E005](../journal/E005-decisive-playouts.md)), then a small learned policy for the first moves ([E011](../journal/E011-playout-policy.md), [E015](../journal/E015-pattern-policy.md)) and to order the tree's children ([E014](../journal/E014-tree-priors.md)).
 - **Networks:** a large network is the strongest approach outside CodinGame's limits (uttt.ai), but a value network small enough for the file lost to playouts at the bot's time budget ([E012](../journal/E012-value-network.md)).
+- **At the top of the arena (2026-10-14):** an NNUE, a network updated incrementally as moves are played, with MCTS that expands every child of a leaf, or with alpha-beta. Its weights are packed into characters outside ASCII to fit the file (the write-up above).
 
 ## Candidate approaches
 
@@ -32,6 +34,8 @@ As they would have been ranked before the first bot, knowing the engine's speed 
 | 2 | MCTS guided by small learned weights (policy for playouts and priors) | Higher, once the first is fast | Medium: self-play and training ([ADR 0016](../../../docs/adr/0016-self-play-training.md)) | Weights of a few kilobytes fit the file |
 | 3 | Alpha-beta with a hand-written evaluation | Medium | Medium | Moderate branching, but a good evaluation is hard to write for this game |
 | 4 | A policy-value network | Highest outside CodinGame | High | Too large for the file; even a small value network lost at the bot's time budget (E012) |
+
+Since the write-up of 2026-10-14, an NNUE with a search built for it ranks first for going past where MCTS with playouts stops (about the top 50). Its plan is in [ROADMAP.md](../ROADMAP.md#plan-for-iteration).
 
 ## Proposal for the bake-off
 

@@ -117,4 +117,4 @@ What the same probe found about CodinGame's compiler and processor is in [CODING
 
 ## Games that use it
 
-None yet.
+None yet. Ultimate Tic-Tac-Toe's plan needs it for an NNUE ([games/uttt/ROADMAP.md](../../games/uttt/ROADMAP.md#plan-for-iteration), step A).
