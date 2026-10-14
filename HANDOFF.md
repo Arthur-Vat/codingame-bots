@@ -4,7 +4,8 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-None.
+- #123 `feat(uttt): NNUE evaluation in the engine` (head 73cab5a) and, stacked on it, #124 `feat(uttt,workflows): fit the NNUE in the trainer and the Train workflow` (head da2b268): reviewed, CI green; asked 2026-10-14 whether to merge (order: #123, then #124).
+- Where run 38562652097's weights live (asked 2026-10-14): the report is kept off `main` so that Prune branches keeps `claude/train/38562652097` (ADR 0021 prunes once the report is on main), and the data to refit expires 2026-10-15; step C1 would bring report and weights in the bot.
 
 ## Open questions
 
@@ -13,7 +14,7 @@ None.
 
 ## Follow-ups
 
-- **Step B (NNUE) in progress** (2026-10-14). #123 `feat(uttt): NNUE evaluation in the engine` (`claude/uttt-nnue-engine`, head 73cab5a): reviewed (bot + rules), fixes in, CI green, to put to the owner. Stacked on it, `claude/uttt-nnue-trainer` (head 84294b7, reviewed deep, nits fixed; no pull request yet): `uttt-trainer fit-nnue`, Train stage `nnue`, input `width`. Train run 38562652097 (stage nnue, data of run 37814220623, width 256, 8 epochs) started 12:17 UTC on that branch, data downloaded, so the expiry no longer matters for it. When it ends: add its report to `games/uttt/training/runs/38562652097/` with a row in training/README.md, judge the gate, open the trainer pull request. Gate: rounded NNUE beats run 37814220623's rounded network on the same held-out games: squared error 0.1522, cross-entropy 0.6249 (all 4,182,825 held-out positions), 0.1523 on the 49,796-position spread. That network's weights branch is pruned; only the report's numbers remain.
+- **Step B (NNUE): gate passed** (2026-10-14). Train run 38562652097 (width 256, 8 epochs, 26 min, on run 37814220623's data): quantized held-out squared error 0.1498 and cross-entropy 0.6199, against 0.1522 and 0.6249 for run 37814220623's rounded network, same split; still improving at epoch 8. Packed 27,264 characters. Next: step C1 (MCTS with the network at the leaves), an experiment that waits for the owner's go-ahead; the MCTS bundle is 83,952 characters with the engine module, so C1 must drop or pack other data.
 - Merged 2026-10-14 on the owner's approval in the chat (form: "Merge #121, then #122"): the packing tools as framework work, `cg-pack` decoder and `cg-packer` encoder (#121), the `cg-packer` command and the packed-data bundle test (#122). Step A of games/uttt/ROADMAP.md is done. Next for Ultimate Tic-Tac-Toe: step B (the NNUE), when the owner resumes strength work; its training runs need his go-ahead and his choice of how many.
 - Merged 2026-10-14 on the owner's approval in the chat ("Yes please" to #118, then #120, then #119): characters not bytes and the packing note (#118), ADR 0037 cg-check.sh counts UTF-16 units (#120), Ultimate Tic-Tac-Toe plan toward an NNUE in games/uttt/ROADMAP.md (#119). Step A3 done since (#121, #122).
 - Merged 2026-10-13 on the owner's approval in the chat ("Merge #113, then #114, then #115, then #116, then #117"): ADR 0034 no usage monitoring (#113), ADR 0035 new-game lifecycle (#114), playbook docs/NEW_GAME.md, templates and stage skills (#115), UTTT worked example (#116), ADR 0036 ranks optional (#117). Phase 7 in progress: the next step is a second game, named by the owner (skill `new-game`); the owner pastes CodinGame pages. Owner also (2026-10-13): README fine as is; no doc splitting; real workflow decisions go into ADRs; keep docs/WORKFLOW.md up to date.
