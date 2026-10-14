@@ -87,11 +87,11 @@ scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licens
   games/uttt/releases/uttt-v011.rs
 scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licenses=false' \
   games/uttt/ci.sh
-# The trainer and the value network's crate are tools: no browser engine.
+# The trainer and the value and policy crates are tools: no browser engine.
 scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licenses=false' \
-  games/uttt/trainer/src/main.rs games/uttt/value/src/lib.rs
+  games/uttt/trainer/src/main.rs games/uttt/value/src/lib.rs games/uttt/policy/src/lib.rs
 scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licenses=true' \
-  games/uttt/value/Cargo.toml
+  games/uttt/value/Cargo.toml games/uttt/policy/Cargo.toml
 # The analysis program runs in the browser engine (ADR 0032), and is built
 # from the game's engine and the bot's network weights.
 scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=false' \

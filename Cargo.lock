@@ -419,6 +419,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "uttt-policy"
+version = "0.0.0"
+dependencies = [
+ "cg-core",
+ "cg-search",
+ "uttt-engine",
+]
+
+[[package]]
 name = "uttt-referee"
 version = "0.0.0"
 dependencies = [
@@ -447,6 +456,7 @@ dependencies = [
  "cg-search",
  "clap",
  "uttt-engine",
+ "uttt-policy",
  "uttt-value",
 ]
 
@@ -457,6 +467,7 @@ dependencies = [
  "cg-core",
  "cg-search",
  "uttt-engine",
+ "uttt-policy",
 ]
 
 [[package]]

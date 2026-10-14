@@ -1,7 +1,7 @@
 use super::*;
 use crate::data::Searched;
-use uttt_engine::board::{CENTRE, WINS_BOARD};
 use uttt_engine::{Board, Move};
+use uttt_policy::{CENTRE, WINS_BOARD};
 
 /// An example with `moves` legal moves per class and visit shares.
 fn example(moves: &[(usize, u16)], visits: &[(usize, f64)], best: usize) -> Example {

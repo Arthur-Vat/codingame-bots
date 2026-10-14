@@ -86,7 +86,7 @@ fn the_bot_pattern_weights_are_read_from_its_source() {
     // A pattern file's text gives the same policy as its packed form.
     let released = include_str!("../../../releases/uttt-v010.rs");
     assert_eq!(read_pattern_policy(released).unwrap(), policy);
-    let digits = "A".repeat(uttt_engine::board::PATTERN_FEATURES);
+    let digits = "A".repeat(uttt_policy::PATTERN_FEATURES);
     let text = format!("pub const PATTERN_TEXT: &str = \"\\\n{digits}\";");
     assert_eq!(
         read_pattern_policy(&text).unwrap(),

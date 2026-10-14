@@ -7,6 +7,7 @@ members = [
     "games/*/engine",
     "games/*/referee",
     "games/*/arena",
+    "games/*/policy",
     "games/*/trainer",
     "games/*/value",
     "games/*/bots/*",
@@ -40,6 +41,7 @@ studio-core = { path = "studio/core" }
 studio-game = { path = "studio/game" }
 uttt-analysis = { path = "games/uttt/analysis" }
 uttt-engine = { path = "games/uttt/engine" }
+uttt-policy = { path = "games/uttt/policy" }
 uttt-referee = { path = "games/uttt/referee" }
 uttt-studio = { path = "games/uttt/studio" }
 uttt-value = { path = "games/uttt/value" }

@@ -10,7 +10,8 @@
 use std::fmt::Write as _;
 
 use cg_core::rng::Rng;
-use uttt_engine::{Board, Move, PlayoutPolicy, Status};
+use uttt_engine::{Board, Move, Status};
+use uttt_policy::{PlayoutPolicy, PolicyMoves};
 use uttt_value::{
     active_inputs, Network, CLOSED, INPUTS, MAX_ACTIVE, TARGET, THEIR_CELLS, THREATS,
 };

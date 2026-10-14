@@ -1,5 +1,7 @@
+use uttt_engine::MoveList;
+
 use super::*;
-use crate::moves::MoveList;
+use crate::PolicyMoves;
 
 /// Every legal move of `board`.
 fn legal(board: &Board) -> Vec<Move> {
@@ -11,7 +13,7 @@ fn legal(board: &Board) -> Vec<Move> {
 /// Whether the player to move, if it were `seat`, would win small board
 /// `small` by playing `cell` there.
 fn would_win(board: &Board, seat: usize, small: usize, cell: usize) -> bool {
-    grid::has_line(board.marks[seat][small] | 1 << cell)
+    grid::has_line(board.cells(seat, small) | 1 << cell)
 }
 
 /// Positions from random games, each with the player to move.
@@ -99,7 +101,7 @@ fn a_policy_move_wins_the_game_when_it_can_and_follows_the_weights_otherwise() {
         let mv = board.policy_move(&only_wins, &mut rng);
         assert!(moves.contains(&mv), "{mv} in {board:?}");
         let mut decisive_rng = rng.clone();
-        if board.game_winning_cell().is_some() {
+        if board.game_winning_move().is_some() {
             assert_eq!(mv, board.decisive_move(&mut decisive_rng));
             decisive += 1;
         } else if moves
@@ -157,13 +159,13 @@ fn draws_weigh_each_move_by_its_class() {
     // each legal move's class.
     let policy = PlayoutPolicy::new(std::array::from_fn(|class| 1 + class as u32 * 7));
     for board in positions().into_iter().step_by(7) {
-        let threats = board.threats[1 - board.to_move()];
+        let threats = board.threat_boards(1 - board.to_move());
         let boards = match board.target() {
             Some(small) => vec![small],
             None => (0..9).filter(|&small| !board.is_closed(small)).collect(),
         };
         for small in boards {
-            let cumulative = board.cumulative_weights(small, threats, &policy);
+            let cumulative = cumulative_weights(&board, small, threats, &policy);
             let mut before = 0;
             for (cell, &sum) in cumulative.iter().enumerate() {
                 let weight = sum - before;
