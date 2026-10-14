@@ -56,7 +56,7 @@ pub enum Target {
 }
 
 impl Target {
-    fn of(self, example: &Example) -> f32 {
+    pub(crate) fn of(self, example: &Example) -> f32 {
         match self {
             Target::Result => example.result,
             Target::Score => example.score,
@@ -300,13 +300,13 @@ fn forward<const H: usize, const H2: usize>(parameters: &[f32], active: &[u16]) 
     }
 }
 
-fn sigmoid(z: f32) -> f32 {
+pub(crate) fn sigmoid(z: f32) -> f32 {
     1.0 / (1.0 + (-z).exp())
 }
 
 /// The cross-entropy of output `z` (before the sigmoid) against `target`,
 /// computed without overflow.
-fn cross_entropy(z: f32, target: f32) -> f64 {
+pub(crate) fn cross_entropy(z: f32, target: f32) -> f64 {
     let z = f64::from(z);
     z.max(0.0) - z * f64::from(target) + (-z.abs()).exp().ln_1p()
 }
@@ -386,7 +386,7 @@ pub struct Metrics {
 }
 
 /// The index ranges that split `count` items between `threads` threads.
-fn shares(count: usize, threads: usize) -> Vec<std::ops::Range<usize>> {
+pub(crate) fn shares(count: usize, threads: usize) -> Vec<std::ops::Range<usize>> {
     let chunk = count.div_ceil(threads.max(1)).max(1);
     (0..count)
         .step_by(chunk)

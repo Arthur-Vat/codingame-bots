@@ -2,16 +2,17 @@ name: Train
 
 # Self-play and training for Ultimate Tic-Tac-Toe (ADR 0016). Started by
 # hand only: self-play games run in parallel jobs, then one job fits the
-# playout policy (stage 1), the value network (stage 2, ADR 0017) or the
-# move models of E015 and E016 (patterns), and commits the weights and a
-# report to a new branch claude/train/<run id>.
+# playout policy (stage 1), the value network (stage 2, ADR 0017), the
+# move models of E015 and E016 (patterns) or the NNUE of
+# uttt_engine::nnue (nnue), and commits the weights and a report to a new
+# branch claude/train/<run id>.
 on:
   workflow_dispatch:
     inputs:
       stage:
-        description: "What to train: the playout policy, the value network, or the move models (patterns)"
+        description: "What to train: the playout policy, the value network, the move models (patterns) or the NNUE (nnue)"
         type: choice
-        options: [policy, value, patterns]
+        options: [policy, value, patterns, nnue]
         default: policy
       jobs:
         description: "Self-play jobs run at the same time, 1 to 20"
@@ -29,10 +30,10 @@ on:
         description: "Policy and patterns: divides the fitted log-weights; below 1 sharpens them"
         default: "1"
       target:
-        description: "Value: what the network learns (result, score or mix)"
+        description: "Value and NNUE: what the network learns (result, score or mix)"
         default: "result"
       epochs:
-        description: "Value and patterns: passes over the positions"
+        description: "Value, patterns and NNUE: passes over the positions"
         default: "8"
       duel_exploration:
         description: "Value: exploration of the network's search against the playouts'"
@@ -40,6 +41,9 @@ on:
       size:
         description: "Value: the network's hidden layers (64-16 or 128-32)"
         default: "64-16"
+      width:
+        description: "NNUE: the accumulator's width (128, 256 or 512)"
+        default: "256"
       data_from_run:
         description: "Fit only, on the self-play data of this earlier run (kept 7 days); empty plays new games"
         default: ""
@@ -104,12 +108,16 @@ jobs:
           # The value network learns from games of the bot's own search,
           # with its playouts; the policy, from searches' visits; the move
           # models, from the visits of the bot's search with its pattern
-          # policy, which also orders each node's children.
+          # policy, which also orders each node's children; the NNUE, from
+          # games of the current bot's search (its pattern policy), whose
+          # root scores and results it learns.
           options=()
           if [[ $STAGE == value ]]; then
             options=(--policy games/uttt/training/class_weights.rs --no-visits)
           elif [[ $STAGE == patterns ]]; then
             options=(--patterns games/uttt/bots/mcts/src/pattern_weights.rs)
+          elif [[ $STAGE == nnue ]]; then
+            options=(--patterns games/uttt/bots/mcts/src/pattern_weights.rs --no-visits)
           fi
           # One process per core, each with its own seed and share of games.
           cores="$(nproc)"
@@ -129,7 +137,7 @@ jobs:
           retention-days: 7
 
   fit:
-    name: Fit the ${{ inputs.stage == 'value' && 'value network' || inputs.stage == 'patterns' && 'move models' || 'playout policy' }}
+    name: Fit the ${{ inputs.stage == 'value' && 'value network' || inputs.stage == 'patterns' && 'move models' || inputs.stage == 'nnue' && 'NNUE' || 'playout policy' }}
     needs: selfplay
     # Also when self-play was skipped for an earlier run's data.
     if: ${{ !cancelled() && (needs.selfplay.result == 'success' || needs.selfplay.result == 'skipped') }}
@@ -167,6 +175,7 @@ jobs:
           EPOCHS: ${{ inputs.epochs }}
           DUEL_EXPLORATION: ${{ inputs.duel_exploration }}
           SIZE: ${{ inputs.size }}
+          WIDTH: ${{ inputs.width }}
           DATA_FROM_RUN: ${{ inputs.data_from_run }}
         run: |
           out="games/uttt/training/runs/$GITHUB_RUN_ID"
@@ -185,6 +194,11 @@ jobs:
               --policy games/uttt/training/class_weights.rs \
               --duel-exploration "$DUEL_EXPLORATION" --origin "$origin" \
               --weights-out "$out/value_weights.rs" --report-out "$out/report.md"
+          elif [[ $STAGE == nnue ]]; then
+            target/release/uttt-trainer fit-nnue "${data[@]}" \
+              --target "$TARGET" --epochs "$EPOCHS" --width "$WIDTH" \
+              --origin "$origin" \
+              --weights-out "$out/nnue_weights.rs" --report-out "$out/report.md"
           elif [[ $STAGE == patterns ]]; then
             target/release/uttt-trainer fit-patterns "${data[@]}" \
               --models all --epochs "$EPOCHS" --temperature "$TEMPERATURE" \
@@ -211,6 +225,7 @@ jobs:
           what="playout policy"
           [[ $STAGE == value ]] && what="value network"
           [[ $STAGE == patterns ]] && what="move models"
+          [[ $STAGE == nnue ]] && what="NNUE"
           git commit -m "chore(train): $what from run $GITHUB_RUN_ID"
           # Job logs are not readable everywhere; an annotation is.
           if ! output="$(git push origin "$branch" 2>&1)"; then
