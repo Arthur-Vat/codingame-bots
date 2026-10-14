@@ -104,3 +104,31 @@ fn a_changed_character_does_not_go_unnoticed_or_spread() {
         }
     }
 }
+
+#[test]
+fn writes_a_module_with_one_constant() {
+    let data = noise(300, 11);
+    let module = rust_module(&data, "WEIGHTS", "`weights.bin`").unwrap();
+    let lines: Vec<&str> = module.lines().collect();
+    assert_eq!(lines.len(), 3, "{module}");
+    assert_eq!(
+        lines[0],
+        "// Written by cg-packer from `weights.bin`: 300 bytes in 192 characters."
+    );
+    let literal = lines[2]
+        .strip_prefix("pub const WEIGHTS: &str = \"")
+        .and_then(|rest| rest.strip_suffix("\";"))
+        .expect("one constant");
+    assert_eq!(cg_pack::unpack(literal), Some(data));
+    assert!(module.ends_with(";\n"));
+}
+
+#[test]
+fn a_module_needs_a_constants_name() {
+    for name in ["", "weights", "Weights", "_W", "9W", "W-1", "W 1", "WÉ"] {
+        assert!(rust_module(&[1], name, "x").is_err(), "{name:?}");
+    }
+    for name in ["W", "WEIGHTS", "NET_2", "A_B_C"] {
+        assert!(rust_module(&[1], name, "x").is_ok(), "{name:?}");
+    }
+}

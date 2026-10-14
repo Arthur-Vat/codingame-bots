@@ -54,5 +54,30 @@ pub fn pack(data: &[u8]) -> String {
     packed
 }
 
+/// A Rust module holding `data` packed, as the constant `name`, for a bot
+/// to decode with `cg_pack::unpack`. `source` names where the data came
+/// from, in the module's first comment.
+///
+/// Fails if `name` is not a constant's name: an uppercase ASCII letter, then
+/// uppercase letters, digits and underscores.
+pub fn rust_module(data: &[u8], name: &str, source: &str) -> Result<String, String> {
+    let mut chars = name.chars();
+    let valid = chars.next().is_some_and(|c| c.is_ascii_uppercase())
+        && chars.all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_');
+    if !valid {
+        return Err(format!(
+            "{name:?} is not a constant's name (A-Z, then A-Z, 0-9 or _)"
+        ));
+    }
+    let packed = pack(data);
+    Ok(format!(
+        "// Written by cg-packer from {source}: {} bytes in {} characters.\n\
+         // Decode it with `cg_pack::unpack` (docs/research/utf16-packing.md); do not edit.\n\
+         pub const {name}: &str = \"{packed}\";\n",
+        data.len(),
+        packed.chars().count(),
+    ))
+}
+
 #[cfg(test)]
 mod tests;

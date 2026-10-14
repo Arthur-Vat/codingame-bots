@@ -72,6 +72,7 @@ dependencies = [
 name = "cg-bundler"
 version = "0.0.0"
 dependencies = [
+ "cg-packer",
  "clap",
  "serde",
  "serde_json",
@@ -90,6 +91,7 @@ name = "cg-packer"
 version = "0.0.0"
 dependencies = [
  "cg-pack",
+ "clap",
 ]
 
 [[package]]
