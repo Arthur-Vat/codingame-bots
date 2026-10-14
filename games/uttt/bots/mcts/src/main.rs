@@ -47,11 +47,15 @@ const SHARE: f64 = 0.9;
 /// rare timeouts, which cost far less than the search time they buy. In
 /// 100 local games at full time, 99.9% of answers took at most 94.1 ms.
 const RESERVE: Duration = Duration::ZERO;
-/// The exploration constant of UCB1, from matches on 2026-10-07 (time
-/// scale 0.2, 200 pairs each): 0.5 beat 1.0 by 164 Elo, 0.7 beat 1.0 by
-/// 116, 1.4 lost to 1.0 by 108, and 0.4 and 0.3 lost to 0.5 by 28 and 116.
-/// At full time, 0.5 beat 1.0 by 162.
-const EXPLORATION: f64 = 0.5;
+/// The exploration constant of UCB1. With playouts (up to `uttt-v010`) it
+/// was 0.5, from matches on 2026-10-07 (time scale 0.2, 200 pairs each):
+/// 0.5 beat 1.0 by 164 Elo, 0.7 beat 1.0 by 116, 1.4 lost to 1.0 by 108,
+/// and 0.4 and 0.3 lost to 0.5 by 28 and 116. With the NNUE at the leaves
+/// (E017), screened on 2026-10-14 against `uttt-v010` at 20 ms (time scale
+/// 0.2, 5 ms of tolerance, 4-ply openings, 100 pairs each): 0.5 +12 Elo
+/// [-33, +58], 0.3 +78 [+31, +128], 0.2 +56 [+18, +96]. At full time, 50
+/// pairs, 0.3 +70 [+19, +126].
+const EXPLORATION: f64 = 0.3;
 
 /// The pattern policy (E015): weights learned for every pattern of a small
 /// board, cell and destination, decoded once from their packed characters

@@ -93,13 +93,15 @@ scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licen
 scopes_are 'rust=true framework=false games=["uttt"] studio=true web=false licenses=true' \
   games/uttt/value/Cargo.toml
 # The analysis program runs in the browser engine (ADR 0032), and is built
-# from the game's engine and the bots' pattern weights.
+# from the game's engine and the bots' pattern and network weights.
 scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=false' \
   games/uttt/analysis/src/lib.rs
 scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=true' \
   games/uttt/analysis/Cargo.toml
 scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=false' \
   games/uttt/bots/mcts/src/pattern_weights.rs
+scopes_are 'rust=true framework=false games=["uttt"] studio=true web=true licenses=false' \
+  games/uttt/bots/mcts/src/nnue_weights.rs
 
 # The studio.
 scopes_are 'rust=false framework=false games=[] studio=false web=true licenses=false' studio/web/src/App.tsx

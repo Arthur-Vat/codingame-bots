@@ -32,7 +32,7 @@ mod pattern_weights;
 mod nnue_weights;
 
 /// The exploration constant of the newest release.
-const EXPLORATION: f64 = 0.5;
+const EXPLORATION: f64 = 0.3;
 /// Whether the tree uses the pattern policy's weights as priors.
 const PRIORS: bool = true;
 /// The weight of the priors' bias in selection.
