@@ -5,7 +5,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 ## Waiting for the owner
 
 - #127 docs(uttt): the write-up's network inputs come from both sides (opened 2026-10-14; light review approved; CI green): approval to merge.
-- #128 E018 jacekmax, candidate `uttt-v012` (opened 2026-10-14; screened +135 Elo at 20 ms, +177 at full time against v011; bot review approved with nits, fixed in e5248e7): its SPRT at full time is running; then approval to merge. Fill `pull_request: "#128"` and the SPRT result in the entry only after the SPRT finishes (a push would cancel it).
+- #128 E018 jacekmax, candidate `uttt-v012` (opened 2026-10-14): SPRT accepted, +101.3 Elo [+64.4, +140.6] over v011 at full time (run 38586620224), recorded in the entry at 6ee41d3; CI green: approval to merge, then skill `deliver-release`. Next after it: step C3 (`minimax_weight` below 1), an experiment for the owner's go-ahead.
 - #129 refactor(uttt): the MCTS bot drops the pattern policy (opened 2026-10-14, stacked on #128; same moves as v012 at fixed iterations; bundle 84,397 characters; review approved with nits, fixed): approval to merge, after #128.
 
 ## Open questions
