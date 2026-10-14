@@ -12,12 +12,12 @@
 //! cargo run --release -p uttt-value --example value_speed -- [SECONDS]
 //! ```
 //!
-//! The networks read the position as the engine's network does
+//! The networks read the position as `uttt-value`'s network does
 //! (`uttt_value`): the side to move's marks and the opponent's in
 //! each open small board, who won each closed board, the board it is sent
 //! to, and each side's threats. Hidden layers use clipped ReLU, the output a
-//! sigmoid: the side to move's expected score. Sizes other than the
-//! engine's are written here; the last row times the engine's own
+//! sigmoid: the side to move's expected score. Sizes other than
+//! `uttt-value`'s are written here; the last row times its own
 //! `ValueNetwork`.
 
 use std::time::{Duration, Instant};
@@ -147,10 +147,10 @@ impl<const H: usize, const H2: usize> Evaluator for Network<H, H2> {
     }
 }
 
-/// The engine's network, as the bot will use it.
+/// `uttt-value`'s network, as the bot will use it.
 impl Evaluator for ValueNetwork {
     fn name(&self) -> String {
-        "217-64-16-1, the engine's".to_string()
+        "217-64-16-1, uttt-value's".to_string()
     }
 
     fn parameters(&self) -> usize {
@@ -294,7 +294,7 @@ fn main() {
     }
 }
 
-/// The engine's network with random weights, drawn as for the others.
+/// `uttt-value`'s network with random weights, drawn as for the others.
 fn engine_network(rng: &mut Rng) -> ValueNetwork {
     let mut uniform = |scale: f64| ((rng.unit() * 2.0 - 1.0) * scale) as f32;
     let mut parameters = Vec::with_capacity(ValueNetwork::PARAMETERS);
