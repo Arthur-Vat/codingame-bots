@@ -4,15 +4,13 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- #127 docs(uttt): the write-up's network inputs come from both sides (opened 2026-10-14; light review approved; CI green): approval to merge.
-- #128 E018 jacekmax, candidate `uttt-v012` (opened 2026-10-14): SPRT accepted, +101.3 Elo [+64.4, +140.6] over v011 at full time (run 38586620224), recorded in the entry at 6ee41d3; CI green: approval to merge, then skill `deliver-release`. Next after it: step C3 (`minimax_weight` below 1), an experiment for the owner's go-ahead.
-- #129 refactor(uttt): the MCTS bot drops the pattern policy (opened 2026-10-14, stacked on #128; same moves as v012 at fixed iterations; bundle 84,397 characters; review approved with nits, fixed): approval to merge, after #128.
+None.
 
 ## Open questions
 
 - Resume Ultimate Tic-Tac-Toe strength work with the plan of #119: answered in the conversation, 2026-10-14: "Read the handoff and go on with step B". First NNUE fit's data: answered 2026-10-14 (form): "Reuse run 37814220623" (one fit job, no self-play). The size check: answered 2026-10-14, option a (UTF-16 units, 100,000), written as ADR 0037 in #120. Probe passed (2026-10-14): Rust bot of 95,713 characters and 125,475 bytes accepted; CodinGame compiles for basic x86-64 on a CPU with AVX2, FMA, BMI2, POPCNT, no AVX-512; IDE not a debug build.
-- To propose: moving the pattern and class policies' code out of `uttt-engine` into its own crate (as #125 did for the value network), which would free about 20,000 more characters in every bot; about 200 references in the trainer, the value crate and the analysis program. A large code change, so it waits for the owner.
-- Steps C2, the pattern-policy drop and the research README fix: answered in the conversation, 2026-10-14: "Go on with 1, 2, 3" (C2 jacekmax experiment E018; then dropping the pattern policy; then the fix of games/uttt/research/README.md's inputs wording).
+- **Steps C2 and the policy drop done** (2026-10-14): merged on the owner's approval in the chat ("Merge these 3, and provide the .rs file so that I can copy/paste the latest release when it is possible"): #127 (research README wording), #128 E018 jacekmax, `uttt-v012` released (https://github.com/Arthur-Vat/codingame-bots/releases/tag/uttt-v012), +101.3 Elo [+64.4, +140.6] over v011 at full time, delivered to the owner to paste; #129 the MCTS bot drops the pattern policy (bundle 84,397 characters, 15,603 left; same moves as v012). Next: step C3 (`minimax_weight` below 1, screened locally first), an experiment for the owner's go-ahead. The analysis program's default request now ends near its 8,000,000-node limit (E018).
+- To propose: moving the pattern and class policies' code out of `uttt-engine` into its own crate (as #125 did for the value network), which would free about 20,000 more characters in every bot; about 200 references in the trainer, the value crate and the analysis program. A large code change, so it waits for the owner (put to him on 2026-10-14, not answered yet).
 - Phase 5 step D, the phase 7 second game and watching the first release after the CI changes: later (owner, 2026-10-13).
 
 ## Follow-ups
