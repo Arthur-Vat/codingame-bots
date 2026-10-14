@@ -107,7 +107,7 @@ jobs:
           mkdir -p target/train
           # The value network learns from games of the bot's own search,
           # with its playouts; the policy, from searches' visits; the move
-          # models, from the visits of the bot's search with its pattern
+          # models, from the visits of `uttt-v010`'s search with its pattern
           # policy, which also orders each node's children; the NNUE, from
           # games of `uttt-v010`'s search (its pattern policy), whose
           # root scores and results it learns.

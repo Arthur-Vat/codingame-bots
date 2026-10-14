@@ -39,7 +39,7 @@
 # rust, studio and that game; studio means rust and studio; web means the
 # front end's checks only. The front end's browser engine (ADR 0030) runs the
 # studio's rules, the games' referees and adapters, their analysis programs
-# (ADR 0032, built from the engine and the bots' pattern weights) and every
+# (ADR 0032, built from the engine and the bot's network weights) and every
 # release as
 # WebAssembly, and its browser tests use them: that is why rules 7 and 9 add
 # web for those paths, and why crates/ (cg-arena) and scripts/

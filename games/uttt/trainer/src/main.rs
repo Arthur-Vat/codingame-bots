@@ -87,7 +87,7 @@ enum Command {
         /// Rust source holding a pattern policy, packed (`PATTERN_PACKED`) or
         /// as base64 text (`PATTERN_TEXT`), such as
         /// `games/uttt/training/pattern_weights.rs`, for the bot's playouts
-        /// and order of children from E015 to E017; replaces `--policy`.
+        /// (E015 to E016) and order of children (E015 to E017); replaces `--policy`.
         #[arg(long)]
         patterns: Option<PathBuf>,
         /// Moves of each playout drawn from the policy, as in the bot.
