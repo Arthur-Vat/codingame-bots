@@ -115,8 +115,9 @@ fn score_against_random(games: u64, iterations: u64) -> f64 {
         while board.status() == Status::Ongoing {
             board.legal_moves(&mut moves);
             let mv = if board.to_move() == mcts_seat {
-                let root = PatternBoard {
+                let root = NnueBoard {
                     board,
+                    network: network(),
                     policy: policy(),
                 };
                 mcts.search(&root, &moves, Budget::Iterations(iterations))
@@ -154,6 +155,18 @@ fn the_packed_weights_are_those_of_the_release() {
     let length = RELEASE[from..].find("\";").expect("the pattern text ends");
     let text = RELEASE[from..from + length].replace("\\\n", "");
     let released = PatternPolicy::decode(&text).expect("the release's weights decode");
-    // The bot's policy plays the first PLIES moves of each playout from it.
-    assert_eq!(*policy(), released.for_plies(PLIES));
+    assert_eq!(*policy(), released);
+}
+
+#[test]
+fn the_network_decodes_and_judges_positions() {
+    let mut board = Board::new();
+    let mut list = MoveList::new();
+    let mut rng = Rng::new(4);
+    while board.status() == Status::Ongoing {
+        let value = network().evaluate_board(&board);
+        assert!((0.0..=1.0).contains(&value), "{value}");
+        board.legal_moves(&mut list);
+        board.play(*rng.pick(&list).unwrap());
+    }
 }

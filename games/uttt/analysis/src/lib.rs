@@ -8,12 +8,13 @@
 //! so the same request gives the same lines.
 //!
 //! This crate never ends up in a bot: it may use a crate from outside the
-//! workspace and the bots' pattern weights by path.
+//! workspace and the bots' pattern and network weights by path.
 
 use cg_search::{Budget, Mcts, MoveReport, Report};
 use serde::Serialize;
 use std::sync::OnceLock;
-use uttt_engine::search::PatternBoard;
+use uttt_engine::nnue::Network;
+use uttt_engine::search::NnueBoard;
 use uttt_engine::{PatternPolicy, Status};
 
 mod request;
@@ -25,14 +26,17 @@ use request::Request;
 #[path = "../../bots/mcts/src/pattern_weights.rs"]
 mod pattern_weights;
 
-/// The exploration constant of the newest release (`uttt-v010`).
-const EXPLORATION: f64 = 0.5;
+// The same.
+#[allow(clippy::invisible_characters)]
+#[path = "../../bots/mcts/src/nnue_weights.rs"]
+mod nnue_weights;
+
+/// The exploration constant of the newest release.
+const EXPLORATION: f64 = 0.3;
 /// Whether the tree uses the pattern policy's weights as priors.
 const PRIORS: bool = true;
 /// The weight of the priors' bias in selection.
 const PRIOR_WEIGHT: f64 = 0.0;
-/// The moves of each playout drawn from the pattern policy.
-const PLIES: u32 = 16;
 
 /// The search stops, with the stop `"nodes"`, once the tree holds this many
 /// nodes. With the `analysis` feature a node takes 36 bytes (a move, its mover, its
@@ -58,9 +62,16 @@ fn policy() -> &'static PatternPolicy {
     POLICY.get_or_init(|| {
         let bytes =
             cg_pack::unpack(pattern_weights::PATTERN_PACKED).expect("the pattern weights unpack");
-        PatternPolicy::decode_packed(&bytes)
-            .expect("the pattern weights decode")
-            .for_plies(PLIES)
+        PatternPolicy::decode_packed(&bytes).expect("the pattern weights decode")
+    })
+}
+
+/// The network that judges the leaves, decoded once.
+fn network() -> &'static Network<256> {
+    static NETWORK: OnceLock<Network<256>> = OnceLock::new();
+    NETWORK.get_or_init(|| {
+        let bytes = cg_pack::unpack(nnue_weights::NNUE_WEIGHTS).expect("the NNUE weights unpack");
+        Network::from_bytes(&bytes).expect("the NNUE weights decode")
     })
 }
 
@@ -156,11 +167,12 @@ fn search(
         return;
     }
     let to_move = board.to_move();
-    let root = PatternBoard {
+    let root = NnueBoard {
         board,
+        network: network(),
         policy: policy(),
     };
-    let mut mcts = Mcts::<PatternBoard>::new(EXPLORATION, request.seed);
+    let mut mcts = Mcts::<NnueBoard>::new(EXPLORATION, request.seed);
     mcts.priors = PRIORS;
     mcts.prior_weight = PRIOR_WEIGHT;
     let mut done = 0;

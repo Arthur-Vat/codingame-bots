@@ -64,7 +64,7 @@ test('the page becomes cross-origin isolated after one reload, and says which en
   // The games and their releases come from the WebAssembly files, newest first.
   const card = page.getByRole('link', { name: /Ultimate Tic-Tac-Toe/ });
   await expect(card).toBeVisible();
-  await expect(card).toContainText('10 releases');
+  await expect(card).toContainText('11 releases');
 });
 
 test('a friend game is played in the browser, by the Rust rules', async ({ page }) => {
@@ -476,7 +476,7 @@ test.describe('the engine on the analysis board (the real analysis program, in a
     await openGame(page, 8);
     const panel = page.getByTestId('engine-panel');
     const lines = panel.getByTestId('engine-line');
-    await expect(panel.getByText('uttt-v010 engine')).toBeVisible();
+    await expect(panel.getByText('uttt-v011 engine')).toBeVisible();
 
     // The engine is on by default: a line with its chip, the bar and the stat line appear.
     await expect(lines).toHaveCount(1, { timeout: 60_000 });
@@ -528,7 +528,7 @@ test.describe('the engine on the analysis board (the real analysis program, in a
     expect(await panel.getByTestId('engine-stat').textContent()).not.toBe(stopped);
 
     // The switch turns it off, and it stays off after a reload.
-    await panel.getByRole('checkbox', { name: 'uttt-v010 engine' }).uncheck();
+    await panel.getByRole('checkbox', { name: 'uttt-v011 engine' }).uncheck();
     await expect(lines).toHaveCount(0);
     await expect(page.getByTestId('evalbar')).toHaveCount(0);
     await expect(page.getByTestId('eval-chart')).toHaveCount(0);

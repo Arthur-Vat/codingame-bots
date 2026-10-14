@@ -1,11 +1,12 @@
 //! Monte Carlo tree search Ultimate Tic-Tac-Toe bot.
 //!
-//! Every turn it searches the current position with UCT and playouts that
-//! take a game-winning move whenever there is one and otherwise draw their
-//! first moves from a pattern policy learned from self-play, then random
-//! moves (`cg-search`, `uttt-engine`), for most of the turn's time limit,
-//! then plays the move it tried most often. The same policy orders each
-//! node's children, so that the most promising are tried first. The search
+//! Every turn it searches the current position with UCT for most of the
+//! turn's time limit (`cg-search`, `uttt-engine`), then plays the move it
+//! tried most often. It runs no playouts: a new leaf gets the estimate of an
+//! NNUE (`uttt_engine::nnue`, E017), with the accumulators built from
+//! scratch, except that a side to move with a move that wins the game is
+//! scored a win. A pattern policy learned from self-play orders each node's
+//! children, so that the most promising are tried first. The search
 //! keeps the part of its tree under the moves played since its previous
 //! search, and proves wins and losses near the end of the game: it plays a
 //! proven win, avoids proven losses, and stops searching once the position
@@ -29,7 +30,8 @@ use std::time::{Duration, Instant};
 use cg_core::input::{Input, InputError};
 use cg_core::rng::{seed_from_env_or_clock, Rng};
 use cg_search::{Budget, Mcts};
-use uttt_engine::search::PatternBoard;
+use uttt_engine::nnue::Network;
+use uttt_engine::search::NnueBoard;
 use uttt_engine::{Board, Move, PatternPolicy};
 
 /// CodinGame's time limit for the first answer.
@@ -45,41 +47,49 @@ const SHARE: f64 = 0.9;
 /// rare timeouts, which cost far less than the search time they buy. In
 /// 100 local games at full time, 99.9% of answers took at most 94.1 ms.
 const RESERVE: Duration = Duration::ZERO;
-/// The exploration constant of UCB1, from matches on 2026-10-07 (time
-/// scale 0.2, 200 pairs each): 0.5 beat 1.0 by 164 Elo, 0.7 beat 1.0 by
-/// 116, 1.4 lost to 1.0 by 108, and 0.4 and 0.3 lost to 0.5 by 28 and 116.
-/// At full time, 0.5 beat 1.0 by 162.
-const EXPLORATION: f64 = 0.5;
+/// The exploration constant of UCB1. With playouts (up to `uttt-v010`) it
+/// was 0.5, from matches on 2026-10-07 (time scale 0.2, 200 pairs each):
+/// 0.5 beat 1.0 by 164 Elo, 0.7 beat 1.0 by 116, 1.4 lost to 1.0 by 108,
+/// and 0.4 and 0.3 lost to 0.5 by 28 and 116. With the NNUE at the leaves
+/// (E017), screened on 2026-10-14 against `uttt-v010` at 20 ms (time scale
+/// 0.2, 5 ms of tolerance, 4-ply openings, 100 pairs each): 0.5 +12 Elo
+/// [-33, +58], 0.3 +78 [+31, +128], 0.2 +56 [+18, +96]. At full time, 50
+/// pairs, 0.3 +70 [+19, +126].
+const EXPLORATION: f64 = 0.3;
 
 /// The pattern policy (E015): weights learned for every pattern of a small
 /// board, cell and destination, decoded once from their packed characters
-/// (6 bits each, see `cg-pack`). They draw the first moves of each playout,
-/// decisive random moves after that, and order each node's children.
+/// (6 bits each, see `cg-pack`). They order each node's children.
 fn policy() -> &'static PatternPolicy {
     static POLICY: OnceLock<PatternPolicy> = OnceLock::new();
     POLICY.get_or_init(|| {
         let bytes =
             cg_pack::unpack(pattern_weights::PATTERN_PACKED).expect("the pattern weights unpack");
-        PatternPolicy::decode_packed(&bytes)
-            .expect("the pattern weights decode")
-            .for_plies(PLIES)
+        PatternPolicy::decode_packed(&bytes).expect("the pattern weights decode")
     })
 }
 
-/// Moves of each playout drawn from the policy. With E011's 32 classes,
-/// screened on 2026-10-08 against v007 at 20 ms (200 pairs each): the whole
-/// playout +1 Elo, 16 moves +18, 8 moves +30, 4 moves +22; sharper weights
-/// (temperature 0.5) +53 for 16 moves and +48 for 8. With E015's patterns,
-/// against v009 at 20 ms (300 pairs, same openings): 8 moves +25, 16 moves
-/// +22, the whole playout +10.
-const PLIES: u32 = 16;
+/// The network that judges the leaves (E017): the NNUE of Train run
+/// 38562652097, (189 → 256) × 2 → 10, quantized and decoded once from its
+/// packed characters (see `cg-pack`).
+fn network() -> &'static Network<256> {
+    static NETWORK: OnceLock<Network<256>> = OnceLock::new();
+    NETWORK.get_or_init(|| {
+        let bytes = cg_pack::unpack(nnue_weights::NNUE_WEIGHTS).expect("the NNUE weights unpack");
+        Network::from_bytes(&bytes).expect("the NNUE weights decode")
+    })
+}
 
 // Packed characters include ones that clippy takes for invisible.
 #[allow(clippy::invisible_characters)]
 mod pattern_weights;
 
-/// Whether the search also uses the playout policy's weights as priors in
-/// its tree: a node's children are tried in order of their weights, most
+// The same.
+#[allow(clippy::invisible_characters)]
+mod nnue_weights;
+
+/// Whether the search uses the pattern policy's weights as priors in its
+/// tree: a node's children are tried in order of their weights, most
 /// promising first (E014).
 const PRIORS: bool = true;
 /// The weight of a bias toward the heavier children in selection, which
@@ -94,6 +104,7 @@ fn main() {
     let mut rng = Rng::new(seed);
     // Decoded before the first turn's clock starts, if the input waits.
     policy();
+    network();
     let mut mcts = Mcts::new(EXPLORATION, rng.next_u64());
     mcts.priors = PRIORS;
     mcts.prior_weight = PRIOR_WEIGHT;
@@ -118,7 +129,7 @@ fn main() {
 /// Plays turns until the input ends. `budget` gives the search budget of a
 /// turn from its start and CodinGame's limit for it.
 fn play(
-    mcts: &mut Mcts<PatternBoard>,
+    mcts: &mut Mcts<NnueBoard>,
     rng: &mut Rng,
     mut input: Input<impl BufRead>,
     mut out: impl Write,
@@ -161,8 +172,9 @@ fn play(
                 let mv = if moves.len() == 1 {
                     moves[0]
                 } else {
-                    let root = PatternBoard {
+                    let root = NnueBoard {
                         board: position,
+                        network: network(),
                         policy: policy(),
                     };
                     let result = mcts.search(&root, &moves, budget(start, limit));
