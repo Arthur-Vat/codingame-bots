@@ -1,7 +1,6 @@
 use cg_search::{Budget, Mcts};
 
 use super::*;
-use crate::board::PATTERN_FEATURES;
 use crate::nnue::{BUCKETS, FEATURES};
 
 #[test]
@@ -142,11 +141,9 @@ fn proofs_agree_with_exhaustive_search_in_endgames() {
     );
 }
 
-/// A position searched with a random network of width 16 and a uniform
-/// pattern policy.
+/// A position searched with a random network of width 16.
 fn nnue_board(board: Board) -> NnueBoard<16> {
     static NETWORK: std::sync::OnceLock<Network<16>> = std::sync::OnceLock::new();
-    static POLICY: std::sync::OnceLock<PatternPolicy> = std::sync::OnceLock::new();
     let network = NETWORK.get_or_init(|| {
         let mut rng = Rng::new(5);
         let mut small = |range: u64| rng.below(2 * range + 1) as i64 - range as i64;
@@ -165,13 +162,7 @@ fn nnue_board(board: Board) -> NnueBoard<16> {
         )
         .unwrap()
     });
-    let policy = POLICY
-        .get_or_init(|| PatternPolicy::from_log_weights(&vec![0.0; PATTERN_FEATURES]).unwrap());
-    NnueBoard {
-        board,
-        network,
-        policy,
-    }
+    NnueBoard { board, network }
 }
 
 #[test]
@@ -271,7 +262,6 @@ fn a_search_with_the_nnue_returns_a_legal_move() {
     let mut rng = Rng::new(13);
     let mut list = MoveList::new();
     let mut mcts = Mcts::<NnueBoard<16>>::new(0.5, 3);
-    mcts.priors = true;
     let mut board = Board::new();
     while board.status() == Status::Ongoing {
         Board::legal_moves(&board, &mut list);
