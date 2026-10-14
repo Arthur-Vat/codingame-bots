@@ -26,7 +26,8 @@
 use cg_core::rng::Rng;
 use cg_search::Game;
 use uttt_engine::search::score;
-use uttt_engine::{Board, Move, PlayoutPolicy};
+use uttt_engine::{Board, Move};
+use uttt_policy::{PlayoutPolicy, PolicyMoves};
 
 /// Inputs of the network.
 pub const INPUTS: usize = 217;

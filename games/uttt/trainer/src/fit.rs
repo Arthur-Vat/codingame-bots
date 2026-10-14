@@ -8,7 +8,7 @@
 
 use std::fmt::Write as _;
 
-use uttt_engine::board::{CLASSES, FEATURE_NAMES};
+use uttt_policy::{PolicyMoves, CLASSES, FEATURE_NAMES};
 
 use crate::data::GameRecord;
 
@@ -156,7 +156,7 @@ pub fn weights_source(weights: &[u32; CLASSES], origin: &str) -> String {
         "/// Weights of the playout policy's move classes (ADR 0016); see"
     )
     .unwrap();
-    writeln!(source, "/// `uttt_engine::board::PlayoutPolicy`.").unwrap();
+    writeln!(source, "/// `uttt_policy::PlayoutPolicy`.").unwrap();
     writeln!(source, "pub const PLAYOUT_WEIGHTS: [u32; {CLASSES}] = [").unwrap();
     for chunk in weights.chunks(8) {
         let row: Vec<String> = chunk.iter().map(u32::to_string).collect();

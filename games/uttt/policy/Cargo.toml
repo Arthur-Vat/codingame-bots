@@ -1,0 +1,18 @@
+[package]
+name = "uttt-policy"
+description = "E011's class policy and E015's pattern policy for Ultimate Tic-Tac-Toe, and their searches, for the trainer; bots no longer use them."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+cg-core.workspace = true
+cg-search.workspace = true
+uttt-engine.workspace = true
+
+[lints]
+workspace = true

@@ -2,7 +2,7 @@
 //! ordered, with weights learned for every pattern of the small board a
 //! move is played in, the move's cell, and where the move sends the
 //! opponent; tens of thousands of weights instead of the 32 classes of
-//! [`PlayoutPolicy`](super::PlayoutPolicy).
+//! [`PlayoutPolicy`](crate::PlayoutPolicy).
 //!
 //! A small board's pattern is its 9 cells seen by the player to move:
 //! empty, its own, or the opponent's, read as a number in base 3. The 8
@@ -21,9 +21,10 @@ use std::sync::OnceLock;
 
 use cg_core::rng::Rng;
 
-use super::{Board, Status, ANY_BOARD};
-use crate::grid::{self, FULL};
-use crate::moves::Move;
+use uttt_engine::grid::{self, FULL};
+use uttt_engine::{Board, Move, Status};
+
+use crate::policy::{board_features, cell_at, empty_cells, game_winning_cell, play_at};
 
 /// Kinds of destination of a move.
 pub const DESTINATIONS: usize = 5;
@@ -137,7 +138,7 @@ pub struct PatternPolicy {
 
 impl PatternPolicy {
     /// The policy with these log-weights, one per feature (see
-    /// [`Board::pattern_feature`]), each from -8 to 7.75.
+    /// [`PolicyMoves::pattern_feature`](crate::PolicyMoves::pattern_feature)), each from -8 to 7.75.
     pub fn from_log_weights(log_weights: &[f32]) -> Result<Self, String> {
         if log_weights.len() != PATTERN_FEATURES {
             return Err(format!(
@@ -239,126 +240,133 @@ pub fn encode_pattern_bytes(log_weights: &[f32]) -> Vec<u8> {
     bytes
 }
 
-impl Board {
-    /// The pattern of small board `board` from the player to move's view.
-    #[inline(always)]
-    fn pattern(&self, board: usize) -> usize {
-        let seat = self.to_move();
-        usize::from(B3[usize::from(self.marks[seat][board])])
-            + 2 * usize::from(B3[usize::from(self.marks[1 - seat][board])])
-    }
+/// The pattern of small board `small` from the player to move's view.
+#[inline(always)]
+fn pattern(board: &Board, small: usize) -> usize {
+    let seat = board.to_move();
+    usize::from(B3[usize::from(board.cells(seat, small))])
+        + 2 * usize::from(B3[usize::from(board.cells(1 - seat, small))])
+}
 
-    /// The destination kind of each cell of small board `board`, from
-    /// [`DESTINATIONS`]: 0 when the move gives a free choice, otherwise 1,
-    /// plus 1 if the opponent could win the board it is sent to at once,
-    /// plus 2 if the player could.
-    #[inline(always)]
-    fn destinations(&self, board: usize) -> [usize; 9] {
-        let seat = self.to_move();
-        let free = self.board_features(board).free;
-        let (theirs, mine) = (self.threats[1 - seat], self.threats[seat]);
-        std::array::from_fn(|cell| {
-            let bit = |mask: u16| usize::from((mask >> cell) & 1);
-            (1 + bit(theirs) + 2 * bit(mine)) * (1 - bit(free))
-        })
-    }
+/// The destination kind of each cell of small board `small`, from
+/// [`DESTINATIONS`]: 0 when the move gives a free choice, otherwise 1,
+/// plus 1 if the opponent could win the board it is sent to at once,
+/// plus 2 if the player could.
+#[inline(always)]
+fn destinations(board: &Board, small: usize) -> [usize; 9] {
+    let seat = board.to_move();
+    let free = board_features(board, small).free;
+    let (theirs, mine) = (board.threat_boards(1 - seat), board.threat_boards(seat));
+    std::array::from_fn(|cell| {
+        let bit = |mask: u16| usize::from((mask >> cell) & 1);
+        (1 + bit(theirs) + 2 * bit(mine)) * (1 - bit(free))
+    })
+}
 
-    /// The index of `mv`'s weight in a pattern policy: its canonical
-    /// pattern and cell, then its destination.
-    pub fn pattern_feature(&self, mv: Move) -> usize {
-        debug_assert!(self.is_legal(mv), "illegal move {mv}");
-        let (board, cell) = (mv.board(), mv.cell());
-        let id = pattern_ids()[9 * self.pattern(board) + cell];
-        usize::from(id) * DESTINATIONS + self.destinations(board)[cell]
-    }
+/// The index of `mv`'s weight in a pattern policy: its canonical
+/// pattern and cell, then its destination.
+pub(crate) fn pattern_feature(board: &Board, mv: Move) -> usize {
+    debug_assert!(board.is_legal(mv), "illegal move {mv}");
+    let (small, cell) = (mv.board(), mv.cell());
+    let id = pattern_ids()[9 * pattern(board, small) + cell];
+    usize::from(id) * DESTINATIONS + destinations(board, small)[cell]
+}
 
-    /// The weight `policy` gives each of `moves`, which must be legal, in
-    /// order, written into `weights`: the search's priors.
-    pub fn pattern_move_weights(
-        &self,
-        policy: &PatternPolicy,
-        moves: &[Move],
-        weights: &mut Vec<f32>,
-    ) {
-        weights.clear();
-        weights.extend(
-            moves
-                .iter()
-                .map(|&mv| policy.weights[self.pattern_feature(mv)] as f32),
-        );
-    }
+/// The weight `policy` gives each of `moves`, which must be legal, in
+/// order, written into `weights`: the search's priors.
+pub(crate) fn pattern_move_weights(
+    board: &Board,
+    policy: &PatternPolicy,
+    moves: &[Move],
+    weights: &mut Vec<f32>,
+) {
+    weights.clear();
+    weights.extend(
+        moves
+            .iter()
+            .map(|&mv| policy.weights[pattern_feature(board, mv)] as f32),
+    );
+}
 
-    /// Running totals of the weights of small board `board`'s cells, cell
-    /// 0 first, with 0 for occupied cells. Branch-free.
-    #[inline(always)]
-    fn pattern_cumulative(&self, board: usize, ids: &[u16], policy: &PatternPolicy) -> [u32; 9] {
-        let empty = self.empty_cells(board);
-        let destinations = self.destinations(board);
-        let row = &ids[9 * self.pattern(board)..][..9];
-        let mut cumulative = [0u32; 9];
-        let mut total = 0;
-        for (cell, ((sum, &id), &destination)) in cumulative
-            .iter_mut()
-            .zip(row)
-            .zip(&destinations)
-            .enumerate()
-        {
-            let feature = usize::from(id) * DESTINATIONS + destination;
-            total += policy.weights[feature] * u32::from((empty >> cell) & 1);
-            *sum = total;
+/// Running totals of the weights of small board `small`'s cells, cell
+/// 0 first, with 0 for occupied cells. Branch-free.
+#[inline(always)]
+fn pattern_cumulative(
+    board: &Board,
+    small: usize,
+    ids: &[u16],
+    policy: &PatternPolicy,
+) -> [u32; 9] {
+    let empty = empty_cells(board, small);
+    let destinations = destinations(board, small);
+    let row = &ids[9 * pattern(board, small)..][..9];
+    let mut cumulative = [0u32; 9];
+    let mut total = 0;
+    for (cell, ((sum, &id), &destination)) in cumulative
+        .iter_mut()
+        .zip(row)
+        .zip(&destinations)
+        .enumerate()
+    {
+        let feature = usize::from(id) * DESTINATIONS + destination;
+        total += policy.weights[feature] * u32::from((empty >> cell) & 1);
+        *sum = total;
+    }
+    cumulative
+}
+
+#[inline(always)]
+fn pattern_cell(
+    board: &Board,
+    policy: &PatternPolicy,
+    ids: &[u16],
+    rng: &mut Rng,
+) -> (usize, usize) {
+    if let Some(winning) = game_winning_cell(board) {
+        return winning;
+    }
+    if let Some(small) = board.target() {
+        let cumulative = pattern_cumulative(board, small, ids, policy);
+        let pick = rng.below(u64::from(cumulative[8])) as u32;
+        return (small, cell_at(&cumulative, pick));
+    }
+    let open = !board.closed_boards() & FULL;
+    let mut boards = [[0u32; 9]; 9];
+    let mut totals = [0u32; 9];
+    let mut total = 0;
+    for small in grid::cells(open) {
+        boards[small] = pattern_cumulative(board, small, ids, policy);
+        total += boards[small][8];
+        totals[small] = total;
+    }
+    let pick = rng.below(u64::from(total)) as u32;
+    for small in grid::cells(open) {
+        if pick < totals[small] {
+            let before = totals[small] - boards[small][8];
+            return (small, cell_at(&boards[small], pick - before));
         }
-        cumulative
     }
+    unreachable!("the draw is below the total weight")
+}
 
-    #[inline(always)]
-    fn pattern_cell(&self, policy: &PatternPolicy, ids: &[u16], rng: &mut Rng) -> (usize, usize) {
-        if let Some(winning) = self.game_winning_cell() {
-            return winning;
-        }
-        if self.target != ANY_BOARD {
-            let board = usize::from(self.target);
-            let cumulative = self.pattern_cumulative(board, ids, policy);
-            let pick = rng.below(u64::from(cumulative[8])) as u32;
-            return (board, Board::cell_at(&cumulative, pick));
-        }
-        let mut boards = [[0u32; 9]; 9];
-        let mut totals = [0u32; 9];
-        let mut total = 0;
-        for board in grid::cells(!self.closed & FULL) {
-            boards[board] = self.pattern_cumulative(board, ids, policy);
-            total += boards[board][8];
-            totals[board] = total;
-        }
-        let pick = rng.below(u64::from(total)) as u32;
-        for board in grid::cells(!self.closed & FULL) {
-            if pick < totals[board] {
-                let before = totals[board] - boards[board][8];
-                return (board, Board::cell_at(&boards[board], pick - before));
-            }
-        }
-        unreachable!("the draw is below the total weight")
-    }
+/// A move drawn from `policy`, after a game-winning move if there is
+/// one. The game must go on.
+pub(crate) fn pattern_move(board: &Board, policy: &PatternPolicy, rng: &mut Rng) -> Move {
+    let (small, cell) = pattern_cell(board, policy, pattern_ids(), rng);
+    Move::new(small, cell)
+}
 
-    /// A move drawn from `policy`, after a game-winning move if there is
-    /// one. The game must go on.
-    pub fn pattern_move(&self, policy: &PatternPolicy, rng: &mut Rng) -> Move {
-        let (board, cell) = self.pattern_cell(policy, pattern_ids(), rng);
-        Move::new(board, cell)
+/// Plays [`pattern_move`]s for `policy`'s plies, then decisive random
+/// moves, until the game ends; returns how it ended.
+pub(crate) fn pattern_playout(board: &mut Board, policy: &PatternPolicy, rng: &mut Rng) -> Status {
+    let ids = pattern_ids();
+    let mut plies = 0;
+    while board.status() == Status::Ongoing && plies < policy.plies {
+        let (small, cell) = pattern_cell(board, policy, ids, rng);
+        play_at(board, small, cell);
+        plies += 1;
     }
-
-    /// Plays [`pattern_move`](Board::pattern_move)s for `policy`'s plies,
-    /// then decisive random moves, until the game ends; returns how it
-    /// ended.
-    pub fn pattern_playout(&mut self, policy: &PatternPolicy, rng: &mut Rng) -> Status {
-        let ids = pattern_ids();
-        let mut plies = 0;
-        while self.status == Status::Ongoing && plies < policy.plies {
-            let (board, cell) = self.pattern_cell(policy, ids, rng);
-            self.play_at(board, cell);
-            plies += 1;
-        }
-        self.decisive_playout(rng)
-    }
+    board.decisive_playout(rng)
 }
 
 #[cfg(test)]

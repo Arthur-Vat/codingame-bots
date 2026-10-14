@@ -16,6 +16,7 @@ cg-packer.workspace = true
 cg-search.workspace = true
 clap.workspace = true
 uttt-engine.workspace = true
+uttt-policy.workspace = true
 uttt-value.workspace = true
 
 [lints]

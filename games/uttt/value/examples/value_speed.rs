@@ -24,8 +24,8 @@ use std::time::{Duration, Instant};
 
 use cg_core::rng::Rng;
 use cg_search::{Budget, Game, Mcts};
-use uttt_engine::search::PolicyBoard;
-use uttt_engine::{Board, Move, PlayoutPolicy, Status};
+use uttt_engine::{Board, Move, Status};
+use uttt_policy::{PlayoutPolicy, PolicyBoard, PolicyMoves};
 use uttt_value::{active_inputs, ValueNetwork, INPUTS, MAX_ACTIVE};
 
 /// `uttt-v008`'s playout policy (`games/uttt/training/class_weights.rs`).

@@ -266,7 +266,7 @@ pub fn entropy_characters(text: &str) -> usize {
 /// The weights of `model` as a Rust module, `PATTERN_PACKED`, which a bot
 /// decodes with `cg_pack::unpack` and, for [`Model::Patterns`],
 /// `PatternPolicy::decode_packed`: `bytes` is the 6-bit digits of
-/// `uttt_engine::board::encode_pattern_bytes`, packed by `cg-packer`. For
+/// `uttt_policy::encode_pattern_bytes`, packed by `cg-packer`. For
 /// the bot when the model is [`Model::Patterns`]; for later experiments
 /// otherwise.
 pub fn weights_source(model: Model, bytes: &[u8], origin: &str) -> Result<String, String> {

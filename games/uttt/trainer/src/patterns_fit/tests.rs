@@ -1,9 +1,9 @@
 use uttt_engine::{Board, Move, MoveList, Status};
 
-use uttt_engine::board::{
-    encode_pattern_bytes, encode_pattern_weights, CLASSES, PATTERN_CELLS, PATTERN_FEATURES,
+use uttt_policy::{
+    encode_pattern_bytes, encode_pattern_weights, PatternPolicy, CLASSES, PATTERN_CELLS,
+    PATTERN_FEATURES,
 };
-use uttt_engine::PatternPolicy;
 
 use super::*;
 use crate::data::Searched;
@@ -69,7 +69,7 @@ fn examples_store_every_move_and_hold_out_whole_games() {
 
 #[test]
 fn symmetric_moves_of_symmetric_games_have_the_same_features() {
-    use uttt_engine::board::symmetric_cell;
+    use uttt_policy::symmetric_cell;
     let mirror = |symmetry: usize, mv: Move| {
         Move::new(
             symmetric_cell(symmetry, mv.board()),

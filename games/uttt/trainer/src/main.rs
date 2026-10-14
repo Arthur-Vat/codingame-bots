@@ -10,8 +10,7 @@ use std::time::Instant;
 
 use cg_core::rng::Rng;
 use clap::{Parser, Subcommand};
-use uttt_engine::board::CLASSES;
-use uttt_engine::{PatternPolicy, PlayoutPolicy};
+use uttt_policy::{PatternPolicy, PlayoutPolicy, CLASSES};
 use uttt_value::Network;
 use value_fit::Examples as _;
 
@@ -1098,8 +1097,8 @@ fn fit_patterns(
         }
         let characters = (model != Model::Classes).then(|| {
             let sharpened: Vec<f32> = theta.iter().map(|&value| value / temperature).collect();
-            let text = uttt_engine::board::encode_pattern_weights(&sharpened);
-            let bytes = uttt_engine::board::encode_pattern_bytes(&sharpened);
+            let text = uttt_policy::encode_pattern_weights(&sharpened);
+            let bytes = uttt_policy::encode_pattern_bytes(&sharpened);
             let packed = cg_packer::pack(&bytes).chars().count();
             let source = patterns_fit::weights_source(model, &bytes, origin)?;
             let path = weights_dir.join(format!("{}.rs", model.name()));

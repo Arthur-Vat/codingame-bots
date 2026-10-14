@@ -13,6 +13,7 @@ rust-version.workspace = true
 cg-core.workspace = true
 cg-search.workspace = true
 uttt-engine.workspace = true
+uttt-policy.workspace = true
 
 [lints]
 workspace = true

@@ -9,11 +9,12 @@
 
 use std::sync::OnceLock;
 
-use uttt_engine::board::{
-    symmetric_cell, BLOCKS, CLASSES, DESTINATIONS, PATTERNS, PATTERN_FEATURES, WINS_BOARD,
-};
 use uttt_engine::grid::{self, FULL};
 use uttt_engine::{Board, Move, Status};
+use uttt_policy::{
+    symmetric_cell, PolicyMoves, BLOCKS, CLASSES, DESTINATIONS, PATTERNS, PATTERN_FEATURES,
+    WINS_BOARD,
+};
 
 /// A model of the moves' log-weights.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -6,8 +6,8 @@ use std::time::{Duration, Instant};
 
 use cg_core::rng::Rng;
 use cg_search::{Budget, Game, Mcts};
-use uttt_engine::search::PolicyBoard;
-use uttt_engine::{Board, Move, PlayoutPolicy, Status};
+use uttt_engine::{Board, Move, Status};
+use uttt_policy::{PlayoutPolicy, PolicyBoard};
 use uttt_value::{MixBoard, Network, ValueBoard};
 
 /// A search's budget for one move.

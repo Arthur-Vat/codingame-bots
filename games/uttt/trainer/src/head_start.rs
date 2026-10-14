@@ -9,8 +9,8 @@
 
 use cg_core::rng::Rng;
 use cg_search::{Budget, Game, Mcts};
-use uttt_engine::search::PolicyBoard;
-use uttt_engine::{Board, PlayoutPolicy, Status};
+use uttt_engine::{Board, Status};
+use uttt_policy::{PlayoutPolicy, PolicyBoard};
 
 use crate::duel::Results;
 

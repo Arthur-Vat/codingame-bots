@@ -4,8 +4,8 @@
 
 use cg_core::rng::Rng;
 use cg_search::{Budget, Game, Mcts};
-use uttt_engine::search::{PatternBoard, PolicyBoard};
-use uttt_engine::{Board, Move, PatternPolicy, PlayoutPolicy, Status};
+use uttt_engine::{Board, Move, Status};
+use uttt_policy::{PatternBoard, PatternPolicy, PlayoutPolicy, PolicyBoard};
 
 use crate::data::{GameRecord, Searched};
 
@@ -93,7 +93,7 @@ impl SelfPlay {
 
 /// Reads the playout weights from Rust source written by `uttt-trainer
 /// fit-policy`, such as `games/uttt/training/class_weights.rs`.
-pub fn read_policy_weights(source: &str) -> Result<[u32; uttt_engine::board::CLASSES], String> {
+pub fn read_policy_weights(source: &str) -> Result<[u32; uttt_policy::CLASSES], String> {
     let start = source
         .find("PLAYOUT_WEIGHTS")
         .and_then(|at| source[at..].find("= [").map(|offset| at + offset + 3))
@@ -113,7 +113,7 @@ pub fn read_policy_weights(source: &str) -> Result<[u32; uttt_engine::board::CLA
     let count = weights.len();
     weights
         .try_into()
-        .map_err(|_| format!("{count} weights instead of {}", uttt_engine::board::CLASSES))
+        .map_err(|_| format!("{count} weights instead of {}", uttt_policy::CLASSES))
 }
 
 /// The text between the quotes of the constant `name` in Rust source,

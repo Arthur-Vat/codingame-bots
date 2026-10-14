@@ -1,5 +1,7 @@
+use uttt_engine::MoveList;
+
 use super::*;
-use crate::moves::MoveList;
+use crate::PolicyMoves;
 
 /// Every legal move of `board`.
 fn legal(board: &Board) -> Vec<Move> {
@@ -74,8 +76,8 @@ fn destinations_follow_free_choices_and_threats() {
                 } else if next.status() == Status::Ongoing && mv.cell() != mv.board() {
                     let to = mv.cell();
                     let expected = 1
-                        + usize::from(board.threats[1 - seat] & (1 << to) != 0)
-                        + 2 * usize::from(board.threats[seat] & (1 << to) != 0);
+                        + usize::from(board.threat_boards(1 - seat) & (1 << to) != 0)
+                        + 2 * usize::from(board.threat_boards(seat) & (1 << to) != 0);
                     assert_eq!(destination, expected, "{mv}");
                 }
             }
