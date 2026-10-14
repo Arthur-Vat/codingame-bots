@@ -2,7 +2,7 @@
 
 The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md), [ADR 0035](../../docs/adr/0035-new-game-lifecycle.md)). The game was built in phases 1 to 6 of the [main roadmap](../../docs/ROADMAP.md), before the lifecycle existed; this file maps that work onto the stages, and stages 3, 8 and 11 were written afterwards as the worked example. Before the lifecycle, the owner's answers were his approvals of each pull request.
 
-**Stage in progress:** 10. Iteration, paused (strength work paused by the owner, 2026-10-09)
+**Stage in progress:** 10. Iteration (strength work resumed by the owner with step B of the plan below, 2026-10-14)
 **Owner's stopping rule:** Legend reached on 2026-10-07; further work at the owner's call
 
 | # | Stage | Status | Gate: the owner's answer |
@@ -16,16 +16,16 @@ The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME
 | 7 | Studio | Done (2026-10-13) | Phase 6 merged on the owner's approvals |
 | 8 | Research | Done (2026-10-13), after the fact | [research/](research/README.md) |
 | 9 | Approach and first bot | Done (2026-10-07) | MCTS, `uttt-v001` pasted: Legend, 182nd of 443 ([E001](journal/E001-mcts.md)) |
-| 10 | Iteration | In progress, paused | Releases up to `uttt-v010`; experiments in the [journal](journal/README.md) |
+| 10 | Iteration | In progress | Releases up to `uttt-v010`; experiments in the [journal](journal/README.md) |
 | 11 | Retrospective | Done (2026-10-13), as the worked example | [RETROSPECTIVE.md](RETROSPECTIVE.md) |
 
 ## Current stage
 
-Iteration is paused. When the owner resumes it, each experiment follows "An experiment, step by step" in [docs/WORKFLOW.md](../../docs/WORKFLOW.md).
+Iteration resumed on 2026-10-14 with step B of the plan below. Each experiment follows "An experiment, step by step" in [docs/WORKFLOW.md](../../docs/WORKFLOW.md).
 
 ## Plan for iteration
 
-Proposed on 2026-10-14 from the write-up of a player at the top of the arena ([research](research/README.md#sources)). Not started. Strength work stays paused until the owner resumes it, and each step that runs experiments or training waits for his go-ahead. Each change to the bot is one experiment: a journal entry, a candidate release and an SPRT.
+Proposed on 2026-10-14 from the write-up of a player at the top of the arena ([research](research/README.md#sources)). Step A done; step B started on 2026-10-14 at the owner's request. Each step that runs experiments or training waits for his go-ahead. Each change to the bot is one experiment: a journal entry, a candidate release and an SPRT.
 
 **Where we stand.** The bot is MCTS with playouts, guided by a small learned policy. `uttt-v008` reached 59th place. The write-up says this design reaches about the top 50 with excellent speed work, and that the top bots evaluate positions with a network instead. Its TrueSkill gap of about 9 between the first and the 50th means the first is expected to win over 90% of their games against each other. Our value network did not beat the playouts ([E012](journal/E012-value-network.md); run [37814220623](training/runs/37814220623/report.md) only tied them when mixed half and half). Three things differ from the write-up's network:
 
@@ -60,6 +60,15 @@ An efficiently updatable network. Its first layer, the accumulator, changes by a
 4. **Trainer:** fit the NNUE and export it quantized and packed. Done by `uttt-trainer fit-nnue` and the Train workflow's `nnue` stage (the split and the held-out measurements are those of `fit-value`, so the gate's numbers are comparable).
 
 Gate: on held-out positions, a lower error than run 37814220623's network. The cost of an update and of an evaluation is measured in the engine's speed example.
+
+**Gate passed (2026-10-14).** Train run 38562652097 fitted a network of width 256 for 8 epochs on run 37814220623's data, in 26 minutes. On the same 4,182,825 held-out positions, the quantized network scores better than that run's rounded network:
+
+| Network | Squared error | Cross-entropy, nats |
+| --- | --- | --- |
+| Value network 217-128-32-1, run 37814220623, rounded | 0.1522 | 0.6249 |
+| NNUE (189 → 256) × 2 → 10, run 38562652097, quantized | 0.1498 | 0.6199 |
+
+The held-out error was still falling at the eighth epoch. The packed network takes 27,264 characters. At width 256, the engine's speed example measures about 12.1 million updates and 5.4 million evaluations per second. The run's report and weights stay on its branch `claude/train/38562652097` until step C1 uses them: run 37814220623's data expires on 2026-10-15, so the network could not be fitted again.
 
 ### C. Search with the NNUE
 
@@ -102,10 +111,11 @@ The write-up's bot is a Python file that writes and runs a compiled C program. T
 
 ## Open questions
 
-- Resume strength work with the plan above? Answered 2026-10-14: not yet.
+- Resume strength work with the plan above? Answered 2026-10-14: not yet; then, the same day, "go on with step B".
 
 ## Decisions
 
+- 2026-10-14: step B resumed ("go on with step B"); its first fit reuses run 37814220623's self-play data, no new self-play ("Reuse run 37814220623").
 - 2026-10-14: the packing tools are framework work for every game: the decoder `cg-pack` and the encoder `cg-packer`, two crates, no ADR.
 - 2026-10-14: no AVX2 for now. Measured no gain on today's bot; it waits for the network (step D3).
 - 2026-10-14: every tool of the packing is Rust; strength work not resumed yet.
