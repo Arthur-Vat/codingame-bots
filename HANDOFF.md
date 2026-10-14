@@ -4,10 +4,11 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-None.
+- #118 (CodinGame may count characters; packing note docs/research/utf16-packing.md) and #119 (stacked: Ultimate Tic-Tac-Toe plan toward an NNUE in games/uttt/ROADMAP.md), both reviewed (light, nits fixed); asked 2026-10-14. Merge #118 first.
 
 ## Open questions
 
+- Resume Ultimate Tic-Tac-Toe strength work with the plan of #119? Will the owner run the probe of step A1 on CodinGame (a Rust file of about 95,000 characters outside ASCII; Claude builds it on request)? Then an ADR on counting UTF-16 units in cg-check.sh (asked 2026-10-14).
 - Phase 5 step D, the phase 7 second game and watching the first release after the CI changes: later (owner, 2026-10-13).
 
 ## Follow-ups
@@ -32,6 +33,7 @@ None.
 
 ## Notes
 
+- Owner, 2026-10-14: keep the character-packing trick for future releases of any game (docs/research/utf16-packing.md). The article's host is reachable by curl from sessions, not by WebFetch. rustc rejects text-direction controls in literals, so the Rust alphabet has 63,172 code points.
 - Studio tried on Windows (owner, 2026-10-11): "very satisfied", with things to improve. Answered in the conversation, 2026-10-11: bot against bot shown move by move at a chosen pace on the same page, which becomes the review when it ends; history as a tab inside each game (Play | History), no global page; a finished game turns into its review on the same page; interface work before step D. Not wanted for now: auto-save (current Save kept), move notation and sounds, league Elo next to releases, one-click presets. Screen: regular resolution, window maximized, not full screen. Exploring side lines in a review: ok, in step D. Starting the studio: installing and typing commands were the pain; the owner wants a one-click download from the GitHub page, earlier than planned (answered 2026-10-11). The owner dislikes the "studio." logo. Answered 2026-10-11: keep the name "studio" with a better logo (owner chose A, the nine-square grid with the centre cell in the app's blue, 2026-10-11); an empty board instead of "The board appears here"; saved games in %LOCALAPPDATA%; an update check at start; the unsigned-program warning accepted; no tray icon; no amber: a dashed line through the three winning small boards; order F then G agreed, but the owner asked whether the download is needed at all (Codespaces or GitHub Pages discussed in the chat); the owner asked how hard GitHub Pages is and who could use it; answered in the chat, he prefers GitHub Pages (bots compiled to WebAssembly, run in the browser) and wants to keep the local server too, with the same site (2026-10-11). Step F becomes the Pages version (feasibility test first, then a new ADR superseding ADR 0025's 'never hosted'); the Windows download is dropped unless he asks again. Do not start step F until he says so (2026-10-11). Found by Claude (1536x730 screenshots): the board's size ignores the window's height (`.board-row` max 640 px), the review page overflows by 33 px; bot games poll every 200 ms while bots answer in about 100 ms, so the board jumps two moves at a time; the "vs" pill covers the board's first row; the board is dark gray while compiling; New game drops a running game without asking; one-click resign; the right panel is shorter than the board.
 
 - CI scoped by area and game (ADR 0029), merged 2026-10-11 (#83 to #85, on the owner's approvals in the chat). The ruleset requires `CI passed`, `SPRT passed` and `Pull request title and labels` (owner's edits, 2026-10-11). Proved by draft PRs #86 (docs-only: only Changes and Docs and scripts ran) and #87 (uttt-only: no front end or licenses), both closed; `main` green at 24b6a8f. The per-game SPRT leg has not run yet (no release since): watch the first candidate. Skipped matrix jobs show the raw name `${{ matrix.game }}: ...` (cosmetic, kept).
