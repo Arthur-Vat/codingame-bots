@@ -4,11 +4,11 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- #118 (CodinGame may count characters; packing note docs/research/utf16-packing.md) and #119 (stacked: Ultimate Tic-Tac-Toe plan toward an NNUE in games/uttt/ROADMAP.md), both reviewed (light, nits fixed); asked 2026-10-14. Merge #118 first.
+- #118 (characters, not bytes; packing note docs/research/utf16-packing.md; probe results), #119 (stacked on #118: Ultimate Tic-Tac-Toe plan toward an NNUE) and #120 (stacked on #118: ADR 0037, cg-check.sh counts UTF-16 units). #118 and #119 reviewed (light), #120 under deep review. Asked 2026-10-14; not yet answered. Merge #118 first.
 
 ## Open questions
 
-- Resume Ultimate Tic-Tac-Toe strength work with the plan of #119? ADR: count UTF-16 units instead of bytes in cg-check.sh, at 100,000? (asked 2026-10-14; the probe passed: the owner pasted, played and submitted a Rust bot of 95,713 characters and 125,475 bytes, accepted; CodinGame compiles for basic x86-64 on a CPU with AVX2, FMA, BMI2, POPCNT, no AVX-512; IDE not a debug build. Recorded on #118.)
+- Resume Ultimate Tic-Tac-Toe strength work with the plan of #119: answered in the conversation, 2026-10-14: "not yet". The size check: answered 2026-10-14, option a (UTF-16 units, 100,000), written as ADR 0037 in #120. Probe passed (2026-10-14): Rust bot of 95,713 characters and 125,475 bytes accepted; CodinGame compiles for basic x86-64 on a CPU with AVX2, FMA, BMI2, POPCNT, no AVX-512; IDE not a debug build.
 - Phase 5 step D, the phase 7 second game and watching the first release after the CI changes: later (owner, 2026-10-13).
 
 ## Follow-ups
