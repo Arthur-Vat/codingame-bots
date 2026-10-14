@@ -109,6 +109,76 @@ fn weights_survive_their_text_and_follow_the_log_weights() {
     assert!(PatternPolicy::decode("AB").is_err());
 }
 
+/// Log-weights from -9 to 8, so that the extremes are clamped too.
+fn random_log_weights(seed: u64) -> Vec<f32> {
+    let mut rng = Rng::new(seed);
+    (0..PATTERN_FEATURES)
+        .map(|_| (rng.unit() * 17.0 - 9.0) as f32)
+        .collect()
+}
+
+#[test]
+fn packed_weights_decode_to_the_same_policy_as_the_text() {
+    assert_eq!(PATTERN_BYTES, 19_707);
+    for seed in [31, 32] {
+        let log_weights = random_log_weights(seed);
+        let bytes = encode_pattern_bytes(&log_weights);
+        assert_eq!(bytes.len(), PATTERN_BYTES);
+        let text = encode_pattern_weights(&log_weights);
+        assert_eq!(
+            PatternPolicy::decode_packed(&bytes).unwrap(),
+            PatternPolicy::decode(&text).unwrap()
+        );
+        // Digit i is at bits 6i..6i+6, least significant bit first.
+        for (index, digit) in text.bytes().enumerate() {
+            let q = ALPHABET.iter().position(|&d| d == digit).unwrap();
+            let read = (0..6)
+                .map(|bit| {
+                    usize::from((bytes[(6 * index + bit) / 8] >> ((6 * index + bit) % 8)) & 1)
+                        << bit
+                })
+                .sum::<usize>();
+            assert_eq!(read, q, "digit {index}");
+        }
+    }
+    // The extremes: all digits 0, all digits 63.
+    for (log, byte) in [(-8.0, 0u8), (7.75, 0xFF)] {
+        let bytes = encode_pattern_bytes(&vec![log; PATTERN_FEATURES]);
+        let used_bits = PATTERN_FEATURES * 6;
+        assert!(bytes[..PATTERN_BYTES - 1].iter().all(|&b| b == byte));
+        assert_eq!(
+            bytes[PATTERN_BYTES - 1],
+            byte & ((1 << (used_bits % 8)) - 1)
+        );
+        let text = encode_pattern_weights(&vec![log; PATTERN_FEATURES]);
+        assert_eq!(
+            PatternPolicy::decode_packed(&bytes).unwrap(),
+            PatternPolicy::decode(&text).unwrap()
+        );
+    }
+}
+
+#[test]
+fn packed_weights_of_the_wrong_shape_are_refused() {
+    let bytes = encode_pattern_bytes(&random_log_weights(33));
+    assert!(PatternPolicy::decode_packed(&bytes).is_ok());
+    assert!(PatternPolicy::decode_packed(&[]).is_err());
+    assert!(PatternPolicy::decode_packed(&bytes[1..]).is_err());
+    let mut longer = bytes.clone();
+    longer.push(0);
+    assert!(PatternPolicy::decode_packed(&longer).is_err());
+    // A bit set after the last weight.
+    let used_bits = PATTERN_FEATURES * 6;
+    assert_ne!(used_bits % 8, 0, "the test needs padding bits");
+    for bit in used_bits % 8..8 {
+        let mut padded = bytes.clone();
+        padded[PATTERN_BYTES - 1] |= 1 << bit;
+        assert!(PatternPolicy::decode_packed(&padded).is_err(), "bit {bit}");
+    }
+    // Every other byte pattern is some weights.
+    assert!(PatternPolicy::decode_packed(&vec![0xFF; PATTERN_BYTES - 1]).is_err());
+}
+
 #[test]
 fn draws_follow_the_weights_and_take_game_winning_moves() {
     let mut rng = Rng::new(24);

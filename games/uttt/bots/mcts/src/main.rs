@@ -52,13 +52,15 @@ const RESERVE: Duration = Duration::ZERO;
 const EXPLORATION: f64 = 0.5;
 
 /// The pattern policy (E015): weights learned for every pattern of a small
-/// board, cell and destination, decoded once from their text. They draw the
-/// first moves of each playout, decisive random moves after that, and
-/// order each node's children.
+/// board, cell and destination, decoded once from their packed characters
+/// (6 bits each, see `cg-pack`). They draw the first moves of each playout,
+/// decisive random moves after that, and order each node's children.
 fn policy() -> &'static PatternPolicy {
     static POLICY: OnceLock<PatternPolicy> = OnceLock::new();
     POLICY.get_or_init(|| {
-        PatternPolicy::decode(pattern_weights::PATTERN_TEXT)
+        let bytes =
+            cg_pack::unpack(pattern_weights::PATTERN_PACKED).expect("the pattern weights unpack");
+        PatternPolicy::decode_packed(&bytes)
             .expect("the pattern weights decode")
             .for_plies(PLIES)
     })
@@ -72,6 +74,8 @@ fn policy() -> &'static PatternPolicy {
 /// +22, the whole playout +10.
 const PLIES: u32 = 16;
 
+// Packed characters include ones that clippy takes for invisible.
+#[allow(clippy::invisible_characters)]
 mod pattern_weights;
 
 /// Whether the search also uses the playout policy's weights as priors in

@@ -11,8 +11,8 @@ use std::time::Instant;
 use cg_core::rng::Rng;
 use clap::{Parser, Subcommand};
 use uttt_engine::board::CLASSES;
-use uttt_engine::value::Network;
 use uttt_engine::{PatternPolicy, PlayoutPolicy};
+use uttt_value::Network;
 use value_fit::Examples as _;
 
 mod data;
@@ -84,8 +84,9 @@ enum Command {
         /// without it.
         #[arg(long)]
         policy: Option<PathBuf>,
-        /// Rust source holding a pattern policy's text (`PATTERN_TEXT`), such
-        /// as `games/uttt/bots/mcts/src/pattern_weights.rs`, for the bot's
+        /// Rust source holding a pattern policy, packed (`PATTERN_PACKED`) or
+        /// as base64 text (`PATTERN_TEXT`), such as
+        /// `games/uttt/bots/mcts/src/pattern_weights.rs`, for the bot's
         /// playouts and order of children since E015; replaces `--policy`.
         #[arg(long)]
         patterns: Option<PathBuf>,
@@ -157,9 +158,9 @@ enum Command {
         /// destination-roles, phases-destinations.
         #[arg(long, value_delimiter = ',', default_value = "classes,patterns")]
         models: Vec<String>,
-        /// Where to write each model's weights, as Rust source named after
-        /// the model (`patterns.rs` is the bot's format); the classes' are
-        /// not written.
+        /// Where to write each model's weights, as a Rust module of packed
+        /// characters (`PATTERN_PACKED`) named after the model (`patterns.rs`
+        /// is the bot's `pattern_weights.rs`); the classes' are not written.
         #[arg(long)]
         weights_dir: PathBuf,
         /// Where to write the report, in Markdown.
@@ -619,13 +620,12 @@ fn load_policy(path: &Path, plies: u32) -> Result<&'static PlayoutPolicy, String
     )))
 }
 
-/// The pattern policy whose text `path`'s Rust source holds, drawing
-/// `plies` moves of each playout.
+/// The pattern policy whose weights `path`'s Rust source holds, packed or as
+/// text, drawing `plies` moves of each playout.
 fn load_patterns(path: &Path, plies: u32) -> Result<&'static PatternPolicy, String> {
     let source =
         std::fs::read_to_string(path).map_err(|err| format!("{}: {err}", path.display()))?;
-    let policy = selfplay::read_pattern_text(&source)
-        .and_then(|text| PatternPolicy::decode(&text))
+    let policy = selfplay::read_pattern_policy(&source)
         .map_err(|err| format!("{}: {err}", path.display()))?;
     Ok(Box::leak(Box::new(policy.for_plies(plies))))
 }
@@ -1027,7 +1027,8 @@ struct PatternRow {
     held_out: patterns_fit::Metrics,
     rounded: patterns_fit::Metrics,
     epochs: Vec<f64>,
-    characters: Option<(usize, usize)>,
+    /// Base64 characters, entropy-coded characters and packed characters.
+    characters: Option<(usize, usize, usize)>,
 }
 
 fn fit_patterns(
@@ -1098,10 +1099,12 @@ fn fit_patterns(
         let characters = (model != Model::Classes).then(|| {
             let sharpened: Vec<f32> = theta.iter().map(|&value| value / temperature).collect();
             let text = uttt_engine::board::encode_pattern_weights(&sharpened);
-            let source = patterns_fit::weights_source(model, &text, origin);
+            let bytes = uttt_engine::board::encode_pattern_bytes(&sharpened);
+            let packed = cg_packer::pack(&bytes).chars().count();
+            let source = patterns_fit::weights_source(model, &bytes, origin)?;
             let path = weights_dir.join(format!("{}.rs", model.name()));
             std::fs::write(&path, source)
-                .map(|()| (text.len(), patterns_fit::entropy_characters(&text)))
+                .map(|()| (text.len(), patterns_fit::entropy_characters(&text), packed))
                 .map_err(|err| format!("{}: {err}", path.display()))
         });
         rows.push(PatternRow {
@@ -1136,23 +1139,25 @@ fn fit_patterns(
     );
     let _ = writeln!(
         report,
-        "| Model | Weights | Seen in fitted positions | Held-out cross-entropy, nats | Probability of the search's favourite move | Cross-entropy, weights rounded to quarters | Base64 characters | Entropy-coded, about |"
+        "| Model | Weights | Seen in fitted positions | Held-out cross-entropy, nats | Probability of the search's favourite move | Cross-entropy, weights rounded to quarters | Base64 characters | Entropy-coded, about | Packed characters |"
     );
-    let _ = writeln!(report, "| --- | --- | --- | --- | --- | --- | --- | --- |");
     let _ = writeln!(
         report,
-        "| Uniform | 0 | | {:.4} | {:.3} | | | |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"
+    );
+    let _ = writeln!(
+        report,
+        "| Uniform | 0 | | {:.4} | {:.3} | | | | |",
         uniform.cross_entropy, uniform.best_move
     );
     for row in &rows {
-        let (characters, coded) = row
-            .characters
-            .map_or((String::new(), String::new()), |(plain, coded)| {
-                (plain.to_string(), coded.to_string())
-            });
+        let (characters, coded, packed) = row.characters.map_or(
+            (String::new(), String::new(), String::new()),
+            |(plain, coded, packed)| (plain.to_string(), coded.to_string(), packed.to_string()),
+        );
         let _ = writeln!(
             report,
-            "| {} | {} | {} | {:.4} | {:.3} | {:.4} | {characters} | {coded} |",
+            "| {} | {} | {} | {:.4} | {:.3} | {:.4} | {characters} | {coded} | {packed} |",
             row.model.name(),
             row.model.weights(),
             row.seen,

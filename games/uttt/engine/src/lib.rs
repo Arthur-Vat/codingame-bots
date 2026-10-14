@@ -7,7 +7,7 @@
 //!
 //! The engine uses the standard library only, so the bundler can copy it
 //! into bots. [`search`] makes [`Board`] a game that `cg-search` can
-//! search, with playouts or with the value network of [`value`]. [`nnue`] is a quantized
+//! search, with playouts. [`nnue`] is a quantized
 //! network whose first layer updates incrementally, move by move. The
 //! engine's parity tests check it against the readable reference referee
 //! (`uttt-referee`) move by move.
@@ -17,7 +17,6 @@ pub mod grid;
 pub mod moves;
 pub mod nnue;
 pub mod search;
-pub mod value;
 
 pub use board::{Board, PatternPolicy, PlayoutPolicy, Status};
 pub use moves::{Move, MoveList};

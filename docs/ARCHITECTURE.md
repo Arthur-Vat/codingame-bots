@@ -61,6 +61,7 @@ codingame-bots/
 │     ├─ arena/             uttt-arena binary
 │     ├─ engine/            fast rules for bots, checked against the referee
 │     ├─ analysis/          uttt-analysis: the analysis program, a library and a command (JSON request in, JSON lines of reports out), natively and as WebAssembly (ADR 0032)
+│     ├─ value/             uttt-value: E012's value network and its searches, for the trainer only (bots never use it)
 │     ├─ trainer/           uttt-trainer binary: self-play data, training of the playout policy, value network and move models
 │     ├─ bots/              first-valid/, random/, greedy/, wood/, rules-check/, mcts/
 │     ├─ releases/          frozen paste-ready file per version

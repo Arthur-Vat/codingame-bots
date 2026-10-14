@@ -1,6 +1,6 @@
 use uttt_engine::Move;
 
-use uttt_engine::value::ValueNetwork;
+use uttt_value::ValueNetwork;
 
 use super::*;
 

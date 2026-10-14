@@ -9,8 +9,8 @@ mod patterns;
 mod policy;
 
 pub use patterns::{
-    encode_pattern_weights, symmetric_cell, PatternPolicy, DESTINATIONS, PATTERNS, PATTERN_CELLS,
-    PATTERN_FEATURES,
+    encode_pattern_bytes, encode_pattern_weights, symmetric_cell, PatternPolicy, DESTINATIONS,
+    PATTERNS, PATTERN_BYTES, PATTERN_CELLS, PATTERN_FEATURES,
 };
 pub use policy::{
     PlayoutPolicy, BLOCKS, CENTRE, CLASSES, FEATURES, FEATURE_NAMES, GIVES_BOARD,

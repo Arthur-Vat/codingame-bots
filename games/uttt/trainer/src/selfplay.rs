@@ -116,21 +116,36 @@ pub fn read_policy_weights(source: &str) -> Result<[u32; uttt_engine::board::CLA
         .map_err(|_| format!("{count} weights instead of {}", uttt_engine::board::CLASSES))
 }
 
-/// Reads the pattern weights' text from Rust source written by
-/// `uttt-trainer fit-patterns`, such as the bot's `pattern_weights.rs`:
-/// the string after `PATTERN_TEXT`, without its line continuations.
-pub fn read_pattern_text(source: &str) -> Result<String, String> {
+/// The text between the quotes of the constant `name` in Rust source,
+/// as written.
+fn read_constant(source: &str, name: &str) -> Option<String> {
     let start = source
-        .find("PATTERN_TEXT: &str")
-        .and_then(|at| source[at..].find('"').map(|offset| at + offset + 1))
-        .ok_or("no `PATTERN_TEXT: &str` in the source")?;
-    let end = source[start..]
-        .find('"')
-        .ok_or("the weights' text does not end")?;
-    Ok(source[start..start + end]
-        .chars()
-        .filter(|c| !c.is_whitespace() && *c != '\\')
-        .collect())
+        .find(&format!("{name}: &str"))
+        .and_then(|at| source[at..].find('"').map(|offset| at + offset + 1))?;
+    let end = source[start..].find('"')?;
+    Some(source[start..start + end].to_string())
+}
+
+/// Reads a pattern policy from Rust source written by `uttt-trainer
+/// fit-patterns`, such as the bot's `pattern_weights.rs`: the packed
+/// weights of `PATTERN_PACKED` or, in older files and releases, the base64
+/// characters of `PATTERN_TEXT`. The policy draws every move of a playout.
+/// The packed characters are read as they are: some of them are white space
+/// to Unicode.
+pub fn read_pattern_policy(source: &str) -> Result<PatternPolicy, String> {
+    if let Some(packed) = read_constant(source, "PATTERN_PACKED") {
+        let bytes = cg_pack::unpack(&packed).ok_or("the packed weights do not unpack")?;
+        PatternPolicy::decode_packed(&bytes)
+    } else if let Some(text) = read_constant(source, "PATTERN_TEXT") {
+        // Base64 characters only: no line continuations or white space.
+        let text: String = text
+            .chars()
+            .filter(|c| !c.is_whitespace() && *c != '\\')
+            .collect();
+        PatternPolicy::decode(&text)
+    } else {
+        Err("no `PATTERN_PACKED: &str` or `PATTERN_TEXT: &str` in the source".to_string())
+    }
 }
 
 #[cfg(test)]
