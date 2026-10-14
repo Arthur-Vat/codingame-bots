@@ -14,7 +14,7 @@ CodinGame's [Ultimate Tic-Tac-Toe](https://www.codingame.com/multiplayer/bot-pro
 | [research/](research/README.md) | Sources and approaches, set beside what the journal learned |
 | [RETROSPECTIVE.md](RETROSPECTIVE.md) | What worked, what cost more, and changes proposed for the next game |
 | [referee/](referee/) | Readable reference implementation of the rules, driven by the arena |
-| [engine/](engine/) | Fast implementation of the rules for bots: bitboards, no allocation, random and decisive playouts, playouts guided by the class policy (32 move classes) or the pattern policy (E015), and the value network's inputs and evaluation |
+| [engine/](engine/) | Fast implementation of the rules for bots: bitboards, no allocation, random and decisive playouts, playouts guided by the class policy (32 move classes) or the pattern policy (E015), the value network's inputs and evaluation, and the NNUE (`nnue`) |
 | [analysis/](analysis/) | `uttt-analysis`: the analysis program (see "Analysis" below): a JSON request in, JSON lines of reports out, natively or as WebAssembly for the studio ([ADR 0032](../../docs/adr/0032-analysis-engine.md)) |
 | [arena/](arena/) | `uttt-arena`: plays bots against each other through the referee |
 | [trainer/](trainer/) | `uttt-trainer`: self-play data, and training of the playout policy, the value network and the move models ([ADR 0016](../../docs/adr/0016-self-play-training.md), [ADR 0017](../../docs/adr/0017-value-network.md)) |
@@ -84,7 +84,7 @@ It counts iterations, not time, so the same request gives the same lines. Speed,
 
 ## Engine speed
 
-`cargo run --release -p uttt-engine --example speed` runs random playouts from the start position for a few seconds, then decisive playouts (a move that wins the game when there is one, as the search plays them), then 100 ms MCTS searches from there. Moves per playout are averaged over 10,000 games played one move at a time. CI runs it on every pull request and push to `main` and shows the table in the job summary of the "uttt: bots" job (from `ci.sh`); it is a report, not a check.
+`cargo run --release -p uttt-engine --example speed` runs random playouts from the start position for a few seconds, then decisive playouts (a move that wins the game when there is one, as the search plays them), then 100 ms MCTS searches from there, then the cost of an NNUE of width 256 (updates, evaluations, accumulators from scratch). Moves per playout are averaged over 10,000 games played one move at a time. CI runs it on every pull request and push to `main` and shows the table in the job summary of the "uttt: bots" job (from `ci.sh`); it is a report, not a check.
 
 Baseline, measured on 2026-10-08 on one thread of an Intel Xeon at 2.8 GHz (this shared machine varies by about 10% between runs), after E006 sped up selection and playouts:
 
@@ -95,6 +95,11 @@ Baseline, measured on 2026-10-08 on one thread of an Intel Xeon at 2.8 GHz (this
 | Moves per second | about 70,000,000 |
 | Decisive playouts from the start | about 1,234,000 per second (1,214,458 to 1,247,103), 54.2 moves each |
 | MCTS iterations from the start, 100 ms searches | about 755,000 per second (719,982 to 803,399) |
+| NNUE 256: incremental updates (one move) | about 12,100,000 per second (11,441,466 to 13,102,714) |
+| NNUE 256: evaluations | about 5,400,000 per second (4,860,759 to 5,686,432) |
+| NNUE 256: accumulators from scratch | about 907,000 per second (867,389 to 943,153) |
+
+The three NNUE rows (`uttt_engine::nnue`, a random network of width 256, built in the example) were added and measured on 2026-10-14 on Claude's session, three runs, machine noise about 10%; the other rows are from the earlier measurement above.
 
 Before E006 (after E005): about 925,000 random and 976,000 decisive playouts, and 620,000 MCTS iterations per second. After E004: about 985,000 random playouts and 578,000 MCTS iterations per second. Before E004: 441,681 playouts and about 350,000 MCTS iterations per second.
 

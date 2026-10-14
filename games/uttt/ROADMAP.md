@@ -54,6 +54,8 @@ An efficiently updatable network. Its first layer, the accumulator, changes by a
 
    That is 189 inputs, all 0 or 1. The next small board to play is not an input: it picks one of 10 output buckets, one per small board and one for "any board".
 2. **Shape: (189 → N) × 2 → 10.** One first layer is applied to the position from each side, and the two accumulators side by side feed the chosen bucket. The activation is the squared clipped ReLU, and the output a sigmoid. Weights are quantized: 16-bit accumulators, 8-bit weights where the loss allows. The write-up uses N = 1,024, about 215,000 parameters, so one first layer shared by both sides. We start at N = 256, about 54,000 parameters, which the packing fits.
+
+   Items 1 and 2 are in `uttt_engine::nnue` (inputs keep the cells of closed boards, so a move only adds features): quantized inference with incremental accumulators, byte layout and arithmetic in the module's documentation.
 3. **Data:** positions from self-play of the current bot, labelled with the game's result, read with all eight symmetries. The write-up used 300 million positions. The Train workflow gave 80 million from 2 million games in one run; how many runs is the owner's call.
 4. **Trainer:** fit the NNUE and export it quantized and packed.
 
@@ -62,6 +64,8 @@ Gate: on held-out positions, a lower error than run 37814220623's network. The c
 ### C. Search with the NNUE
 
 One experiment each, judged by the SPRT.
+
+Room: with `uttt_engine::nnue` the MCTS bot's bundle takes 83,952 characters, and a packed network of width 256 about 27,250, so the bot of C1 must drop or pack other data, such as the pattern policy's weights.
 
 1. **MCTS with the network at the leaves**, accumulators built from scratch: the baseline for the next steps.
 2. **"jacekmax"**, named after the CodinGame player jacek, who made it popular. When the search reaches a leaf, it expands all its children at once. It builds the leaf's accumulator once and evaluates each child with an incremental update. It then backs up the minimax value of the children instead of one result. The write-up keeps accumulator checkpoints at nodes with many visits.
