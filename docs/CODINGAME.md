@@ -38,8 +38,9 @@ In the past, CodinGame compiled Rust in debug mode in the IDE and in release mod
 
 ## Submission limits
 
-- **Code size:** players report a strict 100 kB limit ([forum](https://forum.codingame.com/t/ultimate-tic-tac-toe-puzzle-discussion/22616?page=2)). `scripts/cg-check.sh` enforces 100,000 bytes.
+- **Code size:** players report a strict 100 kB limit ([forum](https://forum.codingame.com/t/ultimate-tic-tac-toe-puzzle-discussion/22616?page=2)). A top Ultimate Tic-Tac-Toe player writes that the limit is 100,000 characters, not bytes, and that a character outside ASCII counts as one. Their Python bot holds about 95,000 such characters ([Tom Alard, 2026-09-20](https://tomalard.github.io/posts/fighting-for-1-in-the-ultimate-tic-tac-toe-arena/)). That is not yet checked for Rust: the probe and the packing method are in [research/utf16-packing.md](research/utf16-packing.md). Until the owner decides otherwise, `scripts/cg-check.sh` enforces 100,000 bytes, which is stricter.
 - **One file:** the bundler (Phase 1) merges a bot and its workspace crates into one file.
+- **Files:** the same write-up reports that a bot may write a file and run it. It also says that sending a compiled program this way is banned in active contests. Our bots are Rust source that CodinGame compiles.
 
 ## Timing
 

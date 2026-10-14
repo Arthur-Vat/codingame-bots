@@ -4,7 +4,7 @@ Notes on methods that serve more than one game: search, evaluation and learning,
 
 ## Notes
 
-None yet.
+- [Packing data into characters](utf16-packing.md): about 15.9 bits per character, for weights and tables that would not fit as base64. Not usable in a release until it is checked on CodinGame and the size check counts characters.
 
 ## Format
 
