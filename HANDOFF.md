@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- Merge #118 (head 6ccb777), then #120 (17ad6bc, ADR 0037: cg-check.sh counts UTF-16 units), then #119 (9311ea3, Ultimate Tic-Tac-Toe plan toward an NNUE, with the AVX2 measurement in step D3). All reviewed, green and mergeable; merge cleanly in that order. Asked 2026-10-14.
+None.
 
 ## Open questions
 
@@ -13,6 +13,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Follow-ups
 
+- Merged 2026-10-14 on the owner's approval in the chat ("Yes please" to #118, then #120, then #119): characters not bytes and the packing note (#118), ADR 0037 cg-check.sh counts UTF-16 units (#120), Ultimate Tic-Tac-Toe plan toward an NNUE in games/uttt/ROADMAP.md (#119). Next when the owner resumes strength work: step A3, the packing tools in Rust (shared decoder crate, encoder in the trainer, round-trip test); the probe's Rust generator is in no repository yet.
 - Merged 2026-10-13 on the owner's approval in the chat ("Merge #113, then #114, then #115, then #116, then #117"): ADR 0034 no usage monitoring (#113), ADR 0035 new-game lifecycle (#114), playbook docs/NEW_GAME.md, templates and stage skills (#115), UTTT worked example (#116), ADR 0036 ranks optional (#117). Phase 7 in progress: the next step is a second game, named by the owner (skill `new-game`); the owner pastes CodinGame pages. Owner also (2026-10-13): README fine as is; no doc splitting; real workflow decisions go into ADRs; keep docs/WORKFLOW.md up to date.
 - Retrospective proposals in games/uttt/RETROSPECTIVE.md (studio seat names per game, turns built command by command, shared rules-check skeleton, speed example early) wait for the owner's choice; the first two only when a game needs them.
 - Merged 2026-10-13 on the owner's approval in the chat ("Merge #109, then #110, #111, #112"): phase 6 done (#109), ADR 0033 no daily scheduled session (#110), exact 64-bit seeds (#111), dev notice without a server (#112).
