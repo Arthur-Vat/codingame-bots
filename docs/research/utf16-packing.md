@@ -106,4 +106,4 @@ On 2026-10-14, in Claude's session, with rustc 1.97.0 (newer than CodinGame's 1.
 
 ## Games that use it
 
-None yet.
+None yet. Ultimate Tic-Tac-Toe's plan needs it for an NNUE ([games/uttt/ROADMAP.md](../../games/uttt/ROADMAP.md#plan-for-iteration), step A).
