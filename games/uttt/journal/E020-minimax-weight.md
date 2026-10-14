@@ -34,6 +34,6 @@ Screening against `uttt-v012` in the arena (4-ply openings, 3 games at a time on
 
 The average alone is clearly worse, unlike in the write-up's bot; a mix is better than either end. At 20 ms the best weight was about 0.75, at full time 0.5: a deeper search seems to want more of the average, the drift the write-up saw. The SPRT plays at CodinGame's limits, so the candidate takes 0.5.
 
-Timeouts at full time: 3 for the candidate and 1 for v012 with seed 1, then 1 and 2 with seed 2; the same as v012 overall, the machine's noise. With seed 2, 99.9% of the candidate's answers took at most 94.5 ms (v012: 94.3 ms).
+Timeouts at full time: 3 for the candidate and 1 for v012 with seed 1, then 1 and 2 with seed 2: 4 against 3 in 200 games each, the machine's noise. With seed 2, 99.9% of the candidate's answers took at most 94.5 ms (v012: 94.3 ms).
 
 The bundle, 70,188 characters since #130, is unchanged in size.

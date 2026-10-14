@@ -80,7 +80,7 @@ const EXPAND_ALL: bool = true;
 /// selection. The minimax value only in E018; half and half since E020,
 /// screened on 2026-10-14 against `uttt-v012` (4-ply openings): at 20 ms
 /// (100 pairs each) 0 -77.7 Elo, 0.25 +5.2, 0.5 +43.7, 0.75 +59.6, 0.9
-/// +34.9; at full time (100 pairs, two seeds) 0.5 +74.1 and +77.7, 0.75
+/// +34.9; at full time (two seeds, 50 pairs each) 0.5 +74.1 and +77.7, 0.75
 /// +10.4 and +38.4. The search uses no priors:
 /// from E014 to E017 the pattern policy ordered each node's children, but
 /// since E018 every child gets the network's estimate as soon as it is
