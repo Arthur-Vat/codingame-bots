@@ -108,7 +108,7 @@ impl Game for PatternBoard {
     }
 }
 
-/// A position searched with the NNUE (step C1): the pattern policy orders a node's children, and a new leaf gets the network's estimate instead of a playout. A side to move with a move that wins the game scores a win, exactly. A search that expands all children at once (step C2) gets their estimates from one accumulator built at the leaf, updated for each child.
+/// A position searched with the NNUE (step C1): a new leaf gets the network's estimate instead of a playout, and a search that uses priors orders a node's children by the pattern policy. A side to move with a move that wins the game scores a win, exactly. A search that expands all children at once (step C2) gets their estimates from one accumulator built at the leaf, updated for each child.
 #[derive(Clone, Copy)]
 pub struct NnueBoard<const N: usize = 256> {
     pub board: Board,
