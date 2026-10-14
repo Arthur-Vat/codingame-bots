@@ -33,6 +33,24 @@ pub trait Game: Clone + PartialEq {
         weights.clear();
     }
 
+    /// Estimates the positions after each of `moves`, legal here, for a
+    /// search that expands all the children of a leaf at once: writes into
+    /// `scores`, in the same order, player 0's score and whether the game is
+    /// over there, in which case the score is exact. The default plays each
+    /// move and runs a playout from the positions where the game goes on;
+    /// games may provide a faster version.
+    fn child_scores(&self, moves: &[Self::Move], rng: &mut Rng, scores: &mut Vec<(f64, bool)>) {
+        scores.clear();
+        for &mv in moves {
+            let mut next = self.clone();
+            next.play(mv);
+            scores.push(match next.score() {
+                Some(score) => (score, true),
+                None => (next.playout(rng), false),
+            });
+        }
+    }
+
     /// Plays to the end and returns player 0's score. The default plays
     /// uniformly random legal moves; games may provide a faster or smarter
     /// version.

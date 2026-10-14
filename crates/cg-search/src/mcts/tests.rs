@@ -349,18 +349,115 @@ fn games_without_priors_search_as_before_when_priors_are_asked_for() {
 }
 
 #[test]
-fn a_node_is_as_small_as_before_analysis_existed() {
-    // 32 bytes with a one-byte move, as on origin/main before the analysis
-    // feature: the size of a node of a bot's tree, on which its memory and
-    // speed depend. With the feature a node also holds the share of draws.
-    // CI builds this crate's tests with the feature on (a dependency on the
-    // crate itself turns it on), so only the 36 bytes are checked there; the
-    // 32 are checked by `cargo test -p cg-search` after removing that
-    // dependency, and bots' bundles, identical to the release, cover them.
+fn a_node_is_as_small_as_its_fields_allow() {
+    // 36 bytes with a one-byte move: the 32 of origin/main before the
+    // analysis feature, plus the minimax value of a search that expands all
+    // children at once (E018). It is the size of a node of a bot's tree, on
+    // which its memory and speed depend. With the feature a node also holds
+    // the share of draws. CI builds this crate's tests with the feature on
+    // (a dependency on the crate itself turns it on), so only the 40 bytes
+    // are checked there; the 36 are checked by `cargo test -p cg-search`
+    // after removing that dependency.
     #[cfg(not(feature = "analysis"))]
-    assert_eq!(std::mem::size_of::<Node<u8>>(), 32);
-    #[cfg(feature = "analysis")]
     assert_eq!(std::mem::size_of::<Node<u8>>(), 36);
+    #[cfg(feature = "analysis")]
+    assert_eq!(std::mem::size_of::<Node<u8>>(), 40);
+}
+
+/// A search that expands all children at once, judging them by
+/// `minimax_weight` between their minimax values and their averages.
+fn jacekmax(minimax_weight: f64, seed: u64) -> Mcts<Nim> {
+    let mut mcts = Mcts::new(1.0, seed);
+    mcts.expand_all = true;
+    mcts.minimax_weight = minimax_weight;
+    mcts
+}
+
+#[test]
+fn default_child_scores_are_exact_at_the_end_and_playouts_elsewhere() {
+    let mut scores = Vec::new();
+    nim(3).child_scores(&[1, 2, 3], &mut Rng::new(1), &mut scores);
+    // Taking all three wins; the other two leave a pile that goes on.
+    assert_eq!(scores.len(), 3);
+    assert_eq!(scores[2], (1.0, true));
+    assert!(scores[..2]
+        .iter()
+        .all(|&(score, over)| !over && (score == 0.0 || score == 1.0)));
+}
+
+#[test]
+fn jacekmax_finds_and_proves_wins_and_losses() {
+    for weight in [0.0, 0.5, 1.0] {
+        for (pile, expected) in [(13, Some(true)), (12, Some(false)), (18, Some(true))] {
+            let result =
+                jacekmax(weight, 1).search(&nim(pile), &[1, 2, 3], Budget::Iterations(50_000));
+            assert_eq!(
+                result.proven, expected,
+                "weight {weight}, pile {pile}: {result:?}"
+            );
+            assert!(
+                result.iterations < 50_000,
+                "stopped once proven: {result:?}"
+            );
+            if expected == Some(true) {
+                assert_eq!(result.best, pile % 4);
+            }
+        }
+    }
+}
+
+#[test]
+fn jacekmax_keeps_minimax_values_of_the_children() {
+    let mut mcts = jacekmax(1.0, 2);
+    mcts.search(&nim(30), &[1, 2, 3], Budget::Iterations(3_000));
+    // Every expanded node's minimax value is the best of its tried
+    // children's for the player choosing there.
+    let mut checked = 0;
+    for index in 0..mcts.nodes.len() {
+        let node = mcts.nodes[index];
+        let tried: Vec<f32> = mcts
+            .children(index)
+            .filter(|&child| mcts.nodes[child].visits > 0)
+            .map(|child| mcts.nodes[child].minimax)
+            .collect();
+        if !node.expanded || tried.is_empty() {
+            continue;
+        }
+        let best = tried.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+        assert_eq!(node.minimax, 1.0 - best, "node {index}");
+        match node.proof {
+            Proof::MoverWins => assert_eq!(node.minimax, 1.0),
+            Proof::MoverLoses => assert_eq!(node.minimax, 0.0),
+            Proof::Unknown => {}
+        }
+        checked += 1;
+    }
+    assert!(checked > 100, "{checked} nodes checked");
+}
+
+#[test]
+fn jacekmax_gives_every_new_child_one_visit() {
+    let mut mcts = jacekmax(1.0, 3);
+    let result = mcts.search(&nim(30), &[1, 2, 3], Budget::Iterations(500));
+    // Below the root, each expanded node's children got a visit each when
+    // it was expanded.
+    for index in 1..mcts.nodes.len() {
+        if mcts.nodes[index].expanded {
+            assert!(mcts
+                .children(index)
+                .all(|child| mcts.nodes[child].visits >= 1));
+        }
+    }
+    assert!((0.0..=1.0).contains(&result.expected_score));
+}
+
+#[test]
+fn the_minimax_weight_is_ignored_without_expand_all() {
+    let plain = search(&nim(30), &[1, 2, 3], 2_000, 5);
+    let mut mcts = Mcts::new(1.0, 5);
+    mcts.minimax_weight = 1.0;
+    let weighted = mcts.search(&nim(30), &[1, 2, 3], Budget::Iterations(2_000));
+    assert_eq!(weighted, plain);
 }
 
 // Pinned results: what searches answered before the analysis feature existed.

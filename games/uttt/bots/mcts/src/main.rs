@@ -2,11 +2,12 @@
 //!
 //! Every turn it searches the current position with UCT for most of the
 //! turn's time limit (`cg-search`, `uttt-engine`), then plays the move it
-//! tried most often. It runs no playouts: a new leaf gets the estimate of an
-//! NNUE (`uttt_engine::nnue`, E017), with the accumulators built from
-//! scratch, except that a side to move with a move that wins the game is
-//! scored a win. A pattern policy learned from self-play orders each node's
-//! children, so that the most promising are tried first. The search
+//! tried most often. It runs no playouts: the first time the search reaches
+//! a node, it creates all its children and gives each the estimate of an
+//! NNUE (`uttt_engine::nnue`), from accumulators built once at the node and
+//! updated for each child, except that a side to move with a move that wins
+//! the game is scored a win ("jacekmax", E018). Each node keeps the minimax
+//! value of its children, which selection uses. The search
 //! keeps the part of its tree under the moves played since its previous
 //! search, and proves wins and losses near the end of the game: it plays a
 //! proven win, avoids proven losses, and stops searching once the position
@@ -59,7 +60,8 @@ const EXPLORATION: f64 = 0.3;
 
 /// The pattern policy (E015): weights learned for every pattern of a small
 /// board, cell and destination, decoded once from their packed characters
-/// (6 bits each, see `cg-pack`). They order each node's children.
+/// (6 bits each, see `cg-pack`). They ordered each node's children until
+/// E018; the search no longer asks for them (`PRIORS`).
 fn policy() -> &'static PatternPolicy {
     static POLICY: OnceLock<PatternPolicy> = OnceLock::new();
     POLICY.get_or_init(|| {
@@ -90,13 +92,20 @@ mod nnue_weights;
 
 /// Whether the search uses the pattern policy's weights as priors in its
 /// tree: a node's children are tried in order of their weights, most
-/// promising first (E014).
-const PRIORS: bool = true;
+/// promising first (E014). Not since E018: every child gets the network's
+/// estimate as soon as it is created, so the order no longer matters.
+const PRIORS: bool = false;
 /// The weight of a bias toward the heavier children in selection, which
 /// fades as they are visited. Screened on 2026-10-08 against v008 at 20 ms
 /// (100 pairs each): no bias +50.7 and +50.7 (two seeds), 0.3 +29.6, 1.0
 /// +34.9; so none.
 const PRIOR_WEIGHT: f64 = 0.0;
+/// Whether the search expands all the children of a node at once and
+/// estimates them with the network, backing up their minimax value (E018).
+const EXPAND_ALL: bool = true;
+/// The weight of a child's minimax value against its average score in
+/// selection: the minimax value only (E018).
+const MINIMAX_WEIGHT: f64 = 1.0;
 
 fn main() {
     let seed = seed_from_env_or_clock();
@@ -108,6 +117,8 @@ fn main() {
     let mut mcts = Mcts::new(EXPLORATION, rng.next_u64());
     mcts.priors = PRIORS;
     mcts.prior_weight = PRIOR_WEIGHT;
+    mcts.expand_all = EXPAND_ALL;
+    mcts.minimax_weight = MINIMAX_WEIGHT;
     let stdin = io::stdin();
     let result = play(
         &mut mcts,
