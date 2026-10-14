@@ -1,0 +1,18 @@
+[package]
+name = "uttt-value"
+description = "E012's value network for Ultimate Tic-Tac-Toe and its searches, for the trainer; bots never use it."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+cg-core.workspace = true
+cg-search.workspace = true
+uttt-engine.workspace = true
+
+[lints]
+workspace = true

@@ -20,6 +20,8 @@ mod request;
 
 use request::Request;
 
+// Packed characters include ones that clippy takes for invisible.
+#[allow(clippy::invisible_characters)]
 #[path = "../../bots/mcts/src/pattern_weights.rs"]
 mod pattern_weights;
 
@@ -54,7 +56,9 @@ const _: () = assert!(NODE_LIMIT + 81 * STEP as usize <= 1 << 23);
 fn policy() -> &'static PatternPolicy {
     static POLICY: OnceLock<PatternPolicy> = OnceLock::new();
     POLICY.get_or_init(|| {
-        PatternPolicy::decode(pattern_weights::PATTERN_TEXT)
+        let bytes =
+            cg_pack::unpack(pattern_weights::PATTERN_PACKED).expect("the pattern weights unpack");
+        PatternPolicy::decode_packed(&bytes)
             .expect("the pattern weights decode")
             .for_plies(PLIES)
     })

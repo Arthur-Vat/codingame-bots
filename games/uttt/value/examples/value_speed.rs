@@ -9,11 +9,11 @@
 //! from positions at several stages of the game.
 //!
 //! ```sh
-//! cargo run --release -p uttt-engine --example value_speed -- [SECONDS]
+//! cargo run --release -p uttt-value --example value_speed -- [SECONDS]
 //! ```
 //!
 //! The networks read the position as the engine's network does
-//! (`uttt_engine::value`): the side to move's marks and the opponent's in
+//! (`uttt_value`): the side to move's marks and the opponent's in
 //! each open small board, who won each closed board, the board it is sent
 //! to, and each side's threats. Hidden layers use clipped ReLU, the output a
 //! sigmoid: the side to move's expected score. Sizes other than the
@@ -25,8 +25,8 @@ use std::time::{Duration, Instant};
 use cg_core::rng::Rng;
 use cg_search::{Budget, Game, Mcts};
 use uttt_engine::search::PolicyBoard;
-use uttt_engine::value::{active_inputs, ValueNetwork, INPUTS, MAX_ACTIVE};
 use uttt_engine::{Board, Move, PlayoutPolicy, Status};
+use uttt_value::{active_inputs, ValueNetwork, INPUTS, MAX_ACTIVE};
 
 /// `uttt-v008`'s playout policy (`games/uttt/training/class_weights.rs`).
 static POLICY: PlayoutPolicy = PlayoutPolicy::new([

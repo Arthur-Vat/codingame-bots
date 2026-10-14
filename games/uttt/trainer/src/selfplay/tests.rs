@@ -77,24 +77,32 @@ fn games_with_class_policy_playouts_can_skip_visits() {
     }
 }
 
-/// `uttt-v010`'s pattern weights, as the Train workflow reads them.
+/// The bot's pattern weights, as the Train workflow reads them.
 const BOT_PATTERNS: &str = include_str!("../../../bots/mcts/src/pattern_weights.rs");
 
 #[test]
-fn the_bot_pattern_text_is_read_from_its_source() {
-    let text = read_pattern_text(BOT_PATTERNS).unwrap();
-    assert_eq!(text.len(), uttt_engine::board::PATTERN_FEATURES);
-    assert!(PatternPolicy::decode(&text).is_ok());
-    let short = "pub const PATTERN_TEXT: &str = \"\\\nAB\\\nC/\";";
-    assert_eq!(read_pattern_text(short).unwrap(), "ABC/");
-    assert!(read_pattern_text("no text here").is_err());
+fn the_bot_pattern_weights_are_read_from_its_source() {
+    let policy = read_pattern_policy(BOT_PATTERNS).unwrap();
+    // A pattern file's text gives the same policy as its packed form.
+    let released = include_str!("../../../releases/uttt-v010.rs");
+    assert_eq!(read_pattern_policy(released).unwrap(), policy);
+    let digits = "A".repeat(uttt_engine::board::PATTERN_FEATURES);
+    let text = format!("pub const PATTERN_TEXT: &str = \"\\\n{digits}\";");
+    assert_eq!(
+        read_pattern_policy(&text).unwrap(),
+        PatternPolicy::decode(&digits).unwrap()
+    );
+    assert!(read_pattern_policy("pub const PATTERN_TEXT: &str = \"\\\nAB\\\nC/\";").is_err());
+    assert!(read_pattern_policy("no text here").is_err());
+    let truncated = BOT_PATTERNS.replace("PATTERN_PACKED: &str = \"", "PATTERN_PACKED: &str = \"x");
+    assert!(read_pattern_policy(&truncated).is_err());
+    assert!(read_pattern_policy("pub const PATTERN_PACKED: &str = \"").is_err());
 }
 
 #[test]
 fn games_with_the_bots_patterns_record_visits_of_every_move() {
-    let text = read_pattern_text(BOT_PATTERNS).unwrap();
     let policy: &'static PatternPolicy = Box::leak(Box::new(
-        PatternPolicy::decode(&text).unwrap().for_plies(16),
+        read_pattern_policy(BOT_PATTERNS).unwrap().for_plies(16),
     ));
     let settings = SelfPlay {
         iterations: 300,

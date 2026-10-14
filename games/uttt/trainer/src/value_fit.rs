@@ -2,7 +2,7 @@
 //! then `H` and `H2` hidden units (64 and 16, or 128 and 32).
 //!
 //! The parameters are one flat vector, in the order of
-//! `uttt_engine::value::Network<H, H2>`. Training minimises the cross-entropy
+//! `uttt_value::Network<H, H2>`. Training minimises the cross-entropy
 //! between the network's output and the game's result for the side to
 //! move (1, ½ or 0), with Adam on mini-batches spread over threads. Each
 //! position is shown in one of the board's 8 symmetries, drawn at random.
@@ -10,16 +10,16 @@
 use std::fmt::Write as _;
 
 use cg_core::rng::Rng;
-use uttt_engine::value::{
+use uttt_engine::{Board, Move, PlayoutPolicy, Status};
+use uttt_value::{
     active_inputs, Network, CLOSED, INPUTS, MAX_ACTIVE, TARGET, THEIR_CELLS, THREATS,
 };
-use uttt_engine::{Board, Move, PlayoutPolicy, Status};
 
 use crate::data::GameRecord;
 
 /// The layout of a network with `H` units in its first hidden layer and
 /// `H2` in its second: where each parameter group starts in the flat
-/// vector, as in `uttt_engine::value::Network<H, H2>`.
+/// vector, as in `uttt_value::Network<H, H2>`.
 pub struct Shape<const H: usize, const H2: usize>;
 
 impl<const H: usize, const H2: usize> Shape<H, H2> {
@@ -708,7 +708,7 @@ pub fn weights_source(text: &str, origin: &str, hidden: (usize, usize)) -> Strin
     let _ = writeln!(source);
     let _ = writeln!(
         source,
-        "/// The value network's weights (ADR 0017), 217-{}-{}-1, for\n/// `uttt_engine::value::Network::<{}, {}>::decode`.",
+        "/// The value network's weights (ADR 0017), 217-{}-{}-1, for\n/// `uttt_value::Network::<{}, {}>::decode`.",
         hidden.0, hidden.1, hidden.0, hidden.1
     );
     let _ = writeln!(source, "pub const VALUE_WEIGHTS: &str = \"\\");

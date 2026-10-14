@@ -13,7 +13,9 @@
 //! the opponent, the player, both or neither can win a small board at once.
 //!
 //! The weights travel as text: one character of the base64 alphabet per
-//! weight, `q` from 0 to 63 for a log-weight of `(q - 32) / 4`.
+//! weight, `q` from 0 to 63 for a log-weight of `(q - 32) / 4`. Bots keep
+//! them packed instead: the same 6-bit digits, one after the other, in
+//! [`PATTERN_BYTES`] bytes.
 
 use std::sync::OnceLock;
 
@@ -31,6 +33,9 @@ pub const PATTERNS: usize = 19_683;
 pub const PATTERN_CELLS: usize = 5_255;
 /// Features, and so weights, of a pattern policy.
 pub const PATTERN_FEATURES: usize = PATTERN_CELLS * DESTINATIONS;
+
+/// Bytes of the packed weights: [`PATTERN_FEATURES`] * 6 bits, rounded up.
+pub const PATTERN_BYTES: usize = (PATTERN_FEATURES * 6).div_ceil(8);
 
 /// The 6-bit digits of the weights' text.
 const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -168,6 +173,35 @@ impl PatternPolicy {
         Self::from_log_weights(&log_weights)
     }
 
+    /// Decodes the packed weights: one 6-bit digit per weight, as in
+    /// [`decode`](PatternPolicy::decode), digit `i` at bits `6i..6i+6` of
+    /// the bytes read least significant bit first (bit `k` is bit `k % 8` of
+    /// byte `k / 8`); exactly [`PATTERN_BYTES`] bytes, the unused high bits
+    /// of the last byte zero.
+    pub fn decode_packed(bytes: &[u8]) -> Result<Self, String> {
+        if bytes.len() != PATTERN_BYTES {
+            return Err(format!(
+                "{} bytes of weights instead of {PATTERN_BYTES}",
+                bytes.len()
+            ));
+        }
+        let used_bits = PATTERN_FEATURES * 6;
+        if !used_bits.is_multiple_of(8) && bytes[PATTERN_BYTES - 1] >> (used_bits % 8) != 0 {
+            return Err("the unused bits after the last weight are not zero".to_string());
+        }
+        let log_weights: Vec<f32> = (0..PATTERN_FEATURES)
+            .map(|index| {
+                let bit = 6 * index;
+                // A digit spans at most two bytes.
+                let low = u16::from(bytes[bit / 8]);
+                let high = bytes.get(bit / 8 + 1).map_or(0, |&byte| u16::from(byte));
+                let q = ((low | (high << 8)) >> (bit % 8)) & 63;
+                (f32::from(q) - 32.0) / 4.0
+            })
+            .collect();
+        Self::from_log_weights(&log_weights)
+    }
+
     /// The same weights, used for the first `plies` moves of each playout
     /// only.
     pub fn for_plies(mut self, plies: u32) -> Self {
@@ -176,16 +210,33 @@ impl PatternPolicy {
     }
 }
 
+/// The digit of `log`, rounded to the nearest quarter between -8 and 7.75.
+fn quantize(log: f32) -> usize {
+    ((log * 4.0).round() + 32.0).clamp(0.0, 63.0) as usize
+}
+
 /// The text of `log_weights` for [`PatternPolicy::decode`], each rounded to
 /// the nearest quarter between -8 and 7.75.
 pub fn encode_pattern_weights(log_weights: &[f32]) -> String {
     log_weights
         .iter()
-        .map(|&log| {
-            let q = ((log * 4.0).round() + 32.0).clamp(0.0, 63.0) as usize;
-            char::from(ALPHABET[q])
-        })
+        .map(|&log| char::from(ALPHABET[quantize(log)]))
         .collect()
+}
+
+/// The bytes of `log_weights` for [`PatternPolicy::decode_packed`], each
+/// rounded as [`encode_pattern_weights`] does: 6 bits per weight, the first
+/// weight in the least significant bits of the first byte.
+pub fn encode_pattern_bytes(log_weights: &[f32]) -> Vec<u8> {
+    let mut bytes = vec![0u8; (log_weights.len() * 6).div_ceil(8)];
+    for (index, &log) in log_weights.iter().enumerate() {
+        let shifted = (quantize(log) as u16) << (6 * index % 8);
+        bytes[6 * index / 8] |= shifted as u8;
+        if let Some(next) = bytes.get_mut(6 * index / 8 + 1) {
+            *next |= (shifted >> 8) as u8;
+        }
+    }
+    bytes
 }
 
 impl Board {

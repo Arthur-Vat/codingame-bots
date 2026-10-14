@@ -74,7 +74,7 @@ The held-out error was still falling at the eighth epoch. The packed network tak
 
 One experiment each, judged by the SPRT.
 
-Room: with `uttt_engine::nnue` the MCTS bot's bundle takes 83,952 characters, and a packed network of width 256 about 27,250, so the bot of C1 must drop or pack other data, such as the pattern policy's weights.
+Room: the pattern policy's weights are packed and the value network is out of the engine, so the MCTS bot's bundle (`uttt-mcts`, with `uttt_engine::nnue`) takes 63,182 characters. A packed network of 27,264 characters leaves 9,554 of the 100,000.
 
 1. **MCTS with the network at the leaves**, accumulators built from scratch: the baseline for the next steps.
 2. **"jacekmax"**, named after the CodinGame player jacek, who made it popular. When the search reaches a leaf, it expands all its children at once. It builds the leaf's accumulator once and evaluates each child with an incremental update. It then backs up the minimax value of the children instead of one result. The write-up keeps accumulator checkpoints at nodes with many visits.

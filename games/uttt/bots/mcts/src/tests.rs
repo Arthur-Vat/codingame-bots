@@ -140,3 +140,20 @@ fn clearly_beats_random_even_with_few_iterations() {
     let score = score_against_random(20, 200);
     assert!(score >= 0.9, "MCTS scored {score} against random");
 }
+
+/// `uttt-v010`, which holds the pattern weights as base64 text.
+const RELEASE: &str = include_str!("../../../releases/uttt-v010.rs");
+
+#[test]
+fn the_packed_weights_are_those_of_the_release() {
+    let start = "pub const PATTERN_TEXT: &str = \"\\\n";
+    let from = RELEASE
+        .find(start)
+        .expect("the release holds the pattern text")
+        + start.len();
+    let length = RELEASE[from..].find("\";").expect("the pattern text ends");
+    let text = RELEASE[from..from + length].replace("\\\n", "");
+    let released = PatternPolicy::decode(&text).expect("the release's weights decode");
+    // The bot's policy plays the first PLIES moves of each playout from it.
+    assert_eq!(*policy(), released.for_plies(PLIES));
+}
