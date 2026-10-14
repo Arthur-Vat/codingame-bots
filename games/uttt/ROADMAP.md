@@ -48,7 +48,7 @@ Gate: a bot of more than 100,000 bytes and fewer than 100,000 characters is acce
 
 An efficiently updatable network. Its first layer, the accumulator, changes by adding or subtracting a few rows of weights when a move is played, instead of being computed again.
 
-1. **Inputs, from the side to move:**
+1. **Inputs, from each side's perspective** (the side to move's and the other player's):
    - each player's 81 cells and 9 won small boards;
    - the 9 drawn small boards.
 
