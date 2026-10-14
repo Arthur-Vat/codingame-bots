@@ -72,10 +72,21 @@ One experiment each, judged by the SPRT.
 
 One experiment each.
 
-1. **A larger accumulator:** 512, then 1,024 if the room allows. At 1,024, 8-bit weights take about 215 KB, more than the at most 190 KB that packing gives, code included. They then need fewer bits or compression; zigzag encoding helps either way.
+1. **A larger accumulator:** 512, then 1,024 if the room allows. At 1,024, 8-bit weights take about 215 KB, more than the at most 190 KB that packing gives, code included. They then need fewer bits per weight: train with the weights rounded to 5 or 6 bits, then code them with an entropy coder (rANS or arithmetic, a few dozen lines of Rust in the bot), which spends fewer bits on the common values near zero. Expected about 4 to 5 bits per weight, to be measured on the first network. A general compressor such as LZ77 or LZMA would gain less on weights, for a larger decoder.
 2. **More data:** hundreds of millions of positions (the write-up's next run has a couple of billion), then self-play of the NNUE bot itself.
 3. **Speed:** safe Rust that the compiler vectorizes, first: SSE2 only, since CodinGame compiles for basic x86-64. Then, if the network takes much of the time, AVX2 through one function compiled for it and called after a check at run time, with a fallback. That call needs `unsafe`, so an ADR.
-4. **Ideas the write-up lists but has not tried:** more hidden layers, other activations, and a training loss that favours weights that compress well.
+
+   Measured on 2026-10-14, so that it is not redone: the engine's speed example built with AVX2, FMA, BMI1, BMI2, POPCNT, LZCNT and SSE4.2 on for the whole program, against the normal build, three runs each on Claude's session. Nothing moved beyond the machine's noise of about 10%:
+
+   | Benchmark | Normal build | All those instructions on |
+   | --- | --- | --- |
+   | Random playouts per second | 976,000 to 1,095,000 | 1,081,000 to 1,139,000 |
+   | Decisive playouts per second | 1,191,000 to 1,245,000 | 1,144,000 to 1,381,000 |
+   | MCTS iterations per second | 718,000 to 782,000 | 686,000 to 782,000 |
+
+   Today's bot works on 9-bit masks, random numbers and the tree, none of which AVX2 speeds up, and a bot that dispatches at run time would gain less than this build of the whole program. So AVX2 waits for a network: measure the network's share of each iteration first, and bring the ADR only if that share is large (owner, 2026-10-14).
+4. **Symmetry in the first layer:** neurons in groups of 8 sharing one set of weights, each turned by one of the board's 8 symmetries. The stored first layer is 8 times smaller at the same width; whether it plays as well is the experiment.
+5. **Ideas the write-up lists but has not tried:** more hidden layers, other activations, and a training loss that favours weights that compress well.
 
 ### E. Maybe: alpha-beta with the NNUE
 
@@ -91,5 +102,7 @@ The write-up's bot is a Python file that writes and runs a compiled C program. T
 
 ## Decisions
 
+- 2026-10-14: no AVX2 for now. Measured no gain on today's bot; it waits for the network (step D3).
+- 2026-10-14: every tool of the packing is Rust; strength work not resumed yet.
 - 2026-10-13: Ultimate Tic-Tac-Toe is documented to the lifecycle's standard as its worked example, documents only ([ADR 0035](../../docs/adr/0035-new-game-lifecycle.md)).
 - 2026-10-09: strength work paused while phase 5 is built; no training or league run by hand.
