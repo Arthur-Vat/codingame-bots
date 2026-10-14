@@ -58,4 +58,4 @@ SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 2.98 (bounds -2.94, 2.94) after 34
 Verdict: ACCEPTED: uttt-v013 is stronger than uttt-v012
 ```
 
-The candidate lost no pair in 34. Accepted after only 68 games, the interval is wide, but its lower end, +54.9, is above every earlier gain but E011's, E017's and E018's. Next: step C4, the exploration constant and the time budget tuned again for this search.
+The candidate lost no pair in 34. Accepted after only 68 games, the interval is wide; even its lower end, +54.9, is a large gain for one constant. Next: step C4, the exploration constant and the time budget tuned again for this search.
