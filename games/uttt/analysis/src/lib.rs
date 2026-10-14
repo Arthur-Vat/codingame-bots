@@ -8,14 +8,14 @@
 //! so the same request gives the same lines.
 //!
 //! This crate never ends up in a bot: it may use a crate from outside the
-//! workspace and the bots' pattern and network weights by path.
+//! workspace and the bot's network weights by path.
 
 use cg_search::{Budget, Mcts, MoveReport, Report};
 use serde::Serialize;
 use std::sync::OnceLock;
 use uttt_engine::nnue::Network;
 use uttt_engine::search::NnueBoard;
-use uttt_engine::{PatternPolicy, Status};
+use uttt_engine::Status;
 
 mod request;
 
@@ -23,20 +23,11 @@ use request::Request;
 
 // Packed characters include ones that clippy takes for invisible.
 #[allow(clippy::invisible_characters)]
-#[path = "../../bots/mcts/src/pattern_weights.rs"]
-mod pattern_weights;
-
-// The same.
-#[allow(clippy::invisible_characters)]
 #[path = "../../bots/mcts/src/nnue_weights.rs"]
 mod nnue_weights;
 
 /// The exploration constant of the newest release.
 const EXPLORATION: f64 = 0.3;
-/// Whether the tree uses the pattern policy's weights as priors.
-const PRIORS: bool = false;
-/// The weight of the priors' bias in selection.
-const PRIOR_WEIGHT: f64 = 0.0;
 /// Whether the search expands all the children of a node at once.
 const EXPAND_ALL: bool = true;
 /// The weight of a child's minimax value against its average in selection.
@@ -59,16 +50,6 @@ const STEP: u64 = 1_000;
 
 // The tree never needs more than 2^23 nodes of room (see `NODE_LIMIT`).
 const _: () = assert!(NODE_LIMIT + 81 * STEP as usize <= 1 << 23);
-
-/// The pattern policy, decoded once.
-fn policy() -> &'static PatternPolicy {
-    static POLICY: OnceLock<PatternPolicy> = OnceLock::new();
-    POLICY.get_or_init(|| {
-        let bytes =
-            cg_pack::unpack(pattern_weights::PATTERN_PACKED).expect("the pattern weights unpack");
-        PatternPolicy::decode_packed(&bytes).expect("the pattern weights decode")
-    })
-}
 
 /// The network that judges the leaves, decoded once.
 fn network() -> &'static Network<256> {
@@ -174,11 +155,8 @@ fn search(
     let root = NnueBoard {
         board,
         network: network(),
-        policy: policy(),
     };
     let mut mcts = Mcts::<NnueBoard>::new(EXPLORATION, request.seed);
-    mcts.priors = PRIORS;
-    mcts.prior_weight = PRIOR_WEIGHT;
     mcts.expand_all = EXPAND_ALL;
     mcts.minimax_weight = MINIMAX_WEIGHT;
     let mut done = 0;

@@ -108,12 +108,11 @@ impl Game for PatternBoard {
     }
 }
 
-/// A position searched with the NNUE (step C1): the pattern policy orders a node's children, and a new leaf gets the network's estimate instead of a playout. A side to move with a move that wins the game scores a win, exactly. A search that expands all children at once (step C2) gets their estimates from one accumulator built at the leaf, updated for each child.
+/// A position searched with the NNUE (step C1): a new leaf gets the network's estimate instead of a playout, and the search uses no priors (from E017 to E018 a pattern policy ordered a node's children). A side to move with a move that wins the game scores a win, exactly. A search that expands all children at once (step C2) gets their estimates from one accumulator built at the leaf, updated for each child.
 #[derive(Clone, Copy)]
 pub struct NnueBoard<const N: usize = 256> {
     pub board: Board,
     pub network: &'static Network<N>,
-    pub policy: &'static PatternPolicy,
 }
 
 impl<const N: usize> NnueBoard<N> {
@@ -162,10 +161,6 @@ impl<const N: usize> Game for NnueBoard<N> {
 
     fn score(&self) -> Option<f64> {
         score(self.board.status())
-    }
-
-    fn priors(&self, moves: &[Move], weights: &mut Vec<f32>) {
-        self.board.pattern_move_weights(self.policy, moves, weights);
     }
 
     fn playout(&mut self, _rng: &mut Rng) -> f64 {

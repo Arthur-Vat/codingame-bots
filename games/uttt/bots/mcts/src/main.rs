@@ -33,7 +33,7 @@ use cg_core::rng::{seed_from_env_or_clock, Rng};
 use cg_search::{Budget, Mcts};
 use uttt_engine::nnue::Network;
 use uttt_engine::search::NnueBoard;
-use uttt_engine::{Board, Move, PatternPolicy};
+use uttt_engine::{Board, Move};
 
 /// CodinGame's time limit for the first answer.
 const FIRST_LIMIT: Duration = Duration::from_millis(1000);
@@ -58,19 +58,6 @@ const RESERVE: Duration = Duration::ZERO;
 /// pairs, 0.3 +70 [+19, +126].
 const EXPLORATION: f64 = 0.3;
 
-/// The pattern policy (E015): weights learned for every pattern of a small
-/// board, cell and destination, decoded once from their packed characters
-/// (6 bits each, see `cg-pack`). They ordered each node's children until
-/// E018; the search no longer asks for them (`PRIORS`).
-fn policy() -> &'static PatternPolicy {
-    static POLICY: OnceLock<PatternPolicy> = OnceLock::new();
-    POLICY.get_or_init(|| {
-        let bytes =
-            cg_pack::unpack(pattern_weights::PATTERN_PACKED).expect("the pattern weights unpack");
-        PatternPolicy::decode_packed(&bytes).expect("the pattern weights decode")
-    })
-}
-
 /// The network that judges the leaves (E017): the NNUE of Train run
 /// 38562652097, (189 → 256) × 2 → 10, quantized and decoded once from its
 /// packed characters (see `cg-pack`).
@@ -84,27 +71,16 @@ fn network() -> &'static Network<256> {
 
 // Packed characters include ones that clippy takes for invisible.
 #[allow(clippy::invisible_characters)]
-mod pattern_weights;
-
-// The same.
-#[allow(clippy::invisible_characters)]
 mod nnue_weights;
 
-/// Whether the search uses the pattern policy's weights as priors in its
-/// tree: a node's children are tried in order of their weights, most
-/// promising first (E014). Not since E018: every child gets the network's
-/// estimate as soon as it is created, so the order no longer matters.
-const PRIORS: bool = false;
-/// The weight of a bias toward the heavier children in selection, which
-/// fades as they are visited. Screened on 2026-10-08 against v008 at 20 ms
-/// (100 pairs each): no bias +50.7 and +50.7 (two seeds), 0.3 +29.6, 1.0
-/// +34.9; so none.
-const PRIOR_WEIGHT: f64 = 0.0;
 /// Whether the search expands all the children of a node at once and
 /// estimates them with the network, backing up their minimax value (E018).
 const EXPAND_ALL: bool = true;
 /// The weight of a child's minimax value against its average score in
-/// selection: the minimax value only (E018).
+/// selection: the minimax value only (E018). The search uses no priors:
+/// from E014 to E017 the pattern policy ordered each node's children, but
+/// since E018 every child gets the network's estimate as soon as it is
+/// created, so the order no longer matters, and its weights left the bot.
 const MINIMAX_WEIGHT: f64 = 1.0;
 
 fn main() {
@@ -112,11 +88,8 @@ fn main() {
     eprintln!("mcts: seed {seed}");
     let mut rng = Rng::new(seed);
     // Decoded before the first turn's clock starts, if the input waits.
-    policy();
     network();
     let mut mcts = Mcts::new(EXPLORATION, rng.next_u64());
-    mcts.priors = PRIORS;
-    mcts.prior_weight = PRIOR_WEIGHT;
     mcts.expand_all = EXPAND_ALL;
     mcts.minimax_weight = MINIMAX_WEIGHT;
     let stdin = io::stdin();
@@ -186,7 +159,6 @@ fn play(
                     let root = NnueBoard {
                         board: position,
                         network: network(),
-                        policy: policy(),
                     };
                     let result = mcts.search(&root, &moves, budget(start, limit));
                     let outlook = match result.proven {

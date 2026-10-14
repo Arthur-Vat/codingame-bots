@@ -86,8 +86,6 @@ fn the_settings_are_those_of_the_newest_release() {
         .replace("\r\n", "\n");
     for constant in [
         format!("const EXPLORATION: f64 = {:?};", EXPLORATION),
-        format!("const PRIORS: bool = {PRIORS};"),
-        format!("const PRIOR_WEIGHT: f64 = {:?};", PRIOR_WEIGHT),
         format!("const EXPAND_ALL: bool = {EXPAND_ALL};"),
         format!("const MINIMAX_WEIGHT: f64 = {:?};", MINIMAX_WEIGHT),
     ] {
@@ -96,9 +94,12 @@ fn the_settings_are_those_of_the_newest_release() {
             "{name} has no line `{constant}`: update the analysis program to its settings"
         );
     }
+    // The analysis program uses no priors: the release must not either.
     assert!(
-        released_policy(&release) == *policy(),
-        "{name}'s pattern weights differ"
+        !release
+            .lines()
+            .any(|line| line == "const PRIORS: bool = true;"),
+        "{name} orders children by the pattern policy, which the analysis program no longer does"
     );
     // The analysis program searches with the NNUE: the release must be the
     // bot that does, with the same network.
@@ -117,33 +118,6 @@ fn released_text<'a>(release: &'a str, name: &str) -> Option<&'a str> {
     let from = release.find(&start)? + start.len();
     let length = release[from..].find("\";")?;
     Some(&release[from..from + length])
-}
-
-/// The pattern policy a release holds: its weights as base64 text (`PATTERN_TEXT`, up to `uttt-v010`)
-/// or packed (`PATTERN_PACKED`).
-fn released_policy(release: &str) -> PatternPolicy {
-    let text = "pub const PATTERN_TEXT: &str = \"\\\n";
-    let packed = "pub const PATTERN_PACKED: &str = \"";
-    let policy = if let Some(at) = release.find(text) {
-        let from = at + text.len();
-        let length = release[from..].find("\";").expect("the pattern text ends");
-        PatternPolicy::decode(&release[from..from + length].replace("\\\n", ""))
-    } else {
-        let from = release
-            .find(packed)
-            .expect("the release holds the pattern weights")
-            + packed.len();
-        let length = release[from..].find("\";").expect("the packed weights end");
-        let bytes = cg_pack::unpack(&release[from..from + length]).expect("the weights unpack");
-        PatternPolicy::decode_packed(&bytes)
-    };
-    policy.expect("the release's weights decode")
-}
-
-#[test]
-fn a_release_holding_packed_weights_is_read_too() {
-    let packed = include_str!("../../bots/mcts/src/pattern_weights.rs");
-    assert!(released_policy(packed) == *policy());
 }
 
 #[test]

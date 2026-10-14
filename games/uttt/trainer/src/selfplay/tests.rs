@@ -77,8 +77,8 @@ fn games_with_class_policy_playouts_can_skip_visits() {
     }
 }
 
-/// The bot's pattern weights, as the Train workflow reads them.
-const BOT_PATTERNS: &str = include_str!("../../../bots/mcts/src/pattern_weights.rs");
+/// The pattern weights of `uttt-v010` to `uttt-v012`, as the Train workflow reads them.
+const BOT_PATTERNS: &str = include_str!("../../../training/pattern_weights.rs");
 
 #[test]
 fn the_bot_pattern_weights_are_read_from_its_source() {

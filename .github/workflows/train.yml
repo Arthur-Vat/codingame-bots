@@ -109,15 +109,15 @@ jobs:
           # with its playouts; the policy, from searches' visits; the move
           # models, from the visits of the bot's search with its pattern
           # policy, which also orders each node's children; the NNUE, from
-          # games of the current bot's search (its pattern policy), whose
+          # games of `uttt-v010`'s search (its pattern policy), whose
           # root scores and results it learns.
           options=()
           if [[ $STAGE == value ]]; then
             options=(--policy games/uttt/training/class_weights.rs --no-visits)
           elif [[ $STAGE == patterns ]]; then
-            options=(--patterns games/uttt/bots/mcts/src/pattern_weights.rs)
+            options=(--patterns games/uttt/training/pattern_weights.rs)
           elif [[ $STAGE == nnue ]]; then
-            options=(--patterns games/uttt/bots/mcts/src/pattern_weights.rs --no-visits)
+            options=(--patterns games/uttt/training/pattern_weights.rs --no-visits)
           fi
           # One process per core, each with its own seed and share of games.
           cores="$(nproc)"

@@ -127,7 +127,7 @@ fn read_constant(source: &str, name: &str) -> Option<String> {
 }
 
 /// Reads a pattern policy from Rust source written by `uttt-trainer
-/// fit-patterns`, such as the bot's `pattern_weights.rs`: the packed
+/// fit-patterns`, such as `games/uttt/training/pattern_weights.rs`: the packed
 /// weights of `PATTERN_PACKED` or, in older files and releases, the base64
 /// characters of `PATTERN_TEXT`. The policy draws every move of a playout.
 /// The packed characters are read as they are: some of them are white space

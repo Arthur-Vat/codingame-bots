@@ -86,8 +86,8 @@ enum Command {
         policy: Option<PathBuf>,
         /// Rust source holding a pattern policy, packed (`PATTERN_PACKED`) or
         /// as base64 text (`PATTERN_TEXT`), such as
-        /// `games/uttt/bots/mcts/src/pattern_weights.rs`, for the bot's
-        /// playouts and order of children since E015; replaces `--policy`.
+        /// `games/uttt/training/pattern_weights.rs`, for the bot's playouts
+        /// and order of children from E015 to E017; replaces `--policy`.
         #[arg(long)]
         patterns: Option<PathBuf>,
         /// Moves of each playout drawn from the policy, as in the bot.
@@ -160,7 +160,7 @@ enum Command {
         models: Vec<String>,
         /// Where to write each model's weights, as a Rust module of packed
         /// characters (`PATTERN_PACKED`) named after the model (`patterns.rs`
-        /// is the bot's `pattern_weights.rs`); the classes' are not written.
+        /// is `games/uttt/training/pattern_weights.rs`); the classes' are not written.
         #[arg(long)]
         weights_dir: PathBuf,
         /// Where to write the report, in Markdown.
