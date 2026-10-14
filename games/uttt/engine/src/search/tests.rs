@@ -285,3 +285,107 @@ fn a_search_with_the_nnue_returns_a_legal_move() {
         }
     }
 }
+
+#[test]
+fn nnue_child_scores_are_the_children_estimates() {
+    let mut rng = Rng::new(14);
+    let mut list = MoveList::new();
+    let mut scores = Vec::new();
+    let (mut estimated, mut over) = (0, 0);
+    for _ in 0..30 {
+        let mut board = Board::new();
+        while board.status() == Status::Ongoing {
+            Board::legal_moves(&board, &mut list);
+            let position = nnue_board(board);
+            position.child_scores(&list, &mut rng, &mut scores);
+            assert_eq!(scores.len(), list.len());
+            for (&mv, &(score, ended)) in list.iter().zip(&scores) {
+                let mut child = position;
+                child.play(mv);
+                match child.score() {
+                    Some(exact) => {
+                        assert_eq!((score, ended), (exact, true));
+                        over += 1;
+                    }
+                    None => {
+                        // Incremental updates give the scratch estimate exactly.
+                        assert_eq!((score, ended), (child.estimate(), false));
+                        estimated += 1;
+                    }
+                }
+            }
+            board.play(*rng.pick(&list).unwrap());
+        }
+    }
+    assert!(
+        estimated > 5_000 && over > 20,
+        "{estimated} estimated, {over} over"
+    );
+}
+
+/// A search that expands all children at once, judging them by their
+/// minimax values only.
+fn jacekmax(seed: u64) -> Mcts<NnueBoard<16>> {
+    let mut mcts = Mcts::new(0.3, seed);
+    mcts.expand_all = true;
+    mcts.minimax_weight = 1.0;
+    mcts
+}
+
+#[test]
+fn jacekmax_proofs_agree_with_exhaustive_search_in_endgames() {
+    let mut list = MoveList::new();
+    let (mut checked, mut proven) = (0, 0);
+    for seed in 0..400 {
+        let mut rng = Rng::new(seed);
+        let mut board = Board::new();
+        while board.status() == Status::Ongoing && empty_open_cells(&board) > 7 {
+            Board::legal_moves(&board, &mut list);
+            board.play(*rng.pick(&list).unwrap());
+        }
+        if board.status() != Status::Ongoing {
+            continue;
+        }
+        Board::legal_moves(&board, &mut list);
+        let exact = minimax(&board);
+        let result = jacekmax(seed).search(&nnue_board(board), &list, Budget::Iterations(20_000));
+        checked += 1;
+        match exact {
+            1 => {
+                assert_eq!(result.proven, Some(true), "seed {seed}: {result:?}");
+                let mut next = board;
+                next.play(result.best);
+                assert_eq!(minimax(&next), -1, "seed {seed}: {result:?}");
+                proven += 1;
+            }
+            -1 => {
+                assert_eq!(result.proven, Some(false), "seed {seed}: {result:?}");
+                proven += 1;
+            }
+            _ => assert_eq!(result.proven, None, "seed {seed}: draws are not proven"),
+        }
+    }
+    assert!(
+        checked > 100 && proven > 50,
+        "{checked} checked, {proven} proven"
+    );
+}
+
+#[test]
+fn a_jacekmax_search_with_the_nnue_returns_a_legal_move() {
+    let mut rng = Rng::new(15);
+    let mut list = MoveList::new();
+    let mut mcts = jacekmax(4);
+    let mut board = Board::new();
+    while board.status() == Status::Ongoing {
+        Board::legal_moves(&board, &mut list);
+        let result = mcts.search(&nnue_board(board), &list, Budget::Iterations(300));
+        assert!(list.contains(&result.best), "{result:?}");
+        assert!((0.0..=1.0).contains(&result.expected_score), "{result:?}");
+        board.play(result.best);
+        if board.status() == Status::Ongoing {
+            Board::legal_moves(&board, &mut list);
+            board.play(*rng.pick(&list).unwrap());
+        }
+    }
+}

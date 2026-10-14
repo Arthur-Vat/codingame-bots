@@ -34,17 +34,21 @@ mod nnue_weights;
 /// The exploration constant of the newest release.
 const EXPLORATION: f64 = 0.3;
 /// Whether the tree uses the pattern policy's weights as priors.
-const PRIORS: bool = true;
+const PRIORS: bool = false;
 /// The weight of the priors' bias in selection.
 const PRIOR_WEIGHT: f64 = 0.0;
+/// Whether the search expands all the children of a node at once.
+const EXPAND_ALL: bool = true;
+/// The weight of a child's minimax value against its average in selection.
+const MINIMAX_WEIGHT: f64 = 1.0;
 
 /// The search stops, with the stop `"nodes"`, once the tree holds this many
-/// nodes. With the `analysis` feature a node takes 36 bytes (a move, its mover, its
-/// proof and whether it is expanded, one byte each, then eight 4-byte
-/// numbers), so the limit is 288 MB of nodes. It is under 2^23 = 8,388,608
+/// nodes. With the `analysis` feature a node takes 40 bytes (a move, its mover, its
+/// proof and whether it is expanded, one byte each, then nine 4-byte
+/// numbers), so the limit is 320 MB of nodes. It is under 2^23 = 8,388,608
 /// on purpose: the nodes vector doubles its capacity when full, so it stays
-/// at 2^23 nodes (302 MB) and never doubles to 2^24 (604 MB, with a copy
-/// peak of about 900 MB while it grows). The search looks at the tree after
+/// at 2^23 nodes (336 MB) and never doubles to 2^24 (671 MB, with a copy
+/// peak of about 1 GB while it grows). The search looks at the tree after
 /// at most [`STEP`] iterations and one iteration adds at most 81 nodes, so
 /// the tree passes the limit by at most 81,000 nodes, far below 2^23.
 const NODE_LIMIT: usize = 8_000_000;
@@ -175,6 +179,8 @@ fn search(
     let mut mcts = Mcts::<NnueBoard>::new(EXPLORATION, request.seed);
     mcts.priors = PRIORS;
     mcts.prior_weight = PRIOR_WEIGHT;
+    mcts.expand_all = EXPAND_ALL;
+    mcts.minimax_weight = MINIMAX_WEIGHT;
     let mut done = 0;
     loop {
         // Up to the next report, in steps small enough to watch the tree.

@@ -27,6 +27,14 @@
 //! and selection adds `prior_weight · prior / (visits + 1)` to each
 //! child's bound, a bias that fades as the child is visited (progressive
 //! bias). Without priors, children are tried in random order.
+//!
+//! A search may instead expand all the children of a leaf at once
+//! ("jacekmax", after the CodinGame player jacek): the first time an
+//! iteration reaches a node, it creates its children, estimates each with
+//! [`Game::child_scores`] (one visit each), and backs up the best of them
+//! instead of a playout's result. Each node then also keeps its minimax
+//! value, from its children's, and selection judges a child by
+//! `minimax_weight · minimax + (1 - minimax_weight) · average`.
 
 use std::sync::OnceLock;
 
@@ -77,6 +85,10 @@ struct Node<M> {
     visits: u32,
     /// The mover's average score over the visits.
     value: f32,
+    /// The mover's minimax score, from the children's (the best of them for
+    /// the player choosing), or the node's own estimate or exact score while
+    /// it has none; kept only by a search that expands all children at once.
+    minimax: f32,
     /// `1 / sqrt(visits)`, kept so that selection, which reads every child
     /// of a node, needs no division or square root.
     inv_sqrt_visits: f32,
@@ -116,6 +128,13 @@ pub struct Mcts<G: Game> {
     pub priors: bool,
     /// The weight of the priors' bias in a child's bound; 0 for none.
     pub prior_weight: f64,
+    /// Whether to expand all the children of a leaf at once and estimate
+    /// them with [`Game::child_scores`] ("jacekmax").
+    pub expand_all: bool,
+    /// With `expand_all`, the weight of a child's minimax value against its
+    /// average score in selection, from 0 (the average only) to 1 (the
+    /// minimax value only).
+    pub minimax_weight: f64,
     rng: Rng,
     nodes: Vec<Node<G::Move>>,
     /// The position at the root of `nodes`, once a search has run.
@@ -128,6 +147,8 @@ pub struct Mcts<G: Game> {
     /// The priors of `moves`, and the moves sorted by them.
     weights: Vec<f32>,
     ranked: Vec<(f32, G::Move)>,
+    /// The children's scores, with `expand_all`.
+    scores: Vec<(f64, bool)>,
     path: Vec<u32>,
     #[cfg(feature = "analysis")]
     current: bool, // whether the tree is at the root of the last search
@@ -141,6 +162,8 @@ impl<G: Game> Mcts<G> {
             exploration,
             priors: false,
             prior_weight: 0.0,
+            expand_all: false,
+            minimax_weight: 0.0,
             rng: Rng::new(seed),
             nodes: Vec::new(),
             root: None,
@@ -149,6 +172,7 @@ impl<G: Game> Mcts<G> {
             moves: Vec::new(),
             weights: Vec::new(),
             ranked: Vec::new(),
+            scores: Vec::new(),
             path: Vec::new(),
             #[cfg(feature = "analysis")]
             current: false,
@@ -264,6 +288,7 @@ impl<G: Game> Mcts<G> {
             children: 0,
             visits: 0,
             value: 0.0,
+            minimax: 0.0,
             inv_sqrt_visits: 0.0,
             prior: 0.0,
             bias: 0.0,
@@ -368,12 +393,14 @@ impl<G: Game> Mcts<G> {
                 }
     }
 
-    /// One iteration: selection, expansion, playout, backpropagation, and
-    /// proofs.
+    /// One iteration: selection, expansion, playout (or the children's
+    /// estimates), backpropagation, and proofs.
     fn iterate(&mut self, root: &G) {
         let mut state = root.clone();
         let mut node = 0;
-        let mut proved = false;
+        // The nodes of the path, from the root, that may be proven now: none
+        // unless this iteration proved a node.
+        let mut prove = 0;
         self.path.clear();
         self.path.push(0);
         let score = loop {
@@ -398,11 +425,26 @@ impl<G: Game> Mcts<G> {
                     } else {
                         Proof::MoverLoses
                     };
-                    proved = true;
+                    prove = self.path.len() - 1;
                 }
+                let mover_value = if current.mover == 0 {
+                    score
+                } else {
+                    1.0 - score
+                };
+                self.nodes[node].minimax = mover_value as f32;
                 break score;
             }
             if !current.expanded {
+                if self.expand_all {
+                    state.legal_moves(&mut self.moves);
+                    self.expand(node, &state);
+                    let (score, proved) = self.score_children(node, &state);
+                    if proved {
+                        prove = self.path.len();
+                    }
+                    break score;
+                }
                 if self.nodes[node].visits == 0 {
                     // A new leaf: estimate it with one playout.
                     break state.playout(&mut self.rng);
@@ -426,17 +468,91 @@ impl<G: Game> Mcts<G> {
             #[cfg(feature = "analysis")]
             analysis::record_draw(&mut node.draws, score, visits);
         }
-        if proved {
-            self.prove_ancestors();
+        if prove > 0 {
+            self.prove_ancestors(prove);
+        }
+        if self.expand_all {
+            self.back_up_minimax();
         }
     }
 
-    /// Proves the nodes on the current path, from the leaf up, as far as
-    /// their children allow: a node whose opponent has a proven winning
-    /// answer is lost for its mover, and one whose answers are all proven
-    /// lost is won.
-    fn prove_ancestors(&mut self) {
-        for depth in (0..self.path.len() - 1).rev() {
+    /// Gives each child of `node`, whose position is `state` and whose
+    /// children were just created, its estimate from
+    /// [`Game::child_scores`] as one visit, and proves those where the game
+    /// is won or lost. Returns player 0's score at `node`, the best child's
+    /// for the player to move, and whether a child was proven.
+    fn score_children(&mut self, node: usize, state: &G) -> (f64, bool) {
+        let children = self.children(node);
+        self.moves.clear();
+        self.moves
+            .extend(children.clone().map(|index| self.nodes[index].mv));
+        state.child_scores(&self.moves, &mut self.rng, &mut self.scores);
+        let to_move = state.to_move();
+        let prior_weight = self.prior_weight as f32;
+        let mut best = f32::NEG_INFINITY;
+        let mut proved = false;
+        for (index, &(score, over)) in children.zip(&self.scores) {
+            let child = &mut self.nodes[index];
+            let value = (if to_move == 0 { score } else { 1.0 - score }) as f32;
+            child.visits = 1;
+            child.value = value;
+            child.minimax = value;
+            child.inv_sqrt_visits = 1.0;
+            child.bias = prior_weight * child.prior / 2.0;
+            #[cfg(feature = "analysis")]
+            analysis::record_draw(&mut child.draws, score, 1.0);
+            if over && score != 0.5 {
+                child.proof = if value == 1.0 {
+                    Proof::MoverWins
+                } else {
+                    Proof::MoverLoses
+                };
+                proved = true;
+            }
+            best = best.max(value);
+        }
+        let value = f64::from(1.0 - best);
+        let score = if self.nodes[node].mover == 0 {
+            value
+        } else {
+            1.0 - value
+        };
+        (score, proved)
+    }
+
+    /// Updates the minimax values of the nodes on the current path, from
+    /// the leaf up, until one does not change: then none above it does.
+    fn back_up_minimax(&mut self) {
+        for depth in (0..self.path.len()).rev() {
+            let index = self.path[depth] as usize;
+            if !self.nodes[index].expanded {
+                // A leaf keeps the estimate or exact score it was given.
+                continue;
+            }
+            // Untried children, only at the root of a fresh tree, count
+            // for nothing yet.
+            let best = self
+                .children(index)
+                .filter(|&child| self.nodes[child].visits > 0)
+                .map(|child| self.nodes[child].minimax)
+                .fold(f32::NEG_INFINITY, f32::max);
+            if best == f32::NEG_INFINITY {
+                continue;
+            }
+            let minimax = 1.0 - best;
+            if minimax == self.nodes[index].minimax {
+                return;
+            }
+            self.nodes[index].minimax = minimax;
+        }
+    }
+
+    /// Proves the first `len` nodes of the current path, from the deepest
+    /// up, as far as their children allow: a node whose opponent has a
+    /// proven winning answer is lost for its mover, and one whose answers
+    /// are all proven lost is won.
+    fn prove_ancestors(&mut self, len: usize) {
+        for depth in (0..len).rev() {
             let node = self.path[depth] as usize;
             let mut all_lost = true;
             let mut proof = Proof::Unknown;
@@ -497,6 +613,7 @@ impl<G: Game> Mcts<G> {
                 children: 0,
                 visits: 0,
                 value: 0.0,
+                minimax: 0.0,
                 inv_sqrt_visits: 0.0,
                 prior,
                 bias: prior_weight * prior,
@@ -524,6 +641,11 @@ impl<G: Game> Mcts<G> {
             None => f64::from(visits).ln().sqrt(),
         };
         let spread = (self.exploration * sqrt_ln) as f32;
+        let minimax_weight = if self.expand_all {
+            self.minimax_weight as f32
+        } else {
+            0.0
+        };
         let mut best = 0;
         let mut best_bound = f32::NEG_INFINITY;
         for (offset, child) in children.iter().enumerate() {
@@ -535,7 +657,8 @@ impl<G: Game> Mcts<G> {
             if child.visits == 0 {
                 return first + offset;
             }
-            let bound = child.value + spread * child.inv_sqrt_visits + child.bias;
+            let exploitation = child.value + minimax_weight * (child.minimax - child.value);
+            let bound = exploitation + spread * child.inv_sqrt_visits + child.bias;
             if bound > best_bound {
                 best_bound = bound;
                 best = offset;
