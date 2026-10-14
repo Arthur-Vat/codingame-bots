@@ -4,11 +4,14 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-None.
+- #127 docs(uttt): the write-up's network inputs come from both sides (opened 2026-10-14; light review approved; CI green): approval to merge.
+- #128 E018 jacekmax, candidate `uttt-v012` (opened 2026-10-14; screened +135 Elo at 20 ms, +177 at full time against v011; bot review approved with nits, fixed in e5248e7): its SPRT at full time is running; then approval to merge. Fill `pull_request: "#128"` and the SPRT result in the entry only after the SPRT finishes (a push would cancel it).
+- Item 2, the MCTS bot drops the pattern policy (branch `claude/uttt-policy-crate`, stacked on #128; same moves as v012 at fixed iterations; bundle 84,397 characters): pull request to open once its review is back.
 
 ## Open questions
 
 - Resume Ultimate Tic-Tac-Toe strength work with the plan of #119: answered in the conversation, 2026-10-14: "Read the handoff and go on with step B". First NNUE fit's data: answered 2026-10-14 (form): "Reuse run 37814220623" (one fit job, no self-play). The size check: answered 2026-10-14, option a (UTF-16 units, 100,000), written as ADR 0037 in #120. Probe passed (2026-10-14): Rust bot of 95,713 characters and 125,475 bytes accepted; CodinGame compiles for basic x86-64 on a CPU with AVX2, FMA, BMI2, POPCNT, no AVX-512; IDE not a debug build.
+- To propose: moving the pattern and class policies' code out of `uttt-engine` into its own crate (as #125 did for the value network), which would free about 20,000 more characters in every bot; about 200 references in the trainer, the value crate and the analysis program. A large code change, so it waits for the owner.
 - Steps C2, the pattern-policy drop and the research README fix: answered in the conversation, 2026-10-14: "Go on with 1, 2, 3" (C2 jacekmax experiment E018; then dropping the pattern policy; then the fix of games/uttt/research/README.md's inputs wording).
 - Phase 5 step D, the phase 7 second game and watching the first release after the CI changes: later (owner, 2026-10-13).
 
