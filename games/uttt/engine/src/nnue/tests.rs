@@ -193,6 +193,8 @@ fn won_board_position() -> Board {
 #[test]
 fn won_boards_are_seen_from_each_perspective() {
     let board = won_board_position();
+    // Seat 1 is sent to board 0, which is closed: a free choice.
+    assert_eq!(bucket(&board), 9);
     assert!(features(&board, 0).contains(&(OUR_BOARDS as u16)));
     assert!(!features(&board, 0).contains(&(THEIR_BOARDS as u16)));
     assert!(features(&board, 1).contains(&(THEIR_BOARDS as u16)));
@@ -218,6 +220,71 @@ fn a_drawn_board_shows_as_drawn() {
         }
     }
     assert!(found > 0, "no drawn small board in 300 random games");
+}
+
+/// The board features that `mv`, played from `before`, adds for its mover.
+fn mover_board_feature(before: &Board, mv: Move) -> Option<u16> {
+    let mut list = [0; 2];
+    let len = move_features(before, mv, before.to_move(), &mut list);
+    (len == 2).then_some(list[1])
+}
+
+#[test]
+fn a_line_in_the_ninth_cell_wins_the_board() {
+    let mut seen = 0;
+    for game in random_games(1000) {
+        for (before, mv) in game {
+            let small = mv.board();
+            let marks = (before.cells(0, small) | before.cells(1, small)).count_ones();
+            let mut after = before;
+            after.play(mv);
+            if marks != 8 || after.small_winner(small).is_none() {
+                continue;
+            }
+            assert_eq!(
+                mover_board_feature(&before, mv),
+                Some((OUR_BOARDS + small) as u16)
+            );
+            seen += 1;
+        }
+    }
+    assert!(
+        seen > 0,
+        "no board won in its ninth cell in 1,000 random games"
+    );
+}
+
+#[test]
+fn a_move_that_fills_a_board_and_ends_the_game_draws_the_board() {
+    let mut seen = 0;
+    for game in random_games(2000) {
+        for (before, mv) in game {
+            let small = mv.board();
+            let mut after = before;
+            after.play(mv);
+            if after.status() == Status::Ongoing || after.small_winner(small).is_some() {
+                continue;
+            }
+            if !after.is_closed(small) {
+                continue;
+            }
+            assert_eq!(
+                mover_board_feature(&before, mv),
+                Some((DRAWN_BOARDS + small) as u16)
+            );
+            let mut list = [0; 2];
+            assert_eq!(
+                move_features(&before, mv, 1 - before.to_move(), &mut list),
+                2
+            );
+            assert_eq!(usize::from(list[1]), DRAWN_BOARDS + small);
+            seen += 1;
+        }
+    }
+    assert!(
+        seen > 0,
+        "no game ended by filling a board in 2,000 random games"
+    );
 }
 
 #[test]
@@ -482,7 +549,7 @@ fn from_parts_rejects_wrong_parts() {
 }
 
 #[test]
-fn the_extreme_network_does_not_overflow() {
+fn an_extreme_network_does_not_overflow_in_random_games() {
     const N: usize = MAX_WIDTH;
     let parts = Parts {
         feature_weights: vec![127; FEATURES * N],

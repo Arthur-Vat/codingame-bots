@@ -65,6 +65,8 @@ Gate: on held-out positions, a lower error than run 37814220623's network. The c
 
 One experiment each, judged by the SPRT.
 
+Room: with `uttt_engine::nnue` the MCTS bot's bundle takes 83,952 characters, and a packed network of width 256 about 27,250, so the bot of C1 must drop or pack other data, such as the pattern policy's weights.
+
 1. **MCTS with the network at the leaves**, accumulators built from scratch: the baseline for the next steps.
 2. **"jacekmax"**, named after the CodinGame player jacek, who made it popular. When the search reaches a leaf, it expands all its children at once. It builds the leaf's accumulator once and evaluates each child with an incremental update. It then backs up the minimax value of the children instead of one result. The write-up keeps accumulator checkpoints at nodes with many visits.
 3. **Selection on the average of backed-up values,** mixed with the minimax value by a weight. In the write-up, the best weight drifted to the average alone as the bot got stronger; its author does not know why. Screen the weight locally first.

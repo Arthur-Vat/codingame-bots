@@ -95,9 +95,9 @@ Baseline, measured on 2026-10-08 on one thread of an Intel Xeon at 2.8 GHz (this
 | Moves per second | about 70,000,000 |
 | Decisive playouts from the start | about 1,234,000 per second (1,214,458 to 1,247,103), 54.2 moves each |
 | MCTS iterations from the start, 100 ms searches | about 755,000 per second (719,982 to 803,399) |
-| NNUE 256: incremental updates (one move) | about 11,900,000 per second (11,086,548 to 12,422,239) |
-| NNUE 256: evaluations | about 4,050,000 per second (3,937,610 to 4,194,971) |
-| NNUE 256: accumulators from scratch | about 995,000 per second (973,735 to 1,037,508) |
+| NNUE 256: incremental updates (one move) | about 12,100,000 per second (11,441,466 to 13,102,714) |
+| NNUE 256: evaluations | about 5,400,000 per second (4,860,759 to 5,686,432) |
+| NNUE 256: accumulators from scratch | about 907,000 per second (867,389 to 943,153) |
 
 The three NNUE rows (`uttt_engine::nnue`, a random network of width 256, built in the example) were added and measured on 2026-10-14 on Claude's session, three runs, machine noise about 10%; the other rows are from the earlier measurement above.
 
