@@ -1,6 +1,6 @@
 # Packing data into characters
 
-How to fit about twice as much data in a bot by packing bytes into characters outside ASCII, about 15.9 bits per character instead of the 6 bits of base64. CodinGame is reported to limit code size in characters, not bytes ([CODINGAME.md](../CODINGAME.md#submission-limits)).
+How to fit about 2.6 times as much data in a bot by packing bytes into characters outside ASCII, about 15.9 bits per character instead of the 6 bits of base64. CodinGame is reported to limit code size in characters, not bytes ([CODINGAME.md](../CODINGAME.md#submission-limits)).
 
 **Status:** not usable in a release yet. Three things are missing first (below, "Before a release uses it"). This note keeps the method for any game that needs room for weights or tables.
 
@@ -101,7 +101,7 @@ On 2026-10-14, in Claude's session, with rustc 1.97.0 (newer than CodinGame's 1.
 
 | Source | What was taken from it |
 | --- | --- |
-| Tom Alard, [Fighting for #1 in the Ultimate Tic-Tac-Toe Arena](https://tomalard.github.io/posts/fighting-for-1-in-the-ultimate-tic-tac-toe-arena/), 2026-09-20, read on 2026-10-14 | That the limit counts characters ("CodinGame has a character limit, not a byte limit"); the packing of 127 bytes into 64 characters; the alphabet U+0100 to U+FFEF without surrogates, U+2028, U+2029, U+FEFF and U+FDD0 to U+FDEF; that CodinGame lets a bot write and run files; that compiled payloads are banned in active contests. It credits Agade's CG Send Binary for the idea |
+| [Fighting for #1 in the Ultimate Tic-Tac-Toe Arena](https://tomalard.github.io/posts/fighting-for-1-in-the-ultimate-tic-tac-toe-arena/), 2026-09-20, read on 2026-10-14 | That the limit counts characters ("CodinGame has a character limit, not a byte limit"); the packing of 127 bytes into 64 characters; the alphabet U+0100 to U+FFEF without surrogates, U+2028, U+2029, U+FEFF and U+FDD0 to U+FDEF; that CodinGame lets a bot write and run files; that compiled payloads are banned in active contests. It credits Agade's CG Send Binary for the idea |
 | This session's test, 2026-10-14 (above) | The text-direction controls rustc rejects, the Rust decoder, the round trip and its times |
 
 ## Games that use it
