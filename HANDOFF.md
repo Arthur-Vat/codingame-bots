@@ -4,12 +4,12 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-None.
+- Approval of #121 (cg-pack and cg-packer, head 42d4acd) and #122 (cg-packer command and packed-data bundle test, stacked on #121, head d90bb65), asked 2026-10-14. Both green and reviewed. Merge #121 first, then #122 (merge commits).
 
 ## Open questions
 
 - Resume Ultimate Tic-Tac-Toe strength work with the plan of #119: answered in the conversation, 2026-10-14: "not yet". The size check: answered 2026-10-14, option a (UTF-16 units, 100,000), written as ADR 0037 in #120. Probe passed (2026-10-14): Rust bot of 95,713 characters and 125,475 bytes accepted; CodinGame compiles for basic x86-64 on a CPU with AVX2, FMA, BMI2, POPCNT, no AVX-512; IDE not a debug build.
-- Packing tools as framework work: answered in the conversation, 2026-10-14 (form): start now; two crates, a decoder `cg-pack` that bots use and an encoder `cg-packer` that tools use; no ADR. In progress: PR 1 the crates and round-trip tests, PR 2 the command-line tool and the bundle test (a bot over 100,000 bytes, under 100,000 characters). Step A3 moves out of games/uttt/ROADMAP.md into docs/ROADMAP.md.
+- Packing tools as framework work: answered in the conversation, 2026-10-14 (form): start now; two crates, a decoder `cg-pack` that bots use and an encoder `cg-packer` that tools use; no ADR. Done as #121 and #122 (waiting for approval). After they merge, step A of Ultimate Tic-Tac-Toe's plan is done; step B (the NNUE) waits for the owner to resume strength work.
 - Phase 5 step D, the phase 7 second game and watching the first release after the CI changes: later (owner, 2026-10-13).
 
 ## Follow-ups
