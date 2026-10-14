@@ -1,6 +1,6 @@
 [package]
 name = "uttt-bot-mcts"
-description = "Ultimate Tic-Tac-Toe bot: Monte Carlo tree search with random playouts, within CodinGame's time limits."
+description = "Ultimate Tic-Tac-Toe bot: Monte Carlo tree search with an NNUE judging the leaves, within CodinGame's time limits."
 version.workspace = true
 authors.workspace = true
 license.workspace = true

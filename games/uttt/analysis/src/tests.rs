@@ -88,7 +88,6 @@ fn the_settings_are_those_of_the_newest_release() {
         format!("const EXPLORATION: f64 = {:?};", EXPLORATION),
         format!("const PRIORS: bool = {PRIORS};"),
         format!("const PRIOR_WEIGHT: f64 = {:?};", PRIOR_WEIGHT),
-        format!("const PLIES: u32 = {PLIES};"),
     ] {
         assert!(
             release.lines().any(|line| line == constant),
@@ -99,10 +98,26 @@ fn the_settings_are_those_of_the_newest_release() {
         released_policy(&release) == *policy(),
         "{name}'s pattern weights differ"
     );
+    // The analysis program searches with the NNUE: the release must be the
+    // bot that does, with the same network.
+    let network = released_text(&release, "NNUE_WEIGHTS").unwrap_or_else(|| {
+        panic!("{name} holds no NNUE_WEIGHTS: it is not the NNUE bot that the analysis program searches as")
+    });
+    assert!(
+        network == nnue_weights::NNUE_WEIGHTS,
+        "{name}'s network differs"
+    );
 }
 
-/// The pattern policy a release holds, for the first `PLIES` moves of each
-/// playout: its weights as base64 text (`PATTERN_TEXT`, up to `uttt-v010`)
+/// The text of the string constant `name` that a release holds.
+fn released_text<'a>(release: &'a str, name: &str) -> Option<&'a str> {
+    let start = format!("pub const {name}: &str = \"");
+    let from = release.find(&start)? + start.len();
+    let length = release[from..].find("\";")?;
+    Some(&release[from..from + length])
+}
+
+/// The pattern policy a release holds: its weights as base64 text (`PATTERN_TEXT`, up to `uttt-v010`)
 /// or packed (`PATTERN_PACKED`).
 fn released_policy(release: &str) -> PatternPolicy {
     let text = "pub const PATTERN_TEXT: &str = \"\\\n";
@@ -120,15 +135,23 @@ fn released_policy(release: &str) -> PatternPolicy {
         let bytes = cg_pack::unpack(&release[from..from + length]).expect("the weights unpack");
         PatternPolicy::decode_packed(&bytes)
     };
-    policy
-        .expect("the release's weights decode")
-        .for_plies(PLIES)
+    policy.expect("the release's weights decode")
 }
 
 #[test]
 fn a_release_holding_packed_weights_is_read_too() {
     let packed = include_str!("../../bots/mcts/src/pattern_weights.rs");
     assert!(released_policy(packed) == *policy());
+}
+
+#[test]
+fn a_release_holding_the_network_is_read_too() {
+    let weights = include_str!("../../bots/mcts/src/nnue_weights.rs");
+    assert_eq!(
+        released_text(weights, "NNUE_WEIGHTS"),
+        Some(nnue_weights::NNUE_WEIGHTS)
+    );
+    assert_eq!(released_text(weights, "OTHER"), None);
 }
 
 #[test]

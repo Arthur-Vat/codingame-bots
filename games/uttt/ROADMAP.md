@@ -68,7 +68,7 @@ Gate: on held-out positions, a lower error than run 37814220623's network. The c
 | Value network 217-128-32-1, run 37814220623, rounded | 0.1522 | 0.6249 |
 | NNUE (189 → 256) × 2 → 10, run 38562652097, quantized | 0.1498 | 0.6199 |
 
-The held-out error was still falling at the eighth epoch. The packed network takes 27,264 characters. At width 256, the engine's speed example measures about 12.1 million updates and 5.4 million evaluations per second. The run's report and weights stay on its branch `claude/train/38562652097` until step C1 uses them: run 37814220623's data expires on 2026-10-15, so the network could not be fitted again.
+The held-out error was still falling at the eighth epoch. The packed network takes 27,264 characters. At width 256, the engine's speed example measures about 12.1 million updates and 5.4 million evaluations per second. The weights are in the MCTS bot since E017.
 
 ### C. Search with the NNUE
 
