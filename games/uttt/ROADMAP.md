@@ -37,12 +37,12 @@ Proposed on 2026-10-14 from the write-up of a player at the top of the arena ([r
 
 The networks below do not fit as base64 beside the bot's code: `uttt-v010` already takes 77,026 of the 100,000. [Packing into characters](../../docs/research/utf16-packing.md) gives about 2.6 times as much room.
 
-1. **Probe on CodinGame (the owner).** One Rust file of about 95,000 characters outside ASCII, played in the IDE and then submitted. It also prints whether CodinGame's CPU has AVX2 (`is_x86_feature_detected!`, which needs no `unsafe`).
+1. **Probe on CodinGame (the owner): done 2026-10-14.** A Rust bot of 95,713 characters and 125,475 bytes was accepted at submission, its packed data intact ([CODINGAME.md](../../docs/CODINGAME.md#submission-limits)). The processor has AVX2, but CodinGame does not compile for it.
 2. **Decision and ADR (the owner):** `scripts/cg-check.sh` counts UTF-16 units instead of bytes.
-3. **Tools:** an encoder in the trainer, a decoder that bots share, and a round-trip test.
+3. **Tools, all in Rust (owner, 2026-10-14):** an encoder in the trainer, a decoder that bots share, and a round-trip test.
 4. **If more room is needed:** the bundler removes indentation ([ADR 0016](../../docs/adr/0016-self-play-training.md), point 4).
 
-Gate: a bot of more than 100,000 bytes and fewer than 100,000 characters is accepted in the arena.
+Gate: a bot of more than 100,000 bytes and fewer than 100,000 characters is accepted in the arena (passed by the probe), and `cg-check.sh` accepts it in CI.
 
 ### B. An NNUE evaluation
 
@@ -74,7 +74,7 @@ One experiment each.
 
 1. **A larger accumulator:** 512, then 1,024 if the room allows. At 1,024, 8-bit weights take about 215 KB, more than the at most 190 KB that packing gives, code included. They then need fewer bits or compression; zigzag encoding helps either way.
 2. **More data:** hundreds of millions of positions (the write-up's next run has a couple of billion), then self-play of the NNUE bot itself.
-3. **Speed:** safe Rust that the compiler vectorizes, first. Explicit AVX2 needs `unsafe`, so an ADR, and the probe's answer.
+3. **Speed:** safe Rust that the compiler vectorizes, first: SSE2 only, since CodinGame compiles for basic x86-64. Then, if the network takes much of the time, AVX2 through one function compiled for it and called after a check at run time, with a fallback. That call needs `unsafe`, so an ADR.
 4. **Ideas the write-up lists but has not tried:** more hidden layers, other activations, and a training loss that favours weights that compress well.
 
 ### E. Maybe: alpha-beta with the NNUE
@@ -88,7 +88,7 @@ The write-up's bot is a Python file that writes and runs a compiled C program. T
 ## Open questions
 
 - Resume strength work with the plan above? (proposed 2026-10-14)
-- Step A1: will the owner run the probe on CodinGame? (proposed 2026-10-14)
+- Step A2: count UTF-16 units instead of bytes in `cg-check.sh`, at 100,000? (proposed 2026-10-14, after the probe)
 
 ## Decisions
 
