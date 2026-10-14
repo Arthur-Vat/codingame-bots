@@ -9,6 +9,7 @@ None.
 ## Open questions
 
 - Resume Ultimate Tic-Tac-Toe strength work with the plan of #119: answered in the conversation, 2026-10-14: "Read the handoff and go on with step B". First NNUE fit's data: answered 2026-10-14 (form): "Reuse run 37814220623" (one fit job, no self-play). The size check: answered 2026-10-14, option a (UTF-16 units, 100,000), written as ADR 0037 in #120. Probe passed (2026-10-14): Rust bot of 95,713 characters and 125,475 bytes accepted; CodinGame compiles for basic x86-64 on a CPU with AVX2, FMA, BMI2, POPCNT, no AVX-512; IDE not a debug build.
+- Steps C2, the pattern-policy drop and the research README fix: answered in the conversation, 2026-10-14: "Go on with 1, 2, 3" (C2 jacekmax experiment E018; then dropping the pattern policy; then the fix of games/uttt/research/README.md's inputs wording).
 - Phase 5 step D, the phase 7 second game and watching the first release after the CI changes: later (owner, 2026-10-13).
 
 ## Follow-ups
@@ -46,4 +47,4 @@ None.
 - CI failures (2026-10-11): every workflow step reports its failure as an annotation through `scripts/annotate.sh` (#79); job logs are readable from sessions, annotations first (ADR 0028, #80, skill `github-api`). The exact network entry the owner allowed stays out of the repository at the owner's request; do not write it in any file, this one included (the branch is public). cargo-deny now runs from its pinned release in CI (version and SHA-256 in `ci.yml`), no longer through EmbarkStudios' action.
 - In cloud sessions, `sudo dockerd` starts Docker, so actionlint can run locally as in CI.
 - Phase 5's one-week trial is dropped (owner, 2026-10-09); the daily report itself stops (owner, 2026-10-13, #110).
-- Ultimate Tic-Tac-Toe strength work stays paused; no training or league run by hand.
+- Ultimate Tic-Tac-Toe strength work resumed on 2026-10-14 (step B, then C); no training or league run by hand without the owner's go-ahead.
