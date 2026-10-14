@@ -54,6 +54,8 @@ An efficiently updatable network. Its first layer, the accumulator, changes by a
 
    That is 189 inputs, all 0 or 1. The next small board to play is not an input: it picks one of 10 output buckets, one per small board and one for "any board".
 2. **Shape: (189 → N) × 2 → 10.** One first layer is applied to the position from each side, and the two accumulators side by side feed the chosen bucket. The activation is the squared clipped ReLU, and the output a sigmoid. Weights are quantized: 16-bit accumulators, 8-bit weights where the loss allows. The write-up uses N = 1,024, about 215,000 parameters, so one first layer shared by both sides. We start at N = 256, about 54,000 parameters, which the packing fits.
+
+   Items 1 and 2 are in `uttt_engine::nnue` (inputs keep the cells of closed boards, so a move only adds features): quantized inference with incremental accumulators, byte layout and arithmetic in the module's documentation.
 3. **Data:** positions from self-play of the current bot, labelled with the game's result, read with all eight symmetries. The write-up used 300 million positions. The Train workflow gave 80 million from 2 million games in one run; how many runs is the owner's call.
 4. **Trainer:** fit the NNUE and export it quantized and packed.
 
