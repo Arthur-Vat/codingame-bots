@@ -2,7 +2,7 @@
 
 How to fit about 2.6 times as much data in a bot by packing bytes into characters outside ASCII, about 15.9 bits per character instead of the 6 bits of base64. CodinGame limits code size in characters, not bytes; a Rust bot of 125,475 bytes and 95,713 characters was accepted on 2026-10-14 ([CODINGAME.md](../CODINGAME.md#submission-limits)).
 
-**Status:** checked on CodinGame, and the size check counts characters ([ADR 0037](../adr/0037-size-limit-in-characters.md)); not usable in a release until the tools exist (below, "Before a release uses it"). This note keeps the method for any game that needs room for weights or tables.
+**Status:** checked on CodinGame, and the size check counts characters ([ADR 0037](../adr/0037-size-limit-in-characters.md)). The decoder and the encoder are the crates `cg-pack` and `cg-packer`, for any game; a release can use them once the steps of "Before a release uses it" below are done. This note keeps the method for any game that needs room for weights or tables.
 
 ## The method
 
@@ -23,7 +23,7 @@ The alphabet is every code point from U+0100 to U+FFEF, in order, without the fo
 
 The alphabet then has B = 63,172 code points, 15.95 bits each, enough for 64 digits per 127 bytes. The source's alphabet, built for Python, keeps the 9 text-direction controls: B = 63,181. Both sides of the packing must use the same alphabet.
 
-A digit's value is its rank in the alphabet. The decoder builds a table of ranks for the 65,536 code points once. For each block it multiplies a 1,016-bit number by B and adds the next digit, 64 times. Then it writes out the 127 bytes. The Rust below is standard library only, with no `unsafe`, and compiles for edition 2021:
+A digit's value is its rank in the alphabet. The decoder builds a table of ranks for the 65,536 code points once. For each block it multiplies a 1,016-bit number by B and adds the next digit, 64 times. Then it writes out the 127 bytes. The Rust below, standard library only, with no `unsafe`, for edition 2021, is the one the probe used; bots use `cg_pack::unpack`, the same method with checks that the text is the encoder's output:
 
 ```rust
 /// Rebuilds the bytes packed 127 to 64 characters as base-B digits
@@ -67,7 +67,7 @@ fn unpack(packed: &str) -> Vec<u8> {
 }
 ```
 
-The encoder does the reverse in Rust too, the owner's rule (2026-10-14): every tool of the packing is Rust. It divides each 1,016-bit number by B 64 times, with the same 32 limbs. The repository has no encoder yet: the one that built the probe below joins it with the tools (step 2 of "Before a release uses it").
+The encoder does the reverse in Rust too, the owner's rule (2026-10-14): every tool of the packing is Rust. It divides each 1,016-bit number by B 64 times, with the same 32 limbs. It is `cg_packer::pack`, tested against a slower encoder that divides byte by byte, and with round trips through `cg_pack::unpack`.
 
 ## Measured here
 
@@ -105,7 +105,8 @@ What the same probe found about CodinGame's compiler and processor is in [CODING
 ## Before a release uses it
 
 1. **Done:** `scripts/cg-check.sh` counts UTF-16 units instead of bytes, still at 100,000 ([ADR 0037](../adr/0037-size-limit-in-characters.md)).
-2. **Tools, in Rust:** an encoder in the repository (in the trainer or the bundler) and the decoder in a crate that bots share, with a round-trip test.
+2. **Done:** the decoder in `cg-pack`, a crate that bots share, the encoder in `cg-packer`, a crate for tools, and their round-trip tests (owner, 2026-10-14: two crates, framework work for every game).
+3. **A command-line tool** that writes packed data as a Rust module, and a bundled bot of more than 100,000 bytes and fewer than 100,000 characters that compiles alone and unpacks its data, tested in CI.
 
 ## Sources
 

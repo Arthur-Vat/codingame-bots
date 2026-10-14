@@ -32,6 +32,8 @@ rust-version = "1.90"
 # Workspace crates.
 cg-arena = { path = "crates/cg-arena" }
 cg-core = { path = "crates/cg-core" }
+cg-pack = { path = "crates/cg-pack" }
+cg-packer = { path = "crates/cg-packer" }
 cg-search = { path = "crates/cg-search" }
 studio-core = { path = "studio/core" }
 studio-game = { path = "studio/game" }
