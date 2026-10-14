@@ -7,6 +7,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 script=scripts/cg-check.sh
+# This tests the size check, not the compiler's version: CI sets CG_RUST for
+# the bots' jobs, and any rustc compiles these files.
+unset CG_RUST CG_BIN_DIR
 dir="$(mktemp -d)"
 trap 'rm -rf "$dir"' EXIT
 
@@ -55,7 +58,10 @@ check 0 "100000 characters, 299966 bytes" "$dir/bmp-limit.rs"
 bot "$dir/bmp-over.rs" 100001 '\xe4\xb8\x80' 1
 check 1 "100001 characters" "$dir/bmp-over.rs"
 
-# U+1F600, above U+FFFF: two UTF-16 units each.
+# U+1F600, above U+FFFF: two UTF-16 units each, though one character.
+bot "$dir/astral-limit.rs" 100000 '\xf0\x9f\x98\x80' 2
+check 0 "100000 characters" "$dir/astral-limit.rs"
+
 bot "$dir/astral-over.rs" 100002 '\xf0\x9f\x98\x80' 2
 check 1 "100002 characters" "$dir/astral-over.rs"
 

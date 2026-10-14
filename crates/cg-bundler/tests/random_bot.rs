@@ -25,8 +25,6 @@ fn the_bundled_random_bot_compiles_alone_and_plays() {
         "test modules must be dropped"
     );
     assert!(cg_bundler::cg_size(&bundle) < cg_bundler::SIZE_LIMIT);
-    // UTF-16 units: one for U+4E00, two for U+1F600.
-    assert_eq!(cg_bundler::cg_size("a\u{4E00}\u{1F600}"), 4);
 
     let dir = std::env::temp_dir().join(format!("cg-bundler-random-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();

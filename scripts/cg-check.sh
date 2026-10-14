@@ -22,6 +22,10 @@ if [[ $# -eq 0 ]]; then
   echo "usage: $0 FILE.rs..." >&2
   exit 2
 fi
+if ! command -v iconv >/dev/null; then
+  echo "error: iconv is needed to count characters" >&2
+  exit 1
+fi
 
 version="$(rustc --version)"
 echo "compiler: $version"

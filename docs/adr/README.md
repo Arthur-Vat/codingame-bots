@@ -41,7 +41,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0034](0034-no-usage-monitoring.md) | No usage monitoring | Accepted |
 | [0035](0035-new-game-lifecycle.md) | A lifecycle for each new game | Accepted |
 | [0036](0036-ranks-optional.md) | CodinGame ranks are reported only when the owner wishes | Accepted |
-| [0037](0037-size-limit-in-characters.md) | Count a bot's size in characters, as UTF-16 units | Accepted |
+| [0037](0037-size-limit-in-characters.md) | Count a bot's size in characters, and pack its data with Rust tools | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 

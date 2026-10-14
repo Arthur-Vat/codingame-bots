@@ -1,4 +1,4 @@
-# 0037. Count a bot's size in characters, as UTF-16 units
+# 0037. Count a bot's size in characters, and pack its data with Rust tools
 
 - Status: accepted (owner, 2026-10-14)
 - Date: 2026-10-14
@@ -10,12 +10,12 @@ A paste-ready bot had to stay under 100,000 bytes, the limit players reported on
 
 On 2026-10-14 the owner tested this on CodinGame with a probe Claude built: `uttt-v010` plus packed data, 95,713 characters and 125,475 bytes. It compiled, played in the IDE and was accepted at submission, with its data intact. All of its characters were below U+FFFF, so it did not show how CodinGame counts the characters above, which take two UTF-16 units. Nor did it show the exact boundary.
 
-The owner chose, among three options, to count UTF-16 units with the limit at 100,000. The others were the same count with a margin, and keeping bytes.
+The owner chose, among three options, to count UTF-16 units with the limit at 100,000. The others were the same count with a margin, and keeping bytes. The owner also asked that packing data use no language but Rust.
 
 ## Decision
 
 1. **A paste-ready bot is at most 100,000 characters, counted as UTF-16 units.** A character above U+FFFF counts as two, the cautious reading of what the probe left open. Bytes no longer count.
-2. **`scripts/cg-check.sh` enforces it, and rejects a file that is not valid UTF-8.** The bundler warns by the same count. A test of the check runs in CI.
+2. **`scripts/cg-check.sh` enforces it, and rejects a file that is not valid UTF-8.** The bundler warns by the same count.
 3. **Every tool of the packing is Rust (owner, 2026-10-14).** The encoder and the decoder are written in Rust, like the rest of the framework ([ADR 0003](0003-rust.md)).
 
 ## Consequences

@@ -33,7 +33,7 @@ The routing rule is what makes the game hard: a move is judged by the small boar
 
 - **Symmetries:** the eight symmetries of the square, applied at once to the positions of small boards and of cells inside them, keep the rules unchanged, including the routing rule.
 - **Search fits the class:** a game of perfect information with no chance and moderate branching suits minimax and Monte Carlo tree search; a 100 ms turn and an engine of about a million playouts per second favour MCTS with fast playouts.
-- **Precomputed knowledge** must fit in a file of 100,000 characters: at most about 190 KB of data packed into characters, less the bot's code ([utf16-packing.md](../../docs/research/utf16-packing.md)). Tables of small-board patterns (512 per player) and networks of a few hundred thousand small weights fit; networks of millions of weights do not.
+- **Precomputed knowledge** must fit in a file of 100,000 characters: at most about 190 KB of data packed into characters, less the bot's code ([utf16-packing.md](../../docs/research/utf16-packing.md)). Tables of small-board patterns (512 per player) and networks of about 190,000 8-bit weights fit, more with fewer bits per weight; networks of millions of weights do not.
 - **Exact values** exist for the end of a game: a solver can prove wins and losses in the tree.
 
 ## Framework gaps
