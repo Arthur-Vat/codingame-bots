@@ -1,8 +1,8 @@
 # Packing data into characters
 
-How to fit about 2.6 times as much data in a bot by packing bytes into characters outside ASCII, about 15.9 bits per character instead of the 6 bits of base64. CodinGame is reported to limit code size in characters, not bytes ([CODINGAME.md](../CODINGAME.md#submission-limits)).
+How to fit about 2.6 times as much data in a bot by packing bytes into characters outside ASCII, about 15.9 bits per character instead of the 6 bits of base64. CodinGame limits code size in characters, not bytes; a Rust bot of 125,475 bytes and 95,713 characters was accepted on 2026-10-14 ([CODINGAME.md](../CODINGAME.md#submission-limits)).
 
-**Status:** not usable in a release yet. Three things are missing first (below, "Before a release uses it"). This note keeps the method for any game that needs room for weights or tables.
+**Status:** checked on CodinGame (2026-10-14), not usable in a release yet: two things are missing first (below, "Before a release uses it"). This note keeps the method for any game that needs room for weights or tables.
 
 ## The method
 
@@ -67,7 +67,7 @@ fn unpack(packed: &str) -> Vec<u8> {
 }
 ```
 
-The encoder does the reverse with Python's big integers, or with any big-number code. The repository has no encoder yet.
+The encoder does the reverse in Rust too, the owner's rule (2026-10-14): every tool of the packing is Rust. It divides each 1,016-bit number by B 64 times, with the same 32 limbs. The repository has no encoder yet: the one that built the probe below joins it with the tools (step 2 of "Before a release uses it").
 
 ## Measured here
 
@@ -78,6 +78,17 @@ On 2026-10-14, in Claude's session, with rustc 1.97.0 (newer than CodinGame's 1.
 - **File size:** the bot file holding those characters had 97,504 characters, and as many UTF-16 units. In UTF-8 it was 285,409 bytes, about 3 bytes per packed character. `scripts/cg-check.sh` rejects it today, since it counts bytes.
 - **What rustc accepts in a string literal:** separators, the byte order mark, noncharacters, private-use and unassigned code points all compile. U+202E and U+2066 do not.
 
+## Checked on CodinGame
+
+On 2026-10-14 the owner pasted a probe into the Ultimate Tic-Tac-Toe IDE, played it and submitted it to the arena. The probe was `uttt-v010` unchanged, plus 30,000 bytes of test data packed into 15,168 characters. The file had 95,713 characters, as many UTF-16 units, 125,475 bytes in UTF-8, and 2,367 lines. A Rust program in Claude's session built it, encoder included.
+
+- **Accepted:** it compiled and played in the IDE, and the arena accepted it at submission.
+- **The characters arrived intact:** all 15,168 packed characters, and the unpacked bytes matched their checksum.
+- **Decoding time on CodinGame:** 1.1 ms for 30,000 bytes, against 0.7 ms in Claude's session.
+- **Not checked:** a file of about 95,000 packed characters (about 285 KB), and the exact boundary at 100,000 characters.
+
+What the same probe found about CodinGame's compiler and processor is in [CODINGAME.md](../CODINGAME.md#processor).
+
 ## When it fits
 
 - **Data, not code.** It packs bytes that the bot decodes at start: network weights, pattern tables, opening books. The code itself stays plain Rust that CodinGame compiles.
@@ -86,16 +97,15 @@ On 2026-10-14, in Claude's session, with rustc 1.97.0 (newer than CodinGame's 1.
 
 ## Pitfalls
 
-- **One source.** That the limit counts characters comes from one player's write-up, for a Python submission. Nobody here has checked it for Rust, or whether CodinGame stores or compiles a file of 285 KB.
-- **Editors.** Pasting about 95,000 characters outside ASCII into the CodinGame editor has not been tried here. Paste the file whole, from a UTF-8 copy.
+- **Size not tried.** CodinGame accepted 15,168 packed characters in a Rust file of 125 KB. A file of about 95,000 packed characters, about 285 KB, has not been tried.
+- **Editors.** Paste the file whole, from a UTF-8 copy. The probe was pasted this way and every character arrived.
 - **Two alphabets.** The decoder and the encoder must leave out the same code points, or every block decodes wrong. Test a round trip in CI.
 - **The source's other trick is a different thing.** The write-up's packed payload is a compiled program that its Python bot writes to a file and runs. It reports that CodinGame allows this, and that sending a compiled payload is banned in active contests. That is not this note's method: here the data stays data, read by Rust that CodinGame compiles.
 
 ## Before a release uses it
 
-1. **A probe on CodinGame (the owner):** paste a Rust bot holding about 95,000 packed characters into the IDE and play, then submit it to the arena. It must compile and run, unpack its data on the first turn, and be accepted at submission. The bot's standard error reports how many bytes it unpacked and how long it took. Claude builds the file on request.
-2. **A decision of the owner and an ADR:** `scripts/cg-check.sh` counts UTF-16 units instead of bytes, still at 100,000. That changes the limit `CLAUDE.md`, `docs/NEW_GAME.md`, the `pr-reviewer` agent and the skills state in bytes.
-3. **Tools:** an encoder in the repository (in the trainer or the bundler) and the decoder in a crate that bots share, with a round-trip test.
+1. **A decision of the owner and an ADR:** `scripts/cg-check.sh` counts UTF-16 units instead of bytes, still at 100,000. That changes the limit `CLAUDE.md`, `docs/NEW_GAME.md`, the `pr-reviewer` agent and the skills state in bytes.
+2. **Tools, in Rust:** an encoder in the repository (in the trainer or the bundler) and the decoder in a crate that bots share, with a round-trip test.
 
 ## Sources
 
@@ -103,6 +113,7 @@ On 2026-10-14, in Claude's session, with rustc 1.97.0 (newer than CodinGame's 1.
 | --- | --- |
 | [Fighting for #1 in the Ultimate Tic-Tac-Toe Arena](https://tomalard.github.io/posts/fighting-for-1-in-the-ultimate-tic-tac-toe-arena/), 2026-09-20, read on 2026-10-14 | That the limit counts characters ("CodinGame has a character limit, not a byte limit"); the packing of 127 bytes into 64 characters; the alphabet U+0100 to U+FFEF without surrogates, U+2028, U+2029, U+FEFF and U+FDD0 to U+FDEF; that CodinGame lets a bot write and run files; that compiled payloads are banned in active contests. It credits Agade's CG Send Binary for the idea |
 | This session's test, 2026-10-14 (above) | The text-direction controls rustc rejects, the Rust decoder, the round trip and its times |
+| The owner's probe on CodinGame, 2026-10-14 (above) | That a Rust file over 100,000 bytes and under 100,000 characters is accepted, and its decoding time there |
 
 ## Games that use it
 
