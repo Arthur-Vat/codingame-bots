@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- #118 (characters, not bytes; packing note docs/research/utf16-packing.md; probe results), #119 (stacked on #118: Ultimate Tic-Tac-Toe plan toward an NNUE) and #120 (stacked on #118: ADR 0037, cg-check.sh counts UTF-16 units). #118 and #119 reviewed (light), #120 under deep review. Asked 2026-10-14; not yet answered. Merge #118 first.
+- #118 (characters, not bytes; packing note docs/research/utf16-packing.md; probe results), #119 (stacked on #118: Ultimate Tic-Tac-Toe plan toward an NNUE) and #120 (stacked on #118: ADR 0037, cg-check.sh counts UTF-16 units). #118 and #119 reviewed (light), #120 reviewed (deep); nits fixed, all green, the three merge cleanly in that order. Asked 2026-10-14; not yet answered. Merge #118 first.
 
 ## Open questions
 
