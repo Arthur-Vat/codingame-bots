@@ -6,7 +6,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 - #127 docs(uttt): the write-up's network inputs come from both sides (opened 2026-10-14; light review approved; CI green): approval to merge.
 - #128 E018 jacekmax, candidate `uttt-v012` (opened 2026-10-14; screened +135 Elo at 20 ms, +177 at full time against v011; bot review approved with nits, fixed in e5248e7): its SPRT at full time is running; then approval to merge. Fill `pull_request: "#128"` and the SPRT result in the entry only after the SPRT finishes (a push would cancel it).
-- Item 2, the MCTS bot drops the pattern policy (branch `claude/uttt-policy-crate`, stacked on #128; same moves as v012 at fixed iterations; bundle 84,397 characters): pull request to open once its review is back.
+- #129 refactor(uttt): the MCTS bot drops the pattern policy (opened 2026-10-14, stacked on #128; same moves as v012 at fixed iterations; bundle 84,397 characters; review approved with nits, fixed): approval to merge, after #128.
 
 ## Open questions
 
