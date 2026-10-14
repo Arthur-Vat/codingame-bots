@@ -172,8 +172,10 @@ fn squared_dot(acc: &[i16], weights: &[i16]) -> i32 {
     acc.iter()
         .zip(weights)
         .map(|(&a, &w)| {
-            let c = i32::from(a.clamp(0, QA as i16));
-            c * c * i32::from(w)
+            // `c * w` fits in i16 (at most 127 * 127), which SSE2 multiplies
+            // faster than a 32-bit product of three factors.
+            let c = a.clamp(0, QA as i16);
+            i32::from(c * w) * i32::from(c)
         })
         .sum()
 }
@@ -315,12 +317,13 @@ impl<const N: usize> Network<N> {
     /// The output before the sigmoid, for the side to move of `board` (an ongoing position), from `accumulator` (which must be `board`'s).
     pub fn logit(&self, accumulator: &Accumulator<N>, board: &Board) -> f32 {
         let stm = board.to_move();
-        let start = bucket(board) * 2 * N;
+        let bucket = bucket(board);
+        let start = bucket * 2 * N;
         let weights = &self.output_weights[start..start + 2 * N];
         let (ours, theirs) = weights.split_at(N);
         let sum = squared_dot(&accumulator.values[stm], ours)
             + squared_dot(&accumulator.values[1 - stm], theirs);
-        let total = i64::from(sum / QA) + i64::from(self.output_bias[bucket(board)]);
+        let total = i64::from(sum / QA) + i64::from(self.output_bias[bucket]);
         total as f32 / (QA * QB) as f32
     }
 
