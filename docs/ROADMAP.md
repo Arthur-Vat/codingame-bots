@@ -215,7 +215,7 @@ Gate: the owner passes each stage of the second game.
 Framework work that a game's plan needs but every game can use.
 
 - [x] Packing data into characters: the decoder `cg-pack` for bots and the encoder `cg-packer` for tools, with round-trip tests (owner, 2026-10-14; [research note](research/utf16-packing.md)); first needed by Ultimate Tic-Tac-Toe's plan, step A
-- [ ] Packing data into characters: a command-line tool that writes packed data as a Rust module, and a bundled bot over 100,000 bytes and under 100,000 characters tested in CI
+- [x] Packing data into characters: a command-line tool that writes packed data as a Rust module, and a bundled bot over 100,000 bytes and under 100,000 characters tested in CI
 
 ## Risks
 

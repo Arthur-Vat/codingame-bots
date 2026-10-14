@@ -39,10 +39,10 @@ The networks below do not fit as base64 beside the bot's code: `uttt-v010` alrea
 
 1. **Probe on CodinGame (the owner): done 2026-10-14.** A Rust bot of 95,713 characters and 125,475 bytes was accepted at submission, its packed data intact ([CODINGAME.md](../../docs/CODINGAME.md#submission-limits)). The processor has AVX2, but CodinGame does not compile for it.
 2. **Decision and ADR (the owner): done 2026-10-14.** `scripts/cg-check.sh` counts UTF-16 units instead of bytes, at 100,000 (ADR 0037, pull request #120).
-3. **Tools, all in Rust (owner, 2026-10-14), as framework work for every game ([roadmap](../../docs/ROADMAP.md#outside-the-phases)):** the decoder `cg-pack` and the encoder `cg-packer` (done), a command-line tool and a bundled bot that proves the gate below. The trainer packs the network with `cg-packer` in step B4.
+3. **Tools, all in Rust (owner, 2026-10-14), as framework work for every game ([roadmap](../../docs/ROADMAP.md#outside-the-phases)):** done: the decoder `cg-pack`, the encoder `cg-packer` with its command, and a bundler test that proves the gate below. The trainer packs the network with `cg-packer` in step B4.
 4. **If more room is needed:** the bundler removes indentation ([ADR 0016](../../docs/adr/0016-self-play-training.md), point 4).
 
-Gate: a bot of more than 100,000 bytes and fewer than 100,000 characters is accepted in the arena (passed by the probe), and `cg-check.sh` accepts it in CI.
+Gate: a bot of more than 100,000 bytes and fewer than 100,000 characters is accepted in the arena (passed by the probe), and `cg-check.sh` accepts it in CI (passed: `crates/cg-bundler/tests/packed_data.rs`).
 
 ### B. An NNUE evaluation
 

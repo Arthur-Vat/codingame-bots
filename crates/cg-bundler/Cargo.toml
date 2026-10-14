@@ -14,5 +14,9 @@ clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 
+# The packed-data test writes a bot's data with the encoder.
+[dev-dependencies]
+cg-packer.workspace = true
+
 [lints]
 workspace = true

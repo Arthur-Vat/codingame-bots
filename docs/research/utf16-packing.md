@@ -2,7 +2,7 @@
 
 How to fit about 2.6 times as much data in a bot by packing bytes into characters outside ASCII, about 15.9 bits per character instead of the 6 bits of base64. CodinGame limits code size in characters, not bytes; a Rust bot of 125,475 bytes and 95,713 characters was accepted on 2026-10-14 ([CODINGAME.md](../CODINGAME.md#submission-limits)).
 
-**Status:** checked on CodinGame, and the size check counts characters ([ADR 0037](../adr/0037-size-limit-in-characters.md)). The decoder and the encoder are the crates `cg-pack` and `cg-packer`, for any game; a release can use them once the steps of "Before a release uses it" below are done. This note keeps the method for any game that needs room for weights or tables.
+**Status:** checked on CodinGame, and the size check counts characters ([ADR 0037](../adr/0037-size-limit-in-characters.md)). The decoder and the encoder are the crates `cg-pack` and `cg-packer`, for any game, and a bundled bot carrying packed data is tested in CI (below, "Use it in a bot"). This note keeps the method for any game that needs room for weights or tables.
 
 ## The method
 
@@ -69,6 +69,21 @@ fn unpack(packed: &str) -> Vec<u8> {
 
 The encoder does the reverse in Rust too, the owner's rule (2026-10-14): every tool of the packing is Rust. It divides each 1,016-bit number by B 64 times, with the same 32 limbs. It is `cg_packer::pack`, tested against a slower encoder that divides byte by byte, and with round trips through `cg_pack::unpack`.
 
+## Use it in a bot
+
+1. Write the data as bytes: quantized weights, tables (see "When it fits" below).
+2. Pack them into a module of the bot, from the repository's root:
+
+   ```sh
+   cargo run --release -p cg-packer -- weights.bin --output games/<game>/bots/<bot>/src/weights.rs --name WEIGHTS
+   ```
+
+   The module holds one constant, `pub const WEIGHTS: &str = "...";`, on one line that rustfmt leaves as it is. A tool such as a trainer can call `cg_packer::rust_module` or `cg_packer::pack` instead.
+3. In the bot: `cg-pack.workspace = true` in its `Cargo.toml`, `mod weights;`, and once at start `let bytes = cg_pack::unpack(weights::WEIGHTS).expect("packed weights");`. `unpack` returns `None` for text the encoder did not write.
+4. Bundle as usual: the bundler copies `cg-pack` and the module unchanged, and `scripts/cg-check.sh` counts the characters.
+
+The test `crates/cg-bundler/tests/packed_data.rs` does the same with 160,000 bytes: the bundle has more than 100,000 bytes and fewer than 100,000 characters, passes `scripts/cg-check.sh` and prints the data's length and checksum.
+
 ## Measured here
 
 On 2026-10-14, in Claude's session, with rustc 1.97.0 (newer than CodinGame's 1.90.0):
@@ -102,11 +117,13 @@ What the same probe found about CodinGame's compiler and processor is in [CODING
 - **Two alphabets.** The decoder and the encoder must leave out the same code points, or every block decodes wrong. Test a round trip in CI.
 - **The source's other trick is a different thing.** The write-up's packed payload is a compiled program that its Python bot writes to a file and runs. It reports that CodinGame allows this, and that sending a compiled payload is banned in active contests. That is not this note's method: here the data stays data, read by Rust that CodinGame compiles.
 
-## Before a release uses it
+## What a release needed
 
 1. **Done:** `scripts/cg-check.sh` counts UTF-16 units instead of bytes, still at 100,000 ([ADR 0037](../adr/0037-size-limit-in-characters.md)).
 2. **Done:** the decoder in `cg-pack`, a crate that bots share, the encoder in `cg-packer`, a crate for tools, and their round-trip tests (owner, 2026-10-14: two crates, framework work for every game).
-3. **A command-line tool** that writes packed data as a Rust module, and a bundled bot of more than 100,000 bytes and fewer than 100,000 characters that compiles alone and unpacks its data, tested in CI.
+3. **Done:** the command `cg-packer`, which writes packed data as a Rust module, and the test of a bundled bot of more than 100,000 bytes and fewer than 100,000 characters that passes `scripts/cg-check.sh` and unpacks its data.
+
+What remains for a release is the game's own work: its data, the bot that reads it, and the experiment that judges it.
 
 ## Sources
 
