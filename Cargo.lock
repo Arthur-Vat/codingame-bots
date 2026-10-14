@@ -82,6 +82,17 @@ name = "cg-core"
 version = "0.0.0"
 
 [[package]]
+name = "cg-pack"
+version = "0.0.0"
+
+[[package]]
+name = "cg-packer"
+version = "0.0.0"
+dependencies = [
+ "cg-pack",
+]
+
+[[package]]
 name = "cg-search"
 version = "0.0.0"
 dependencies = [

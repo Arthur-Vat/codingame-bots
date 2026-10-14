@@ -1,0 +1,16 @@
+[package]
+name = "cg-packer"
+description = "Packs data into characters outside ASCII for bots to decode with cg-pack. A tool: bots never depend on it."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+cg-pack.workspace = true
+
+[lints]
+workspace = true
