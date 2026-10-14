@@ -40,7 +40,8 @@ fn main() {
 
 #[test]
 fn a_bot_with_packed_data_over_100000_bytes_bundles_compiles_and_unpacks_it() {
-    let dir = std::env::temp_dir().join(format!("cg-bundler-packed-{}", std::process::id()));
+    // Under target/, so a failed run leaves nothing elsewhere.
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("cg-bundler-packed");
     let src = dir.join("src");
     std::fs::create_dir_all(&src).unwrap();
     // 160,000 bytes take 80,640 characters, about 242,000 bytes of UTF-8.

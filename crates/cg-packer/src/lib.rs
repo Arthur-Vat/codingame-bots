@@ -56,7 +56,8 @@ pub fn pack(data: &[u8]) -> String {
 
 /// A Rust module holding `data` packed, as the constant `name`, for a bot
 /// to decode with `cg_pack::unpack`. `source` names where the data came
-/// from, in the module's first comment.
+/// from, in the module's first comment, with its control characters (a
+/// newline would end the comment) written as spaces.
 ///
 /// Fails if `name` is not a constant's name: an uppercase ASCII letter, then
 /// uppercase letters, digits and underscores.
@@ -69,6 +70,7 @@ pub fn rust_module(data: &[u8], name: &str, source: &str) -> Result<String, Stri
             "{name:?} is not a constant's name (A-Z, then A-Z, 0-9 or _)"
         ));
     }
+    let source = source.replace(char::is_control, " ");
     let packed = pack(data);
     Ok(format!(
         "// Written by cg-packer from {source}: {} bytes in {} characters.\n\

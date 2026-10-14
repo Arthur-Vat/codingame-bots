@@ -1,10 +1,11 @@
 //! The `cg-packer` command writes a module that unpacks to the input file.
 
+use std::path::Path;
 use std::process::Command;
 
 #[test]
 fn packs_a_file_into_a_module() {
-    let dir = std::env::temp_dir().join(format!("cg-packer-cli-{}", std::process::id()));
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("cg-packer-cli");
     std::fs::create_dir_all(&dir).unwrap();
     let input = dir.join("table.bin");
     let output = dir.join("table.rs");

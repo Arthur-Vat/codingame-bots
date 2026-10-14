@@ -124,6 +124,13 @@ fn writes_a_module_with_one_constant() {
 }
 
 #[test]
+fn a_source_with_a_newline_stays_in_its_comment() {
+    let module = rust_module(&[1], "W", "`a\nb\r.bin`").unwrap();
+    assert_eq!(module.lines().count(), 3, "{module}");
+    assert!(module.starts_with("// Written by cg-packer from `a b .bin`: "));
+}
+
+#[test]
 fn a_module_needs_a_constants_name() {
     for name in ["", "weights", "Weights", "_W", "9W", "W-1", "W 1", "WÉ"] {
         assert!(rust_module(&[1], name, "x").is_err(), "{name:?}");
