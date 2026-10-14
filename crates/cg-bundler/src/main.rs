@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use cg_bundler::{bundle_package, Options, SIZE_LIMIT};
+use cg_bundler::{bundle_package, cg_size, Options, SIZE_LIMIT};
 use clap::Parser;
 
 /// Bundles a bot package and the workspace crates it uses into one Rust file
@@ -46,10 +46,10 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    if bundle.len() > SIZE_LIMIT {
+    if cg_size(&bundle) > SIZE_LIMIT {
         eprintln!(
-            "warning: the bundle is {} bytes, over CodinGame's limit of {SIZE_LIMIT}",
-            bundle.len()
+            "warning: the bundle is {} characters (UTF-16 units), over CodinGame's limit of {SIZE_LIMIT}",
+            cg_size(&bundle)
         );
     }
     match &args.output {
@@ -58,7 +58,12 @@ fn main() -> ExitCode {
                 eprintln!("error: cannot write {}: {err}", path.display());
                 return ExitCode::FAILURE;
             }
-            eprintln!("wrote {} ({} bytes)", path.display(), bundle.len());
+            eprintln!(
+                "wrote {} ({} characters, {} bytes)",
+                path.display(),
+                cg_size(&bundle),
+                bundle.len()
+            );
         }
         None => print!("{bundle}"),
     }

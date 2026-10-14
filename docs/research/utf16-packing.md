@@ -2,7 +2,7 @@
 
 How to fit about 2.6 times as much data in a bot by packing bytes into characters outside ASCII, about 15.9 bits per character instead of the 6 bits of base64. CodinGame limits code size in characters, not bytes; a Rust bot of 125,475 bytes and 95,713 characters was accepted on 2026-10-14 ([CODINGAME.md](../CODINGAME.md#submission-limits)).
 
-**Status:** checked on CodinGame (2026-10-14), not usable in a release yet: two things are missing first (below, "Before a release uses it"). This note keeps the method for any game that needs room for weights or tables.
+**Status:** checked on CodinGame, and the size check counts characters ([ADR 0037](../adr/0037-size-limit-in-characters.md)); not usable in a release until the tools exist (below, "Before a release uses it"). This note keeps the method for any game that needs room for weights or tables.
 
 ## The method
 
@@ -75,7 +75,7 @@ On 2026-10-14, in Claude's session, with rustc 1.97.0 (newer than CodinGame's 1.
 
 - **Round trip:** 190,000 random bytes packed into 95,808 characters, and unpacked to the same bytes by the decoder above.
 - **Decoding time:** 2.7 ms with `-C opt-level=3`, and 43 ms without optimization, on the session's CPU. Either fits a first turn of 1 s.
-- **File size:** the bot file holding those characters had 97,504 characters, and as many UTF-16 units. In UTF-8 it was 285,409 bytes, about 3 bytes per packed character. `scripts/cg-check.sh` rejects it today, since it counts bytes.
+- **File size:** the bot file holding those characters had 97,504 characters, and as many UTF-16 units. In UTF-8 it was 285,409 bytes, about 3 bytes per packed character. Its 97,504 UTF-16 units pass `scripts/cg-check.sh`, which counts them ([ADR 0037](../adr/0037-size-limit-in-characters.md)).
 - **What rustc accepts in a string literal:** separators, the byte order mark, noncharacters, private-use and unassigned code points all compile. U+202E and U+2066 do not.
 
 ## Checked on CodinGame
@@ -104,7 +104,7 @@ What the same probe found about CodinGame's compiler and processor is in [CODING
 
 ## Before a release uses it
 
-1. **A decision of the owner and an ADR:** `scripts/cg-check.sh` counts UTF-16 units instead of bytes, still at 100,000. That changes the limit `CLAUDE.md`, `docs/NEW_GAME.md`, the `pr-reviewer` agent and the skills state in bytes.
+1. **Done:** `scripts/cg-check.sh` counts UTF-16 units instead of bytes, still at 100,000 ([ADR 0037](../adr/0037-size-limit-in-characters.md)).
 2. **Tools, in Rust:** an encoder in the repository (in the trainer or the bundler) and the decoder in a crate that bots share, with a round-trip test.
 
 ## Sources

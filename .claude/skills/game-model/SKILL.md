@@ -14,7 +14,7 @@ Start `games/<game>/MODEL.md` from [docs/templates/game-model.md](../../../docs/
 - Plain English first: what a player sees, chooses and wants each turn.
 - Numbers: estimate what the engine does not measure yet, and say "estimate"; stage 6 replaces them with measures.
 - The formal part stays short: sets, observation, transition, payoff, and the class of game in standard terms (alternating or simultaneous, perfect or imperfect information, deterministic or stochastic, zero-sum or not, number of players).
-- What follows for bots: symmetries, what can be precomputed, what fits in 100,000 bytes, and the families of methods the class suits. Do not choose a method: that is stage 8 and 9.
+- What follows for bots: symmetries, what can be precomputed, what fits in 100,000 characters (packed data included), and the families of methods the class suits. Do not choose a method: that is stage 8 and 9.
 
 One pull request, `docs(<game>): model of <game name>`, light review. Then the gate.
 

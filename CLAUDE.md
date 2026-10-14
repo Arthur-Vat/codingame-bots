@@ -36,7 +36,7 @@ Procedures that repeat are project skills in `.claude/skills/`, and the agents t
 
 - CodinGame compiles Rust 1.90.0 with the 2021 edition (`docs/CODINGAME.md`). The workspace sets `rust-version = "1.90"`; CI uses exactly 1.90.0. This workspace may have a newer Rust and cannot download 1.90.0, so heed clippy's `incompatible_msrv` warnings and avoid syntax newer than 1.90.
 - Any code that ends up inside a bot uses the standard library only: no crates.io dependencies. Tools (arena, bundler) may use dependencies allowed by `deny.toml`.
-- A paste-ready bot is one file under 100,000 bytes that compiles with `rustc --edition 2021` alone.
+- A paste-ready bot is one file of at most 100,000 characters, counted as UTF-16 units ([ADR 0037](docs/adr/0037-size-limit-in-characters.md)), that compiles with `rustc --edition 2021` alone. Data packed into characters outside ASCII ([docs/research/utf16-packing.md](docs/research/utf16-packing.md)) is encoded and decoded in Rust.
 - No `unsafe` (workspace lint). Proposing an exception needs an ADR.
 - Crates that end up in a bot follow the bundler's conventions (`crates/cg-bundler/src/lib.rs`): modules in files declared with `mod name;` on their own line, tests in separate files (`#[cfg(test)]` then `mod tests;`), other workspace crates referred to by name (`cg_core::`), no `#[path]`, analysis-only code behind `#[cfg(feature = "analysis")]` on the line before the item itself on one line (no attribute or comment between), which the bundler drops and rejects anything else.
 - Bots must flush stdout after every move and print debug output to stderr only.

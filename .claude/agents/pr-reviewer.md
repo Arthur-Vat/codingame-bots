@@ -28,7 +28,7 @@ The main session gives you the branch or pull request, its intent, and a tier. R
 - Consistency with the decision records it touches or relies on.
 
 **Bot** (bots, engine, search, bundler)
-- Bot code: standard library only, Rust 1.90, no `unsafe`, bundler conventions; the bundle stays under 100,000 bytes.
+- Bot code: standard library only, Rust 1.90, no `unsafe`, bundler conventions; the bundle stays within 100,000 characters, counted as UTF-16 units (ADR 0037).
 - Engine or referee changes: ask the main session to run `rules-reviewer` too.
 - Strength claims come from the SPRT or arena results cited, not from reasoning.
 

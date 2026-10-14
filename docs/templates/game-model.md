@@ -28,7 +28,7 @@ What a player sees, decides and wants each turn, in a few paragraphs.
 
 ## What follows for bots
 
-- Symmetries, invariants, what can be precomputed or learned, what fits in 100,000 bytes.
+- Symmetries, invariants, what can be precomputed or learned, what fits in 100,000 characters.
 - The families of methods this class suits, to be ranked at stage 8.
 
 ## Framework gaps
