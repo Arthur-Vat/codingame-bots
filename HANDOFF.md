@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-None.
+- #131 docs(uttt): E019, a 512-wide NNUE, dropped after screening (opened 2026-10-14; light review running): approval to merge.
 
 ## Open questions
 
@@ -38,7 +38,7 @@ None.
 
 ## Notes
 
-- Plan agreed in the conversation, 2026-10-14 ("Ok with your plan"): (1) the width-512 fit (Train run 38634035143); (2) experiment D1 with the 512 network in the MCTS bot (29,812 characters free since #130; the 512 network takes about 54,600, 27,300 more than today's); (3) only if we go for width 1,024: a **minifier** (owner's word: "minifying") as the bundler's last stage, first unused code and whitespace, then renaming our own identifiers, each proved by identical games at fixed iterations, with an ADR first since it changes what a release file is (the readable bundle stays rebuildable from the release's commit), plus 5- or 6-bit weights with an entropy coder. Measured on main: code 42,890 characters, of which whitespace 5,878; minifying should save 15,000 to 18,000.
+- Plan agreed in the conversation, 2026-10-14 ("Ok with your plan"): (1) the width-512 fit (Train run 38634035143); (2) done: E019, dropped (#131): the 512 fit scored 0.1493 against 0.1498, and the bot screened at -27.9 Elo at 20 ms and -3.5 at full time against v012; width waits for more data (D2) and speed (D3); was: experiment D1 with the 512 network in the MCTS bot (29,812 characters free since #130; the 512 network takes about 54,600, 27,300 more than today's); (3) only if we go for width 1,024: a **minifier** (owner's word: "minifying") as the bundler's last stage, first unused code and whitespace, then renaming our own identifiers, each proved by identical games at fixed iterations, with an ADR first since it changes what a release file is (the readable bundle stays rebuildable from the release's commit), plus 5- or 6-bit weights with an entropy coder. Measured on main: code 42,890 characters, of which whitespace 5,878; minifying should save 15,000 to 18,000.
 
 - Pattern policy in `uttt-v011` (owner, 2026-10-14): it only orders children now (E014 +9.7, E015 +5.6 at full time) and takes about 16,000 characters; the article's bot has no separate policy. Owner: "I don't want to test it right away" (no screening without it now). Proposed: after C2 (jacekmax, children ordered by the network's values), an experiment that drops it. Also to fix in a later pull request: games/uttt/research/README.md says the article's inputs are "from the side to move"; they are from both sides (STM and NSTM accumulators), as ours.
 - AVX2 (owner, 2026-10-14): not now. The engine's speed example built with AVX2, BMI2, POPCNT and the rest on showed no gain beyond noise; it waits for the network (step D3 of games/uttt/ROADMAP.md).
