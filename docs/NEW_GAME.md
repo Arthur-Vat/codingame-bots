@@ -63,7 +63,7 @@ From [templates/game-model.md](templates/game-model.md): the problem in plain En
 - Actions: one per turn or a set of commands, the branching factor at the start, middle and end of games (measured once the engine exists, estimated before).
 - Transitions: deterministic or random, alternating or simultaneous.
 - Outcome and score; game length in turns.
-- Time per turn, and what fits in a 100,000-byte bot (tables, weights).
+- Time per turn, and what fits in a bot of 100,000 characters (tables, weights; packed data, [research/utf16-packing.md](research/utf16-packing.md)).
 - Symmetries and what can be precomputed.
 - The class of game and the families of methods that fit it (to be ranked at stage 8, not chosen here).
 
@@ -74,7 +74,7 @@ Check the game against what the framework assumes today, and list each gap:
 - `cg-arena`: two seats (`[BotSpec; 2]`, a seat's opponent is `1 - seat`), seat-swapped pairs for the SPRT.
 - `cg-search`: a two-player game of perfect information where players take turns.
 - The studio: two seats named X and O, and a human's legal moves listed as complete answers.
-- `cg-bundler` and the 100,000-byte limit.
+- `cg-bundler` and the limit of 100,000 characters ([ADR 0037](adr/0037-size-limit-in-characters.md)).
 
 Each gap is a decision for the owner (skill `ask-decision`) before the game's code needs it, recorded with skill `write-adr` when it is costly to reverse.
 

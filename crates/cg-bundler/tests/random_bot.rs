@@ -24,7 +24,7 @@ fn the_bundled_random_bot_compiles_alone_and_plays() {
         !bundle.contains("mod tests"),
         "test modules must be dropped"
     );
-    assert!(bundle.len() < cg_bundler::SIZE_LIMIT);
+    assert!(cg_bundler::cg_size(&bundle) < cg_bundler::SIZE_LIMIT);
 
     let dir = std::env::temp_dir().join(format!("cg-bundler-random-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();

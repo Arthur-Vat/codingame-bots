@@ -43,8 +43,15 @@ use std::process::{Command, Stdio};
 
 use crate::plan::Plan;
 
-/// CodinGame's code size limit, in bytes.
+/// CodinGame's code size limit, in characters counted as UTF-16 units
+/// (ADR 0037).
 pub const SIZE_LIMIT: usize = 100_000;
+
+/// The size of `code` as CodinGame counts it: UTF-16 units, so a character
+/// above U+FFFF counts as two (ADR 0037).
+pub fn cg_size(code: &str) -> usize {
+    code.encode_utf16().count()
+}
 
 /// How a bundle is written.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
