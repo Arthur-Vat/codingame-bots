@@ -86,6 +86,8 @@ Room: the pattern policy's weights are packed and the value network is out of th
 One experiment each.
 
 1. **A larger accumulator:** 512, then 1,024 if the room allows. At 1,024, 8-bit weights take about 215 KB, more than the at most 190 KB that packing gives, code included. They then need fewer bits per weight: train with the weights rounded to 5 or 6 bits, then code them with an entropy coder (rANS or arithmetic, a few dozen lines of Rust in the bot), which spends fewer bits on the common values near zero. Expected about 4 to 5 bits per weight, to be measured on the first network. A general compressor such as LZ77 or LZMA would gain less on weights, for a larger decoder.
+
+   Tried first at 512 on run 37814220623's data: [E019](journal/E019-nnue-512.md), dropped. The fit (run 38634035143, 12 epochs) scored only a little better than the 256 network (squared error 0.1493 against 0.1498), and the bot was no stronger: -27.9 Elo at 20 ms and -3.5 at full time against `uttt-v012`. Width waits for more data (D2) and a faster evaluation (D3). The minifier and weight compression for 1,024 (plan of 2026-10-14) wait with it.
 2. **More data:** hundreds of millions of positions (the write-up's next run has a couple of billion), then self-play of the NNUE bot itself.
 3. **Speed:** safe Rust that the compiler vectorizes, first: SSE2 only, since CodinGame compiles for basic x86-64. Then, if the network takes much of the time, AVX2 through one function compiled for it and called after a check at run time, with a fallback. That call needs `unsafe`, so an ADR.
 
