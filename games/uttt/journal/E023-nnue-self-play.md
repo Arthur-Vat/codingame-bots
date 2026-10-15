@@ -41,6 +41,13 @@ As in E019, a lower error did not play better, and move agreement tracked streng
 **What follows**, for the owner to choose:
 - data that also covers the positions after moves the bot would not play, for example random moves inside self-play games, or positions recorded from the children the search judges;
 - a mix of these games with games of weaker or more varied play;
-- move agreement checked on such positions before any experiment, since the fit's report now gives it.
+- move agreement checked on such positions before any experiment, since the fit's report now gives it: on this data, both networks that played weaker had the lower agreement, whatever their error.
 
-The network stays on the run's branch, `claude/train/38733114779`, and its report is in `training/runs/38733114779/`.
+**The same data at width 512.** The owner also asked for the planned fit at 512 on this data. [Run 38784586293](../training/runs/38784586293/report.md) fitted it for 12 epochs, after #139 dropped the 468,682 copied games, 23% of the 2M.
+- **On its held-out positions:** squared error 0.0715 against 0.0781 for `uttt-v015`'s network, and a calibration gap of 0.0085 against 0.0410.
+- **But:** move agreement 41.0% against 42.1%, and 26 dead units of 512.
+- **Screened** the same way (`Network<512>` in the bot's `main.rs`, 97,725 characters): 52 wins, 64 draws, 84 losses in 100 pairs, -56.1 Elo [-95.8, -17.7], 1 timeout each. Weaker too, though by less than the 256.
+
+The width helps on this data, but the data is what holds both networks back, so no 512-against-256 test was worth an SPRT.
+
+The networks stay on the runs' branches, `claude/train/38733114779` and `claude/train/38784586293`, and their reports are in `training/runs/`.
