@@ -6,11 +6,11 @@ parent: uttt-v014
 hypothesis: Updating the NNUE's accumulators with each move as the search walks down its tree, instead of building them from scratch at every node it expands, gives exactly the same search more iterations per turn, so the bot is stronger at CodinGame's limits.
 change: `NnueBoard` carries its accumulators, built once at the root (`NnueBoard::new`), and `Game::play` adds the move's rows (`Network::play`), so `child_scores` starts from them instead of `Network::refresh`; the bot's settings are unchanged.
 release: uttt-v015
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +7.6 [+1.8, +13.5] at CodinGame's limits
+pairs: 1049
+full_time: +7.6 [+1.8, +13.5] (the SPRT's own, ADR 0020), no timeout in 2,098 games, 99.9% of answers within 92.5 ms
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -32,4 +32,25 @@ Screening against `uttt-v014` at CodinGame's limits (4-ply openings, seed 1, 3 g
 
 The bundle takes 70,456 characters (268 more than `uttt-v014`), leaving 29,544.
 
-The SPRT's result goes here.
+SPRT at CodinGame's limits ([run 38702147151](https://github.com/Arthur-Vat/codingame-bots/actions/runs/38702147151), at 7c62176):
+
+```
+Candidate: uttt-v015. Baseline: uttt-v014.
+Settings: time scale 1, tolerance 0 ms, opening plies 4, seed 1, timeouts allowed in up to 1% of games.
+
+Smoke test against uttt-random: 200 wins, 0 draws, 0 losses over 100 pairs; no faults.
+
+SPRT against uttt-v014:
+uttt-v015 vs uttt-v014: 2098 games, 1049 complete pairs
+  uttt-v015: 300 wins, 1544 draws, 254 losses (score 51.1%)
+  Elo of uttt-v015 over uttt-v014: +7.6 [+1.8, +13.5] (95%, from pairs)
+  pairs by uttt-v015's points (0, 1/2, 1, 3/2, 2): [1, 135, 732, 179, 2]
+  uttt-v015 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  uttt-v014 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  answers after the first (median, 99%, 99.9%): uttt-v015 90.1, 90.6, 92.5 ms; uttt-v014 90.1, 90.5, 92.1 ms
+  slowest answer: uttt-v015 95.6 ms, uttt-v014 95.3 ms
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 2.95 (bounds -2.94, 2.94) after 1049 pairs
+Verdict: ACCEPTED: uttt-v015 is stronger than uttt-v014
+```
+
+A small, real gain from speed alone, as expected for 11% to 20% more iterations per turn: the same search, so no new weakness, and the timeouts of the local screening did not appear on GitHub's runner. Draws are now three quarters of the games between these two bots, which makes each further gain slower to measure. Next for D3, separately: the children's evaluation, now the largest part of the time (ideas 3 and 4).
