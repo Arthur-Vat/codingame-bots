@@ -140,6 +140,23 @@ impl Positions {
     }
 }
 
+impl Positions {
+    /// The ply of position `index`: moves played before it.
+    pub fn ply(&self, index: usize) -> u8 {
+        self.entries[index].ply
+    }
+
+    /// The game of position `index`, numbered from 0 in the order added.
+    pub fn game(&self, index: usize) -> u32 {
+        self.entries[index].game
+    }
+
+    /// The root score of position `index`, without building its board.
+    pub fn score(&self, index: usize) -> f32 {
+        f32::from(self.entries[index].score) / 65535.0
+    }
+}
+
 impl Examples for Positions {
     fn len(&self) -> usize {
         self.entries.len()

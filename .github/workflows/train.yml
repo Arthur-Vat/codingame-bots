@@ -24,7 +24,7 @@ on:
         description: "Search iterations per move"
         default: "10000"
       opening_plies:
-        description: "Random moves at the start of each game"
+        description: "Moves at the start of each game drawn at random (nnue: in proportion to the search's visits, and recorded)"
         default: "6"
       temperature:
         description: "Policy and patterns: divides the fitted log-weights; below 1 sharpens them"
@@ -121,15 +121,19 @@ jobs:
           # with its playouts; the policy, from searches' visits; the move
           # models, from the visits of `uttt-v010`'s search with its pattern
           # policy, which also orders each node's children; the NNUE, from
-          # games of `uttt-v010`'s search (its pattern policy), whose
-          # root scores and results it learns.
+          # games of the newest release's own search and network (a test
+          # of the trainer checks these settings against it), whose root
+          # scores and results it learns. Its openings are searched and
+          # recorded, each move drawn in proportion to its visits, and a
+          # game whose first search after them expects above 0.9 or below
+          # 0.1 is dropped.
           options=()
           if [[ $STAGE == value ]]; then
             options=(--policy games/uttt/training/class_weights.rs --no-visits)
           elif [[ $STAGE == patterns ]]; then
             options=(--patterns games/uttt/training/pattern_weights.rs)
           elif [[ $STAGE == nnue ]]; then
-            options=(--patterns games/uttt/training/pattern_weights.rs --no-visits)
+            options=(--network games/uttt/bots/mcts/src/nnue_weights.rs --exploration 0.2 --expand-all --minimax-weight 0.5 --opening sampled --balance 0.9 --no-visits)
           fi
           # One process per core, each with its own seed and share of games.
           cores="$(nproc)"
