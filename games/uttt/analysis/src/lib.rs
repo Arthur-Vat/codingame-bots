@@ -31,7 +31,7 @@ const EXPLORATION: f64 = 0.3;
 /// Whether the search expands all the children of a node at once.
 const EXPAND_ALL: bool = true;
 /// The weight of a child's minimax value against its average in selection.
-const MINIMAX_WEIGHT: f64 = 1.0;
+const MINIMAX_WEIGHT: f64 = 0.5;
 
 /// The search stops, with the stop `"nodes"`, once the tree holds this many
 /// nodes. With the `analysis` feature a node takes 40 bytes (a move, its mover, its

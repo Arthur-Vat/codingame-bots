@@ -77,11 +77,15 @@ mod nnue_weights;
 /// estimates them with the network, backing up their minimax value (E018).
 const EXPAND_ALL: bool = true;
 /// The weight of a child's minimax value against its average score in
-/// selection: the minimax value only (E018). The search uses no priors:
+/// selection. The minimax value only in E018; half and half since E020,
+/// screened on 2026-10-14 against `uttt-v012` (4-ply openings): at 20 ms
+/// (100 pairs each) 0 -77.7 Elo, 0.25 +5.2, 0.5 +43.7, 0.75 +59.6, 0.9
+/// +34.9; at full time (two seeds, 50 pairs each) 0.5 +74.1 and +77.7, 0.75
+/// +10.4 and +38.4. The search uses no priors:
 /// from E014 to E017 the pattern policy ordered each node's children, but
 /// since E018 every child gets the network's estimate as soon as it is
 /// created, so the order no longer matters, and its weights left the bot.
-const MINIMAX_WEIGHT: f64 = 1.0;
+const MINIMAX_WEIGHT: f64 = 0.5;
 
 fn main() {
     let seed = seed_from_env_or_clock();
