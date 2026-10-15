@@ -85,6 +85,11 @@ jobs:
     if: inputs.data_from_run == ''
     runs-on: ubuntu-latest
     timeout-minutes: 350
+    # For this runner's processor: the trainer is a tool, not a bot, and is
+    # built and run on the same machine. Fits went about 45% faster with it
+    # on 2026-10-15, with the same weights bit for bit there.
+    env:
+      RUSTFLAGS: -C target-cpu=native
     strategy:
       matrix:
         shard: ${{ fromJSON(needs.plan.outputs.shards) }}
@@ -93,7 +98,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.CG_RUST }}
+      # The cache's key names the processor: builds for one runner's
+      # processor (RUSTFLAGS, set on the job) may not run on another's.
+      - name: Name this runner's processor
+        id: cpu
+        run: echo "key=$(grep -E '^(model name|flags)' /proc/cpuinfo | sort -u | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: cpu-${{ steps.cpu.outputs.key }}
       - name: Build the trainer
         run: cargo build --release --locked -p uttt-trainer
       - name: Play
@@ -142,6 +154,11 @@ jobs:
     # Also when self-play was skipped for an earlier run's data.
     if: ${{ !cancelled() && (needs.selfplay.result == 'success' || needs.selfplay.result == 'skipped') }}
     runs-on: ubuntu-latest
+    # For this runner's processor: the trainer is a tool, not a bot, and is
+    # built and run on the same machine. Fits went about 45% faster with it
+    # on 2026-10-15, with the same weights bit for bit there.
+    env:
+      RUSTFLAGS: -C target-cpu=native
     permissions:
       # To push the claude/train/<run id> branch with the results.
       contents: write
@@ -152,7 +169,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.CG_RUST }}
+      # The cache's key names the processor: builds for one runner's
+      # processor (RUSTFLAGS, set on the job) may not run on another's.
+      - name: Name this runner's processor
+        id: cpu
+        run: echo "key=$(grep -E '^(model name|flags)' /proc/cpuinfo | sort -u | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: cpu-${{ steps.cpu.outputs.key }}
       - name: Build the trainer
         run: cargo build --release --locked -p uttt-trainer
       - uses: actions/download-artifact@v8

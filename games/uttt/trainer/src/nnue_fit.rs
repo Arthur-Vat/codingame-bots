@@ -15,6 +15,7 @@
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
+use std::sync::{Condvar, Mutex, RwLock};
 use std::time::Instant;
 
 use cg_core::rng::Rng;
@@ -220,25 +221,24 @@ pub fn initial_parameters<const N: usize>(seed: u64) -> Vec<f32> {
 /// Clips the parameters to what the quantization can hold: first-layer
 /// weights to -1..=1 (127 at scale `QA`), biases to what keeps the
 /// accumulators within `i16`, output weights to 127 at scale `QB`, output
-/// biases to a magnitude of 1,000.
-pub fn clip<const N: usize>(parameters: &mut [f32]) {
-    let (weights, rest) = parameters.split_at_mut(Shape::<N>::BIAS);
-    let (bias, rest) = rest.split_at_mut(N);
-    let (output, output_bias) = rest.split_at_mut(BUCKETS * 2 * N);
-    let weight_limit = 127.0 / QA as f32;
-    let bias_limit = f32::from(MAX_BIAS) / QA as f32;
-    let output_limit = 127.0 / QB as f32;
-    for value in weights {
-        *value = value.clamp(-weight_limit, weight_limit);
-    }
-    for value in bias {
-        *value = value.clamp(-bias_limit, bias_limit);
-    }
-    for value in output {
-        *value = value.clamp(-output_limit, output_limit);
-    }
-    for value in output_bias {
-        *value = value.clamp(-1000.0, 1000.0);
+/// biases to a magnitude of 1,000. `values` holds the parameters from index
+/// `start` on: all of them from 0, or a thread's share.
+pub fn clip<const N: usize>(start: usize, values: &mut [f32]) {
+    let groups = [
+        (Shape::<N>::BIAS, 127.0 / QA as f32),
+        (Shape::<N>::OUTPUT, f32::from(MAX_BIAS) / QA as f32),
+        (Shape::<N>::OUTPUT_BIAS, 127.0 / QB as f32),
+        (Shape::<N>::PARAMETERS, 1000.0),
+    ];
+    let mut index = start;
+    let mut rest = values;
+    for (end, limit) in groups {
+        let (group, after) = rest.split_at_mut(end.saturating_sub(index).min(rest.len()));
+        for value in group.iter_mut() {
+            *value = value.clamp(-limit, limit);
+        }
+        index += group.len();
+        rest = after;
     }
 }
 
@@ -337,11 +337,91 @@ pub struct Epoch {
     pub training_seconds: f64,
 }
 
+/// A barrier for the threads of `train` that a panicking thread breaks, so
+/// that the others panic too instead of waiting for it forever.
+struct Gate {
+    threads: usize,
+    /// The threads arrived in this round, the round's number, and whether
+    /// a thread panicked.
+    state: Mutex<(usize, u64, bool)>,
+    turned: Condvar,
+}
+
+impl Gate {
+    fn new(threads: usize) -> Gate {
+        Gate {
+            threads,
+            state: Mutex::new((0, 0, false)),
+            turned: Condvar::new(),
+        }
+    }
+
+    /// Waits until all the threads have called it in this round.
+    fn wait(&self) {
+        let broken = "another training thread panicked";
+        let mut state = self.state.lock().expect(broken);
+        assert!(!state.2, "{broken}");
+        state.0 += 1;
+        if state.0 == self.threads {
+            state.0 = 0;
+            state.1 += 1;
+            self.turned.notify_all();
+            return;
+        }
+        let round = state.1;
+        let state = self
+            .turned
+            .wait_while(state, |state| state.1 == round && !state.2)
+            .expect(broken);
+        assert!(!state.2, "{broken}");
+    }
+
+    /// Breaks the gate if the calling thread is panicking.
+    fn guard(&self) -> impl Drop + '_ {
+        struct Guard<'a>(&'a Gate);
+        impl Drop for Guard<'_> {
+            fn drop(&mut self) {
+                if std::thread::panicking() {
+                    if let Ok(mut state) = self.0.state.lock() {
+                        state.2 = true;
+                    }
+                    self.0.turned.notify_all();
+                }
+            }
+        }
+        Guard(self)
+    }
+}
+
+/// One gradient step, as the main thread of `train` hands it to the
+/// workers.
+#[derive(Default)]
+struct Step {
+    /// The batch's positions, each with its symmetry.
+    views: Vec<(u32, u8)>,
+    /// Positions per worker: worker `t` takes the `t`-th chunk, and the last
+    /// workers none when the batch is short.
+    part: usize,
+    rate: f32,
+    /// Adam's bias corrections.
+    corrections: (f32, f32),
+    /// Training is over: the workers return.
+    done: bool,
+}
+
 /// Trains from `parameters` on `fitted`, measuring on `held_out` after each
 /// epoch, and calls `report` then. `settings.penalty` weighs an L2 penalty
 /// as in `value_fit`; `fit-nnue` sets it to 0.
+///
+/// `settings.threads` workers live as long as the training. In each step,
+/// worker `t` sums the gradient of the batch's `t`-th part, then, once all
+/// are done, sums the parts' gradients over its own share of the
+/// parameters, in the parts' order, and takes Adam's step on that share;
+/// the main thread then copies the shares into the parameters. The result
+/// depends on the number of threads (the order of the sums), not on their
+/// timing.
 pub fn train<const N: usize>(
-    mut parameters: Vec<f32>,
+    parameters: Vec<f32>,
     fitted: &(impl Examples + ?Sized),
     held_out: &(impl Examples + ?Sized),
     settings: &Training,
@@ -351,92 +431,153 @@ pub fn train<const N: usize>(
     let threads = settings.threads.max(1);
     let mut rng = Rng::new(settings.seed);
     let count = Shape::<N>::PARAMETERS;
-    let (mut first, mut second) = (vec![0.0f32; count], vec![0.0f32; count]);
     let (beta1, beta2, epsilon) = (0.9f32, 0.999f32, 1e-8f32);
     let steps_per_epoch = fitted.len().div_ceil(settings.batch);
     let total_steps = (steps_per_epoch * settings.epochs as usize).max(1);
-    let mut step: u32 = 0;
-    let mut gradients = vec![vec![0.0f32; count]; threads];
     let fitted_count = u32::try_from(fitted.len()).expect("fewer than 2^32 positions to fit");
     let mut order: Vec<u32> = (0..fitted_count).collect();
-    let mut training_seconds = 0.0;
-    for number in 1..=settings.epochs {
-        let start = Instant::now();
-        rng.shuffle(&mut order);
-        let mut epoch_loss = 0.0;
-        for batch in order.chunks(settings.batch) {
-            let views: Vec<(u32, u8)> = batch
-                .iter()
-                .map(|&index| (index, rng.below(8) as u8))
-                .collect();
-            let part = views.len().div_ceil(threads);
-            let losses: Vec<f64> = std::thread::scope(|scope| {
-                let parameters = &parameters;
-                let symmetries = &symmetries;
-                let handles: Vec<_> = gradients
-                    .iter_mut()
-                    .zip(views.chunks(part))
-                    .map(|(gradient, chunk)| {
-                        scope.spawn(move || {
-                            gradient.fill(0.0);
-                            let mut loss = 0.0;
-                            for &(index, symmetry) in chunk {
-                                let example = fitted.get(index as usize);
-                                let view =
-                                    View::new(&example.board, &symmetries[usize::from(symmetry)]);
-                                loss += accumulate::<N>(
-                                    parameters,
-                                    &view,
-                                    settings.target.of(&example),
-                                    gradient,
-                                );
+
+    // Each worker's share of the parameters for Adam's step.
+    let mut shares = shares(count, threads);
+    shares.resize(threads, count..count);
+    let parameters = RwLock::new(parameters);
+    let step = RwLock::new(Step::default());
+    let gradients: Vec<RwLock<Vec<f32>>> = (0..threads)
+        .map(|_| RwLock::new(vec![0.0f32; count]))
+        .collect();
+    let losses: Vec<Mutex<f64>> = (0..threads).map(|_| Mutex::new(0.0)).collect();
+    let updated: Vec<Mutex<Vec<f32>>> = shares
+        .iter()
+        .map(|share| Mutex::new(vec![0.0f32; share.len()]))
+        .collect();
+    // Three rounds per step: the step is ready, the gradients are summed,
+    // the shares are updated.
+    let gate = Gate::new(threads + 1);
+
+    std::thread::scope(|scope| {
+        for (worker, share) in shares.iter().cloned().enumerate() {
+            let (parameters, step, gradients, symmetries) =
+                (&parameters, &step, &gradients, &symmetries);
+            let (loss, updated, gate) = (&losses[worker], &updated[worker], &gate);
+            scope.spawn(move || {
+                let _guard = gate.guard();
+                let (mut first, mut second) =
+                    (vec![0.0f32; share.len()], vec![0.0f32; share.len()]);
+                let mut sum = vec![0.0f32; share.len()];
+                loop {
+                    gate.wait();
+                    let step = step.read().expect("the step");
+                    if step.done {
+                        return;
+                    }
+                    if let Some(chunk) = step.views.chunks(step.part).nth(worker) {
+                        let parameters = parameters.read().expect("the parameters");
+                        let mut gradient = gradients[worker].write().expect("a gradient");
+                        gradient.fill(0.0);
+                        let mut total = 0.0;
+                        for &(index, symmetry) in chunk {
+                            let example = fitted.get(index as usize);
+                            let view =
+                                View::new(&example.board, &symmetries[usize::from(symmetry)]);
+                            total += accumulate::<N>(
+                                &parameters,
+                                &view,
+                                settings.target.of(&example),
+                                &mut gradient,
+                            );
+                        }
+                        *loss.lock().expect("a loss") = total;
+                    }
+                    gate.wait();
+                    {
+                        let used = step.views.len().div_ceil(step.part);
+                        let parameters = parameters.read().expect("the parameters");
+                        for (part, gradient) in gradients[..used].iter().enumerate() {
+                            let gradient = gradient.read().expect("a gradient");
+                            let gradient = &gradient[share.clone()];
+                            if part == 0 {
+                                sum.copy_from_slice(gradient);
+                            } else {
+                                for (sum, value) in sum.iter_mut().zip(gradient) {
+                                    *sum += value;
+                                }
                             }
-                            loss
-                        })
-                    })
-                    .collect();
-                handles
-                    .into_iter()
-                    .map(|handle| handle.join().expect("a training thread panicked"))
-                    .collect()
+                        }
+                        let scale = 1.0 / step.views.len() as f32;
+                        let (correction1, correction2) = step.corrections;
+                        let mut updated = updated.lock().expect("a share");
+                        for ((new, (&value, &gradient)), (m, v)) in updated
+                            .iter_mut()
+                            .zip(parameters[share.clone()].iter().zip(&sum))
+                            .zip(first.iter_mut().zip(second.iter_mut()))
+                        {
+                            let g = gradient * scale + settings.penalty * value;
+                            *m = beta1 * *m + (1.0 - beta1) * g;
+                            *v = beta2 * *v + (1.0 - beta2) * g * g;
+                            *new = value
+                                - step.rate * (*m / correction1)
+                                    / ((*v / correction2).sqrt() + epsilon);
+                        }
+                        clip::<N>(share.start, &mut updated);
+                    }
+                    drop(step);
+                    gate.wait();
+                }
             });
-            epoch_loss += losses.iter().sum::<f64>();
-            let used = views.len().div_ceil(part);
-            let (total, rest) = gradients.split_at_mut(1);
-            for other in &rest[..used - 1] {
-                for (sum, value) in total[0].iter_mut().zip(other) {
-                    *sum += value;
+        }
+
+        let _guard = gate.guard();
+        let mut step_number: u32 = 0;
+        let mut training_seconds = 0.0;
+        for number in 1..=settings.epochs {
+            let start = Instant::now();
+            rng.shuffle(&mut order);
+            let mut epoch_loss = 0.0;
+            for batch in order.chunks(settings.batch) {
+                step_number += 1;
+                let used = {
+                    let mut step = step.write().expect("the step");
+                    step.views.clear();
+                    step.views
+                        .extend(batch.iter().map(|&index| (index, rng.below(8) as u8)));
+                    step.part = batch.len().div_ceil(threads);
+                    let progress = step_number as f32 / total_steps as f32;
+                    step.rate = settings.rate
+                        * (0.05 + 0.95 * 0.5 * (1.0 + (std::f32::consts::PI * progress).cos()));
+                    step.corrections = (
+                        1.0 - beta1.powi(step_number as i32),
+                        1.0 - beta2.powi(step_number as i32),
+                    );
+                    batch.len().div_ceil(step.part)
+                };
+                gate.wait();
+                gate.wait();
+                epoch_loss += losses[..used]
+                    .iter()
+                    .map(|loss| *loss.lock().expect("a loss"))
+                    .sum::<f64>();
+                gate.wait();
+                let mut parameters = parameters.write().expect("the parameters");
+                for (share, updated) in shares.iter().zip(&updated) {
+                    parameters[share.clone()].copy_from_slice(&updated.lock().expect("a share"));
                 }
             }
-
-            step += 1;
-            let progress = step as f32 / total_steps as f32;
-            let rate = settings.rate
-                * (0.05 + 0.95 * 0.5 * (1.0 + (std::f32::consts::PI * progress).cos()));
-            let scale = 1.0 / views.len() as f32;
-            let (correction1, correction2) =
-                (1.0 - beta1.powi(step as i32), 1.0 - beta2.powi(step as i32));
-            for ((value, gradient), (m, v)) in parameters
-                .iter_mut()
-                .zip(&total[0])
-                .zip(first.iter_mut().zip(second.iter_mut()))
-            {
-                let g = gradient * scale + settings.penalty * *value;
-                *m = beta1 * *m + (1.0 - beta1) * g;
-                *v = beta2 * *v + (1.0 - beta2) * g * g;
-                *value -= rate * (*m / correction1) / ((*v / correction2).sqrt() + epsilon);
-            }
-            clip::<N>(&mut parameters);
+            training_seconds += start.elapsed().as_secs_f64();
+            report(&Epoch {
+                number,
+                fitted: epoch_loss / fitted.len().max(1) as f64,
+                held_out: measure::<N>(
+                    &parameters.read().expect("the parameters"),
+                    held_out,
+                    threads,
+                ),
+                training_seconds,
+            });
         }
-        training_seconds += start.elapsed().as_secs_f64();
-        report(&Epoch {
-            number,
-            fitted: epoch_loss / fitted.len().max(1) as f64,
-            held_out: measure::<N>(&parameters, held_out, threads),
-            training_seconds,
-        });
-    }
-    parameters
+        step.write().expect("the step").done = true;
+        gate.wait();
+    });
+    parameters.into_inner().expect("the parameters")
 }
 
 /// The accumulator's width, from the command line.
