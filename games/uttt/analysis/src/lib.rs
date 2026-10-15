@@ -27,7 +27,7 @@ use request::Request;
 mod nnue_weights;
 
 /// The exploration constant of the newest release.
-const EXPLORATION: f64 = 0.3;
+const EXPLORATION: f64 = 0.2;
 /// Whether the search expands all the children of a node at once.
 const EXPAND_ALL: bool = true;
 /// The weight of a child's minimax value against its average in selection.

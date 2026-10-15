@@ -55,8 +55,12 @@ const RESERVE: Duration = Duration::ZERO;
 /// (E017), screened on 2026-10-14 against `uttt-v010` at 20 ms (time scale
 /// 0.2, 5 ms of tolerance, 4-ply openings, 100 pairs each): 0.5 +12 Elo
 /// [-33, +58], 0.3 +78 [+31, +128], 0.2 +56 [+18, +96]. At full time, 50
-/// pairs, 0.3 +70 [+19, +126].
-const EXPLORATION: f64 = 0.3;
+/// pairs, 0.3 +70 [+19, +126]. With E020's search (E021), screened on
+/// 2026-10-15 against `uttt-v013` (4-ply openings): at 20 ms, 15 ms of
+/// tolerance, 100 pairs each, 0.15 +56.1, 0.2 +31.4, 0.25 +57.9, 0.4 -70.4;
+/// at full time, 50 pairs each, 0.15 +3.5, 0.25 -17.4, 0.2 +24.4 and +45.4
+/// (two seeds).
+const EXPLORATION: f64 = 0.2;
 
 /// The network that judges the leaves (E017): the NNUE of Train run
 /// 38562652097, (189 → 256) × 2 → 10, quantized and decoded once from its
