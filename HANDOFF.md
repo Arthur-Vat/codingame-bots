@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-None.
+- #141 (https://github.com/Arthur-Vat/codingame-bots/pull/141), opened 2026-10-15: `selfplay --side-games N` and the Train input `side_games` (D2). Review then approval; then the run's size with side games (2 side games add about 78% time per game, so 100,000 games per job would pass the 350 min job limit; about 55,000 per job with 2 side games keeps last run's time and about 100M positions).
 
 ## Open questions
 
