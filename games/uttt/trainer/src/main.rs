@@ -97,8 +97,8 @@ enum Command {
         /// Rust source or release holding an NNUE of width 256, packed
         /// (`NNUE_WEIGHTS`), such as `games/uttt/bots/mcts/src/nnue_weights.rs`
         /// (the bot's), to judge the search's new nodes instead of playouts;
-        /// replaces `--policy` and `--patterns`.
-        #[arg(long)]
+        /// instead of `--policy` or `--patterns`.
+        #[arg(long, conflicts_with_all = ["policy", "patterns"])]
         network: Option<PathBuf>,
         /// Creates all the children of a node at once, estimated by the
         /// network, and backs up their minimax value, as the bot does since
@@ -106,8 +106,9 @@ enum Command {
         #[arg(long, requires = "network")]
         expand_all: bool,
         /// The weight of a child's minimax value in selection, as the bot's
-        /// `MINIMAX_WEIGHT` (E020).
-        #[arg(long, default_value_t = 0.0)]
+        /// `MINIMAX_WEIGHT` (E020); needs `--expand-all`, which backs up the
+        /// minimax values.
+        #[arg(long, default_value_t = 0.0, requires = "expand_all")]
         minimax_weight: f64,
         /// Rust source holding the class policy's playout weights
         /// (`PLAYOUT_WEIGHTS`), such as `games/uttt/training/class_weights.rs`

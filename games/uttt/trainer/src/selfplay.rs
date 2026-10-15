@@ -19,7 +19,9 @@ pub enum Opening {
     Random,
     /// Searched and recorded as every later move, but drawn at random in
     /// proportion to the root's visits instead of the most visited, as
-    /// AlphaZero does; a move that wins the game is still played.
+    /// AlphaZero does; a move that wins the game is still played. The draw
+    /// ignores proofs, which searches rarely reach in an opening, so it may
+    /// pick a move proven lost.
     Sampled,
 }
 
