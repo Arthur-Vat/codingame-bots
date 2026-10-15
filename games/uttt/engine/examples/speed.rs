@@ -83,7 +83,7 @@ fn main() {
     );
     let shares = measure_shares();
     println!(
-        "| NNUE search: the MCTS bot's network and settings, {} searches of {} iterations | {} iterations per second |",
+        "| NNUE search: the MCTS bot's network and settings, {} searches of up to {} iterations | {} iterations per second |",
         shares.searches,
         thousands(SHARE_ITERATIONS as f64),
         thousands(shares.iterations_per_second)
@@ -98,7 +98,10 @@ fn main() {
             shares.refresh,
         ),
         ("copying the accumulators for each child", shares.copy),
-        ("adding each child's move rows", shares.rows),
+        (
+            "playing each child's move: its rows, and the rules",
+            shares.rows,
+        ),
         ("evaluating each child", shares.evaluate),
         ("the rest: tree, moves, rules", shares.rest()),
     ] {
@@ -108,8 +111,9 @@ fn main() {
         );
     }
     println!(
-        "| Measured for | {:.1} s of playouts and {searches} searches, one thread |",
-        (elapsed + decisive_time).as_secs_f64()
+        "| Measured for | {:.1} s of playouts, {searches} searches from the start and {} NNUE searches, one thread |",
+        (elapsed + decisive_time).as_secs_f64(),
+        shares.searches
     );
 }
 
@@ -468,6 +472,8 @@ fn measure_shares() -> Shares {
     let mut probes: Vec<Mcts<Probe>> = parts.iter().map(|_| bot_search()).collect();
     let mut times = [Duration::ZERO; 6];
     let mut real_time = Duration::ZERO;
+    // Searches that prove their position stop early.
+    let mut total = 0u64;
     let mut moves = MoveList::new();
     let budget = Budget::Iterations(SHARE_ITERATIONS);
     for &board in &positions {
@@ -476,6 +482,7 @@ fn measure_shares() -> Shares {
         let start = Instant::now();
         let expected = real.search(&inner, &moves, budget);
         real_time += start.elapsed();
+        total += expected.iterations;
         for ((&part, mcts), time) in parts.iter().zip(&mut probes).zip(&mut times) {
             let start = Instant::now();
             let result = mcts.search(&Probe { inner, part }, &moves, budget);
@@ -484,7 +491,7 @@ fn measure_shares() -> Shares {
         }
     }
 
-    let iterations = (positions.len() as u64 * SHARE_ITERATIONS) as f64;
+    let iterations = total as f64;
     let per_iteration = |index: usize| COUNTS[index].load(Ordering::Relaxed) as f64 / iterations;
     let base = times[1].as_secs_f64();
     let extra = |index: usize| (times[index].as_secs_f64() - base) / base / f64::from(EXTRA);

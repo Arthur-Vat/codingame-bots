@@ -101,15 +101,15 @@ Baseline, measured on 2026-10-08 on one thread of an Intel Xeon at 2.8 GHz (this
 | NNUE 256: incremental updates (one move) | about 12,100,000 per second (11,441,466 to 13,102,714) |
 | NNUE 256: evaluations | about 5,400,000 per second (4,860,759 to 5,686,432) |
 | NNUE 256: accumulators from scratch | about 907,000 per second (867,389 to 943,153) |
-| NNUE search: the MCTS bot's network and settings, 19 searches of 20,000 iterations | about 424,000 iterations per second (393,856 to 441,927) |
-| NNUE search: per iteration | 6.1 moves walking down, 0.72 nodes expanded, 5.7 children, 5.3 judged by the network; 29.5 inputs on per seat at an expansion |
-| NNUE search: share of the time, accumulators from scratch, once per expansion | 20.6% to 25.3% |
-| NNUE search: share of the time, copying the accumulators for each child | 2.2% to 4.1% |
-| NNUE search: share of the time, adding each child's move rows | 12.6% to 13.7% |
-| NNUE search: share of the time, evaluating each child | 30.8% to 34.0% |
-| NNUE search: share of the time, the rest: tree, moves, rules | 23.9% to 33.3% |
+| NNUE search: the MCTS bot's network and settings, 19 searches of up to 20,000 iterations | about 305,000 iterations per second (296,829 to 311,021) |
+| NNUE search: per iteration | 8.4 moves walking down, 0.99 nodes expanded, 7.8 children, 7.3 judged by the network; 29.5 inputs on per seat at an expansion |
+| NNUE search: share of the time, accumulators from scratch, once per expansion | 20.9% to 24.8% |
+| NNUE search: share of the time, copying the accumulators for each child | 2.8% to 5.1% |
+| NNUE search: share of the time, playing each child's move: its rows, and the rules | 11.4% to 15.5% |
+| NNUE search: share of the time, evaluating each child | 30.0% to 37.3% |
+| NNUE search: share of the time, the rest: tree, moves, rules | 20.6% to 34.9% |
 
-The three NNUE rows (`uttt_engine::nnue`, a random network of width 256, built in the example) were added and measured on 2026-10-14 on Claude's session, three runs, machine noise about 10%; the other rows are from the earlier measurement above. The seven "NNUE search" rows were added on 2026-10-15 (step D3 of the [roadmap](ROADMAP.md#d-scale)), three runs on Claude's session. They search positions of three games of the bot's search against itself (every eighth position from the fourth ply), with the bot's own network, exploration and minimax weight, 20,000 iterations each, about one turn's worth. A part's share is measured by doing it 4 more times for nothing, in a copy of `NnueBoard::child_scores` that must find exactly what `NnueBoard` finds: the search builds the same tree, so the time it takes more, divided by 4, is that part's. Repeats find their data in the cache, so these shares lean low, and the rest takes what they miss.
+The three NNUE rows (`uttt_engine::nnue`, a random network of width 256, built in the example) were added and measured on 2026-10-14 on Claude's session, three runs, machine noise about 10%; the other rows are from the earlier measurement above. The seven "NNUE search" rows were added on 2026-10-15 (step D3 of the [roadmap](ROADMAP.md#d-scale)), three runs on Claude's session. They search positions of three games of the bot's search against itself (every eighth position from the fourth ply), with the bot's own network, exploration and minimax weight, 20,000 iterations each, about one turn's worth (6 of the 19 stop earlier, once they prove the position; the rates count the iterations run). A part's share is measured by doing it 4 more times for nothing, in a copy of `NnueBoard::child_scores` that must find exactly what `NnueBoard` finds: the search builds the same tree, so the time it takes more, divided by 4, is that part's. Repeats find their data in the cache, so these shares lean low, and the rest takes what they miss.
 
 Before E006 (after E005): about 925,000 random and 976,000 decisive playouts, and 620,000 MCTS iterations per second. After E004: about 985,000 random playouts and 578,000 MCTS iterations per second. Before E004: 441,681 playouts and about 350,000 MCTS iterations per second.
 
