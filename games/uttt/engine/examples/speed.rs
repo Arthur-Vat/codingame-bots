@@ -3,6 +3,9 @@
 //! the game when there is one), then the speed of that search (`cg-search`)
 //! from the same position, then the cost of an NNUE of width 256 (random
 //! weights): incremental updates, evaluations and accumulators from scratch.
+//! Last, it measures where the time of the MCTS bot's search goes: searches
+//! with the bot's network and settings, from positions of games it played,
+//! and each part's share of their time (see [`measure_shares`]).
 //!
 //! ```sh
 //! cargo run --release -p uttt-engine --example speed -- [SECONDS]
@@ -10,12 +13,21 @@
 //!
 //! Prints a Markdown table, so CI can add it to the job summary.
 
+use std::hint::black_box;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use cg_core::rng::Rng;
-use cg_search::{Budget, Mcts};
-use uttt_engine::nnue::{Accumulator, Network, BUCKETS, FEATURES};
+use cg_search::{Budget, Game, Mcts};
+use uttt_engine::nnue::{self, Accumulator, Network, BUCKETS, FEATURES, MAX_ACTIVE};
+use uttt_engine::search::{self, NnueBoard};
 use uttt_engine::{Board, Move, MoveList, Status};
+
+// The MCTS bot's network. Packed characters include ones that clippy takes
+// for invisible.
+#[allow(clippy::invisible_characters)]
+#[path = "../../bots/mcts/src/nnue_weights.rs"]
+mod nnue_weights;
 
 /// The exploration constant of the MCTS bot.
 const EXPLORATION: f64 = 0.5;
@@ -69,9 +81,39 @@ fn main() {
         "| NNUE 256: accumulators from scratch | {} per second |",
         thousands(nnue.refreshes)
     );
+    let shares = measure_shares();
     println!(
-        "| Measured for | {:.1} s of playouts and {searches} searches, one thread |",
-        (elapsed + decisive_time).as_secs_f64()
+        "| NNUE search: the MCTS bot's network and settings, {} searches of up to {} iterations | {} iterations per second |",
+        shares.searches,
+        thousands(SHARE_ITERATIONS as f64),
+        thousands(shares.iterations_per_second)
+    );
+    println!(
+        "| NNUE search: per iteration | {:.1} moves walking down, {:.2} nodes expanded, {:.1} children, {:.1} judged by the network; {:.1} inputs on per seat at an expansion |",
+        shares.depth, shares.expansions, shares.children, shares.evaluations, shares.features
+    );
+    for (part, share) in [
+        (
+            "accumulators from scratch, once per expansion",
+            shares.refresh,
+        ),
+        ("copying the accumulators for each child", shares.copy),
+        (
+            "playing each child's move: its rows, and the rules",
+            shares.rows,
+        ),
+        ("evaluating each child", shares.evaluate),
+        ("the rest: tree, moves, rules", shares.rest()),
+    ] {
+        println!(
+            "| NNUE search: share of the time, {part} | {:.1}% |",
+            100.0 * share
+        );
+    }
+    println!(
+        "| Measured for | {:.1} s of playouts, {searches} searches from the start and {} NNUE searches, one thread |",
+        (elapsed + decisive_time).as_secs_f64(),
+        shares.searches
     );
 }
 
@@ -173,6 +215,299 @@ fn measure_nnue(rng: &mut Rng, budget: Duration) -> NnueRates {
         updates,
         evaluations,
         refreshes,
+    }
+}
+
+/// The MCTS bot's exploration constant and minimax weight.
+const BOT_EXPLORATION: f64 = 0.2;
+const BOT_MINIMAX_WEIGHT: f64 = 0.5;
+/// Iterations of each search whose time is shared out: about one turn of
+/// the bot at CodinGame's limits (E018 measured a median of 21,000).
+const SHARE_ITERATIONS: u64 = 20_000;
+/// Iterations per move of the games that give the positions searched.
+const GAME_ITERATIONS: u64 = 1_000;
+
+/// The MCTS bot's network, decoded from its packed characters.
+fn bot_network() -> &'static Network<256> {
+    static NETWORK: std::sync::OnceLock<Network<256>> = std::sync::OnceLock::new();
+    NETWORK.get_or_init(|| {
+        let bytes = cg_pack::unpack(nnue_weights::NNUE_WEIGHTS).expect("the NNUE weights unpack");
+        Network::from_bytes(&bytes).expect("the NNUE weights decode")
+    })
+}
+
+/// A search of the MCTS bot's kind: expanding all children, with its
+/// exploration constant and minimax weight.
+fn bot_search<G: Game>() -> Mcts<G> {
+    let mut mcts = Mcts::new(BOT_EXPLORATION, 1);
+    mcts.expand_all = true;
+    mcts.minimax_weight = BOT_MINIMAX_WEIGHT;
+    mcts
+}
+
+/// How many more times a [`Probe`] does its part, for nothing: several, so
+/// that the time it adds stands well above the machine's noise (about 10%).
+const EXTRA: u32 = 4;
+
+/// The part of [`NnueBoard::child_scores`] that a [`Probe`] does `EXTRA`
+/// more times, or `Count` to count the work instead.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Part {
+    None,
+    Count,
+    Refresh,
+    Copy,
+    Update,
+    Evaluate,
+}
+
+/// Counts of the `Count` pass: expansions, children, network evaluations,
+/// inputs on at expansions (both seats), and moves played on positions
+/// (mostly by iterations walking down the tree).
+static COUNTS: [AtomicU64; 5] = [
+    AtomicU64::new(0),
+    AtomicU64::new(0),
+    AtomicU64::new(0),
+    AtomicU64::new(0),
+    AtomicU64::new(0),
+];
+
+fn count(index: usize, amount: u64) {
+    COUNTS[index].fetch_add(amount, Ordering::Relaxed);
+}
+
+/// [`NnueBoard`] with its `child_scores` written out, so that one part of
+/// it can be done more times: the search, its tree and its results are
+/// those of `NnueBoard` (checked by [`measure_shares`]), and the time the
+/// search takes more, divided by `EXTRA`, is that part's cost.
+#[derive(Clone, Copy)]
+struct Probe {
+    inner: NnueBoard<256>,
+    part: Part,
+}
+
+impl PartialEq for Probe {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
+    }
+}
+
+impl Game for Probe {
+    type Move = Move;
+
+    fn to_move(&self) -> usize {
+        self.inner.to_move()
+    }
+
+    fn legal_moves(&self, moves: &mut Vec<Move>) {
+        self.inner.legal_moves(moves);
+    }
+
+    fn play(&mut self, mv: Move) {
+        if self.part == Part::Count {
+            count(4, 1);
+        }
+        self.inner.play(mv);
+    }
+
+    fn score(&self) -> Option<f64> {
+        self.inner.score()
+    }
+
+    fn playout(&mut self, rng: &mut Rng) -> f64 {
+        self.inner.playout(rng)
+    }
+
+    fn child_scores(&self, moves: &[Move], _rng: &mut Rng, scores: &mut Vec<(f64, bool)>) {
+        let network = self.inner.network;
+        let board = &self.inner.board;
+        scores.clear();
+        let accumulator = network.refresh(board);
+        match self.part {
+            Part::Refresh => {
+                for _ in 0..EXTRA {
+                    black_box(network.refresh(black_box(board)));
+                }
+            }
+            Part::Count => {
+                let mut list = [0u16; MAX_ACTIVE];
+                let on = nnue::active_features(board, 0, &mut list)
+                    + nnue::active_features(board, 1, &mut list);
+                count(0, 1);
+                count(1, moves.len() as u64);
+                count(3, on as u64);
+            }
+            _ => {}
+        }
+        for &mv in moves {
+            let mut child = accumulator;
+            let mut next = *board;
+            network.play(&mut child, &mut next, mv);
+            match self.part {
+                Part::Copy => {
+                    for _ in 0..EXTRA {
+                        black_box(&black_box(accumulator));
+                    }
+                }
+                Part::Update => {
+                    for _ in 0..EXTRA {
+                        let mut extra = black_box(accumulator);
+                        let mut extra_board = *board;
+                        network.play(&mut extra, &mut extra_board, mv);
+                        black_box(&extra);
+                    }
+                }
+                _ => {}
+            }
+            scores.push(match search::score(next.status()) {
+                Some(score) => (score, true),
+                None => {
+                    let value = if next.game_winning_move().is_some() {
+                        1.0
+                    } else {
+                        if self.part == Part::Evaluate {
+                            for _ in 0..EXTRA {
+                                black_box(network.evaluate(black_box(&child), &next));
+                            }
+                        }
+                        if self.part == Part::Count {
+                            count(2, 1);
+                        }
+                        f64::from(network.evaluate(&child, &next))
+                    };
+                    let seat_0 = if next.to_move() == 0 {
+                        value
+                    } else {
+                        1.0 - value
+                    };
+                    (seat_0, false)
+                }
+            });
+        }
+    }
+}
+
+/// Where the time of the MCTS bot's search goes.
+struct Shares {
+    searches: usize,
+    iterations_per_second: f64,
+    /// Per iteration.
+    expansions: f64,
+    children: f64,
+    evaluations: f64,
+    /// Inputs on per seat, at an expansion.
+    features: f64,
+    /// Moves played on positions per iteration: the depth of its walk.
+    depth: f64,
+    /// Shares of the search's time.
+    refresh: f64,
+    copy: f64,
+    rows: f64,
+    evaluate: f64,
+}
+
+impl Shares {
+    fn rest(&self) -> f64 {
+        1.0 - self.refresh - self.copy - self.rows - self.evaluate
+    }
+}
+
+/// Positions the MCTS bot meets: every eighth position from the fourth ply
+/// of three games of its search against itself, at `GAME_ITERATIONS` per
+/// move after four random plies, leaving out positions with a move that
+/// wins the game (the search plays it without searching).
+fn bot_positions() -> Vec<Board> {
+    let network = bot_network();
+    let mut positions = Vec::new();
+    let mut moves = MoveList::new();
+    for seed in 1..=3 {
+        let mut rng = Rng::new(seed);
+        let mut mcts = bot_search::<NnueBoard>();
+        let mut board = Board::new();
+        let mut ply = 0;
+        while board.status() == Status::Ongoing {
+            board.legal_moves(&mut moves);
+            if ply >= 4 && ply % 8 == 4 && board.game_winning_move().is_none() && moves.len() > 1 {
+                positions.push(board);
+            }
+            let mv = if ply < 4 {
+                *rng.pick(&moves).expect("the game goes on")
+            } else {
+                let root = NnueBoard { board, network };
+                mcts.search(&root, &moves, Budget::Iterations(GAME_ITERATIONS))
+                    .best
+            };
+            board.play(mv);
+            ply += 1;
+        }
+    }
+    positions
+}
+
+/// Searches positions of the MCTS bot's games (see [`bot_positions`]) for
+/// `SHARE_ITERATIONS` each, with the bot's network and settings, once with
+/// [`NnueBoard`] and once with a [`Probe`] for each [`Part`]. Every search
+/// of a position builds the same tree, so the time a probe takes more than
+/// `Part::None`, divided by `EXTRA`, is the cost of its part; what is left of the
+/// search's time is the tree's own work, the moves and the rules. Each
+/// position is searched by every probe in turn, so that the machine's drift
+/// weighs on all alike.
+///
+/// # Panics
+///
+/// If a probe's search ends differently from `NnueBoard`'s.
+fn measure_shares() -> Shares {
+    let network = bot_network();
+    let positions = bot_positions();
+    let parts = [
+        Part::Count,
+        Part::None,
+        Part::Refresh,
+        Part::Copy,
+        Part::Update,
+        Part::Evaluate,
+    ];
+    // One search per part, each fed the same positions in the same order.
+    let mut real = bot_search::<NnueBoard>();
+    let mut probes: Vec<Mcts<Probe>> = parts.iter().map(|_| bot_search()).collect();
+    let mut times = [Duration::ZERO; 6];
+    let mut real_time = Duration::ZERO;
+    // Searches that prove their position stop early.
+    let mut total = 0u64;
+    let mut moves = MoveList::new();
+    let budget = Budget::Iterations(SHARE_ITERATIONS);
+    for &board in &positions {
+        board.legal_moves(&mut moves);
+        let inner = NnueBoard { board, network };
+        let start = Instant::now();
+        let expected = real.search(&inner, &moves, budget);
+        real_time += start.elapsed();
+        total += expected.iterations;
+        for ((&part, mcts), time) in parts.iter().zip(&mut probes).zip(&mut times) {
+            let start = Instant::now();
+            let result = mcts.search(&Probe { inner, part }, &moves, budget);
+            *time += start.elapsed();
+            assert_eq!(result, expected, "the probe {part:?} searched differently");
+        }
+    }
+
+    let iterations = total as f64;
+    let per_iteration = |index: usize| COUNTS[index].load(Ordering::Relaxed) as f64 / iterations;
+    let base = times[1].as_secs_f64();
+    let extra = |index: usize| (times[index].as_secs_f64() - base) / base / f64::from(EXTRA);
+    let copy = extra(3);
+    Shares {
+        searches: positions.len(),
+        iterations_per_second: iterations / real_time.as_secs_f64(),
+        expansions: per_iteration(0),
+        children: per_iteration(1),
+        evaluations: per_iteration(2),
+        features: per_iteration(3) / per_iteration(0) / 2.0,
+        depth: per_iteration(4),
+        refresh: extra(2),
+        copy,
+        rows: extra(4) - copy,
+        evaluate: extra(5),
     }
 }
 
