@@ -22,7 +22,7 @@ use cg_core::rng::Rng;
 use uttt_engine::nnue::{
     self, Network, BUCKETS, FEATURES, MAX_ACTIVE, MAX_BIAS, OUR_BOARDS, QA, QB, THEIR_CELLS,
 };
-use uttt_engine::Board;
+use uttt_engine::{Board, MoveList, Status};
 
 use crate::value_fit::{
     self, cross_entropy, shares, sigmoid, symmetric_cell, Examples, Metrics, Positions, Training,
@@ -373,7 +373,9 @@ impl Gate {
             .turned
             .wait_while(state, |state| state.1 == round && !state.2)
             .expect(broken);
-        assert!(!state.2, "{broken}");
+        // A round that turned lets its threads go, even if a thread has
+        // panicked since: their next round fails at its start.
+        assert!(state.1 != round, "{broken}");
     }
 
     /// Breaks the gate if the calling thread is panicking.
@@ -595,6 +597,9 @@ pub struct Options {
     pub width: WidthArg,
     pub training: Training,
     pub compared_positions: usize,
+    /// A network to measure on the same held-out positions, such as the
+    /// bot's, with the file it came from.
+    pub compare: Option<(String, Network<256>)>,
     pub weights_out: Option<PathBuf>,
     pub report_out: Option<PathBuf>,
     pub origin: String,
@@ -730,6 +735,234 @@ pub fn data_table(positions: &Positions) -> String {
     table
 }
 
+/// What a quantized network makes of held-out positions, beyond its
+/// error: its error and its agreement with the move played, by ply; its
+/// calibration; and its first layer's units that never vary.
+pub struct Assessment {
+    /// For each row of `PLY_ROWS`: positions, the sum of squared errors,
+    /// and how many of the moves played the network would choose.
+    pub phases: [(usize, f64, usize); PLY_ROWS.len()],
+    /// For each tenth of the predicted score: positions, the sum of the
+    /// predictions and the sum of the results.
+    pub bins: [(usize, f64, f64); 10],
+    /// First-layer units at 0 or below on every position, from both seats:
+    /// they add nothing and learn nothing.
+    pub dead: usize,
+    /// Units at full scale or above on every position: a constant.
+    pub constant: usize,
+    pub width: usize,
+}
+
+/// The move `network` would choose from `board`: the child best for the
+/// side to move, a move that wins the game first.
+fn network_move<const M: usize>(network: &Network<M>, board: &Board) -> Option<uttt_engine::Move> {
+    let mut moves = MoveList::new();
+    board.legal_moves(&mut moves);
+    let mover = board.to_move();
+    let value = |mv: uttt_engine::Move| {
+        let mut child = *board;
+        child.play(mv);
+        match child.status() {
+            Status::Win(seat) if seat == mover => 1.0,
+            Status::Win(_) => 0.0,
+            Status::Draw => 0.5,
+            Status::Ongoing => 1.0 - network.evaluate_board(&child),
+        }
+    };
+    let mut best = None;
+    for &mv in moves.iter() {
+        let score = value(mv);
+        if best.is_none_or(|(_, best_score)| score > best_score) {
+            best = Some((mv, score));
+        }
+    }
+    best.map(|(mv, _)| mv)
+}
+
+/// Assesses `network` on the positions `indices` of `positions`.
+pub fn assess<const M: usize>(
+    network: &Network<M>,
+    positions: &Positions,
+    indices: &[usize],
+) -> Assessment {
+    let mut phases = [(0, 0.0, 0); PLY_ROWS.len()];
+    let mut bins = [(0, 0.0, 0.0); 10];
+    // Each unit's highest and lowest value over the positions and seats.
+    let mut highest = [i16::MIN; M];
+    let mut lowest = [i16::MAX; M];
+    for &index in indices {
+        let example = positions.get(index);
+        let board = &example.board;
+        let accumulator = network.refresh(board);
+        for values in &accumulator.values {
+            for ((high, low), &value) in highest.iter_mut().zip(&mut lowest).zip(values) {
+                *high = (*high).max(value);
+                *low = (*low).min(value);
+            }
+        }
+        let predicted = network.evaluate(&accumulator, board);
+        let ply = positions.ply(index);
+        if let Some(row) = PLY_ROWS
+            .iter()
+            .position(|&(first, last)| (first..=last).contains(&ply))
+        {
+            let phase = &mut phases[row];
+            phase.0 += 1;
+            phase.1 += f64::from(predicted - example.result).powi(2);
+            let played = positions.next_move(index);
+            phase.2 += usize::from(played.is_some() && network_move(network, board) == played);
+        }
+        let bin = &mut bins[((predicted * 10.0) as usize).min(9)];
+        bin.0 += 1;
+        bin.1 += f64::from(predicted);
+        bin.2 += f64::from(example.result);
+    }
+    let any = !indices.is_empty();
+    Assessment {
+        phases,
+        bins,
+        dead: highest.iter().filter(|&&high| any && high <= 0).count(),
+        constant: lowest
+            .iter()
+            .filter(|&&low| any && i32::from(low) >= QA)
+            .count(),
+        width: M,
+    }
+}
+
+impl Assessment {
+    /// The average gap between the predictions and the results over the
+    /// tenths of the predicted score, weighted by their positions.
+    pub fn calibration_error(&self) -> f64 {
+        let total: usize = self.bins.iter().map(|bin| bin.0).sum();
+        let gaps: f64 = self.bins.iter().map(|bin| (bin.1 - bin.2).abs()).sum();
+        gaps / total.max(1) as f64
+    }
+
+    /// The share of moves played that the network would choose.
+    pub fn agreement(&self) -> f64 {
+        let (count, agreed) = self.phases.iter().fold((0, 0), |(count, agreed), phase| {
+            (count + phase.0, agreed + phase.2)
+        });
+        agreed as f64 / count.max(1) as f64
+    }
+}
+
+/// The report's sections on `assessments`, named networks assessed on the
+/// same positions.
+pub fn assessment_tables(assessments: &[(&str, &Assessment)]) -> String {
+    let mut table = String::new();
+    let names: Vec<&str> = assessments.iter().map(|(name, _)| *name).collect();
+    let _ = writeln!(
+        table,
+        "By ply (moves played before the position): squared error against the result, and the share of the moves played that the network would choose, the child it scores best for the side to move. Openings' moves were drawn, not chosen, when self-play sampled them.\n"
+    );
+    let mut header = "| Plies | Positions |".to_string();
+    let mut rule = "| --- | --- |".to_string();
+    for name in &names {
+        let _ = write!(header, " {name}: squared error | {name}: agreement |");
+        rule.push_str(" --- | --- |");
+    }
+    let _ = writeln!(table, "{header}\n{rule}");
+    for (row, &(first, last)) in PLY_ROWS.iter().enumerate() {
+        let count = assessments.first().map_or(0, |(_, a)| a.phases[row].0);
+        if count == 0 {
+            continue;
+        }
+        let plies = if last == 81 {
+            format!("{first}+")
+        } else {
+            format!("{first}-{last}")
+        };
+        let _ = write!(table, "| {plies} | {count} |");
+        for (_, assessment) in assessments {
+            let (count, squared, agreed) = assessment.phases[row];
+            let count = count.max(1) as f64;
+            let _ = write!(
+                table,
+                " {:.4} | {:.1}% |",
+                squared / count,
+                100.0 * agreed as f64 / count
+            );
+        }
+        let _ = writeln!(table);
+    }
+    let _ = write!(table, "| All | |");
+    for (_, assessment) in assessments {
+        let (count, squared) = assessment
+            .phases
+            .iter()
+            .fold((0, 0.0), |(count, squared), phase| {
+                (count + phase.0, squared + phase.1)
+            });
+        let _ = write!(
+            table,
+            " {:.4} | {:.1}% |",
+            squared / count.max(1) as f64,
+            100.0 * assessment.agreement()
+        );
+    }
+    let _ = writeln!(table);
+
+    let _ = writeln!(
+        table,
+        "\nCalibration: the positions by predicted score, with the average prediction and the average result.\n"
+    );
+    let mut header = "| Predicted |".to_string();
+    let mut rule = "| --- |".to_string();
+    for name in &names {
+        let _ = write!(header, " {name}: positions | predicted | result |");
+        rule.push_str(" --- | --- | --- |");
+    }
+    let _ = writeln!(table, "{header}\n{rule}");
+    for bin in 0..10 {
+        let _ = write!(
+            table,
+            "| {:.1}-{:.1} |",
+            bin as f64 / 10.0,
+            (bin + 1) as f64 / 10.0
+        );
+        for (_, assessment) in assessments {
+            let (count, predicted, result) = assessment.bins[bin];
+            if count == 0 {
+                let _ = write!(table, " 0 | | |");
+            } else {
+                let _ = write!(
+                    table,
+                    " {count} | {:.3} | {:.3} |",
+                    predicted / count as f64,
+                    result / count as f64
+                );
+            }
+        }
+        let _ = writeln!(table);
+    }
+    let gaps: Vec<String> = assessments
+        .iter()
+        .map(|(name, assessment)| format!("{name} {:.4}", assessment.calibration_error()))
+        .collect();
+    let _ = writeln!(
+        table,
+        "\nAverage gap between prediction and result, weighted by positions: {}.",
+        gaps.join("; ")
+    );
+    let units: Vec<String> = assessments
+        .iter()
+        .map(|(name, assessment)| {
+            format!(
+                "{name}, {} dead (never above 0) and {} constant (always at full scale) of {}",
+                assessment.dead, assessment.constant, assessment.width
+            )
+        })
+        .collect();
+    let _ = writeln!(
+        table,
+        "\nFirst-layer units over these positions, from both seats: {}.",
+        units.join("; ")
+    );
+    table
+}
+
 /// The two rows of a table of metrics.
 fn row(report: &mut String, name: &str, metrics: &Metrics) {
     let _ = writeln!(
@@ -742,7 +975,7 @@ fn row(report: &mut String, name: &str, metrics: &Metrics) {
 fn fit_sized<const N: usize>(options: &Options) -> Result<(), String> {
     let start = Instant::now();
     // File by file: only the compact positions stay in memory.
-    let mut split = value_fit::Split::default();
+    let mut split = value_fit::Split::distinct();
     for path in &options.data {
         split.add(&read_file(path)?);
     }
@@ -758,7 +991,8 @@ fn fit_sized<const N: usize>(options: &Options) -> Result<(), String> {
     let settings = &options.training;
     let threads = settings.threads;
     eprintln!(
-        "{game_count} games: {} positions to fit, {} held out",
+        "{game_count} games, {} dropped as copies of an earlier one: {} positions to fit, {} held out",
+        split.duplicates,
         fitted.len(),
         held_out.len()
     );
@@ -803,6 +1037,23 @@ fn fit_sized<const N: usize>(options: &Options) -> Result<(), String> {
     let constant_compared = constant_metrics(average, compared.iter().map(|e| e.result));
     let float_compared = measure::<N>(&parameters, &compared[..], threads);
     let quantized_compared = measure_quantized(&network, &compared[..], threads);
+    let other = options.compare.as_ref().map(|(_, other)| {
+        (
+            measure_quantized(other, held_out, threads),
+            measure_quantized(other, &compared[..], threads),
+        )
+    });
+    // The same positions as `compared`.
+    let step = held_out
+        .len()
+        .div_ceil(options.compared_positions.max(1))
+        .max(1);
+    let indices: Vec<usize> = (0..held_out.len()).step_by(step).collect();
+    let assessment = assess(&network, held_out, &indices);
+    let other_assessment = options
+        .compare
+        .as_ref()
+        .map(|(_, other)| assess(other, held_out, &indices));
 
     let trained = epochs.last().map_or(0.0, |epoch| epoch.training_seconds);
     let shown = fitted.len() as f64 * f64::from(settings.epochs);
@@ -811,7 +1062,8 @@ fn fit_sized<const N: usize>(options: &Options) -> Result<(), String> {
     let _ = writeln!(report, "- Data: {}", options.origin);
     let _ = writeln!(
         report,
-        "- Games: {game_count}; positions: {} fitted, {} held out (every 20th game, whole)",
+        "- Games: {game_count}, of which {} dropped as copies of an earlier game (the same moves); positions: {} fitted, {} held out (every 20th game kept, whole)",
+        split.duplicates,
         fitted.len(),
         held_out.len()
     );
@@ -832,6 +1084,9 @@ fn fit_sized<const N: usize>(options: &Options) -> Result<(), String> {
         threads,
         start.elapsed().as_secs_f64()
     );
+    if let Some((path, _)) = &options.compare {
+        let _ = writeln!(report, "- Compared network: `{path}`, width 256");
+    }
     if trained > 0.0 {
         let _ = writeln!(
             report,
@@ -852,6 +1107,9 @@ fn fit_sized<const N: usize>(options: &Options) -> Result<(), String> {
     );
     row(&mut report, "Network, float", &float);
     row(&mut report, "Network, quantized", &quantized);
+    if let Some((metrics, _)) = &other {
+        row(&mut report, "Compared network, quantized", metrics);
+    }
     let _ = writeln!(
         report,
         "\n## Held out, {} positions spread evenly\n",
@@ -869,6 +1127,19 @@ fn fit_sized<const N: usize>(options: &Options) -> Result<(), String> {
     );
     row(&mut report, "Network, float", &float_compared);
     row(&mut report, "Network, quantized", &quantized_compared);
+    if let Some((_, metrics)) = &other {
+        row(&mut report, "Compared network, quantized", metrics);
+    }
+    let _ = writeln!(
+        report,
+        "\n## Held out, {} positions spread evenly, in detail\n\nThe quantized networks, as the bot plays them.\n",
+        compared.len()
+    );
+    let mut assessments = vec![("Network", &assessment)];
+    if let Some(other) = &other_assessment {
+        assessments.push(("Compared", other));
+    }
+    let _ = write!(report, "{}", assessment_tables(&assessments));
     let _ = writeln!(report, "\n## Training\n");
     let _ = writeln!(
         report,

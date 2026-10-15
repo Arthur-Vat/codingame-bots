@@ -86,6 +86,11 @@ enum Command {
         /// How the opening's moves are chosen.
         #[arg(long, value_enum, default_value_t = OpeningArg::Random)]
         opening: OpeningArg,
+        /// The temperature of `--opening sampled`: each move is drawn in
+        /// proportion to its visits raised to `1 / T`, so above 1 the
+        /// openings are more varied.
+        #[arg(long, default_value_t = 1.0)]
+        opening_temperature: f64,
         /// Drops a game whose first search after the opening expects a score
         /// above this for the side to move, or below 1 minus this, such as
         /// 0.9; keeps every game without it.
@@ -132,6 +137,10 @@ enum Command {
         /// Seed of the first game; each game derives its own.
         #[arg(long, default_value_t = 1)]
         seed: u64,
+        /// A name that starts each progress line, such as `core 2` when
+        /// several processes share a log.
+        #[arg(long)]
+        name: Option<String>,
         /// The data file to write.
         #[arg(long)]
         out: PathBuf,
@@ -345,6 +354,11 @@ enum Command {
         /// Held-out positions, spread evenly, of the report's second table.
         #[arg(long, default_value_t = 50_000)]
         compared_positions: usize,
+        /// Rust source or release holding an NNUE of width 256, packed
+        /// (`NNUE_WEIGHTS`), such as `games/uttt/bots/mcts/src/nnue_weights.rs`
+        /// (the bot's), to measure on the same held-out positions.
+        #[arg(long)]
+        compare_network: Option<PathBuf>,
         /// Where to write the weights, as a Rust module of packed characters.
         #[arg(long)]
         weights_out: Option<PathBuf>,
@@ -364,6 +378,7 @@ fn main() -> ExitCode {
             iterations,
             opening_plies,
             opening,
+            opening_temperature,
             balance,
             exploration,
             network,
@@ -374,6 +389,7 @@ fn main() -> ExitCode {
             policy_plies,
             no_visits,
             seed,
+            name,
             out,
         } => policy
             .map(|path| load_policy(&path, policy_plies))
@@ -383,6 +399,14 @@ fn main() -> ExitCode {
                     .map(|path| load_patterns(&path, policy_plies))
                     .transpose()?;
                 let network = network.map(|path| load_network(&path)).transpose()?;
+                if !(opening_temperature > 0.0 && opening_temperature.is_finite()) {
+                    return Err(format!(
+                        "--opening-temperature {opening_temperature} is not a positive number"
+                    ));
+                }
+                if opening_temperature != 1.0 && !matches!(opening, OpeningArg::Sampled) {
+                    return Err("--opening-temperature needs --opening sampled".to_string());
+                }
                 if let Some(balance) = balance {
                     if !(0.5..=1.0).contains(&balance) {
                         return Err(format!("--balance {balance} is not from 0.5 to 1"));
@@ -396,6 +420,7 @@ fn main() -> ExitCode {
                             OpeningArg::Random => selfplay::Opening::Random,
                             OpeningArg::Sampled => selfplay::Opening::Sampled,
                         },
+                        opening_temperature,
                         balance,
                         exploration,
                         expand_all,
@@ -407,6 +432,7 @@ fn main() -> ExitCode {
                     },
                     games,
                     seed,
+                    name.as_deref(),
                     &out,
                 )
             }),
@@ -560,10 +586,16 @@ fn main() -> ExitCode {
             threads,
             seed,
             compared_positions,
+            compare_network,
             weights_out,
             report_out,
             origin,
-        } => nnue_fit::fit(&nnue_fit::Options {
+        } => compare_network
+            .map(|path| {
+                load_network(&path).map(|network| (path.display().to_string(), network.clone()))
+            })
+            .transpose()
+            .and_then(|compare| nnue_fit::fit(&nnue_fit::Options {
             data,
             width,
             training: value_fit::Training {
@@ -581,10 +613,11 @@ fn main() -> ExitCode {
                 seed,
             },
             compared_positions,
+            compare,
             weights_out,
             report_out,
             origin,
-        }),
+        })),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -599,6 +632,7 @@ fn selfplay(
     settings: &selfplay::SelfPlay,
     games: u32,
     seed: u64,
+    name: Option<&str>,
     out: &PathBuf,
 ) -> Result<(), String> {
     let file = File::create(out).map_err(|err| format!("{}: {err}", out.display()))?;
@@ -606,6 +640,7 @@ fn selfplay(
     data::write_header(&mut out_file).map_err(|err| err.to_string())?;
     let mut seeds = Rng::new(seed);
     let start = Instant::now();
+    let prefix = name.map_or(String::new(), |name| format!("{name}: "));
     let (mut positions, mut kept) = (0, 0);
     for game in 0..games {
         if let Some(record) = settings.play(seeds.next_u64()) {
@@ -615,18 +650,20 @@ fn selfplay(
         }
         if (game + 1) % 50 == 0 {
             eprintln!(
-                "{} games, {positions} positions, {:.0} s",
-                game + 1,
-                start.elapsed().as_secs_f64()
+                "{prefix}{}",
+                selfplay::progress(game + 1, games, positions, start.elapsed().as_secs_f64())
             );
         }
     }
     out_file.flush().map_err(|err| err.to_string())?;
     eprintln!(
-        "wrote {kept} games of {games} ({} dropped as decided after the opening), {positions} positions to {} in {:.0} s",
-        games - kept,
+        "{prefix}wrote {} games of {} ({} dropped as decided after the opening), {} positions to {} in {} s",
+        selfplay::thousands(u64::from(kept)),
+        selfplay::thousands(u64::from(games)),
+        selfplay::thousands(u64::from(games - kept)),
+        selfplay::thousands(positions as u64),
         out.display(),
-        start.elapsed().as_secs_f64()
+        selfplay::thousands(start.elapsed().as_secs_f64().round() as u64)
     );
     Ok(())
 }

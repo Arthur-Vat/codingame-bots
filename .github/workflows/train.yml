@@ -124,25 +124,28 @@ jobs:
           # games of the newest release's own search and network (a test
           # of the trainer checks these settings against it), whose root
           # scores and results it learns. Its openings are searched and
-          # recorded, each move drawn in proportion to its visits, and a
-          # game whose first search after them expects above 0.9 or below
-          # 0.1 is dropped.
+          # recorded, each move drawn in proportion to the square root of its
+          # visits (temperature 2: the search is deterministic from a
+          # position, so at temperature 1 a third of 1.9M games copied
+          # another), and a game whose first search after them expects
+          # above 0.9 or below 0.1 is dropped.
           options=()
           if [[ $STAGE == value ]]; then
             options=(--policy games/uttt/training/class_weights.rs --no-visits)
           elif [[ $STAGE == patterns ]]; then
             options=(--patterns games/uttt/training/pattern_weights.rs)
           elif [[ $STAGE == nnue ]]; then
-            options=(--network games/uttt/bots/mcts/src/nnue_weights.rs --exploration 0.2 --expand-all --minimax-weight 0.5 --opening sampled --balance 0.9 --no-visits)
+            options=(--network games/uttt/bots/mcts/src/nnue_weights.rs --exploration 0.2 --expand-all --minimax-weight 0.5 --opening sampled --opening-temperature 2 --balance 0.9 --no-visits)
           fi
-          # One process per core, each with its own seed and share of games.
+          # One process per core, each with its own seed and share of games,
+          # whose progress lines start with its name.
           cores="$(nproc)"
           for ((core = 0; core < cores; core++)); do
             share=$(((GAMES + cores - 1 - core) / cores))
             seed=$((GITHUB_RUN_ID * 1000 + SHARD * 10 + core))
             target/release/uttt-trainer selfplay --games "$share" \
               --iterations "$ITERATIONS" --opening-plies "$OPENING_PLIES" \
-              "${options[@]}" --seed "$seed" \
+              "${options[@]}" --seed "$seed" --name "core $core" \
               --out "target/train/selfplay-$SHARD-$core.bin" &
           done
           wait
@@ -223,8 +226,11 @@ jobs:
               --duel-exploration "$DUEL_EXPLORATION" --origin "$origin" \
               --weights-out "$out/value_weights.rs" --report-out "$out/report.md"
           elif [[ $STAGE == nnue ]]; then
+            # Measured beside the bot's network on the same positions; games
+            # that copy an earlier one are dropped.
             target/release/uttt-trainer fit-nnue "${data[@]}" \
               --target "$TARGET" --epochs "$EPOCHS" --width "$WIDTH" \
+              --compare-network games/uttt/bots/mcts/src/nnue_weights.rs \
               --origin "$origin" \
               --weights-out "$out/nnue_weights.rs" --report-out "$out/report.md"
           elif [[ $STAGE == patterns ]]; then

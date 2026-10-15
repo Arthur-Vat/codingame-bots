@@ -155,6 +155,20 @@ impl Positions {
     pub fn score(&self, index: usize) -> f32 {
         f32::from(self.entries[index].score) / 65535.0
     }
+
+    /// The move played from position `index`: the search's choice, or a
+    /// move drawn in a sampled opening; `None` at the game's end.
+    pub fn next_move(&self, index: usize) -> Option<Move> {
+        let entry = self.entries[index];
+        let game = entry.game as usize;
+        let start = self.starts[game] as usize;
+        let end = self
+            .starts
+            .get(game + 1)
+            .map_or(self.moves.len(), |&end| end as usize);
+        let at = start + usize::from(entry.ply);
+        (at < end).then(|| self.moves[at])
+    }
 }
 
 impl Examples for Positions {
@@ -189,25 +203,63 @@ impl Examples for Positions {
 pub struct Split {
     pub fitted: Positions,
     pub held_out: Positions,
-    /// Games added, finished or not.
+    /// Games added, finished or not, duplicates included.
     pub games: usize,
+    /// Games dropped as copies of an earlier one.
+    pub duplicates: usize,
+    /// The hashes of the moves of the games kept, when duplicates are
+    /// dropped.
+    seen: Option<std::collections::HashSet<u64>>,
+    /// Games kept, finished or not, which decide where each game goes.
+    kept: usize,
 }
 
 impl Split {
+    /// A split that drops every game whose moves are those of a game added
+    /// before, from any file: self-play with the NNUE is deterministic
+    /// after its sampled opening, so two games that open alike are copies,
+    /// which would weigh twice in the fit and could be fitted and held out
+    /// at once.
+    pub fn distinct() -> Split {
+        Split {
+            seen: Some(std::collections::HashSet::new()),
+            ..Split::default()
+        }
+    }
+
     pub fn add(&mut self, games: &[GameRecord]) {
         for game in games {
+            self.games += 1;
+            if let Some(seen) = &mut self.seen {
+                if !seen.insert(moves_hash(&game.moves)) {
+                    self.duplicates += 1;
+                    continue;
+                }
+            }
             let status = game.status();
             if status != Status::Ongoing {
-                let set = if self.games % 20 == 19 {
+                let set = if self.kept % 20 == 19 {
                     &mut self.held_out
                 } else {
                     &mut self.fitted
                 };
                 set.add_game(game, status);
             }
-            self.games += 1;
+            self.kept += 1;
         }
     }
+}
+
+/// A hash of a game's moves. Which copies are dropped depends only on the
+/// order games are read in, not on the hash's values.
+fn moves_hash(moves: &[Move]) -> u64 {
+    use std::hash::Hasher as _;
+    let mut hasher = std::hash::DefaultHasher::new();
+    for mv in moves {
+        hasher.write_u8((9 * mv.board() + mv.cell()) as u8);
+    }
+    hasher.write_usize(moves.len());
+    hasher.finish()
 }
 
 /// The cell that `cell` (`3 * row + col`) becomes under symmetry `index`
