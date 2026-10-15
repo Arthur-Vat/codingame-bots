@@ -17,6 +17,7 @@ fn games_are_reproducible_and_record_searched_positions() {
         policy: None,
         patterns: None,
         record_visits: true,
+        side_games: 0,
     };
     let game = settings.play(11).unwrap();
     assert_eq!(Some(&game), settings.play(11).as_ref());
@@ -78,6 +79,7 @@ fn games_with_class_policy_playouts_can_skip_visits() {
         policy: Some(policy),
         patterns: None,
         record_visits: false,
+        side_games: 0,
     };
     let game = settings.play(3).unwrap();
     assert_eq!(Some(&game), settings.play(3).as_ref());
@@ -129,6 +131,7 @@ fn games_with_the_bots_patterns_record_visits_of_every_move() {
         policy: None,
         patterns: Some(policy),
         record_visits: true,
+        side_games: 0,
     };
     let game = settings.play(5).unwrap();
     assert_eq!(Some(&game), settings.play(5).as_ref());
@@ -166,6 +169,7 @@ fn as_the_bot(opening: Opening, balance: Option<f64>) -> SelfPlay {
         policy: None,
         patterns: None,
         record_visits: true,
+        side_games: 0,
     }
 }
 
@@ -218,6 +222,49 @@ fn games_decided_after_the_opening_are_dropped() {
             );
         }
     }
+}
+
+#[test]
+fn side_games_leave_the_game_by_another_move_and_record_after_it() {
+    let without = as_the_bot(Opening::Sampled, Some(0.9));
+    let settings = SelfPlay {
+        side_games: 2,
+        ..without
+    };
+    let mut sides = 0;
+    for seed in 0..6 {
+        let games = settings.play_all(seed);
+        assert_eq!(games, settings.play_all(seed));
+        // The game is the same with or without its side games.
+        assert_eq!(games.first(), without.play(seed).as_ref());
+        let Some((game, side_games)) = games.split_first() else {
+            continue;
+        };
+        assert!(side_games.len() <= 2);
+        for side in side_games {
+            sides += 1;
+            assert_ne!(side.status(), Status::Ongoing);
+            // It leaves the game at a searched position after the opening.
+            let ply = side
+                .moves
+                .iter()
+                .zip(&game.moves)
+                .position(|(a, b)| a != b)
+                .unwrap();
+            assert!(ply >= 8, "left at ply {ply}");
+            assert!(game.searched.iter().any(|s| usize::from(s.ply) == ply));
+            assert!(!side.searched.is_empty());
+            for (position, searched) in side.positions() {
+                assert!(usize::from(searched.ply) > ply);
+                assert!(position.game_winning_move().is_none());
+                // From then on, the search's choice, among the moves it
+                // visited.
+                let played = side.moves[usize::from(searched.ply)];
+                assert!(searched.visits.iter().any(|&(mv, n)| mv == played && n > 0));
+            }
+        }
+    }
+    assert!(sides >= 6, "only {sides} side games");
 }
 
 #[test]

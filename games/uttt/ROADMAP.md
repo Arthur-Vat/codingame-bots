@@ -107,6 +107,16 @@ One experiment each.
    No first search after these openings was beyond 0.1 or 0.9. The fit's report also measures the bot's current network on the same held-out positions and gives, on an even sample of them, the error and how often the network's best child is the move played, by ply, the calibration and the first layer's dead units.
 
    The first run's network in the bot, [E023](journal/E023-nnue-self-play.md), dropped: -177 Elo at full time in local screening against `uttt-v015`. On fresh `uttt-v015` games it predicted results a little better than the bot's network, but its best child was the move played less often (38% to 40% against 42% to 45%), with 31 to 39 dead units against 6. Fitted only on the bot's own narrow games, it learned the positions the bot plays into, not the children the search must reject. The same data at width 512 (run 38784586293, copies dropped) screened at -56 Elo: better than the 256, still weaker than `uttt-v015`, with the lower agreement again (41.0% against 42.1%). Data that also covers positions after moves the bot would not play comes before more self-play of this kind.
+
+   So, the owner's choice (2026-10-15), self-play now plays side games: from each game kept, `--side-games N` games each leave it at one of its searched positions after the opening by a random legal move other than the one played, then play on with the same search, recording only the positions after that move. A random move inside the game itself would have given the positions before it the result of a game it changed; a side game gives each position the result of its own game, and the game stays the same. Measured on Claude's session at 5,000 iterations, 240 games of 8 sampled plies, 4 processes:
+
+   | Side games per game | Time | Positions | Share from side games |
+   | --- | --- | --- | --- |
+   | 0 | 33 s | 11,896 | 0% |
+   | 1 | 47 s | 16,337 | 27% |
+   | 2 | 59 s | 21,370 | 44% |
+
+   A side game records about 20 positions, against about 50 for a game: it starts after the opening, and a random move often loses quickly.
 3. **Speed:** safe Rust that the compiler vectorizes, first: SSE2 only, since CodinGame compiles for basic x86-64. Then, if the network takes much of the time, AVX2 through one function compiled for it and called after a check at run time, with a fallback. That call needs `unsafe`, so an ADR.
 
    Measured on 2026-10-14, so that it is not redone: the engine's speed example built with AVX2, FMA, BMI1, BMI2, POPCNT, LZCNT and SSE4.2 on for the whole program, against the normal build, three runs each on Claude's session. Nothing moved beyond the machine's noise of about 10%:
