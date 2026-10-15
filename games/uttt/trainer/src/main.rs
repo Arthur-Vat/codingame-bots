@@ -41,6 +41,15 @@ enum SizeArg {
     Large,
 }
 
+/// How self-play chooses the first moves of a game.
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+enum OpeningArg {
+    /// Legal moves drawn uniformly, not searched or recorded.
+    Random,
+    /// Searched and recorded, each drawn in proportion to the root's visits.
+    Sampled,
+}
+
 /// The NNUE's accumulator width.
 #[derive(Clone, Copy, Debug, clap::ValueEnum)]
 enum WidthArg {
@@ -71,12 +80,36 @@ enum Command {
         /// Search iterations per move.
         #[arg(long, default_value_t = 10_000)]
         iterations: u64,
-        /// Random moves at the start of each game.
+        /// Moves at the start of each game chosen by `--opening`.
         #[arg(long, default_value_t = 6)]
         opening_plies: u32,
+        /// How the opening's moves are chosen.
+        #[arg(long, value_enum, default_value_t = OpeningArg::Random)]
+        opening: OpeningArg,
+        /// Drops a game whose first search after the opening expects a score
+        /// above this for the side to move, or below 1 minus this, such as
+        /// 0.9; keeps every game without it.
+        #[arg(long)]
+        balance: Option<f64>,
         /// The search's exploration constant.
         #[arg(long, default_value_t = 0.5)]
         exploration: f64,
+        /// Rust source or release holding an NNUE of width 256, packed
+        /// (`NNUE_WEIGHTS`), such as `games/uttt/bots/mcts/src/nnue_weights.rs`
+        /// (the bot's), to judge the search's new nodes instead of playouts;
+        /// instead of `--policy` or `--patterns`.
+        #[arg(long, conflicts_with_all = ["policy", "patterns"])]
+        network: Option<PathBuf>,
+        /// Creates all the children of a node at once, estimated by the
+        /// network, and backs up their minimax value, as the bot does since
+        /// E018; needs `--network`.
+        #[arg(long, requires = "network")]
+        expand_all: bool,
+        /// The weight of a child's minimax value in selection, as the bot's
+        /// `MINIMAX_WEIGHT` (E020); needs `--expand-all`, which backs up the
+        /// minimax values.
+        #[arg(long, default_value_t = 0.0, requires = "expand_all")]
+        minimax_weight: f64,
         /// Rust source holding the class policy's playout weights
         /// (`PLAYOUT_WEIGHTS`), such as `games/uttt/training/class_weights.rs`
         /// (E011's, the bot's until E015), for its playouts; decisive playouts
@@ -330,7 +363,12 @@ fn main() -> ExitCode {
             games,
             iterations,
             opening_plies,
+            opening,
+            balance,
             exploration,
+            network,
+            expand_all,
+            minimax_weight,
             policy,
             patterns,
             policy_plies,
@@ -344,11 +382,25 @@ fn main() -> ExitCode {
                 let patterns = patterns
                     .map(|path| load_patterns(&path, policy_plies))
                     .transpose()?;
+                let network = network.map(|path| load_network(&path)).transpose()?;
+                if let Some(balance) = balance {
+                    if !(0.5..=1.0).contains(&balance) {
+                        return Err(format!("--balance {balance} is not from 0.5 to 1"));
+                    }
+                }
                 selfplay(
                     &selfplay::SelfPlay {
                         iterations,
                         opening_plies,
+                        opening: match opening {
+                            OpeningArg::Random => selfplay::Opening::Random,
+                            OpeningArg::Sampled => selfplay::Opening::Sampled,
+                        },
+                        balance,
                         exploration,
+                        expand_all,
+                        minimax_weight,
+                        network,
                         policy,
                         patterns,
                         record_visits: !no_visits,
@@ -554,11 +606,13 @@ fn selfplay(
     data::write_header(&mut out_file).map_err(|err| err.to_string())?;
     let mut seeds = Rng::new(seed);
     let start = Instant::now();
-    let mut positions = 0;
+    let (mut positions, mut kept) = (0, 0);
     for game in 0..games {
-        let record = settings.play(seeds.next_u64());
-        positions += record.searched.len();
-        data::write_game(&mut out_file, &record).map_err(|err| err.to_string())?;
+        if let Some(record) = settings.play(seeds.next_u64()) {
+            positions += record.searched.len();
+            kept += 1;
+            data::write_game(&mut out_file, &record).map_err(|err| err.to_string())?;
+        }
         if (game + 1) % 50 == 0 {
             eprintln!(
                 "{} games, {positions} positions, {:.0} s",
@@ -569,7 +623,8 @@ fn selfplay(
     }
     out_file.flush().map_err(|err| err.to_string())?;
     eprintln!(
-        "wrote {games} games, {positions} positions to {} in {:.0} s",
+        "wrote {kept} games of {games} ({} dropped as decided after the opening), {positions} positions to {} in {:.0} s",
+        games - kept,
         out.display(),
         start.elapsed().as_secs_f64()
     );
@@ -617,6 +672,15 @@ fn load_policy(path: &Path, plies: u32) -> Result<&'static PlayoutPolicy, String
     Ok(Box::leak(Box::new(
         PlayoutPolicy::new(weights).for_plies(plies),
     )))
+}
+
+/// The NNUE whose packed weights `path`'s Rust source holds.
+fn load_network(path: &Path) -> Result<&'static uttt_engine::nnue::Network<256>, String> {
+    let source =
+        std::fs::read_to_string(path).map_err(|err| format!("{}: {err}", path.display()))?;
+    let network =
+        selfplay::read_network(&source).map_err(|err| format!("{}: {err}", path.display()))?;
+    Ok(Box::leak(Box::new(network)))
 }
 
 /// The pattern policy whose weights `path`'s Rust source holds, packed or as

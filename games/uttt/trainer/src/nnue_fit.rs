@@ -25,7 +25,7 @@ use uttt_engine::nnue::{
 use uttt_engine::Board;
 
 use crate::value_fit::{
-    self, cross_entropy, shares, sigmoid, symmetric_cell, Examples, Metrics, Training,
+    self, cross_entropy, shares, sigmoid, symmetric_cell, Examples, Metrics, Positions, Training,
 };
 use crate::{read_file, WidthArg};
 
@@ -625,6 +625,111 @@ fn constant_metrics(average: f64, results: impl Iterator<Item = f32>) -> Metrics
     }
 }
 
+/// The plies of each row of the data's table, from the first to the last.
+const PLY_ROWS: [(u8, u8); 7] = [
+    (0, 3),
+    (4, 7),
+    (8, 11),
+    (12, 15),
+    (16, 23),
+    (24, 31),
+    (32, 81),
+];
+
+/// The plies at which the data's table counts distinct positions.
+const DISTINCT_PLIES: [u8; 3] = [4, 8, 12];
+
+/// What the positions of `positions` look like, ply by ply: how many, how
+/// far the root score is from even on average, the shares whose root score
+/// leans to one side (beyond 0.3 or 0.7) or says a side is nearly sure to
+/// win (beyond 0.1 or 0.9); then the first player's results over the
+/// games, and how many distinct positions there are at a few plies, which
+/// says how varied the openings are.
+pub fn data_table(positions: &Positions) -> String {
+    let mut rows = [(0usize, 0.0f64, 0usize, 0usize); PLY_ROWS.len()];
+    let mut distinct: Vec<(usize, std::collections::HashSet<Board>)> = DISTINCT_PLIES
+        .iter()
+        .map(|_| (0, std::collections::HashSet::new()))
+        .collect();
+    // The first player's wins, draws and losses, in half points.
+    let mut first_player = [0usize; 3];
+    let mut last_game = None;
+    for index in 0..positions.len() {
+        let ply = positions.ply(index);
+        let score = positions.score(index);
+        if let Some(row) = PLY_ROWS
+            .iter()
+            .position(|&(first, last)| (first..=last).contains(&ply))
+        {
+            let row = &mut rows[row];
+            row.0 += 1;
+            row.1 += f64::from((score - 0.5).abs());
+            row.2 += usize::from(!(0.3..=0.7).contains(&score));
+            row.3 += usize::from(!(0.1..=0.9).contains(&score));
+        }
+        if let Some(at) = DISTINCT_PLIES.iter().position(|&p| p == ply) {
+            distinct[at].0 += 1;
+            distinct[at].1.insert(positions.get(index).board);
+        }
+        let game = positions.game(index);
+        if last_game != Some(game) {
+            last_game = Some(game);
+            let result = positions.result(index);
+            let result = if ply.is_multiple_of(2) {
+                result
+            } else {
+                1.0 - result
+            };
+            first_player[(2.0 - 2.0 * result) as usize] += 1;
+        }
+    }
+    let mut table = String::new();
+    let _ = writeln!(
+        table,
+        "| Plies | Positions | Root score's average distance from 0.5 | Root score beyond 0.3 or 0.7 | Beyond 0.1 or 0.9 |"
+    );
+    let _ = writeln!(table, "| --- | --- | --- | --- | --- |");
+    for (&(first, last), &(count, distance, leaning, decided)) in PLY_ROWS.iter().zip(&rows) {
+        if count == 0 {
+            continue;
+        }
+        let count_f = count as f64;
+        let plies = if last == 81 {
+            format!("{first}+")
+        } else {
+            format!("{first}-{last}")
+        };
+        let _ = writeln!(
+            table,
+            "| {plies} | {count} | {:.3} | {:.1}% | {:.1}% |",
+            distance / count_f,
+            100.0 * leaning as f64 / count_f,
+            100.0 * decided as f64 / count_f
+        );
+    }
+    let games = first_player.iter().sum::<usize>();
+    if games > 0 {
+        let share = |count: usize| 100.0 * count as f64 / games as f64;
+        let _ = writeln!(
+            table,
+            "\nThe first player won {:.1}% of the {games} games, drew {:.1}% and lost {:.1}%.",
+            share(first_player[0]),
+            share(first_player[1]),
+            share(first_player[2])
+        );
+    }
+    let counts: Vec<String> = DISTINCT_PLIES
+        .iter()
+        .zip(&distinct)
+        .filter(|(_, (count, _))| *count > 0)
+        .map(|(ply, (count, set))| format!("at ply {ply}, {} of {count}", set.len()))
+        .collect();
+    if !counts.is_empty() {
+        let _ = writeln!(table, "\nDistinct positions: {}.", counts.join("; "));
+    }
+    table
+}
+
 /// The two rows of a table of metrics.
 fn row(report: &mut String, name: &str, metrics: &Metrics) {
     let _ = writeln!(
@@ -787,6 +892,11 @@ fn fit_sized<const N: usize>(options: &Options) -> Result<(), String> {
         "| Quantized | | {:.4} | {:.4} |",
         quantized.cross_entropy, quantized.squared_error
     );
+    let _ = writeln!(
+        report,
+        "\n## Data\n\nThe fitted positions by ply (moves played before them), with the search's root score for the side to move.\n"
+    );
+    let _ = write!(report, "{}", data_table(fitted));
     if let Some(path) = &options.report_out {
         std::fs::write(path, &report).map_err(|err| format!("{}: {err}", path.display()))?;
     }

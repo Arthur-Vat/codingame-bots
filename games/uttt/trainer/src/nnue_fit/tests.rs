@@ -701,7 +701,65 @@ fn fit_writes_the_weights_and_the_report() {
     assert!(report.contains("| Quantized |"));
     assert!(report.contains("(189 -> 128) x 2 -> 10 buckets, 26890 parameters"));
     assert!(report.contains("every 20th game, whole"));
+    assert!(report.contains("## Data"));
+    assert!(report.contains("| Plies | Positions |"));
     assert!(!report.contains("NaN"));
+}
+
+#[test]
+fn the_data_table_counts_positions_by_ply_and_the_first_players_results() {
+    let games: Vec<GameRecord> = (0..40).map(random_record).collect();
+    let mut split = Split::default();
+    split.add(&games);
+    let fitted = &split.fitted;
+    let table = data_table(fitted);
+    let rows: Vec<Vec<&str>> = table
+        .lines()
+        .filter(|line| {
+            line.starts_with("| ") && !line.starts_with("| Plies") && !line.starts_with("| ---")
+        })
+        .map(|line| line.split('|').map(str::trim).collect())
+        .collect();
+    // Every position is in one row, the rows in order of plies.
+    let counted: usize = rows
+        .iter()
+        .map(|row| row[2].parse::<usize>().unwrap())
+        .sum();
+    assert_eq!(counted, fitted.len());
+    assert_eq!(rows[0][1], "0-3");
+    assert_eq!(rows.last().unwrap()[1], "32+");
+    // Random games' positions at ply 0 are all the start; at ply 4, nearly
+    // all different.
+    let at_4 = (0..fitted.len()).filter(|&i| fitted.ply(i) == 4).count();
+    assert!(table.contains("at ply 4, "));
+    assert!(table.contains(&format!(" of {at_4}")));
+    // The first player's results, from each game's result and who moves.
+    let mut wins = 0;
+    let mut losses = 0;
+    let fitted_games: Vec<&GameRecord> = games
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| index % 20 != 19)
+        .map(|(_, game)| game)
+        .collect();
+    for game in &fitted_games {
+        match game.status() {
+            Status::Win(0) => wins += 1,
+            Status::Win(_) => losses += 1,
+            _ => {}
+        }
+    }
+    let share = |count: usize| 100.0 * count as f64 / fitted_games.len() as f64;
+    let expected = format!(
+        "The first player won {:.1}% of the {} games, drew {:.1}% and lost {:.1}%.",
+        share(wins),
+        fitted_games.len(),
+        share(fitted_games.len() - wins - losses),
+        share(losses)
+    );
+    assert!(table.contains(&expected), "{table}\nexpected: {expected}");
+    // No positions, no rows.
+    assert!(!data_table(&Positions::default()).contains("| 0-3"));
 }
 
 #[test]
