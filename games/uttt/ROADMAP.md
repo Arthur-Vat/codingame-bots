@@ -100,6 +100,8 @@ One experiment each.
    | MCTS iterations per second | 718,000 to 782,000 | 686,000 to 782,000 |
 
    Today's bot works on 9-bit masks, random numbers and the tree, none of which AVX2 speeds up, and a bot that dispatches at run time would gain less than this build of the whole program. So AVX2 waits for a network: measure the network's share of each iteration first, and bring the ADR only if that share is large (owner, 2026-10-14).
+
+   The network's share, measured on 2026-10-15 by the engine's speed example (its "NNUE search" rows, three runs; method in the [README](README.md#engine-speed)): in a search with the bot's network and settings, building accumulators from scratch takes 21% to 25% of the time, copying them for each child 2% to 4%, adding each child's move rows about 13%, evaluating the children 31% to 34%, and the rest (tree, moves, rules) 24% to 33%. An iteration walks down 6.1 moves and expands 0.72 nodes of 5.7 children, 5.3 of which the network judges; an expanded position has 29.5 inputs on per seat. So the network takes about two thirds of the time.
 4. **Symmetry in the first layer:** neurons in groups of 8 sharing one set of weights, each turned by one of the board's 8 symmetries. The stored first layer is 8 times smaller at the same width; whether it plays as well is the experiment.
 5. **Ideas the write-up lists but has not tried:** more hidden layers, other activations, and a training loss that favours weights that compress well.
 

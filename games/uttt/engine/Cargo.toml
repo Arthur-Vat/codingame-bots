@@ -17,6 +17,8 @@ cg-search.workspace = true
 # Used by the parity tests only; never part of a bot.
 [dev-dependencies]
 cg-arena.workspace = true
+# The speed example decodes the MCTS bot's network with it.
+cg-pack.workspace = true
 uttt-referee.workspace = true
 
 [lints]
