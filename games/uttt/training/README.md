@@ -12,3 +12,4 @@ Reports of the [Train workflow](../../../.github/workflows/train.yml)'s runs tha
 | [37903237938](runs/37903237938/report.md) | The same data, with the destination's pattern and role | E016 (dropped) |
 | [38562652097](runs/38562652097/report.md) | NNUE (189 → 256) × 2 → 10, 8 epochs on run 37814220623's data | E017 |
 | [38634035143](runs/38634035143/report.md) | NNUE (189 → 512) × 2 → 10, 12 epochs on run 37814220623's data | E019 (dropped) |
+| [38733114779](runs/38733114779/report.md) | NNUE (189 → 256) × 2 → 10, 8 epochs on 2M games of `uttt-v015`'s own search, 8 sampled opening plies | E023 (dropped) |
