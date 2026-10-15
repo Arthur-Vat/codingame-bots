@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-None.
+- #137 (asked 2026-10-15): https://github.com/Arthur-Vat/codingame-bots/pull/137, `perf(uttt,workflows)`, the first trainer pull request (speed): the NNUE fit's threads last through the training and share Adam's step, with the same weights bit for bit; the Train workflow builds with `-C target-cpu=native` (cache keyed by processor). +64% at width 256, +48% at 512. Deep review approved with nits, all fixed; head e1971e3, checks green.
 
 ## Open questions
 
@@ -13,6 +13,7 @@ None.
   2. Fit on the data of several Train runs at once (a job lasts at most 6 h; artifacts are kept 7 days).
   3. Speed: build the trainer with `-C target-cpu=native` in the Train workflow (a tool, not a bot; fits then differ bit-wise between machines); larger batches with persistent threads and the Adam update and gradient sum spread over the threads (each batch of 1,024 now spawns 4 threads, then updates on one: about 15% of the time, estimated).
   4. A hyperparameter sweep in the Train workflow: parallel fit jobs on a sample (say 10M positions, 2 epochs) over learning rate, batch, epochs and target, compared on held-out positions; the SPRT stays the judge (E019: a lower error did not play better).
+  Progress: item 3's threads and native build are #137 (larger batches wait for item 4's sweep: before #137 they gained 15% to 35% at 4,096 to 16,384). Next, after #137: item 1 (self-play by `uttt-v015`), then 2, then 4.
   Facts: `fit-nnue` uses Adam from 0.001 falling to a twentieth (cosine), batches of 1,024, random symmetry, 4 threads, about 280,000 positions per second; run 38634035143 (512, 12 epochs, 80M positions) took 58 min and did not overfit (fitted 0.6178, held out 0.6185 nats), gaining most as the rate fell; quantization costs nothing (0.1493 both). Run 37814220623's self-play (2M games, 10,000 playout iterations) took about 3 h 45 per job. The bot has only a value network (the NNUE), no policy. D3's idea 4 (`pmaddwd`-shaped loop; today's loop uses `pmaddwd` on half-empty registers, about 18 instructions per 8 values instead of 6) is not decided: propose it again before width-512 experiments.
 
 - **Step D3, ideas 1 and 2, done** (2026-10-15): merged on the owner's approval in the chat ("Yes, merge 135 then 136"): #135 (the speed example measures where the bot's search spends its time) and #136 (E022, `NnueBoard` updates its accumulators move by move as the search walks down): `uttt-v015` released (https://github.com/Arthur-Vat/codingame-bots/releases/tag/uttt-v015), +7.6 Elo [+1.8, +13.5] over v014 at full time; delivered to the owner. Next for D3, each later and separately: idea 3 (the move's rows and the evaluation in one pass, without the per-child copy; evaluations are now 36% to 39% of the time), idea 4 (a loop shaped for SSE2's `pmaddwd`, safe Rust), width 128; accumulator checkpoints could cut the walk's updates (about a fifth). Constraints: SSE2 only, no `unsafe` without an ADR, no AVX2 (2026-10-14), no pondering (2026-10-15). Lesson: the speed example's "do it again" probes undercount memory-bound parts (refresh measured 21% to 25%, removing it saved 22% to 27%).
