@@ -31,6 +31,6 @@ Screening against `uttt-v013` in the arena (4-ply openings, 3 games at a time on
 | 0.25 | CodinGame's limits | 1 | 50 | 13, 69, 18 | -17.4 [-46.9, +11.9] |
 | 0.2 | CodinGame's limits | 2 | 50 | 28, 57, 15 | +45.4 [+3.4, +88.8] |
 
-At 20 ms everything from 0.15 to 0.25 beats 0.3 and 0.4 loses clearly. At full time the gains shrink and only 0.2 stays ahead: 54 wins, 112 draws and 34 losses over its 100 pairs, about +35 Elo. The candidate takes 0.2; the SPRT decides whether the gain is real.
+At 20 ms everything from 0.15 to 0.25 beats v013's 0.3, and 0.4 loses clearly. At full time the gains shrink and only 0.2 stays clearly ahead: 54 wins, 112 draws and 34 losses over its 100 pairs, about +35 Elo. The candidate takes 0.2; the SPRT decides whether the gain is real.
 
 Timeouts at full time: 2 for the candidate in 200 games, 3 for v013 in the same games, the machine's noise. The bundle, 70,188 characters, is unchanged in size.
