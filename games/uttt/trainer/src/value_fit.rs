@@ -250,10 +250,10 @@ impl Split {
     }
 }
 
-/// A hash of a game's moves, the same from run to run.
+/// A hash of a game's moves. Which copies are dropped depends only on the
+/// order games are read in, not on the hash's values.
 fn moves_hash(moves: &[Move]) -> u64 {
     use std::hash::Hasher as _;
-    // Fixed keys: the same games are dropped on every run.
     let mut hasher = std::hash::DefaultHasher::new();
     for mv in moves {
         hasher.write_u8((9 * mv.board() + mv.cell()) as u8);

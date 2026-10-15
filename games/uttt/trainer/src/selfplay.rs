@@ -158,9 +158,12 @@ fn sample(
 ) -> Option<Move> {
     let visits: Vec<(Move, u32)> = visits.filter(|&(_, n)| n > 0).collect();
     if temperature != 1.0 {
+        // Relative to the most visited, so that a temperature below 1
+        // cannot overflow.
+        let most = f64::from(visits.iter().map(|&(_, n)| n).max().unwrap_or(1));
         let weights: Vec<f64> = visits
             .iter()
-            .map(|&(_, n)| f64::from(n).powf(1.0 / temperature))
+            .map(|&(_, n)| (f64::from(n) / most).powf(1.0 / temperature))
             .collect();
         let mut left = rng.unit() * weights.iter().sum::<f64>();
         for (&(mv, _), weight) in visits.iter().zip(&weights) {

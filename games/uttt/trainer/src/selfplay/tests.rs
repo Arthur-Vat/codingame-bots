@@ -344,4 +344,7 @@ fn a_higher_temperature_flattens_the_draw() {
         a_count += u32::from(sample(visits.into_iter(), 1e6, &mut rng) == Some(a));
     }
     assert!((4800..5200).contains(&a_count), "{a_count}");
+    // Very cold, the most visited, without overflowing.
+    let big = [(a, 5_000), (c, 4_000)];
+    assert!((0..100).all(|_| sample(big.into_iter(), 0.01, &mut rng) == Some(a)));
 }

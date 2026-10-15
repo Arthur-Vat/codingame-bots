@@ -373,7 +373,9 @@ impl Gate {
             .turned
             .wait_while(state, |state| state.1 == round && !state.2)
             .expect(broken);
-        assert!(!state.2, "{broken}");
+        // A round that turned lets its threads go, even if a thread has
+        // panicked since: their next round fails at its start.
+        assert!(state.1 != round, "{broken}");
     }
 
     /// Breaks the gate if the calling thread is panicking.
