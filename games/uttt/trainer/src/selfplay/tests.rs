@@ -237,11 +237,37 @@ fn the_sampled_moves_follow_the_visits() {
     assert_eq!(sample(std::iter::empty(), 1.0, &mut rng), None);
 }
 
+/// The newest file of `games/uttt/releases/`: its name and its text.
+fn newest_release() -> (String, String) {
+    let folder = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../releases");
+    let newest = std::fs::read_dir(&folder)
+        .unwrap()
+        .filter_map(|entry| {
+            let name = entry.unwrap().file_name().into_string().unwrap();
+            let number = name
+                .strip_prefix("uttt-v")?
+                .strip_suffix(".rs")?
+                .parse::<u32>()
+                .ok()?;
+            Some((number, name))
+        })
+        .max()
+        .expect("a release")
+        .1;
+    let release = std::fs::read_to_string(folder.join(&newest))
+        .unwrap()
+        .replace("\r\n", "\n");
+    (newest, release)
+}
+
 #[test]
 fn the_network_is_read_from_the_bot_and_from_a_release() {
     let network = read_network(BOT_NETWORK).unwrap();
-    let release = include_str!("../../../releases/uttt-v015.rs");
-    assert!(read_network(release).unwrap() == network);
+    let (newest, release) = newest_release();
+    assert!(
+        read_network(&release).unwrap() == network,
+        "{newest} does not hold the bot's network"
+    );
     assert!(read_network("no weights here").is_err());
     assert!(read_network("pub const NNUE_WEIGHTS: &str = \"abc\";").is_err());
 }
@@ -260,24 +286,7 @@ fn the_train_workflow_plays_as_the_newest_release() {
         .lines()
         .find(|line| line.trim_start().starts_with("options=(--network "))
         .expect("the nnue stage's self-play options");
-    let folder = root.join("games/uttt/releases");
-    let newest = std::fs::read_dir(&folder)
-        .unwrap()
-        .filter_map(|entry| {
-            let name = entry.unwrap().file_name().into_string().unwrap();
-            let number = name
-                .strip_prefix("uttt-v")?
-                .strip_suffix(".rs")?
-                .parse::<u32>()
-                .ok()?;
-            Some((number, name))
-        })
-        .max()
-        .expect("a release")
-        .1;
-    let release = std::fs::read_to_string(folder.join(&newest))
-        .unwrap()
-        .replace("\r\n", "\n");
+    let (newest, release) = newest_release();
     let has = |line: String| {
         assert!(
             release.lines().any(|l| l == line),
