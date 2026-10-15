@@ -54,3 +54,5 @@ A bot can therefore use AVX2 only through a function compiled for it (`#[target_
 ## Timing
 
 CodinGame measures a turn from when it starts sending the turn's input until it reads the bot's output. Extra time before the first input exists in practice but is not guaranteed ([CodinGame staff on the forum](https://forum.codingame.com/t/timeouts-how-do-they-work/24504/4)). Most multiplayer games give 1 s on the first turn and 50 ms afterwards, but older games differ, so each game's `RULES.md` records its own limits.
+
+A bot must not think during the opponent's turn ("pondering"): it is strictly forbidden (the owner, 2026-10-15, in the conversation). A bot searches only between reading its turn's input and printing its answer.
