@@ -26,6 +26,9 @@ on:
       opening_plies:
         description: "Moves at the start of each game drawn at random (nnue: in proportion to the search's visits, and recorded)"
         default: "6"
+      side_games:
+        description: "NNUE: side games per game, each leaving it by a random move after the opening and playing on"
+        default: "0"
       temperature:
         description: "Policy and patterns: divides the fitted log-weights; below 1 sharpens them"
         default: "1"
@@ -114,6 +117,7 @@ jobs:
           GAMES: ${{ inputs.games }}
           ITERATIONS: ${{ inputs.iterations }}
           OPENING_PLIES: ${{ inputs.opening_plies }}
+          SIDE_GAMES: ${{ inputs.side_games }}
           SHARD: ${{ matrix.shard }}
         run: |
           mkdir -p target/train
@@ -128,14 +132,15 @@ jobs:
           # visits (temperature 2: the search is deterministic from a
           # position, so at temperature 1 a third of 1.9M games copied
           # another), and a game whose first search after them expects
-          # above 0.9 or below 0.1 is dropped.
+          # above 0.9 or below 0.1 is dropped. Its side games cover the
+          # positions after moves the search would not play (E023).
           options=()
           if [[ $STAGE == value ]]; then
             options=(--policy games/uttt/training/class_weights.rs --no-visits)
           elif [[ $STAGE == patterns ]]; then
             options=(--patterns games/uttt/training/pattern_weights.rs)
           elif [[ $STAGE == nnue ]]; then
-            options=(--network games/uttt/bots/mcts/src/nnue_weights.rs --exploration 0.2 --expand-all --minimax-weight 0.5 --opening sampled --opening-temperature 2 --balance 0.9 --no-visits)
+            options=(--network games/uttt/bots/mcts/src/nnue_weights.rs --exploration 0.2 --expand-all --minimax-weight 0.5 --opening sampled --opening-temperature 2 --balance 0.9 --no-visits --side-games "$SIDE_GAMES")
           fi
           # One process per core, each with its own seed and share of games,
           # whose progress lines start with its name.
@@ -201,6 +206,7 @@ jobs:
           GAMES: ${{ inputs.games }}
           ITERATIONS: ${{ inputs.iterations }}
           OPENING_PLIES: ${{ inputs.opening_plies }}
+          SIDE_GAMES: ${{ inputs.side_games }}
           TEMPERATURE: ${{ inputs.temperature }}
           TARGET: ${{ inputs.target }}
           EPOCHS: ${{ inputs.epochs }}
@@ -216,6 +222,9 @@ jobs:
             data+=(--data "$file")
           done
           origin="run $GITHUB_RUN_ID of commit $GITHUB_SHA, $JOBS jobs of $GAMES games at $ITERATIONS iterations, $OPENING_PLIES opening plies"
+          if [[ $STAGE == nnue ]]; then
+            origin+=", $SIDE_GAMES side games per game"
+          fi
           if [[ -n $DATA_FROM_RUN ]]; then
             origin="run $GITHUB_RUN_ID of commit $GITHUB_SHA, on the self-play data of run $DATA_FROM_RUN"
           fi

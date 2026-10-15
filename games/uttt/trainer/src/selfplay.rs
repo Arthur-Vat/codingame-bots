@@ -1,12 +1,13 @@
 //! Self-play games between two searches, recording at each searched
 //! position what a search longer than a turn's found: its root score and,
-//! if wanted, the visits of each move.
+//! if wanted, the visits of each move. Side games leave a game by a random
+//! move and play on from there.
 
 use cg_core::rng::Rng;
 use cg_search::{Budget, Game, Mcts};
 use uttt_engine::nnue::Network;
 use uttt_engine::search::NnueBoard;
-use uttt_engine::{Board, Move, Status};
+use uttt_engine::{Board, Move, MoveList, Status};
 use uttt_policy::{PatternBoard, PatternPolicy, PlayoutPolicy, PolicyBoard};
 
 use crate::data::{GameRecord, Searched};
@@ -61,14 +62,32 @@ pub struct SelfPlay {
     /// Whether to record the visits of each move, which the playout policy
     /// is fitted to; the value network needs only the root's score.
     pub record_visits: bool,
+    /// Side games played from each game kept: each leaves the game at one
+    /// of its searched positions after the opening, drawn at random, by a
+    /// random legal move other than the one played, then plays on as the
+    /// game does, with new search trees, recording only the positions after
+    /// that move. Two side games may leave by the same move, and then
+    /// copy each other, which `fit-nnue` drops. They cover
+    /// positions the search judges but would not play into, each with the
+    /// result of its own game.
+    pub side_games: u32,
 }
 
 impl SelfPlay {
-    /// Plays one game from `seed`, or `None` if `balance` drops it. Each
-    /// side keeps its own search tree from move to move, as the bot does.
-    /// Positions with a move that wins the game at once are not recorded:
-    /// the search plays that move without searching.
+    /// The game of [`SelfPlay::play_all`] without its side games, or `None`
+    /// if `balance` drops it; for the tests.
+    #[cfg(test)]
     pub fn play(&self, seed: u64) -> Option<GameRecord> {
+        self.play_all(seed).into_iter().next()
+    }
+
+    /// Plays one game from `seed`, then its `side_games`: the game first,
+    /// then each side game with at least one recorded position; empty if
+    /// `balance` drops the game. Each side keeps its own search tree from
+    /// move to move, as the bot does. Positions with a move that wins the
+    /// game at once are not recorded: the search plays that move without
+    /// searching.
+    pub fn play_all(&self, seed: u64) -> Vec<GameRecord> {
         match (self.network, self.patterns, self.policy) {
             (Some(network), _, _) => {
                 self.play_as(seed, false, |board| NnueBoard::new(board, network))
@@ -83,15 +102,43 @@ impl SelfPlay {
         }
     }
 
-    /// Plays one game, searching `position(board)` at each move, with the
-    /// game's priors if `priors`.
+    /// Plays one game and its side games, searching `position(board)` at
+    /// each move, with the game's priors if `priors`.
     fn play_as<G: Game<Move = Move>>(
         &self,
         seed: u64,
         priors: bool,
         position: impl Fn(Board) -> G,
-    ) -> Option<GameRecord> {
+    ) -> Vec<GameRecord> {
         let mut rng = Rng::new(seed);
+        let Some(game) = self.play_from(&[], &mut rng, priors, &position) else {
+            return Vec::new();
+        };
+        // A stream of its own, so that the game is the same with or without
+        // side games.
+        let mut side = Rng::new(seed ^ SIDE_GAMES);
+        let mut games = vec![game];
+        for _ in 0..self.side_games {
+            if let Some(start) = side_start(&games[0], self.opening_plies, &mut side) {
+                let game = self.play_from(&start, &mut side, priors, &position);
+                games.extend(game.filter(|game| !game.searched.is_empty()));
+            }
+        }
+        games
+    }
+
+    /// Plays a game on from the moves `start` to its end, recording the
+    /// positions searched after them; `None` if `balance` drops it, which
+    /// cannot happen to a side game, since it starts after the opening. The
+    /// searches start with empty trees, so a side game's first searches
+    /// reuse nothing of the game's.
+    fn play_from<G: Game<Move = Move>>(
+        &self,
+        start: &[Move],
+        rng: &mut Rng,
+        priors: bool,
+        position: &impl Fn(Board) -> G,
+    ) -> Option<GameRecord> {
         let mut searches = [
             Mcts::new(self.exploration, rng.next_u64()),
             Mcts::new(self.exploration, rng.next_u64()),
@@ -102,13 +149,19 @@ impl SelfPlay {
             search.minimax_weight = self.minimax_weight;
         }
         let mut board = Board::new();
-        let mut record = GameRecord::default();
+        for &mv in start {
+            board.play(mv);
+        }
+        let mut record = GameRecord {
+            moves: start.to_vec(),
+            searched: Vec::new(),
+        };
         let mut moves = Vec::new();
         while board.status() == Status::Ongoing {
             let ply = record.moves.len();
             let opening = ply < self.opening_plies as usize;
             let mv = if opening && self.opening == Opening::Random {
-                board.random_move(&mut rng)
+                board.random_move(rng)
             } else {
                 let root = position(board);
                 root.legal_moves(&mut moves);
@@ -123,7 +176,7 @@ impl SelfPlay {
                     }
                 }
                 let mv = if opening && result.iterations > 0 {
-                    sample(search.root_visits(), self.opening_temperature, &mut rng)
+                    sample(search.root_visits(), self.opening_temperature, rng)
                         .unwrap_or(result.best)
                 } else {
                     result.best
@@ -146,6 +199,37 @@ impl SelfPlay {
         }
         Some(record)
     }
+}
+
+/// Mixed into a game's seed for its side games' random stream.
+const SIDE_GAMES: u64 = 0x5eed_51de_9a3e_5000;
+
+/// The moves a side game of `game` starts from: the game's moves up to one
+/// of its searched positions from ply `opening_plies` on, drawn uniformly,
+/// then a legal move drawn uniformly among the others than the one the game
+/// played there. `None` when the game has no such position with two legal
+/// moves or more.
+fn side_start(game: &GameRecord, opening_plies: u32, rng: &mut Rng) -> Option<Vec<Move>> {
+    let mut legal = MoveList::new();
+    let choices: Vec<(Board, u8)> = game
+        .positions()
+        .filter(|(board, searched)| {
+            board.legal_moves(&mut legal);
+            u32::from(searched.ply) >= opening_plies && legal.len() > 1
+        })
+        .map(|(board, searched)| (board, searched.ply))
+        .collect();
+    let &(board, ply) = rng.pick(&choices)?;
+    let ply = usize::from(ply);
+    board.legal_moves(&mut legal);
+    let others: Vec<Move> = legal
+        .iter()
+        .copied()
+        .filter(|&mv| mv != game.moves[ply])
+        .collect();
+    let mut start = game.moves[..ply].to_vec();
+    start.push(*rng.pick(&others)?);
+    Some(start)
 }
 
 /// A move drawn in proportion to its visits raised to `1 / temperature`,

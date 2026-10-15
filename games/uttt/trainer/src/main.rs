@@ -134,6 +134,11 @@ enum Command {
         /// of each move, which only the playout policy's fit needs.
         #[arg(long)]
         no_visits: bool,
+        /// Side games played from each game kept: each leaves the game by a
+        /// random move after the opening and plays on, recording only the
+        /// positions after that move.
+        #[arg(long, default_value_t = 0)]
+        side_games: u32,
         /// Seed of the first game; each game derives its own.
         #[arg(long, default_value_t = 1)]
         seed: u64,
@@ -388,6 +393,7 @@ fn main() -> ExitCode {
             patterns,
             policy_plies,
             no_visits,
+            side_games,
             seed,
             name,
             out,
@@ -429,6 +435,7 @@ fn main() -> ExitCode {
                         policy,
                         patterns,
                         record_visits: !no_visits,
+                        side_games,
                     },
                     games,
                     seed,
@@ -641,12 +648,16 @@ fn selfplay(
     let mut seeds = Rng::new(seed);
     let start = Instant::now();
     let prefix = name.map_or(String::new(), |name| format!("{name}: "));
-    let (mut positions, mut kept) = (0, 0);
+    let (mut positions, mut kept, mut side) = (0, 0, 0);
     for game in 0..games {
-        if let Some(record) = settings.play(seeds.next_u64()) {
-            positions += record.searched.len();
+        let records = settings.play_all(seeds.next_u64());
+        if !records.is_empty() {
             kept += 1;
-            data::write_game(&mut out_file, &record).map_err(|err| err.to_string())?;
+            side += records.len() - 1;
+        }
+        for record in &records {
+            positions += record.searched.len();
+            data::write_game(&mut out_file, record).map_err(|err| err.to_string())?;
         }
         if (game + 1) % 50 == 0 {
             eprintln!(
@@ -657,10 +668,11 @@ fn selfplay(
     }
     out_file.flush().map_err(|err| err.to_string())?;
     eprintln!(
-        "{prefix}wrote {} games of {} ({} dropped as decided after the opening), {} positions to {} in {} s",
+        "{prefix}wrote {} games of {} ({} dropped as decided after the opening) and {} side games, {} positions to {} in {} s",
         selfplay::thousands(u64::from(kept)),
         selfplay::thousands(u64::from(games)),
         selfplay::thousands(u64::from(games - kept)),
+        selfplay::thousands(side as u64),
         selfplay::thousands(positions as u64),
         out.display(),
         selfplay::thousands(start.elapsed().as_secs_f64().round() as u64)
