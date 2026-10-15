@@ -667,6 +667,7 @@ fn options(data: PathBuf, scratch: &Scratch) -> Options {
             seed: 1,
         },
         compared_positions: 100,
+        compare: None,
         weights_out: Some(scratch.0.join("nnue_weights.rs")),
         report_out: Some(scratch.0.join("report.md")),
         origin: "a test".to_string(),
@@ -700,7 +701,10 @@ fn fit_writes_the_weights_and_the_report() {
     assert!(report.contains("| Start |"));
     assert!(report.contains("| Quantized |"));
     assert!(report.contains("(189 -> 128) x 2 -> 10 buckets, 26890 parameters"));
-    assert!(report.contains("every 20th game, whole"));
+    assert!(report.contains("of which 0 dropped as copies"));
+    assert!(report.contains("every 20th game kept, whole"));
+    assert!(report.contains("in detail"));
+    assert!(!report.contains("Compared"));
     assert!(report.contains("## Data"));
     assert!(report.contains("| Plies | Positions |"));
     assert!(!report.contains("NaN"));
@@ -780,4 +784,146 @@ fn fit_reports_too_little_data_as_errors() {
     let junk = scratch.0.join("junk.bin");
     std::fs::write(&junk, b"not a data file").unwrap();
     assert!(fit(&options(junk, &scratch)).is_err());
+}
+
+/// The bot's network, as the Train workflow reads it.
+fn bot_network() -> Network<256> {
+    crate::selfplay::read_network(include_str!("../../../bots/mcts/src/nnue_weights.rs")).unwrap()
+}
+
+#[test]
+fn fit_drops_copies_and_compares_another_network() {
+    let scratch = Scratch::new("fit-compare");
+    let data = scratch.0.join("games.bin");
+    let copies = scratch.0.join("copies.bin");
+    write_data(&data, 60);
+    // Copies of 30 of them, in another file.
+    write_data(&copies, 30);
+    let mut options = options(data, &scratch);
+    options.data.push(copies);
+    options.compare = Some(("the bot's".to_string(), bot_network()));
+    fit(&options).unwrap();
+
+    let report = std::fs::read_to_string(scratch.0.join("report.md")).unwrap();
+    assert!(report.contains("- Games: 90, of which 30 dropped as copies"));
+    assert!(report.contains("- Compared network: `the bot's`, width 256"));
+    let tables: Vec<&str> = report.lines().filter(|l| l.starts_with("| ")).collect();
+    // Both held-out tables, within the workflow annotation's 14 lines.
+    assert!(tables[5].starts_with("| Compared network, quantized"));
+    assert!(tables[11].starts_with("| Compared network, quantized"));
+    assert!(report.contains("| Plies | Positions | Network: squared error | Network: agreement | Compared: squared error | Compared: agreement |"));
+    assert!(report.contains("| All | |"));
+    assert!(report.contains("Average gap between prediction and result"));
+    assert!(report.contains("of 128; Compared,"));
+    assert!(!report.contains("NaN"));
+}
+
+#[test]
+fn a_distinct_split_drops_copies_from_any_file() {
+    let games: Vec<GameRecord> = (0..100).map(random_record).collect();
+    let mut all = Split::default();
+    all.add(&games);
+    all.add(&games[..40]);
+    assert_eq!((all.games, all.duplicates), (140, 0));
+
+    let mut distinct = Split::distinct();
+    distinct.add(&games[..60]);
+    distinct.add(&games);
+    assert_eq!((distinct.games, distinct.duplicates), (160, 60));
+    // Every 20th game kept is held out: copies do not shift the split.
+    let mut plain = Split::default();
+    plain.add(&games);
+    assert_eq!(distinct.fitted.len(), plain.fitted.len());
+    assert_eq!(distinct.held_out.len(), plain.held_out.len());
+    for index in 0..plain.held_out.len() {
+        assert_eq!(
+            distinct.held_out.get(index).board,
+            plain.held_out.get(index).board
+        );
+    }
+}
+
+/// A game in which every move is the one `network` would choose, every
+/// position searched.
+fn network_game(network: &Network<256>, opening: &[Move]) -> GameRecord {
+    let mut board = Board::new();
+    let mut record = GameRecord::default();
+    while board.status() == Status::Ongoing {
+        record.searched.push(Searched {
+            ply: record.moves.len() as u8,
+            score: Some(0.5),
+            visits: Vec::new(),
+        });
+        let mv = match opening.get(record.moves.len()) {
+            Some(&mv) => mv,
+            None => network_move(network, &board).unwrap(),
+        };
+        record.moves.push(mv);
+        board.play(mv);
+    }
+    record
+}
+
+#[test]
+fn the_assessment_counts_agreement_calibration_and_units() {
+    let network = bot_network();
+    // Two random moves, then the network's choices.
+    let games: Vec<GameRecord> = (0..20)
+        .map(|seed| {
+            let random = random_record(seed);
+            network_game(&network, &random.moves[..2])
+        })
+        .collect();
+    let mut split = Split::default();
+    split.add(&games);
+    let positions = &split.fitted;
+    let indices: Vec<usize> = (0..positions.len()).collect();
+    let assessment = assess(&network, positions, &indices);
+    let counted: usize = assessment.phases.iter().map(|phase| phase.0).sum();
+    assert_eq!(counted, positions.len());
+    assert_eq!(
+        assessment.bins.iter().map(|bin| bin.0).sum::<usize>(),
+        positions.len()
+    );
+    // After the two random moves, every move is the network's.
+    let (count, _, agreed) = assessment.phases[0];
+    assert!(agreed >= count / 2, "{agreed} of {count}");
+    for phase in &assessment.phases[1..] {
+        assert_eq!(phase.2, phase.0);
+    }
+    assert!(assessment.agreement() > 0.9);
+    assert!(assessment.calibration_error() <= 1.0);
+    assert_eq!(assessment.width, 256);
+    assert!(assessment.dead + assessment.constant <= 256);
+
+    // Units that never move are counted, and none without positions.
+    let dead = assess(&network_at(-0.5), positions, &indices);
+    assert_eq!((dead.dead, dead.constant), (128, 0));
+    let constant = assess(&network_at(1.5), positions, &indices);
+    assert_eq!((constant.dead, constant.constant), (0, 128));
+    let none = assess(&network, positions, &[]);
+    assert_eq!((none.dead, none.constant), (0, 0));
+}
+
+/// A network of width 128 whose units all sit at `bias`, whatever the
+/// position: its first layer's weights are 0.
+fn network_at(bias: f32) -> Network<128> {
+    let mut parameters = random_parameters::<128>(1, 0.0, 0.1);
+    for value in &mut parameters[Shape::<128>::BIAS..Shape::<128>::OUTPUT] {
+        *value = bias;
+    }
+    quantize::<128>(&parameters).unwrap()
+}
+
+#[test]
+fn next_move_is_the_move_played() {
+    let games: Vec<GameRecord> = (0..3).map(random_record).collect();
+    let mut split = Split::default();
+    split.add(&games);
+    let positions = &split.fitted;
+    for index in 0..positions.len() {
+        let game = &games[positions.game(index) as usize];
+        let ply = usize::from(positions.ply(index));
+        assert_eq!(positions.next_move(index), game.moves.get(ply).copied());
+    }
 }

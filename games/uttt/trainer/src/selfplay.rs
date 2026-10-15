@@ -33,6 +33,10 @@ pub struct SelfPlay {
     /// Moves at the start of each game chosen by `opening`.
     pub opening_plies: u32,
     pub opening: Opening,
+    /// The temperature of sampled openings: each move is drawn in
+    /// proportion to its visits raised to `1 / temperature`, so above 1 the
+    /// draw is flatter than the visits and the openings more varied.
+    pub opening_temperature: f64,
     /// Drops a game whose first search after the opening expects a score
     /// above this for the side to move, or below 1 minus this: one side
     /// is then nearly sure to win already.
@@ -119,7 +123,8 @@ impl SelfPlay {
                     }
                 }
                 let mv = if opening && result.iterations > 0 {
-                    sample(search.root_visits(), &mut rng).unwrap_or(result.best)
+                    sample(search.root_visits(), self.opening_temperature, &mut rng)
+                        .unwrap_or(result.best)
                 } else {
                     result.best
                 };
@@ -143,9 +148,30 @@ impl SelfPlay {
     }
 }
 
-/// A move drawn in proportion to its visits, or `None` without visits.
-fn sample(visits: impl Iterator<Item = (Move, u32)>, rng: &mut Rng) -> Option<Move> {
-    let visits: Vec<(Move, u32)> = visits.collect();
+/// A move drawn in proportion to its visits raised to `1 / temperature`,
+/// or `None` without visits. At temperature 1, the draw is exact, on
+/// integers.
+fn sample(
+    visits: impl Iterator<Item = (Move, u32)>,
+    temperature: f64,
+    rng: &mut Rng,
+) -> Option<Move> {
+    let visits: Vec<(Move, u32)> = visits.filter(|&(_, n)| n > 0).collect();
+    if temperature != 1.0 {
+        let weights: Vec<f64> = visits
+            .iter()
+            .map(|&(_, n)| f64::from(n).powf(1.0 / temperature))
+            .collect();
+        let mut left = rng.unit() * weights.iter().sum::<f64>();
+        for (&(mv, _), weight) in visits.iter().zip(&weights) {
+            if left < *weight {
+                return Some(mv);
+            }
+            left -= weight;
+        }
+        // Rounding may leave a sliver past the last weight.
+        return visits.last().map(|&(mv, _)| mv);
+    }
     let total: u64 = visits.iter().map(|&(_, n)| u64::from(n)).sum();
     if total == 0 {
         return None;
@@ -158,6 +184,32 @@ fn sample(visits: impl Iterator<Item = (Move, u32)>, rng: &mut Rng) -> Option<Mo
         left -= u64::from(n);
     }
     unreachable!("the draw is below the total")
+}
+
+/// A progress line of `selfplay`, such as `10,800 of 25,000 games (43%),
+/// 528,079 positions, 5,649 s`.
+pub fn progress(played: u32, games: u32, positions: usize, seconds: f64) -> String {
+    format!(
+        "{} of {} games ({:.0}%), {} positions, {} s",
+        thousands(u64::from(played)),
+        thousands(u64::from(games)),
+        100.0 * f64::from(played) / f64::from(games.max(1)),
+        thousands(positions as u64),
+        thousands(seconds.round() as u64)
+    )
+}
+
+/// `value` with a comma between each group of three digits.
+pub fn thousands(value: u64) -> String {
+    let digits = value.to_string();
+    let mut grouped = String::new();
+    for (index, digit) in digits.chars().enumerate() {
+        if index > 0 && (digits.len() - index).is_multiple_of(3) {
+            grouped.push(',');
+        }
+        grouped.push(digit);
+    }
+    grouped
 }
 
 /// Reads the playout weights from Rust source written by `uttt-trainer

@@ -8,6 +8,7 @@ fn games_are_reproducible_and_record_searched_positions() {
         iterations: 300,
         opening_plies: 4,
         opening: Opening::Random,
+        opening_temperature: 1.0,
         balance: None,
         exploration: 0.5,
         expand_all: false,
@@ -68,6 +69,7 @@ fn games_with_class_policy_playouts_can_skip_visits() {
         iterations: 300,
         opening_plies: 6,
         opening: Opening::Random,
+        opening_temperature: 1.0,
         balance: None,
         exploration: 0.5,
         expand_all: false,
@@ -118,6 +120,7 @@ fn games_with_the_bots_patterns_record_visits_of_every_move() {
         iterations: 300,
         opening_plies: 6,
         opening: Opening::Random,
+        opening_temperature: 1.0,
         balance: None,
         exploration: 0.5,
         expand_all: false,
@@ -154,6 +157,7 @@ fn as_the_bot(opening: Opening, balance: Option<f64>) -> SelfPlay {
         iterations: 200,
         opening_plies: 8,
         opening,
+        opening_temperature: 1.0,
         balance,
         exploration: 0.2,
         expand_all: true,
@@ -224,13 +228,13 @@ fn the_sampled_moves_follow_the_visits() {
     let c = Move::new(8, 8);
     let mut counts = [0u32; 3];
     for _ in 0..10_000 {
-        let mv = sample([(a, 1), (b, 0), (c, 3)].into_iter(), &mut rng).unwrap();
+        let mv = sample([(a, 1), (b, 0), (c, 3)].into_iter(), 1.0, &mut rng).unwrap();
         counts[[a, b, c].iter().position(|&m| m == mv).unwrap()] += 1;
     }
     assert_eq!(counts[1], 0, "a move without visits is never drawn");
     assert!((2300..2700).contains(&counts[0]), "{counts:?}");
-    assert_eq!(sample([(a, 0)].into_iter(), &mut rng), None);
-    assert_eq!(sample(std::iter::empty(), &mut rng), None);
+    assert_eq!(sample([(a, 0)].into_iter(), 1.0, &mut rng), None);
+    assert_eq!(sample(std::iter::empty(), 1.0, &mut rng), None);
 }
 
 #[test]
@@ -303,4 +307,41 @@ fn the_train_workflow_plays_as_the_newest_release() {
         read_constant(&release, "NNUE_WEIGHTS"),
         "{path} is not {newest}'s network"
     );
+}
+
+#[test]
+fn progress_lines_group_digits_and_give_the_share() {
+    assert_eq!(thousands(0), "0");
+    assert_eq!(thousands(999), "999");
+    assert_eq!(thousands(1_000), "1,000");
+    assert_eq!(thousands(528_079), "528,079");
+    assert_eq!(thousands(12_345_678), "12,345,678");
+    assert_eq!(
+        progress(10_800, 25_000, 528_079, 5_649.4),
+        "10,800 of 25,000 games (43%), 528,079 positions, 5,649 s"
+    );
+}
+
+#[test]
+fn a_higher_temperature_flattens_the_draw() {
+    let mut rng = Rng::new(5);
+    let a = Move::new(0, 0);
+    let b = Move::new(4, 4);
+    let c = Move::new(8, 8);
+    let visits = [(a, 1), (b, 0), (c, 9)];
+    let mut counts = [0u32; 3];
+    for _ in 0..10_000 {
+        let mv = sample(visits.into_iter(), 2.0, &mut rng).unwrap();
+        counts[[a, b, c].iter().position(|&m| m == mv).unwrap()] += 1;
+    }
+    // In proportion to 1 and 3, the square roots of the visits.
+    assert_eq!(counts[1], 0, "a move without visits is never drawn");
+    assert!((2300..2700).contains(&counts[0]), "{counts:?}");
+    assert_eq!(sample([(a, 0)].into_iter(), 2.0, &mut rng), None);
+    // Very hot, nearly uniform among the visited moves.
+    let mut a_count = 0;
+    for _ in 0..10_000 {
+        a_count += u32::from(sample(visits.into_iter(), 1e6, &mut rng) == Some(a));
+    }
+    assert!((4800..5200).contains(&a_count), "{a_count}");
 }
