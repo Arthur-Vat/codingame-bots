@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-None.
+- #138 (asked 2026-10-15): https://github.com/Arthur-Vat/codingame-bots/pull/138, `feat(uttt,workflows)`, item 1 of the trainer work: self-play by the newest release's search and network in Train's `nnue` stage (a test keeps the settings equal to the newest release), sampled openings (searched, recorded, drawn by visits) and `--balance 0.9`, both answered in the conversation, 2026-10-15: "Ok, go on with both"; a data-by-ply section in fit-nnue's report. Deep review approved with nits, fixed; head e2306b9, checks green. Next after it: a Train run proposal (needs the owner's go-ahead and size; choose `opening_plies` on purpose, 8 measured), then item 2, then item 4.
 
 ## Open questions
 
