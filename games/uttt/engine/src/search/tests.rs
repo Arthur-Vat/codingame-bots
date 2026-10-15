@@ -162,7 +162,7 @@ fn nnue_board(board: Board) -> NnueBoard<16> {
         )
         .unwrap()
     });
-    NnueBoard { board, network }
+    NnueBoard::new(board, network)
 }
 
 #[test]
@@ -299,7 +299,8 @@ fn nnue_child_scores_are_the_children_estimates() {
                     }
                     None => {
                         // Incremental updates give the scratch estimate exactly.
-                        assert_eq!((score, ended), (child.estimate(), false));
+                        let scratch = nnue_board(*child.board()).estimate();
+                        assert_eq!((score, ended), (scratch, false));
                         estimated += 1;
                     }
                 }
@@ -311,6 +312,37 @@ fn nnue_child_scores_are_the_children_estimates() {
         estimated > 5_000 && over > 20,
         "{estimated} estimated, {over} over"
     );
+}
+
+#[test]
+fn nnue_positions_follow_the_moves_exactly() {
+    let mut rng = Rng::new(15);
+    let mut list = MoveList::new();
+    let (mut moves, mut expected_moves) = (Vec::new(), Vec::new());
+    let mut checked = 0;
+    for _ in 0..30 {
+        let mut position = nnue_board(Board::new());
+        // The same game on a plain board: the rules are unchanged.
+        let mut board = Board::new();
+        while board.status() == Status::Ongoing {
+            Board::legal_moves(&board, &mut list);
+            let mv = *rng.pick(&list).unwrap();
+            position.play(mv);
+            board.play(mv);
+            assert_eq!(position.board(), &board);
+            assert_eq!(Game::to_move(&position), Game::to_move(&board));
+            assert_eq!(Game::score(&position), Game::score(&board));
+            if board.status() == Status::Ongoing {
+                Game::legal_moves(&position, &mut moves);
+                Game::legal_moves(&board, &mut expected_moves);
+                assert_eq!(moves, expected_moves);
+            }
+            let scratch = position.network().refresh(position.board());
+            assert_eq!(position.accumulator(), &scratch);
+            checked += 1;
+        }
+    }
+    assert!(checked > 1_000, "{checked} checked");
 }
 
 /// A search that expands all children at once, judging them by their

@@ -4,9 +4,11 @@
 //! turn's time limit (`cg-search`, `uttt-engine`), then plays the move it
 //! tried most often. It runs no playouts: the first time the search reaches
 //! a node, it creates all its children and gives each the estimate of an
-//! NNUE (`uttt_engine::nnue`), from accumulators built once at the node and
-//! updated for each child, except that a side to move with a move that wins
-//! the game is scored a win ("jacekmax", E018). Each node keeps the minimax
+//! NNUE (`uttt_engine::nnue`), from the node's accumulators updated for
+//! each child, except that a side to move with a move that wins the game is
+//! scored a win ("jacekmax", E018). The accumulators are built once per turn
+//! at the root and updated with each move as the search walks down the tree
+//! (E022). Each node keeps the minimax
 //! value of its children, which selection uses. The search
 //! keeps the part of its tree under the moves played since its previous
 //! search, and proves wins and losses near the end of the game: it plays a
@@ -164,10 +166,7 @@ fn play(
                 let mv = if moves.len() == 1 {
                     moves[0]
                 } else {
-                    let root = NnueBoard {
-                        board: position,
-                        network: network(),
-                    };
+                    let root = NnueBoard::new(position, network());
                     let result = mcts.search(&root, &moves, budget(start, limit));
                     let outlook = match result.proven {
                         Some(true) => "proven win".to_string(),
