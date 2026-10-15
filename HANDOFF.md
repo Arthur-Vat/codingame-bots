@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- #134 docs: C4's time budget skipped and pondering forbidden (opened 2026-10-15, bookkeeping, no review): approval to merge.
+None.
 
 ## Open questions
 
@@ -38,7 +38,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Notes
 
-- **E021 done** (2026-10-15): #133 merged on the owner's approval in the chat ("Merge it please"): `uttt-v014` released (https://github.com/Arthur-Vat/codingame-bots/releases/tag/uttt-v014), exploration 0.2, +18.2 Elo [+5.2, +31.3] over v013 in 458 pairs; delivered to the owner as a file. Time budget skipped and pondering strictly forbidden (owner, 2026-10-15; #134). Next: D2 (new self-play by the NNUE bot; Train run needs the owner's go-ahead) or D3 (faster evaluation). **Start the next piece of work in a fresh session: the conversation of 2026-10-14/15 is very long.**
+- **E021 done** (2026-10-15): #133 merged on the owner's approval in the chat ("Merge it please"): `uttt-v014` released (https://github.com/Arthur-Vat/codingame-bots/releases/tag/uttt-v014), exploration 0.2, +18.2 Elo [+5.2, +31.3] over v013 in 458 pairs; delivered to the owner as a file. Time budget skipped and pondering strictly forbidden (owner, 2026-10-15; #134 merged on his approval in the chat, "Merge it then"). Next: D2 (new self-play by the NNUE bot; Train run needs the owner's go-ahead) or D3 (faster evaluation). **Start the next piece of work in a fresh session: the conversation of 2026-10-14/15 is very long.**
 
 - **E020 done** (2026-10-15): #132 merged on the owner's approval in the chat ("Merge 132 please, and provide the code in the chat"): `uttt-v013` released (https://github.com/Arthur-Vat/codingame-bots/releases/tag/uttt-v013), +88.7 Elo [+54.9, +124.4] over v012 at full time, `MINIMAX_WEIGHT` 0.5; delivered to the owner as a file. Next proposed: step C4 (exploration constant and time budget, screened locally); D2 (new self-play data) needs the owner's go-ahead for its Train run.
 
