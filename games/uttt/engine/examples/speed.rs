@@ -94,7 +94,7 @@ fn main() {
     );
     for (part, share) in [
         (
-            "updating the accumulators with each move walking down",
+            "updating the accumulators with each move walking down, and the rules",
             shares.walk,
         ),
         ("copying the accumulators for each child", shares.copy),
