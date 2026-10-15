@@ -532,16 +532,19 @@ fn training_matches_the_threads_spawned_for_each_batch_bit_for_bit() {
     split.add(&games);
     let (fitted, held_out) = (&split.fitted, &split.held_out);
     // Batches of 100 leave a short last batch; with 3 or 4 threads, it
-    // can need fewer threads than there are.
-    for (threads, batch, target) in [
-        (1, 100, Target::Result),
-        (3, 100, Target::Score),
-        (4, 100, Target::Mix),
-        (4, 7, Target::Result),
-        (5, 3000, Target::Result),
+    // can need fewer threads than there are. Batches of 2 for 9 threads
+    // leave most of them without positions.
+    for (epochs, threads, batch, target) in [
+        (3, 1, 100, Target::Result),
+        (3, 3, 100, Target::Score),
+        (3, 4, 100, Target::Mix),
+        (3, 4, 7, Target::Result),
+        (3, 5, 3000, Target::Result),
+        (1, 9, 2, Target::Result),
+        (0, 4, 100, Target::Result),
     ] {
         let settings = Training {
-            epochs: 3,
+            epochs,
             batch,
             rate: 0.003,
             penalty: 1e-4,
