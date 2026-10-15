@@ -152,10 +152,7 @@ fn search(
         return;
     }
     let to_move = board.to_move();
-    let root = NnueBoard {
-        board,
-        network: network(),
-    };
+    let root = NnueBoard::new(board, network());
     let mut mcts = Mcts::<NnueBoard>::new(EXPLORATION, request.seed);
     mcts.expand_all = EXPAND_ALL;
     mcts.minimax_weight = MINIMAX_WEIGHT;

@@ -19,7 +19,7 @@ use std::time::{Duration, Instant};
 
 use cg_core::rng::Rng;
 use cg_search::{Budget, Game, Mcts};
-use uttt_engine::nnue::{self, Accumulator, Network, BUCKETS, FEATURES, MAX_ACTIVE};
+use uttt_engine::nnue::{Accumulator, Network, BUCKETS, FEATURES};
 use uttt_engine::search::{self, NnueBoard};
 use uttt_engine::{Board, Move, MoveList, Status};
 
@@ -89,13 +89,13 @@ fn main() {
         thousands(shares.iterations_per_second)
     );
     println!(
-        "| NNUE search: per iteration | {:.1} moves walking down, {:.2} nodes expanded, {:.1} children, {:.1} judged by the network; {:.1} inputs on per seat at an expansion |",
-        shares.depth, shares.expansions, shares.children, shares.evaluations, shares.features
+        "| NNUE search: per iteration | {:.1} moves walking down, {:.2} nodes expanded, {:.1} children, {:.1} judged by the network |",
+        shares.depth, shares.expansions, shares.children, shares.evaluations
     );
     for (part, share) in [
         (
-            "accumulators from scratch, once per expansion",
-            shares.refresh,
+            "updating the accumulators with each move walking down",
+            shares.walk,
         ),
         ("copying the accumulators for each child", shares.copy),
         ("adding each child's move rows", shares.rows),
@@ -245,23 +245,27 @@ fn bot_search<G: Game>() -> Mcts<G> {
 /// that the time it adds stands well above the machine's noise (about 10%).
 const EXTRA: u32 = 4;
 
-/// The part of [`NnueBoard::child_scores`] that a [`Probe`] does `EXTRA`
-/// more times, or `Count` to count the work instead.
+/// The part of [`NnueBoard`]'s work that a [`Probe`] does `EXTRA` more
+/// times, or `Count` to count the work instead.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Part {
     None,
     Count,
-    Refresh,
+    /// Updating a copy of the accumulators with each move played, most of
+    /// them by iterations walking down the tree.
+    Walk,
+    /// Copying the accumulators for each child.
     Copy,
+    /// Copying them and adding the child's move rows.
     Update,
+    /// Evaluating each child the network judges.
     Evaluate,
 }
 
 /// Counts of the `Count` pass: expansions, children, network evaluations,
-/// inputs on at expansions (both seats), and moves played on positions
-/// (mostly by iterations walking down the tree).
-static COUNTS: [AtomicU64; 5] = [
-    AtomicU64::new(0),
+/// and moves played on positions (mostly by iterations walking down the
+/// tree).
+static COUNTS: [AtomicU64; 4] = [
     AtomicU64::new(0),
     AtomicU64::new(0),
     AtomicU64::new(0),
@@ -273,9 +277,9 @@ fn count(index: usize, amount: u64) {
 }
 
 /// [`NnueBoard`] with its `child_scores` written out, so that one part of
-/// it can be done more times: the search, its tree and its results are
-/// those of `NnueBoard` (checked by [`measure_shares`]), and the time the
-/// search takes more, divided by `EXTRA`, is that part's cost.
+/// its work can be done more times: the search, its tree and its results
+/// are those of `NnueBoard` (checked by [`measure_shares`]), and the time
+/// the search takes more, divided by `EXTRA`, is that part's cost.
 #[derive(Clone, Copy)]
 struct Probe {
     inner: NnueBoard<256>,
@@ -300,8 +304,17 @@ impl Game for Probe {
     }
 
     fn play(&mut self, mv: Move) {
-        if self.part == Part::Count {
-            count(4, 1);
+        match self.part {
+            Part::Count => count(3, 1),
+            Part::Walk => {
+                for _ in 0..EXTRA {
+                    let mut extra = black_box(*self.inner.accumulator());
+                    let mut board = *self.inner.board();
+                    self.inner.network().play(&mut extra, &mut board, mv);
+                    black_box(&extra);
+                }
+            }
+            _ => {}
         }
         self.inner.play(mv);
     }
@@ -315,25 +328,13 @@ impl Game for Probe {
     }
 
     fn child_scores(&self, moves: &[Move], _rng: &mut Rng, scores: &mut Vec<(f64, bool)>) {
-        let network = self.inner.network;
-        let board = &self.inner.board;
+        let network = self.inner.network();
+        let board = self.inner.board();
         scores.clear();
-        let accumulator = network.refresh(board);
-        match self.part {
-            Part::Refresh => {
-                for _ in 0..EXTRA {
-                    black_box(network.refresh(black_box(board)));
-                }
-            }
-            Part::Count => {
-                let mut list = [0u16; MAX_ACTIVE];
-                let on = nnue::active_features(board, 0, &mut list)
-                    + nnue::active_features(board, 1, &mut list);
-                count(0, 1);
-                count(1, moves.len() as u64);
-                count(3, on as u64);
-            }
-            _ => {}
+        let accumulator = *self.inner.accumulator();
+        if self.part == Part::Count {
+            count(0, 1);
+            count(1, moves.len() as u64);
         }
         for &mv in moves {
             let mut child = accumulator;
@@ -391,12 +392,10 @@ struct Shares {
     expansions: f64,
     children: f64,
     evaluations: f64,
-    /// Inputs on per seat, at an expansion.
-    features: f64,
     /// Moves played on positions per iteration: the depth of its walk.
     depth: f64,
     /// Shares of the search's time.
-    refresh: f64,
+    walk: f64,
     copy: f64,
     rows: f64,
     evaluate: f64,
@@ -404,7 +403,7 @@ struct Shares {
 
 impl Shares {
     fn rest(&self) -> f64 {
-        1.0 - self.refresh - self.copy - self.rows - self.evaluate
+        1.0 - self.walk - self.copy - self.rows - self.evaluate
     }
 }
 
@@ -429,7 +428,7 @@ fn bot_positions() -> Vec<Board> {
             let mv = if ply < 4 {
                 *rng.pick(&moves).expect("the game goes on")
             } else {
-                let root = NnueBoard { board, network };
+                let root = NnueBoard::new(board, network);
                 mcts.search(&root, &moves, Budget::Iterations(GAME_ITERATIONS))
                     .best
             };
@@ -458,7 +457,7 @@ fn measure_shares() -> Shares {
     let parts = [
         Part::Count,
         Part::None,
-        Part::Refresh,
+        Part::Walk,
         Part::Copy,
         Part::Update,
         Part::Evaluate,
@@ -472,7 +471,7 @@ fn measure_shares() -> Shares {
     let budget = Budget::Iterations(SHARE_ITERATIONS);
     for &board in &positions {
         board.legal_moves(&mut moves);
-        let inner = NnueBoard { board, network };
+        let inner = NnueBoard::new(board, network);
         let start = Instant::now();
         let expected = real.search(&inner, &moves, budget);
         real_time += start.elapsed();
@@ -489,15 +488,16 @@ fn measure_shares() -> Shares {
     let base = times[1].as_secs_f64();
     let extra = |index: usize| (times[index].as_secs_f64() - base) / base / f64::from(EXTRA);
     let copy = extra(3);
+    // The walk's probe also copies the accumulators once per move.
+    let copy_per_move = copy / per_iteration(1) * per_iteration(3);
     Shares {
         searches: positions.len(),
         iterations_per_second: iterations / real_time.as_secs_f64(),
         expansions: per_iteration(0),
         children: per_iteration(1),
         evaluations: per_iteration(2),
-        features: per_iteration(3) / per_iteration(0) / 2.0,
-        depth: per_iteration(4),
-        refresh: extra(2),
+        depth: per_iteration(3),
+        walk: extra(2) - copy_per_move,
         copy,
         rows: extra(4) - copy,
         evaluate: extra(5),

@@ -162,7 +162,7 @@ fn nnue_board(board: Board) -> NnueBoard<16> {
         )
         .unwrap()
     });
-    NnueBoard { board, network }
+    NnueBoard::new(board, network)
 }
 
 #[test]
@@ -299,7 +299,8 @@ fn nnue_child_scores_are_the_children_estimates() {
                     }
                     None => {
                         // Incremental updates give the scratch estimate exactly.
-                        assert_eq!((score, ended), (child.estimate(), false));
+                        let scratch = nnue_board(*child.board()).estimate();
+                        assert_eq!((score, ended), (scratch, false));
                         estimated += 1;
                     }
                 }
@@ -311,6 +312,24 @@ fn nnue_child_scores_are_the_children_estimates() {
         estimated > 5_000 && over > 20,
         "{estimated} estimated, {over} over"
     );
+}
+
+#[test]
+fn nnue_accumulators_follow_the_moves_exactly() {
+    let mut rng = Rng::new(15);
+    let mut list = MoveList::new();
+    let mut checked = 0;
+    for _ in 0..30 {
+        let mut position = nnue_board(Board::new());
+        while position.board().status() == Status::Ongoing {
+            Board::legal_moves(position.board(), &mut list);
+            position.play(*rng.pick(&list).unwrap());
+            let scratch = position.network().refresh(position.board());
+            assert_eq!(position.accumulator(), &scratch);
+            checked += 1;
+        }
+    }
+    assert!(checked > 1_000, "{checked} checked");
 }
 
 /// A search that expands all children at once, judging them by their

@@ -34,26 +34,50 @@ impl Game for Board {
     }
 }
 
-/// A position searched with the NNUE (step C1): a new leaf gets the network's estimate instead of a playout, and the search uses no priors (in E017 a pattern policy ordered a node's children). A side to move with a move that wins the game scores a win, exactly. A search that expands all children at once (step C2) gets their estimates from one accumulator built at the leaf, updated for each child.
+/// A position searched with the NNUE (step C1): a new leaf gets the network's estimate instead of a playout, and the search uses no priors (in E017 a pattern policy ordered a node's children). A side to move with a move that wins the game scores a win, exactly. A search that expands all children at once (step C2) gets their estimates from the node's accumulators, updated for each child. The position carries its accumulators and updates them with each move played, so a search walking down its tree never builds them from scratch (E022).
 #[derive(Clone, Copy)]
 pub struct NnueBoard<const N: usize = 256> {
-    pub board: Board,
-    pub network: &'static Network<N>,
+    board: Board,
+    network: &'static Network<N>,
+    /// The accumulators of `board`, exactly as [`Network::refresh`] builds them.
+    accumulator: Accumulator<N>,
 }
 
 impl<const N: usize> NnueBoard<N> {
-    /// Seat 0's expected score in a position where the game goes on.
-    pub fn estimate(&self) -> f64 {
-        self.estimate_from(&self.board, || self.network.refresh(&self.board))
+    /// `board`, judged by `network`; builds its accumulators.
+    pub fn new(board: Board, network: &'static Network<N>) -> Self {
+        NnueBoard {
+            board,
+            network,
+            accumulator: network.refresh(&board),
+        }
     }
 
-    /// Seat 0's expected score in `board`, where the game goes on, with
-    /// `accumulator` giving its accumulators if the network is needed.
-    fn estimate_from(&self, board: &Board, accumulator: impl FnOnce() -> Accumulator<N>) -> f64 {
+    pub fn board(&self) -> &Board {
+        &self.board
+    }
+
+    pub fn network(&self) -> &'static Network<N> {
+        self.network
+    }
+
+    /// The accumulators of the position.
+    pub fn accumulator(&self) -> &Accumulator<N> {
+        &self.accumulator
+    }
+
+    /// Seat 0's expected score in a position where the game goes on.
+    pub fn estimate(&self) -> f64 {
+        self.estimate_from(&self.board, &self.accumulator)
+    }
+
+    /// Seat 0's expected score in `board`, where the game goes on, whose
+    /// accumulators are `accumulator`.
+    fn estimate_from(&self, board: &Board, accumulator: &Accumulator<N>) -> f64 {
         let value = if board.game_winning_move().is_some() {
             1.0
         } else {
-            f64::from(self.network.evaluate(&accumulator(), board))
+            f64::from(self.network.evaluate(accumulator, board))
         };
         if board.to_move() == 0 {
             value
@@ -82,7 +106,8 @@ impl<const N: usize> Game for NnueBoard<N> {
     }
 
     fn play(&mut self, mv: Move) {
-        self.board.play(mv);
+        self.network
+            .play(&mut self.accumulator, &mut self.board, mv);
     }
 
     fn score(&self) -> Option<f64> {
@@ -95,14 +120,13 @@ impl<const N: usize> Game for NnueBoard<N> {
 
     fn child_scores(&self, moves: &[Move], _rng: &mut Rng, scores: &mut Vec<(f64, bool)>) {
         scores.clear();
-        let accumulator = self.network.refresh(&self.board);
         for &mv in moves {
-            let mut child = accumulator;
+            let mut child = self.accumulator;
             let mut board = self.board;
             self.network.play(&mut child, &mut board, mv);
             scores.push(match score(board.status()) {
                 Some(score) => (score, true),
-                None => (self.estimate_from(&board, || child), false),
+                None => (self.estimate_from(&board, &child), false),
             });
         }
     }
