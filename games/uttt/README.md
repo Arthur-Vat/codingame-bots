@@ -2,7 +2,7 @@
 
 CodinGame's [Ultimate Tic-Tac-Toe](https://www.codingame.com/multiplayer/bot-programming/tic-tac-toe) is the first game of this framework ([ADR 0005](../../docs/adr/0005-first-game-uttt.md)). The rules, protocol and time limits are in [RULES.md](RULES.md).
 
-**Status:** Legend league on CodinGame since 2026-10-07; 59th with `uttt-v008` on 2026-10-08, the last rank recorded. **Current release:** [`uttt-v013`](releases/uttt-v013.rs) (E020: E018's "jacekmax", where the NNUE judges all the children of a node at once with incremental updates, and selection weighs each child's minimax value and its average half and half). Strength work resumed on 2026-10-14 with the NNUE plan of [ROADMAP.md](ROADMAP.md).
+**Status:** Legend league on CodinGame since 2026-10-07; 59th with `uttt-v008` on 2026-10-08, the last rank recorded. **Current release:** [`uttt-v014`](releases/uttt-v014.rs) (E021: E018's "jacekmax", where the NNUE judges all the children of a node at once with incremental updates, selection weighing each child's minimax value and its average half and half since E020, and exploration 0.2). Strength work resumed on 2026-10-14 with the NNUE plan of [ROADMAP.md](ROADMAP.md).
 
 ## Layout
 
@@ -77,7 +77,7 @@ On one core, a game at 10,000 iterations per move takes about a quarter of a sec
 
 ## Analysis
 
-`uttt-analysis` ([analysis/](analysis/)) is the game's analysis program ([ADR 0032](../../docs/adr/0032-analysis-engine.md)): it searches a position with the current engine and the settings of the latest release (exploration 0.3, all the children of a node judged at once by the NNUE, minimax values and averages in selection; the bot's own network weights file is reused, and a test fails when the settings or the network differ from the newest file in `releases/`), counts draws, and streams, as JSON lines, the best moves with their visits, win, draw and loss chances and expected lines. Since `uttt-v011` a leaf gets the network's expected score, which is never exactly a draw, so the draw chances count only the games the search plays to their end: in the middle game they are 0 and the win and loss chances share the draws. The protocol is in [studio/README.md](../../studio/README.md), "The analysis program". Try it:
+`uttt-analysis` ([analysis/](analysis/)) is the game's analysis program ([ADR 0032](../../docs/adr/0032-analysis-engine.md)): it searches a position with the current engine and the settings of the latest release (exploration 0.2, all the children of a node judged at once by the NNUE, minimax values and averages in selection; the bot's own network weights file is reused, and a test fails when the settings or the network differ from the newest file in `releases/`), counts draws, and streams, as JSON lines, the best moves with their visits, win, draw and loss chances and expected lines. Since `uttt-v011` a leaf gets the network's expected score, which is never exactly a draw, so the draw chances count only the games the search plays to their end: in the middle game they are 0 and the win and loss chances share the draws. The protocol is in [studio/README.md](../../studio/README.md), "The analysis program". Try it:
 
 ```sh
 echo '{"moves":["4 4"]}' | cargo run --release -p uttt-analysis

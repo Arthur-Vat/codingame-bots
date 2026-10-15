@@ -30,3 +30,4 @@ One entry per experiment, failures included, so that ideas are not retried blind
 | [E018](E018-jacekmax.md) | 2026-10-14 | Expanding all the children of a node at once, judged by incremental NNUE updates, with minimax values in selection ("jacekmax"), makes the bot stronger (`uttt-v012`) | Accepted, +101.3 Elo at full time | Promoted: `uttt-v012` |
 | [E019](E019-nnue-512.md) | 2026-10-14 | An NNUE twice as wide (512) judges positions better and makes the bot stronger | Not run: no gain in local screening, -27.9 Elo at 20 ms and -3.5 at full time against v012 | Dropped |
 | [E020](E020-minimax-weight.md) | 2026-10-14 | Selection on half the minimax value and half the average backed up through a child is steadier than the minimax value alone (`uttt-v013`) | Accepted, +88.7 Elo at full time | Promoted: `uttt-v013` |
+| [E021](E021-exploration.md) | 2026-10-15 | E020's search needs less exploration: a constant of 0.2 instead of 0.3 (`uttt-v014`) | Pending | Pending |

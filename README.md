@@ -10,7 +10,7 @@ Every bot change is judged by CI: unit tests, a check that the bot compiles on C
 
 | Game | CodinGame league | Current release | Journal |
 | --- | --- | --- | --- |
-| [Ultimate Tic-Tac-Toe](games/uttt/) | Legend since 2026-10-07; 59th with `uttt-v008` (2026-10-08) | [`uttt-v013`](games/uttt/releases/uttt-v013.rs) | [journal](games/uttt/journal/) |
+| [Ultimate Tic-Tac-Toe](games/uttt/) | Legend since 2026-10-07; 59th with `uttt-v008` (2026-10-08) | [`uttt-v014`](games/uttt/releases/uttt-v014.rs) | [journal](games/uttt/journal/) |
 
 ## Where things are
 
