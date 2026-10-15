@@ -196,22 +196,26 @@ impl Examples for Positions {
 }
 
 /// The positions of self-play games, split into those to fit and those
-/// held out: every 20th game is held out whole, since positions of one game
-/// are alike. Games are added file by file, so that their records need not
-/// all be in memory at once.
+/// held out: every 20th game is held out whole, with its side games, since
+/// positions of one game are alike. Games are added file by file, so that
+/// their records need not all be in memory at once.
 #[derive(Clone, Debug, Default)]
 pub struct Split {
     pub fitted: Positions,
     pub held_out: Positions,
-    /// Games added, finished or not, duplicates included.
+    /// Games added, finished or not, side games and duplicates included.
     pub games: usize,
     /// Games dropped as copies of an earlier one.
     pub duplicates: usize,
     /// The hashes of the moves of the games kept, when duplicates are
     /// dropped.
     seen: Option<std::collections::HashSet<u64>>,
-    /// Games kept, finished or not, which decide where each game goes.
+    /// Games kept, finished or not, without side games, which decide where
+    /// each game goes.
     kept: usize,
+    /// The last game kept that is not a side game, and whether it was held
+    /// out: its side games, which follow it, go the same way.
+    last: Option<(GameRecord, bool)>,
 }
 
 impl Split {
@@ -230,24 +234,55 @@ impl Split {
     pub fn add(&mut self, games: &[GameRecord]) {
         for game in games {
             self.games += 1;
+            let side_of = self
+                .last
+                .as_ref()
+                .filter(|(last, _)| is_side_game(game, last))
+                .map(|&(_, held_out)| held_out);
             if let Some(seen) = &mut self.seen {
                 if !seen.insert(moves_hash(&game.moves)) {
                     self.duplicates += 1;
+                    if side_of.is_none() {
+                        // Its side games start their own families.
+                        self.last = None;
+                    }
                     continue;
                 }
             }
+            let held_out = side_of.unwrap_or(self.kept % 20 == 19);
             let status = game.status();
             if status != Status::Ongoing {
-                let set = if self.kept % 20 == 19 {
+                let set = if held_out {
                     &mut self.held_out
                 } else {
                     &mut self.fitted
                 };
                 set.add_game(game, status);
             }
-            self.kept += 1;
+            if side_of.is_none() {
+                self.kept += 1;
+                self.last = Some((game.clone(), held_out));
+            }
         }
     }
+}
+
+/// Whether `game` is a side game of `of`, as `uttt-trainer selfplay
+/// --side-games` writes them: it leaves `of` at one of `of`'s searched
+/// positions and records only positions after that. A game that differs
+/// from the one before it within an unrecorded opening, or whose recorded
+/// positions start at ply 0, is not one.
+fn is_side_game(game: &GameRecord, of: &GameRecord) -> bool {
+    let Some(left) = game.moves.iter().zip(&of.moves).position(|(a, b)| a != b) else {
+        return false;
+    };
+    of.searched
+        .iter()
+        .any(|searched| usize::from(searched.ply) == left)
+        && game
+            .searched
+            .first()
+            .is_some_and(|first| usize::from(first.ply) > left)
 }
 
 /// A hash of a game's moves. Which copies are dropped depends only on the

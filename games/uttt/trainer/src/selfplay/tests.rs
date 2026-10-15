@@ -268,6 +268,26 @@ fn side_games_leave_the_game_by_another_move_and_record_after_it() {
 }
 
 #[test]
+fn the_fit_holds_out_side_games_with_their_game() {
+    use crate::value_fit::{Examples, Split};
+    let settings = SelfPlay {
+        side_games: 2,
+        ..as_the_bot(Opening::Sampled, None)
+    };
+    let mut split = Split::default();
+    let mut expected = [0, 0];
+    for seed in 0..40 {
+        let games = settings.play_all(seed);
+        // Every 20th game is held out, with its side games.
+        let held_out = seed % 20 == 19;
+        expected[usize::from(held_out)] += games.iter().map(|g| g.searched.len()).sum::<usize>();
+        split.add(&games);
+    }
+    assert!(split.games > 60, "only {} games", split.games);
+    assert_eq!([split.fitted.len(), split.held_out.len()], expected);
+}
+
+#[test]
 fn the_sampled_moves_follow_the_visits() {
     let mut rng = Rng::new(3);
     let a = Move::new(0, 0);

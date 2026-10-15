@@ -116,7 +116,7 @@ One experiment each.
    | 1 | 47 s | 16,337 | 27% |
    | 2 | 59 s | 21,370 | 44% |
 
-   A side game records about 20 positions, against about 50 for a game: it starts after the opening, and a random move often loses quickly.
+   A side game records about 20 positions, against about 50 for a game: it starts after the opening, and a random move often loses quickly. The fit holds out every 20th game together with its side games, whose positions are one move away from the game's.
 3. **Speed:** safe Rust that the compiler vectorizes, first: SSE2 only, since CodinGame compiles for basic x86-64. Then, if the network takes much of the time, AVX2 through one function compiled for it and called after a check at run time, with a fallback. That call needs `unsafe`, so an ADR.
 
    Measured on 2026-10-14, so that it is not redone: the engine's speed example built with AVX2, FMA, BMI1, BMI2, POPCNT, LZCNT and SSE4.2 on for the whole program, against the normal build, three runs each on Claude's session. Nothing moved beyond the machine's noise of about 10%:

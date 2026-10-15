@@ -65,7 +65,9 @@ pub struct SelfPlay {
     /// Side games played from each game kept: each leaves the game at one
     /// of its searched positions after the opening, drawn at random, by a
     /// random legal move other than the one played, then plays on as the
-    /// game does, recording only the positions after that move. They cover
+    /// game does, with new search trees, recording only the positions after
+    /// that move. Two side games may leave by the same move, and then
+    /// copy each other, which `fit-nnue` drops. They cover
     /// positions the search judges but would not play into, each with the
     /// result of its own game.
     pub side_games: u32,
@@ -126,7 +128,10 @@ impl SelfPlay {
     }
 
     /// Plays a game on from the moves `start` to its end, recording the
-    /// positions searched after them; `None` if `balance` drops it.
+    /// positions searched after them; `None` if `balance` drops it, which
+    /// cannot happen to a side game, since it starts after the opening. The
+    /// searches start with empty trees, so a side game's first searches
+    /// reuse nothing of the game's.
     fn play_from<G: Game<Move = Move>>(
         &self,
         start: &[Move],
