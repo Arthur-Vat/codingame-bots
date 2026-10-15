@@ -95,6 +95,11 @@ jobs:
           toolchain: ${{ env.CG_RUST }}
       - uses: Swatinem/rust-cache@v2
       - name: Build the trainer
+        # For this runner's processor: the trainer is a tool, not a bot, and
+        # is built and run on the same machine. Fits went about 45% faster
+        # with it on 2026-10-15, with the same weights bit for bit there.
+        env:
+          RUSTFLAGS: -C target-cpu=native
         run: cargo build --release --locked -p uttt-trainer
       - name: Play
         env:
@@ -154,6 +159,11 @@ jobs:
           toolchain: ${{ env.CG_RUST }}
       - uses: Swatinem/rust-cache@v2
       - name: Build the trainer
+        # For this runner's processor: the trainer is a tool, not a bot, and
+        # is built and run on the same machine. Fits went about 45% faster
+        # with it on 2026-10-15, with the same weights bit for bit there.
+        env:
+          RUSTFLAGS: -C target-cpu=native
         run: cargo build --release --locked -p uttt-trainer
       - uses: actions/download-artifact@v8
         with:

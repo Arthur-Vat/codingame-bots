@@ -336,7 +336,7 @@ fn quantizing_clamps_and_rounds_as_the_engine_expects() {
     assert_eq!(output_bias(3), 81); // round(127 * 64 * 0.01)
     assert_eq!(output_bias(4), -127 * 64 * 2000);
     // The clip keeps parameters where quantization is exact enough.
-    clip::<N>(&mut parameters);
+    clip::<N>(0, &mut parameters);
     assert_eq!(parameters[2], 1.0);
     assert_eq!(parameters[Shape::<N>::OUTPUT_BIAS + 4], -1000.0);
     assert_eq!(parameters[Shape::<N>::OUTPUT + 1], -127.0 / 64.0);
@@ -367,7 +367,7 @@ fn clipping_keeps_every_quantization_valid() {
     for value in &mut parameters[Shape::<N>::BIAS..][..N] {
         *value *= 1000.0;
     }
-    clip::<N>(&mut parameters);
+    clip::<N>(0, &mut parameters);
     assert!(quantize::<N>(&parameters).is_ok());
 }
 
@@ -420,6 +420,196 @@ fn training_beats_the_constant_predictor_and_stays_finite() {
     let built: Vec<_> = (0..held_out.len()).map(|i| held_out.get(i)).collect();
     let again = measure::<N>(&trained, &built[..], 3);
     assert!((again.cross_entropy - float.cross_entropy).abs() < 1e-9);
+}
+
+/// `train` as it was before its threads lived through the training: threads
+/// spawned for each batch, then the sum of their gradients and Adam's step
+/// on one thread.
+fn train_spawning_threads<const N: usize>(
+    mut parameters: Vec<f32>,
+    fitted: &(impl Examples + ?Sized),
+    held_out: &(impl Examples + ?Sized),
+    settings: &Training,
+    mut report: impl FnMut(&Epoch),
+) -> Vec<f32> {
+    let symmetries = symmetries();
+    let threads = settings.threads.max(1);
+    let mut rng = Rng::new(settings.seed);
+    let count = Shape::<N>::PARAMETERS;
+    let (mut first, mut second) = (vec![0.0f32; count], vec![0.0f32; count]);
+    let (beta1, beta2, epsilon) = (0.9f32, 0.999f32, 1e-8f32);
+    let steps_per_epoch = fitted.len().div_ceil(settings.batch);
+    let total_steps = (steps_per_epoch * settings.epochs as usize).max(1);
+    let mut step: u32 = 0;
+    let mut gradients = vec![vec![0.0f32; count]; threads];
+    let fitted_count = u32::try_from(fitted.len()).expect("fewer than 2^32 positions to fit");
+    let mut order: Vec<u32> = (0..fitted_count).collect();
+    let mut training_seconds = 0.0;
+    for number in 1..=settings.epochs {
+        let start = Instant::now();
+        rng.shuffle(&mut order);
+        let mut epoch_loss = 0.0;
+        for batch in order.chunks(settings.batch) {
+            let views: Vec<(u32, u8)> = batch
+                .iter()
+                .map(|&index| (index, rng.below(8) as u8))
+                .collect();
+            let part = views.len().div_ceil(threads);
+            let losses: Vec<f64> = std::thread::scope(|scope| {
+                let parameters = &parameters;
+                let symmetries = &symmetries;
+                let handles: Vec<_> = gradients
+                    .iter_mut()
+                    .zip(views.chunks(part))
+                    .map(|(gradient, chunk)| {
+                        scope.spawn(move || {
+                            gradient.fill(0.0);
+                            let mut loss = 0.0;
+                            for &(index, symmetry) in chunk {
+                                let example = fitted.get(index as usize);
+                                let view =
+                                    View::new(&example.board, &symmetries[usize::from(symmetry)]);
+                                loss += accumulate::<N>(
+                                    parameters,
+                                    &view,
+                                    settings.target.of(&example),
+                                    gradient,
+                                );
+                            }
+                            loss
+                        })
+                    })
+                    .collect();
+                handles
+                    .into_iter()
+                    .map(|handle| handle.join().expect("a training thread panicked"))
+                    .collect()
+            });
+            epoch_loss += losses.iter().sum::<f64>();
+            let used = views.len().div_ceil(part);
+            let (total, rest) = gradients.split_at_mut(1);
+            for other in &rest[..used - 1] {
+                for (sum, value) in total[0].iter_mut().zip(other) {
+                    *sum += value;
+                }
+            }
+
+            step += 1;
+            let progress = step as f32 / total_steps as f32;
+            let rate = settings.rate
+                * (0.05 + 0.95 * 0.5 * (1.0 + (std::f32::consts::PI * progress).cos()));
+            let scale = 1.0 / views.len() as f32;
+            let (correction1, correction2) =
+                (1.0 - beta1.powi(step as i32), 1.0 - beta2.powi(step as i32));
+            for ((value, gradient), (m, v)) in parameters
+                .iter_mut()
+                .zip(&total[0])
+                .zip(first.iter_mut().zip(second.iter_mut()))
+            {
+                let g = gradient * scale + settings.penalty * *value;
+                *m = beta1 * *m + (1.0 - beta1) * g;
+                *v = beta2 * *v + (1.0 - beta2) * g * g;
+                *value -= rate * (*m / correction1) / ((*v / correction2).sqrt() + epsilon);
+            }
+            clip::<N>(0, &mut parameters);
+        }
+        training_seconds += start.elapsed().as_secs_f64();
+        report(&Epoch {
+            number,
+            fitted: epoch_loss / fitted.len().max(1) as f64,
+            held_out: measure::<N>(&parameters, held_out, threads),
+            training_seconds,
+        });
+    }
+    parameters
+}
+
+#[test]
+fn training_matches_the_threads_spawned_for_each_batch_bit_for_bit() {
+    const N: usize = 16;
+    let games: Vec<GameRecord> = (0..60).map(random_record).collect();
+    let mut split = Split::default();
+    split.add(&games);
+    let (fitted, held_out) = (&split.fitted, &split.held_out);
+    // Batches of 100 leave a short last batch; with 3 or 4 threads, it
+    // can need fewer threads than there are.
+    for (threads, batch, target) in [
+        (1, 100, Target::Result),
+        (3, 100, Target::Score),
+        (4, 100, Target::Mix),
+        (4, 7, Target::Result),
+        (5, 3000, Target::Result),
+    ] {
+        let settings = Training {
+            epochs: 3,
+            batch,
+            rate: 0.003,
+            penalty: 1e-4,
+            target,
+            threads,
+            seed: 21,
+        };
+        let start = initial_parameters::<N>(22);
+        let (mut epochs, mut expected_epochs) = (Vec::new(), Vec::new());
+        let trained = train::<N>(start.clone(), fitted, held_out, &settings, |epoch| {
+            epochs.push((epoch.fitted, epoch.held_out))
+        });
+        let expected = train_spawning_threads::<N>(start, fitted, held_out, &settings, |epoch| {
+            expected_epochs.push((epoch.fitted, epoch.held_out))
+        });
+        let bits = |values: &[f32]| {
+            values
+                .iter()
+                .map(|value| value.to_bits())
+                .collect::<Vec<_>>()
+        };
+        assert!(
+            bits(&trained) == bits(&expected),
+            "{threads} threads, batches of {batch}"
+        );
+        assert_eq!(
+            epochs, expected_epochs,
+            "{threads} threads, batches of {batch}"
+        );
+    }
+}
+
+#[test]
+fn clipping_a_share_clips_as_the_whole() {
+    const N: usize = 8;
+    let parameters = random_parameters::<N>(5, 3.0, 3.0);
+    let mut whole = parameters.clone();
+    clip::<N>(0, &mut whole);
+    for threads in [1, 2, 3, 7, 64] {
+        let mut shared = parameters.clone();
+        for share in shares(shared.len(), threads) {
+            let start = share.start;
+            clip::<N>(start, &mut shared[share]);
+        }
+        assert_eq!(shared, whole, "{threads} shares");
+    }
+}
+
+#[test]
+fn a_panicking_thread_breaks_the_gate() {
+    let gate = Gate::new(2);
+    let mut waited = None;
+    // The scope itself panics, as one of its threads did.
+    let scope = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                let _guard = gate.guard();
+                gate.wait();
+                panic!("a test panic");
+            });
+            gate.wait();
+            waited = Some(std::panic::catch_unwind(std::panic::AssertUnwindSafe(
+                || gate.wait(),
+            )));
+        })
+    }));
+    assert!(scope.is_err());
+    assert!(waited.is_some_and(|waited| waited.is_err()));
 }
 
 #[test]
