@@ -16,3 +16,4 @@ Reports of the [Train workflow](../../../.github/workflows/train.yml)'s runs tha
 | [38784586293](runs/38784586293/report.md) | NNUE (189 → 512) × 2 → 10, 12 epochs on run 38733114779's data without its 468,682 copied games | E023 (dropped, screened at 512) |
 | [38799715918](runs/38799715918/report.md) | NNUE (189 → 256) × 2 → 10, 8 epochs on 20 jobs of 55,000 games of `uttt-v015`'s own search and 2 side games each, leaving the game by a random move | E024 |
 | [38858499582](runs/38858499582/report.md) | NNUE (189 → 512) × 2 → 10, 12 epochs on run 38799715918's data | E025 (dropped) |
+| [38876178171](runs/38876178171/report.md) | NNUE (189 → 128) × 2 → 10, 8 epochs on run 38799715918's data | E027 (dropped) |
