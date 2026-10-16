@@ -587,3 +587,174 @@ mod end_to_end {
         fs::remove_dir_all(&dir).unwrap();
     }
 }
+
+mod leaderboard_command {
+    use super::*;
+
+    fn leaderboard_args(extra: &[&str]) -> Result<LeaderboardArgs, clap::Error> {
+        let base = ["arena", "leaderboard"];
+        let cli = Cli::try_parse_from(base.into_iter().chain(extra.iter().copied()))?;
+        match cli.command {
+            Command::Leaderboard(args) => Ok(args),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    /// A fresh directory with a `releases` folder for one test.
+    fn directory(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "cg-arena-leaderboard-{}-{name}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("releases")).unwrap();
+        dir
+    }
+
+    fn line(a: &str, b: &str, wins: u32, losses: u32) -> String {
+        let pairs = (wins + losses) / 2;
+        format!(
+            r#"{{"a":"{a}","b":"{b}","pairs":{pairs},"wins":{wins},"draws":0,"losses":{losses},"pair_points":[0,0,{pairs},0,0],"faults":[0,0],"time_scale":1.0,"time_tolerance_ms":0,"opening_plies":4,"seed":1,"date":"2026-10-16","commit":"abc","cpu":"unknown"}}"#
+        )
+    }
+
+    /// A folder with a results file, a journal and the release `v001`.
+    fn setup(name: &str) -> PathBuf {
+        let dir = directory(name);
+        let results = [
+            line("v001", "random", 150, 50),
+            line("greedy", "random", 120, 80),
+        ]
+        .join("\n");
+        fs::write(dir.join("league.jsonl"), results + "\n").unwrap();
+        fs::write(
+            dir.join("journal.md"),
+            "| [E001](E001-mcts.md) | 2026-10-07 | MCTS | Accepted | Promoted: `uttt-v001` |\n",
+        )
+        .unwrap();
+        fs::write(dir.join("releases/uttt-v001.rs"), "fn main() {}\n").unwrap();
+        dir
+    }
+
+    fn run(dir: &Path, anchor: &str, extra: &[&str]) -> Result<bool, String> {
+        let results = dir.join("league.jsonl");
+        let journal = dir.join("journal.md");
+        let mut line = vec![
+            "--results",
+            results.to_str().unwrap(),
+            "--anchor",
+            anchor,
+            "--journal",
+            journal.to_str().unwrap(),
+        ];
+        line.extend(extra.iter().copied());
+        run_leaderboard(&leaderboard_args(&line).unwrap(), "uttt", "uttt-arena")
+    }
+
+    #[test]
+    fn writes_the_file_that_check_then_accepts() {
+        let dir = setup("write");
+        let out = dir.join("LEADERBOARD.md");
+        let out_arg = out.to_str().unwrap();
+        assert_eq!(run(&dir, "random", &["--out", out_arg]), Ok(true));
+        let text = fs::read_to_string(&out).unwrap();
+        assert!(text.starts_with("# Leaderboard\n\n"), "{text}");
+        assert!(text.ends_with("|\n") && !text.contains('\r'), "{text:?}");
+        assert!(
+            text.contains("| [v001](releases/uttt-v001.rs) | +"),
+            "{text}"
+        );
+        assert!(text.contains("| [E001](journal/E001-mcts.md) | 2026-10-07 |"));
+        assert!(text.contains("| greedy | +"));
+        assert!(text.contains("| random | 0.0 | anchor | 400 | baseline | |"));
+        assert_eq!(run(&dir, "random", &["--check", out_arg]), Ok(true));
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn check_fails_on_a_different_or_missing_file() {
+        let dir = setup("check");
+        let out = dir.join("LEADERBOARD.md");
+        let out_arg = out.to_str().unwrap();
+        assert_eq!(run(&dir, "random", &["--check", out_arg]), Ok(false));
+        assert!(!out.exists(), "--check must not write");
+
+        assert_eq!(run(&dir, "random", &["--out", out_arg]), Ok(true));
+        let mut edited = fs::read_to_string(&out).unwrap();
+        edited.push('\n');
+        fs::write(&out, edited).unwrap();
+        assert_eq!(run(&dir, "random", &["--check", out_arg]), Ok(false));
+        fs::write(&out, "").unwrap();
+        assert_eq!(run(&dir, "random", &["--check", out_arg]), Ok(false));
+
+        // A changed results file no longer matches the committed leaderboard.
+        assert_eq!(run(&dir, "random", &["--out", out_arg]), Ok(true));
+        let results = dir.join("league.jsonl");
+        let mut text = fs::read_to_string(&results).unwrap();
+        text.push_str(&line("v001", "greedy", 140, 60));
+        text.push('\n');
+        fs::write(&results, text).unwrap();
+        assert_eq!(run(&dir, "random", &["--check", out_arg]), Ok(false));
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn out_and_check_conflict_and_the_rest_is_required() {
+        let base = ["--results", "r", "--anchor", "random", "--journal", "j"];
+        let with = |extra: &[&str]| {
+            let all: Vec<&str> = base.iter().chain(extra).copied().collect();
+            leaderboard_args(&all)
+        };
+        assert!(with(&["--out", "a", "--check", "b"]).is_err());
+        assert!(with(&["--out", "a"]).is_ok());
+        assert!(with(&["--check", "b"]).is_ok());
+        assert!(with(&[]).is_ok());
+        assert!(leaderboard_args(&["--anchor", "random", "--journal", "j"]).is_err());
+        assert!(leaderboard_args(&["--results", "r", "--journal", "j"]).is_err());
+        assert!(leaderboard_args(&["--results", "r", "--anchor", "random"]).is_err());
+    }
+
+    #[test]
+    fn rejects_an_anchor_that_is_not_in_the_file_but_accepts_an_empty_file() {
+        let dir = setup("anchor");
+        let error = run(&dir, "nobody", &[]).unwrap_err();
+        assert!(
+            error.contains("--anchor") && error.contains("nobody"),
+            "{error}"
+        );
+
+        fs::write(dir.join("league.jsonl"), "").unwrap();
+        let out = dir.join("LEADERBOARD.md");
+        assert_eq!(
+            run(&dir, "nobody", &["--out", out.to_str().unwrap()]),
+            Ok(true)
+        );
+        let text = fs::read_to_string(&out).unwrap();
+        assert!(text.contains("No pairings yet."), "{text}");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn reports_a_bad_results_file_or_journal() {
+        let dir = setup("errors");
+        let results = fs::read_to_string(dir.join("league.jsonl")).unwrap();
+        fs::write(dir.join("league.jsonl"), "{oops\n").unwrap();
+        let error = run(&dir, "random", &[]).unwrap_err();
+        assert!(error.contains("league.jsonl:1:"), "{error}");
+        fs::write(dir.join("league.jsonl"), results).unwrap();
+
+        fs::write(
+            dir.join("journal.md"),
+            "| [E001](a.md) | 2026-10-07 | A | B | Promoted: `uttt-v001` |\n\
+             | [E002](b.md) | 2026-10-07 | A | B | Promoted: `uttt-v001` |\n",
+        )
+        .unwrap();
+        let error = run(&dir, "random", &[]).unwrap_err();
+        assert!(error.contains("twice"), "{error}");
+
+        fs::remove_file(dir.join("journal.md")).unwrap();
+        let error = run(&dir, "random", &[]).unwrap_err();
+        assert!(error.contains("cannot read"), "{error}");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+}
