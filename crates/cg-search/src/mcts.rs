@@ -143,7 +143,9 @@ pub struct Mcts<G: Game> {
     /// minimax value only).
     pub minimax_weight: f64,
     /// With `expand_all`, above 0: PUCT, with priors from the children's
-    /// estimates at this temperature (lower is sharper); 0 for none.
+    /// estimates at this temperature (lower is sharper); 0 for none. These
+    /// priors replace the game's ([`Game::priors`]) for the bias, though
+    /// those still order the children when `priors` is set.
     pub value_temperature: f64,
     rng: Rng,
     nodes: Vec<Node<G::Move>>,
