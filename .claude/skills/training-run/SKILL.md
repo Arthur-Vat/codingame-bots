@@ -9,7 +9,7 @@ Training runs on GitHub Actions (ADR 0016); `.github/workflows/train.yml` trains
 
 ## Start
 
-1. Choose the inputs of `.github/workflows/train.yml` (stage `policy`, `value` or `patterns`; jobs, games, iterations, and the stage's own inputs). `data_from_run` refits on an earlier run's self-play data, kept 7 days, without playing again.
+1. Choose the inputs of `.github/workflows/train.yml` (stage `policy`, `value` or `patterns`; jobs, games, iterations, and the stage's own inputs). `data_from_run` refits on an earlier run's self-play data, kept 7 days, without playing again. `minutes` makes each self-play job stop starting games after that time (`games` is then the most per job), so that jobs on slower and faster runners end together.
 2. Say the inputs and the expected duration to the owner before starting if they differ from what he approved.
 3. Dispatch it (skill `github-api`, "Workflow runs"), then find the run's id.
 

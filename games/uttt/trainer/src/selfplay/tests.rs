@@ -393,9 +393,35 @@ fn progress_lines_group_digits_and_give_the_share() {
     assert_eq!(thousands(528_079), "528,079");
     assert_eq!(thousands(12_345_678), "12,345,678");
     assert_eq!(
-        progress(10_800, 25_000, 528_079, 5_649.4),
+        progress(10_800, 25_000, 528_079, 5_649.4, None),
         "10,800 of 25,000 games (43%), 528,079 positions, 5,649 s"
     );
+}
+
+#[test]
+fn progress_lines_with_a_limit_give_the_time() {
+    assert_eq!(
+        progress(10_800, 25_000, 528_079, 5_649.4, Some(12_000)),
+        "10,800 games, 528,079 positions, 5,649 of 12,000 s"
+    );
+}
+
+#[test]
+fn a_time_limit_stops_new_games_only() {
+    // No limit: only the games count.
+    assert!(starts_game(0, 10, 1e9, None));
+    assert!(starts_game(9, 10, 1e9, None));
+    assert!(!starts_game(10, 10, 0.0, None));
+    // A limit not reached.
+    assert!(starts_game(3, 10, 99.9, Some(100)));
+    // A limit exactly reached, or passed, stops.
+    assert!(!starts_game(3, 10, 100.0, Some(100)));
+    assert!(!starts_game(3, 10, 150.0, Some(100)));
+    // The games are the most played, whatever the time left.
+    assert!(!starts_game(10, 10, 0.0, Some(100)));
+    // A limit shorter than one game still plays one: nothing has elapsed
+    // before the first.
+    assert!(starts_game(0, 10, 0.0, Some(1)));
 }
 
 #[test]

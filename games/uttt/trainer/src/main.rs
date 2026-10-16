@@ -139,6 +139,12 @@ enum Command {
         /// positions after that move.
         #[arg(long, default_value_t = 0)]
         side_games: u32,
+        /// Stops starting new games once this many seconds have passed since
+        /// the start; `--games` stays the most games played. The games played
+        /// are the first ones of the same seeds, so a run with a limit plays a
+        /// prefix of the games the run without it plays.
+        #[arg(long)]
+        seconds: Option<u64>,
         /// Seed of the first game; each game derives its own.
         #[arg(long, default_value_t = 1)]
         seed: u64,
@@ -394,6 +400,7 @@ fn main() -> ExitCode {
             policy_plies,
             no_visits,
             side_games,
+            seconds,
             seed,
             name,
             out,
@@ -418,6 +425,9 @@ fn main() -> ExitCode {
                         return Err(format!("--balance {balance} is not from 0.5 to 1"));
                     }
                 }
+                if seconds == Some(0) {
+                    return Err("--seconds must be above 0".to_string());
+                }
                 selfplay(
                     &selfplay::SelfPlay {
                         iterations,
@@ -438,6 +448,7 @@ fn main() -> ExitCode {
                         side_games,
                     },
                     games,
+                    seconds,
                     seed,
                     name.as_deref(),
                     &out,
@@ -638,6 +649,7 @@ fn main() -> ExitCode {
 fn selfplay(
     settings: &selfplay::SelfPlay,
     games: u32,
+    limit_seconds: Option<u64>,
     seed: u64,
     name: Option<&str>,
     out: &PathBuf,
@@ -649,8 +661,10 @@ fn selfplay(
     let start = Instant::now();
     let prefix = name.map_or(String::new(), |name| format!("{name}: "));
     let (mut positions, mut kept, mut side) = (0, 0, 0);
-    for game in 0..games {
+    let mut played = 0;
+    while selfplay::starts_game(played, games, start.elapsed().as_secs_f64(), limit_seconds) {
         let records = settings.play_all(seeds.next_u64());
+        played += 1;
         if !records.is_empty() {
             kept += 1;
             side += records.len() - 1;
@@ -659,19 +673,36 @@ fn selfplay(
             positions += record.searched.len();
             data::write_game(&mut out_file, record).map_err(|err| err.to_string())?;
         }
-        if (game + 1) % 50 == 0 {
+        if played % 50 == 0 {
             eprintln!(
                 "{prefix}{}",
-                selfplay::progress(game + 1, games, positions, start.elapsed().as_secs_f64())
+                selfplay::progress(
+                    played,
+                    games,
+                    positions,
+                    start.elapsed().as_secs_f64(),
+                    limit_seconds
+                )
             );
         }
     }
     out_file.flush().map_err(|err| err.to_string())?;
+    let games_played = match limit_seconds {
+        Some(limit) if played < games => format!(
+            "{} games of at most {}, stopped at the time limit of {} s",
+            selfplay::thousands(u64::from(kept)),
+            selfplay::thousands(u64::from(games)),
+            selfplay::thousands(limit)
+        ),
+        _ => format!(
+            "{} games of {}",
+            selfplay::thousands(u64::from(kept)),
+            selfplay::thousands(u64::from(games))
+        ),
+    };
     eprintln!(
-        "{prefix}wrote {} games of {} ({} dropped as decided after the opening) and {} side games, {} positions to {} in {} s",
-        selfplay::thousands(u64::from(kept)),
-        selfplay::thousands(u64::from(games)),
-        selfplay::thousands(u64::from(games - kept)),
+        "{prefix}wrote {games_played} ({} dropped as decided after the opening) and {} side games, {} positions to {} in {} s",
+        selfplay::thousands(u64::from(played - kept)),
         selfplay::thousands(side as u64),
         selfplay::thousands(positions as u64),
         out.display(),
