@@ -273,17 +273,47 @@ fn sample(
     unreachable!("the draw is below the total")
 }
 
+/// Whether `selfplay` starts another game: not once `games` are played, nor
+/// once `elapsed_seconds` has reached `limit_seconds`. Checked before each
+/// game, so a limit shorter than one game still plays one, and a game
+/// started always finishes.
+pub fn starts_game(
+    played: u32,
+    games: u32,
+    elapsed_seconds: f64,
+    limit_seconds: Option<u64>,
+) -> bool {
+    played < games && limit_seconds.is_none_or(|limit| elapsed_seconds < limit as f64)
+}
+
 /// A progress line of `selfplay`, such as `10,800 of 25,000 games (43%),
-/// 528,079 positions, 5,649 s`.
-pub fn progress(played: u32, games: u32, positions: usize, seconds: f64) -> String {
-    format!(
-        "{} of {} games ({:.0}%), {} positions, {} s",
-        thousands(u64::from(played)),
-        thousands(u64::from(games)),
-        100.0 * f64::from(played) / f64::from(games.max(1)),
-        thousands(positions as u64),
-        thousands(seconds.round() as u64)
-    )
+/// 528,079 positions, 5,649 s`; with a time limit, how far through the time
+/// it is instead of the share of games, such as `10,800 games, 528,079
+/// positions, 5,649 of 12,000 s`.
+pub fn progress(
+    played: u32,
+    games: u32,
+    positions: usize,
+    seconds: f64,
+    limit_seconds: Option<u64>,
+) -> String {
+    match limit_seconds {
+        Some(limit) => format!(
+            "{} games, {} positions, {} of {} s",
+            thousands(u64::from(played)),
+            thousands(positions as u64),
+            thousands(seconds.round() as u64),
+            thousands(limit)
+        ),
+        None => format!(
+            "{} of {} games ({:.0}%), {} positions, {} s",
+            thousands(u64::from(played)),
+            thousands(u64::from(games)),
+            100.0 * f64::from(played) / f64::from(games.max(1)),
+            thousands(positions as u64),
+            thousands(seconds.round() as u64)
+        ),
+    }
 }
 
 /// `value` with a comma between each group of three digits.

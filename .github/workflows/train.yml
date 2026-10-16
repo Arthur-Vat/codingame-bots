@@ -20,6 +20,9 @@ on:
       games:
         description: "Games per job (each job plays them on its 4 cores)"
         default: "1000"
+      minutes:
+        description: "Self-play: minutes each job plays before it stops starting games (1 to 330); empty plays exactly `games` per job, and with it `games` is the most per job"
+        default: ""
       iterations:
         description: "Search iterations per move"
         default: "10000"
@@ -74,9 +77,16 @@ jobs:
       - id: shards
         env:
           JOBS: ${{ inputs.jobs }}
+          MINUTES: ${{ inputs.minutes }}
         run: |
           if ! [[ $JOBS =~ ^[0-9]+$ ]] || ((JOBS < 1 || JOBS > 20)); then
             echo "::error::jobs must be a number from 1 to 20, not '$JOBS'"
+            exit 1
+          fi
+          # The job's timeout is 350 minutes: this leaves room for the build,
+          # the last game and the upload.
+          if [[ -n $MINUTES ]] && { ! [[ $MINUTES =~ ^[0-9]+$ ]] || ((MINUTES < 1 || MINUTES > 330)); }; then
+            echo "::error::minutes must be empty or a number from 1 to 330, not '$MINUTES'"
             exit 1
           fi
           shards="$(seq -s, 0 $((JOBS - 1)))"
@@ -115,6 +125,7 @@ jobs:
         env:
           STAGE: ${{ inputs.stage }}
           GAMES: ${{ inputs.games }}
+          MINUTES: ${{ inputs.minutes }}
           ITERATIONS: ${{ inputs.iterations }}
           OPENING_PLIES: ${{ inputs.opening_plies }}
           SIDE_GAMES: ${{ inputs.side_games }}
@@ -142,6 +153,13 @@ jobs:
           elif [[ $STAGE == nnue ]]; then
             options=(--network games/uttt/bots/mcts/src/nnue_weights.rs --exploration 0.2 --expand-all --minimax-weight 0.5 --opening sampled --opening-temperature 2 --balance 0.9 --no-visits --side-games "$SIDE_GAMES")
           fi
+          # With `minutes`, each process stops starting games after that
+          # time, and its share of games is the most it plays: jobs on faster
+          # runners play more games instead of waiting for the slowest.
+          limit=()
+          if [[ -n $MINUTES ]]; then
+            limit=(--seconds $((MINUTES * 60)))
+          fi
           # One process per core, each with its own seed and share of games,
           # whose progress lines start with its name.
           cores="$(nproc)"
@@ -150,7 +168,7 @@ jobs:
             seed=$((GITHUB_RUN_ID * 1000 + SHARD * 10 + core))
             target/release/uttt-trainer selfplay --games "$share" \
               --iterations "$ITERATIONS" --opening-plies "$OPENING_PLIES" \
-              "${options[@]}" --seed "$seed" --name "core $core" \
+              "${options[@]}" "${limit[@]}" --seed "$seed" --name "core $core" \
               --out "target/train/selfplay-$SHARD-$core.bin" &
           done
           wait
@@ -204,6 +222,7 @@ jobs:
           STAGE: ${{ inputs.stage }}
           JOBS: ${{ inputs.jobs }}
           GAMES: ${{ inputs.games }}
+          MINUTES: ${{ inputs.minutes }}
           ITERATIONS: ${{ inputs.iterations }}
           OPENING_PLIES: ${{ inputs.opening_plies }}
           SIDE_GAMES: ${{ inputs.side_games }}
@@ -221,7 +240,11 @@ jobs:
           for file in target/train/*.bin; do
             data+=(--data "$file")
           done
-          origin="run $GITHUB_RUN_ID of commit $GITHUB_SHA, $JOBS jobs of $GAMES games at $ITERATIONS iterations, $OPENING_PLIES opening plies"
+          jobs="$JOBS jobs of $GAMES games"
+          if [[ -n $MINUTES ]]; then
+            jobs="$JOBS jobs of at most $GAMES games in $MINUTES minutes"
+          fi
+          origin="run $GITHUB_RUN_ID of commit $GITHUB_SHA, $jobs at $ITERATIONS iterations, $OPENING_PLIES opening plies"
           if [[ $STAGE == nnue ]]; then
             origin+=", $SIDE_GAMES side games per game"
           fi
