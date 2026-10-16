@@ -186,7 +186,7 @@ merged_pull_branch() {
 # journal one, whose run reused the cached result and uploaded no sample: the
 # runs of the pull request's branch are searched, newest first, for the first
 # that kept one.
-pull_request_sample() { # pull_request_sample <artifact name> <label>
+pull_request_sample() { # pull_request_sample <artifact name>
   local branch runs run id
   branch="$(merged_pull_branch)" || return 1
   if [[ -z $branch ]]; then
@@ -259,7 +259,7 @@ mode_gather() {
         name="game-records-$game"
         label=SPRT
       fi
-      sample="$(pull_request_sample "$name" "$label" 2>"$work/$kind-why")" || die "$game: the $label sample lookup failed: $(cat "$work/$kind-why")"
+      sample="$(pull_request_sample "$name" 2>"$work/$kind-why")" || die "$game: the $label sample lookup failed: $(cat "$work/$kind-why")"
       if [[ -n $sample ]]; then
         read -r id run <<<"$sample"
         download "$work" "$id" "$work/inputs/$kind-$run"

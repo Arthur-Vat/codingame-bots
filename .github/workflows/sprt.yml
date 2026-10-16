@@ -354,6 +354,8 @@ jobs:
         if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-matched-key == ''
         env:
           BOTS: ${{ steps.find.outputs.bots }}
+          # The pull request's last commit: HEAD is a temporary merge commit.
+          LEAGUE_COMMIT: ${{ github.event.pull_request.head.sha }}
           # A sample of the games, uploaded below (ADR 0027).
           RECORDS_DIR: target/records
         run: |
@@ -463,6 +465,13 @@ jobs:
             echo '```'
             if [ "$(cat target/league-result/status)" -ne 0 ]; then
               echo "The new release faulted in the league: nothing to copy, and \`SPRT passed\` fails."
+            elif [ ! -f "games/$GAME/league.jsonl" ]; then
+              echo "$GAME has no league results yet (ADR 0038, decision 8): nothing to copy; the bootstrap adds this release in order."
+              if [ -s target/league-result/new.jsonl ]; then
+                echo '```jsonl'
+                cat target/league-result/new.jsonl
+                echo '```'
+              fi
             elif [ -s target/league-result/new.jsonl ]; then
               echo "Copy these lines at the end of \`games/$GAME/league.jsonl\`, then regenerate the leaderboard:"
               echo '```jsonl'
@@ -579,6 +588,8 @@ jobs:
         if: steps.plan.outputs.checks != ''
         env:
           CHECKS: ${{ steps.plan.outputs.checks }}
+          # The pull request's base: a results file it deletes is an error.
+          LEAGUE_BASE: HEAD^1
         run: |
           status=0
           while read -r id files; do

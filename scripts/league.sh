@@ -41,6 +41,9 @@
 # - LEAGUE_STOP_AFTER_MINUTES=N (the bootstrap): starts no NEW once N minutes
 #   have passed since the script started; prints `Stopped before NEW: ... Next:
 #   NEW REST...` and exits with 0.
+# - LEAGUE_COMMIT: the commit written to each new line; HEAD by default. A pull
+#   request's workflow gives the pull request's last commit, since its HEAD is
+#   a temporary merge commit.
 # - RECORDS_DIR: when set and not empty, keeps a sample of the games as game
 #   records (ADR 0027) in RECORDS_DIR/GAME-league. A relative RECORDS_DIR is
 #   relative to the repository root. RECORDS_SAMPLE is the number of games kept
@@ -191,7 +194,7 @@ fi
 
 read -r -a options <<<"$(arena_options)"
 arena="target/release/$game-arena"
-commit="$(git rev-parse HEAD)"
+commit="${LEAGUE_COMMIT:-$(git rev-parse HEAD)}"
 records=()
 if [[ -n ${RECORDS_DIR:-} ]]; then
   records=(--records "$RECORDS_DIR/$game-league" --records-sample "${RECORDS_SAMPLE:-10}")

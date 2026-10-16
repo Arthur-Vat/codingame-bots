@@ -8,7 +8,9 @@
 # Each RELEASE_FILE is a release the pull request adds,
 # games/GAME/releases/GAME-vNNN.rs. Builds nothing: it expects the arena,
 # target/release/GAME-arena. When games/GAME/league.jsonl does not exist, the
-# game has no league yet: prints a notice and exits with 0. Otherwise:
+# game has no league yet: prints a notice and exits with 0, unless the
+# environment variable LEAGUE_BASE (a git revision, HEAD^1 in a pull request)
+# is set and has the file: then the pull request deleted it, an error. Otherwise:
 # 1. the results file must hold a pairing with each release;
 # 2. `GAME-arena leaderboard --check` must find games/GAME/LEADERBOARD.md equal
 #    to the leaderboard generated from the results file (the ratings come from
@@ -35,6 +37,17 @@ load_settings "$game"
 
 results="games/$game/league.jsonl"
 if [[ ! -f $results ]]; then
+  # A results file deleted by the pull request is not "no league yet".
+  if [[ -n ${LEAGUE_BASE:-} ]]; then
+    if [[ ! $LEAGUE_BASE =~ ^[A-Za-z0-9._^~/-]+$ ]]; then
+      echo "error: LEAGUE_BASE '$LEAGUE_BASE' is not a revision" >&2
+      exit 2
+    fi
+    if git cat-file -e "$LEAGUE_BASE:$results" 2>/dev/null; then
+      echo "::error title=League results::$results was deleted"
+      exit 1
+    fi
+  fi
   echo "::notice title=League results::$game has no league results yet: nothing to check"
   exit 0
 fi

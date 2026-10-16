@@ -70,6 +70,21 @@ expect_unused() { # expect_unused <description>
 check 0 'toy has no league results yet: nothing to check' toy games/toy/releases/toy-v002.rs
 expect_unused "no results file"
 
+# LEAGUE_BASE: a results file that the base has and HEAD lacks was deleted.
+g() { git -C "$repo" -c user.name=t -c user.email=t@example.com "$@"; }
+g init -q
+mkdir -p "$repo/games/toy"
+pairing v001 random >"$repo/games/toy/league.jsonl"
+g add -A
+g commit -qm base
+g rm -q games/toy/league.jsonl
+g commit -qm "delete the results"
+LEAGUE_BASE=HEAD^1 check 1 '::error title=League results::games/toy/league.jsonl was deleted' toy games/toy/releases/toy-v002.rs
+# Never in the base: no league yet. Without LEAGUE_BASE: no league yet too.
+LEAGUE_BASE=HEAD check 0 'no league results yet' toy
+check 0 'no league results yet' toy
+LEAGUE_BASE='bad base!' check 2 'is not a revision' toy
+
 # A release without a pairing.
 {
   pairing v001 random
