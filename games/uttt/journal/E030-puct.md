@@ -1,7 +1,7 @@
 ---
 id: E030
 date: 2026-10-16
-pull_request: "#149"
+pull_request: "#148"
 parent: uttt-v016
 hypothesis: AlphaZero's selection rule (PUCT), with priors from the estimates the network already gives a node's children, steers the search toward the moves the network rates highly and away from the rest, so the same iterations go to better lines and the bot is stronger.
 change: When a node's children are created and estimated, each gets the prior `softmax(estimate / 0.1)` over its siblings, and selection adds `0.25 · prior · sqrt(parent visits) / (visits + 1)` to UCB1's bound; a fresh root's children get their priors at once. No new network, and the same estimates.
