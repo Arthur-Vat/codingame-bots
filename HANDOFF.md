@@ -4,6 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
+None.
 
 ## Open questions
 
