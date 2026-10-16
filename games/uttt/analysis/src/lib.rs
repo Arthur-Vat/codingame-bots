@@ -32,6 +32,10 @@ const EXPLORATION: f64 = 0.2;
 const EXPAND_ALL: bool = true;
 /// The weight of a child's minimax value against its average in selection.
 const MINIMAX_WEIGHT: f64 = 0.5;
+/// PUCT (E030): the temperature of the priors from the children's
+/// estimates, and the weight of their bias.
+const VALUE_TEMPERATURE: f64 = 0.1;
+const PRIOR_WEIGHT: f64 = 0.25;
 
 /// The search stops, with the stop `"nodes"`, once the tree holds this many
 /// nodes. With the `analysis` feature a node takes 40 bytes (a move, its mover, its
@@ -156,6 +160,8 @@ fn search(
     let mut mcts = Mcts::<NnueBoard>::new(EXPLORATION, request.seed);
     mcts.expand_all = EXPAND_ALL;
     mcts.minimax_weight = MINIMAX_WEIGHT;
+    mcts.value_temperature = VALUE_TEMPERATURE;
+    mcts.prior_weight = PRIOR_WEIGHT;
     let mut done = 0;
     loop {
         // Up to the next report, in steps small enough to watch the tree.

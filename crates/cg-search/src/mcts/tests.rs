@@ -534,5 +534,126 @@ fn a_search_answers_as_it_did_before_the_analysis_feature() {
     assert_eq!(now.len(), BEFORE.len());
 }
 
+/// A game of two moves among three each, always drawn, whose first move m
+/// is estimated at `[0.3, 0.5, 0.7][m]` for player 0.
+#[derive(Clone, Debug, PartialEq)]
+struct Estimated {
+    played: Vec<u32>,
+}
+
+const ESTIMATES: [f64; 3] = [0.3, 0.5, 0.7];
+
+impl Game for Estimated {
+    type Move = u32;
+
+    fn to_move(&self) -> usize {
+        self.played.len() % 2
+    }
+
+    fn legal_moves(&self, moves: &mut Vec<u32>) {
+        moves.clear();
+        if self.played.len() < 2 {
+            moves.extend([0, 1, 2]);
+        }
+    }
+
+    fn play(&mut self, mv: u32) {
+        self.played.push(mv);
+    }
+
+    fn score(&self) -> Option<f64> {
+        (self.played.len() == 2).then_some(0.5)
+    }
+
+    fn child_scores(&self, moves: &[u32], _rng: &mut Rng, scores: &mut Vec<(f64, bool)>) {
+        scores.clear();
+        scores.extend(moves.iter().map(|&mv| {
+            if self.played.is_empty() {
+                (ESTIMATES[mv as usize], false)
+            } else {
+                (0.5, true)
+            }
+        }));
+    }
+}
+
+fn puct(value_temperature: f64, prior_weight: f64) -> Mcts<Estimated> {
+    let mut mcts = Mcts::new(0.5, 4);
+    mcts.expand_all = true;
+    mcts.minimax_weight = 0.5;
+    mcts.value_temperature = value_temperature;
+    mcts.prior_weight = prior_weight;
+    mcts
+}
+
+fn puct_visits(mcts: &mut Mcts<Estimated>) -> Vec<u32> {
+    mcts.search(
+        &Estimated { played: Vec::new() },
+        &[0, 1, 2],
+        Budget::Iterations(400),
+    );
+    let mut visits = [0; 3];
+    for (mv, n) in mcts.root_visits() {
+        visits[mv as usize] = n;
+    }
+    visits.to_vec()
+}
+
+#[test]
+fn puct_priors_are_a_softmax_of_the_estimates() {
+    let mut mcts = puct(0.1, 1.0);
+    puct_visits(&mut mcts);
+    let weights = ESTIMATES.map(|estimate| ((estimate - 0.7) / 0.1).exp());
+    let total: f64 = weights.iter().sum();
+    let mut sum = 0.0;
+    for child in mcts.children(0) {
+        let node = mcts.nodes[child];
+        let expected = (weights[node.mv as usize] / total) as f32;
+        assert!((node.prior - expected).abs() < 1e-6, "{node:?}");
+        sum += node.prior;
+    }
+    assert!((sum - 1.0).abs() < 1e-6);
+    // Below the root, the children are all drawn: equal priors, for
+    // player 1 as for player 0.
+    let first = mcts.children(0).start;
+    let below = mcts.children(first);
+    assert_eq!(below.len(), 3);
+    for child in below {
+        assert!((mcts.nodes[child].prior - 1.0 / 3.0).abs() < 1e-6);
+    }
+}
+
+#[test]
+fn puct_favours_the_best_estimate_as_its_weight_grows() {
+    // Every first move ends in a draw: only the priors tell them apart.
+    let plain = puct_visits(&mut puct(0.1, 0.0));
+    let light = puct_visits(&mut puct(0.1, 0.5));
+    let heavy = puct_visits(&mut puct(0.1, 4.0));
+    assert!(light[2] > plain[2], "{plain:?} {light:?}");
+    assert!(heavy[2] > light[2], "{light:?} {heavy:?}");
+    assert!(heavy[2] > heavy[1] && heavy[1] > heavy[0], "{heavy:?}");
+    for visits in [plain, light, heavy] {
+        assert_eq!(visits.iter().sum::<u32>(), 400);
+    }
+}
+
+#[test]
+fn a_zero_temperature_searches_as_without_puct() {
+    // Without the game's priors, a prior weight changes nothing unless the
+    // priors come from the estimates.
+    for seed in 0..3 {
+        let mut with = jacekmax(0.5, seed);
+        with.prior_weight = 2.0;
+        let mut without = jacekmax(0.5, seed);
+        let a = with.search(&nim(30), &[1, 2, 3], Budget::Iterations(2_000));
+        let b = without.search(&nim(30), &[1, 2, 3], Budget::Iterations(2_000));
+        assert_eq!(format!("{a:?}"), format!("{b:?}"));
+        assert_eq!(
+            with.root_visits().collect::<Vec<_>>(),
+            without.root_visits().collect::<Vec<_>>()
+        );
+    }
+}
+
 #[cfg(feature = "analysis")]
 mod analysis;

@@ -93,6 +93,13 @@ const EXPAND_ALL: bool = true;
 /// created, so the order no longer matters, and its weights left the bot.
 const MINIMAX_WEIGHT: f64 = 0.5;
 
+/// PUCT (E030): the temperature of the priors that a node's children get
+/// from their own estimates, `softmax(estimate / T)`, and the weight of the
+/// bias they give, `PRIOR_WEIGHT · prior · sqrt(parent visits) / (visits +
+/// 1)`. A temperature of 0 selects by UCB1 alone.
+const VALUE_TEMPERATURE: f64 = 0.1;
+const PRIOR_WEIGHT: f64 = 0.25;
+
 fn main() {
     let seed = seed_from_env_or_clock();
     eprintln!("mcts: seed {seed}");
@@ -102,6 +109,8 @@ fn main() {
     let mut mcts = Mcts::new(EXPLORATION, rng.next_u64());
     mcts.expand_all = EXPAND_ALL;
     mcts.minimax_weight = MINIMAX_WEIGHT;
+    mcts.value_temperature = VALUE_TEMPERATURE;
+    mcts.prior_weight = PRIOR_WEIGHT;
     let stdin = io::stdin();
     let result = play(
         &mut mcts,

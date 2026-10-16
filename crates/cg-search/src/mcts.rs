@@ -35,6 +35,13 @@
 //! instead of a playout's result. Each node then also keeps its minimax
 //! value, from its children's, and selection judges a child by
 //! `minimax_weight · minimax + (1 - minimax_weight) · average`.
+//!
+//! Such a search may also select as AlphaZero does (PUCT), with priors
+//! from the children's own estimates: with a `value_temperature` `T` above
+//! 0, the children of a node get the priors `softmax(estimate / T)` when
+//! they are created and estimated, and the progressive bias grows with the
+//! square root of the parent's visits, `prior_weight · prior ·
+//! sqrt(parent visits) / (visits + 1)`.
 
 use std::sync::OnceLock;
 
@@ -135,6 +142,9 @@ pub struct Mcts<G: Game> {
     /// average score in selection, from 0 (the average only) to 1 (the
     /// minimax value only).
     pub minimax_weight: f64,
+    /// With `expand_all`, above 0: PUCT, with priors from the children's
+    /// estimates at this temperature (lower is sharper); 0 for none.
+    pub value_temperature: f64,
     rng: Rng,
     nodes: Vec<Node<G::Move>>,
     /// The position at the root of `nodes`, once a search has run.
@@ -164,6 +174,7 @@ impl<G: Game> Mcts<G> {
             prior_weight: 0.0,
             expand_all: false,
             minimax_weight: 0.0,
+            value_temperature: 0.0,
             rng: Rng::new(seed),
             nodes: Vec::new(),
             root: None,
@@ -298,6 +309,43 @@ impl<G: Game> Mcts<G> {
         self.moves.clear();
         self.moves.extend_from_slice(candidates);
         self.expand(0, root);
+        if self.value_puct() {
+            // The root's children are tried before they are estimated: give
+            // them their priors now.
+            let children = self.children(0);
+            self.moves.clear();
+            self.moves
+                .extend(children.clone().map(|index| self.nodes[index].mv));
+            root.child_scores(&self.moves, &mut self.rng, &mut self.scores);
+            self.set_value_priors(children, root.to_move());
+        }
+    }
+
+    /// Whether selection is PUCT with priors from the children's estimates.
+    fn value_puct(&self) -> bool {
+        self.expand_all && self.value_temperature > 0.0
+    }
+
+    /// Gives `children`, just estimated in `self.scores` (player 0's scores)
+    /// by a position where `to_move` moves, the priors
+    /// `softmax(estimate / value_temperature)` and their bias before any
+    /// visit.
+    fn set_value_priors(&mut self, children: std::ops::Range<usize>, to_move: usize) {
+        let value = |score: f64| if to_move == 0 { score } else { 1.0 - score };
+        let best = self
+            .scores
+            .iter()
+            .map(|&(score, _)| value(score))
+            .fold(f64::NEG_INFINITY, f64::max);
+        let temperature = self.value_temperature;
+        let weight = |score: f64| ((value(score) - best) / temperature).exp();
+        let total: f64 = self.scores.iter().map(|&(score, _)| weight(score)).sum();
+        let prior_weight = self.prior_weight as f32;
+        for (index, &(score, _)) in children.zip(&self.scores) {
+            let child = &mut self.nodes[index];
+            child.prior = (weight(score) / total) as f32;
+            child.bias = prior_weight * child.prior / (child.visits as f32 + 1.0);
+        }
     }
 
     /// Makes the node of `root`, if the tree holds it within two moves of
@@ -488,6 +536,9 @@ impl<G: Game> Mcts<G> {
             .extend(children.clone().map(|index| self.nodes[index].mv));
         state.child_scores(&self.moves, &mut self.rng, &mut self.scores);
         let to_move = state.to_move();
+        if self.value_puct() {
+            self.set_value_priors(children.clone(), to_move);
+        }
         let prior_weight = self.prior_weight as f32;
         let mut best = f32::NEG_INFINITY;
         let mut proved = false;
@@ -646,6 +697,12 @@ impl<G: Game> Mcts<G> {
         } else {
             0.0
         };
+        // PUCT: the bias grows with the square root of the parent's visits.
+        let bias_scale = if self.value_puct() {
+            (visits as f32).sqrt()
+        } else {
+            1.0
+        };
         let mut best = 0;
         let mut best_bound = f32::NEG_INFINITY;
         for (offset, child) in children.iter().enumerate() {
@@ -658,7 +715,7 @@ impl<G: Game> Mcts<G> {
                 return first + offset;
             }
             let exploitation = child.value + minimax_weight * (child.minimax - child.value);
-            let bound = exploitation + spread * child.inv_sqrt_visits + child.bias;
+            let bound = exploitation + spread * child.inv_sqrt_visits + bias_scale * child.bias;
             if bound > best_bound {
                 best_bound = bound;
                 best = offset;
