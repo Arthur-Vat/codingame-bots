@@ -14,7 +14,7 @@ decision: dropped
 cg_rank: none
 ---
 
-Proposed to the owner on 2026-10-16, after E027, as a cheap way for a network to be "better in some contexts" (his question): the error by ply shows the end of the game far easier to judge than the middle (squared error 0.051 after ply 32 against 0.077 to 0.079 before). He asked for it the same day: "Also can't you try PUCT, output buckets by game phase now?"
+Proposed to the owner on 2026-10-16, after E027, as a cheap way for a network to be "better in some contexts" (his question): the error by ply shows the end of the game far easier to judge than the middle (squared error 0.051 after ply 32 against 0.077 to 0.079 between plies 8 and 31). He asked for it the same day: "Also can't you try PUCT, output buckets by game phase now?"
 
 **The change.** `uttt_engine::nnue` gained `PHASES = 3` and `phase(board)`: 0 while no small board is closed, 1 with one or two, 2 with three or more. In 300 self-play games of `uttt-v016`'s search at 2,000 iterations (6 random opening plies), these held 35%, 25% and 40% of the positions. The bucket became `target + 10 · phase`. The byte layout got a new magic (`UTTTNN02`), and networks of the first version were still read, each bucket serving all three phases, with the same evaluations (tested). The trainer needed only its symmetries to keep the phase. The output layer grows from 5,130 to 15,390 parameters: the packed network takes 32,512 characters instead of 27,264, and an evaluation costs the same, apart from counting the closed boards.
 
