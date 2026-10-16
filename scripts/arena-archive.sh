@@ -11,23 +11,24 @@
 #   scripts/arena-archive.sh site OUT_DIR
 #
 # plan: decides the games to archive and writes `games=<JSON array>` and
-# `adding=<true|false>` to $GITHUB_OUTPUT (and stdout). For EVENT_NAME
-# workflow_run (a League run of a push to main), the games whose release
-# files the commit HEAD adds, with adding=true; none, and a notice, when no
-# release was added. Otherwise (schedule, by hand) every game, adding=false.
-# Run in a checkout of two commits.
+# `adding=<true|false>` to $GITHUB_OUTPUT (and stdout). For EVENT_NAME push
+# (to main), the games whose release files the commit HEAD adds, with
+# adding=true; none, and a notice, when no release was added. Otherwise
+# (schedule, by hand) every game, adding=false. Run in a checkout of two
+# commits.
 #
 # gather: builds the next archive of GAME in WORK_DIR/archive from the inputs
 # it downloads to WORK_DIR/inputs/<kind>-<id>, each unzipped into a folder of
 # its own:
 #   0-archive     the current archive, the newest unexpired arena-games-GAME;
 #                 failing to download it fails the step
-#   seed-<id>     without a current archive, each unexpired league sample
-#                 league-game-records-GAME of a run on main of this repository
-#   league-<id>   when adding (ADDING=true): the league sample of the run
-#                 LEAGUE_RUN_ID
+#   league-<id>   when adding (ADDING=true): the latest unexpired league
+#                 sample league-game-records-GAME of the merged pull request
+#                 of HEAD_SHA (ADR 0038, decision 9)
 #   sprt-<id>     when adding: the latest unexpired SPRT sample
-#                 game-records-GAME of the merged pull request of HEAD_SHA
+#                 game-records-GAME of the same pull request
+# (<id> is the id of the workflow run that kept the sample.) Without a
+# current archive, the archive is built from the release's samples only.
 # then runs ARCHIVE_TOOL (studio-archive) over them. It writes upload, added
 # and total to $GITHUB_OUTPUT and a line to $GITHUB_STEP_SUMMARY. upload is
 # true when the archive has more games than the current one, or when the
@@ -50,8 +51,8 @@
 # status is 0. A failed listing, download or tool fails the step.
 #
 # Environment: REPO (owner/name) and GH_TOKEN for the gh CLI; DRY_RUN
-# (default true, prune only); ARCHIVE_TOOL (gather, site); ADDING, LEAGUE_RUN_ID and
-# HEAD_SHA (gather, when adding); EVENT_NAME (plan); NOW (unix seconds,
+# (default true, prune only); ARCHIVE_TOOL (gather, site); ADDING and HEAD_SHA
+# (gather, when adding); EVENT_NAME (plan); NOW (unix seconds,
 # default: now; for tests); GITHUB_OUTPUT and GITHUB_STEP_SUMMARY, written
 # only when set. Needs gh, jq and unzip.
 set -euo pipefail
@@ -87,6 +88,19 @@ emit() { # emit <variable name> <line>
 
 valid_game() { [[ ${1-} =~ ^[A-Za-z0-9_-]+$ ]]; }
 
+# Prints games=<JSON array> of every game of the repository: the folders
+# directly under games/ with a plain name, sorted.
+all_games() {
+  local dir id json=""
+  for dir in games/*/; do
+    [[ -d $dir ]] || continue
+    id="$(basename "$dir")"
+    valid_game "$id" || continue
+    json+="\"$id\","
+  done
+  echo "games=[${json%,}]"
+}
+
 # Prints the artifacts called <name> of the repository as a JSON array. The
 # listing is paginated, and holds expired artifacts too (expired: true).
 list_artifacts() { # list_artifacts <name>
@@ -112,7 +126,7 @@ mode_plan() {
   local scopes list="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/arena-archive-added"
   local -a files=()
   case ${EVENT_NAME:-} in
-    workflow_run)
+    push)
       # HEAD is the commit pushed to main, HEAD^1 its parent. NUL-separated:
       # git quotes the odd file names otherwise. Written to a file first: a
       # process substitution would hide a failure of git, and no files would
@@ -132,7 +146,7 @@ mode_plan() {
       echo "adding=true"
       ;;
     schedule | workflow_dispatch)
-      scopes="$("$here/ci-scopes.sh" league --all)" || die "scripts/ci-scopes.sh failed"
+      scopes="$(all_games)"
       emit GITHUB_OUTPUT "$scopes"
       emit GITHUB_OUTPUT "adding=false"
       echo "$scopes"
@@ -165,12 +179,14 @@ merged_pull_branch() {
       '[.[] | select(.merge_commit_sha == $sha and ((.head.repo.full_name // "") == $repo))] | first | .head.ref // empty' || return 1
 }
 
-# The SPRT sample to add: prints the artifact id and the run id, space
-# separated, or nothing and the reason on stderr. The last commit of a pull
-# request is often a journal one, whose SPRT run reused the cached result and
-# uploaded no sample: the runs of the pull request's branch are searched,
-# newest first, for the first that kept one.
-sprt_sample() { # sprt_sample <game>
+# The sample to add: prints the artifact id and the run id, space separated,
+# or nothing and the reason on stderr. The sprt.yml workflow keeps both the
+# SPRT's sample (game-records-GAME) and the league's (league-game-records-GAME)
+# in its runs on a pull request. The last commit of a pull request is often a
+# journal one, whose run reused the cached result and uploaded no sample: the
+# runs of the pull request's branch are searched, newest first, for the first
+# that kept one.
+pull_request_sample() { # pull_request_sample <artifact name> <label>
   local branch runs run id
   branch="$(merged_pull_branch)" || return 1
   if [[ -z $branch ]]; then
@@ -191,13 +207,13 @@ sprt_sample() { # sprt_sample <game>
   fi
   while read -r run; do
     [[ -n $run ]] || continue
-    id="$(run_artifact "$run" "game-records-$1")" || return 1
+    id="$(run_artifact "$run" "$1")" || return 1
     if [[ -n $id ]]; then
       echo "$id $run"
       return 0
     fi
   done <<<"$runs"
-  echo "no SPRT run of the branch $branch has an unexpired game-records-$1 sample (the result was reused from the cache, or the samples expired)" >&2
+  echo "no SPRT run of the branch $branch has an unexpired $1 sample (the result was reused from the cache, or the samples expired)" >&2
 }
 
 mode_gather() {
@@ -208,9 +224,7 @@ mode_gather() {
   : "${ARCHIVE_TOOL:?set ARCHIVE_TOOL to the studio-archive binary}"
   local adding="${ADDING:-false}"
   if [[ $adding == true ]]; then
-    : "${LEAGUE_RUN_ID:?set LEAGUE_RUN_ID to the id of the League run}"
-    : "${HEAD_SHA:?set HEAD_SHA to the commit of the League run}"
-    [[ $LEAGUE_RUN_ID =~ ^[0-9]+$ ]] || die "LEAGUE_RUN_ID is not a number"
+    : "${HEAD_SHA:?set HEAD_SHA to the commit that added the release}"
     [[ $HEAD_SHA =~ ^[0-9a-f]{40}$ ]] || die "HEAD_SHA is not a commit"
   fi
   local now="${NOW:-$(date +%s)}"
@@ -232,41 +246,27 @@ mode_gather() {
     # 2. Never build a new archive without the current one.
     download "$work" "$cur_id" "$work/inputs/0-archive"
     [[ -f $work/inputs/0-archive/index.json ]] || die "the current archive $cur_id has no index.json"
-  else
-    local seeds id
-    seeds="$(list_artifacts "league-game-records-$game" |
-      jq -r --arg skip "${LEAGUE_RUN_ID:-0}" --arg adding "$adding" \
-        '[.[] | select((.expired | not)
-            and .workflow_run.head_branch == "main"
-            and .workflow_run.head_repository_id != null
-            and .workflow_run.head_repository_id == .workflow_run.repository_id
-            and ($adding != "true" or (.workflow_run.id | tostring) != $skip))]
-          | sort_by(.id) | .[].id')"
-    if [[ -z $seeds && $adding != true ]]; then
-      notice "$game: no archive, and no league sample of main to start from"
-    fi
-    while read -r id; do
-      [[ -n $id ]] || continue
-      download "$work" "$id" "$work/inputs/seed-$id"
-    done <<<"$seeds"
   fi
 
-  # 3. The samples of the release.
+  # 3. The samples of the release: the league's and the SPRT's.
   if [[ $adding == true ]]; then
-    local league_id sprt run
-    league_id="$(run_artifact "$LEAGUE_RUN_ID" "league-game-records-$game")"
-    if [[ -n $league_id ]]; then
-      download "$work" "$league_id" "$work/inputs/league-$LEAGUE_RUN_ID"
-    else
-      warning "$game: league run $LEAGUE_RUN_ID has no unexpired league-game-records-$game sample"
-    fi
-    sprt="$(sprt_sample "$game" 2>"$work/sprt-why")" || die "$game: the SPRT sample lookup failed: $(cat "$work/sprt-why")"
-    if [[ -n $sprt ]]; then
-      read -r id run <<<"$sprt"
-      download "$work" "$id" "$work/inputs/sprt-$run"
-    else
-      notice "$game: no SPRT sample added: $(cat "$work/sprt-why")"
-    fi
+    local kind label name sample id run
+    for kind in league sprt; do
+      if [[ $kind == league ]]; then
+        name="league-game-records-$game"
+        label=league
+      else
+        name="game-records-$game"
+        label=SPRT
+      fi
+      sample="$(pull_request_sample "$name" "$label" 2>"$work/$kind-why")" || die "$game: the $label sample lookup failed: $(cat "$work/$kind-why")"
+      if [[ -n $sample ]]; then
+        read -r id run <<<"$sample"
+        download "$work" "$id" "$work/inputs/$kind-$run"
+      else
+        notice "$game: no $label sample added: $(cat "$work/$kind-why")"
+      fi
+    done
   fi
 
   # 4. The tool checks every record and writes the archive, or nothing.
@@ -350,7 +350,7 @@ mode_prune() {
 # the repository holds many other artifacts, which are never listed.
 site_archives() {
   local scopes games game id
-  scopes="$("$here/ci-scopes.sh" league --all)" || return 1
+  scopes="$(all_games)" || return 1
   games="$(jq -r '.[]' <<<"${scopes#games=}")" || return 1
   while read -r game; do
     [[ -n $game ]] || continue

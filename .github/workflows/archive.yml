@@ -2,21 +2,21 @@ name: Arena archive
 
 # Keeps each game's arena games in one workflow artifact, arena-games-<game>
 # (ADR 0031, scripts/arena-archive.sh): the archive's records, checked by
-# replaying them, plus the league and SPRT samples of a release when a push to
-# main adds one. A weekly run uploads the archive again before it expires,
+# replaying them, plus the league and SPRT samples of a release's pull request
+# when a push to main adds the release (ADR 0038, decision 9). A weekly run uploads the archive again before it expires,
 # 90 days after its upload. Every upload deletes the older copies, then asks
 # the Pages workflow to rebuild. A run by hand uploads a dry-run copy only
 # (dry-run-arena-games-<game>, kept a day) unless dry_run is unchecked: it
 # deletes nothing and starts no Pages build.
 #
-# The workflow_run trigger runs this file from the default branch with write
-# permissions: it never checks out or runs code of a pull request. The
-# downloaded records are data, read by studio-archive.
+# The push trigger runs main's code with the permissions declared below: it
+# never checks out or runs code of a pull request. The downloaded records are
+# data, read by studio-archive.
 on:
-  workflow_run:
-    workflows: [League]
-    types: [completed]
+  push:
     branches: [main]
+    paths:
+      - "games/*/releases/*.rs"
   schedule:
     # Wednesdays, early, off the hour.
     - cron: "41 4 * * 3"
@@ -43,8 +43,6 @@ jobs:
   # The games to archive and whether a release is being added.
   plan:
     name: Plan
-    # A League run counts when it succeeded on a push to main.
-    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -54,8 +52,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # The commit the League run rated: its parent shows the added files.
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # The commit that was pushed: its parent shows the added files.
+          ref: ${{ github.sha }}
           fetch-depth: 2
       - name: Decide which games are archived
         id: plan
@@ -102,8 +100,9 @@ jobs:
           REPO: ${{ github.repository }}
           ARCHIVE_TOOL: ${{ github.workspace }}/target/release/studio-archive
           ADDING: ${{ needs.plan.outputs.adding }}
-          LEAGUE_RUN_ID: ${{ github.event.workflow_run.id }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          # Only used when a push adds a release: the merge commit of its
+          # pull request.
+          HEAD_SHA: ${{ github.sha }}
         run: scripts/annotate.sh run "Gather the games of $GAME" scripts/arena-archive.sh gather "$GAME" "$RUNNER_TEMP/arena"
       - name: Upload the archive
         id: upload

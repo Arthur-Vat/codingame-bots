@@ -499,6 +499,9 @@ jobs:
       - name: Test the arena archive
         if: ${{ !cancelled() }}
         run: scripts/annotate.sh run "Arena archive test" scripts/tests/arena-archive-test.sh
+      - name: Test the league check
+        if: ${{ !cancelled() }}
+        run: scripts/annotate.sh run "League check test" scripts/tests/league-check-test.sh
       - name: Test the size check
         if: ${{ !cancelled() }}
         # rustc and iconv are preinstalled on ubuntu-latest.
