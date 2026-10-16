@@ -1,6 +1,6 @@
 # 0012. Evaluation: SPRT on game pairs, seeded openings, frozen releases
 
-- Status: accepted; decision 7 (time limits) superseded by [0013](0013-evaluation-time-limits.md); the "no timeout" part of decision 5 superseded by [0015](0015-tolerate-rare-timeouts.md); decisions 10 and 12 completed by [0029](0029-ci-scoped-by-area-and-game.md)
+- Status: accepted; decision 7 (time limits) superseded by [0013](0013-evaluation-time-limits.md); the "no timeout" part of decision 5 superseded by [0015](0015-tolerate-rare-timeouts.md); decisions 10 and 12 completed by [0029](0029-ci-scoped-by-area-and-game.md); the league of decision 12 superseded by [0038](0038-incremental-league.md)
 - Date: 2026-10-07
 - Scope: framework
 
