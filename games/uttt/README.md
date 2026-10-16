@@ -2,7 +2,7 @@
 
 CodinGame's [Ultimate Tic-Tac-Toe](https://www.codingame.com/multiplayer/bot-programming/tic-tac-toe) is the first game of this framework ([ADR 0005](../../docs/adr/0005-first-game-uttt.md)). The rules, protocol and time limits are in [RULES.md](RULES.md).
 
-**Status:** Legend league on CodinGame since 2026-10-07; 59th with `uttt-v008` on 2026-10-08, the last rank recorded. **Current release:** [`uttt-v015`](releases/uttt-v015.rs) (E022: E018's "jacekmax", where the NNUE judges all the children of a node at once with incremental updates, selection weighing each child's minimax value and its average half and half since E020, exploration 0.2 since E021, and accumulators updated move by move as the search walks down its tree since E022). Strength work resumed on 2026-10-14 with the NNUE plan of [ROADMAP.md](ROADMAP.md).
+**Status:** Legend league on CodinGame since 2026-10-07; 59th with `uttt-v008` on 2026-10-08, the last rank recorded. **Current release:** [`uttt-v016`](releases/uttt-v016.rs) (E024: E018's "jacekmax", where the NNUE judges all the children of a node at once with incremental updates, selection weighing each child's minimax value and its average half and half since E020, exploration 0.2 since E021, accumulators updated move by move as the search walks down its tree since E022, and a network fitted on `uttt-v015`'s own games and their side games since E024). Strength work resumed on 2026-10-14 with the NNUE plan of [ROADMAP.md](ROADMAP.md).
 
 ## Layout
 
