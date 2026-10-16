@@ -65,10 +65,10 @@ const RESERVE: Duration = Duration::ZERO;
 const EXPLORATION: f64 = 0.2;
 
 /// The network that judges the leaves (E017): the NNUE of Train run
-/// 38562652097, (189 → 256) × 2 → 10, quantized and decoded once from its
-/// packed characters (see `cg-pack`).
-fn network() -> &'static Network<256> {
-    static NETWORK: OnceLock<Network<256>> = OnceLock::new();
+/// 38858499582 (E025), (189 → 512) × 2 → 10, quantized and decoded once from
+/// its packed characters (see `cg-pack`).
+fn network() -> &'static Network<512> {
+    static NETWORK: OnceLock<Network<512>> = OnceLock::new();
     NETWORK.get_or_init(|| {
         let bytes = cg_pack::unpack(nnue_weights::NNUE_WEIGHTS).expect("the NNUE weights unpack");
         Network::from_bytes(&bytes).expect("the NNUE weights decode")
@@ -123,7 +123,7 @@ fn main() {
 /// Plays turns until the input ends. `budget` gives the search budget of a
 /// turn from its start and CodinGame's limit for it.
 fn play(
-    mcts: &mut Mcts<NnueBoard>,
+    mcts: &mut Mcts<NnueBoard<512>>,
     rng: &mut Rng,
     mut input: Input<impl BufRead>,
     mut out: impl Write,
