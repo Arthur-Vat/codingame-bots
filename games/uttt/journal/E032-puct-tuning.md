@@ -1,7 +1,7 @@
 ---
 id: E032
 date: 2026-10-16
-pull_request: "#NN"
+pull_request: "#152"
 parent: uttt-v017
 hypothesis: E030's PUCT settings (temperature 0.1, weight 0.25) were chosen from six coarse settings at 20 ms; at CodinGame's limits the search runs about five times the iterations, so sharper priors with a larger weight should send them to the network's best children better, and the bot is stronger.
 change: PUCT's prior temperature `VALUE_TEMPERATURE` from 0.1 to 0.05 and its weight `PRIOR_WEIGHT` from 0.25 to 0.5; nothing else.
