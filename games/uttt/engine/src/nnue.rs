@@ -1,9 +1,9 @@
 //! An efficiently updatable network (NNUE) for the side to move's expected
 //! score, in quantized integer arithmetic.
 //!
-//! The network is `(189 -> N) x 2 -> 30`: one first layer, shared by both
+//! The network is `(189 -> N) x 2 -> 10`: one first layer, shared by both
 //! seats, is applied to the position from each seat's perspective, and the
-//! two accumulators feed one of 30 output buckets. A move only ever turns
+//! two accumulators feed one of 10 output buckets. A move only ever turns
 //! inputs on, because the inputs keep the cells of closed small boards, so
 //! [`Network::play`] adds a few rows of weights instead of building the
 //! accumulators again.
@@ -14,9 +14,7 @@
 //! (the seat's marks, at `9 * board + cell`), [`THEIR_CELLS`], [`OUR_BOARDS`]
 //! (small boards the seat won, at `162 + board`), [`THEIR_BOARDS`] and
 //! [`DRAWN_BOARDS`] (full without a winner). The bucket is the small board
-//! the side to move is sent to, or 9 for a free choice, plus 10 times the
-//! game's phase: 0 while no small board is closed, 1 with one or two, 2 with
-//! three or more ([`bucket`], [`phase`]; E029).
+//! the side to move is sent to, or 9 for a free choice ([`bucket`]).
 //!
 //! # Arithmetic (exact; the trainer relies on it)
 //!
@@ -52,11 +50,6 @@
 //! move's `N` then the other seat's `N`); the output biases (`BUCKETS`
 //! `i32`). Weights are in `-127..=127`: `-128` is rejected.
 //!
-//! Networks of the first version ([`MAGIC_V1`], up to `uttt-v016`) have
-//! [`TARGETS`] buckets, one per target, and no phases. They are still read,
-//! each bucket's weights and bias serving all three phases, which gives
-//! exactly the same evaluations.
-//!
 //! # Limits
 //!
 //! Only ongoing positions are evaluated: [`Network::logit`] reads the side
@@ -83,37 +76,22 @@ pub const THEIR_BOARDS: usize = 171;
 pub const DRAWN_BOARDS: usize = 180;
 /// Features of one perspective that can be 1 at once: 81 cells and 9 boards.
 pub const MAX_ACTIVE: usize = 90;
-/// Targets: the small board the side to move is sent to (0..9), or 9 for a free choice.
-pub const TARGETS: usize = 10;
-/// Phases of the game, by the number of closed small boards ([`phase`]).
-pub const PHASES: usize = 3;
-/// Output buckets: a target and a phase, at `target + TARGETS * phase`.
-pub const BUCKETS: usize = TARGETS * PHASES;
+/// Output buckets: the small board the side to move is sent to (0..9), or 9 for a free choice.
+pub const BUCKETS: usize = 10;
 /// Scale of the first layer's weights and biases, and the accumulators' clipping bound.
 pub const QA: i32 = 127;
 /// Scale of the output weights.
 pub const QB: i32 = 64;
 /// The first bytes of a network's bytes.
-pub const MAGIC: &[u8; 8] = b"UTTTNN02";
-/// The first bytes of a network of the first version, with [`TARGETS`] buckets.
-pub const MAGIC_V1: &[u8; 8] = b"UTTTNN01";
+pub const MAGIC: &[u8; 8] = b"UTTTNN01";
 /// The largest accumulator width: sums of the output layer stay within i32 up to it.
 pub const MAX_WIDTH: usize = 512;
 /// The largest magnitude of a quantized first-layer bias, so that a bias plus 90 weights of at most 127 stays within i16: 32767 - 90 * 127.
 pub const MAX_BIAS: i16 = 21_337;
 
-/// The game's phase in `board`: 0 while no small board is closed, 1 with one or two, 2 with three or more. In self-play games of `uttt-v016`, each holds about a third of the positions after the opening.
-pub fn phase(board: &Board) -> usize {
-    match board.closed_boards().count_ones() {
-        0 => 0,
-        1 | 2 => 1,
-        _ => 2,
-    }
-}
-
-/// The output bucket of `board`: `board.target().unwrap_or(9) + TARGETS * phase(board)`.
+/// The output bucket of `board`: `board.target().unwrap_or(9)`.
 pub fn bucket(board: &Board) -> usize {
-    board.target().unwrap_or(9) + TARGETS * phase(board)
+    board.target().unwrap_or(9)
 }
 
 /// Writes the indices of the features that are 1 in `board` from `seat`'s perspective into `list`, in increasing order, and returns how many.
@@ -168,7 +146,7 @@ pub struct Accumulator<const N: usize> {
     pub values: [[i16; N]; 2],
 }
 
-/// A quantized network of accumulator width `N`: (189 -> N) x 2 -> 30 buckets.
+/// A quantized network of accumulator width `N`: (189 -> N) x 2 -> 10 buckets.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Network<const N: usize> {
     /// `FEATURES * N`, feature-major, widened to `i16`.
@@ -203,10 +181,8 @@ fn squared_dot(acc: &[i16], weights: &[i16]) -> i32 {
 }
 
 impl<const N: usize> Network<N> {
-    /// Bytes of a network of width N: 132 + 251 * N.
+    /// Bytes of a network of width N: 52 + 211 * N.
     pub const BYTES: usize = 8 + 4 + FEATURES * N + 2 * N + BUCKETS * 2 * N + 4 * BUCKETS;
-    /// Bytes of a network of the first version: 52 + 211 * N.
-    pub const BYTES_V1: usize = 8 + 4 + FEATURES * N + 2 * N + TARGETS * 2 * N + 4 * TARGETS;
 
     /// From its parts: `feature_weights` FEATURES * N (feature-major: feature f's N weights at f*N..), `feature_bias` N, `output_weights` BUCKETS * 2N (bucket-major; within a bucket, N weights for the side to move's accumulator then N for the other seat's), `output_bias` one per bucket. Fails on wrong lengths, N == 0 or N > MAX_WIDTH, a bias of magnitude above MAX_BIAS, or a weight of -128.
     pub fn from_parts(
@@ -255,18 +231,14 @@ impl<const N: usize> Network<N> {
         })
     }
 
-    /// Reads the byte layout of the module documentation, or of the first version; fails (never panics) on a wrong magic, a width other than N, a wrong length, or what `from_parts` rejects.
+    /// Reads the byte layout of the module documentation; fails (never panics) on a wrong magic, a width other than N, a wrong length, or what `from_parts` rejects.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
-        let (magic, rest) = bytes.split_at(MAGIC.len().min(bytes.len()));
-        let (buckets, expected) = if magic == MAGIC {
-            (BUCKETS, Self::BYTES)
-        } else if magic == MAGIC_V1 {
-            (TARGETS, Self::BYTES_V1)
-        } else {
+        if bytes.len() != Self::BYTES {
+            return Err(format!("{} bytes, expected {}", bytes.len(), Self::BYTES));
+        }
+        let (magic, rest) = bytes.split_at(MAGIC.len());
+        if magic != MAGIC {
             return Err("wrong magic".to_string());
-        };
-        if bytes.len() != expected {
-            return Err(format!("{} bytes, expected {expected}", bytes.len()));
         }
         let (width, rest) = rest.split_at(4);
         let width = u32::from_le_bytes([width[0], width[1], width[2], width[3]]);
@@ -275,22 +247,16 @@ impl<const N: usize> Network<N> {
         }
         let (feature_weights, rest) = rest.split_at(FEATURES * N);
         let (feature_bias, rest) = rest.split_at(2 * N);
-        let (output_weights, rest) = rest.split_at(buckets * 2 * N);
+        let (output_weights, rest) = rest.split_at(BUCKETS * 2 * N);
         let feature_weights: Vec<i8> = feature_weights.iter().map(|&b| b as i8).collect();
         let feature_bias: Vec<i16> = feature_bias
             .chunks_exact(2)
             .map(|b| i16::from_le_bytes([b[0], b[1]]))
             .collect();
         let output_weights: Vec<i8> = output_weights.iter().map(|&b| b as i8).collect();
-        let biases: Vec<i32> = rest
-            .chunks_exact(4)
-            .map(|b| i32::from_le_bytes([b[0], b[1], b[2], b[3]]))
-            .collect();
-        // A first-version network's buckets serve every phase.
-        let output_weights = output_weights.repeat(BUCKETS / buckets);
         let mut output_bias = [0i32; BUCKETS];
-        for (bucket, bias) in output_bias.iter_mut().enumerate() {
-            *bias = biases[bucket % buckets];
+        for (bias, b) in output_bias.iter_mut().zip(rest.chunks_exact(4)) {
+            *bias = i32::from_le_bytes([b[0], b[1], b[2], b[3]]);
         }
         Self::from_parts(
             &feature_weights,

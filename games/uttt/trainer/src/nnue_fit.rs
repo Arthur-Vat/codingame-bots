@@ -1,7 +1,7 @@
 //! Trains the NNUE of `uttt_engine::nnue` on self-play games: 189 inputs per
-//! perspective, an accumulator of `N` units shared by both seats, and 30
-//! output buckets (a target and a game phase), then quantizes it as the
-//! engine's integer arithmetic expects.
+//! perspective, an accumulator of `N` units shared by both seats, and 10
+//! output buckets, then quantizes it as the engine's integer arithmetic
+//! expects.
 //!
 //! The parameters are one flat vector of `f32`: the first layer's weights
 //! `W` (`FEATURES * N`, feature-major), its biases `b` (`N`), the output
@@ -20,8 +20,7 @@ use std::time::Instant;
 
 use cg_core::rng::Rng;
 use uttt_engine::nnue::{
-    self, Network, BUCKETS, FEATURES, MAX_ACTIVE, MAX_BIAS, OUR_BOARDS, QA, QB, TARGETS,
-    THEIR_CELLS,
+    self, Network, BUCKETS, FEATURES, MAX_ACTIVE, MAX_BIAS, OUR_BOARDS, QA, QB, THEIR_CELLS,
 };
 use uttt_engine::{Board, MoveList, Status};
 
@@ -70,12 +69,7 @@ impl Symmetry {
             };
             image as u16
         });
-        // A symmetry moves the target, not the game's phase.
-        let buckets = std::array::from_fn(|bucket| {
-            let (phase, target) = (bucket / TARGETS, bucket % TARGETS);
-            let image = if target == 9 { 9 } else { map(target) };
-            (phase * TARGETS + image) as u8
-        });
+        let buckets = std::array::from_fn(|bucket| if bucket == 9 { 9 } else { map(bucket) as u8 });
         Symmetry { features, buckets }
     }
 }
