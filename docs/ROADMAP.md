@@ -229,5 +229,5 @@ Framework work that a game's plan needs but every game can use.
 | A release does not replay identically | A wrong takeback against that release | Each release is tested; one that fails offers no takeback ([ADR 0025](adr/0025-studio.md)) |
 | npm supply chain | A harmful package in the studio's front end | Few dependencies, lockfile, `npm ci`, license check ([ADR 0026](adr/0026-node-for-the-studio.md)) |
 | Projects beta not available | No single hub with an Overview | One long claude.ai conversation meanwhile ([ADR 0008](adr/0008-claude-hub.md)) |
-| Claude sessions default to a newer Rust | Local checks and speed measurements differ from CodinGame's compiler | `rust-version` lints locally; `rustup toolchain install 1.90.0` and `cargo +1.90.0` for speed (it installs since 2026-10-16); CI on exactly 1.90.0 is the judge ([ADR 0010](adr/0010-codingame-rust-toolchain.md)) |
+| Claude sessions default to a newer Rust | Local checks and speed measurements differ from CodinGame's compiler | `rust-version` lints locally; `rustup toolchain install 1.90.0` and `cargo +1.90.0` for speed (installable in sessions since 2026-10-16); CI on exactly 1.90.0 is the judge ([ADR 0010](adr/0010-codingame-rust-toolchain.md)) |
 | Public code gets copied | Others use these bots | Accepted ([ADR 0002](adr/0002-public-repo.md)) |
