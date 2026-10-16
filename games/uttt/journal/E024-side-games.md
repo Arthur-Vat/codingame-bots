@@ -6,11 +6,11 @@ parent: uttt-v015
 hypothesis: A network fitted on the bot's own games together with side games that leave each game by a random legal move also learns the positions after moves the bot would not play, which the search must judge to reject them, so it agrees more with the search's moves and the bot is stronger.
 change: The MCTS bot searches as `uttt-v015` does, with the network of Train run 38799715918 (width 256, 8 epochs, target result, 20 jobs of 55,000 games of `uttt-v015` and 2 side games each) instead of run 38562652097's.
 release: uttt-v016
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +58.0 [+31.4, +85.3] at CodinGame's limits
+pairs: 145
+full_time: +58.0 [+31.4, +85.3] (the SPRT's own, ADR 0020), no timeout in 290 games, 99.9% of answers within 93.0 ms
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -37,3 +37,26 @@ E023's network had lost 4 points of agreement on such positions and had 31 to 39
 **Screening against `uttt-v015`** at CodinGame's limits (Claude's 4-core session, 4-ply openings, seed 1, 3 games at a time, 100 pairs): 70 wins, 90 draws, 40 losses, +52.5 Elo [+21.1, +84.8]. The candidate had 2 timeouts and `uttt-v015` none; 99.9% of answers came within 98.2 ms for the candidate and 97.8 ms for `uttt-v015`, on a busy machine. Only the weights changed, so the bot's speed is the same.
 
 The bundle takes 70,456 characters, as before.
+
+**SPRT** ([run 38855092602](https://github.com/Arthur-Vat/codingame-bots/actions/runs/38855092602)), at CodinGame's limits, 4-ply openings, seed 1:
+
+```
+Smoke test against uttt-random:
+uttt-v016 vs random: 200 games, 100 complete pairs
+  uttt-v016: 200 wins, 0 draws, 0 losses (score 100.0%)
+
+SPRT against uttt-v015:
+uttt-v016 vs uttt-v015: 291 games, 145 complete pairs
+  uttt-v016: 109 wins, 120 draws, 62 losses (score 58.1%)
+  Elo of uttt-v016 over uttt-v015: +58.0 [+31.4, +85.3] (95%, from pairs)
+  pairs by uttt-v016's points (0, 1/2, 1, 3/2, 2): [4, 21, 56, 51, 13]
+  uttt-v016 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  uttt-v015 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  answers after the first (median, 99%, 99.9%): uttt-v016 90.1, 91.0, 93.0 ms; uttt-v015 90.1, 91.0, 92.9 ms
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 2.95 (bounds -2.94, 2.94) after 145 pairs
+Verdict: ACCEPTED: uttt-v016 is stronger than uttt-v015
+```
+
+The SPRT agrees with the screening (+52.5). The screening's 2 timeouts came from Claude's busy session: GitHub's runner had none.
+
+**What follows.** Side games fixed what held E023 back: the network now sees positions after moves the bot would not play, and keeps its agreement with the search where E023's lost it. Width 512 on data of this kind is the next test of the plan of 2026-10-15 (a fit-only run on run 38799715918's data while it is kept, until about 2026-10-22), and so is more data of this kind; each needs the owner's go-ahead.
