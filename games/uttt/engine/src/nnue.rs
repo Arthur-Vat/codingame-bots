@@ -166,17 +166,44 @@ fn add_row<const N: usize>(acc: &mut [i16; N], row: &[i16]) {
     }
 }
 
+/// `clamp(value, 0, QA)^2 * weight`, in `i32`.
+#[inline(always)]
+fn squared_term(value: i16, weight: i16) -> i32 {
+    // `c * w` fits in i16 (at most 127 * 127), which SSE2 multiplies
+    // faster than a 32-bit product of three factors.
+    let c = value.clamp(0, QA as i16);
+    i32::from(c * weight) * i32::from(c)
+}
+
 /// The sum of `clamp(acc, 0, QA)^2 * weight` over a row, in `i32`.
 #[inline(always)]
 fn squared_dot(acc: &[i16], weights: &[i16]) -> i32 {
     acc.iter()
         .zip(weights)
-        .map(|(&a, &w)| {
-            // `c * w` fits in i16 (at most 127 * 127), which SSE2 multiplies
-            // faster than a 32-bit product of three factors.
-            let c = a.clamp(0, QA as i16);
-            i32::from(c * w) * i32::from(c)
-        })
+        .map(|(&a, &w)| squared_term(a, w))
+        .sum()
+}
+
+/// [`squared_dot`] of `acc + row`, the row added lane by lane as the sum
+/// reads it: the output layer reads a child's accumulator without it being
+/// built.
+#[inline(always)]
+fn squared_dot_1(acc: &[i16], row: &[i16], weights: &[i16]) -> i32 {
+    acc.iter()
+        .zip(row)
+        .zip(weights)
+        .map(|((&a, &r), &w)| squared_term(a + r, w))
+        .sum()
+}
+
+/// [`squared_dot`] of `acc + row + other`, as [`squared_dot_1`].
+#[inline(always)]
+fn squared_dot_2(acc: &[i16], row: &[i16], other: &[i16], weights: &[i16]) -> i32 {
+    acc.iter()
+        .zip(row)
+        .zip(other)
+        .zip(weights)
+        .map(|(((&a, &r), &o), &w)| squared_term(a + r + o, w))
         .sum()
 }
 
@@ -318,24 +345,80 @@ impl<const N: usize> Network<N> {
     pub fn logit(&self, accumulator: &Accumulator<N>, board: &Board) -> f32 {
         let stm = board.to_move();
         let bucket = bucket(board);
-        let start = bucket * 2 * N;
-        let weights = &self.output_weights[start..start + 2 * N];
-        let (ours, theirs) = weights.split_at(N);
+        let (ours, theirs) = self.output_weights(bucket);
         let sum = squared_dot(&accumulator.values[stm], ours)
             + squared_dot(&accumulator.values[1 - stm], theirs);
+        self.output(sum, bucket)
+    }
+
+    /// `logit` of `after`, the ongoing position that `mv` leads to from
+    /// `before`, from `before`'s `accumulator`: the move's rows are added
+    /// lane by lane as the output layer reads them, so the child's
+    /// accumulator is neither copied nor stored. Bit for bit the `logit` of
+    /// the accumulator that `play` makes.
+    pub fn child_logit(
+        &self,
+        accumulator: &Accumulator<N>,
+        before: &Board,
+        mv: Move,
+        after: &Board,
+    ) -> f32 {
+        let stm = after.to_move();
+        let bucket = bucket(after);
+        let (ours, theirs) = self.output_weights(bucket);
+        let mut sum = 0;
+        let mut list = [0u16; 2];
+        for (seat, weights) in [(stm, ours), (1 - stm, theirs)] {
+            let values = &accumulator.values[seat];
+            sum += if move_features(before, mv, seat, &mut list) == 1 {
+                squared_dot_1(values, self.row(list[0]), weights)
+            } else {
+                squared_dot_2(values, self.row(list[0]), self.row(list[1]), weights)
+            };
+        }
+        self.output(sum, bucket)
+    }
+
+    /// The output weights of `bucket`: those of the side to move's
+    /// accumulator, then the other's.
+    #[inline(always)]
+    fn output_weights(&self, bucket: usize) -> (&[i16], &[i16]) {
+        let start = bucket * 2 * N;
+        self.output_weights[start..start + 2 * N].split_at(N)
+    }
+
+    /// The logit from the output layer's `sum` in `bucket`.
+    #[inline(always)]
+    fn output(&self, sum: i32, bucket: usize) -> f32 {
         let total = i64::from(sum / QA) + i64::from(self.output_bias[bucket]);
         total as f32 / (QA * QB) as f32
     }
 
     /// The side to move's expected score, 0 to 1: the sigmoid of `logit`.
     pub fn evaluate(&self, accumulator: &Accumulator<N>, board: &Board) -> f32 {
-        1.0 / (1.0 + (-self.logit(accumulator, board)).exp())
+        sigmoid(self.logit(accumulator, board))
+    }
+
+    /// `evaluate` of `after`, the ongoing position `mv` leads to from
+    /// `before`, from `before`'s accumulator: the sigmoid of `child_logit`.
+    pub fn evaluate_child(
+        &self,
+        accumulator: &Accumulator<N>,
+        before: &Board,
+        mv: Move,
+        after: &Board,
+    ) -> f32 {
+        sigmoid(self.child_logit(accumulator, before, mv, after))
     }
 
     /// `evaluate(refresh(board), board)`.
     pub fn evaluate_board(&self, board: &Board) -> f32 {
         self.evaluate(&self.refresh(board), board)
     }
+}
+
+fn sigmoid(logit: f32) -> f32 {
+    1.0 / (1.0 + (-logit).exp())
 }
 
 #[cfg(test)]

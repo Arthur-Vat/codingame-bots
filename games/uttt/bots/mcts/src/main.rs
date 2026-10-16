@@ -65,8 +65,8 @@ const RESERVE: Duration = Duration::ZERO;
 const EXPLORATION: f64 = 0.2;
 
 /// The network that judges the leaves (E017): the NNUE of Train run
-/// 38562652097, (189 → 256) × 2 → 10, quantized and decoded once from its
-/// packed characters (see `cg-pack`).
+/// 38799715918 (E024), (189 → 256) × 2 → 10, quantized and decoded once from
+/// its packed characters (see `cg-pack`).
 fn network() -> &'static Network<256> {
     static NETWORK: OnceLock<Network<256>> = OnceLock::new();
     NETWORK.get_or_init(|| {

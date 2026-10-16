@@ -34,7 +34,7 @@ impl Game for Board {
     }
 }
 
-/// A position searched with the NNUE (step C1): a new leaf gets the network's estimate instead of a playout, and the search uses no priors (in E017 a pattern policy ordered a node's children). A side to move with a move that wins the game scores a win, exactly. A search that expands all children at once (step C2) gets their estimates from the node's accumulators, updated for each child. The position carries its accumulators and updates them with each move played, so a search walking down its tree never builds them from scratch (E022).
+/// A position searched with the NNUE (step C1): a new leaf gets the network's estimate instead of a playout, and the search uses no priors (in E017 a pattern policy ordered a node's children). A side to move with a move that wins the game scores a win, exactly. A search that expands all children at once (step C2) gets their estimates from the node's accumulators, each child's move rows added as the output layer reads them, without building the child's accumulators (E026). The position carries its accumulators and updates them with each move played, so a search walking down its tree never builds them from scratch (E022).
 #[derive(Clone, Copy)]
 pub struct NnueBoard<const N: usize = 256> {
     board: Board,
@@ -74,16 +74,23 @@ impl<const N: usize> NnueBoard<N> {
     /// Seat 0's expected score in `board`, where the game goes on, whose
     /// accumulators are `accumulator`.
     fn estimate_from(&self, board: &Board, accumulator: &Accumulator<N>) -> f64 {
-        let value = if board.game_winning_move().is_some() {
-            1.0
-        } else {
-            f64::from(self.network.evaluate(accumulator, board))
-        };
-        if board.to_move() == 0 {
-            value
-        } else {
-            1.0 - value
-        }
+        seat_0(board, || self.network.evaluate(accumulator, board))
+    }
+}
+
+/// The estimate of the ongoing `board` for seat 0, from `evaluate`, its side
+/// to move's: a win when that side has a move that wins the game, without
+/// evaluating.
+fn seat_0(board: &Board, evaluate: impl FnOnce() -> f32) -> f64 {
+    let value = if board.game_winning_move().is_some() {
+        1.0
+    } else {
+        f64::from(evaluate())
+    };
+    if board.to_move() == 0 {
+        value
+    } else {
+        1.0 - value
     }
 }
 
@@ -121,12 +128,17 @@ impl<const N: usize> Game for NnueBoard<N> {
     fn child_scores(&self, moves: &[Move], _rng: &mut Rng, scores: &mut Vec<(f64, bool)>) {
         scores.clear();
         for &mv in moves {
-            let mut child = self.accumulator;
             let mut board = self.board;
-            self.network.play(&mut child, &mut board, mv);
+            board.play(mv);
             scores.push(match score(board.status()) {
                 Some(score) => (score, true),
-                None => (self.estimate_from(&board, &child), false),
+                None => (
+                    seat_0(&board, || {
+                        self.network
+                            .evaluate_child(&self.accumulator, &self.board, mv, &board)
+                    }),
+                    false,
+                ),
             });
         }
     }
