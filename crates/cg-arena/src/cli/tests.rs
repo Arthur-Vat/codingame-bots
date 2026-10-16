@@ -259,3 +259,331 @@ fn writes_parseable_record_files_in_a_new_directory() {
     assert_eq!(fs::read_to_string(dir_arg.join(&names[0])).unwrap(), json);
     fs::remove_dir_all(&dir).unwrap();
 }
+
+fn league_args(extra: &[&str]) -> LeagueArgs {
+    let cli =
+        Cli::try_parse_from(["arena", "league"].into_iter().chain(extra.iter().copied())).unwrap();
+    match cli.command {
+        Command::League(args) => args,
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn the_incremental_options_need_results() {
+    let base = ["arena", "league", "--bot", "a=x", "--bot", "b=y"];
+    let parse = |extra: &[&str]| {
+        Cli::try_parse_from(base.into_iter().chain(extra.iter().copied())).map(|_| ())
+    };
+    parse(&["--results", "r", "--new", "a", "--new-results", "n"]).unwrap();
+    assert!(parse(&["--results", "r"]).is_err(), "--new is required");
+    assert!(parse(&["--results", "r", "--new", "a"]).is_err());
+    assert!(parse(&["--results", "r", "--new-results", "n"]).is_err());
+    for option in [
+        ["--new", "a"],
+        ["--new-results", "n"],
+        ["--previous", "a"],
+        ["--fixed-opponents", "a,b"],
+        ["--nearest", "3"],
+        ["--canary", "a,b"],
+        ["--commit", "abc"],
+    ] {
+        assert!(parse(&option).is_err(), "{option:?} needs --results");
+    }
+    assert!(parse(&["--plan"]).is_err(), "--plan needs --results");
+    // The defaults do not make the options need --results.
+    let args = league_args(&["--bot", "a=x", "--bot", "b=y"]);
+    assert_eq!((args.results, args.nearest), (None, 5));
+    let args = league_args(&[
+        "--bot",
+        "a=x",
+        "--results",
+        "r",
+        "--new",
+        "a",
+        "--new-results",
+        "n",
+        "--fixed-opponents",
+        "greedy,v001",
+        "--canary",
+        "v002,v001",
+        "--plan",
+    ]);
+    assert_eq!(args.fixed_opponents, ["greedy", "v001"]);
+    assert_eq!(args.canary.as_deref(), Some("v002,v001"));
+    assert!(args.plan);
+    assert_eq!(args.nearest, 5);
+}
+
+fn stored_line(a: &str, b: &str) -> String {
+    format!(
+        r#"{{"a":"{a}","b":"{b}","pairs":2,"wins":2,"draws":0,"losses":2,"pair_points":[0,0,2,0,0],"faults":[0,0],"time_scale":1.0,"time_tolerance_ms":0,"opening_plies":0,"seed":7,"date":"2026-10-16","commit":"abc","cpu":"unknown"}}"#
+    )
+}
+
+#[test]
+fn a_canary_names_two_bots() {
+    let bots = [
+        BotSpec::parse("a=x").unwrap(),
+        BotSpec::parse("b=y").unwrap(),
+    ];
+    let pairing = |a: &str, b: &str| league::parse_results(&stored_line(a, b), "f").unwrap();
+    let stored = pairing("a", "b");
+    assert_eq!(
+        incremental::find_canary("b,a", &stored, &bots).unwrap(),
+        stored[0]
+    );
+    let error = incremental::find_canary("a", &stored, &bots).unwrap_err();
+    assert!(error.contains("A,B"), "{error}");
+    let error = incremental::find_canary("a,c", &stored, &bots).unwrap_err();
+    assert!(error.contains("no pairing"), "{error}");
+    let stored = pairing("a", "c");
+    let error = incremental::find_canary("a,c", &stored, &bots).unwrap_err();
+    assert!(error.contains("no --bot"), "{error}");
+}
+
+#[cfg(unix)]
+mod end_to_end {
+    use std::time::Duration;
+
+    use super::*;
+    use crate::referee::{Answer, GameSetup, InvalidAnswer, Outcome, Referee, TimeLimits};
+
+    /// Seat 0 wins when the seed is even, seat 1 when it is odd, after one
+    /// turn: in a seat-swapped pair each bot wins one game.
+    struct SeedDecides {
+        seed: u64,
+        played: bool,
+    }
+
+    impl Referee for SeedDecides {
+        fn time_limits(&self) -> TimeLimits {
+            TimeLimits {
+                first_answer: Duration::from_secs(5),
+                later_answers: Duration::from_secs(5),
+            }
+        }
+
+        fn players_to_act(&self) -> Vec<usize> {
+            vec![0]
+        }
+
+        fn turn_input(&self, _seat: usize) -> String {
+            "go\n".to_string()
+        }
+
+        fn play(&mut self, _answers: &[Answer]) -> Result<(), InvalidAnswer> {
+            self.played = true;
+            Ok(())
+        }
+
+        fn outcome(&self) -> Option<Outcome> {
+            self.played
+                .then_some(Outcome::Win((self.seed % 2) as usize))
+        }
+    }
+
+    fn new_referee(setup: &GameSetup) -> Box<dyn Referee> {
+        Box::new(SeedDecides {
+            seed: setup.seed,
+            played: false,
+        })
+    }
+
+    /// A fresh directory for one test.
+    fn directory(name: &str) -> PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("cg-arena-league-{}-{name}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    /// Runs an incremental league of `cat` bots named `bots`.
+    fn run(dir: &Path, bots: &[&str], extra: &[&str]) -> Result<bool, String> {
+        let results = dir.join("results.jsonl");
+        let new_results = dir.join("new.jsonl");
+        let mut line = vec![
+            "--results",
+            results.to_str().unwrap(),
+            "--new-results",
+            new_results.to_str().unwrap(),
+            "--pairs",
+            "2",
+            "--jobs",
+            "2",
+            "--commit",
+            "abc123",
+        ];
+        let bot_specs: Vec<String> = bots.iter().map(|name| format!("{name}=cat")).collect();
+        for spec in &bot_specs {
+            line.extend(["--bot", spec]);
+        }
+        line.extend(extra.iter().copied());
+        run_league(league_args(&line), "uttt", &new_referee)
+    }
+
+    fn new_lines(dir: &Path) -> Vec<PairingResult> {
+        league::read_results(&dir.join("new.jsonl")).unwrap()
+    }
+
+    #[test]
+    fn plays_the_missing_pairings_and_nothing_twice() {
+        let dir = directory("twice");
+        let results = dir.join("results.jsonl");
+        fs::write(&results, format!("{}\n", stored_line("greedy", "random"))).unwrap();
+        let bots = ["random", "greedy", "v001"];
+        let options = ["--new", "v001", "--anchor", "random"];
+
+        assert_eq!(run(&dir, &bots, &options), Ok(true));
+        let lines = new_lines(&dir);
+        let opponents: Vec<&str> = lines.iter().map(|line| line.b.as_str()).collect();
+        assert_eq!(opponents, ["greedy", "random"]);
+        for line in &lines {
+            assert_eq!(line.a, "v001");
+            assert_eq!((line.pairs, line.wins, line.losses), (2, 2, 2));
+            assert_eq!(line.pair_points, [0, 0, 2, 0, 0]);
+            assert_eq!(line.seed, league::pairing_seed(1, "v001", &line.b));
+            assert_eq!((line.commit.as_str(), line.time_scale), ("abc123", 1.0));
+            assert_eq!(line.date.len(), 10);
+        }
+
+        // With the new lines copied in, a rerun plays nothing.
+        let mut text = fs::read_to_string(&results).unwrap();
+        text.push_str(&fs::read_to_string(dir.join("new.jsonl")).unwrap());
+        fs::write(&results, text).unwrap();
+        assert_eq!(run(&dir, &bots, &options), Ok(true));
+        assert!(new_lines(&dir).is_empty());
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn chooses_the_nearest_opponents_after_the_previous_release() {
+        let dir = directory("nearest");
+        let stored = [("greedy", "random"), ("v002", "random")];
+        let text: Vec<String> = stored.iter().map(|(a, b)| stored_line(a, b)).collect();
+        fs::write(dir.join("results.jsonl"), text.join("\n")).unwrap();
+        let bots = ["random", "greedy", "v002", "v001"];
+        let options = [
+            "--new",
+            "v001",
+            "--previous",
+            "greedy",
+            "--nearest",
+            "1",
+            "--anchor",
+            "random",
+        ];
+        assert_eq!(run(&dir, &bots, &options), Ok(true));
+        let opponents: Vec<String> = new_lines(&dir).into_iter().map(|line| line.b).collect();
+        assert_eq!(opponents, ["greedy", "random"], "ties go to the first name");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn plans_without_playing_and_replays_a_canary_without_storing_it() {
+        let dir = directory("canary");
+        let results = dir.join("results.jsonl");
+        fs::write(&results, format!("{}\n", stored_line("greedy", "random"))).unwrap();
+        let bots = ["random", "greedy", "v001"];
+        let options = ["--new", "v001", "--canary", "random,greedy"];
+
+        let mut plan = options.to_vec();
+        plan.push("--plan");
+        assert_eq!(run(&dir, &bots, &plan), Ok(true));
+        assert!(!dir.join("new.jsonl").exists(), "a plan creates nothing");
+
+        assert_eq!(run(&dir, &bots, &options), Ok(true));
+        let opponents: Vec<String> = new_lines(&dir).into_iter().map(|line| line.b).collect();
+        assert_eq!(opponents, ["greedy", "random"], "the canary is not stored");
+
+        // A release that has pairings plays none, but the canary still runs.
+        let mut text = fs::read_to_string(&results).unwrap();
+        text.push_str(&format!("{}\n", stored_line("v001", "random")));
+        fs::write(&results, text).unwrap();
+        assert_eq!(run(&dir, &bots, &options), Ok(true));
+        assert!(new_lines(&dir).is_empty());
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn every_bot_of_the_file_needs_a_command_before_any_game() {
+        let dir = directory("commands");
+        let stored = [("greedy", "random"), ("v002", "random")];
+        let text: Vec<String> = stored.iter().map(|(a, b)| stored_line(a, b)).collect();
+        fs::write(dir.join("results.jsonl"), text.join("\n")).unwrap();
+        // v002 is not the previous release, fixed or necessarily nearest, yet
+        // it may be chosen: nothing is played without a command for it.
+        let bots = ["random", "greedy", "v001"];
+        let options = ["--new", "v001", "--previous", "greedy", "--nearest", "1"];
+        let error = run(&dir, &bots, &options).unwrap_err();
+        assert!(
+            error.contains("\"v002\" is in the results file but has no --bot"),
+            "{error}"
+        );
+        assert!(
+            error.contains("give a --bot for every bot of the file"),
+            "{error}"
+        );
+        assert!(!dir.join("new.jsonl").exists(), "no game was played");
+        let mut plan = options.to_vec();
+        plan.push("--plan");
+        assert!(run(&dir, &bots, &plan).unwrap_err().contains("\"v002\""));
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn an_empty_fixed_opponent_means_none() {
+        let dir = directory("nofixed");
+        let results = dir.join("results.jsonl");
+        fs::write(&results, format!("{}\n", stored_line("greedy", "random"))).unwrap();
+        let bots = ["random", "greedy", "v001"];
+        let options = ["--new", "v001", "--fixed-opponents", ""];
+        assert_eq!(run(&dir, &bots, &options), Ok(true));
+        assert_eq!(new_lines(&dir).len(), 2);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn reports_mistakes_before_playing() {
+        let dir = directory("errors");
+        let results = dir.join("results.jsonl");
+        fs::write(&results, format!("{}\n", stored_line("greedy", "random"))).unwrap();
+        let bots = ["random", "v001"];
+        // greedy is in the file but has no --bot.
+        let error = run(&dir, &bots, &["--new", "v001"]).unwrap_err();
+        assert!(error.contains("no --bot"), "{error}");
+        let error = run(&dir, &bots, &["--new", "v002"]).unwrap_err();
+        assert!(error.contains("--new"), "{error}");
+        let error = run(&dir, &bots, &["--new", "v001", "--previous", "v009"]).unwrap_err();
+        assert!(error.contains("--previous"), "{error}");
+        let error = run(&dir, &bots, &["--new", "v001", "--anchor", "v009"]).unwrap_err();
+        assert!(error.contains("--anchor"), "{error}");
+        let error = run(&dir, &bots, &["--new", "v001", "--canary", "v001,random"]).unwrap_err();
+        assert!(error.contains("--canary"), "{error}");
+
+        let same = results.to_str().unwrap();
+        let args = league_args(&[
+            "--bot",
+            "v001=cat",
+            "--bot",
+            "random=cat",
+            "--bot",
+            "greedy=cat",
+            "--results",
+            same,
+            "--new",
+            "v001",
+            "--new-results",
+            same,
+        ]);
+        let error = run_league(args, "uttt", &new_referee).unwrap_err();
+        assert!(error.contains("must not be"), "{error}");
+        assert!(fs::read_to_string(&results).unwrap().contains("greedy"));
+
+        fs::write(&results, "{oops\n").unwrap();
+        let error = run(&dir, &bots, &["--new", "v001"]).unwrap_err();
+        assert!(error.contains("results.jsonl:1:"), "{error}");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+}
