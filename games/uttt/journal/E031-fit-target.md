@@ -47,6 +47,6 @@ Lower for both, by 0.6 to 2.2 points, against about 1.3 points of standard error
 
 Each had 1 timeout, `uttt-v017` 3 and 1; 99.9% of the candidates' answers came within 95.1 and 94.6 ms. The bundles took 71,871 characters, as `uttt-v017`'s.
 
-**Decision.** Dropped without an SPRT, per the plan agreed with the owner (an SPRT only on a gain): neither screen shows one, and an SPRT for +10 Elo would likely run for hours to reject or end inconclusive.
+**Decision.** Dropped without an SPRT, per the plan agreed with the owner (an SPRT only on a gain): neither screen shows one.
 
-**What follows.** On this data, the target barely matters: the three networks play within noise of each other, so what the result labels teach and what the root scores teach is much the same here. E028's loss is then less about the target than about the data itself (`uttt-v016`'s more decisive games). The networks stay on the runs' branches until they are pruned; no bot change was committed.
+**What follows.** On this data, the target barely matters: the three networks play within noise of each other, so what the result labels teach and what the root scores teach is much the same here. A likely reading, not tested: E028's loss is less about the target than about the data itself (`uttt-v016`'s more decisive games). The networks stay on the runs' branches until they are pruned; no bot change was committed.
