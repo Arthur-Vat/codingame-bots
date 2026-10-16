@@ -1,7 +1,7 @@
-//! The command line shared by every game's arena binary, with three
-//! commands: `match`, `sprt` and `league`.
+//! The command line shared by every game's arena binary, with four
+//! commands: `match`, `sprt`, `league` and `leaderboard`.
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -11,6 +11,7 @@ use std::time::Duration;
 
 use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 
+use crate::leaderboard;
 use crate::league::{self, PairingResult, Rating};
 
 use crate::ratings::{elo_margins, elo_ratings, MatchupResult};
@@ -39,6 +40,9 @@ pub enum Command {
     /// Plays every pair of bots and computes Elo ratings; with `--results`,
     /// plays only a new release's pairings not yet stored.
     League(LeagueArgs),
+    /// Writes the game's LEADERBOARD.md from a league results file, or
+    /// checks that a committed one matches it.
+    Leaderboard(LeaderboardArgs),
 }
 
 /// Options every command shares.
@@ -251,6 +255,34 @@ pub struct LeagueArgs {
     pub common: CommonArgs,
 }
 
+#[derive(Debug, clap::Args)]
+pub struct LeaderboardArgs {
+    /// The league results file (see docs/adr/0038-incremental-league.md),
+    /// read with the checks `league --results` makes. Bots with a file
+    /// `releases/GAME-NAME.rs` next to it are releases.
+    #[arg(long, value_name = "FILE")]
+    pub results: PathBuf,
+
+    /// The bot rated 0 Elo. It must appear in the results file unless the
+    /// file is empty.
+    #[arg(long, value_name = "NAME")]
+    pub anchor: String,
+
+    /// The game's journal index: the table rows whose last column says
+    /// Promoted: `GAME-vNNN` give a release's experiment and date.
+    #[arg(long, value_name = "FILE")]
+    pub journal: PathBuf,
+
+    /// Write the Markdown to this file instead of standard output.
+    #[arg(long, value_name = "FILE", conflicts_with = "check")]
+    pub out: Option<PathBuf>,
+
+    /// Write nothing; exit with status 1 unless this file holds exactly the
+    /// generated Markdown.
+    #[arg(long, value_name = "FILE")]
+    pub check: Option<PathBuf>,
+}
+
 /// Runs the arena for one game. `name` is the binary's name for `--help`;
 /// the game's id in game records is `name` without a trailing `-arena`
 /// (`uttt-arena` records the game `uttt`). `new_referee` builds each game.
@@ -270,6 +302,7 @@ pub fn main<F: RefereeFactory>(name: &'static str, new_referee: F) -> ExitCode {
         Command::Match(args) => run_match(args, game, &new_referee),
         Command::Sprt(args) => run_sprt(args, game, &new_referee),
         Command::League(args) => run_league(args, game, &new_referee),
+        Command::Leaderboard(args) => run_leaderboard(&args, game, name),
     };
     match result {
         Ok(true) => ExitCode::SUCCESS,
@@ -475,6 +508,72 @@ fn run_league<F: RefereeFactory>(
     print_ratings(&table, &names[anchor]);
     let passed = faults_pass(&args.common, &names, &faults, &games);
     records_result.map(|()| passed)
+}
+
+/// The `leaderboard` command: generates the game's `LEADERBOARD.md` from the
+/// results file and prints it, writes it to `--out`, or compares it with the
+/// file `--check` names. `binary` is the arena's name, for the messages.
+fn run_leaderboard(args: &LeaderboardArgs, game: &str, binary: &str) -> Result<bool, String> {
+    let pairings = league::read_results(&args.results)?;
+    let journal = fs::read_to_string(&args.journal)
+        .map_err(|err| format!("cannot read {}: {err}", args.journal.display()))?;
+    let ratings = if pairings.is_empty() {
+        Vec::new()
+    } else {
+        if !pairings
+            .iter()
+            .any(|pairing| pairing.involves(&args.anchor))
+        {
+            return Err(format!(
+                "--anchor {:?} is not in {}",
+                args.anchor,
+                args.results.display()
+            ));
+        }
+        let names = league::known_bots(&pairings, [args.anchor.as_str()]);
+        league::rate(&names, &pairings, &args.anchor)?
+    };
+    let folder = args.results.parent().unwrap_or(Path::new(""));
+    let releases: BTreeSet<String> = ratings
+        .iter()
+        .map(|rating| &rating.name)
+        .filter(|name| !name.contains(['/', '\\']))
+        .filter(|name| {
+            folder
+                .join("releases")
+                .join(format!("{game}-{name}.rs"))
+                .is_file()
+        })
+        .cloned()
+        .collect();
+    let board = leaderboard::render(game, &pairings, &ratings, &args.anchor, &journal, &releases)?;
+    for warning in &board.warnings {
+        eprintln!("warning: {warning}");
+    }
+    if let Some(path) = &args.check {
+        if fs::read(path).is_ok_and(|bytes| bytes == board.text.as_bytes()) {
+            return Ok(true);
+        }
+        eprintln!(
+            "error: {} is not the leaderboard of {}; regenerate it with: {binary} leaderboard \
+             --results {} --anchor {} --journal {} --out {}",
+            path.display(),
+            args.results.display(),
+            args.results.display(),
+            args.anchor,
+            args.journal.display(),
+            path.display()
+        );
+        return Ok(false);
+    }
+    match &args.out {
+        Some(path) => fs::write(path, board.text.as_bytes())
+            .map_err(|err| format!("cannot write {}: {err}", path.display()))?,
+        None => io::stdout()
+            .write_all(board.text.as_bytes())
+            .map_err(|err| format!("cannot write to standard output: {err}"))?,
+    }
+    Ok(true)
 }
 
 /// Errors when two names are the same.
