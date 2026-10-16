@@ -79,13 +79,14 @@ jobs:
           JOBS: ${{ inputs.jobs }}
           MINUTES: ${{ inputs.minutes }}
         run: |
-          if ! [[ $JOBS =~ ^[0-9]+$ ]] || ((JOBS < 1 || JOBS > 20)); then
+          if ! [[ $JOBS =~ ^[1-9][0-9]*$ ]] || ((JOBS < 1 || JOBS > 20)); then
             echo "::error::jobs must be a number from 1 to 20, not '$JOBS'"
             exit 1
           fi
-          # The job's timeout is 350 minutes: this leaves room for the build,
+          # Numbers without leading zeros, which bash would read as octal. The
+          # job's timeout is 350 minutes: this leaves room for the build,
           # the last game and the upload.
-          if [[ -n $MINUTES ]] && { ! [[ $MINUTES =~ ^[0-9]+$ ]] || ((MINUTES < 1 || MINUTES > 330)); }; then
+          if [[ -n $MINUTES ]] && { ! [[ $MINUTES =~ ^[1-9][0-9]*$ ]] || ((MINUTES < 1 || MINUTES > 330)); }; then
             echo "::error::minutes must be empty or a number from 1 to 330, not '$MINUTES'"
             exit 1
           fi
