@@ -19,3 +19,5 @@ Reports of the [Train workflow](../../../.github/workflows/train.yml)'s runs tha
 | [38876178171](runs/38876178171/report.md) | NNUE (189 → 128) × 2 → 10, 8 epochs on run 38799715918's data | E027 (dropped) |
 | [38883498642](runs/38883498642/report.md) | NNUE (189 → 256) × 2 → 30, output buckets by target and game phase, 8 epochs on run 38799715918's data | E029 (dropped) |
 | [38875273472](runs/38875273472/report.md) | NNUE (189 → 256) × 2 → 10, 8 epochs on 16 jobs of 240 minutes of `uttt-v016`'s own search and 2 side games each | E028 (dropped) |
+| [38906159700](runs/38906159700/report.md) | NNUE (189 → 256) × 2 → 10, 8 epochs on run 38799715918's data, target score | E031 (dropped) |
+| [38906172194](runs/38906172194/report.md) | NNUE (189 → 256) × 2 → 10, 8 epochs on run 38799715918's data, target mix | E031 (dropped) |
