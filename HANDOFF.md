@@ -5,7 +5,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 ## Waiting for the owner
 
 - https://github.com/Arthur-Vat/codingame-bots/pull/150 docs(uttt): E028, the network of uttt-v016's self-play dropped after screening (-81.4 Elo [-112.8, -51.2] against v017; lower error, lower move agreement), light review fixed, asked 2026-10-16.
-- Proposed 2026-10-16, not answered: a fit-only run with `target score` (or `mix`) on run 38875273472's data (kept until about 2026-10-23) or run 38799715918's (about 2026-10-22), tested against v017, before more self-play. Also proposed: PUCT tuning at full time; 512 on two runs' data (needs multi-run fits). Owner asked about AWS spot (estimate given: about 22,000 vCPU-hours, $220 to $550 for 100M games) and a Mac mini lab (advised against for now; a self-hosted runner on a public repository needs an ADR).
+- Target test, answered in the conversation, 2026-10-16: "Go on with this" (two fit-only runs on run 38799715918's data, `score` and `mix`, then agreement on fresh v017 games, a full-time screen against v017, an SPRT only on a gain): Train runs 38906159700 and 38906172194 started 2026-10-16 13:13 UTC on main e001380 (check each report's target). Fresh v017 games for agreement are in the session's scratchpad only (regenerate: `uttt-trainer selfplay` as train.yml's options, 4 x 150 games, seeds 9001-9004 sampled 8 plies temperature 2, 9101-9104 random 6 plies). Also proposed: PUCT tuning at full time; 512 on two runs' data (needs multi-run fits). Owner asked about AWS spot (estimate: about 22,000 vCPU-hours, $220 to $550 for 100M games) and a Mac mini lab (advised against for now; a self-hosted runner on a public repository needs an ADR).
 
 ## Open questions
 
