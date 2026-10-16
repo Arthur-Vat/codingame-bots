@@ -14,7 +14,7 @@ scripts/bundle-bots.sh && scripts/cg-check.sh target/cg/*.rs
 scripts/check-docs.sh
 ```
 
-For bot or engine changes, also play the bundled bots against each other with the game's arena (for example `target/release/uttt-arena --help`) and report the summary. For engine changes, also report `cargo run --release -p uttt-engine --example speed` against the baseline in `games/uttt/README.md`.
+For bot or engine changes, also play the bundled bots against each other with the game's arena (for example `target/release/uttt-arena --help`) and report the summary. For engine changes, also report `cargo +1.90.0 run --release -p uttt-engine --example speed` against the baseline in `games/uttt/README.md`.
 
 For a bot strength experiment, follow "An experiment, step by step" in `docs/WORKFLOW.md`: `scripts/new-release.sh` makes the candidate, `scripts/sprt.sh` runs the test locally, and the SPRT workflow judges it.
 
@@ -34,7 +34,7 @@ Procedures that repeat are project skills in `.claude/skills/`, and the agents t
 
 ## Rust and CodinGame constraints
 
-- CodinGame compiles Rust 1.90.0 with the 2021 edition (`docs/CODINGAME.md`). The workspace sets `rust-version = "1.90"`; CI uses exactly 1.90.0. This workspace may have a newer Rust and cannot download 1.90.0, so heed clippy's `incompatible_msrv` warnings and avoid syntax newer than 1.90.
+- CodinGame compiles Rust 1.90.0 with the 2021 edition (`docs/CODINGAME.md`). The workspace sets `rust-version = "1.90"`; CI uses exactly 1.90.0. Sessions default to a newer Rust; install CodinGame's with `rustup toolchain install 1.90.0` and measure speed with `cargo +1.90.0`, since a newer compiler can run the same code at another speed ([E026](games/uttt/journal/E026-fused-children.md)). Heed clippy's `incompatible_msrv` warnings and avoid syntax newer than 1.90.
 - Any code that ends up inside a bot uses the standard library only: no crates.io dependencies. Tools (arena, bundler) may use dependencies allowed by `deny.toml`.
 - A paste-ready bot is one file of at most 100,000 characters, counted as UTF-16 units ([ADR 0037](docs/adr/0037-size-limit-in-characters.md)), that compiles with `rustc --edition 2021` alone. Data packed into characters outside ASCII ([docs/research/utf16-packing.md](docs/research/utf16-packing.md)) is encoded and decoded in Rust.
 - No `unsafe` (workspace lint). Proposing an exception needs an ADR.

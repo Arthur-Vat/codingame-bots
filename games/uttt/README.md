@@ -87,29 +87,33 @@ It counts iterations, not time, so the same request gives the same lines. Speed,
 
 ## Engine speed
 
-`cargo run --release -p uttt-engine --example speed` runs random playouts from the start position for a few seconds, then decisive playouts (a move that wins the game when there is one, as the search plays them), then 100 ms MCTS searches from there, then the cost of an NNUE of width 256 (updates, evaluations, accumulators from scratch), then where the time of the MCTS bot's search goes. Moves per playout are averaged over 10,000 games played one move at a time. CI runs it on every pull request and push to `main` and shows the table in the job summary of the "uttt: bots" job (from `ci.sh`); it is a report, not a check.
+`cargo +1.90.0 run --release -p uttt-engine --example speed` runs random playouts from the start position for a few seconds, then decisive playouts (a move that wins the game when there is one, as the search plays them), then 100 ms MCTS searches from there, then the cost of an NNUE of width 256 (updates, evaluations, accumulators from scratch), then where the time of the MCTS bot's search goes. Moves per playout are averaged over 10,000 games played one move at a time. CI runs it on every pull request and push to `main` with Rust 1.90.0 and shows the table in the job summary of the "uttt: bots" job (from `ci.sh`); it is a report, not a check. Measure with Rust 1.90.0, CodinGame's compiler (`rustup toolchain install 1.90.0`): a newer compiler runs the same code at another speed ([E026](journal/E026-fused-children.md)).
 
-Baseline, measured on 2026-10-08 on one thread of an Intel Xeon at 2.8 GHz (this shared machine varies by about 10% between runs), after E006 sped up selection and playouts:
+Baseline, measured on 2026-10-16 with Rust 1.90.0 on main at 85c10c4 (the search and network of `uttt-v016`), three runs on one thread of an Intel Xeon at 2.1 GHz in Claude's session (shared: runs vary by 10% to 15%, and one run of the random playouts by 18%):
 
 | Engine benchmark | Result |
 | --- | --- |
-| Random playouts from the start | about 1,190,000 per second (1,180,605 to 1,196,417 over three runs) |
+| Random playouts from the start | about 1,280,000 per second (1,062,347 to 1,296,439 over three runs) |
 | Moves per playout | 58.9 |
-| Moves per second | about 70,000,000 |
-| Decisive playouts from the start | about 1,234,000 per second (1,214,458 to 1,247,103), 54.2 moves each |
-| MCTS iterations from the start, 100 ms searches | about 755,000 per second (719,982 to 803,399) |
-| NNUE 256: incremental updates (one move) | about 12,100,000 per second (11,441,466 to 13,102,714) |
-| NNUE 256: evaluations | about 5,400,000 per second (4,860,759 to 5,686,432) |
-| NNUE 256: accumulators from scratch | about 907,000 per second (867,389 to 943,153) |
-| NNUE search: the MCTS bot's network and settings, 19 searches of up to 20,000 iterations | about 381,000 iterations per second (364,091 to 392,754) |
-| NNUE search: per iteration | 8.4 moves walking down, 0.99 nodes expanded, 7.8 children, 7.3 judged by the network |
-| NNUE search: share of the time, updating the accumulators with each move walking down, and the rules | 19.8% to 22.2% |
-| NNUE search: share of the time, copying the accumulators for each child | 3.2% to 4.2% |
-| NNUE search: share of the time, playing each child's move: its rows, and the rules | 19.1% to 19.6% |
-| NNUE search: share of the time, evaluating each child | 35.7% to 39.2% |
-| NNUE search: share of the time, the rest: tree, moves, rules | 18.3% to 18.4% |
+| Moves per second | about 75,000,000 |
+| Decisive playouts from the start | about 1,290,000 per second (1,230,574 to 1,310,291), 54.2 moves each |
+| MCTS iterations from the start, 100 ms searches | about 793,000 per second (784,068 to 868,881) |
+| NNUE 256: incremental updates (one move) | about 24,800,000 per second (23,302,562 to 27,379,919) |
+| NNUE 256: evaluations | about 4,860,000 per second (4,837,051 to 5,408,160) |
+| NNUE 256: accumulators from scratch | about 1,250,000 per second (1,242,307 to 1,253,664) |
+| NNUE search: the MCTS bot's network and settings, 20 searches of up to 20,000 iterations | about 488,000 iterations per second (443,354 to 500,115) |
+| NNUE search: per iteration | 9.4 moves walking down, 0.85 nodes expanded, 6.4 children, 6.2 judged by the network |
+| NNUE search: share of the time, updating the accumulators with each move walking down, and the rules | 14.4% to 18.2% |
+| NNUE search: share of the time, copying the accumulators for each child | 0.7% to 2.8% |
+| NNUE search: share of the time, playing each child's move: its rows, and the rules | 10.0% to 11.3% |
+| NNUE search: share of the time, evaluating each child | 45.5% to 47.9% |
+| NNUE search: share of the time, the rest: tree, moves, rules | 21.7% to 27.2% |
 
-The three NNUE rows (`uttt_engine::nnue`, a random network of width 256, built in the example) were added and measured on 2026-10-14 on Claude's session, three runs, machine noise about 10%; the other rows are from the earlier measurement above. The seven "NNUE search" rows were added on 2026-10-15 (step D3 of the [roadmap](ROADMAP.md#d-scale)), three runs on Claude's session. They search positions of three games of the bot's search against itself (every eighth position from the fourth ply), with the bot's own network, exploration and minimax weight, 20,000 iterations each, about one turn's worth (6 of the 19 stop earlier, once they prove the position; the rates count the iterations run). A part's share is measured by doing it 4 more times for nothing, in a copy of `NnueBoard::child_scores` that must find exactly what `NnueBoard` finds: the search builds the same tree, so the time it takes more, divided by 4, is that part's. Repeats find their data in the cache, so these shares lean low, and the rest takes what they miss. The rows are those of E022's search (`uttt-v015`), measured on 2026-10-15 after it, three runs. Before E022, the search built a node's accumulators from scratch when it expanded it: about 305,000 iterations per second (296,829 to 311,021), with these shares: accumulators from scratch 20.9% to 24.8%, copies 2.8% to 5.1%, each child's move 11.4% to 15.5%, evaluations 30.0% to 37.3%, the rest 20.6% to 34.9%. E022 removed the accumulators from scratch and the same searches took 22% to 27% less time, after paying for the walk's updates: the old probe underestimated the share of the accumulators from scratch.
+The three NNUE rows use a random network of width 256, built in the example (`uttt_engine::nnue`). The "NNUE search" rows search positions of three games of the bot's search against itself (every eighth position from the fourth ply), with the bot's own network, exploration and minimax weight, 20,000 iterations each, about one turn's worth (searches that prove their position stop earlier; the rates count the iterations run). The positions depend on the bot's network, so these rows change with each new network. A part's share is measured by doing it 4 more times for nothing, in a copy of `NnueBoard::child_scores` that must find exactly what `NnueBoard` finds: the search builds the same tree, so the time it takes more, divided by 4, is that part's. Repeats find their data in the cache, so these shares lean low, and the rest takes what they miss (E022 below).
+
+One run with Rust 1.97.0 on the same machine and commit, for comparison: random playouts 1,121,786 per second, decisive 1,295,768, MCTS iterations 851,134, NNUE updates 17,086,212, evaluations 5,707,676, accumulators from scratch 1,362,397, NNUE search 454,362 iterations per second, with 29.6% of its time updating the accumulators on the walk and 40.1% evaluating children.
+
+Earlier baselines were most likely measured with a newer compiler than 1.90.0 (sessions did not install 1.90.0 until 2026-10-16), so they compare with each other but not with the rows above. On 2026-10-08, on one thread of an Intel Xeon at 2.8 GHz, after E006: about 1,190,000 random and 1,234,000 decisive playouts and 755,000 MCTS iterations per second. On 2026-10-14 and 15, in Claude's session: NNUE 256 updates about 12,100,000, evaluations 5,400,000 and accumulators from scratch 907,000 per second; the NNUE search of `uttt-v015` about 381,000 iterations per second (19 searches; per iteration 8.4 moves walking down, 0.99 nodes expanded, 7.8 children, 7.3 judged by the network), with these shares: the walk's updates 19.8% to 22.2%, copies 3.2% to 4.2%, each child's move 19.1% to 19.6%, evaluations 35.7% to 39.2%, the rest 18.3% to 18.4%. Before E022, the search built a node's accumulators from scratch when it expanded it: about 305,000 iterations per second, with accumulators from scratch 20.9% to 24.8%, copies 2.8% to 5.1%, each child's move 11.4% to 15.5%, evaluations 30.0% to 37.3%, the rest 20.6% to 34.9%. E022 removed the accumulators from scratch and the same searches took 22% to 27% less time, after paying for the walk's updates: the probe had underestimated the share of the accumulators from scratch.
 
 Before E006 (after E005): about 925,000 random and 976,000 decisive playouts, and 620,000 MCTS iterations per second. After E004: about 985,000 random playouts and 578,000 MCTS iterations per second. Before E004: 441,681 playouts and about 350,000 MCTS iterations per second.
 
