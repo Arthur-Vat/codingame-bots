@@ -39,7 +39,7 @@ Proposed to the owner on 2026-10-16 among four next steps after [E031](E031-fit-
 | 0.02 | 1.0 | 69, 81, 50 | +33.1 [+5.5, +61.2] |
 | 0.01 | 1.0 | 60, 87, 53 | +12.2 [-21.0, +45.5] |
 
-Every setting with a temperature from 0.03 to 0.07 and a weight from 0.5 to 1.0 scored +33 to +60, each interval above 0; a weight below 0.25 or a temperature of 0.02 and below lost most of it. All 16 played the same 100 openings, and the best of 16 noisy results overstates its own gain, so the two best centres of that region were played again on 150 new openings (seed 2), the same way:
+Every setting with a temperature from 0.03 to 0.07 and a weight from 0.5 to 1.0 scored +33 to +60, each interval above 0; a weight below 0.25, a temperature of 0.01 or 0.02 at weight 0.75 lost most of it (0.02 at weight 1.0 kept +33.1). All 16 played the same 100 openings, and the best of 16 noisy results overstates its own gain, so the two best centres of that region were played again on 150 new openings (seed 2), the same way:
 
 | Temperature | Weight | Wins, draws, losses | Elo | Timeouts (candidate, v017) |
 | --- | --- | --- | --- | --- |
