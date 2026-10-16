@@ -5,7 +5,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 ## Waiting for the owner
 
 - #144 deadline self-play (`selfplay --seconds`, Train input `minutes`), deep review approve, nit fixed in 3d09553; approval to ask once CI is green: https://github.com/Arthur-Vat/codingame-bots/pull/144
-- #145 E026 (`uttt-v017`, children evaluated from the parent's accumulators, exact, about +18% iterations per second; screened +5.2 [-14.3, +24.8]), SPRT running; approval to ask once it ends: https://github.com/Arthur-Vat/codingame-bots/pull/145
+- #145 E026 dropped (SPRT rejected -17.6 [-34.8, -0.4]; with Rust 1.90 only about 5% faster, the 18% came from Rust 1.97 slowing the old loop): docs-only entry at 9e09d6e, approval to ask once CI is green: https://github.com/Arthur-Vat/codingame-bots/pull/145
 
 ## Open questions
 
@@ -49,6 +49,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 - Later, optional: the e2e arena tests hard-code port 4173 (`e2e/arena.ts`, `browser-engine.spec.ts`), so runs on another port fail (review of #111).
 - No Firefox testing of the studio (owner, 2026-10-13: not wanted).
 - ADR 0023 still says the SPRT is not a required check, which is no longer true. The owner keeps the current merge policy (2026-10-09) and wants no new record; the line stays as is unless he asks for a fix.
+- Rust 1.90.0 installs in sessions (`rustup toolchain install 1.90.0`, 2026-10-16), against CLAUDE.md's line that it cannot: measure speed with `cargo +1.90.0`; propose the CLAUDE.md fix to the owner (deep tier). Speed rows in games/uttt/README.md were likely measured with a newer compiler.
 - docs/ROADMAP.md still says the current UTTT release is `uttt-v010` (found by #142's review; older than it): fix in a later docs pull request.
 - Never ask the owner for CodinGame ranks (owner, 2026-10-13: "I don't want to communicate the ranks, stop asking for it").
 
