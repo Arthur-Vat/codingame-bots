@@ -13,6 +13,8 @@ fn games_are_reproducible_and_record_searched_positions() {
         exploration: 0.5,
         expand_all: false,
         minimax_weight: 0.0,
+        value_temperature: 0.0,
+        prior_weight: 0.0,
         network: None,
         policy: None,
         patterns: None,
@@ -75,6 +77,8 @@ fn games_with_class_policy_playouts_can_skip_visits() {
         exploration: 0.5,
         expand_all: false,
         minimax_weight: 0.0,
+        value_temperature: 0.0,
+        prior_weight: 0.0,
         network: None,
         policy: Some(policy),
         patterns: None,
@@ -127,6 +131,8 @@ fn games_with_the_bots_patterns_record_visits_of_every_move() {
         exploration: 0.5,
         expand_all: false,
         minimax_weight: 0.0,
+        value_temperature: 0.0,
+        prior_weight: 0.0,
         network: None,
         policy: None,
         patterns: Some(policy),
@@ -165,6 +171,8 @@ fn as_the_bot(opening: Opening, balance: Option<f64>) -> SelfPlay {
         exploration: 0.2,
         expand_all: true,
         minimax_weight: 0.5,
+        value_temperature: 0.1,
+        prior_weight: 0.25,
         network: Some(network()),
         policy: None,
         patterns: None,
@@ -368,6 +376,14 @@ fn the_train_workflow_plays_as_the_newest_release() {
     has(format!(
         "const MINIMAX_WEIGHT: f64 = {:?};",
         number("--minimax-weight")
+    ));
+    has(format!(
+        "const VALUE_TEMPERATURE: f64 = {:?};",
+        number("--value-temperature")
+    ));
+    has(format!(
+        "const PRIOR_WEIGHT: f64 = {:?};",
+        number("--prior-weight")
     ));
     has(format!(
         "const EXPAND_ALL: bool = {};",

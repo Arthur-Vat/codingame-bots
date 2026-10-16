@@ -115,6 +115,15 @@ enum Command {
         /// minimax values.
         #[arg(long, default_value_t = 0.0, requires = "expand_all")]
         minimax_weight: f64,
+        /// PUCT, as the bot's `VALUE_TEMPERATURE` (E030): the temperature of
+        /// the priors that a node's children get from their estimates; 0
+        /// for none. Needs `--expand-all`.
+        #[arg(long, default_value_t = 0.0, requires = "expand_all")]
+        value_temperature: f64,
+        /// The weight of the priors' bias in selection, as the bot's
+        /// `PRIOR_WEIGHT` (E030); with `--value-temperature`.
+        #[arg(long, default_value_t = 0.0, requires = "value_temperature")]
+        prior_weight: f64,
         /// Rust source holding the class policy's playout weights
         /// (`PLAYOUT_WEIGHTS`), such as `games/uttt/training/class_weights.rs`
         /// (E011's, the bot's until E015), for its playouts; decisive playouts
@@ -395,6 +404,8 @@ fn main() -> ExitCode {
             network,
             expand_all,
             minimax_weight,
+            value_temperature,
+            prior_weight,
             policy,
             patterns,
             policy_plies,
@@ -441,6 +452,8 @@ fn main() -> ExitCode {
                         exploration,
                         expand_all,
                         minimax_weight,
+                        value_temperature,
+                        prior_weight,
                         network,
                         policy,
                         patterns,

@@ -534,5 +534,215 @@ fn a_search_answers_as_it_did_before_the_analysis_feature() {
     assert_eq!(now.len(), BEFORE.len());
 }
 
+/// A game of three moves among three each, always drawn, whose first and
+/// second moves m are estimated at `[0.3, 0.5, 0.7][m]` for player 0.
+#[derive(Clone, Debug, PartialEq)]
+struct Estimated {
+    played: Vec<u32>,
+}
+
+const ESTIMATES: [f64; 3] = [0.3, 0.5, 0.7];
+
+impl Game for Estimated {
+    type Move = u32;
+
+    fn to_move(&self) -> usize {
+        self.played.len() % 2
+    }
+
+    fn legal_moves(&self, moves: &mut Vec<u32>) {
+        moves.clear();
+        if self.played.len() < 3 {
+            moves.extend([0, 1, 2]);
+        }
+    }
+
+    fn play(&mut self, mv: u32) {
+        self.played.push(mv);
+    }
+
+    fn score(&self) -> Option<f64> {
+        (self.played.len() == 3).then_some(0.5)
+    }
+
+    fn child_scores(&self, moves: &[u32], _rng: &mut Rng, scores: &mut Vec<(f64, bool)>) {
+        scores.clear();
+        scores.extend(moves.iter().map(|&mv| {
+            if self.played.len() < 2 {
+                (ESTIMATES[mv as usize], false)
+            } else {
+                (0.5, true)
+            }
+        }));
+    }
+}
+
+fn puct(value_temperature: f64, prior_weight: f64) -> Mcts<Estimated> {
+    let mut mcts = Mcts::new(0.5, 4);
+    mcts.expand_all = true;
+    mcts.minimax_weight = 0.5;
+    mcts.value_temperature = value_temperature;
+    mcts.prior_weight = prior_weight;
+    mcts
+}
+
+fn puct_visits(mcts: &mut Mcts<Estimated>) -> Vec<u32> {
+    mcts.search(
+        &Estimated { played: Vec::new() },
+        &[0, 1, 2],
+        Budget::Iterations(400),
+    );
+    let mut visits = [0; 3];
+    for (mv, n) in mcts.root_visits() {
+        visits[mv as usize] = n;
+    }
+    visits.to_vec()
+}
+
+#[test]
+fn puct_priors_are_a_softmax_of_the_estimates() {
+    let mut mcts = puct(0.1, 1.0);
+    puct_visits(&mut mcts);
+    let weights = ESTIMATES.map(|estimate| ((estimate - 0.7) / 0.1).exp());
+    let total: f64 = weights.iter().sum();
+    let mut sum = 0.0;
+    for child in mcts.children(0) {
+        let node = mcts.nodes[child];
+        let expected = (weights[node.mv as usize] / total) as f32;
+        assert!((node.prior - expected).abs() < 1e-6, "{node:?}");
+        sum += node.prior;
+    }
+    assert!((sum - 1.0).abs() < 1e-6);
+    // Below the root player 1 chooses, for whom player 0's lowest
+    // estimate is the best.
+    let first = mcts.children(0).start;
+    let below = mcts.children(first);
+    assert_eq!(below.len(), 3);
+    let weights = ESTIMATES.map(|estimate| ((0.3 - estimate) / 0.1).exp());
+    let total: f64 = weights.iter().sum();
+    for child in below {
+        let node = mcts.nodes[child];
+        let expected = (weights[node.mv as usize] / total) as f32;
+        assert!((node.prior - expected).abs() < 1e-6, "{node:?}");
+    }
+}
+
+#[test]
+fn puct_scales_the_bias_with_the_square_root_of_the_parent_visits() {
+    let mut mcts = puct(0.1, 1.0);
+    puct_visits(&mut mcts);
+    mcts.exploration = 0.0;
+    mcts.minimax_weight = 0.0;
+    // A well-tried child with a slightly better average and a low prior,
+    // and one tried less with a high prior; the third is proven lost.
+    mcts.nodes[0].visits = 10_000;
+    let children: Vec<usize> = mcts.children(0).collect();
+    for (index, (value, visits, prior)) in [(0.55, 5_000, 0.1), (0.5, 100, 0.9)]
+        .into_iter()
+        .enumerate()
+    {
+        let node = &mut mcts.nodes[children[index]];
+        node.proof = Proof::Unknown;
+        node.value = value;
+        node.visits = visits;
+        node.inv_sqrt_visits = (visits as f32).sqrt().recip();
+        node.bias = prior / (visits as f32 + 1.0);
+    }
+    mcts.nodes[children[2]].proof = Proof::MoverLoses;
+    // PUCT multiplies the bias by sqrt(10,000) = 100, enough for the high
+    // prior; the progressive bias alone leaves the better average first.
+    assert_eq!(mcts.select(0), children[1]);
+    mcts.value_temperature = 0.0;
+    assert_eq!(mcts.select(0), children[0]);
+}
+
+#[test]
+fn puct_favours_the_best_estimate_as_its_weight_grows() {
+    // Every first move ends in a draw: only the priors tell them apart.
+    let plain = puct_visits(&mut puct(0.1, 0.0));
+    let light = puct_visits(&mut puct(0.1, 0.5));
+    let heavy = puct_visits(&mut puct(0.1, 4.0));
+    assert!(light[2] > plain[2], "{plain:?} {light:?}");
+    assert!(heavy[2] > light[2], "{light:?} {heavy:?}");
+    assert!(heavy[2] > heavy[1] && heavy[1] > heavy[0], "{heavy:?}");
+    for visits in [plain, light, heavy] {
+        assert_eq!(visits.iter().sum::<u32>(), 400);
+    }
+}
+
+#[test]
+fn a_zero_temperature_searches_as_without_puct() {
+    // Without the game's priors, a prior weight changes nothing unless the
+    // priors come from the estimates.
+    for seed in 0..3 {
+        let mut with = jacekmax(0.5, seed);
+        with.prior_weight = 2.0;
+        let mut without = jacekmax(0.5, seed);
+        let a = with.search(&nim(30), &[1, 2, 3], Budget::Iterations(2_000));
+        let b = without.search(&nim(30), &[1, 2, 3], Budget::Iterations(2_000));
+        assert_eq!(format!("{a:?}"), format!("{b:?}"));
+        assert_eq!(
+            with.root_visits().collect::<Vec<_>>(),
+            without.root_visits().collect::<Vec<_>>()
+        );
+    }
+}
+
+/// Searches that expand all children at once, as the bots do since E018,
+/// with a prior weight and no priors: PUCT is off at a temperature of 0.
+fn pinned_jacekmax_run() -> Vec<String> {
+    let mut lines = Vec::new();
+    for (minimax_weight, seed) in [(0.0, 11), (0.5, 12), (1.0, 13)] {
+        let mut mcts = jacekmax(minimax_weight, seed);
+        mcts.prior_weight = 0.25;
+        let mut game = nim(40);
+        for (iterations, reply) in [(1_500, 1), (800, 2), (600, 3), (400, 1)] {
+            let result = mcts.search(&game, &[1, 2, 3], Budget::Iterations(iterations));
+            lines.push(format!("{result:?}"));
+            lines.push(format!("{:?}", mcts.root_visits().collect::<Vec<_>>()));
+            game.play(result.best);
+            game.play(reply);
+        }
+    }
+    lines
+}
+
+/// `pinned_jacekmax_run` on `origin/main` before PUCT existed (E030), run
+/// from a scratch worktree: a temperature of 0 keeps those searches.
+#[test]
+fn a_zero_temperature_keeps_the_searches_of_before_puct() {
+    const BEFORE: [&str; 24] = [
+        "SearchResult { best: 1, iterations: 1500, reused: 0, proven: None, expected_score: 0.5121954083442688, nodes: 4504 }",
+        "[(1, 533), (2, 492), (3, 475)]",
+        "SearchResult { best: 2, iterations: 800, reused: 158, proven: None, expected_score: 0.4985670745372772, nodes: 2872 }",
+        "[(2, 349), (3, 293), (1, 317)]",
+        "SearchResult { best: 2, iterations: 600, reused: 190, proven: None, expected_score: 0.5034244656562805, nodes: 2368 }",
+        "[(1, 285), (2, 292), (3, 214)]",
+        "SearchResult { best: 1, iterations: 400, reused: 57, proven: None, expected_score: 0.5073890686035156, nodes: 1369 }",
+        "[(2, 119), (3, 136), (1, 203)]",
+        "SearchResult { best: 1, iterations: 1500, reused: 0, proven: None, expected_score: 0.4981059730052948, nodes: 4504 }",
+        "[(1, 528), (3, 514), (2, 458)]",
+        "SearchResult { best: 1, iterations: 800, reused: 207, proven: None, expected_score: 0.5661377906799316, nodes: 3019 }",
+        "[(1, 378), (3, 366), (2, 264)]",
+        "SearchResult { best: 3, iterations: 600, reused: 129, proven: None, expected_score: 0.5289854407310486, nodes: 2185 }",
+        "[(2, 273), (3, 276), (1, 181)]",
+        "SearchResult { best: 3, iterations: 400, reused: 89, proven: None, expected_score: 0.5648534297943115, nodes: 1465 }",
+        "[(3, 239), (2, 117), (1, 134)]",
+        "SearchResult { best: 3, iterations: 1500, reused: 0, proven: None, expected_score: 0.5009977221488953, nodes: 4504 }",
+        "[(2, 499), (3, 501), (1, 500)]",
+        "SearchResult { best: 1, iterations: 800, reused: 163, proven: None, expected_score: 0.5372669696807861, nodes: 2887 }",
+        "[(3, 321), (1, 322), (2, 321)]",
+        "SearchResult { best: 1, iterations: 600, reused: 108, proven: None, expected_score: 0.49579811096191406, nodes: 2122 }",
+        "[(2, 236), (1, 238), (3, 235)]",
+        "SearchResult { best: 1, iterations: 400, reused: 79, proven: None, expected_score: 0.48255807161331177, nodes: 1435 }",
+        "[(2, 155), (3, 153), (1, 172)]",
+    ];
+    let now = pinned_jacekmax_run();
+    for (index, (expected, got)) in BEFORE.iter().zip(&now).enumerate() {
+        assert_eq!(expected, got, "line {index}");
+    }
+    assert_eq!(now.len(), BEFORE.len());
+}
+
 #[cfg(feature = "analysis")]
 mod analysis;

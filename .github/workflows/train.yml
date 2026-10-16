@@ -152,7 +152,7 @@ jobs:
           elif [[ $STAGE == patterns ]]; then
             options=(--patterns games/uttt/training/pattern_weights.rs)
           elif [[ $STAGE == nnue ]]; then
-            options=(--network games/uttt/bots/mcts/src/nnue_weights.rs --exploration 0.2 --expand-all --minimax-weight 0.5 --opening sampled --opening-temperature 2 --balance 0.9 --no-visits --side-games "$SIDE_GAMES")
+            options=(--network games/uttt/bots/mcts/src/nnue_weights.rs --exploration 0.2 --expand-all --minimax-weight 0.5 --value-temperature 0.1 --prior-weight 0.25 --opening sampled --opening-temperature 2 --balance 0.9 --no-visits --side-games "$SIDE_GAMES")
           fi
           # With `minutes`, each process stops starting games after that
           # time, and its share of games is the most it plays: jobs on faster
