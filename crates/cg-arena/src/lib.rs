@@ -10,10 +10,12 @@
 //! - [`tournament`]: many matches in parallel, in seat-swapped pairs.
 //! - [`summary`]: results from the first bot's point of view.
 //! - [`sprt`]: the sequential test deciding whether a candidate is stronger.
+//! - [`league`]: the results file and opponent choice of the incremental league.
 //! - [`ratings`]: Elo ratings from many matchups.
 //! - [`cli`]: the command line every game's arena binary shares.
 
 pub mod cli;
+pub mod league;
 pub mod live;
 pub mod ratings;
 pub mod record;

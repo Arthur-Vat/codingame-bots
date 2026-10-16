@@ -1,6 +1,7 @@
 //! The command line shared by every game's arena binary, with three
 //! commands: `match`, `sprt` and `league`.
 
+use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -9,6 +10,8 @@ use std::thread;
 use std::time::Duration;
 
 use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
+
+use crate::league::{self, PairingResult, Rating};
 
 use crate::ratings::{elo_margins, elo_ratings, MatchupResult};
 use crate::record::{Record, Sampler};
@@ -33,7 +36,8 @@ pub enum Command {
     /// Plays a candidate against a baseline until a sequential probability
     /// ratio test decides whether the candidate is stronger.
     Sprt(SprtArgs),
-    /// Plays every pair of bots and computes Elo ratings.
+    /// Plays every pair of bots and computes Elo ratings; with `--results`,
+    /// plays only a new release's pairings not yet stored.
     League(LeagueArgs),
 }
 
@@ -177,9 +181,70 @@ pub struct LeagueArgs {
     #[arg(long, default_value_t = 100)]
     pub pairs: u32,
 
-    /// The bot rated 0 Elo [default: the first one].
+    /// The bot rated 0 Elo [default: the first one]. With --results it may be
+    /// a bot that appears only in the results file.
     #[arg(long, value_name = "NAME")]
     pub anchor: Option<String>,
+
+    /// Plays incrementally: reads the pairings stored in this JSON-lines
+    /// file (see docs/adr/0038-incremental-league.md), plays only the
+    /// pairings of the release --new not yet stored, and rates every bot of
+    /// the file and of the --bot options over stored and new pairings. The
+    /// file must exist; an empty one is fine.
+    #[arg(long, value_name = "FILE", requires_all = ["new", "new_results"])]
+    pub results: Option<PathBuf>,
+
+    /// The release being rated, one of the --bot options. It plays its
+    /// opponents as the first bot of each pairing; if the results file
+    /// already holds a pairing of it, no new pairing is played.
+    #[arg(long, value_name = "NAME", requires = "results")]
+    pub new: Option<String>,
+
+    /// Creates (truncates) this file and appends each new pairing to it as
+    /// one line of the results file's format, flushed at once, so that a
+    /// crash keeps the pairings already finished.
+    #[arg(long, value_name = "FILE", requires = "results")]
+    pub new_results: Option<PathBuf>,
+
+    /// The previous release, played first. Without one (the first release),
+    /// the new release's rating is taken to be the anchor's, 0, when the
+    /// nearest opponents are chosen.
+    #[arg(long, value_name = "NAME", requires = "results")]
+    pub previous: Option<String>,
+
+    /// Opponents played whatever their rating, in this order, separated by
+    /// commas (the workflow gives `greedy,v001`).
+    #[arg(
+        long,
+        value_name = "NAME,NAME",
+        value_delimiter = ',',
+        requires = "results"
+    )]
+    pub fixed_opponents: Vec<String>,
+
+    /// How many more opponents the new release plays: the known bots whose
+    /// rating is closest to its own, among those linked to the anchor. When
+    /// the previous release, the fixed opponents and these cover every known
+    /// bot, all of them are played.
+    #[arg(long, value_name = "N", default_value_t = 5, requires = "results")]
+    pub nearest: usize,
+
+    /// Replays one stored pairing, as A,B in either order, after the new
+    /// pairings, and reports whether its score is within the interval of the
+    /// stored one: a sign that the machine's speed has changed. It is never
+    /// written to --new-results, and a result outside the interval prints a
+    /// line starting `warning: canary` without changing the exit status.
+    #[arg(long, value_name = "A,B", requires = "results")]
+    pub canary: Option<String>,
+
+    /// Written to each new pairing's line as `commit`.
+    #[arg(long, value_name = "SHA", requires = "results")]
+    pub commit: Option<String>,
+
+    /// Prints the opponents chosen (estimated from the previous release's
+    /// rating) and the canary, and exits without playing.
+    #[arg(long, requires = "results")]
+    pub plan: bool,
 
     #[command(flatten)]
     pub common: CommonArgs,
@@ -339,15 +404,14 @@ fn run_league<F: RefereeFactory>(
         .iter()
         .map(|spec| BotSpec::parse(spec))
         .collect::<Result<Vec<_>, _>>()?;
+    if args.results.is_some() {
+        return incremental::run_incremental_league(&args, &bots, game, new_referee);
+    }
     if bots.len() < 2 {
         return Err("a league needs at least two --bot options".to_string());
     }
     let names: Vec<String> = bots.iter().map(|bot| bot.name.clone()).collect();
-    for (index, name) in names.iter().enumerate() {
-        if names[..index].contains(name) {
-            return Err(format!("two bots are named {name:?}"));
-        }
-    }
+    check_unique(&names)?;
     check_fault_name(&args.common, &names)?;
     let anchor = match &args.anchor {
         Some(name) => names
@@ -378,17 +442,7 @@ fn run_league<F: RefereeFactory>(
                     Flow::Continue
                 },
             )?;
-            let score = summary.score().unwrap_or(0.5);
-            println!(
-                "{} vs {}: {:.1}% of {} games ({} wins, {} draws, {} losses)",
-                names[a],
-                names[b],
-                100.0 * score,
-                summary.games(),
-                summary.wins,
-                summary.draws,
-                summary.losses
-            );
+            print_pairing(&summary);
             for (bot, found) in [a, b].into_iter().zip(summary.faults) {
                 faults[bot].timeouts += found.timeouts;
                 faults[bot].crashes += found.crashes;
@@ -409,31 +463,91 @@ fn run_league<F: RefereeFactory>(
 
     let ratings = elo_ratings(bots.len(), &results, anchor);
     let margins = elo_margins(bots.len(), &results, anchor, &ratings);
-    let mut order: Vec<usize> = (0..bots.len()).collect();
-    order.sort_by(|&x, &y| ratings[y].total_cmp(&ratings[x]));
-    println!("\nElo ratings, {} at 0, with 95% intervals:", names[anchor]);
-    for (rank, &bot) in order.iter().enumerate() {
-        println!(
-            "{:>3}. {:<24} {:>+8.1} ± {:<6.1} ({} games)",
-            rank + 1,
-            names[bot],
-            ratings[bot],
-            margins[bot],
-            games[bot]
-        );
+    let table: Vec<Rating> = (0..bots.len())
+        .map(|bot| Rating {
+            name: names[bot].clone(),
+            rating: ratings[bot],
+            margin: margins[bot],
+            games: games[bot],
+        })
+        .collect();
+    print_ratings(&table, &names[anchor]);
+    let passed = faults_pass(&args.common, &names, &faults, &games);
+    records_result.map(|()| passed)
+}
+
+/// Errors when two names are the same.
+fn check_unique(names: &[String]) -> Result<(), String> {
+    for (index, name) in names.iter().enumerate() {
+        if names[..index].contains(name) {
+            return Err(format!("two bots are named {name:?}"));
+        }
     }
+    Ok(())
+}
+
+/// Prints the result of one pairing of a league.
+fn print_pairing(summary: &Summary) {
+    println!(
+        "{} vs {}: {:.1}% of {} games ({} wins, {} draws, {} losses)",
+        summary.names[0],
+        summary.names[1],
+        100.0 * summary.score().unwrap_or(0.5),
+        summary.games(),
+        summary.wins,
+        summary.draws,
+        summary.losses
+    );
+}
+
+/// Prints the ratings table, best first; bots with no chain of pairings to
+/// the anchor come last, without a rating.
+fn print_ratings(table: &[Rating], anchor: &str) {
+    let mut order: Vec<&Rating> = table.iter().collect();
+    order.sort_by(|x, y| {
+        y.is_linked()
+            .cmp(&x.is_linked())
+            .then_with(|| y.rating.total_cmp(&x.rating))
+    });
+    println!("\nElo ratings, {anchor} at 0, with 95% intervals:");
+    for (rank, rating) in order.iter().enumerate() {
+        if rating.is_linked() {
+            println!(
+                "{:>3}. {:<24} {:>+8.1} ± {:<6.1} ({} games)",
+                rank + 1,
+                rating.name,
+                rating.rating,
+                rating.margin,
+                rating.games
+            );
+        } else {
+            println!(
+                "{:>3}. {:<24} {:>8} ± {:<6} ({} games)",
+                rank + 1,
+                rating.name,
+                "n/a",
+                "inf",
+                rating.games
+            );
+        }
+    }
+}
+
+/// Reports the faults of a league's bots and whether the checked ones are
+/// acceptable. `games` are the games each bot played in this run.
+fn faults_pass(common: &CommonArgs, names: &[String], faults: &[Faults], games: &[u32]) -> bool {
     let mut passed = true;
-    for ((name, found), &played) in names.iter().zip(&faults).zip(&games) {
+    for ((name, found), &played) in names.iter().zip(faults).zip(games) {
         if found.total() > 0 {
             println!("faults: {name} lost {} games by a fault", found.total());
-            let checked = args.common.expect_no_faults
-                || args.common.expect_no_faults_from.as_ref() == Some(name);
-            if checked && !found.within(played, args.common.max_timeout_rate) {
+            let checked =
+                common.expect_no_faults || common.expect_no_faults_from.as_ref() == Some(name);
+            if checked && !found.within(played, common.max_timeout_rate) {
                 passed = false;
             }
         }
     }
-    records_result.map(|()| passed)
+    passed
 }
 
 /// Checks that `--expect-no-faults-from` names one of `names`.
@@ -464,14 +578,20 @@ fn two_bots(specs: &[String]) -> Result<[BotSpec; 2], String> {
     Ok([first, second])
 }
 
-/// A tournament between `bots` with the shared options.
-fn tournament(bots: [BotSpec; 2], pairs: u32, common: &CommonArgs) -> Result<Tournament, String> {
+/// Checks the values of the shared options.
+fn check_common(common: &CommonArgs) -> Result<(), String> {
     if common.time_scale.is_nan() || common.time_scale <= 0.0 {
         return Err("--time-scale must be positive".to_string());
     }
     if !(0.0..1.0).contains(&common.max_timeout_rate) {
         return Err("--max-timeout-rate must be at least 0 and below 1".to_string());
     }
+    Ok(())
+}
+
+/// A tournament between `bots` with the shared options.
+fn tournament(bots: [BotSpec; 2], pairs: u32, common: &CommonArgs) -> Result<Tournament, String> {
+    check_common(common)?;
     Ok(Tournament {
         bots,
         pairs,
@@ -682,6 +802,8 @@ fn write_new_file(path: &Path, bytes: &[u8]) -> Result<(), String> {
 fn record_file_name(stem: &str, game: &GameRecord) -> String {
     format!("{stem}-p{}-{}.json", game.pair, u8::from(game.swapped))
 }
+
+mod incremental;
 
 #[cfg(test)]
 mod tests;
