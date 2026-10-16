@@ -12,7 +12,7 @@ Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes 
 | 5. Autonomy and workflow | Conventions, CI checks, project agents and skills, merge policy, arena and ratings | Every item below done (the owner dropped the one-week trial on 2026-10-09) | In progress (2026-10-09) |
 | 6. Studio | A Lichess-style app, local and on GitHub Pages: play a friend or any release, bot against bot, review with analysis, game history | The first version works on the owner's Windows computer; every item below done | Done (2026-10-13) |
 | 7. Second game | The new-game lifecycle ([ADR 0035](adr/0035-new-game-lifecycle.md)): playbook, stage skills, Ultimate Tic-Tac-Toe as the worked example; then a game the owner names, stage by stage | The owner passes each stage of that game; changes mostly inside the game folder | In progress (2026-10-13) |
-| Ongoing | Iterate every game toward Legend, then up the Legend ranking | | Ultimate Tic-Tac-Toe: Legend since 2026-10-07 (`uttt-v001`, 182 of 443); 59th with `uttt-v008` (2026-10-08); current release `uttt-v010`; strength work resumed with the NNUE plan's step B (2026-10-14) |
+| Ongoing | Iterate every game toward Legend, then up the Legend ranking | | Ultimate Tic-Tac-Toe: Legend since 2026-10-07 (`uttt-v001`, 182 of 443); 59th with `uttt-v008` (2026-10-08); current release `uttt-v016` (2026-10-16), from the NNUE plan of [games/uttt/ROADMAP.md](../games/uttt/ROADMAP.md) |
 
 ## Phase 0: foundations
 
@@ -229,5 +229,5 @@ Framework work that a game's plan needs but every game can use.
 | A release does not replay identically | A wrong takeback against that release | Each release is tested; one that fails offers no takeback ([ADR 0025](adr/0025-studio.md)) |
 | npm supply chain | A harmful package in the studio's front end | Few dependencies, lockfile, `npm ci`, license check ([ADR 0026](adr/0026-node-for-the-studio.md)) |
 | Projects beta not available | No single hub with an Overview | One long claude.ai conversation meanwhile ([ADR 0008](adr/0008-claude-hub.md)) |
-| Claude workspace cannot download Rust toolchains | Local checks run on a newer Rust than CodinGame | `rust-version` lints locally; CI on exactly 1.90.0 is the judge ([ADR 0010](adr/0010-codingame-rust-toolchain.md)) |
+| Claude sessions default to a newer Rust | Local checks and speed measurements differ from CodinGame's compiler | `rust-version` lints locally; `rustup toolchain install 1.90.0` and `cargo +1.90.0` for speed (it installs since 2026-10-16); CI on exactly 1.90.0 is the judge ([ADR 0010](adr/0010-codingame-rust-toolchain.md)) |
 | Public code gets copied | Others use these bots | Accepted ([ADR 0002](adr/0002-public-repo.md)) |
