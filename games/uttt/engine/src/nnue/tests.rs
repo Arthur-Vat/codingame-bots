@@ -108,8 +108,11 @@ fn constants_are_consistent() {
     assert_eq!(OUR_BOARDS + 9, THEIR_BOARDS);
     assert_eq!(THEIR_BOARDS + 9, DRAWN_BOARDS);
     assert_eq!(DRAWN_BOARDS + 9, FEATURES);
-    assert_eq!(Network::<256>::BYTES, 54_068);
-    assert_eq!(Network::<16>::BYTES, 52 + 211 * 16);
+    assert_eq!(BUCKETS, TARGETS * PHASES);
+    assert_eq!(Network::<256>::BYTES, 64_388);
+    assert_eq!(Network::<16>::BYTES, 132 + 251 * 16);
+    assert_eq!(Network::<256>::BYTES_V1, 54_068);
+    assert_eq!(Network::<16>::BYTES_V1, 52 + 211 * 16);
     assert_eq!(i32::from(MAX_BIAS), 32_767 - 90 * 127);
     let worst = 2 * MAX_WIDTH as i64 * i64::from(QA * QA) * 127;
     assert!(worst < i64::from(i32::MAX));
@@ -193,8 +196,10 @@ fn won_board_position() -> Board {
 #[test]
 fn won_boards_are_seen_from_each_perspective() {
     let board = won_board_position();
-    // Seat 1 is sent to board 0, which is closed: a free choice.
-    assert_eq!(bucket(&board), 9);
+    // Seat 1 is sent to board 0, which is closed: a free choice, in the
+    // phase of one or two closed boards.
+    assert_eq!(phase(&board), 1);
+    assert_eq!(bucket(&board), 9 + TARGETS);
     assert!(features(&board, 0).contains(&(OUR_BOARDS as u16)));
     assert!(!features(&board, 0).contains(&(THEIR_BOARDS as u16)));
     assert!(features(&board, 1).contains(&(THEIR_BOARDS as u16)));
@@ -409,7 +414,7 @@ fn bytes_round_trip() {
     assert_eq!(Network::<16>::from_bytes(&bytes).unwrap(), net);
     assert_eq!(network::<16>(&parts), net);
     let (_, big) = random_network::<256>(4);
-    assert_eq!(big.to_bytes().len(), 54_068);
+    assert_eq!(big.to_bytes().len(), 64_388);
     assert_eq!(Network::<256>::from_bytes(&big.to_bytes()).unwrap(), big);
 }
 
@@ -591,4 +596,93 @@ fn the_largest_possible_sum_fits_in_i32() {
     let weights = vec![127i16; MAX_WIDTH];
     let sum = squared_dot(&acc[0], &weights) + squared_dot(&acc[1], &weights);
     assert_eq!(i64::from(sum), 2 * MAX_WIDTH as i64 * 16_129 * 127);
+}
+
+#[test]
+fn phase_counts_closed_boards() {
+    let mut board = Board::new();
+    assert_eq!(phase(&board), 0);
+    assert_eq!(bucket(&board), 9);
+    let mut closed = 0;
+    let mut rng = Rng::new(5);
+    let mut seen = [false; PHASES];
+    while board.status() == Status::Ongoing {
+        let count = board.closed_boards().count_ones();
+        let expected = match count {
+            0 => 0,
+            1 | 2 => 1,
+            _ => 2,
+        };
+        assert_eq!(phase(&board), expected, "{count} closed");
+        assert_eq!(
+            bucket(&board),
+            board.target().unwrap_or(9) + TARGETS * expected
+        );
+        seen[expected] = true;
+        closed = closed.max(count);
+        let mv = board.random_move(&mut rng);
+        board.play(mv);
+    }
+    assert!(closed >= 3, "the game closed only {closed} boards");
+    assert_eq!(seen, [true; PHASES]);
+}
+
+#[test]
+fn first_version_bytes_serve_every_phase() {
+    // A network of the first version: one bucket per target.
+    let parts = random_parts(16, 11, 20, 60, 40);
+    let mut bytes = MAGIC_V1.to_vec();
+    bytes.extend_from_slice(&16u32.to_le_bytes());
+    bytes.extend(parts.feature_weights.iter().map(|&w| w as u8));
+    for bias in &parts.feature_bias {
+        bytes.extend_from_slice(&bias.to_le_bytes());
+    }
+    bytes.extend(
+        parts.output_weights[..TARGETS * 2 * 16]
+            .iter()
+            .map(|&w| w as u8),
+    );
+    for bias in &parts.output_bias[..TARGETS] {
+        bytes.extend_from_slice(&bias.to_le_bytes());
+    }
+    assert_eq!(bytes.len(), Network::<16>::BYTES_V1);
+    let read = Network::<16>::from_bytes(&bytes).unwrap();
+
+    // The same network with each target's bucket copied to every phase.
+    let mut same = random_parts(16, 11, 20, 60, 40);
+    same.output_weights = parts.output_weights[..TARGETS * 2 * 16].repeat(PHASES);
+    for bucket in 0..BUCKETS {
+        same.output_bias[bucket] = parts.output_bias[bucket % TARGETS];
+    }
+    assert_eq!(read, network::<16>(&same));
+
+    // Its evaluations are those of a network that ignores the phase.
+    for game in random_games(20) {
+        for (board, _) in game {
+            let accumulator = read.refresh(&board);
+            let target = board.target().unwrap_or(9);
+            let start = target * 2 * 16;
+            let weights = &parts.output_weights[start..start + 2 * 16];
+            let stm = board.to_move();
+            let sum = squared_dot(&accumulator.values[stm], &widen(&weights[..16]))
+                + squared_dot(&accumulator.values[1 - stm], &widen(&weights[16..]));
+            let total = i64::from(sum / QA) + i64::from(parts.output_bias[target]);
+            let expected = total as f32 / (QA * QB) as f32;
+            assert_eq!(read.logit(&accumulator, &board), expected);
+        }
+    }
+
+    // A first-version header with the second version's length, and the
+    // reverse, are rejected.
+    let mut wrong = bytes.clone();
+    wrong[..8].copy_from_slice(MAGIC);
+    assert!(Network::<16>::from_bytes(&wrong).is_err());
+    let mut wrong = read.to_bytes();
+    assert_eq!(&wrong[..8], MAGIC);
+    wrong[..8].copy_from_slice(MAGIC_V1);
+    assert!(Network::<16>::from_bytes(&wrong).is_err());
+}
+
+fn widen(weights: &[i8]) -> Vec<i16> {
+    weights.iter().map(|&w| i16::from(w)).collect()
 }

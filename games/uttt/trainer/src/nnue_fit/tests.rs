@@ -700,7 +700,7 @@ fn fit_writes_the_weights_and_the_report() {
     assert!(tables[4].starts_with("| Network, quantized"));
     assert!(report.contains("| Start |"));
     assert!(report.contains("| Quantized |"));
-    assert!(report.contains("(189 -> 128) x 2 -> 10 buckets, 26890 parameters"));
+    assert!(report.contains("(189 -> 128) x 2 -> 30 buckets, 32030 parameters"));
     assert!(report.contains("of which 0 dropped as copies"));
     assert!(report.contains("every 20th game kept, whole"));
     assert!(report.contains("in detail"));
