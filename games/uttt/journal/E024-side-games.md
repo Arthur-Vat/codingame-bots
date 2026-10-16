@@ -16,9 +16,11 @@ cg_rank: not reported
 
 Step D2 of [the roadmap](../ROADMAP.md#d-scale), after [E023](E023-nnue-self-play.md). The owner chose the data on 2026-10-15 ("D2: new training data", "Random moves in self-play", run size "20 x 55,000, 2 side"): #141 added side games to self-play, and the plan was that Train run, a check of move agreement, then one experiment.
 
-**The data and the fit** ([run 38799715918](../training/runs/38799715918/report.md)): 20 jobs of 55,000 games of `uttt-v015`'s own search at 5,000 iterations, 8 opening plies sampled at temperature 2, balance 0.9, and 2 side games per game. That gave 3,232,297 games with the side games, of which 15,974 copies were dropped, and 91.9M positions fitted. On its held-out positions (4.8M), the network scored:
+**The data and the fit** ([run 38799715918](../training/runs/38799715918/report.md)): 20 jobs of 55,000 games of `uttt-v015`'s own search at 5,000 iterations, 8 opening plies sampled at temperature 2, balance 0.9, and 2 side games per game. That gave 3,232,297 games with the side games, of which 15,974 copies were dropped, and 91.9M positions fitted. On all its held-out positions (4.8M), the network scored:
 - squared error 0.0652 against 0.0697 for `uttt-v015`'s network;
-- cross-entropy 0.6176 against 0.6285;
+- cross-entropy 0.6176 against 0.6285.
+
+On the report's sample of 49,860 of them, spread evenly:
 - move agreement 45.9% against 44.4%;
 - calibration gap 0.0110 against 0.0195;
 - no dead units.
