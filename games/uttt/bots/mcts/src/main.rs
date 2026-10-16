@@ -93,12 +93,12 @@ const EXPAND_ALL: bool = true;
 /// created, so the order no longer matters, and its weights left the bot.
 const MINIMAX_WEIGHT: f64 = 0.5;
 
-/// PUCT (E030): the temperature of the priors that a node's children get
-/// from their own estimates, `softmax(estimate / T)`, and the weight of the
-/// bias they give, `PRIOR_WEIGHT · prior · sqrt(parent visits) / (visits +
-/// 1)`. A temperature of 0 selects by UCB1 alone.
-const VALUE_TEMPERATURE: f64 = 0.1;
-const PRIOR_WEIGHT: f64 = 0.25;
+/// PUCT (E030, tuned by E032): the temperature of the priors that a node's
+/// children get from their own estimates, `softmax(estimate / T)`, and the
+/// weight of the bias they give, `PRIOR_WEIGHT · prior · sqrt(parent visits)
+/// / (visits + 1)`. A temperature of 0 selects by UCB1 alone.
+const VALUE_TEMPERATURE: f64 = 0.05;
+const PRIOR_WEIGHT: f64 = 0.5;
 
 fn main() {
     let seed = seed_from_env_or_clock();
