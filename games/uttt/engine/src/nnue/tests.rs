@@ -372,48 +372,6 @@ fn check_incremental<const N: usize>(games: u64) {
     }
 }
 
-/// For every legal move of every position of random games, `child_logit`
-/// and `evaluate_child` from the parent's accumulator equal, bit for bit,
-/// `logit` and `evaluate` of the accumulator `play` makes.
-fn check_children<const N: usize>(games: u64) {
-    let (_, net) = random_network::<N>(N as u64 + 7);
-    let mut moves = MoveList::new();
-    for game in random_games(games) {
-        let mut board = Board::new();
-        let mut accumulator = net.refresh(&board);
-        for (_, played) in game {
-            board.legal_moves(&mut moves);
-            for &mv in moves.iter() {
-                let mut child = accumulator;
-                let mut after = board;
-                net.play(&mut child, &mut after, mv);
-                if after.status() != Status::Ongoing {
-                    continue;
-                }
-                assert_eq!(
-                    net.child_logit(&accumulator, &board, mv, &after).to_bits(),
-                    net.logit(&child, &after).to_bits(),
-                    "{mv} from {board:?}"
-                );
-                assert_eq!(
-                    net.evaluate_child(&accumulator, &board, mv, &after)
-                        .to_bits(),
-                    net.evaluate(&child, &after).to_bits()
-                );
-            }
-            net.play(&mut accumulator, &mut board, played);
-        }
-    }
-}
-
-#[test]
-fn children_evaluated_from_the_parent_equal_their_own_evaluation() {
-    check_children::<16>(100);
-    check_children::<256>(100);
-    // Lanes beyond the last group of eight.
-    check_children::<12>(100);
-}
-
 #[test]
 fn incremental_updates_equal_refresh_width_16() {
     check_incremental::<16>(200);
@@ -612,20 +570,7 @@ fn an_extreme_network_does_not_overflow_in_random_games() {
         let mut replay = Board::new();
         let mut accumulator = net.refresh(&board);
         let mut low_accumulator = low.refresh(&board);
-        for (before, mv) in game {
-            let after = {
-                let mut after = before;
-                after.play(mv);
-                after
-            };
-            if after.status() == Status::Ongoing {
-                assert!(net
-                    .child_logit(&accumulator, &before, mv, &after)
-                    .is_finite());
-                assert!(low
-                    .child_logit(&low_accumulator, &before, mv, &after)
-                    .is_finite());
-            }
+        for (_, mv) in game {
             net.play(&mut accumulator, &mut board, mv);
             low.play(&mut low_accumulator, &mut replay, mv);
             assert_eq!(accumulator, net.refresh(&board));

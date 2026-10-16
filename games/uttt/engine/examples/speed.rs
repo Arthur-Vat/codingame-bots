@@ -97,11 +97,12 @@ fn main() {
             "updating the accumulators with each move walking down, and the rules",
             shares.walk,
         ),
-        ("playing each child's move: the rules", shares.child_moves),
+        ("copying the accumulators for each child", shares.copy),
         (
-            "evaluating each child: its move's rows and the output layer",
-            shares.evaluate,
+            "playing each child's move: its rows, and the rules",
+            shares.rows,
         ),
+        ("evaluating each child", shares.evaluate),
         ("the rest: tree, moves, rules", shares.rest()),
     ] {
         println!(
@@ -257,13 +258,11 @@ enum Part {
     /// Updating a copy of the accumulators with each move played, most of
     /// them by iterations walking down the tree.
     Walk,
-    /// Copying the accumulators once for each child: not part of the
-    /// search since E026, measured only to take it out of `Walk`'s cost.
+    /// Copying the accumulators for each child.
     Copy,
-    /// Playing each child's move on its board: the rules.
-    ChildMove,
-    /// Evaluating each child the network judges, from its parent's
-    /// accumulators and its move's rows.
+    /// Copying them and adding the child's move rows.
+    Update,
+    /// Evaluating each child the network judges.
     Evaluate,
 }
 
@@ -342,18 +341,20 @@ impl Game for Probe {
             count(1, moves.len() as u64);
         }
         for &mv in moves {
+            let mut child = accumulator;
             let mut next = *board;
-            next.play(mv);
+            network.play(&mut child, &mut next, mv);
             match self.part {
                 Part::Copy => {
                     for _ in 0..EXTRA {
                         black_box(&black_box(accumulator));
                     }
                 }
-                Part::ChildMove => {
+                Part::Update => {
                     for _ in 0..EXTRA {
-                        let mut extra = black_box(*board);
-                        extra.play(mv);
+                        let mut extra = black_box(accumulator);
+                        let mut extra_board = *board;
+                        network.play(&mut extra, &mut extra_board, mv);
                         black_box(&extra);
                     }
                 }
@@ -367,18 +368,13 @@ impl Game for Probe {
                     } else {
                         if self.part == Part::Evaluate {
                             for _ in 0..EXTRA {
-                                black_box(network.evaluate_child(
-                                    black_box(&accumulator),
-                                    board,
-                                    mv,
-                                    &next,
-                                ));
+                                black_box(network.evaluate(black_box(&child), &next));
                             }
                         }
                         if self.part == Part::Count {
                             count(2, 1);
                         }
-                        f64::from(network.evaluate_child(&accumulator, board, mv, &next))
+                        f64::from(network.evaluate(&child, &next))
                     };
                     let seat_0 = if next.to_move() == 0 {
                         value
@@ -404,13 +400,14 @@ struct Shares {
     depth: f64,
     /// Shares of the search's time.
     walk: f64,
-    child_moves: f64,
+    copy: f64,
+    rows: f64,
     evaluate: f64,
 }
 
 impl Shares {
     fn rest(&self) -> f64 {
-        1.0 - self.walk - self.child_moves - self.evaluate
+        1.0 - self.walk - self.copy - self.rows - self.evaluate
     }
 }
 
@@ -466,7 +463,7 @@ fn measure_shares() -> Shares {
         Part::None,
         Part::Walk,
         Part::Copy,
-        Part::ChildMove,
+        Part::Update,
         Part::Evaluate,
     ];
     // One search per part, each fed the same positions in the same order.
@@ -508,7 +505,8 @@ fn measure_shares() -> Shares {
         evaluations: per_iteration(2),
         depth: per_iteration(3),
         walk: extra(2) - copy_per_move,
-        child_moves: extra(4),
+        copy,
+        rows: extra(4) - copy,
         evaluate: extra(5),
     }
 }
