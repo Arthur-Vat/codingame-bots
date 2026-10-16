@@ -51,6 +51,10 @@ pub struct SelfPlay {
     /// The weight of a child's minimax value in selection, as in the bot
     /// (E020).
     pub minimax_weight: f64,
+    /// PUCT as in the bot (E030): the temperature of the priors from the
+    /// children's estimates (0 for none) and the weight of their bias.
+    pub value_temperature: f64,
+    pub prior_weight: f64,
     /// The NNUE that judges the search's new nodes instead of playouts, as
     /// in the bot since E017; it replaces `policy` and `patterns`.
     pub network: Option<&'static Network<256>>,
@@ -147,6 +151,8 @@ impl SelfPlay {
             search.priors = priors;
             search.expand_all = self.expand_all;
             search.minimax_weight = self.minimax_weight;
+            search.value_temperature = self.value_temperature;
+            search.prior_weight = self.prior_weight;
         }
         let mut board = Board::new();
         for &mv in start {

@@ -88,6 +88,8 @@ fn the_settings_are_those_of_the_newest_release() {
         format!("const EXPLORATION: f64 = {:?};", EXPLORATION),
         format!("const EXPAND_ALL: bool = {EXPAND_ALL};"),
         format!("const MINIMAX_WEIGHT: f64 = {:?};", MINIMAX_WEIGHT),
+        format!("const VALUE_TEMPERATURE: f64 = {:?};", VALUE_TEMPERATURE),
+        format!("const PRIOR_WEIGHT: f64 = {:?};", PRIOR_WEIGHT),
     ] {
         assert!(
             release.lines().any(|line| line == constant),
