@@ -190,7 +190,8 @@ pub struct LeagueArgs {
     /// file (see docs/adr/0038-incremental-league.md), plays only the
     /// pairings of the release --new not yet stored, and rates every bot of
     /// the file and of the --bot options over stored and new pairings. The
-    /// file must exist; an empty one is fine.
+    /// file must exist; an empty one is fine. Every bot of the file other
+    /// than --new needs a --bot, since any of them may be chosen.
     #[arg(long, value_name = "FILE", requires_all = ["new", "new_results"])]
     pub results: Option<PathBuf>,
 

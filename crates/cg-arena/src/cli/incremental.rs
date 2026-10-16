@@ -32,8 +32,15 @@ pub(super) fn run_incremental_league<F: RefereeFactory>(
     }
     let candidates: Vec<String> = pool.iter().filter(|name| *name != new).cloned().collect();
     let previous = args.previous.as_deref();
+    // An empty value (`--fixed-opponents ""`) means no fixed opponents.
+    let fixed: Vec<String> = args
+        .fixed_opponents
+        .iter()
+        .filter(|name| !name.is_empty())
+        .cloned()
+        .collect();
     for (option, name) in previous.iter().map(|name| ("--previous", *name)).chain(
-        args.fixed_opponents
+        fixed
             .iter()
             .map(|name| ("--fixed-opponents", name.as_str())),
     ) {
@@ -43,12 +50,13 @@ pub(super) fn run_incremental_league<F: RefereeFactory>(
         if !candidates.iter().any(|known| known == name) {
             return Err(format!("{option} {name:?} is not a known bot"));
         }
-        check_playable(bots, &[name.to_string()])?;
     }
     let canary = match &args.canary {
         Some(spec) => Some(find_canary(spec, &stored, bots)?),
         None => None,
     };
+    // Every opponent that may be chosen needs a command, whatever the choice.
+    check_playable(bots, &candidates)?;
     let already = stored.iter().any(|pairing| pairing.involves(new));
 
     if args.plan {
@@ -57,8 +65,8 @@ pub(super) fn run_incremental_league<F: RefereeFactory>(
             &stored,
             &pool,
             &candidates,
+            &fixed,
             &anchor,
-            bots,
             canary.as_ref(),
         )?;
         return Ok(true);
@@ -87,9 +95,8 @@ pub(super) fn run_incremental_league<F: RefereeFactory>(
     if already {
         println!("{new} already has stored pairings: none played");
     } else {
-        match league::all_opponents(&candidates, previous, &args.fixed_opponents, args.nearest) {
+        match league::all_opponents(&candidates, previous, &fixed, args.nearest) {
             Some(all) => {
-                check_playable(bots, &all)?;
                 for opponent in &all {
                     run.play_pairing(new, opponent)?;
                 }
@@ -106,13 +113,12 @@ pub(super) fn run_incremental_league<F: RefereeFactory>(
                 let chosen = league::choose_opponents(
                     &candidates,
                     previous,
-                    &args.fixed_opponents,
+                    &fixed,
                     args.nearest,
                     &ratings,
                     estimate,
                 );
                 let later = &chosen[run.played.len()..];
-                check_playable(bots, later)?;
                 for opponent in later {
                     run.play_pairing(new, opponent)?;
                 }
@@ -165,7 +171,8 @@ fn check_playable(bots: &[BotSpec], names: &[String]) -> Result<(), String> {
     for name in names {
         if !bots.iter().any(|bot| bot.name == *name) {
             return Err(format!(
-                "{name:?} is in the results file but has no --bot, so it cannot be played"
+                "{name:?} is in the results file but has no --bot; give a --bot for every bot of \
+                 the file"
             ));
         }
     }
@@ -209,8 +216,8 @@ fn plan(
     stored: &[PairingResult],
     pool: &[String],
     candidates: &[String],
+    fixed: &[String],
     anchor: &str,
-    bots: &[BotSpec],
     canary: Option<&PairingResult>,
 ) -> Result<(), String> {
     let new = args.new.as_deref().unwrap_or_default();
@@ -218,9 +225,8 @@ fn plan(
     if stored.iter().any(|pairing| pairing.involves(new)) {
         println!("{new} already has stored pairings: none played");
     } else {
-        match league::all_opponents(candidates, previous, &args.fixed_opponents, args.nearest) {
+        match league::all_opponents(candidates, previous, fixed, args.nearest) {
             Some(all) => {
-                check_playable(bots, &all)?;
                 println!("Opponents of {new}: {}", all.join(", "));
             }
             None => {
@@ -235,12 +241,11 @@ fn plan(
                 let chosen = league::choose_opponents(
                     candidates,
                     previous,
-                    &args.fixed_opponents,
+                    fixed,
                     args.nearest,
                     &ratings,
                     estimate,
                 );
-                check_playable(bots, &chosen)?;
                 println!(
                     "Opponents of {new}, estimated from {source}; the real choice follows the \
                      first pairing: {}",

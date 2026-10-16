@@ -507,6 +507,44 @@ mod end_to_end {
     }
 
     #[test]
+    fn every_bot_of_the_file_needs_a_command_before_any_game() {
+        let dir = directory("commands");
+        let stored = [("greedy", "random"), ("v002", "random")];
+        let text: Vec<String> = stored.iter().map(|(a, b)| stored_line(a, b)).collect();
+        fs::write(dir.join("results.jsonl"), text.join("\n")).unwrap();
+        // v002 is not the previous release, fixed or necessarily nearest, yet
+        // it may be chosen: nothing is played without a command for it.
+        let bots = ["random", "greedy", "v001"];
+        let options = ["--new", "v001", "--previous", "greedy", "--nearest", "1"];
+        let error = run(&dir, &bots, &options).unwrap_err();
+        assert!(
+            error.contains("\"v002\" is in the results file but has no --bot"),
+            "{error}"
+        );
+        assert!(
+            error.contains("give a --bot for every bot of the file"),
+            "{error}"
+        );
+        assert!(!dir.join("new.jsonl").exists(), "no game was played");
+        let mut plan = options.to_vec();
+        plan.push("--plan");
+        assert!(run(&dir, &bots, &plan).unwrap_err().contains("\"v002\""));
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn an_empty_fixed_opponent_means_none() {
+        let dir = directory("nofixed");
+        let results = dir.join("results.jsonl");
+        fs::write(&results, format!("{}\n", stored_line("greedy", "random"))).unwrap();
+        let bots = ["random", "greedy", "v001"];
+        let options = ["--new", "v001", "--fixed-opponents", ""];
+        assert_eq!(run(&dir, &bots, &options), Ok(true));
+        assert_eq!(new_lines(&dir).len(), 2);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
     fn reports_mistakes_before_playing() {
         let dir = directory("errors");
         let results = dir.join("results.jsonl");
