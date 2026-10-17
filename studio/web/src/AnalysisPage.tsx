@@ -34,6 +34,7 @@ import {
   moveCellFor,
   renderers,
   resultDetailFor,
+  seatNamesFor,
 } from './games/registry';
 import { EnginePanel } from './EnginePanel';
 import { EvalBar } from './EvalBar';
@@ -66,14 +67,15 @@ import {
 
 /** One player's strip: mark, name, how it played, and the time its answers took. */
 function AnalysisStrip({ model, seat }: { model: AnalysisModel; seat: number }) {
+  const names = seatNamesFor(model.game);
   const player: AnalysisPlayer | undefined = model.players[seat];
   const spent = timeUsed(model, seat);
   return (
     <div className="player" data-testid={`player-${seat}`}>
       <div className="who">
-        <SeatMark seat={seat} className="chip" />
+        <SeatMark seat={seat} className="chip" game={model.game} />
         <b>{player?.name ?? `Player ${seat + 1}`}</b>
-        <small>{seatMark(seat)}</small>
+        <small>{seatMark(seat, names)}</small>
       </div>
       {player?.kind === 'bot' && (
         <span className="clock spent" title="Time the bot used">
@@ -89,6 +91,7 @@ function playerLine(player: AnalysisPlayer): string {
 }
 
 function InfoCard({ model, resultLine }: { model: AnalysisModel; resultLine: string }) {
+  const names = seatNamesFor(model.game);
   return (
     <section className="panel info">
       <h3>Analysis board</h3>
@@ -96,8 +99,8 @@ function InfoCard({ model, resultLine }: { model: AnalysisModel; resultLine: str
         <Row term="Source" value={model.source} />
         <Row term="Date" value={formatDate(model.unixTime)} />
         <Row term="Seed" value={String(model.seed)} />
-        <Row term="X" value={playerLine(model.players[0])} />
-        <Row term="O" value={playerLine(model.players[1])} />
+        <Row term={names[0]} value={playerLine(model.players[0])} />
+        <Row term={names[1]} value={playerLine(model.players[1])} />
         <Row term="Result" value={resultLine} />
       </dl>
     </section>
@@ -310,7 +313,7 @@ function AnalysisScreen({
     model.result.end.kind === 'finished' && finalFrame !== undefined
       ? resultDetailFor(model.game, finalFrame)
       : null;
-  const text = resultText(model.result, model.players, detail);
+  const text = resultText(model.result, model.players, detail, seatNamesFor(model.game));
   const endDetail = model.hiddenTurns > 0 ? `${text.detail}, not shown` : text.detail;
   const resultLine = `${text.headline}${endDetail ? `, ${endDetail}` : ''}`;
 

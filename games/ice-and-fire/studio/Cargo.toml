@@ -1,0 +1,24 @@
+[package]
+name = "ice-and-fire-studio"
+description = "A Code of Ice and Fire's adapter for the studio."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+cg-arena.workspace = true
+ice-and-fire-referee.workspace = true
+serde_json.workspace = true
+studio-game.workspace = true
+
+# Used by the tests only: they play whole games with the bots' policy.
+[dev-dependencies]
+ice-and-fire-engine.workspace = true
+ice-and-fire-policy.workspace = true
+
+[lints]
+workspace = true

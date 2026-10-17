@@ -51,8 +51,18 @@ afterEach(() => {
 
 describe('the games', () => {
   it('say whether each has an analysis program', async () => {
-    answering(200, [{ id: 'uttt', name: 'U', releases: ['uttt-v001'], analysis: true }]);
+    answering(200, [
+      { id: 'uttt', name: 'U', releases: ['uttt-v001'], analysis: true, human_play: true },
+    ]);
     expect((await listGames())[0]?.analysis).toBe(true);
+  });
+
+  it('say whether a person can play each', async () => {
+    answering(200, [
+      { id: 'uttt', name: 'U', releases: [], analysis: false, human_play: true },
+      { id: 'ice-and-fire', name: 'I', releases: [], analysis: false, human_play: false },
+    ]);
+    expect((await listGames()).map((game) => game.human_play)).toEqual([true, false]);
   });
 });
 

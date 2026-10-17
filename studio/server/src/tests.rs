@@ -92,14 +92,20 @@ fn get(state: &State, id: &str) -> Value {
 }
 
 #[test]
-fn the_games_list_has_uttt_and_its_releases_newest_first() {
+fn the_games_list_has_the_games_their_releases_and_whether_humans_play() {
     let dir = TempDir::new("games");
     let (status, games) = call(&plain_state(&dir), "GET", "/api/games", &Value::Null);
     assert_eq!(status, 200);
     let games = games.as_array().unwrap();
-    assert_eq!(games.len(), 1);
+    assert_eq!(games.len(), 2);
     assert_eq!(games[0]["id"], "uttt");
     assert_eq!(games[0]["name"], "Ultimate Tic-Tac-Toe");
+    assert_eq!(games[0]["human_play"], true);
+    assert_eq!(games[1]["id"], "ice-and-fire");
+    assert_eq!(games[1]["name"], "A Code of Ice and Fire");
+    assert_eq!(games[1]["human_play"], false);
+    assert_eq!(games[1]["analysis"], false);
+    assert!(games[1]["releases"].is_array());
     let releases: Vec<&str> = games[0]["releases"]
         .as_array()
         .unwrap()
@@ -112,6 +118,37 @@ fn the_games_list_has_uttt_and_its_releases_newest_first() {
     sorted.sort_by(|a, b| b.cmp(a));
     assert_eq!(releases, sorted);
     assert!(releases[0] > "uttt-v009");
+}
+
+#[test]
+fn a_game_without_human_play_refuses_human_seats() {
+    let dir = TempDir::new("no-human-play");
+    let state = plain_state(&dir);
+    let human = json!({"kind": "human"});
+    let bot =
+        json!({"kind": "bot", "release": "ice-and-fire-v001", "think_ms": 100, "mode": "fixed"});
+    for seats in [
+        json!([human, bot]),
+        json!([bot, human]),
+        json!([human, human]),
+    ] {
+        let body = json!({"game": "ice-and-fire", "seed": 1, "seats": seats});
+        let (status, error) = call(&state, "POST", "/api/sessions", &body);
+        assert_eq!(status, 400, "{body}");
+        assert_eq!(
+            error["error"],
+            "this game has no human play: both seats must be bots"
+        );
+    }
+    // Two bots are checked as before: this game has no release yet.
+    let body = json!({"game": "ice-and-fire", "seed": 1, "seats": [bot, bot]});
+    let (status, error) = call(&state, "POST", "/api/sessions", &body);
+    assert_eq!(status, 400, "{body}");
+    assert_eq!(error["error"], "unknown release \"ice-and-fire-v001\"");
+    // The game that has human play still takes humans.
+    let body = json!({"game": "uttt", "seed": 1, "seats": [human, human]});
+    let (status, _) = call(&state, "POST", "/api/sessions", &body);
+    assert_eq!(status, 200);
 }
 
 #[test]

@@ -9,6 +9,7 @@ export const GAMES = [
     name: 'Ultimate Tic-Tac-Toe',
     releases: ['uttt-v010', 'uttt-v009', 'uttt-v001'],
     analysis: false,
+    human_play: true,
   },
 ];
 

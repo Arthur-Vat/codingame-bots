@@ -62,7 +62,7 @@ fn a_think_time_becomes_iterations() {
 #[test]
 fn a_request_is_validated_with_the_servers_messages() {
     let check = |body: serde_json::Value| {
-        request::validate(request(body), true, || vec!["uttt-v001".to_string()])
+        request::validate(request(body), true, true, || vec!["uttt-v001".to_string()])
             .map(|_| ())
             .unwrap_err()
     };
@@ -72,6 +72,7 @@ fn a_request_is_validated_with_the_servers_messages() {
         request::validate(
             request(json!({"game": "x", "seed": 1, "seats": []})),
             false,
+            true,
             Vec::new
         )
         .unwrap_err(),
@@ -116,11 +117,57 @@ fn a_request_is_validated_with_the_servers_messages() {
             json!({"game": "uttt", "seed": 7, "seats": [{"kind": "human", "name": "  "}, bot]}),
         ),
         true,
+        true,
         || vec!["uttt-v001".to_string()],
     )
     .unwrap();
     assert_eq!(new.seats[0].name(), "Player 1");
     assert_eq!(new.seats[1].name(), "uttt-v001");
+}
+
+#[test]
+fn a_human_seat_is_refused_in_a_game_without_human_play() {
+    let releases = || vec!["ice-and-fire-v001".to_string()];
+    let bot =
+        json!({"kind": "bot", "release": "ice-and-fire-v001", "think_ms": 100, "mode": "fixed"});
+    let human = json!({"kind": "human"});
+    for seats in [
+        json!([human, bot]),
+        json!([bot, human]),
+        json!([human, human]),
+    ] {
+        let body = json!({"game": "ice-and-fire", "seed": 1, "seats": seats});
+        assert_eq!(
+            request::validate(request(body), true, false, releases).unwrap_err(),
+            "this game has no human play: both seats must be bots"
+        );
+    }
+    // Two bots are checked as before.
+    let body = json!({"game": "ice-and-fire", "seed": 1, "seats": [bot, bot]});
+    let new = request::validate(request(body), true, false, releases).unwrap();
+    assert_eq!(new.seats[0].name(), "ice-and-fire-v001");
+    let unknown = json!({"kind": "bot", "release": "nope", "think_ms": 100, "mode": "fixed"});
+    let body = json!({"game": "ice-and-fire", "seed": 1, "seats": [bot, unknown]});
+    assert_eq!(
+        request::validate(request(body), true, false, releases).unwrap_err(),
+        "unknown release \"nope\""
+    );
+    // An unknown game is still reported first.
+    let body = json!({"game": "x", "seed": 1, "seats": [human, bot]});
+    assert_eq!(
+        request::validate(request(body), false, false, releases).unwrap_err(),
+        "unknown game \"x\""
+    );
+}
+
+#[test]
+fn the_registered_games_are_uttt_then_ice_and_fire() {
+    let games = games::registered();
+    let ids: Vec<&str> = games.iter().map(|game| game.info().id).collect();
+    assert_eq!(ids, ["uttt", "ice-and-fire"]);
+    assert!(games[0].human_play());
+    assert!(!games[1].human_play());
+    assert!(games::find(&games, "ice-and-fire").is_some());
 }
 
 #[test]

@@ -150,6 +150,7 @@ fn list_games(state: &State) -> Response {
                 "name": info.name,
                 "releases": state.releases().list(info.id),
                 "analysis": game.has_analysis(),
+                "human_play": game.human_play(),
             })
         })
         .collect();
@@ -163,7 +164,12 @@ fn create_session(state: &State, body: &[u8]) -> Response {
     };
     let game = state.game(&request.game);
     let game_id = request.game.clone();
-    let new = match request::validate(request, game.is_some(), || state.releases().list(&game_id)) {
+    let new = match request::validate(
+        request,
+        game.is_some(),
+        game.is_some_and(|game| game.human_play()),
+        || state.releases().list(&game_id),
+    ) {
         Ok(new) => new,
         Err(message) => return Response::error(400, &message),
     };

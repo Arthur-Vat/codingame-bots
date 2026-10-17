@@ -75,6 +75,14 @@ pub trait StudioGame: Send + Sync {
         seat: usize,
     ) -> Result<Vec<HumanMove>, ReplayError>;
 
+    /// Whether a human can take a seat in this game. When false, both seats
+    /// must be bots: the server and the browser's rules program refuse a
+    /// request with a human seat, and the front end offers only two bots
+    /// (ADR 0039, decision 4).
+    fn human_play(&self) -> bool {
+        true
+    }
+
     /// Whether the game has an analysis program (ADR 0032).
     fn has_analysis(&self) -> bool {
         false

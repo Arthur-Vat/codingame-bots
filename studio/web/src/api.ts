@@ -11,6 +11,8 @@ export interface GameSummary {
   releases: string[];
   /** Whether the game has an analysis program (ADR 0032). */
   analysis: boolean;
+  /** Whether a person can play it; when false, both seats must be bots. */
+  human_play: boolean;
 }
 
 export type BotMode = 'fixed' | 'realtime';

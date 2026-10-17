@@ -15,6 +15,7 @@ CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-p
 | [engine/](engine/) | `ice-and-fire-engine`: the fast, standard-library engine for bots (bitboards, random turns, CodinGame's text protocol), with parity tests against the referee and the speed example |
 | [policy/](policy/) | `ice-and-fire-policy`: the greedy turn policy and the input/output loop that the per-league bots share; its tests play every league's bot against the referee |
 | [arena/](arena/) | `ice-and-fire-arena`: plays bots against each other through the referee, in Bronze (all the rules) |
+| [studio/](studio/) | `ice-and-fire-studio`: the game's adapter for the studio, bot seats only ([below](#studio)) |
 | [bots/](bots/) | The bots, listed in "Bots" below |
 | [evaluation.env](evaluation.env) | Settings of the SPRT, the league (opponents, pairs, canary) and the arena for evaluations ([ADR 0012](../../docs/adr/0012-evaluation.md), [ADR 0038](../../docs/adr/0038-incremental-league.md)) |
 | [ci.sh](ci.sh) | The game's CI steps, run after the bots are bundled ([ADR 0029](../../docs/adr/0029-ci-scoped-by-area-and-game.md)): the arena games, the evaluation controls and a small league, then the engine speed |
@@ -55,6 +56,10 @@ target/release/ice-and-fire-arena match \
 ```
 
 The arena plays Bronze games: all the rules, on the map of the pair's seed ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)). Each pair plays one seed twice with the seats swapped, so both bots play the same map from both seats. The referee ignores `--opening-plies`: the maps vary the games. `sprt` and `league` take the same options, and `scripts/sprt.sh ice-and-fire CANDIDATE.rs` uses [evaluation.env](evaluation.env): 10 ms per turn (a time scale of 0.2) plus 5 ms of tolerance, since no bot of the game is in Legend ([ADR 0013](../../docs/adr/0013-evaluation-time-limits.md), [ADR 0020](../../docs/adr/0020-full-time-sprt-in-legend.md)). `ci.sh` plays the arena's games in CI; the bots keep CodinGame's exact limits there.
+
+## Studio
+
+The studio replays and plays this game, but only between bots: [ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md) (decision 4) leaves out human play, so the game's `human_play` is false, the server and the browser's rules program refuse a human seat, and the setup menu offers only Bot vs bot. The adapter, [studio/](studio/), replays the Bronze referee and reads each position from its protocol text (`turn_input(0)` and `initial_input(0)`), and `last` is the difference between two positions, not a second reading of the rules; the frame format is documented in the crate. Records from `ice-and-fire-arena match --records DIR` replay in the studio's History (and `studio-archive` accepts them). The game has no release and no analysis program yet; the studio will also play the baseline bots ([ADR 0040](../../docs/adr/0040-baseline-bots-in-the-studio.md)).
 
 ## Numbers
 

@@ -405,7 +405,7 @@ jobs:
       - name: Test the studio and the arena
         # The studio's server tests compile a release with rustc and play bot
         # games; the arena's unix-only tests are skipped on Windows.
-        run: scripts/annotate.sh run "Test the studio and the arena" cargo test --locked -p studio -p studio-core -p studio-rules -p studio-game -p uttt-studio -p cg-arena
+        run: scripts/annotate.sh run "Test the studio and the arena" cargo test --locked -p studio -p studio-core -p studio-rules -p studio-game -p uttt-studio -p ice-and-fire-studio -p cg-arena
       - name: Test the adapter without its analysis feature
         # The step above builds uttt-studio together with the server, which
         # turns its feature "analysis" on. Alone it is built without, as in the
