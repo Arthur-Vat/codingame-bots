@@ -9,10 +9,13 @@ import {
   MINUTES,
   MODE_TITLES,
   THINK_MS,
+  BASELINE_GROUP,
+  baselineLabel,
   botThinkIndexes,
   clockSeed,
+  defaultBot,
   defaultRelease,
-  defaultSecondRelease,
+  defaultSecondBot,
   minutesLabel,
   modesFor,
   offeredMode,
@@ -49,6 +52,8 @@ interface Props {
   onModeChange?: (mode: Mode) => void;
   /** The release names of the game. */
   releases: readonly string[];
+  /** The names of the game's baseline bots (ADR 0040), offered after the releases. */
+  baselines?: readonly string[];
   /** Whether a person can play the game; when false, only the game between bots is offered. */
   humanPlay?: boolean;
   /** The names of the two seats (the first moves first), when the game has its own. */
@@ -68,20 +73,28 @@ interface ClockIndexes {
   increment: number;
 }
 
+/** A stable empty list, so that a dialog without baseline bots does not get a new one each time. */
+const NO_BASELINES: readonly string[] = [];
+
 const DEFAULT_CLOCK: ClockIndexes = {
   minutes: DEFAULT_MINUTES_INDEX,
   increment: DEFAULT_INCREMENT_INDEX,
 };
 
+/** The bots to choose from: the releases, newest first, then the baseline bots in a group. */
 function ReleaseSelect({
   id,
   value,
   releases,
+  baselines,
+  game,
   onChange,
 }: {
   id: string;
   value: string;
   releases: readonly string[];
+  baselines: readonly string[];
+  game: string | undefined;
   onChange: (value: string) => void;
 }) {
   const latest = defaultRelease(releases);
@@ -92,6 +105,15 @@ function ReleaseSelect({
           {releaseLabel(name, latest)}
         </option>
       ))}
+      {baselines.length > 0 && (
+        <optgroup label={BASELINE_GROUP}>
+          {baselines.map((name) => (
+            <option key={name} value={name}>
+              {baselineLabel(name, game)}
+            </option>
+          ))}
+        </optgroup>
+      )}
     </select>
   );
 }
@@ -129,6 +151,7 @@ export function SetupDialog({
   initialMode,
   onModeChange,
   releases,
+  baselines = NO_BASELINES,
   humanPlay = true,
   seatNames = DEFAULT_SEAT_NAMES,
   game,
@@ -142,10 +165,10 @@ export function SetupDialog({
 
   // What was chosen in each mode stays while the menu is open and the mode is switched.
   const [mode, setMode] = useState<Mode>(() => offeredMode(humanPlay, initialMode));
-  const [release, setRelease] = useState(() => defaultRelease(releases));
+  const [release, setRelease] = useState(() => defaultBot(releases, baselines));
   const [thinkIndex, setThinkIndex] = useState(DEFAULT_THINK_INDEX);
-  const [xRelease, setXRelease] = useState(() => defaultRelease(releases));
-  const [oRelease, setORelease] = useState(() => defaultSecondRelease(releases));
+  const [xRelease, setXRelease] = useState(() => defaultBot(releases, baselines));
+  const [oRelease, setORelease] = useState(() => defaultSecondBot(releases, baselines));
   // The think time of both bots, and the two of advanced mode.
   const [botsThinkIndex, setBotsThinkIndex] = useState(DEFAULT_THINK_INDEX);
   const [xThinkIndex, setXThinkIndex] = useState(DEFAULT_THINK_INDEX);
@@ -225,7 +248,7 @@ export function SetupDialog({
 
   const timed = mode === 'friend' || mode === 'computer';
   // A game against or between bots needs a bot to choose.
-  const noBots = mode !== 'friend' && releases.length === 0;
+  const noBots = mode !== 'friend' && releases.length + baselines.length === 0;
 
   return (
     <div
@@ -268,6 +291,8 @@ export function SetupDialog({
                     id={id('release')}
                     value={release}
                     releases={releases}
+                    baselines={baselines}
+                    game={game}
                     onChange={setRelease}
                   />
                 </div>
@@ -322,6 +347,8 @@ export function SetupDialog({
                     id={id('x-release')}
                     value={xRelease}
                     releases={releases}
+                    baselines={baselines}
+                    game={game}
                     onChange={setXRelease}
                   />
                 </div>
@@ -331,6 +358,8 @@ export function SetupDialog({
                     id={id('o-release')}
                     value={oRelease}
                     releases={releases}
+                    baselines={baselines}
+                    game={game}
                     onChange={setORelease}
                   />
                 </div>

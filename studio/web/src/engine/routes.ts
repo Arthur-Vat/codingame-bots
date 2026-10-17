@@ -92,17 +92,22 @@ export function createEngine(deps: EngineDeps): Engine {
 
   const listGames = async (): Promise<Reply> => {
     const manifest = await deps.wasm.manifest();
-    const games = rules.call<{ id: string; name: string; human_play?: boolean }[]>({
-      op: 'games',
-    });
+    const games = rules.call<
+      { id: string; name: string; human_play?: boolean; baselines?: string[] }[]
+    >({ op: 'games' });
     return json(
       200,
-      games.map((game) => ({
-        ...game,
-        human_play: game.human_play !== false,
-        releases: manifest.games.find((entry) => entry.id === game.id)?.releases ?? [],
-        analysis: manifest.games.find((entry) => entry.id === game.id)?.analysis === true,
-      })),
+      games.map((game) => {
+        const built = manifest.games.find((entry) => entry.id === game.id);
+        return {
+          ...game,
+          human_play: game.human_play !== false,
+          releases: built?.releases ?? [],
+          // The game's baseline bots, in the adapter's order, those that are built.
+          baselines: (game.baselines ?? []).filter((name) => built?.baselines.includes(name)),
+          analysis: built?.analysis === true,
+        };
+      }),
     );
   };
 

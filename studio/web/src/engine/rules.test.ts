@@ -26,9 +26,47 @@ describe('the rules program', () => {
   it('lists the games', async () => {
     const rules = await loadedRules();
     expect(rules.call({ op: 'games' })).toEqual([
-      { id: 'uttt', name: 'Ultimate Tic-Tac-Toe', human_play: true },
-      { id: 'ice-and-fire', name: 'A Code of Ice and Fire', human_play: false },
+      {
+        id: 'uttt',
+        name: 'Ultimate Tic-Tac-Toe',
+        human_play: true,
+        baselines: ['uttt-greedy', 'uttt-random'],
+      },
+      {
+        id: 'ice-and-fire',
+        name: 'A Code of Ice and Fire',
+        human_play: false,
+        baselines: [
+          'ice-and-fire-bronze',
+          'ice-and-fire-wood1',
+          'ice-and-fire-wood2',
+          'ice-and-fire-wood3',
+          'ice-and-fire-random',
+        ],
+      },
     ]);
+  });
+
+  it('takes a seat for a baseline bot of the game without it being among the releases', async () => {
+    const rules = await loadedRules();
+    const seat = { kind: 'bot', release: 'ice-and-fire-bronze', think_ms: 10, mode: 'fixed' };
+    const state = rules.call<RulesState>({
+      op: 'new',
+      request: { game: 'ice-and-fire', seed: 5, opening_plies: 0, seats: [seat, seat] },
+      releases: [],
+    });
+    expect(state.seats.map((entry) => entry.name)).toEqual([
+      'ice-and-fire-bronze',
+      'ice-and-fire-bronze',
+    ]);
+    const other = { ...seat, release: 'uttt-greedy' };
+    expect(() =>
+      rules.call({
+        op: 'new',
+        request: { game: 'ice-and-fire', seed: 5, opening_plies: 0, seats: [seat, other] },
+        releases: [],
+      }),
+    ).toThrow('unknown release "uttt-greedy"');
   });
 
   it('refuses a bad request with its own message', async () => {

@@ -9,11 +9,13 @@ const render = (
   releases: string[],
   humanPlay?: boolean,
   names?: { seatNames: readonly [string, string]; game: string },
+  baselines?: string[],
 ): string =>
   renderToStaticMarkup(
     createElement(SetupDialog, {
       initialMode,
       releases,
+      baselines,
       humanPlay,
       ...names,
       onStart: () => Promise.resolve(),
@@ -89,5 +91,51 @@ describe('the setup menu', () => {
     expect(withSides).toContain('aria-label="Play Red"');
     expect(withSides).toContain('You play Red and move first');
     expect(render('computer', ['a-v001'])).toContain('aria-label="Play X"');
+  });
+
+  it('lists the releases, then the baseline bots in a group, by their folder', () => {
+    const html = render('computer', ['uttt-v002', 'uttt-v001'], true, undefined, [
+      'uttt-greedy',
+      'uttt-random',
+    ]);
+    expect(html).toContain('<optgroup label="Baseline bots">');
+    const options = [...html.matchAll(/<option[^>]*>([^<]*)<\/option>/g)].map((m) => m[1]);
+    expect(options).toEqual(['uttt-v002 (latest)', 'uttt-v001', 'uttt-greedy', 'uttt-random']);
+    expect(html.indexOf('uttt-v001')).toBeLessThan(html.indexOf('<optgroup'));
+    expect(html).toMatch(/<option value="uttt-v002" selected="">/);
+  });
+
+  it('shows the folder of a baseline bot, not the name the records keep', () => {
+    const html = render('bots', [], false, { seatNames: ['Red', 'Blue'], game: 'ice-and-fire' }, [
+      'ice-and-fire-bronze',
+      'ice-and-fire-wood1',
+      'ice-and-fire-random',
+    ]);
+    expect(html).toContain('<option value="ice-and-fire-bronze"');
+    expect(html).toContain('>bronze</option>');
+    expect(html).not.toContain('>ice-and-fire-bronze</option>');
+  });
+
+  it('starts a game without a release at the first baseline bot, and the second at the second', () => {
+    const html = render('bots', [], false, { seatNames: ['Red', 'Blue'], game: 'ice-and-fire' }, [
+      'ice-and-fire-bronze',
+      'ice-and-fire-wood1',
+      'ice-and-fire-random',
+    ]);
+    const selects = html.split('<select').slice(1);
+    expect(selects).toHaveLength(2);
+    expect(selects[0]).toMatch(/<option value="ice-and-fire-bronze" selected="">/);
+    expect(selects[1]).toMatch(/<option value="ice-and-fire-wood1" selected="">/);
+  });
+
+  it('has no notice and offers Start when a game has baseline bots but no release', () => {
+    const html = render('bots', [], false, undefined, ['a-bronze']);
+    expect(html).not.toContain('no bot yet');
+    expect(html).not.toMatch(/disabled=""[^>]*>Start/);
+    expect(render('computer', [], true, undefined, ['a-bronze'])).not.toContain('no bot yet');
+  });
+
+  it('has no group for a game without baseline bots', () => {
+    expect(render('computer', ['uttt-v001'])).not.toContain('optgroup');
   });
 });

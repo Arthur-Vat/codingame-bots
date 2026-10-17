@@ -5,7 +5,10 @@ import {
   clockLabel,
   clockOf,
   clockSeed,
+  baselineLabel,
+  defaultBot,
   defaultRelease,
+  defaultSecondBot,
   defaultSecondRelease,
   modesFor,
   offeredMode,
@@ -150,6 +153,34 @@ describe('releases', () => {
   it('marks the latest in its label', () => {
     expect(releaseLabel('uttt-v010', 'uttt-v010')).toBe('uttt-v010 (latest)');
     expect(releaseLabel('uttt-v009', 'uttt-v010')).toBe('uttt-v009');
+  });
+});
+
+describe('baseline bots', () => {
+  const baselines = ['ice-and-fire-bronze', 'ice-and-fire-wood1', 'ice-and-fire-random'];
+
+  it('start a seat when the game has no release, and give way to the latest release otherwise', () => {
+    expect(defaultBot([], baselines)).toBe('ice-and-fire-bronze');
+    expect(defaultBot(['uttt-v001', 'uttt-v002'], ['uttt-greedy'])).toBe('uttt-v002');
+    expect(defaultBot([], [])).toBe('');
+  });
+
+  it('start the second bot of a game between bots at the second one, when there is no release', () => {
+    expect(defaultSecondBot([], baselines)).toBe('ice-and-fire-wood1');
+    expect(defaultSecondBot([], ['ice-and-fire-bronze'])).toBe('ice-and-fire-bronze');
+    expect(defaultSecondBot([], [])).toBe('');
+  });
+
+  it('leave the second bot as it is for releases', () => {
+    expect(defaultSecondBot(['uttt-v002', 'uttt-v001'], ['uttt-greedy'])).toBe('uttt-v001');
+    expect(defaultSecondBot(['uttt-v001'], ['uttt-greedy', 'uttt-random'])).toBe('uttt-v001');
+  });
+
+  it('are shown by their folder', () => {
+    expect(baselineLabel('ice-and-fire-bronze', 'ice-and-fire')).toBe('bronze');
+    expect(baselineLabel('uttt-greedy', 'uttt')).toBe('greedy');
+    expect(baselineLabel('uttt-greedy', 'other')).toBe('uttt-greedy');
+    expect(baselineLabel('uttt-greedy', undefined)).toBe('uttt-greedy');
   });
 });
 

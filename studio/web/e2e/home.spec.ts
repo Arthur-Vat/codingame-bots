@@ -257,3 +257,59 @@ test('a lost connection shows while a session is open, and clears', async ({ pag
   fail = false;
   await expect(page.getByText('Connection lost')).toBeHidden({ timeout: 5000 });
 });
+
+test('a game with baseline bots and no release says so, and starts bronze against wood1', async ({
+  page,
+}) => {
+  const baselines = [
+    'ice-and-fire-bronze',
+    'ice-and-fire-wood1',
+    'ice-and-fire-wood2',
+    'ice-and-fire-wood3',
+    'ice-and-fire-random',
+  ];
+  await page.route('**/api/games', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: 'ice-and-fire',
+          name: 'A Code of Ice and Fire',
+          releases: [],
+          baselines,
+          analysis: false,
+          human_play: false,
+        },
+      ],
+    }),
+  );
+  let body: unknown = null;
+  await page.route('**/api/sessions', async (route) => {
+    body = route.request().postDataJSON();
+    await route.fulfill({ json: { id: 'ab12' } });
+  });
+  await page.route('**/api/sessions/ab12', (route) =>
+    route.fulfill({ json: { ...SESSION, game: 'ice-and-fire', status: 'compiling', to_act: [] } }),
+  );
+
+  await page.goto('/');
+  const card = page.getByRole('link', { name: /A Code of Ice and Fire/ });
+  await expect(card).toContainText('No releases · 5 baseline bots');
+  await expect(card).not.toContainText('Latest');
+
+  await card.click();
+  const dialog = setupMenu(page);
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText('This game has no bot yet')).toHaveCount(0);
+  const first = dialog.getByLabel(/\(moves first\)/);
+  await expect(first.locator('optgroup')).toHaveAttribute('label', 'Baseline bots');
+  await expect(first.locator('option')).toHaveText(['bronze', 'wood1', 'wood2', 'wood3', 'random']);
+  await dialog.getByRole('button', { name: 'Start' }).click();
+  await expect(page).toHaveURL(/#\/game\/ice-and-fire\/ab12$/);
+  expect(body).toMatchObject({
+    game: 'ice-and-fire',
+    seats: [
+      { kind: 'bot', release: 'ice-and-fire-bronze', mode: 'realtime' },
+      { kind: 'bot', release: 'ice-and-fire-wood1', mode: 'realtime' },
+    ],
+  });
+});

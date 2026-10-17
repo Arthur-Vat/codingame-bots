@@ -4,7 +4,14 @@ import { createRules } from './rules';
 import { Speed, memorySpeedCache } from './speed';
 import { BOTS_UNAVAILABLE } from './bot';
 import { STORE_UNAVAILABLE, memoryGameStore } from './storage';
-import { fakeWasm, inProcessAnalysis, request, rulesModule, testEngine } from './testSupport';
+import {
+  FAKE_BASELINES,
+  fakeWasm,
+  inProcessAnalysis,
+  request,
+  rulesModule,
+  testEngine,
+} from './testSupport';
 
 const friends = {
   game: 'uttt',
@@ -57,6 +64,8 @@ async function playOut(engine: Engine, id: string): Promise<View> {
   throw new Error('the game did not end');
 }
 
+const ICE_AND_FIRE_BASELINES = FAKE_BASELINES['ice-and-fire'];
+
 describe('the routes', () => {
   it('answers 404 for a path that is not a route and 405 for a wrong method', async () => {
     const { engine } = await testEngine();
@@ -80,6 +89,7 @@ describe('the routes', () => {
         id: 'uttt',
         name: 'Ultimate Tic-Tac-Toe',
         releases: ['uttt-v002', 'uttt-v001'],
+        baselines: ['uttt-greedy', 'uttt-random'],
         analysis: true,
         human_play: true,
       },
@@ -87,20 +97,31 @@ describe('the routes', () => {
         id: 'ice-and-fire',
         name: 'A Code of Ice and Fire',
         releases: [],
+        baselines: ICE_AND_FIRE_BASELINES,
         analysis: false,
         human_play: false,
       },
     ]);
   });
 
-  it('gives a game that is not in the manifest no releases', async () => {
-    const { engine } = await testEngine({ releases: [] });
+  it('lists only the baseline bots that are built, in the adapter order', async () => {
+    const { engine } = await testEngine({
+      baselines: { uttt: ['uttt-random', 'uttt-greedy'], 'ice-and-fire': ['ice-and-fire-bronze'] },
+    });
+    const games = await request(engine, 'GET', '/api/games');
+    const lists = (games.body as { baselines: string[] }[]).map((game) => game.baselines);
+    expect(lists).toEqual([['uttt-greedy', 'uttt-random'], ['ice-and-fire-bronze']]);
+  });
+
+  it('gives a game that is not in the manifest no releases and no baseline bots', async () => {
+    const { engine } = await testEngine({ releases: [], baselines: {} });
     const games = await request(engine, 'GET', '/api/games');
     expect(games.body).toEqual([
       {
         id: 'uttt',
         name: 'Ultimate Tic-Tac-Toe',
         releases: [],
+        baselines: [],
         analysis: true,
         human_play: true,
       },
@@ -108,10 +129,19 @@ describe('the routes', () => {
         id: 'ice-and-fire',
         name: 'A Code of Ice and Fire',
         releases: [],
+        baselines: [],
         analysis: false,
         human_play: false,
       },
     ]);
+  });
+
+  it('lists the baseline bots of a game that has no release', async () => {
+    const { engine } = await testEngine({ releases: [] });
+    const games = await request(engine, 'GET', '/api/games');
+    expect((games.body as { id: string; baselines: string[] }[])[1]?.baselines).toEqual(
+      ICE_AND_FIRE_BASELINES,
+    );
   });
 });
 
