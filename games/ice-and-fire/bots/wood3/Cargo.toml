@@ -1,0 +1,17 @@
+[package]
+name = "ice-and-fire-bot-wood3"
+description = "Wood 3 bot for A Code of Ice and Fire: the greedy policy with the Wood 3 rules."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ice-and-fire-engine.workspace = true
+ice-and-fire-policy.workspace = true
+
+[lints]
+workspace = true

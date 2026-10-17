@@ -167,8 +167,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
+name = "ice-and-fire-bot-bronze"
+version = "0.0.0"
+dependencies = [
+ "ice-and-fire-engine",
+ "ice-and-fire-policy",
+]
+
+[[package]]
 name = "ice-and-fire-bot-wait"
 version = "0.0.0"
+
+[[package]]
+name = "ice-and-fire-bot-wood1"
+version = "0.0.0"
+dependencies = [
+ "ice-and-fire-engine",
+ "ice-and-fire-policy",
+]
+
+[[package]]
+name = "ice-and-fire-bot-wood2"
+version = "0.0.0"
+dependencies = [
+ "ice-and-fire-engine",
+ "ice-and-fire-policy",
+]
+
+[[package]]
+name = "ice-and-fire-bot-wood3"
+version = "0.0.0"
+dependencies = [
+ "ice-and-fire-engine",
+ "ice-and-fire-policy",
+]
 
 [[package]]
 name = "ice-and-fire-engine"
@@ -176,6 +208,16 @@ version = "0.0.0"
 dependencies = [
  "cg-arena",
  "cg-core",
+ "ice-and-fire-referee",
+]
+
+[[package]]
+name = "ice-and-fire-policy"
+version = "0.0.0"
+dependencies = [
+ "cg-arena",
+ "cg-core",
+ "ice-and-fire-engine",
  "ice-and-fire-referee",
 ]
 
