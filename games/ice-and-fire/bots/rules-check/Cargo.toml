@@ -1,0 +1,22 @@
+[package]
+name = "ice-and-fire-bot-rules-check"
+description = "Plays randomly on CodinGame and reports any difference between CodinGame's turn input and the engine's prediction."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+cg-core.workspace = true
+ice-and-fire-engine.workspace = true
+
+# Used by the tests only: the bot is checked in-process against the referee.
+[dev-dependencies]
+cg-arena.workspace = true
+ice-and-fire-referee.workspace = true
+
+[lints]
+workspace = true

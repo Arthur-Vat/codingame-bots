@@ -19,7 +19,7 @@ pub const MAX_TURNS: u32 = 100;
 /// Gold each player starts with.
 const START_GOLD: i64 = 20;
 /// Cost of a mine or a tower.
-const BUILD_COST: i64 = 15;
+pub const BUILD_COST: i64 = 15;
 /// Gold per turn of a unit of level 1, 2 and 3 on an active cell.
 const UPKEEP: [i64; 3] = [1, 4, 20];
 /// The headquarters cell of each seat.
@@ -209,6 +209,38 @@ impl State {
         self.units[seat]
     }
 
+    /// The id and level of the unit on `cell`, if there is one.
+    pub fn unit_at(&self, cell: usize) -> Option<(u32, u8)> {
+        (self.units[0] | self.units[1])
+            .test(cell)
+            .then(|| (self.unit_id[cell], self.level_at(cell)))
+    }
+
+    /// The units of the player to act that may still move this turn.
+    pub fn movable_units(&self) -> Bits {
+        self.units[self.to_act] & self.movable
+    }
+
+    /// The cells with a mine, of either seat.
+    pub fn mines(&self) -> Bits {
+        self.mine
+    }
+
+    /// The cells with a tower, of either seat.
+    pub fn towers(&self) -> Bits {
+        self.tower
+    }
+
+    /// The level of the unit on `cell`, if there is one.
+    pub fn unit_level(&self, cell: usize) -> Option<u8> {
+        (cell < CELLS && (self.units[0] | self.units[1]).test(cell)).then(|| self.level_at(cell))
+    }
+
+    /// The id of the unit on `cell`, if there is one.
+    pub fn unit_id(&self, cell: usize) -> Option<u32> {
+        (cell < CELLS && (self.units[0] | self.units[1]).test(cell)).then(|| self.unit_id[cell])
+    }
+
     // --- Turn structure ---
 
     /// A player's start of turn (RULES.md, "Start of a player's turn").
@@ -348,8 +380,9 @@ impl State {
     /// The cells that a unit of `level` of `seat` may enter, by training or
     /// moving (RULES.md, "Capture"): empty cells, and the opponent's cells
     /// whose unit, if any, it beats, unless a tower blocks them from units
-    /// below level 3.
-    pub(crate) fn enterable(&self, seat: usize, level: u8) -> Bits {
+    /// below level 3. `level` is 1 to 3.
+    pub fn enterable(&self, seat: usize, level: u8) -> Bits {
+        debug_assert!((1..=3).contains(&level), "unit level {level} is not 1 to 3");
         let opponent = 1 - seat;
         let units = self.units[0] | self.units[1];
         let empty = self.empty_cells();
@@ -368,12 +401,12 @@ impl State {
     }
 
     /// The cells that are the seat's active cells or next to one.
-    pub(crate) fn near_active(&self, seat: usize) -> Bits {
+    pub fn near_active(&self, seat: usize) -> Bits {
         self.active[seat] | self.active[seat].neighbours()
     }
 
     /// The cells with no unit and no building.
-    pub(crate) fn empty_cells(&self) -> Bits {
+    pub fn empty_cells(&self) -> Bits {
         let units = self.units[0] | self.units[1];
         let hqs = Bits::cell(HQ[0]) | Bits::cell(HQ[1]);
         self.map.valid.and_not(units | self.mine | self.tower | hqs)
