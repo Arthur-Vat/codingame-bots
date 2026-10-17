@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- **League bootstrap go-ahead** (asked 2026-10-17): dispatch `league.yml` on a `claude/` branch with `bots: greedy v001 v002 ... v018` (about 10 runner-hours, 2-3 runs of up to 5 hours), copy each run's lines into one bootstrap PR with `LEADERBOARD.md`, then set `LEAGUE_CANARY`. Do it before the next experiment: until `games/uttt/league.jsonl` exists, the gate does not hold a release PR.
+- **League bootstrap: go-ahead answered in the conversation, 2026-10-17 (form): "Yes, in a fresh session".** Next session starts it: dispatch `league.yml` on a `claude/` branch with `bots: greedy v001 v002 ... v018` (about 10 runner-hours, 2-3 runs of up to 5 hours), copy each run's lines into one bootstrap PR with `LEADERBOARD.md`, then set `LEAGUE_CANARY`. Do it before the next experiment: until `games/uttt/league.jsonl` exists, the gate does not hold a release PR.
 
 ## Open questions
 
