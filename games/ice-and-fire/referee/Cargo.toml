@@ -1,0 +1,17 @@
+[package]
+name = "ice-and-fire-referee"
+description = "Readable reference implementation of CodinGame's A Code of Ice and Fire rules, with its own map generator, used by the arena."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+cg-arena.workspace = true
+cg-core.workspace = true
+
+[lints]
+workspace = true

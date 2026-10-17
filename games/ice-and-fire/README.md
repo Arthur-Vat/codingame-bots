@@ -2,7 +2,18 @@
 
 CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-programming/a-code-of-ice-and-fire) is the second game of this framework, named by the owner on 2026-10-17 (phase 7 of the [main roadmap](../../docs/ROADMAP.md)). Two players on a 12×12 map build armies, buildings and territory to capture the opposing headquarters. It began as a 10-day contest, now over; bots can still be submitted to it as a multiplayer game (source's README).
 
-**Status:** stage 4, framework gaps ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md). No engine or bot yet.
+**Status:** stage 5, referee and engine ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator, and the `wait` bot. No fast engine or arena yet.
+
+## Layout
+
+| Path | What it is |
+| --- | --- |
+| [RULES.md](RULES.md) | The rules in our own words, with sources |
+| [MODEL.md](MODEL.md) | The game as a search problem: numbers, a formal model, what follows for bots |
+| [ROADMAP.md](ROADMAP.md) | The game's stages in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md)) |
+| [referee/](referee/) | `ice-and-fire-referee`: readable reference implementation of the rules, with our own map generator ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)), for the arena |
+| [bots/wait/](bots/wait/) | `ice-and-fire-bot-wait`: reads every turn's input and answers `WAIT` |
+| [ci.sh](ci.sh) | The game's CI steps, run after the bots are bundled ([ADR 0029](../../docs/adr/0029-ci-scoped-by-area-and-game.md)); no arena games until stage 6 |
 
 ## Sources
 

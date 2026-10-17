@@ -2,7 +2,7 @@
 
 The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md), [ADR 0035](../../docs/adr/0035-new-game-lifecycle.md)). The owner decides at the end of every stage; each gate records his answer and its date. Skill `new-game` reads this file to name the next stage.
 
-**Stage in progress:** 4. Framework gaps (ADR 0039 for the owner's approval); next, 5. Referee and engine
+**Stage in progress:** 5. Referee and engine; next, 6. Arena and baseline bots
 **Owner's stopping rule:** none yet
 
 | # | Stage | Status | Gate: the owner's answer |
@@ -10,8 +10,8 @@ The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME
 | 1 | Intake | Done (2026-10-17) | Facts in [README.md](README.md), #157 merged; "Merge 157 and go on" (2026-10-17) |
 | 2 | Rules | Done (2026-10-17) | [RULES.md](RULES.md), #158 merged; "Merge #158, go on" (form, 2026-10-17) |
 | 3 | Model | Done (2026-10-17) | [MODEL.md](MODEL.md), #159 merged; "Merge #159" (form, 2026-10-17) |
-| 4 | Framework gaps | Waiting for the owner | Three gaps decided (form, 2026-10-17); [ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md) to approve |
-| 5 | Referee and engine | Not started | |
+| 4 | Framework gaps | Done (2026-10-17) | [ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md) merged (#160); "Merge #160" (form, 2026-10-17) |
+| 5 | Referee and engine | In progress | |
 | 6 | Arena and baseline bots | Not started | |
 | 7 | Studio | Not started | |
 | 8 | Research | Not started | |
@@ -23,12 +23,12 @@ Status is `Not started`, `In progress`, `Waiting for the owner` or `Done (YYYY-M
 
 ## Current stage
 
-Framework gaps: the table in [MODEL.md](MODEL.md).
+Referee and engine: the list in the [playbook](../../docs/NEW_GAME.md).
 
-- [x] The problem in plain English, then a short formal part; numbers, symmetries, the class of game and the families of methods (#159)
-- [x] The framework gaps listed, each with where it is, what would change and whether the game can wait (#159)
-- [x] Each gap decided by the owner (form, 2026-10-17)
-- [ ] The decision record of gaps 2 and 3, [ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md), merged
+- [x] Readable referee and map generator (#161)
+- [ ] A fast, standard-library engine; parity tests against the referee on many random games; property tests
+- [ ] A speed baseline in the game's README (`cargo run --release -p ice-and-fire-engine --example speed`)
+- [ ] A `rules-check` bot (skill `rules-check`), pasted by the owner on CodinGame in the league where the full rules apply
 
 ## Open questions
 
@@ -37,6 +37,7 @@ Framework gaps: the table in [MODEL.md](MODEL.md).
 
 ## Decisions
 
+- 2026-10-17: stage 5 go-ahead, in this session (form: "Go, in this session").
 - 2026-10-17: framework gaps (form): (1) cg-search and multi-command turns: "Decide at stage 9"; (2) maps: "Own generator + check" ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)); (3) studio: "No human play for this game, replay first play later" (ADR 0039).
 - 2026-10-17: stage 3 passed: "Merge #159" (form).
 - 2026-10-17: stages 3 and 4 in one pull request, the gaps listed, each then brought to the owner (form: "One PR, gaps listed").
