@@ -208,7 +208,7 @@ Gate: the owner passes each stage of the second game.
 - [x] Decision record on the lifecycle ([ADR 0035](adr/0035-new-game-lifecycle.md))
 - [x] The [playbook](NEW_GAME.md), the templates of a game's roadmap, model and research, the shared [research notes](research/README.md), and the skills `new-game`, `game-intake`, `game-model`, `rules-check`, `game-research` and `game-retrospective`
 - [x] Ultimate Tic-Tac-Toe as the worked example: its [model](../games/uttt/MODEL.md), [research note](../games/uttt/research/README.md), [roadmap](../games/uttt/ROADMAP.md) and [retrospective](../games/uttt/RETROSPECTIVE.md)
-- [ ] A second game, named by the owner: [A Code of Ice and Fire](../games/ice-and-fire/ROADMAP.md) (2026-10-17), stage 5 (referee and engine) waiting for the `rules-check` run on CodinGame, stage 6 (arena and baseline bots) in progress
+- [ ] A second game, named by the owner: [A Code of Ice and Fire](../games/ice-and-fire/ROADMAP.md) (2026-10-17), stage 5 (referee and engine) waiting for the `rules-check` run on CodinGame, stage 6 (arena and baseline bots) done, stage 7 (studio) in progress
 
 ## Outside the phases
 
