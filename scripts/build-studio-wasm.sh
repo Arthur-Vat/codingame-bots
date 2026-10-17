@@ -26,7 +26,8 @@
 # the browser. The release files are never changed. An analysis program that
 # does not build is an error, not skipped.
 #
-# Needs jq (preinstalled on GitHub's Ubuntu runners) and builds cg-bundler.
+# Needs Node, which `npm run wasm` has, to read the rules program's answer,
+# and builds cg-bundler.
 #
 # Usage: scripts/build-studio-wasm.sh [OUT] [--strict]
 #   OUT       the output folder, relative to the current folder (default:
@@ -75,8 +76,8 @@ if ((installed == 0)); then
   exit 1
 fi
 
-if ! command -v jq >/dev/null; then
-  echo "build-studio-wasm: jq is needed" >&2
+if ! command -v node >/dev/null; then
+  echo "build-studio-wasm: node is needed" >&2
   exit 1
 fi
 
@@ -87,7 +88,14 @@ cp "${CARGO_TARGET_DIR:-target}/$target/release/studio-rules.wasm" "$out/rules.w
 
 # The baseline bots of each game, from the adapters.
 games_json="$(echo '{"op":"games"}' | cargo run -q --locked -p studio-rules)"
-jq -e '.ok' >/dev/null <<<"$games_json" || {
+# One `<game> <baseline bot>` line per baseline bot. Node rather than jq: Git
+# Bash on Windows has no jq. The script is JavaScript: no shell expansion.
+# shellcheck disable=SC2016
+baseline_lines="$(node -e '
+  const answer = JSON.parse(require("fs").readFileSync(0, "utf8"));
+  if (!Array.isArray(answer.ok)) process.exit(1);
+  for (const game of answer.ok) for (const bot of game.baselines) console.log(`${game.id} ${bot}`);
+' <<<"$games_json")" || {
   echo "build-studio-wasm: the rules program cannot list the games: $games_json" >&2
   exit 1
 }
@@ -122,7 +130,7 @@ for game_dir in games/*/; do
   baselines=()
   while IFS= read -r name; do
     baselines+=("$name")
-  done < <(jq -r --arg game "$game" '.ok[] | select(.id == $game) | .baselines[]' <<<"$games_json")
+  done < <(awk -v game="$game" '$1 == game { print $2 }' <<<"$baseline_lines")
   ((${#names[@]} + ${#baselines[@]} > 0)) || continue
   mkdir -p "$out/$game"
   # A game without an analysis program must not keep an old file.
