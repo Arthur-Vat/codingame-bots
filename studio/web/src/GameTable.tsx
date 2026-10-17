@@ -5,14 +5,17 @@ import { SeatMark } from './Marks';
 import { timeUsed } from './play';
 import { moveRows, resultText, seatMark, statusText } from './sessionView';
 import { thinkLabel } from './setup';
+import { seatNamesFor } from './games/registry';
 
 /** One player's strip: name, mark, and the clock (humans) or the time used (bots). */
 export function PlayerStrip({
+  gameId,
   session,
   seat,
   clocks,
   running,
 }: {
+  gameId: string;
   session: Session | null;
   seat: number;
   clocks: ClockState | null;
@@ -21,7 +24,11 @@ export function PlayerStrip({
 }) {
   const info = session?.seats[seat];
   const name = info?.name ?? `Player ${seat + 1}`;
-  const sub = info ? (info.kind === 'bot' ? thinkLabel(info.think_ms) : seatMark(seat)) : '';
+  const sub = info
+    ? info.kind === 'bot'
+      ? thinkLabel(info.think_ms)
+      : seatMark(seat, seatNamesFor(gameId))
+    : '';
   const left = clocks?.remaining[seat] ?? null;
   let clock;
   if (session !== null && info?.kind === 'bot') {
@@ -54,7 +61,7 @@ export function PlayerStrip({
   return (
     <div className="player" data-testid={`player-${seat}`}>
       <div className="who">
-        <SeatMark seat={seat} className="chip" />
+        <SeatMark seat={seat} className="chip" game={gameId} />
         <b>{name}</b>
         <small>{sub}</small>
       </div>
@@ -107,6 +114,7 @@ export function Row({ term, value }: { term: string; value: string }) {
 }
 
 interface MoveListProps {
+  gameId: string;
   session: Session | null;
   problem: string | null;
   lost: boolean;
@@ -122,6 +130,7 @@ interface MoveListProps {
 
 /** The numbered moves, each one a button that shows its position, and the end block. */
 export function MoveList({
+  gameId,
   session,
   problem,
   lost,
@@ -150,7 +159,9 @@ export function MoveList({
     );
   }
   const rows = moveRows(session.turns);
-  const result = session.result ? resultText(session.result, session.seats, detail) : null;
+  const result = session.result
+    ? resultText(session.result, session.seats, detail, seatNamesFor(gameId))
+    : null;
   const cell = (move: { turn: number; text: string }) => (
     <button
       type="button"
@@ -164,7 +175,7 @@ export function MoveList({
   return (
     <div className="moves" aria-label="Moves" ref={list}>
       {rows.length === 0 && session.status !== 'failed' && (
-        <div className="empty">{statusText(session)}</div>
+        <div className="empty">{statusText(session, seatNamesFor(gameId))}</div>
       )}
       {rows.map((row) => (
         <MoveRowView key={row.number} number={row.number}>

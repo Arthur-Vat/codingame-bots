@@ -1,0 +1,79 @@
+{
+  "format": 1,
+  "game": "ice-and-fire",
+  "seed": 17511193636537632422,
+  "opening_plies": 0,
+  "unix_time": 1792248764,
+  "source": "arena match",
+  "players": [
+    {
+      "name": "bronze",
+      "kind": "bot",
+      "bot_seed": 5721390286368151960,
+      "command": "bronze",
+      "time_scale": 1.0,
+      "fixed_iters": null
+    },
+    {
+      "name": "random",
+      "kind": "bot",
+      "bot_seed": 16306404928085820015,
+      "command": "random",
+      "time_scale": 1.0,
+      "fixed_iters": null
+    }
+  ],
+  "turns": [
+    [{ "seat": 0, "lines": ["TRAIN 1 1 0;TRAIN 1 2 0"], "ms": 0.25338900000000003 }],
+    [{ "seat": 1, "lines": ["TRAIN 2 10 10"], "ms": 0.206698 }],
+    [{ "seat": 0, "lines": ["MOVE 2 2 1;MOVE 1 1 1"], "ms": 0.09220700000000001 }],
+    [{ "seat": 1, "lines": ["WAIT"], "ms": 0.024703 }],
+    [{ "seat": 0, "lines": ["MOVE 2 3 1;MOVE 1 1 2"], "ms": 0.079732 }],
+    [{ "seat": 1, "lines": ["MOVE 3 0 0"], "ms": 0.024334 }],
+    [{ "seat": 0, "lines": ["MOVE 2 4 1;MOVE 1 2 2"], "ms": 0.069063 }],
+    [{ "seat": 1, "lines": ["MOVE 3 4 10"], "ms": 0.013844 }],
+    [{ "seat": 0, "lines": ["MOVE 2 5 1;MOVE 1 3 2;BUILD MINE 1 0"], "ms": 0.067082 }],
+    [{ "seat": 1, "lines": ["MOVE 3 0 0"], "ms": 0.021294999999999998 }],
+    [{ "seat": 0, "lines": ["MOVE 2 6 1;MOVE 1 4 2;BUILD MINE 1 2"], "ms": 0.123483 }],
+    [{ "seat": 1, "lines": ["MOVE 3 4 9"], "ms": 0.042671 }],
+    [{ "seat": 0, "lines": ["MOVE 2 7 1;MOVE 1 5 2;TRAIN 1 7 2"], "ms": 0.144287 }],
+    [{ "seat": 1, "lines": ["MOVE 3 4 10"], "ms": 0.02065 }],
+    [
+      {
+        "seat": 0,
+        "lines": ["MOVE 4 8 2;MOVE 2 8 1;MOVE 1 6 2;BUILD MINE 7 2;TRAIN 1 9 2"],
+        "ms": 0.13725
+      }
+    ],
+    [{ "seat": 1, "lines": ["TRAIN 1 9 11;MOVE 3 10 7"], "ms": 0.023989999999999997 }],
+    [
+      {
+        "seat": 0,
+        "lines": ["MOVE 5 9 3;MOVE 4 8 3;MOVE 2 9 1;MOVE 1 6 3;BUILD MINE 8 2;TRAIN 1 9 4"],
+        "ms": 0.106789
+      }
+    ],
+    [{ "seat": 1, "lines": ["MOVE 6 6 7;MOVE 3 0 0"], "ms": 0.07762699999999999 }],
+    [
+      {
+        "seat": 0,
+        "lines": [
+          "MOVE 7 9 5;MOVE 5 9 4;MOVE 4 8 4;MOVE 2 9 2;MOVE 1 7 3;TRAIN 1 8 5;TRAIN 1 9 6;TRAIN 1 9 7"
+        ],
+        "ms": 0.208517
+      }
+    ],
+    [{ "seat": 1, "lines": ["MOVE 6 1 5;MOVE 3 10 3;TRAIN 1 8 9"], "ms": 0.06351799999999999 }],
+    [
+      {
+        "seat": 0,
+        "lines": [
+          "MOVE 10 10 7;MOVE 9 10 6;MOVE 7 9 6;MOVE 5 9 5;MOVE 8 8 6;MOVE 4 9 4;MOVE 2 9 3;MOVE 1 7 4;TRAIN 1 11 7;TRAIN 1 11 8;TRAIN 1 11 9;TRAIN 1 11 10;TRAIN 1 11 11"
+        ],
+        "ms": 0.155437
+      }
+    ]
+  ],
+  "end": { "kind": "finished" },
+  "winner": 0
+}

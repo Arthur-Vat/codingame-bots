@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { SeatMark } from './Marks';
+import { DEFAULT_SEAT_NAMES, type SeatNames } from './sessionView';
 import {
   DEFAULT_INCREMENT_INDEX,
   DEFAULT_MINUTES_INDEX,
   DEFAULT_THINK_INDEX,
   INCREMENTS,
   MINUTES,
-  MODES,
   MODE_TITLES,
   THINK_MS,
   botThinkIndexes,
@@ -14,6 +14,8 @@ import {
   defaultRelease,
   defaultSecondRelease,
   minutesLabel,
+  modesFor,
+  offeredMode,
   orderReleases,
   releaseLabel,
   resolveSeed,
@@ -23,11 +25,16 @@ import {
   type Side,
 } from './setup';
 
-const SIDE_CAPTIONS: Record<Side, string> = {
-  x: 'You play X and move first',
-  random: 'Random side',
-  o: 'You play O; the bot moves first',
-};
+function sideCaption(side: Side, names: SeatNames): string {
+  switch (side) {
+    case 'x':
+      return `You play ${names[0]} and move first`;
+    case 'random':
+      return 'Random side';
+    case 'o':
+      return `You play ${names[1]}; the bot moves first`;
+  }
+}
 
 /** What the menu hands back when Start is pressed. */
 export interface SetupResult {
@@ -42,6 +49,12 @@ interface Props {
   onModeChange?: (mode: Mode) => void;
   /** The release names of the game. */
   releases: readonly string[];
+  /** Whether a person can play the game; when false, only the game between bots is offered. */
+  humanPlay?: boolean;
+  /** The names of the two seats (the first moves first), when the game has its own. */
+  seatNames?: SeatNames;
+  /** The game's id, for its seat marks. */
+  game?: string;
   /** Starts the game; a rejected promise shows its message in the dialog. */
   onStart: (result: SetupResult) => Promise<void>;
   onClose: () => void;
@@ -116,6 +129,9 @@ export function SetupDialog({
   initialMode,
   onModeChange,
   releases,
+  humanPlay = true,
+  seatNames = DEFAULT_SEAT_NAMES,
+  game,
   onStart,
   onClose,
   endsRunningGame = false,
@@ -125,7 +141,7 @@ export function SetupDialog({
   const startRef = useRef<HTMLButtonElement>(null);
 
   // What was chosen in each mode stays while the menu is open and the mode is switched.
-  const [mode, setMode] = useState<Mode>(initialMode);
+  const [mode, setMode] = useState<Mode>(() => offeredMode(humanPlay, initialMode));
   const [release, setRelease] = useState(() => defaultRelease(releases));
   const [thinkIndex, setThinkIndex] = useState(DEFAULT_THINK_INDEX);
   const [xRelease, setXRelease] = useState(() => defaultRelease(releases));
@@ -208,6 +224,8 @@ export function SetupDialog({
   };
 
   const timed = mode === 'friend' || mode === 'computer';
+  // A game against or between bots needs a bot to choose.
+  const noBots = mode !== 'friend' && releases.length === 0;
 
   return (
     <div
@@ -225,7 +243,7 @@ export function SetupDialog({
         </header>
         <div className="body">
           <div className="modes" role="group" aria-label="Mode">
-            {MODES.map((choice) => (
+            {modesFor(humanPlay).map((choice) => (
               <button
                 key={choice}
                 type="button"
@@ -236,7 +254,12 @@ export function SetupDialog({
               </button>
             ))}
           </div>
-          {mode === 'computer' && (
+          {noBots && (
+            <p className="hint no-bots" role="status">
+              This game has no bot yet, so no game can be started here.
+            </p>
+          )}
+          {mode === 'computer' && !noBots && (
             <>
               <div className="pair">
                 <div className="field">
@@ -254,10 +277,10 @@ export function SetupDialog({
                     <button
                       type="button"
                       aria-pressed={side === 'x'}
-                      aria-label="Play X"
+                      aria-label={`Play ${seatNames[0]}`}
                       onClick={() => setSide('x')}
                     >
-                      <SeatMark seat={0} />
+                      <SeatMark seat={0} game={game} />
                     </button>
                     <button
                       type="button"
@@ -271,13 +294,13 @@ export function SetupDialog({
                     <button
                       type="button"
                       aria-pressed={side === 'o'}
-                      aria-label="Play O"
+                      aria-label={`Play ${seatNames[1]}`}
                       onClick={() => setSide('o')}
                     >
-                      <SeatMark seat={1} />
+                      <SeatMark seat={1} game={game} />
                     </button>
                   </div>
-                  <div className="side-cap">{SIDE_CAPTIONS[side]}</div>
+                  <div className="side-cap">{sideCaption(side, seatNames)}</div>
                 </div>
               </div>
               <div className="field">
@@ -290,11 +313,11 @@ export function SetupDialog({
               </div>
             </>
           )}
-          {mode === 'bots' && (
+          {mode === 'bots' && !noBots && (
             <>
               <div className="pair">
                 <div className="field">
-                  <label htmlFor={id('x-release')}>X (moves first)</label>
+                  <label htmlFor={id('x-release')}>{seatNames[0]} (moves first)</label>
                   <ReleaseSelect
                     id={id('x-release')}
                     value={xRelease}
@@ -303,7 +326,7 @@ export function SetupDialog({
                   />
                 </div>
                 <div className="field">
-                  <label htmlFor={id('o-release')}>O</label>
+                  <label htmlFor={id('o-release')}>{seatNames[1]}</label>
                   <ReleaseSelect
                     id={id('o-release')}
                     value={oRelease}
@@ -324,7 +347,7 @@ export function SetupDialog({
               )}
             </>
           )}
-          {timed && (
+          {timed && !noBots && (
             <div className="pair">
               <div className="field">
                 <label htmlFor={id('minutes')}>
@@ -370,12 +393,12 @@ export function SetupDialog({
           </label>
           {advanced && (
             <div className="adv">
-              {mode === 'bots' && (
+              {mode === 'bots' && !noBots && (
                 <div className="pair">
                   <div className="field">
                     <ThinkSlider
                       id={id('x-think')}
-                      label="X think"
+                      label={`${seatNames[0]} think`}
                       index={xThinkIndex}
                       onChange={(index) => {
                         setXThinkIndex(index);
@@ -386,7 +409,7 @@ export function SetupDialog({
                   <div className="field">
                     <ThinkSlider
                       id={id('o-think')}
-                      label="O think"
+                      label={`${seatNames[1]} think`}
                       index={oThinkIndex}
                       onChange={(index) => {
                         setOThinkIndex(index);
@@ -422,7 +445,7 @@ export function SetupDialog({
             ref={startRef}
             className="btn primary"
             type="button"
-            disabled={busy}
+            disabled={busy || noBots}
             onClick={() => void start()}
           >
             {busy ? 'Starting…' : endsRunningGame ? 'End this game and start' : 'Start'}

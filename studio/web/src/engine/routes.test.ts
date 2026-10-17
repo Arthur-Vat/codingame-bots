@@ -81,6 +81,7 @@ describe('the routes', () => {
         name: 'Ultimate Tic-Tac-Toe',
         releases: ['uttt-v002', 'uttt-v001'],
         analysis: true,
+        human_play: true,
       },
     ]);
   });
@@ -89,7 +90,13 @@ describe('the routes', () => {
     const { engine } = await testEngine({ releases: [] });
     const games = await request(engine, 'GET', '/api/games');
     expect(games.body).toEqual([
-      { id: 'uttt', name: 'Ultimate Tic-Tac-Toe', releases: [], analysis: true },
+      {
+        id: 'uttt',
+        name: 'Ultimate Tic-Tac-Toe',
+        releases: [],
+        analysis: true,
+        human_play: true,
+      },
     ]);
   });
 });

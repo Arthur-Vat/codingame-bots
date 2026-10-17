@@ -18,6 +18,19 @@ export type Side = 'x' | 'random' | 'o';
 /** The modes in the order the setup menu shows them. */
 export const MODES: readonly Mode[] = ['friend', 'computer', 'bots'];
 
+/**
+ * The modes the setup menu offers for a game: all of them, or only the one between bots when
+ * nobody can play the game (`human_play` is false).
+ */
+export function modesFor(humanPlay: boolean): readonly Mode[] {
+  return humanPlay ? MODES : ['bots'];
+}
+
+/** The mode to open the menu with: `mode` when the game offers it, else the bot game. */
+export function offeredMode(humanPlay: boolean, mode: Mode): Mode {
+  return modesFor(humanPlay).includes(mode) ? mode : 'bots';
+}
+
 export const MODE_TITLES: Record<Mode, string> = {
   friend: 'Human vs human',
   computer: 'Human vs bot',

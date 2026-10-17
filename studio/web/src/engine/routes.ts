@@ -92,11 +92,14 @@ export function createEngine(deps: EngineDeps): Engine {
 
   const listGames = async (): Promise<Reply> => {
     const manifest = await deps.wasm.manifest();
-    const games = rules.call<{ id: string; name: string }[]>({ op: 'games' });
+    const games = rules.call<{ id: string; name: string; human_play?: boolean }[]>({
+      op: 'games',
+    });
     return json(
       200,
       games.map((game) => ({
         ...game,
+        human_play: game.human_play !== false,
         releases: manifest.games.find((entry) => entry.id === game.id)?.releases ?? [],
         analysis: manifest.games.find((entry) => entry.id === game.id)?.analysis === true,
       })),

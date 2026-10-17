@@ -7,6 +7,7 @@ import {
   ownEntry,
   renderers,
   resultDetailFor,
+  seatNamesFor,
 } from './registry';
 
 describe('the registry lookups', () => {
@@ -14,6 +15,15 @@ describe('the registry lookups', () => {
     expect(renderers['uttt']).toBeTypeOf('function');
     expect(emptyFrameFor('uttt')).toBeTypeOf('object');
     expect(resultDetailFor('uttt', { nope: true })).toBeNull();
+  });
+
+  it('find the entries of Ice and Fire, which has a board but no moves to read or write', () => {
+    expect(renderers['ice-and-fire']).toBeTypeOf('function');
+    expect(emptyFrameFor('ice-and-fire')).toBeTypeOf('object');
+    expect(resultDetailFor('ice-and-fire', { nope: true })).toBeNull();
+    expect(moveCellFor('ice-and-fire', '1 2')).toBeNull();
+    expect(actionTextFor('ice-and-fire', { row: 1, col: 2 })).toBeNull();
+    expect(hasActionTexts('ice-and-fire')).toBe(false);
   });
 
   it('find nothing for an unknown game, and nothing a plain object inherits', () => {
@@ -58,6 +68,13 @@ describe('the registry lookups', () => {
     expect(hasActionTexts('uttt')).toBe(true);
     expect(hasActionTexts('nope')).toBe(false);
     expect(hasActionTexts('constructor')).toBe(false);
+  });
+
+  it('names the seats of Ice and Fire, and keeps X and O for the rest', () => {
+    expect(seatNamesFor('ice-and-fire')).toEqual(['Red', 'Blue']);
+    for (const id of ['uttt', 'nope', 'constructor', '__proto__']) {
+      expect(seatNamesFor(id), id).toEqual(['X', 'O']);
+    }
   });
 
   it('own entries only, for any map', () => {

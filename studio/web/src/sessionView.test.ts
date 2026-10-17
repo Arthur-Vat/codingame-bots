@@ -6,6 +6,7 @@ import {
   moveBeingPlayed,
   overlayFor,
   resultText,
+  seatMark,
   sessionTitle,
   statusText,
 } from './sessionView';
@@ -186,5 +187,32 @@ describe('overlayFor', () => {
     expect(moveBeingPlayed(session({ ...playing, frames: [] }))).toBeNull();
     expect(moveBeingPlayed(session({ ...playing, status: 'over' }))).toBeNull();
     expect(moveBeingPlayed(session({ ...playing, status: 'failed' }))).toBeNull();
+  });
+});
+
+describe('seat names', () => {
+  const seats = [bot, human] as Session['seats'];
+  const names = ['Red', 'Blue'] as const;
+
+  it('mark a seat with X and O unless the game names its seats', () => {
+    expect([seatMark(0), seatMark(1)]).toEqual(['X', 'O']);
+    expect([seatMark(0, names), seatMark(1, names)]).toEqual(['Red', 'Blue']);
+  });
+
+  it('name the winner, the seat to move and the seat that resigned', () => {
+    const finished = { kind: 'finished' } as const;
+    expect(resultText({ winner: 0, end: finished }, seats, null, names).headline).toBe(
+      '1–0 · Red wins',
+    );
+    expect(resultText({ winner: 1, end: finished }, seats, null, names).headline).toBe(
+      '0–1 · Blue wins',
+    );
+    expect(resultText({ winner: null, end: finished }, seats, null, names).headline).toBe(
+      '½–½ · Draw',
+    );
+    expect(
+      resultText({ winner: 1, end: { kind: 'resigned', seat: 0 } }, seats, null, names).detail,
+    ).toBe('Red resigned');
+    expect(statusText(session({}), names)).toBe('You to move (Blue)');
   });
 });

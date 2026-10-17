@@ -1,0 +1,261 @@
+/* A Code of Ice and Fire's board: a status strip over a 12 x 12 map drawn as one SVG. The whole
+   component is square, as the shell's board slot is: the map takes the room the strip leaves and
+   scales to it, so it fits a phone's width and never makes the page scroll sideways. Owners differ
+   by colour and also by shape or label: the HQ carries the owner's letter, blue units have a ring,
+   cells cut off from their HQ are hatched. */
+.iaf {
+  --red: #c62f26;
+  --blue: #1d5fc4;
+  --red-tile: #e9a39b;
+  --blue-tile: #9ec3ef;
+  --red-off: #f3d6d2;
+  --blue-off: #d6e5f7;
+  --neutral: #8ca2ad;
+  --gold: #f2c14e;
+  --mark: var(--amber, #e0a50d);
+  --ink: #1a1c1f;
+
+  container-type: inline-size;
+  box-sizing: border-box;
+  width: 100%;
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 4px;
+  min-width: 0;
+  user-select: none;
+}
+
+.iaf-strip {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: clamp(10px, 3.4cqw, 13px);
+  line-height: 1.3;
+  color: var(--fg, #bababa);
+}
+
+.iaf-turn {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 10px;
+  color: var(--fg-strong, #e8e6e3);
+  font-weight: 600;
+}
+
+.iaf-turn .to-move {
+  font-weight: 500;
+}
+
+.iaf-turn .to-move.r,
+.iaf-seat.r .name {
+  color: #ff8a7f;
+}
+
+.iaf-turn .to-move.b,
+.iaf-seat.b .name {
+  color: #7db4f5;
+}
+
+.iaf-seats {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 14px;
+}
+
+.iaf-seat {
+  display: flex;
+  column-gap: 6px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.iaf-seat .name {
+  font-weight: 600;
+}
+
+.iaf-answer {
+  min-height: 1.3em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--muted, #8b8885);
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+}
+
+.iaf-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border-radius: 3px;
+}
+
+/* Hidden, not removed: the map keeps its place. */
+.iaf.coords-off .coords {
+  visibility: hidden;
+}
+
+.coord {
+  font-size: 0.5px;
+  fill: var(--muted, #8b8885);
+  font-family: var(--mono, ui-monospace, Consolas, monospace);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.tile.neutral {
+  fill: var(--neutral);
+}
+
+.tile.r {
+  fill: var(--red-tile);
+}
+
+.tile.b {
+  fill: var(--blue-tile);
+}
+
+.tile.r.off {
+  fill: var(--red-off);
+}
+
+.tile.b.off {
+  fill: var(--blue-off);
+}
+
+.hatch {
+  fill: none;
+  stroke-width: 0.07px;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+
+.hatch.r {
+  stroke: var(--red);
+}
+
+.hatch.b {
+  stroke: var(--blue);
+}
+
+.spot {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 0.07px;
+  stroke-dasharray: 0.12 0.08;
+  paint-order: stroke;
+}
+
+.building .shape {
+  stroke: #fff;
+  stroke-width: 0.05px;
+  stroke-linejoin: round;
+}
+
+.building.r .shape {
+  fill: var(--red);
+}
+
+.building.b .shape {
+  fill: var(--blue);
+}
+
+.building .gold {
+  fill: var(--gold);
+  stroke: var(--ink);
+  stroke-width: 0.03px;
+}
+
+.building .letter,
+.unit .level {
+  fill: #fff;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  font-family: var(--font, system-ui, sans-serif);
+}
+
+.building .letter {
+  font-size: 0.4px;
+}
+
+.unit .disc {
+  stroke: #fff;
+  stroke-width: 0.06px;
+}
+
+.unit.r .disc {
+  fill: var(--red);
+}
+
+.unit.b .disc {
+  fill: var(--blue);
+}
+
+.unit .halo {
+  fill: none;
+  stroke: var(--blue);
+  stroke-width: 0.05px;
+}
+
+.unit .level {
+  font-size: 0.45px;
+}
+
+.removed {
+  opacity: 0.45;
+}
+
+.removed .disc {
+  fill: none;
+  stroke-width: 0.07px;
+  stroke-dasharray: 0.1 0.07;
+}
+
+.removed.r .disc,
+.removed.r .cross {
+  stroke: var(--red);
+}
+
+.removed.b .disc,
+.removed.b .cross {
+  stroke: var(--blue);
+}
+
+.removed .cross {
+  stroke-width: 0.07px;
+  stroke-linecap: round;
+}
+
+.built {
+  fill: none;
+  stroke: var(--mark);
+  stroke-width: 0.08px;
+  stroke-dasharray: 0.2 0.1;
+}
+
+.trained {
+  fill: none;
+  stroke: var(--mark);
+  stroke-width: 0.09px;
+}
+
+.move .casing {
+  stroke: var(--ink);
+  stroke-width: 0.15px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: var(--ink);
+}
+
+.move .shaft {
+  stroke: var(--mark);
+  stroke-width: 0.08px;
+  stroke-linecap: round;
+}
+
+.move .tip {
+  fill: var(--mark);
+}

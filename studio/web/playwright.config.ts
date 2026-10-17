@@ -22,7 +22,7 @@ export default defineConfig({
       // tests mock. `preview` has no /api, so left alone the page would choose the browser engine
       // (src/engine/detect.ts); the key forces the server's.
       name: 'chromium',
-      testIgnore: 'browser-engine.spec.ts',
+      testIgnore: ['browser-engine.spec.ts', 'ice-and-fire.spec.ts'],
       use: {
         ...devices['Desktop Chrome'],
         storageState: {
@@ -32,9 +32,10 @@ export default defineConfig({
       },
     },
     {
-      // The browser engine, as GitHub Pages serves it: static files, no API, no mocks.
+      // The browser engine, as GitHub Pages serves it: static files, no API, no mocks. A game's
+      // spec that needs the real rules (a record read by the rules program) runs here too.
       name: 'browser-engine',
-      testMatch: 'browser-engine.spec.ts',
+      testMatch: ['browser-engine.spec.ts', 'ice-and-fire.spec.ts'],
       use: { ...devices['Desktop Chrome'] },
     },
   ],
