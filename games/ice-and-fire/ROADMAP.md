@@ -2,13 +2,13 @@
 
 The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md), [ADR 0035](../../docs/adr/0035-new-game-lifecycle.md)). The owner decides at the end of every stage; each gate records his answer and its date. Skill `new-game` reads this file to name the next stage.
 
-**Stage in progress:** 1. Intake
+**Stage in progress:** 2. Rules
 **Owner's stopping rule:** none yet
 
 | # | Stage | Status | Gate: the owner's answer |
 | --- | --- | --- | --- |
-| 1 | Intake | In progress | |
-| 2 | Rules | Not started | |
+| 1 | Intake | Done (2026-10-17) | Facts in [README.md](README.md), #157 merged; "Merge 157 and go on" (2026-10-17) |
+| 2 | Rules | In progress | |
 | 3 | Model | Not started | |
 | 4 | Framework gaps | Not started | |
 | 5 | Referee and engine | Not started | |
@@ -23,15 +23,13 @@ Status is `Not started`, `In progress`, `Waiting for the owner` or `Done (YYYY-M
 
 ## Current stage
 
-Intake: the facts, with their sources, are in [README.md](README.md).
+Rules: [RULES.md](RULES.md), in our own words, a source for every rule.
 
-- [x] The pages: the statement template of the source stands in for CodinGame's pages (owner, 2026-10-17); each league's rules are in it; the forum thread waits for stage 8
-- [x] The game's source, its license (GPL 3: facts only) and where the statement links to it
-- [x] Players, turn format, what a turn's answer is, hidden information, randomness
-- [x] Time limits for the first turn and the others; output format and what makes an answer lose
-- [ ] The leagues and when the full rules apply (done: Bronze); the leagues above Bronze and the number of players on the leaderboard (open questions below)
-- [x] Notes on the owner's criteria of 2026-10-13
-- [x] Unknowns listed as questions for the owner
+- [ ] `RULES.md` in our own words, a source for every rule
+- [ ] The protocol: inputs, outputs, what makes an answer invalid
+- [ ] End of game, scoring and tiebreaks, with their edge cases
+- [ ] Every point the statement and the source disagree on, and which one applies
+- [ ] Reviewed by `pr-reviewer`, briefed to check each rule against the statement and the source
 
 ## Open questions
 
@@ -40,6 +38,7 @@ Intake: the facts, with their sources, are in [README.md](README.md).
 
 ## Decisions
 
+- 2026-10-17: stage 1 passed: "Merge 157 and go on".
 - 2026-10-17: the forum thread is read later, for stage 8 (research), not at intake.
 - 2026-10-17: the rules come from the source's statement template (`config/statement_en.html.tpl`) rather than a pasted CodinGame page; stage 5's `rules-check` bot checks them against CodinGame's real games.
 - 2026-10-17: folder name `ice-and-fire`, the scope of the game's pull requests and decision records.
