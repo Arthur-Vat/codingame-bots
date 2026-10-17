@@ -70,8 +70,8 @@ jobs:
         run: |
           "$GITHUB_WORKSPACE/scripts/annotate.sh" run "npm ci" npm ci
       - name: Build the rules, the releases and the baseline bots to WebAssembly
-        # --strict: a release that does not compile to WebAssembly fails the
-        # build instead of silently missing from the site. Writes public/wasm/.
+        # --strict: a release or a baseline bot that does not compile to
+        # WebAssembly fails the build instead of silently missing from the site. Writes public/wasm/.
         run: |
           "$GITHUB_WORKSPACE/scripts/annotate.sh" run "WebAssembly build" "$GITHUB_WORKSPACE/scripts/build-studio-wasm.sh" --strict
       - name: Build studio-archive

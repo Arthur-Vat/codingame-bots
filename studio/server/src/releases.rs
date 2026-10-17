@@ -6,7 +6,8 @@
 //!
 //! A baseline bot (ADR 0040) is bundled from the current code of its folder
 //! in `games/<id>/bots/`, then compiled the same way: its hash is of the
-//! bundle, so a change of the code compiles it again.
+//! bundle, so a change of the code compiles it again. A bot is bundled once
+//! per run of the server: a change is played after a restart.
 
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;

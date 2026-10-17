@@ -168,7 +168,7 @@ for game_dir in games/*/; do
     folder="${name#"$game"-}"
     manifest_file="games/$game/bots/$folder/Cargo.toml"
     package=
-    [[ -f $manifest_file ]] && package="$(sed -n 's/^name = "\(.*\)"$/\1/p' "$manifest_file" | head -n 1)"
+    [[ -f $manifest_file ]] && package="$(tr -d '\r' <"$manifest_file" | sed -n 's/^name = "\(.*\)"$/\1/p' | head -n 1)"
     if [[ -n $package ]] &&
       "$bundler" "$package" --no-format --output "$work/$name.rs" &&
       rustc --edition 2021 -C opt-level=3 -C strip=symbols --target "$target" \
