@@ -209,6 +209,26 @@ impl State {
         self.units[seat]
     }
 
+    /// The cells with a mine, whoever owns them.
+    pub fn mines(&self) -> Bits {
+        self.mine
+    }
+
+    /// The cells with a tower, whoever owns them.
+    pub fn towers(&self) -> Bits {
+        self.tower
+    }
+
+    /// The level of the unit on `cell`, if there is one.
+    pub fn unit_level(&self, cell: usize) -> Option<u8> {
+        (cell < CELLS && (self.units[0] | self.units[1]).test(cell)).then(|| self.level_at(cell))
+    }
+
+    /// The id of the unit on `cell`, if there is one.
+    pub fn unit_id(&self, cell: usize) -> Option<u32> {
+        (cell < CELLS && (self.units[0] | self.units[1]).test(cell)).then(|| self.unit_id[cell])
+    }
+
     // --- Turn structure ---
 
     /// A player's start of turn (RULES.md, "Start of a player's turn").

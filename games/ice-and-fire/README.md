@@ -2,7 +2,7 @@
 
 CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-programming/a-code-of-ice-and-fire) is the second game of this framework, named by the owner on 2026-10-17 (phase 7 of the [main roadmap](../../docs/ROADMAP.md)). Two players on a 12×12 map build armies, buildings and territory to capture the opposing headquarters. It began as a 10-day contest, now over; bots can still be submitted to it as a multiplayer game (source's README).
 
-**Status:** stage 5, referee and engine ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator, a fast engine checked against it, and the `wait` bot. No arena yet.
+**Status:** stage 5, referee and engine ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator, a fast engine checked against it, the `wait` bot and the `rules-check` bot. No arena yet.
 
 ## Layout
 
@@ -14,6 +14,7 @@ CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-p
 | [referee/](referee/) | `ice-and-fire-referee`: readable reference implementation of the rules, with our own map generator ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)), for the arena |
 | [engine/](engine/) | `ice-and-fire-engine`: the fast, standard-library engine for bots (bitboards, random turns, CodinGame's text protocol), with parity tests against the referee and the speed example |
 | [bots/wait/](bots/wait/) | `ice-and-fire-bot-wait`: reads every turn's input and answers `WAIT` |
+| [bots/rules-check/](bots/rules-check/) | `ice-and-fire-bot-rules-check`: plays random turns on CodinGame and checks every turn's input against RULES.md and the engine; logs the game's map ([below](#checking-the-rules-on-codingame)) |
 | [ci.sh](ci.sh) | The game's CI steps, run after the bots are bundled ([ADR 0029](../../docs/adr/0029-ci-scoped-by-area-and-game.md)); no arena games until stage 6 |
 
 ## Sources
@@ -65,6 +66,24 @@ Leagues above Bronze, and how many players each holds, are not in the sources (o
 - Equal military power after 100 turns: the referee gives both players their score (`discriminateEndGame`); whether CodinGame then reports a draw is a platform fact to check in stage 5, not guessed here.
 - Red always plays first, and blue's extra cell at (11,10) offsets that (statement, "Expert Rules"). Whether CodinGame plays each pairing from both seats is a platform fact to check.
 - The source is the `develop` branch at commit `efe9e78` (2020-11-25); CodinGame's referee may differ. The `rules-check` bot of stage 5 settles it, and CodinGame's behaviour wins.
+
+## Checking the rules on CodinGame
+
+The parity tests prove the engine and the referee agree with each other, not that both agree with CodinGame. The `rules-check` bot checks that, and logs the maps CodinGame draws so that they can be set beside our generator's ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md), decision 3). To run it, once, in Bronze league or above (the bot assumes the Bronze rules):
+
+1. Paste `target/cg/ice-and-fire-rules-check.rs` (`scripts/bundle-bots.sh ice-and-fire`; CI also publishes it in the `paste-ready-bots-ice-and-fire` artifact) into the IDE and click **Play my code** a few times, against different opponents, so that both seats are played.
+2. For each game, copy from the console: the line `rules-check: MAP ...` (once, on the first turn), the last `rules-check: turn N, X checks, M differences` line, every line starting with `rules-check: DIFFERENCE`, and the result on the end screen.
+
+Each turn the bot answers a random turn and checks:
+
+- the input alone: each player's active cells against their connection to its HQ, no unit of either player on its own inactive cell, both incomes against the income formula (the bot's own income after a wipe-out of its units is allowed to be the one from before it), mines only on mine spots and towers never, and, on the first turn, the start of the game;
+- the input against what the engine predicted after the bot's own commands last turn: gold (plus the income shown, or 0 after a wipe-out), the cells, units and buildings of the bot, the ids of the opponent's units, and that each command the engine carried out shows up unless the opponent captured the cell.
+
+It prints `rules-check: EXPECT win for <red|blue> (HQ captured)` when its own commands capture the opponent's HQ, and on turn 100 both military powers and the result it expects, to compare with the end screen (equal powers are printed as a draw, which RULES.md does not confirm). Any difference, a turn's input that does not parse included, is a `rules-check: DIFFERENCE` line with both sides, and the bot answers `WAIT` to input it cannot read. With `CG_RULES_CHECK_STRICT` set it exits at the first difference.
+
+The MAP line is `rules-check: MAP <red|blue> <144 characters, row by row> <mine spots as x,y separated by spaces>`, with `#` for a void cell and `.` for any other.
+
+What the bot cannot check from its input: the opponent's commands, gold and upkeep (only the opponent's income is shown), the order of the opponent's actions, the time limits, and the rules of the leagues below Bronze. Ids of the bot's own new units are the bot's guess, since it cannot see the ids of units that died, so only that they come after the ids it has seen is checked. How CodinGame chooses the seats and the map seed is not in the input.
 
 ## Engine speed
 

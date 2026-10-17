@@ -813,3 +813,19 @@ fn gold_and_income_beyond_a_billion_are_refused() {
 fn mine_spots_in_a_wood_league_are_refused_by_a_debug_build() {
     State::new(&[false; CELLS], &[(1, 0), (10, 11)], League::Wood2);
 }
+
+#[test]
+fn accessors_show_units_and_buildings() {
+    let buildings = ["0 0 0 0", "0 2 0 1", "1 0 11 11"];
+    let text = turn_text(OPEN_MAP, &buildings, &["0 5 2 1 0"]);
+    let state = State::read("1\n3 3\n", &text, League::Bronze, 1).unwrap();
+    assert_eq!(state.unit_level(1), Some(2));
+    assert_eq!(state.unit_id(1), Some(5));
+    assert_eq!((state.unit_level(0), state.unit_id(0)), (None, None));
+    assert_eq!(
+        (state.unit_level(CELLS), state.unit_id(CELLS)),
+        (None, None)
+    );
+    assert_eq!(state.towers(), Bits::cell(SIZE));
+    assert!(state.mines().is_empty());
+}
