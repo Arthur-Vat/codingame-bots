@@ -28,6 +28,7 @@ Referee and engine: the list in the [playbook](../../docs/NEW_GAME.md).
 - [x] Readable referee and map generator (#161)
 - [x] A fast, standard-library engine; parity tests against the referee on many random games; property tests (#162)
 - [x] A speed baseline in the game's README (`cargo run --release -p ice-and-fire-engine --example speed`)
+- [x] One bot per league (`wood3`, `wood2`, `wood1`, `bronze`) to climb to Bronze, where the `rules-check` bot can run (owner: never played the game, and one bot per league, 2026-10-17)
 - [x] A `rules-check` bot (skill `rules-check`), written (`bots/rules-check/`)
 - [ ] The `rules-check` bot pasted by the owner on CodinGame in the league where the full rules apply (pending)
 

@@ -2,7 +2,7 @@
 
 CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-programming/a-code-of-ice-and-fire) is the second game of this framework, named by the owner on 2026-10-17 (phase 7 of the [main roadmap](../../docs/ROADMAP.md)). Two players on a 12×12 map build armies, buildings and territory to capture the opposing headquarters. It began as a 10-day contest, now over; bots can still be submitted to it as a multiplayer game (source's README).
 
-**Status:** stage 5, referee and engine ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator, a fast engine checked against it, the `wait` bot and the `rules-check` bot. No arena yet.
+**Status:** stage 5, referee and engine ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator, a fast engine checked against it, the `wait` bot, a bot per league and the `rules-check` bot. No arena yet.
 
 ## Layout
 
@@ -13,9 +13,33 @@ CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-p
 | [ROADMAP.md](ROADMAP.md) | The game's stages in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md)) |
 | [referee/](referee/) | `ice-and-fire-referee`: readable reference implementation of the rules, with our own map generator ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)), for the arena |
 | [engine/](engine/) | `ice-and-fire-engine`: the fast, standard-library engine for bots (bitboards, random turns, CodinGame's text protocol), with parity tests against the referee and the speed example |
-| [bots/wait/](bots/wait/) | `ice-and-fire-bot-wait`: reads every turn's input and answers `WAIT` |
-| [bots/rules-check/](bots/rules-check/) | `ice-and-fire-bot-rules-check`: plays random turns on CodinGame and checks every turn's input against RULES.md and the engine; logs the game's map ([below](#checking-the-rules-on-codingame)) |
+| [policy/](policy/) | `ice-and-fire-policy`: the greedy turn policy and the input/output loop that the per-league bots share; its tests play every league's bot against the referee |
+| [bots/](bots/) | The bots, listed in "Bots" below |
 | [ci.sh](ci.sh) | The game's CI steps, run after the bots are bundled ([ADR 0029](../../docs/adr/0029-ci-scoped-by-area-and-game.md)); no arena games until stage 6 |
+
+## Bots
+
+Each league has its own bot, since the input never names the league; each is a small `main` that fixes its league and runs the policy of [policy/](policy/). Bundles are `target/cg/ice-and-fire-<bot>.rs`.
+
+| Bot | Strategy | Purpose |
+| --- | --- | --- |
+| [wait](bots/wait/) | Reads every turn's input and answers `WAIT` | An always-valid opponent for the arena and the CI |
+| [wood3](bots/wood3/) | The greedy policy with the Wood 3 rules (level 1 only, level 1 beats level 1) | Promotion out of Wood 3 |
+| [wood2](bots/wood2/) | The same policy with levels 1 to 3 | Promotion out of Wood 2 |
+| [wood1](bots/wood1/) | The same policy, building mines on free mine spots | Promotion out of Wood 1 |
+| [bronze](bots/bronze/) | The same policy with all the rules: a tower next to its HQ when enemy units come within 3 steps. Also serves above Bronze until real bots exist | Playing Bronze, where the `rules-check` bot runs |
+| [rules-check](bots/rules-check/) | Plays random turns and checks every turn's input against RULES.md and the engine; logs the game's map | Checking our rules against CodinGame's, in Bronze or above ([below](#checking-the-rules-on-codingame)) |
+
+The policy plans a turn on a scratch copy of the engine's state and keeps only the commands the rules accept. In order: a lethal move or chain of trainings to the enemy HQ if the gold pays for it (found by a cheapest-path search through the cells next to the territory); moves, the unit nearest the enemy HQ first, each to the neighbouring cell that gains the most (new cells, enemy cells, kills, cuts of enemy territory, mine spots) and gets nearer; a tower by the HQ under threat, else mines; trainings on the best cells next to the territory, level 1 unless a higher level is the only way to enter (to kill a unit or pass a tower), with income after upkeep kept at least 0 and a small gold reserve. It does no search and takes a few ms per turn (tested under 20 ms). It is a means of promotion, not a strong bot; none of the bosses of the leagues has been played yet.
+
+Measured on 2026-10-17 over 200 maps in each seat (400 games per row, Rust 1.90.0 and current, release build), each bot in its own league against the reference referee (`cargo test -p ice-and-fire-policy --release`):
+
+| League | Against `WAIT` | Against random turns (`State::random_turn`) |
+| --- | --- | --- |
+| Wood 3 | 400/400 | 400/400 |
+| Wood 2 | 400/400 | 400/400 |
+| Wood 1 | 400/400 | 400/400 |
+| Bronze | 400/400 | 400/400 |
 
 ## Sources
 
