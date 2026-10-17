@@ -750,8 +750,69 @@ fn a_mine_adds_to_the_income_at_once() {
     say(&mut g, "BUILD MINE 1 0").unwrap();
     assert_eq!(g.building[cell(1, 0)], Some(Building::Mine));
     assert_eq!(g.income[0], 2 + 4);
-    // Blue destroys it by entering the cell.
-    own(&mut g, 1, &[(2, 0)]);
+}
+
+#[test]
+fn a_tower_protects_only_cells_of_its_own_owner() {
+    let mut g = game(League::Bronze);
+    let mut red: Vec<(usize, usize)> = (0..=9).map(|y| (0, y)).collect();
+    red.extend((1..=10).map(|x| (x, 9)));
+    own(&mut g, 0, &red);
+    g.building[cell(10, 9)] = Some(Building::Tower);
+    refresh(&mut g);
+    own(&mut g, 1, &[(11, 9)]);
+    assert!(g.active[cell(10, 9)] && g.active[cell(11, 9)]);
+    g.gold[0] = 100;
+    // Red's own tower next to blue's active cell does not protect it.
+    say(&mut g, "TRAIN 1 11 9").unwrap();
+    assert_eq!(g.owner[cell(11, 9)], Some(0));
+    assert_eq!(unit_pos(&g, 1), Some((11, 9)));
+}
+
+#[test]
+fn training_on_the_opponents_hq_captures_it_at_once() {
+    let mut g = game(League::Bronze);
+    let mut red: Vec<(usize, usize)> = (0..SIZE).map(|y| (0, y)).collect();
+    red.extend((1..=10).map(|x| (x, 11)));
+    own(&mut g, 0, &red);
+    assert!(g.active[cell(10, 11)]);
+    say(&mut g, "TRAIN 1 11 11").unwrap();
+    assert_eq!(g.outcome(), Some(Outcome::Win(0)));
+    assert_eq!(g.to_act, 0, "blue's start of turn did not run");
+}
+
+#[test]
+fn buildings_of_one_type_are_ordered_by_x_then_y() {
+    let mut g = game(League::Bronze);
+    own(&mut g, 1, &[(10, 9), (9, 10)]);
+    g.building[cell(10, 9)] = Some(Building::Mine);
+    g.building[cell(9, 10)] = Some(Building::Mine);
+    let red = g.turn_input(0);
+    assert_eq!(
+        lines_of(&red)[16..].join("|"),
+        "4|0 0 0 0|1 0 11 11|1 1 9 10|1 1 10 9|0"
+    );
+}
+
+#[test]
+fn the_wipe_out_needs_gold_below_zero() {
+    let mut g = game(League::Bronze);
+    own(&mut g, 0, &[(1, 0), (2, 0), (3, 0)]);
+    put_unit(&mut g, 1, 0, 2, 1, 0);
+    g.gold[0] = 0;
+    g.start_turn(0);
+    // 4 cells minus the upkeep of 4: an income of 0 leaves the gold at 0.
+    assert_eq!(g.income[0], 0);
+    assert_eq!(g.gold[0], 0);
+    assert_eq!(unit_pos(&g, 1), Some((1, 0)));
+}
+
+#[test]
+#[should_panic(expected = "HQ cells")]
+fn a_map_with_a_void_hq_cell_is_refused() {
+    let mut map = open_map();
+    map.void[CELLS - 1] = true;
+    IceAndFireReferee::from_map(map, League::Bronze);
 }
 
 // --- End of the game ---
