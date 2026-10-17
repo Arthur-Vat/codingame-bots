@@ -217,8 +217,24 @@ describe('a real program', () => {
     expect(code).toBe(0);
     expect(JSON.parse(stdout)).toEqual({
       ok: [
-        { id: 'uttt', name: 'Ultimate Tic-Tac-Toe', human_play: true },
-        { id: 'ice-and-fire', name: 'A Code of Ice and Fire', human_play: false },
+        {
+          id: 'uttt',
+          name: 'Ultimate Tic-Tac-Toe',
+          human_play: true,
+          baselines: ['uttt-greedy', 'uttt-random'],
+        },
+        {
+          id: 'ice-and-fire',
+          name: 'A Code of Ice and Fire',
+          human_play: false,
+          baselines: [
+            'ice-and-fire-bronze',
+            'ice-and-fire-wood1',
+            'ice-and-fire-wood2',
+            'ice-and-fire-wood3',
+            'ice-and-fire-random',
+          ],
+        },
       ],
     });
   });

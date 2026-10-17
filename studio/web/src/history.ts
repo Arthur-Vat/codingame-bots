@@ -78,12 +78,12 @@ export function filtersActive(filters: HistoryFilters): boolean {
   return filterParams(filters).size > 0;
 }
 
-/** The release names of one game, each once, in the order the server gave them. */
+/** The release names of one game, then its baseline bots, each once, in the order the server gave them. */
 export function releaseOptions(games: readonly GameSummary[] | null, gameId: string): string[] {
   const names: string[] = [];
   for (const game of games ?? []) {
     if (game.id !== gameId) continue;
-    for (const release of game.releases) {
+    for (const release of [...game.releases, ...game.baselines]) {
       if (!names.includes(release)) names.push(release);
     }
   }

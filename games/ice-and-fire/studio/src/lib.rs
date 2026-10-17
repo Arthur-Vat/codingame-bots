@@ -340,6 +340,10 @@ impl StudioGame for IceAndFire {
         Box::new(IceAndFireReferee::new(setup))
     }
 
+    fn baseline_bots(&self) -> &'static [&'static str] {
+        &["bronze", "wood1", "wood2", "wood3", "random"]
+    }
+
     fn opening_turns(&self, _setup: &GameSetup) -> usize {
         0
     }

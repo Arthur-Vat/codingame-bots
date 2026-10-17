@@ -1,5 +1,5 @@
-//! Tests with real bots: `uttt-v001` is compiled once for the whole test
-//! binary, into a folder shared by the tests.
+//! Tests with real bots: `uttt-v001` and the baseline bots are compiled once
+//! for the whole test binary, into a folder shared by the tests.
 
 use std::sync::OnceLock;
 use std::thread::sleep;
@@ -50,11 +50,15 @@ fn turns(session: &Value) -> usize {
 }
 
 fn create(state: &State, seats: Value) -> String {
+    create_game(state, "uttt", seats)
+}
+
+fn create_game(state: &State, game: &str, seats: Value) -> String {
     let (status, created) = call(
         state,
         "POST",
         "/api/sessions",
-        &json!({"game": "uttt", "seed": 7, "seats": seats}),
+        &json!({"game": game, "seed": 7, "seats": seats}),
     );
     assert_eq!(status, 200, "{created}");
     created["id"].as_str().unwrap().to_string()
@@ -80,13 +84,22 @@ fn play_lines(state: &State, id: &str, session: &Value, lines: &Value) -> Value 
 
 #[test]
 fn a_computer_game_answers_and_replays_after_a_takeback() {
+    a_computer_game_replays_after_a_takeback(RELEASE);
+}
+
+#[test]
+fn a_baseline_bot_answers_and_replays_after_a_takeback() {
+    a_computer_game_replays_after_a_takeback("uttt-greedy");
+}
+
+fn a_computer_game_replays_after_a_takeback(bot: &str) {
     let started = Instant::now();
     let state = bot_state();
     let id = create(
         &state,
         json!([
             {"kind": "human", "name": "Me"},
-            {"kind": "bot", "release": RELEASE, "think_ms": 10, "mode": "fixed"},
+            {"kind": "bot", "release": bot, "think_ms": 10, "mode": "fixed"},
         ]),
     );
     let session = wait_for(&state, &id, "the bot to be ready", |s| {
@@ -139,7 +152,7 @@ fn a_computer_game_answers_and_replays_after_a_takeback() {
     );
     assert_eq!(status, 200);
     assert_eq!(record["players"][1]["kind"], "bot");
-    assert_eq!(record["players"][1]["command"], RELEASE);
+    assert_eq!(record["players"][1]["command"], bot);
     assert_eq!(record["players"][1]["time_scale"], 1.0);
     assert!(record["players"][1]["fixed_iters"].as_u64().unwrap() >= 1);
     assert!(record["players"][1]["bot_seed"].is_u64());
@@ -194,4 +207,99 @@ fn a_bot_against_a_bot_plays_to_the_end() {
     );
     assert_eq!(status, 409);
     eprintln!("bot against bot took {:?}", started.elapsed());
+}
+
+/// The turns of a game of `bot` against itself in "fixed" mode, played to
+/// the end: the lines of every answer.
+fn fixed_game(state: &State, game: &str, bot: &str) -> Value {
+    let seat = json!({"kind": "bot", "release": bot, "think_ms": 10, "mode": "fixed"});
+    let id = create_game(state, game, json!([seat, seat]));
+    let session = wait_for(state, &id, "the end of the game", |s| s["status"] == "over");
+    assert!(session["result"].is_object(), "{session}");
+    let turns = session["turns"].clone();
+    let lines: Vec<Value> = turns
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|turn| {
+            let answers = turn.as_array().unwrap();
+            json!(answers
+                .iter()
+                .map(|answer| answer["lines"].clone())
+                .collect::<Vec<_>>())
+        })
+        .collect();
+    assert!(!lines.is_empty(), "{session}");
+    call(
+        state,
+        "DELETE",
+        &format!("/api/sessions/{id}"),
+        &Value::Null,
+    );
+    json!({"lines": lines, "winner": session["result"]["winner"], "end": session["result"]["end"]})
+}
+
+/// Every baseline bot of `game` plays the same game twice from its seed
+/// (ADR 0040), as `scripts/check-determinism.sh` checks the releases.
+fn baselines_replay_identically(game: &str) {
+    let state = bot_state();
+    let baselines = state.game(game).map(studio_game::baseline_names).unwrap();
+    assert!(!baselines.is_empty());
+    for bot in baselines {
+        let first = fixed_game(&state, game, &bot);
+        let second = fixed_game(&state, game, &bot);
+        assert_eq!(first, second, "{bot} does not replay identically");
+    }
+}
+
+#[test]
+fn the_baseline_bots_of_uttt_replay_identically() {
+    baselines_replay_identically("uttt");
+}
+
+#[test]
+fn the_baseline_bots_of_ice_and_fire_replay_identically() {
+    baselines_replay_identically("ice-and-fire");
+}
+
+#[test]
+fn a_game_without_release_plays_baseline_bots_to_the_end() {
+    let state = bot_state();
+    let bronze = json!({"kind": "bot", "release": "ice-and-fire-bronze", "think_ms": 100, "mode": "realtime"});
+    let random = json!({"kind": "bot", "release": "ice-and-fire-random", "think_ms": 100, "mode": "realtime"});
+    let id = create_game(&state, "ice-and-fire", json!([bronze, random]));
+    let session = wait_for(&state, &id, "the end of the game", |s| {
+        s["status"] == "over"
+    });
+    assert!(session["result"].is_object(), "{session}");
+    let (_, record) = call(
+        &state,
+        "GET",
+        &format!("/api/sessions/{id}/record"),
+        &Value::Null,
+    );
+    assert_eq!(record["game"], "ice-and-fire");
+    assert_eq!(record["players"][0]["command"], "ice-and-fire-bronze");
+    assert_eq!(record["players"][1]["command"], "ice-and-fire-random");
+}
+
+#[test]
+fn a_name_that_is_not_a_bot_of_the_game_is_refused_before_any_path_is_made() {
+    let state = bot_state();
+    for name in [
+        "../uttt-v001",
+        "uttt-greedy/../../x",
+        "ice-and-fire-bronze",
+        "greedy",
+    ] {
+        let bot = json!({"kind": "bot", "release": name, "think_ms": 10, "mode": "fixed"});
+        let (status, error) = call(
+            &state,
+            "POST",
+            "/api/sessions",
+            &json!({"game": "uttt", "seed": 7, "seats": [{"kind": "human"}, bot]}),
+        );
+        assert_eq!(status, 400, "{name}");
+        assert_eq!(error["error"], format!("unknown release {name:?}"));
+    }
 }

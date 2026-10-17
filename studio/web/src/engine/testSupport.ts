@@ -43,12 +43,40 @@ export async function loadedRules(): Promise<Rules> {
   return rules;
 }
 
-/** The files, with a manifest of the given releases (the real release files are not read). */
-export function fakeWasm(releases: string[], broken: string[] = [], analysis = true): WasmSource {
+/** The baseline bots the fake manifest lists, as the real one does. */
+export const FAKE_BASELINES: Record<string, string[]> = {
+  uttt: ['uttt-greedy', 'uttt-random'],
+  'ice-and-fire': [
+    'ice-and-fire-bronze',
+    'ice-and-fire-wood1',
+    'ice-and-fire-wood2',
+    'ice-and-fire-wood3',
+    'ice-and-fire-random',
+  ],
+};
+
+/**
+ * The files, with a manifest of the given releases of uttt, and the baseline bots of both games
+ * (the real bot files are not read).
+ */
+export function fakeWasm(
+  releases: string[],
+  broken: string[] = [],
+  analysis = true,
+  baselines: Record<string, string[]> = FAKE_BASELINES,
+): WasmSource {
   const rules = rulesModule();
   const analyses = new Map<string, Promise<WebAssembly.Module>>();
+  const bots = (game: string) => [...(game === 'uttt' ? releases : []), ...(baselines[game] ?? [])];
   return {
-    manifest: async () => ({ games: [{ id: 'uttt', releases, analysis }] }),
+    manifest: async () => ({
+      games: [
+        { id: 'uttt', releases, baselines: baselines.uttt ?? [], analysis },
+        ...Object.keys(baselines)
+          .filter((id) => id !== 'uttt')
+          .map((id) => ({ id, releases: [], baselines: baselines[id] ?? [], analysis: false })),
+      ],
+    }),
     rules: () => rules,
     analysis: (game) => {
       let module = analyses.get(game);
@@ -59,7 +87,7 @@ export function fakeWasm(releases: string[], broken: string[] = [], analysis = t
       return module;
     },
     release: async (game, release): Promise<LoadedRelease> => {
-      if (!releases.includes(release) || broken.includes(release)) {
+      if (!bots(game).includes(release) || broken.includes(release)) {
         throw new Error(`cannot load wasm/${game}/${release}.wasm (HTTP 404)`);
       }
       return { module: new WebAssembly.Module(EMPTY_MODULE), hash: `hash-${release}` };
@@ -188,6 +216,8 @@ export async function testEngine(
     makeAnalysis?: AnalysisFactory;
     /** Whether the manifest says the game has an analysis program. */
     analysis?: boolean;
+    /** The baseline bots the manifest lists, by game (both games', by default). */
+    baselines?: Record<string, string[]>;
   } = {},
 ): Promise<TestEngine> {
   const rules = await loadedRules();
@@ -200,6 +230,7 @@ export async function testEngine(
       options.releases ?? ['uttt-v002', 'uttt-v001'],
       options.broken,
       options.analysis,
+      options.baselines,
     ),
     speed: new Speed(memorySpeedCache(), options.measure ?? (async () => 2)),
     makeBot: options.makeBot ?? null,

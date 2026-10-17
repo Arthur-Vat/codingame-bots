@@ -118,3 +118,62 @@ test('the setup menu of a game without human play offers only two bots', async (
   await expect(modes.first()).toHaveText('Bot vs bot');
   await expect(modes.first()).toHaveAttribute('aria-pressed', 'true');
 });
+
+test('the setup menu offers the baseline bots of a game without release, bronze against wood1 first', async ({
+  page,
+}) => {
+  await open(page, '/#/game/ice-and-fire');
+  const dialog = page.getByRole('dialog', { name: 'Game setup' });
+  await expect(dialog).toBeVisible({ timeout: 30_000 });
+  await expect(dialog.getByText('This game has no bot yet')).toHaveCount(0);
+  const red = dialog.getByLabel(/^Red \(moves first\)/);
+  const blue = dialog.getByLabel('Blue', { exact: true });
+  await expect(red).toHaveValue('ice-and-fire-bronze');
+  await expect(blue).toHaveValue('ice-and-fire-wood1');
+  // Only baseline bots, in a group, by their folder.
+  await expect(red.locator('optgroup')).toHaveAttribute('label', 'Baseline bots');
+  await expect(red.locator('option')).toHaveText(['bronze', 'wood1', 'wood2', 'wood3', 'random']);
+  await expect(dialog.getByRole('button', { name: 'Start' })).toBeEnabled();
+});
+
+test('bronze plays random to the end in the browser, and the game is kept under their names', async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  await open(page, '/#/game/ice-and-fire');
+  const dialog = page.getByRole('dialog', { name: 'Game setup' });
+  await expect(dialog).toBeVisible({ timeout: 30_000 });
+  await dialog.getByLabel('Blue', { exact: true }).selectOption('ice-and-fire-random');
+  await dialog.getByLabel(/^Think time/).fill('0');
+  await dialog.getByRole('button', { name: 'Start' }).click();
+
+  // A game between two bots stays in the Play tab with its playback when it is over.
+  await expect(page.getByTestId('playback')).toBeVisible({ timeout: 180_000 });
+  await expect(page.getByTestId('result').filter({ visible: true })).toContainText('Red');
+  await expect(page.getByTestId('player-0').filter({ visible: true })).toContainText(
+    'ice-and-fire-bronze',
+  );
+  await expect(page.getByTestId('player-1').filter({ visible: true })).toContainText(
+    'ice-and-fire-random',
+  );
+  // The playback opens on the first move; the last one shows the end.
+  await expect(view(page).locator('.building')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Last move' }).click();
+  await expect(view(page).locator('.iaf-turn .to-move')).toHaveText('Game over');
+
+  // The record names the bots where a release would be, and the history lists it.
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Saved to your history' })).toBeVisible();
+  await page.getByRole('link', { name: 'History', exact: true }).click();
+  const rows = page.getByTestId('history-row');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('ice-and-fire-bronze');
+  await expect(rows.first()).toContainText('ice-and-fire-random');
+  const filter = page.getByLabel('Release', { exact: true });
+  await filter.selectOption('ice-and-fire-bronze');
+  await expect(rows).toHaveCount(1);
+  await filter.selectOption('ice-and-fire-wood1');
+  await expect(page.getByTestId('history-empty')).toHaveText(
+    'No saved game matches these filters.',
+  );
+});

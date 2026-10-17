@@ -149,6 +149,7 @@ fn list_games(state: &State) -> Response {
                 "id": info.id,
                 "name": info.name,
                 "releases": state.releases().list(info.id),
+                "baselines": studio_game::baseline_names(game.as_ref()),
                 "analysis": game.has_analysis(),
                 "human_play": game.human_play(),
             })
@@ -168,6 +169,7 @@ fn create_session(state: &State, body: &[u8]) -> Response {
         request,
         game.is_some(),
         game.is_some_and(|game| game.human_play()),
+        &game.map(studio_game::baseline_names).unwrap_or_default(),
         || state.releases().list(&game_id),
     ) {
         Ok(new) => new,

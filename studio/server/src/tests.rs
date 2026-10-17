@@ -106,6 +106,17 @@ fn the_games_list_has_the_games_their_releases_and_whether_humans_play() {
     assert_eq!(games[1]["human_play"], false);
     assert_eq!(games[1]["analysis"], false);
     assert!(games[1]["releases"].is_array());
+    assert_eq!(games[0]["baselines"], json!(["uttt-greedy", "uttt-random"]));
+    assert_eq!(
+        games[1]["baselines"],
+        json!([
+            "ice-and-fire-bronze",
+            "ice-and-fire-wood1",
+            "ice-and-fire-wood2",
+            "ice-and-fire-wood3",
+            "ice-and-fire-random"
+        ])
+    );
     let releases: Vec<&str> = games[0]["releases"]
         .as_array()
         .unwrap()
@@ -524,4 +535,18 @@ fn the_server_takes_over_a_mebibyte_for_the_filter_only() {
     let (status, body) = post(port, "/api/view", &rows);
     assert_eq!(status, 413);
     assert!(body.contains("larger than 1 MiB"), "{body}");
+}
+
+#[test]
+fn a_baseline_bot_that_cannot_be_bundled_gives_a_clear_error() {
+    use crate::releases::Releases;
+    let dir = TempDir::new("missing-baseline");
+    let releases = Releases::new(dir.path().to_path_buf(), dir.path().join("bin"));
+    let game = studio_core::games::registered().remove(0);
+    let error = releases.compile(game.as_ref(), "uttt-greedy").unwrap_err();
+    assert!(error.contains("cannot read"), "{error}");
+    assert!(error.contains("Cargo.toml"), "{error}");
+    // A name that is neither a release nor a baseline is refused alike.
+    let error = releases.compile(game.as_ref(), "uttt-nope").unwrap_err();
+    assert_eq!(error, "unknown release \"uttt-nope\"");
 }

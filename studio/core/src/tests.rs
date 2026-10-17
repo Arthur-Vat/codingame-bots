@@ -62,9 +62,11 @@ fn a_think_time_becomes_iterations() {
 #[test]
 fn a_request_is_validated_with_the_servers_messages() {
     let check = |body: serde_json::Value| {
-        request::validate(request(body), true, true, || vec!["uttt-v001".to_string()])
-            .map(|_| ())
-            .unwrap_err()
+        request::validate(request(body), true, true, &[], || {
+            vec!["uttt-v001".to_string()]
+        })
+        .map(|_| ())
+        .unwrap_err()
     };
     let bot = json!({"kind": "bot", "release": "uttt-v001", "think_ms": 100, "mode": "fixed"});
     let human = json!({"kind": "human"});
@@ -73,6 +75,7 @@ fn a_request_is_validated_with_the_servers_messages() {
             request(json!({"game": "x", "seed": 1, "seats": []})),
             false,
             true,
+            &[],
             Vec::new
         )
         .unwrap_err(),
@@ -118,6 +121,7 @@ fn a_request_is_validated_with_the_servers_messages() {
         ),
         true,
         true,
+        &[],
         || vec!["uttt-v001".to_string()],
     )
     .unwrap();
@@ -138,26 +142,91 @@ fn a_human_seat_is_refused_in_a_game_without_human_play() {
     ] {
         let body = json!({"game": "ice-and-fire", "seed": 1, "seats": seats});
         assert_eq!(
-            request::validate(request(body), true, false, releases).unwrap_err(),
+            request::validate(request(body), true, false, &[], releases).unwrap_err(),
             "this game has no human play: both seats must be bots"
         );
     }
     // Two bots are checked as before.
     let body = json!({"game": "ice-and-fire", "seed": 1, "seats": [bot, bot]});
-    let new = request::validate(request(body), true, false, releases).unwrap();
+    let new = request::validate(request(body), true, false, &[], releases).unwrap();
     assert_eq!(new.seats[0].name(), "ice-and-fire-v001");
     let unknown = json!({"kind": "bot", "release": "nope", "think_ms": 100, "mode": "fixed"});
     let body = json!({"game": "ice-and-fire", "seed": 1, "seats": [bot, unknown]});
     assert_eq!(
-        request::validate(request(body), true, false, releases).unwrap_err(),
+        request::validate(request(body), true, false, &[], releases).unwrap_err(),
         "unknown release \"nope\""
     );
     // An unknown game is still reported first.
     let body = json!({"game": "x", "seed": 1, "seats": [human, bot]});
     assert_eq!(
-        request::validate(request(body), false, false, releases).unwrap_err(),
+        request::validate(request(body), false, false, &[], releases).unwrap_err(),
         "unknown game \"x\""
     );
+}
+
+#[test]
+fn a_seat_may_name_a_baseline_bot_and_nothing_else() {
+    let baselines = ["ice-and-fire-bronze".to_string()];
+    let seat =
+        |name: &str| json!({"kind": "bot", "release": name, "think_ms": 100, "mode": "fixed"});
+    let check = |names: [&str; 2]| {
+        let body =
+            json!({"game": "ice-and-fire", "seed": 1, "seats": [seat(names[0]), seat(names[1])]});
+        request::validate(request(body), true, false, &baselines, || {
+            vec!["ice-and-fire-v001".to_string()]
+        })
+    };
+    let new = check(["ice-and-fire-bronze", "ice-and-fire-v001"]).unwrap();
+    assert_eq!(new.seats[0].name(), "ice-and-fire-bronze");
+    assert_eq!(new.seats[1].name(), "ice-and-fire-v001");
+    for name in [
+        "ice-and-fire-random",
+        "bronze",
+        "ice-and-fire-bronze/../x",
+        "../ice-and-fire-bronze",
+        "",
+    ] {
+        assert_eq!(
+            check(["ice-and-fire-bronze", name]).unwrap_err(),
+            format!("unknown release {name:?}")
+        );
+    }
+}
+
+#[test]
+fn baseline_bots_are_bot_folders_of_their_game_named_by_it() {
+    let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let games = games::registered();
+    let names: Vec<Vec<String>> = games
+        .iter()
+        .map(|game| studio_game::baseline_names(game.as_ref()))
+        .collect();
+    assert_eq!(names[0], ["uttt-greedy", "uttt-random"]);
+    assert_eq!(
+        names[1],
+        [
+            "ice-and-fire-bronze",
+            "ice-and-fire-wood1",
+            "ice-and-fire-wood2",
+            "ice-and-fire-wood3",
+            "ice-and-fire-random"
+        ]
+    );
+    for game in &games {
+        for folder in game.baseline_bots() {
+            let manifest = repo
+                .join("games")
+                .join(game.info().id)
+                .join("bots")
+                .join(folder)
+                .join("Cargo.toml");
+            assert!(manifest.is_file(), "{} is missing", manifest.display());
+            let is_version = folder
+                .strip_prefix('v')
+                .is_some_and(|rest| !rest.is_empty() && rest.chars().all(|c| c.is_ascii_digit()));
+            assert!(!is_version && *folder != "rules-check", "{folder}");
+        }
+    }
 }
 
 #[test]

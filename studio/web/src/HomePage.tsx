@@ -1,6 +1,6 @@
 import { BoardThumb } from './BoardThumb';
 import type { GamesState } from './hooks';
-import { HOME_HEADING, SERVER_HINT, releaseCount } from './home';
+import { HOME_HEADING, SERVER_HINT, botSummary } from './home';
 import { defaultRelease } from './setup';
 
 /** The notice shown in place of the content when the server does not answer. */
@@ -42,7 +42,7 @@ export function HomePage({ state }: { state: GamesState }) {
               </div>
               <h2>{game.name}</h2>
               <div className="meta">
-                <span>{releaseCount(game.releases.length)}</span>
+                <span>{botSummary(game.releases.length, game.baselines.length)}</span>
                 {game.releases.length > 0 && <span>Latest: {defaultRelease(game.releases)}</span>}
               </div>
             </a>

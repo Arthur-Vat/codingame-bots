@@ -164,6 +164,33 @@ export function defaultSecondRelease(names: readonly string[]): string {
   return ordered[1] ?? ordered[0] ?? '';
 }
 
+/** The bot a computer seat starts with: the latest release, else the first baseline bot. */
+export function defaultBot(releases: readonly string[], baselines: readonly string[]): string {
+  return defaultRelease(releases) || (baselines[0] ?? '');
+}
+
+/**
+ * The bot the second seat of a game between bots starts with: as for releases when there are any,
+ * else the second baseline bot (the only one when there is just one).
+ */
+export function defaultSecondBot(
+  releases: readonly string[],
+  baselines: readonly string[],
+): string {
+  return releases.length > 0
+    ? defaultSecondRelease(releases)
+    : (baselines[1] ?? baselines[0] ?? '');
+}
+
+/** A baseline bot as the pickers show it: its folder, without the game (`ice-and-fire-bronze` is `bronze`). */
+export function baselineLabel(name: string, game: string | undefined): string {
+  const prefix = game === undefined ? '' : `${game}-`;
+  return prefix !== '' && name.startsWith(prefix) ? name.slice(prefix.length) : name;
+}
+
+/** The group label of the baseline bots in a picker. */
+export const BASELINE_GROUP = 'Baseline bots';
+
 /** The label of a release in a list: the latest says so. */
 export function releaseLabel(name: string, latest: string): string {
   return name === latest ? `${name} (latest)` : name;

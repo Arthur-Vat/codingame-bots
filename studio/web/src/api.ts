@@ -9,6 +9,8 @@ export interface GameSummary {
   name: string;
   /** Release names, newest first. */
   releases: string[];
+  /** Baseline bot names (`<game>-<folder>`), strongest first; the bots of the game that are not releases (ADR 0040). */
+  baselines: string[];
   /** Whether the game has an analysis program (ADR 0032). */
   analysis: boolean;
   /** Whether a person can play it; when false, both seats must be bots. */
@@ -198,8 +200,13 @@ export function errorText(json: unknown): string | null {
   return null;
 }
 
-export function listGames(): Promise<GameSummary[]> {
-  return call('GET', '/api/games');
+/** The games; an answer without `baselines` (an older server) says none. */
+export async function listGames(): Promise<GameSummary[]> {
+  const games = await call<(Omit<GameSummary, 'baselines'> & { baselines?: string[] })[]>(
+    'GET',
+    '/api/games',
+  );
+  return games.map((game) => ({ ...game, baselines: game.baselines ?? [] }));
 }
 
 /** Starts a game and returns the new session's id. */

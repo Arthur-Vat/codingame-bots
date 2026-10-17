@@ -43,7 +43,7 @@ Arena and baseline bots: the list in the [playbook](../../docs/NEW_GAME.md).
 Studio: the list in the [playbook](../../docs/NEW_GAME.md).
 
 - [x] The adapter crate `studio/` (`ice-and-fire-studio`) and the board renderer in `studio/web/src/games/ice-and-fire/`; bot seats only, no human play (ADR 0039, decision 4)
-- [ ] The game's baseline bots in the studio, so that it has bots before its first release ([ADR 0040](../../docs/adr/0040-baseline-bots-in-the-studio.md))
+- [x] The game's baseline bots in the studio, so that it has bots before its first release ([ADR 0040](../../docs/adr/0040-baseline-bots-in-the-studio.md))
 - [ ] The owner's gate: the game tried in the studio
 
 ## Open questions

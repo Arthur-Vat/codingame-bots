@@ -128,6 +128,7 @@ describe('releaseOptions', () => {
       id: 'uttt',
       name: 'U',
       releases: ['uttt-v010', 'uttt-v009', 'uttt-v010'],
+      baselines: ['uttt-greedy', 'uttt-random'],
       analysis: true,
       human_play: true,
     },
@@ -135,13 +136,19 @@ describe('releaseOptions', () => {
       id: 'other',
       name: 'O',
       releases: ['uttt-v009', 'other-v001'],
+      baselines: [],
       analysis: false,
       human_play: true,
     },
   ];
 
-  it('lists the releases of the game only, once each', () => {
-    expect(releaseOptions(games, 'uttt')).toEqual(['uttt-v010', 'uttt-v009']);
+  it('lists the releases of the game only, once each, then its baseline bots', () => {
+    expect(releaseOptions(games, 'uttt')).toEqual([
+      'uttt-v010',
+      'uttt-v009',
+      'uttt-greedy',
+      'uttt-random',
+    ]);
     expect(releaseOptions(games, 'other')).toEqual(['uttt-v009', 'other-v001']);
   });
 

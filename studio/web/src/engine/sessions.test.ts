@@ -255,6 +255,53 @@ describe('a game against a bot in fixed mode', () => {
   });
 });
 
+describe('a game with a baseline bot', () => {
+  it('loads the baseline bot like a release and starts it with its settings', async () => {
+    const { factory, envs } = scriptedFactory([legal]);
+    const { engine } = await testEngine({ makeBot: factory, measure: async () => 2.5 });
+    const id = await start(engine, game(human, bot('uttt-greedy', 'fixed', 100)));
+    const ready = await untilStatus(engine, id, 'waiting_human');
+    expect(ready.seats[1]?.fixed_iters).toBe(250);
+    expect(envs[0]?.CG_FIXED_ITERS).toBe('250');
+  });
+
+  it('plays a game that has no release, two baseline bots of its own', async () => {
+    const { factory, envs } = scriptedFactory([legal, legal]);
+    const { engine } = await testEngine({ makeBot: factory });
+    const iceAndFire = {
+      game: 'ice-and-fire',
+      seed: 3,
+      opening_plies: 0,
+      seats: [
+        bot('ice-and-fire-bronze', 'realtime', 10),
+        bot('ice-and-fire-random', 'realtime', 10),
+      ],
+    };
+    const id = await start(engine, iceAndFire);
+    await until(
+      async () => envs.length,
+      (started) => started === 2,
+    );
+    const current = await view(engine, id);
+    expect(current.status).not.toBe('failed');
+  });
+
+  it('refuses a baseline bot of another game, and one that is not built', async () => {
+    const { factory } = scriptedFactory([legal]);
+    const { engine } = await testEngine({ makeBot: factory, baselines: { uttt: ['uttt-random'] } });
+    const refused = async (body: unknown) => request(engine, 'POST', '/api/sessions', body);
+    const other = await refused(game(human, bot('ice-and-fire-bronze', 'fixed')));
+    expect(other.status).toBe(400);
+    expect(other.body).toEqual({ error: 'unknown release "ice-and-fire-bronze"' });
+    // The adapter names it, but its file is not in the manifest: the load fails when it starts.
+    const missing = await start(engine, game(human, bot('uttt-greedy', 'fixed')));
+    const failed = await untilStatus(engine, missing, 'failed');
+    expect(failed.error).toBe(
+      'cannot load uttt-greedy: cannot load wasm/uttt/uttt-greedy.wasm (HTTP 404)',
+    );
+  });
+});
+
 describe('a game against a bot in real time', () => {
   it('starts the bot with a time scale of think_ms over 100, unset when it is 1', async () => {
     const { factory, envs } = scriptedFactory([legal, legal, legal]);

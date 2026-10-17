@@ -3,17 +3,29 @@ import { EMPTY_MODULE, wasmBytes } from './testSupport';
 import { fetchedWasm, parseManifest } from './wasm';
 
 describe('the manifest', () => {
-  it('lists the games and their releases', () => {
+  it('lists the games, their releases and their baseline bots', () => {
     expect(
       parseManifest(
-        '{"games":[{"id":"uttt","releases":["uttt-v002","uttt-v001"],"analysis":true},{"id":"x","releases":[]}]}',
+        '{"games":[{"id":"uttt","releases":["uttt-v002","uttt-v001"],"baselines":["uttt-greedy",3],"analysis":true},{"id":"x","releases":[]}]}',
       ),
     ).toEqual({
       games: [
-        { id: 'uttt', releases: ['uttt-v002', 'uttt-v001'], analysis: true },
-        { id: 'x', releases: [], analysis: false },
+        {
+          id: 'uttt',
+          releases: ['uttt-v002', 'uttt-v001'],
+          baselines: ['uttt-greedy'],
+          analysis: true,
+        },
+        { id: 'x', releases: [], baselines: [], analysis: false },
       ],
     });
+  });
+
+  it('lists a game that has baseline bots and no release', () => {
+    const manifest = parseManifest(
+      '{"games":[{"id":"x","releases":[],"baselines":["x-bronze"],"analysis":false}]}',
+    );
+    expect(manifest.games[0]?.baselines).toEqual(['x-bronze']);
   });
 
   it('refuses what is not one, saying how to build the files', () => {
@@ -26,6 +38,13 @@ describe('the manifest', () => {
     const manifest = parseManifest(wasmBytes('manifest.json').toString('utf8'));
     expect(manifest.games.find((game) => game.id === 'uttt')?.releases).toContain('uttt-v001');
     expect(manifest.games.find((game) => game.id === 'uttt')?.analysis).toBe(true);
+    expect(manifest.games.find((game) => game.id === 'uttt')?.baselines).toEqual([
+      'uttt-greedy',
+      'uttt-random',
+    ]);
+    const iceAndFire = manifest.games.find((game) => game.id === 'ice-and-fire');
+    expect(iceAndFire?.releases).toEqual([]);
+    expect(iceAndFire?.baselines).toContain('ice-and-fire-bronze');
   });
 });
 

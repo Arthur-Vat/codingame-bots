@@ -1,10 +1,14 @@
 /* Where the WebAssembly files come from: `wasm/rules.wasm`, `wasm/manifest.json` and
-   `wasm/<game>/<release>.wasm`, built by scripts/build-studio-wasm.sh. They are fetched relative
+   `wasm/<game>/<name>.wasm` (a release or a baseline bot), built by scripts/build-studio-wasm.sh. They are fetched relative
    to the page (the site may live under a subpath), compiled once, and kept for the page's life. */
 
 export interface Manifest {
-  /** `analysis`: whether `wasm/<game>/analysis.wasm`, the game's analysis program, is there. */
-  games: { id: string; releases: string[]; analysis: boolean }[];
+  /**
+   * `releases` and `baselines`: the names whose `wasm/<game>/<name>.wasm` is there (the baseline
+   * bots, ADR 0040, as `<game>-<folder>`). `analysis`: whether `wasm/<game>/analysis.wasm`, the
+   * game's analysis program, is there.
+   */
+  games: { id: string; releases: string[]; baselines: string[]; analysis: boolean }[];
 }
 
 /** A compiled release and the SHA-256 of its file (null where the browser cannot compute it). */
@@ -16,6 +20,7 @@ export interface LoadedRelease {
 export interface WasmSource {
   manifest: () => Promise<Manifest>;
   rules: () => Promise<WebAssembly.Module>;
+  /** A bot of the game, a release or a baseline bot, by its name (`wasm/<game>/<name>.wasm`). */
   release: (game: string, release: string) => Promise<LoadedRelease>;
   /** The game's analysis program (`wasm/<game>/analysis.wasm`), compiled once and reused. */
   analysis: (game: string) => Promise<WebAssembly.Module>;
@@ -43,9 +48,10 @@ export function parseManifest(text: string): Manifest {
   if (!Array.isArray(games)) throw new Error('wasm/manifest.json has no list of games');
   return {
     games: games.map((entry: unknown) => {
-      const { id, releases, analysis } = (entry ?? {}) as {
+      const { id, releases, baselines, analysis } = (entry ?? {}) as {
         id?: unknown;
         releases?: unknown;
+        baselines?: unknown;
         analysis?: unknown;
       };
       if (typeof id !== 'string' || !Array.isArray(releases)) {
@@ -54,6 +60,9 @@ export function parseManifest(text: string): Manifest {
       return {
         id,
         releases: releases.filter((name): name is string => typeof name === 'string'),
+        baselines: Array.isArray(baselines)
+          ? baselines.filter((name): name is string => typeof name === 'string')
+          : [],
         analysis: analysis === true,
       };
     }),

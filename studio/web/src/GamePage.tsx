@@ -548,6 +548,7 @@ export function GamePage({
           initialMode={dialogMode}
           onModeChange={setLastMode}
           releases={game.releases}
+          baselines={game.baselines}
           humanPlay={game.human_play}
           seatNames={seatNamesFor(gameId)}
           game={gameId}

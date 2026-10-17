@@ -64,6 +64,24 @@ describe('the games', () => {
     ]);
     expect((await listGames()).map((game) => game.human_play)).toEqual([true, false]);
   });
+
+  it('list their baseline bots, none when the answer has no such field', async () => {
+    answering(200, [
+      {
+        id: 'ice-and-fire',
+        name: 'I',
+        releases: [],
+        baselines: ['ice-and-fire-bronze', 'ice-and-fire-random'],
+        analysis: false,
+        human_play: false,
+      },
+      { id: 'uttt', name: 'U', releases: ['uttt-v001'], analysis: true, human_play: true },
+    ]);
+    expect((await listGames()).map((game) => game.baselines)).toEqual([
+      ['ice-and-fire-bronze', 'ice-and-fire-random'],
+      [],
+    ]);
+  });
 });
 
 describe('the analysis client', () => {

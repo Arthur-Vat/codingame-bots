@@ -84,9 +84,38 @@ fn the_games_are_listed() {
     assert_eq!(
         ok(json!({"op": "games"})),
         json!([
-            {"id": "uttt", "name": "Ultimate Tic-Tac-Toe", "human_play": true},
-            {"id": "ice-and-fire", "name": "A Code of Ice and Fire", "human_play": false},
+            {"id": "uttt", "name": "Ultimate Tic-Tac-Toe", "human_play": true,
+             "baselines": ["uttt-greedy", "uttt-random"]},
+            {"id": "ice-and-fire", "name": "A Code of Ice and Fire", "human_play": false,
+             "baselines": ["ice-and-fire-bronze", "ice-and-fire-wood1", "ice-and-fire-wood2",
+                           "ice-and-fire-wood3", "ice-and-fire-random"]},
         ])
+    );
+}
+
+#[test]
+fn a_baseline_bot_takes_a_seat_without_being_in_the_releases() {
+    let seats = |name: &str| {
+        json!([
+            bot("ice-and-fire-bronze", 100, "fixed"),
+            bot(name, 100, "fixed")
+        ])
+    };
+    let request = |name: &str| {
+        json!({"op": "new", "releases": [],
+               "request": {"game": "ice-and-fire", "seed": 1, "seats": seats(name)}})
+    };
+    let state = ok(request("ice-and-fire-random"));
+    assert_eq!(state["seats"][0]["name"], "ice-and-fire-bronze");
+    assert_eq!(state["seats"][1]["name"], "ice-and-fire-random");
+    // Another game's baseline is not this game's.
+    assert_eq!(
+        error(request("uttt-greedy")),
+        "unknown release \"uttt-greedy\""
+    );
+    assert_eq!(
+        error(request("ice-and-fire-greedy")),
+        "unknown release \"ice-and-fire-greedy\""
     );
 }
 
