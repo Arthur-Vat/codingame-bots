@@ -51,3 +51,9 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0017](0017-value-network.md) | Stage 2: a value network instead of playouts | Accepted; decision 5 superseded by 0018 |
 | [0018](0018-value-network-gate.md) | Judge the value network by games at equal iterations | Accepted; decision 1 superseded by 0019 |
 | [0019](0019-value-network-gate-at-time.md) | Judge the value network at the bot's time budget | Accepted |
+
+## A Code of Ice and Fire (`ice-and-fire`)
+
+| # | Decision | Status |
+| --- | --- | --- |
+| [0039](0039-ice-and-fire-maps-and-studio.md) | A Code of Ice and Fire: our own map generator, and replay before human play in the studio | Accepted |
