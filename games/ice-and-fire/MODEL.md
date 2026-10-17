@@ -15,7 +15,7 @@ A player wants to capture the enemy HQ. Failing that, it wants more military pow
 | Quantity | Value | How it was obtained |
 | --- | --- | --- |
 | Players | 2, red moving first; blue starts with one more cell | RULES.md |
-| Map | 12×12, about half the cells void (estimate: the source makes 45% void before smoothing); 6 to about 15 mine spots | RULES.md; estimate |
+| Map | 12×12, about half the cells void (estimate: the source makes 45% void before smoothing); 6 to about 12 mine spots (estimate: 15% of about 60 to 80 non-void cells) | RULES.md; estimate |
 | Turns per game | At most 100 per player (200 answers); typical length unknown, estimate 20 to 100 game turns | RULES.md; estimate, measured at stage 6 |
 | Commands per turn | 0 to a few dozen: one move per unit, plus trainings and buildings as gold allows | estimate |
 | Distinct answers per turn | Start: under 10 (20 gold, two cells to train on). Middle: with 10 units of about 3 useful moves each and a few training cells, about 10^5 to 10^8 move sets, more with orders and trainings. Late: more. Not enumerable in general | estimate |
@@ -52,11 +52,11 @@ What the framework assumes that this game breaks (stage 4). Each gap goes to the
 | Gap | Where | What would change | Can the game wait? | Decision |
 | --- | --- | --- | --- | --- |
 | 1. A turn is many commands | `crates/cg-search`: the `Game` trait lists every legal move of a turn; its MCTS backs values up as if the players strictly alternate one move at a time (`1 - best` in `mcts.rs`) | Either the game's bots search in their own crates, or `cg-search` learns turns of several plies (a node knows its mover, values back up by mover, an end-of-turn move) | Yes, until stage 9 (approach): the referee, arena and baseline bots do not use `cg-search` | To ask |
-| 2. Maps for our arena | The referee must make maps like CodinGame's; the source's generator is GPL, so it is not translated | Our own generator, written from the map facts in RULES.md (symmetric, connected, HQ corners clear, the mine spots' count and places), compared with real maps that the `rules-check` bot logs on CodinGame; or a bank of such logged maps | No: stage 5's referee needs it | To ask |
+| 2. Maps for our arena | The referee must make maps like CodinGame's; the source's generator is GPL, so it is not translated | Our own generator, written from the map facts in RULES.md (symmetric, connected, HQ corners clear, the mine spots' count and places), compared with real maps that stage 5's `rules-check` bot would log on CodinGame; or a bank of such logged maps | No: stage 5's referee needs it | To ask |
 | 3. Human play in the studio | `studio/game`: a human's moves are listed as complete answers (`HumanMove`); `studio/web` names the seats X and O and draws 9×9 boards | A renderer for this map; seat names per game; for human play, a way to build a turn command by command before sending it | Yes, until stage 7; replay and analysis could come before human play | To ask |
 
 Checked and not gaps:
 
-- **`cg-arena`.** Its referee interface already takes answers as lines, sends a game's map once (`initial_input`), and ends a game with a win or a draw. Its seat-swapped pairs play the same seed, so both bots meet each map from both seats, which cancels red's first move and blue's extra cell. Random opening plies (`OPENING_PLIES`) are not needed to vary games, since the map does; the game's evaluation settings choose at stage 6.
+- **`cg-arena`.** Its referee interface already takes answers as lines, sends a game's map once (`initial_input`), and ends a game with a win or a draw. Its seat-swapped pairs play the same seed, so both bots meet each map from both seats, which cancels red's first move and blue's extra cell. Random opening plies (`OPENING_PLIES` in a game's `evaluation.env`, passed to the referee as `GameSetup::opening_plies`) are not needed to vary games, since the map does; the game's evaluation settings choose at stage 6.
 - **`cg-bundler` and the 100,000-character limit.** Nothing in this game needs more than a uttt bot does.
 - **Time.** 50 ms per answer is half of uttt's 100 ms. Each bot sets its own budget, and the arena's time scale (`CG_TIME_SCALE`, `crates/cg-core/src/time.rs`) applies as for uttt.
