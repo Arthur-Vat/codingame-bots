@@ -1,5 +1,6 @@
 # shellcheck shell=bash
-# Shared by scripts/sprt.sh, scripts/league.sh and scripts/new-release.sh. Source it from the
+# Shared by scripts/sprt.sh, scripts/league.sh, scripts/league-check.sh and
+# scripts/new-release.sh. Source it from the
 # repository root.
 
 # Exports the settings of games/$1/evaluation.env, keeping any variable

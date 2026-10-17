@@ -6,9 +6,14 @@ name: SPRT
 # release, then, if accepted and the game asks for it, a confirmation match
 # at CodinGame's exact time limits. In Legend the SPRT itself plays at those
 # limits (scripts/sprt.sh, the game's evaluation.env). A game's result is
-# kept for the framework's code and that game's code only. The check
-# `SPRT passed` fails unless every step of every game passes; it passes when
-# the pull request adds no release.
+# kept for the framework's code and that game's code only. After the SPRT
+# accepts, the league job plays the release's league (ADR 0038,
+# scripts/league.sh) and posts the new result lines as a comment; the job
+# `League results` holds the merge until they are in games/<game>/league.jsonl
+# and LEADERBOARD.md matches them (scripts/league-check.sh). The check
+# `SPRT passed` fails unless every step of every game passes, the new
+# release's faults in the league included, and the league results are in; it
+# passes when the pull request adds no release and changes no league file.
 on:
   pull_request:
 
@@ -120,10 +125,12 @@ jobs:
             exit 1
           fi
           # A result is kept for the exact code and settings it was obtained
-          # with: the framework's and this game's, not another game's, and
-          # editing only Markdown (the journal) does not run it again.
+          # with: the framework's and this game's, not another game's. Editing
+          # only Markdown (the journal, the leaderboard) or copying the
+          # league's lines into games/<game>/league.jsonl (ADR 0038) does not
+          # run it again; the league job uses the same hash.
           # Re-running the job on GitHub does (see the next step).
-          hash="$(git ls-tree -r HEAD -- Cargo.toml Cargo.lock crates scripts "games/$GAME" | grep -v '\.md$' | sha256sum | cut -c 1-20)"
+          hash="$(git ls-tree -r HEAD -- Cargo.toml Cargo.lock crates scripts "games/$GAME" | grep -v -e '\.md$' -e "[[:space:]]games/$GAME/league\.jsonl\$" | sha256sum | cut -c 1-20)"
           echo "key=sprt-$GAME-$hash" >>"$GITHUB_OUTPUT"
       - name: Reuse the latest result on the same code
         id: cache
@@ -249,6 +256,351 @@ jobs:
           && (steps.run.outcome == 'success' || steps.cache.outputs.cache-matched-key != '')
         run: exit "$(cat target/sprt-result/status)"
 
+  # The league of each new release (ADR 0038), after the game's SPRT accepts
+  # it: the release plays its previous release, the fixed opponents and the
+  # nearest bots in rating (scripts/league.sh). The new pairings are posted as
+  # a comment; Claude copies them into games/<game>/league.jsonl and
+  # regenerates LEADERBOARD.md in the same pull request, and the job
+  # `League results` holds the merge until that is done. Only the new
+  # release's faults fail this job. One release per pull request is the norm:
+  # with several, each is played against the stored results only, so the
+  # choice of the second ignores the pairings of the first.
+  league:
+    name: "${{ matrix.game }}: league"
+    needs:
+      - releases
+      - sprt
+    # An empty matrix is an error: skip the job instead. A rejected SPRT
+    # needs no league.
+    if: needs.releases.outputs.games != '[]' && needs.sprt.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        game: ${{ fromJSON(needs.releases.outputs.games) }}
+    env:
+      GAME: ${{ matrix.game }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - name: Find new releases
+        id: find
+        run: |
+          # As in the SPRT job.
+          if ! git diff -z --name-only --diff-filter=A --no-renames HEAD^1 HEAD -- "games/$GAME/releases/*.rs" >"$RUNNER_TEMP/added-releases"; then
+            echo "::error title=$GAME league::git diff failed; the added releases are unknown"
+            exit 1
+          fi
+          mapfile -d '' -t files <"$RUNNER_TEMP/added-releases"
+          candidates=""
+          for file in "${files[@]}"; do
+            # Directly in the game's releases folder.
+            if [[ "${file#"games/$GAME/releases/"}" == */* ]]; then
+              continue
+            fi
+            # The list is space separated below.
+            if [[ ! $file =~ ^[A-Za-z0-9._/-]+$ ]]; then
+              echo "::error title=$GAME league::unsupported characters in the name of $file"
+              exit 1
+            fi
+            candidates="$candidates $file"
+          done
+          candidates="${candidates# }"
+          echo "candidates=$candidates" >>"$GITHUB_OUTPUT"
+          if [ -z "$candidates" ]; then
+            echo "::error title=$GAME league::no new release of $GAME found, although the releases job listed it"
+            exit 1
+          fi
+          # The bots to play, in release order: games/<game>/releases/<game>-vNNN.rs.
+          bots=""
+          # shellcheck disable=SC2086 # the files are validated names, space separated
+          while IFS= read -r file; do
+            name="$(basename "$file" .rs)"
+            name="${name#"$GAME-"}"
+            if [[ ! $name =~ ^v[0-9]+$ ]]; then
+              echo "::error title=$GAME league::$file is not named $GAME-vNNN.rs"
+              exit 1
+            fi
+            bots="$bots $name"
+          done < <(printf '%s\n' $candidates | sort -V)
+          echo "bots=${bots# }" >>"$GITHUB_OUTPUT"
+          # The SPRT job's hash: the same code and settings, Markdown (the
+          # journal, the leaderboard) and the results file left out, so that
+          # copying the league's lines in does not play the league again.
+          hash="$(git ls-tree -r HEAD -- Cargo.toml Cargo.lock crates scripts "games/$GAME" | grep -v -e '\.md$' -e "[[:space:]]games/$GAME/league\.jsonl\$" | sha256sum | cut -c 1-20)"
+          echo "key=league-$GAME-$hash" >>"$GITHUB_OUTPUT"
+      - name: Reuse the latest result on the same code
+        id: cache
+        # A re-run of this job (attempt 2 or more) always plays again.
+        if: steps.find.outputs.candidates != '' && github.run_attempt == '1'
+        uses: actions/cache/restore@v6
+        with:
+          path: target/league-result
+          key: ${{ steps.find.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ${{ steps.find.outputs.key }}-
+      - uses: dtolnay/rust-toolchain@master
+        if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-matched-key == ''
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-matched-key == ''
+        with:
+          key: ${{ matrix.game }}
+      - name: League
+        id: run
+        if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-matched-key == ''
+        env:
+          BOTS: ${{ steps.find.outputs.bots }}
+          # The pull request's last commit: HEAD is a temporary merge commit.
+          LEAGUE_COMMIT: ${{ github.event.pull_request.head.sha }}
+          # A sample of the games, uploaded below (ADR 0027).
+          RECORDS_DIR: target/records
+        run: |
+          mkdir -p target/league-result
+          # The annotations are for the check run, not the report that is
+          # posted, and the new lines are posted apart.
+          clean_report() {
+            sed -i -e '/^::error title=/d' -e '/^::warning title=League canary::/d' \
+              -e '/^---- new results of /,/^---- end ----$/d' target/league-result/report.txt
+          }
+          set +e
+          # shellcheck disable=SC2086 # the bots are validated names, space separated
+          scripts/annotate.sh run "League of $BOTS" scripts/league.sh "$GAME" $BOTS | tee target/league-result/report.txt
+          code="${PIPESTATUS[0]}"
+          set -e
+          # Status 2 is an error, not a verdict: keep no result.
+          if [ "$code" -ge 2 ]; then
+            clean_report
+            exit "$code"
+          fi
+          # The new lines of each release, verbatim and in order. A release
+          # that faulted (status 1) has none to copy.
+          : >target/league-result/new.jsonl
+          if [ "$code" -eq 0 ]; then
+            for bot in $BOTS; do
+              cat "target/league/$GAME-$bot.jsonl" >>target/league-result/new.jsonl
+            done
+          fi
+          clean_report
+          echo "$code" >target/league-result/status
+          # Identifies this result in the comment that posts it.
+          echo "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >target/league-result/origin
+      - name: Upload a sample of the games
+        # Nothing to upload when the result was reused: the folder does not
+        # exist and the step finds no file. The archive looks for this name
+        # (scripts/arena-archive.sh).
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: league-game-records-${{ matrix.game }}
+          path: target/records
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Keep the result
+        if: steps.run.outcome == 'success'
+        uses: actions/cache/save@v6
+        with:
+          path: target/league-result
+          key: ${{ steps.find.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Report
+        if: steps.find.outputs.candidates != ''
+        env:
+          REUSED: ${{ steps.cache.outputs.cache-matched-key != '' }}
+        run: |
+          {
+            echo "## League: $GAME"
+            if [ "$REUSED" = true ]; then
+              echo "Result of an earlier run on the same code and settings."
+            fi
+            echo '```'
+            cat target/league-result/report.txt
+            echo '```'
+            if [ -s target/league-result/new.jsonl ]; then
+              echo '```jsonl'
+              cat target/league-result/new.jsonl
+              echo '```'
+            fi
+          } >>"$GITHUB_STEP_SUMMARY"
+      - name: Post the result on the pull request
+        # Posted once per result, also when an earlier run produced it. A
+        # failure to post does not change the verdict: the result is in the
+        # job summary too. The lines are never passed through jq or anything
+        # that parses JSON: the seeds are 64-bit numbers.
+        if: >-
+          !cancelled() && steps.find.outputs.candidates != ''
+          && (steps.run.outcome == 'success' || steps.cache.outputs.cache-matched-key != '')
+          && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REUSED_KEY: ${{ steps.cache.outputs.cache-matched-key }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          origin="$(cat target/league-result/origin 2>/dev/null || echo "$REUSED_KEY")"
+          marker="<!-- league-result $GAME $origin -->"
+          comments="$(gh api --paginate "repos/$REPO/issues/$PR/comments" --jq '.[].body')"
+          if grep -qF "$marker" <<<"$comments"; then
+            echo "This result is already on the pull request."
+            exit 0
+          fi
+          anchor="$(sed -n 's/^LEAGUE_ANCHOR=//p' "games/$GAME/evaluation.env")"
+          if [[ ! $anchor =~ ^[A-Za-z0-9_-]+$ ]]; then
+            echo "::warning title=League comment::LEAGUE_ANCHOR of $GAME is missing or not a plain name"
+            exit 1
+          fi
+          {
+            echo "$marker"
+            echo "### League result for $GAME at ${HEAD_SHA:0:7}"
+            if [ -n "$REUSED_KEY" ]; then
+              echo "(From an earlier run on the same code and settings.)"
+            fi
+            echo '```'
+            cat target/league-result/report.txt
+            echo '```'
+            if [ "$(cat target/league-result/status)" -ne 0 ]; then
+              echo "The new release faulted in the league: nothing to copy, and \`SPRT passed\` fails."
+            elif [ ! -f "games/$GAME/league.jsonl" ]; then
+              echo "$GAME has no league results yet (ADR 0038, decision 8): nothing to copy; the bootstrap adds this release in order."
+              if [ -s target/league-result/new.jsonl ]; then
+                echo '```jsonl'
+                cat target/league-result/new.jsonl
+                echo '```'
+              fi
+            elif [ -s target/league-result/new.jsonl ]; then
+              echo "Copy these lines at the end of \`games/$GAME/league.jsonl\`, then regenerate the leaderboard:"
+              echo '```jsonl'
+              cat target/league-result/new.jsonl
+              echo '```'
+              echo "\`cargo run --release -p $GAME-arena -- leaderboard --results games/$GAME/league.jsonl --anchor $anchor --journal games/$GAME/journal/README.md --out games/$GAME/LEADERBOARD.md\`"
+            else
+              echo "No new pairing was played: \`games/$GAME/league.jsonl\` already holds the pairings of the new release."
+            fi
+            echo "[Run]($RUN_URL)"
+          } >target/league-comment.md
+          if ! gh pr comment "$PR" --body-file target/league-comment.md; then
+            echo "::warning title=League comment::the result could not be posted; it is in the job summary"
+            exit 1
+          fi
+      - name: Verdict
+        if: >-
+          !cancelled() && steps.find.outputs.candidates != ''
+          && (steps.run.outcome == 'success' || steps.cache.outputs.cache-matched-key != '')
+        run: exit "$(cat target/league-result/status)"
+
+  # The merge gate of the league (ADR 0038, scripts/league-check.sh): a
+  # release has its pairings in games/<game>/league.jsonl, and LEADERBOARD.md
+  # is the one generated from the file. Runs on every pull request and checks
+  # the games it concerns: one that adds a release, or changes the results,
+  # the leaderboard, the journal index, the settings, or the arena.
+  league-results:
+    name: League results
+    needs: releases
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The parent commit, to see which files a pull request changes.
+          fetch-depth: 2
+      - name: Decide which games are checked
+        id: plan
+        run: |
+          # In a pull request, HEAD is the merge commit and HEAD^1 the base.
+          # NUL-separated and written to files first, as in the releases job.
+          if ! git diff -z --name-only --no-renames HEAD^1 HEAD >"$RUNNER_TEMP/changed"; then
+            echo "::error title=League results::git diff failed; the changed files are unknown"
+            exit 1
+          fi
+          if ! git diff -z --name-only --diff-filter=A --no-renames HEAD^1 HEAD -- 'games/*/releases/*.rs' >"$RUNNER_TEMP/added"; then
+            echo "::error title=League results::git diff failed; the added releases are unknown"
+            exit 1
+          fi
+          mapfile -d '' -t changed <"$RUNNER_TEMP/changed"
+          mapfile -d '' -t added <"$RUNNER_TEMP/added"
+          declare -A releases_of=() checked=()
+          arena_changed=false
+          # A game is a folder of games/ with a plain name.
+          is_game() { [[ $1 =~ ^[A-Za-z0-9_-]+$ && -d games/$1 ]]; }
+          for file in "${changed[@]}"; do
+            if [[ $file == crates/cg-arena/* ]]; then
+              arena_changed=true
+              continue
+            fi
+            id="${file#games/}"
+            id="${id%%/*}"
+            if is_game "$id" && [[ $file == "games/$id/league.jsonl" || $file == "games/$id/LEADERBOARD.md" ||
+              $file == "games/$id/journal/README.md" || $file == "games/$id/evaluation.env" ]]; then
+              checked["$id"]=1
+            fi
+          done
+          for file in "${added[@]}"; do
+            id="${file#games/}"
+            id="${id%%/*}"
+            # Directly in the game's releases folder; the SPRT job reports the others.
+            if is_game "$id" && [[ $file == "games/$id/releases/"* && "${file#"games/$id/releases/"}" != */* ]]; then
+              # The list is space separated below.
+              if [[ ! $file =~ ^[A-Za-z0-9._/-]+$ ]]; then
+                echo "::error title=League results::unsupported characters in the name of $file"
+                exit 1
+              fi
+              checked["$id"]=1
+              releases_of["$id"]="${releases_of[$id]:-} $file"
+            fi
+          done
+          if [ "$arena_changed" = true ]; then
+            for dir in games/*/; do
+              id="$(basename "$dir")"
+              if is_game "$id" && [ -f "games/$id/league.jsonl" ]; then
+                checked["$id"]=1
+              fi
+            done
+          fi
+          if [ "${#checked[@]}" -eq 0 ]; then
+            echo "This pull request adds no release and changes no league file, journal index, settings or arena code: nothing to check." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          : >"$RUNNER_TEMP/checks"
+          build=false
+          while IFS= read -r id; do
+            echo "$id${releases_of[$id]:-}" >>"$RUNNER_TEMP/checks"
+            if [ -f "games/$id/league.jsonl" ]; then build=true; fi
+          done < <(printf '%s\n' "${!checked[@]}" | sort)
+          {
+            echo '```text'
+            cat "$RUNNER_TEMP/checks"
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+          echo "checks=$RUNNER_TEMP/checks" >>"$GITHUB_OUTPUT"
+          echo "build=$build" >>"$GITHUB_OUTPUT"
+      # Nothing is built for a game without results yet: the check only says so.
+      - uses: dtolnay/rust-toolchain@master
+        if: steps.plan.outputs.build == 'true'
+        with:
+          toolchain: ${{ env.CG_RUST }}
+      - uses: Swatinem/rust-cache@v2
+        if: steps.plan.outputs.build == 'true'
+      - name: Check the league results
+        if: steps.plan.outputs.checks != ''
+        env:
+          CHECKS: ${{ steps.plan.outputs.checks }}
+          # The pull request's base: a results file it deletes is an error.
+          LEAGUE_BASE: HEAD^1
+        run: |
+          status=0
+          while read -r id files; do
+            if [ -f "games/$id/league.jsonl" ]; then
+              scripts/annotate.sh run "Build $id-arena" cargo build --locked --release -p "$id-arena"
+            fi
+            # shellcheck disable=SC2086 # validated file names, space separated
+            scripts/league-check.sh "$id" $files || status=1
+          done <"$CHECKS"
+          exit "$status"
+
   # The required check (ADR 0029). Always runs, and fails when the search for
   # new releases or any game's SPRT failed or was cancelled.
   sprt-passed:
@@ -256,6 +608,8 @@ jobs:
     needs:
       - releases
       - sprt
+      - league
+      - league-results
     # Never `!cancelled()`: GitHub counts a skipped required check as passed,
     # so this job must run when the run is cancelled too, and then fail.
     if: always()
@@ -276,4 +630,4 @@ jobs:
             '[]') HAS_GAMES=false ;;
             *) HAS_GAMES=true ;;
           esac
-          scripts/ci-scopes.sh results releases=true sprt="$HAS_GAMES"
+          scripts/ci-scopes.sh results releases=true sprt="$HAS_GAMES" league="$HAS_GAMES" league-results=true

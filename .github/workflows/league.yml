@@ -1,38 +1,38 @@
 name: League
 
-# Rates every release of each game that changed, with its baseline bots
-# (ADR 0012, 0029): one job per game. Every game is rated when the league
-# itself changes (this workflow, its scripts), on pull requests too, and when
-# started by hand.
+# The bootstrap and the replays of the incremental league (ADR 0038, decision
+# 8), started by hand only: the league of a new release runs in the SPRT
+# workflow, on the release's pull request. This one plays the bots listed, in
+# order, each as a new release would be (scripts/league.sh with LEAGUE_APPEND),
+# until the time budget: it starts no bot once stop_after_minutes have passed,
+# and says which bots come next. It changes nothing in the repository and
+# posts nothing: Claude reads the new lines of each bot in the job log (skill
+# github-api: job logs are readable) or in the job summary, copies them into
+# games/<game>/league.jsonl in a pull request, regenerates LEADERBOARD.md, and
+# starts the next run with the bots that remain. The bots are baseline bots
+# (greedy) and releases (v001, v002, ...), the history in release order, as the
+# results of one run are the input of the next.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "games/*/releases/**"
-      - "games/*/evaluation.env"
-      - ".github/workflows/league.yml"
-      - "scripts/league.sh"
-      - "scripts/lib/evaluation.sh"
-  pull_request:
-    paths:
-      - ".github/workflows/league.yml"
-      - "scripts/league.sh"
-      - "scripts/lib/evaluation.sh"
   workflow_dispatch:
     inputs:
-      time_scale:
-        description: "Time scale; 1 plays CodinGame's limits (default: each game's evaluation.env)"
+      game:
+        description: "Game folder"
+        required: true
+        default: uttt
+      bots:
+        description: "Bots to add, in order, space-separated (greedy v001 v002 ...)"
+        required: true
+      stop_after_minutes:
+        description: "Start no bot after this many minutes"
         required: false
-      time_tolerance_ms:
-        description: "Milliseconds added to every limit (default: each game's evaluation.env)"
-        required: false
+        default: "300"
 
 permissions:
   contents: read
 
 concurrency:
   group: league-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 defaults:
   run:
@@ -46,126 +46,94 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # The games to rate (scripts/ci-scopes.sh league).
-  changes:
-    name: Changes
-    runs-on: ubuntu-latest
-    outputs:
-      games: ${{ steps.scopes.outputs.games }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          # A push: the old commit comes by the fetch below. A pull request:
-          # the parent commit, to see which files it changes.
-          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
-      - name: Decide which games are rated
-        id: scopes
-        env:
-          EVENT: ${{ github.event_name }}
-          BEFORE: ${{ github.event.before }}
-        run: |
-          # On stderr: the games are read from stdout in a substitution.
-          fail() {
-            echo "::error title=Changes::scripts/ci-scopes.sh failed" >&2
-            exit 1
-          }
-          # Reads the changed files, NUL-separated (git quotes the odd file
-          # names otherwise), from the file $1.
-          games_of() {
-            mapfile -d '' -t files <"$1"
-            scripts/ci-scopes.sh league -- "${files[@]}" || fail
-          }
-          list="$RUNNER_TEMP/changed-files"
-          case "$EVENT" in
-            pull_request)
-              # In a pull request, HEAD is the merge commit and HEAD^1 the base.
-              # Written to a file first: a process substitution would hide a
-              # failure of git, and no files would then mean no league.
-              if ! git diff -z --name-only --no-renames HEAD^1 HEAD >"$list"; then
-                echo "::error title=Changes::git diff failed; the changed files are unknown"
-                exit 1
-              fi
-              scopes="$(games_of "$list")"
-              ;;
-            push)
-              # The first push of a branch has no commit before it, and a
-              # force push may have lost it: rate every game then, also when
-              # git diff fails (the list is written to a file, so a failure
-              # is seen, never taken for "no file changed").
-              if [[ ! $BEFORE =~ ^0+$ ]] &&
-                git fetch --depth=1 origin "$BEFORE" &&
-                git diff -z --name-only --no-renames "$BEFORE" HEAD >"$list"; then
-                scopes="$(games_of "$list")"
-              else
-                echo "The commits before this push cannot be compared: every game is rated."
-                scopes="$(scripts/ci-scopes.sh league --all)" || fail
-              fi
-              ;;
-            *)
-              # Runs by hand rate every game.
-              scopes="$(scripts/ci-scopes.sh league --all)" || fail
-              ;;
-          esac
-          echo "$scopes" | tee -a "$GITHUB_OUTPUT"
-          {
-            echo '```text'
-            echo "$scopes"
-            echo '```'
-          } >>"$GITHUB_STEP_SUMMARY"
-
   league:
-    name: "${{ matrix.game }}: league"
-    needs: changes
-    # An empty matrix is an error: skip the job instead.
-    if: needs.changes.outputs.games != '[]'
+    name: League
     runs-on: ubuntu-latest
     timeout-minutes: 360
-    strategy:
-      fail-fast: false
-      matrix:
-        game: ${{ fromJSON(needs.changes.outputs.games) }}
-    env:
-      GAME: ${{ matrix.game }}
     steps:
+      - name: Check the inputs
+        env:
+          GAME: ${{ inputs.game }}
+          BOTS: ${{ inputs.bots }}
+          STOP_AFTER: ${{ inputs.stop_after_minutes }}
+        run: |
+          # The inputs are text from whoever starts the run: they are checked
+          # before they reach a path or a command.
+          if [[ ! $GAME =~ ^[A-Za-z0-9_-]+$ ]]; then
+            echo "::error title=League::'$GAME' is not a game name"
+            exit 1
+          fi
+          if [[ ! $STOP_AFTER =~ ^[0-9]+$ ]]; then
+            echo "::error title=League::stop_after_minutes must be a number of minutes"
+            exit 1
+          fi
+          read -r -a bots <<<"$BOTS"
+          if [ "${#bots[@]}" -eq 0 ]; then
+            echo "::error title=League::no bot to add"
+            exit 1
+          fi
+          for bot in "${bots[@]}"; do
+            if [[ ! $bot =~ ^[A-Za-z0-9_-]+$ ]]; then
+              echo "::error title=League::'$bot' is not a bot name"
+              exit 1
+            fi
+          done
+          echo "BOT_LIST=${bots[*]}" >>"$GITHUB_ENV"
       - uses: actions/checkout@v7
+      - name: Check that the game is a folder of games/
+        env:
+          GAME: ${{ inputs.game }}
+        run: |
+          if [ ! -d "games/$GAME" ]; then
+            echo "::error title=League::games/$GAME is not a folder of this repository"
+            exit 1
+          fi
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.CG_RUST }}
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ matrix.game }}
+          key: ${{ inputs.game }}
       - name: Play the league
         env:
-          # Empty unless given when starting the workflow by hand; empty
-          # values leave the game's settings in place.
-          TIME_SCALE: ${{ inputs.time_scale }}
-          TIME_TOLERANCE_MS: ${{ inputs.time_tolerance_ms }}
-          # A sample of the games, uploaded below (ADR 0027).
-          RECORDS_DIR: target/records
+          GAME: ${{ inputs.game }}
+          LEAGUE_APPEND: "true"
+          LEAGUE_STOP_AFTER_MINUTES: ${{ inputs.stop_after_minutes }}
         run: |
           # A fresh runner has no target folder yet; tee needs it.
           mkdir -p target
-          scripts/annotate.sh run "League of $GAME" scripts/league.sh "$GAME" | tee "target/league-$GAME.txt"
+          # The names were checked above; the list is split on spaces.
+          # shellcheck disable=SC2086
+          scripts/annotate.sh run "League of $BOT_LIST" scripts/league.sh "$GAME" $BOT_LIST | tee "target/league-$GAME.txt"
+      - name: Report
+        if: ${{ !cancelled() }}
+        env:
+          GAME: ${{ inputs.game }}
+        run: |
+          if [ ! -f "target/league-$GAME.txt" ]; then
+            echo "The league did not start."
+            exit 0
+          fi
           {
             echo "## League: $GAME"
             echo '```'
-            # The annotation of a failure is for the check run only.
-            grep -v '^::error title=' "target/league-$GAME.txt" || true
+            # The annotation of a failure is for the check run only. The new
+            # lines are given apart, in a block of their own.
+            grep -v '^::error title=' "target/league-$GAME.txt" |
+              sed '/^---- new results of /,/^---- end ----$/d' || true
+            echo '```'
+            echo 'New lines, in order (the same as in the log):'
+            echo '```jsonl'
+            sed -n '/^---- new results of /,/^---- end ----$/{/^----/d;p}' "target/league-$GAME.txt"
             echo '```'
           } >>"$GITHUB_STEP_SUMMARY"
-      - name: Upload a sample of the games
+      - name: Publish the games and ratings
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: league-game-records-${{ matrix.game }}
-          path: target/records
-          if-no-files-found: ignore
-          retention-days: 30
-      - name: Publish the games and ratings
-        uses: actions/upload-artifact@v7
-        with:
-          name: league-${{ matrix.game }}
+          name: league-${{ inputs.game }}
           path: |
-            target/league-${{ matrix.game }}.txt
-            target/league/*.jsonl
+            target/league/
+            !target/league/bin/
+          if-no-files-found: ignore

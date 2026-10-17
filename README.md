@@ -22,8 +22,8 @@ Every bot change is judged by CI: unit tests, a check that the bot compiles on C
 - [`.claude/`](.claude/): Claude's project agents (implementer, reviewers) and skills (the procedures that repeat).
 - [`.github/workflows/`](.github/workflows/):
   - `ci.yml`: format, lint, tests, bot checks, dependency licenses, docs and scripts, the studio; each runs only for the areas and games a pull request changes ([ADR 0029](docs/adr/0029-ci-scoped-by-area-and-game.md)).
-  - `sprt.yml`: smoke test and SPRT of each new release.
-  - `league.yml`: ratings of all releases.
+  - `sprt.yml`: smoke test and SPRT of each new release, then its league, with a check that the results and the leaderboard are in the pull request ([ADR 0038](docs/adr/0038-incremental-league.md)).
+  - `league.yml`: the league's bootstrap and replays, started by hand.
   - `release.yml`: a GitHub release for each new release file.
   - `train.yml`: self-play and training, started by hand.
   - `prune-branches.yml`: weekly deletion of finished `claude/` branches.
