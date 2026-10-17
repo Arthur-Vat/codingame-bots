@@ -5,8 +5,9 @@ import type { ReactElement } from 'react';
    the bottom-right one, and they meet in the middle of a map with holes. */
 
 /* The top half of the map, rows y = 0 to 5: `#` void, `.` neutral, `R` red, `B` blue, `F` red's
-   HQ, `1`-`3` a red unit of that level, `a`-`c` a blue unit of level 1 to 3. The bottom half is the top
-   half turned by half a turn with the colours swapped, as the game's maps are symmetric. */
+   HQ, `1`-`3` a red unit of that level, `a`-`c` a blue unit of level 1 to 3. The bottom half is
+   the top half turned by half a turn with the colours swapped, as the game's maps are
+   symmetric. */
 const TOP = [
   'FRRRRR..#.##',
   'RRR2RRR.#..#',
