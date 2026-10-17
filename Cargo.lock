@@ -171,6 +171,15 @@ name = "ice-and-fire-bot-wait"
 version = "0.0.0"
 
 [[package]]
+name = "ice-and-fire-engine"
+version = "0.0.0"
+dependencies = [
+ "cg-arena",
+ "cg-core",
+ "ice-and-fire-referee",
+]
+
+[[package]]
 name = "ice-and-fire-referee"
 version = "0.0.0"
 dependencies = [

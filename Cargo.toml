@@ -37,6 +37,7 @@ cg-core = { path = "crates/cg-core" }
 cg-pack = { path = "crates/cg-pack" }
 cg-packer = { path = "crates/cg-packer" }
 cg-search = { path = "crates/cg-search" }
+ice-and-fire-engine = { path = "games/ice-and-fire/engine" }
 ice-and-fire-referee = { path = "games/ice-and-fire/referee" }
 studio-core = { path = "studio/core" }
 studio-game = { path = "studio/game" }

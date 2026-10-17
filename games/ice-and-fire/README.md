@@ -2,7 +2,7 @@
 
 CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-programming/a-code-of-ice-and-fire) is the second game of this framework, named by the owner on 2026-10-17 (phase 7 of the [main roadmap](../../docs/ROADMAP.md)). Two players on a 12×12 map build armies, buildings and territory to capture the opposing headquarters. It began as a 10-day contest, now over; bots can still be submitted to it as a multiplayer game (source's README).
 
-**Status:** stage 5, referee and engine ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator, and the `wait` bot. No fast engine or arena yet.
+**Status:** stage 5, referee and engine ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator, a fast engine checked against it, and the `wait` bot. No arena yet.
 
 ## Layout
 
@@ -12,6 +12,7 @@ CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-p
 | [MODEL.md](MODEL.md) | The game as a search problem: numbers, a formal model, what follows for bots |
 | [ROADMAP.md](ROADMAP.md) | The game's stages in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md)) |
 | [referee/](referee/) | `ice-and-fire-referee`: readable reference implementation of the rules, with our own map generator ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)), for the arena |
+| [engine/](engine/) | `ice-and-fire-engine`: the fast, standard-library engine for bots (bitboards, random turns, CodinGame's text protocol), with parity tests against the referee and the speed example |
 | [bots/wait/](bots/wait/) | `ice-and-fire-bot-wait`: reads every turn's input and answers `WAIT` |
 | [ci.sh](ci.sh) | The game's CI steps, run after the bots are bundled ([ADR 0029](../../docs/adr/0029-ci-scoped-by-area-and-game.md)); no arena games until stage 6 |
 
@@ -64,6 +65,25 @@ Leagues above Bronze, and how many players each holds, are not in the sources (o
 - Equal military power after 100 turns: the referee gives both players their score (`discriminateEndGame`); whether CodinGame then reports a draw is a platform fact to check in stage 5, not guessed here.
 - Red always plays first, and blue's extra cell at (11,10) offsets that (statement, "Expert Rules"). Whether CodinGame plays each pairing from both seats is a platform fact to check.
 - The source is the `develop` branch at commit `efe9e78` (2020-11-25); CodinGame's referee may differ. The `rules-check` bot of stage 5 settles it, and CodinGame's behaviour wins.
+
+## Engine speed
+
+`cargo +1.90.0 run --release -p ice-and-fire-engine --example speed -- [SECONDS]` plays Bronze games on 64 of the referee's maps with random turns (`State::random_turn`, then `play_turn`), then times `turn_input` and `read` on positions from move 40 of those games. CodinGame compiles with Rust 1.90.0, so measure with it (`rustup toolchain install 1.90.0 --profile minimal`). CI runs it from [`ci.sh`](ci.sh) and shows the table in the job summary; it is a report, not a check.
+
+Measured on 2026-10-17 with Rust 1.90.0, one thread of a shared 4-core machine (Intel(R) Xeon(R) Processor @ 2.10GHz; it varies by about 10% between runs), 2 s per row:
+
+| Engine benchmark | Result |
+| --- | --- |
+| Random turns generated and played | 139,582 per second |
+| Random turns generated alone (from move 40 of a game) | 312,073 per second |
+| Whole random games (Bronze) | 946 per second |
+| Turns per random game | 147.6 |
+| `turn_input` | 213,415 per second |
+| `read` (a new map every time) | 7,902 per second |
+| `read` (the map of the last read) | 206,329 per second |
+| `State::new` (builds the distance table) | 8,750 per second |
+
+A turn here is one player's turn, so a game of 147.6 turns is about 74 game turns. A random turn clones the state (about 1 KB and a reference count) to choose commands on a scratch copy. `read` rebuilds the 144 × 144 distance table, about 115 microseconds, only when the map differs from the last one it read on the thread; a bot reads the same map every turn.
 
 ## Notes on the owner's criteria
 

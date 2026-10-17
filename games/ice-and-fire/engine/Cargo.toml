@@ -1,0 +1,22 @@
+[package]
+name = "ice-and-fire-engine"
+description = "Fast A Code of Ice and Fire rules for bots: bitboards, command generation, and CodinGame's text protocol. Standard library only."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+# Only workspace crates: the bundler copies this crate into bots.
+[dependencies]
+cg-core.workspace = true
+
+# Used by the parity tests and the speed example only; never part of a bot.
+[dev-dependencies]
+cg-arena.workspace = true
+ice-and-fire-referee.workspace = true
+
+[lints]
+workspace = true

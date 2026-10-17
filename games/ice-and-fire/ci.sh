@@ -8,8 +8,10 @@
 #   games/ice-and-fire/ci.sh
 #
 # It expects the compiled bundle in target/cg/bin/ice-and-fire-wait. The game
-# has no arena yet, so for now it checks that and stops; stage 6 adds the
-# arena's games here.
+# has no arena yet, so for now it checks that and measures the engine's speed
+# (a report, not a check: ADR 0029, decision 7; it fails only if the
+# measurement itself crashes; with GITHUB_STEP_SUMMARY set, the table goes to
+# the job summary); stage 6 adds the arena's games here.
 #
 # Usage: games/ice-and-fire/ci.sh   (from any directory; no arguments)
 set -euo pipefail
@@ -23,3 +25,12 @@ if [[ ! -x target/cg/bin/ice-and-fire-wait ]]; then
 fi
 
 echo "== No arena yet: stage 6 adds the arena's games"
+
+echo "== Engine speed (a report)"
+scripts/annotate.sh run "Engine speed" \
+  cargo run --release --locked -p ice-and-fire-engine --example speed -- 3 \
+  | tee target/ice-and-fire-speed.txt
+if [[ -n ${GITHUB_STEP_SUMMARY:-} ]]; then
+  # The annotation of a failure stays out of the step summary.
+  { grep -v '^::error title=' target/ice-and-fire-speed.txt || true; } >>"$GITHUB_STEP_SUMMARY"
+fi
