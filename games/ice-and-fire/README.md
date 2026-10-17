@@ -1,6 +1,6 @@
 # A Code of Ice and Fire
 
-CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-programming/a-code-of-ice-and-fire) is the second game of this framework, named by the owner on 2026-10-17 (phase 7 of the [main roadmap](../../docs/ROADMAP.md)). Two players on a 12×12 map build armies, buildings and territory to capture the opposing headquarters. It began as a contest in May 2019; that contest is over and the game is now a multiplayer game with a permanent leaderboard (source's README).
+CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-programming/a-code-of-ice-and-fire) is the second game of this framework, named by the owner on 2026-10-17 (phase 7 of the [main roadmap](../../docs/ROADMAP.md)). Two players on a 12×12 map build armies, buildings and territory to capture the opposing headquarters. It began as a 10-day contest, now over; bots can still be submitted to it as a multiplayer game (source's README).
 
 **Status:** stage 1, intake ([ROADMAP.md](ROADMAP.md)). No rules, engine or bot yet.
 
@@ -8,7 +8,7 @@ CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-p
 
 | Short name | What it is |
 | --- | --- |
-| Statement | The statement template in the game's source, `config/statement_en.html.tpl`. The owner chose it on 2026-10-17 over pasting CodinGame's page; the page may have changed since 2019, so the `rules-check` bot of stage 5 compares it with CodinGame's real games |
+| Statement | The statement template in the game's source, `config/statement_en.html.tpl`. The owner chose it on 2026-10-17 over pasting CodinGame's page; the page may have changed since the source was written, so the `rules-check` bot of stage 5 compares it with CodinGame's real games |
 | Source | The referee, [Azkellas/a-code-of-ice-and-fire](https://github.com/Azkellas/a-code-of-ice-and-fire) on its `develop` branch, commit `efe9e78`, in Java on CodinGame's game engine. File paths below are relative to `src/main/java/com/codingame/` |
 
 **License of the source: GNU GPL version 3** (`LICENSE.md`). Under [ADR 0035](../../docs/adr/0035-new-game-lifecycle.md), the source is read for facts only: nothing of it is translated or copied here, the statement template and its pictures included. Our rules, referee and engine are written from our own `RULES.md`.
@@ -27,7 +27,7 @@ Each fact gives its source. Stage 2 turns them into `RULES.md` with the edge cas
 | Randomness | Only the map, generated from the game's seed; the mine spots are given once, at the start | `antiyoy/GameState.java` line 41 (`new Random(seed)`); `game/Referee.java`, `sendInitialInput` |
 | Map | 12×12 cells, each void, neutral, or owned (active or not). The headquarters are at (0,0) for red and (11,11) for blue; the cells next to each headquarters, diagonals included, are never void; blue also owns (11,10) at the start | Statement, "The map" and "Expert Rules"; `antiyoy/GameState.java`, `createHQs` (lines 367-383) |
 | Map symmetry | The generator makes the map symmetric | `antiyoy/GameState.java` comments at lines 227 and 299; the kind of symmetry is to be stated in stage 2 |
-| Mine spots | Between 6 and 15% of the non-void cells, an even number; always one right of the red headquarters and one left of the blue headquarters | Statement, "Expert Rules"; `antiyoy/GameState.java` lines 332-333 |
+| Mine spots | Between 6 and 15% of the non-void cells, an even number; always one right of the red headquarters and one left of the blue headquarters. The code counts only the cells nobody owns at that point (so not the headquarters' cells nor blue's extra cell), and places mine spots only from Wood 1 on; stage 2 settles the count | Statement, "Expert Rules"; `antiyoy/GameState.java` lines 316-333 |
 | End of the game | A headquarters captured, a player losing by its answer, or 100 game turns. After 100 turns the higher military power wins: gold plus the training cost of the units alive | Statement, "Victory Conditions"; `antiyoy/Constants.java` (`MAX_TURNS = 100`); `game/Referee.java`, `discriminateEndGame` and `checkForHqCapture`; `antiyoy/GameState.java`, `getScores` |
 | Time limits | 1,000 ms for the first turn, 50 ms for the others | Statement, "Constraints" |
 | Input | At the start: the number of mine spots and their coordinates. Each turn: own gold and income, the opponent's, 12 rows of 12 characters, the buildings (owner, type, x, y) and the units (owner, id, level, x, y) | Statement, "Game Input" |
@@ -52,7 +52,7 @@ Leagues above Bronze, and how many players each holds, are not in the sources (o
 - The statement template declares five league levels; the referee knows four and treats every level from 4 up as Bronze (`game/Referee.java`, lines 66-86).
 - Equal military power after 100 turns: the referee gives both players their score (`discriminateEndGame`); whether CodinGame then reports a draw is a platform fact to check in stage 5, not guessed here.
 - Red always plays first, and blue's extra cell at (11,10) offsets that (statement, "Expert Rules"). Whether CodinGame plays each pairing from both seats is a platform fact to check.
-- The source is the `develop` branch of 2019; CodinGame's referee may differ. The `rules-check` bot of stage 5 settles it, and CodinGame's behaviour wins.
+- The source is the `develop` branch at commit `efe9e78` (2020-11-25); CodinGame's referee may differ. The `rules-check` bot of stage 5 settles it, and CodinGame's behaviour wins.
 
 ## Notes on the owner's criteria
 
