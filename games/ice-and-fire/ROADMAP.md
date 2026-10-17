@@ -28,7 +28,7 @@ Framework gaps: the table in [MODEL.md](MODEL.md).
 - [x] The problem in plain English, then a short formal part; numbers, symmetries, the class of game and the families of methods (#159)
 - [x] The framework gaps listed, each with where it is, what would change and whether the game can wait (#159)
 - [x] Each gap decided by the owner (form, 2026-10-17)
-- [ ] The decision record of the costly one, [ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md), merged
+- [ ] The decision record of gaps 2 and 3, [ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md), merged
 
 ## Open questions
 
