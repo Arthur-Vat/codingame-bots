@@ -1,12 +1,18 @@
 import type { Answer, EndReason, SeatInfo, Session, SessionResult } from './api';
 
-/** The mark of a seat: seat 0 moves first and is X. */
-export function seatMark(seat: number): 'X' | 'O' {
-  return seat === 0 ? 'X' : 'O';
+/** The names of the two seats in a game: seat 0 moves first. */
+export type SeatNames = readonly [string, string];
+
+/** The names of the seats of a game that gives none of its own. */
+export const DEFAULT_SEAT_NAMES: SeatNames = ['X', 'O'];
+
+/** The mark of a seat: seat 0 moves first and is X (or the game's first name). */
+export function seatMark(seat: number, names: SeatNames = DEFAULT_SEAT_NAMES): string {
+  return seat === 0 ? names[0] : names[1];
 }
 
 /** One line of text for what the session is doing. */
-export function statusText(session: Session): string {
+export function statusText(session: Session, names: SeatNames = DEFAULT_SEAT_NAMES): string {
   const { done, total } = session.progress ?? { done: 0, total: null };
   switch (session.status) {
     case 'compiling':
@@ -25,7 +31,7 @@ export function statusText(session: Session): string {
       const seat = session.to_act[0];
       return seat === undefined
         ? 'Waiting for a move'
-        : `${session.seats[seat]?.name ?? 'A player'} to move (${seatMark(seat)})`;
+        : `${session.seats[seat]?.name ?? 'A player'} to move (${seatMark(seat, names)})`;
     }
     case 'over':
       return 'Game over';
@@ -81,6 +87,7 @@ function endText(
   end: EndReason,
   seats: readonly { kind: 'human' | 'bot' }[],
   detail: string | null,
+  names: SeatNames,
 ): string {
   const who = (seat: number) => (seats[seat]?.kind === 'bot' ? 'bot' : 'human');
   switch (end.kind) {
@@ -93,7 +100,7 @@ function endText(
     case 'invalid':
       return 'Invalid answer';
     case 'resigned':
-      return `${seatMark(end.seat)} resigned`;
+      return `${seatMark(end.seat, names)} resigned`;
     case 'aborted':
       return end.reason;
   }
@@ -104,10 +111,11 @@ export function resultText(
   result: SessionResult,
   seats: readonly { kind: 'human' | 'bot' }[],
   detail: string | null,
+  names: SeatNames = DEFAULT_SEAT_NAMES,
 ): { headline: string; detail: string } {
-  const reason = endText(result.end, seats, detail);
-  if (result.winner === 0) return { headline: '1–0 · X wins', detail: reason };
-  if (result.winner === 1) return { headline: '0–1 · O wins', detail: reason };
+  const reason = endText(result.end, seats, detail, names);
+  if (result.winner === 0) return { headline: `1–0 · ${names[0]} wins`, detail: reason };
+  if (result.winner === 1) return { headline: `0–1 · ${names[1]} wins`, detail: reason };
   return { headline: '½–½ · Draw', detail: reason };
 }
 

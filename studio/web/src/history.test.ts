@@ -10,6 +10,8 @@ import {
   historyQuery,
   importFiles,
   NO_FILTERS,
+  RESULT_OPTIONS,
+  resultOptionsFor,
   parseRecordText,
   releaseOptions,
   resultSymbol,
@@ -256,5 +258,16 @@ describe('importFiles', () => {
       },
     );
     expect(order).toEqual(['start 1', 'end 1', 'start 2', 'end 2']);
+  });
+});
+
+describe('resultOptionsFor', () => {
+  it('writes the wins with the names of the seats, and keeps the values and the rest', () => {
+    const options = resultOptionsFor(['Red', 'Blue']);
+    expect(options.map((option) => option.value)).toEqual(RESULT_OPTIONS.map((o) => o.value));
+    expect(options.find((option) => option.value === 'x')?.label).toBe('Red wins');
+    expect(options.find((option) => option.value === 'o')?.label).toBe('Blue wins');
+    expect(options.find((option) => option.value === 'draw')?.label).toBe('Draw');
+    expect(resultOptionsFor(['X', 'O'])).toEqual(RESULT_OPTIONS);
   });
 });

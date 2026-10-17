@@ -18,7 +18,13 @@ import { PlayingOverlay } from './PlayingOverlay';
 import { downloadText, errorMessage, typesText } from './browser';
 import { BoardSlot } from './BoardSlot';
 import { clockSeed } from './setup';
-import { emptyFrameFor, ownEntry, renderers, resultDetailFor } from './games/registry';
+import {
+  emptyFrameFor,
+  ownEntry,
+  renderers,
+  resultDetailFor,
+  seatNamesFor,
+} from './games/registry';
 import { Controls, EndBlock, MoveList, PlayerStrip, Row } from './GameTable';
 import type { GamesState } from './hooks';
 import { ServerNotice } from './HomePage';
@@ -113,13 +119,13 @@ function InfoCard({
       <h3>{sessionTitle(session)}</h3>
       <dl>
         <dt>Status</dt>
-        <dd>{statusText(session)}</dd>
+        <dd>{statusText(session, seatNamesFor(gameId))}</dd>
         {session.status === 'over' && <Row term="Source" value="Played here" />}
         {bots === 2 &&
           session.seats.map((seat, index) => (
             <Row
               key={index}
-              term={seatMark(index)}
+              term={seatMark(index, seatNamesFor(gameId))}
               value={`${seat.name}${seat.kind === 'bot' ? `, ${thinkLabel(seat.think_ms)}` : ''}`}
             />
           ))}
@@ -482,12 +488,14 @@ export function GamePage({
         <aside className="side side-right">
           <section className="panel table">
             <PlayerStrip
+              gameId={gameId}
               session={shownSession}
               seat={1 - bottom}
               clocks={clocks}
               running={running}
             />
             <MoveList
+              gameId={gameId}
               session={shownSession}
               problem={problem}
               lost={session !== null && error !== null}
@@ -524,7 +532,13 @@ export function GamePage({
                 })}
               />
             )}
-            <PlayerStrip session={shownSession} seat={bottom} clocks={clocks} running={running} />
+            <PlayerStrip
+              gameId={gameId}
+              session={shownSession}
+              seat={bottom}
+              clocks={clocks}
+              running={running}
+            />
           </section>
         </aside>
       </main>
@@ -535,6 +549,8 @@ export function GamePage({
           onModeChange={setLastMode}
           releases={game.releases}
           humanPlay={game.human_play}
+          seatNames={seatNamesFor(gameId)}
+          game={gameId}
           onStart={start}
           onClose={closeDialog}
           endsRunningGame={gameInProgress}

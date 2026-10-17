@@ -639,6 +639,29 @@
   background: var(--sq-dark);
 }
 
+/* The mark of a game that names its seats: a square in the seat's colour with the name's first
+   letter (the colours of that game's board). */
+.mark-sq {
+  color: #fff;
+}
+
+.mark-sq text {
+  fill: currentColor;
+  font: 700 70px var(--font);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.chip.mark-sq.seat-0,
+.sides button svg.mark-sq.seat-0 {
+  background: #c62f26;
+}
+
+.chip.mark-sq.seat-1,
+.sides button svg.mark-sq.seat-1 {
+  background: #1d5fc4;
+}
+
 .clock {
   font-family: var(--mono);
   font-size: 26px;

@@ -7,6 +7,7 @@ import {
   ownEntry,
   renderers,
   resultDetailFor,
+  seatNamesFor,
 } from './registry';
 
 describe('the registry lookups', () => {
@@ -67,6 +68,13 @@ describe('the registry lookups', () => {
     expect(hasActionTexts('uttt')).toBe(true);
     expect(hasActionTexts('nope')).toBe(false);
     expect(hasActionTexts('constructor')).toBe(false);
+  });
+
+  it('names the seats of Ice and Fire, and keeps X and O for the rest', () => {
+    expect(seatNamesFor('ice-and-fire')).toEqual(['Red', 'Blue']);
+    for (const id of ['uttt', 'nope', 'constructor', '__proto__']) {
+      expect(seatNamesFor(id), id).toEqual(['X', 'O']);
+    }
   });
 
   it('own entries only, for any map', () => {

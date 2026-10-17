@@ -5,6 +5,7 @@ import {
   emptyFrame as iceAndFireEmptyFrame,
   resultDetail as iceAndFireResultDetail,
 } from './ice-and-fire/view';
+import { DEFAULT_SEAT_NAMES, type SeatNames } from '../sessionView';
 import UtttBoard from './uttt/Board';
 import {
   asUtttFrame,
@@ -89,6 +90,14 @@ export const emptyFrames: Record<string, () => unknown> = byId({
   'ice-and-fire': iceAndFireEmptyFrame,
 });
 
+/**
+ * The names a game gives its two seats (seat 0 moves first), where the shell writes a seat as a
+ * letter or a name; a game without an entry has X and O.
+ */
+export const seatNames: Record<string, SeatNames> = byId({
+  'ice-and-fire': ['Red', 'Blue'],
+});
+
 /** Where a move is on the board: the renderer's cell key (for its heat map) and the cell to outline. */
 export interface MoveCell {
   key: string;
@@ -152,6 +161,16 @@ export function actionTextFor(gameId: string, action: unknown): string | null {
 /** Whether a game can write its renderer's actions as moves (it can have side lines). */
 export function hasActionTexts(gameId: string): boolean {
   return ownEntry(actionTexts, gameId) !== undefined;
+}
+
+/** The names of a game's two seats: its own, else X and O. */
+export function seatNamesFor(gameId: string): SeatNames {
+  return ownEntry(seatNames, gameId) ?? DEFAULT_SEAT_NAMES;
+}
+
+/** Whether a game names its seats itself (its marks are then coloured squares, not X and O). */
+export function hasSeatNames(gameId: string): boolean {
+  return ownEntry(seatNames, gameId) !== undefined;
 }
 
 /** A game's empty board, if it has one. */

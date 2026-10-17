@@ -4,12 +4,18 @@ import { describe, expect, it } from 'vitest';
 import { SetupDialog } from './SetupDialog';
 import type { Mode } from './setup';
 
-const render = (initialMode: Mode, releases: string[], humanPlay?: boolean): string =>
+const render = (
+  initialMode: Mode,
+  releases: string[],
+  humanPlay?: boolean,
+  names?: { seatNames: readonly [string, string]; game: string },
+): string =>
   renderToStaticMarkup(
     createElement(SetupDialog, {
       initialMode,
       releases,
       humanPlay,
+      ...names,
       onStart: () => Promise.resolve(),
       onClose: () => undefined,
     }),
@@ -63,5 +69,25 @@ describe('the setup menu', () => {
     const html = render('bots', ['a-v001'], false);
     expect(html).not.toContain('no bot yet');
     expect(html).not.toMatch(/disabled=""[^>]*>Start/);
+  });
+
+  it('writes the seats as X and O, or with the names a game gives them', () => {
+    const plain = render('bots', ['a-v001']);
+    expect(plain).toContain('X (moves first)');
+    expect(plain).toContain('>O</label>');
+    const named = render('bots', ['a-v001'], false, {
+      seatNames: ['Red', 'Blue'],
+      game: 'ice-and-fire',
+    });
+    expect(named).toContain('Red (moves first)');
+    expect(named).toContain('>Blue</label>');
+    expect(named).not.toContain('X (moves first)');
+    const withSides = render('computer', ['a-v001'], true, {
+      seatNames: ['Red', 'Blue'],
+      game: 'ice-and-fire',
+    });
+    expect(withSides).toContain('aria-label="Play Red"');
+    expect(withSides).toContain('You play Red and move first');
+    expect(render('computer', ['a-v001'])).toContain('aria-label="Play X"');
   });
 });

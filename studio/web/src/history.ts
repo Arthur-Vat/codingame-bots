@@ -17,6 +17,17 @@ export const RESULT_OPTIONS: readonly { value: ResultFilter; label: string }[] =
   { value: 'fault', label: 'Faults' },
 ];
 
+/** The result options with a game's own seat names in place of X and O. */
+export function resultOptionsFor(names: readonly [string, string]): typeof RESULT_OPTIONS {
+  return RESULT_OPTIONS.map((option) =>
+    option.value === 'x'
+      ? { ...option, label: `${names[0]} wins` }
+      : option.value === 'o'
+        ? { ...option, label: `${names[1]} wins` }
+        : option,
+  );
+}
+
 export const SOURCE_OPTIONS: readonly { value: SourceFilter; label: string }[] = [
   { value: '', label: 'All games' },
   { value: 'studio', label: 'Played in the studio' },

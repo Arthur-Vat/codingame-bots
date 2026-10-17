@@ -21,7 +21,7 @@ import {
   NO_FILTERS,
   parseRecordText,
   releaseOptions,
-  RESULT_OPTIONS,
+  resultOptionsFor,
   resultSymbol,
   SOURCE_OPTIONS,
   sourceTag,
@@ -31,6 +31,7 @@ import {
   type ResultFilter,
   type SourceFilter,
 } from './history';
+import { seatNamesFor } from './games/registry';
 import type { GamesState } from './hooks';
 import { rememberFile } from './loadedFiles';
 import { formatDate } from './analysis';
@@ -197,6 +198,7 @@ export function HistoryPage({
   const listing = useHistoryList(set, query, refresh);
   const arena = set === 'arena';
   const releases = releaseOptions(gamesState.games, gameId);
+  const names = seatNamesFor(gameId);
   const change = (patch: Partial<HistoryFilters>) => {
     setFilters((previous) => ({ ...previous, ...patch }));
     setConfirming(null);
@@ -335,7 +337,7 @@ export function HistoryPage({
             value={filters.result}
             onChange={(event) => change({ result: event.target.value as ResultFilter })}
           >
-            {RESULT_OPTIONS.map((option) => (
+            {resultOptionsFor(names).map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -408,8 +410,8 @@ export function HistoryPage({
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>X</th>
-                  <th>O</th>
+                  <th>{names[0]}</th>
+                  <th>{names[1]}</th>
                   <th>Result</th>
                   <th>Moves</th>
                   <th>Source</th>

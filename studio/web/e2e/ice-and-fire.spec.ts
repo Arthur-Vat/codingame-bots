@@ -82,6 +82,13 @@ test('a record is loaded into the history and stepped through on the analysis bo
     "Red captured Blue's HQ.",
   );
   await expect(page.locator('.iaf-turn .to-move')).toHaveText('Game over');
+  await expect(page.getByTestId('result').filter({ visible: true })).toContainText(
+    '1–0 · Red wins',
+  );
+
+  // The seats are Red and Blue, not X and O.
+  await expect(page.getByTestId('player-0')).toContainText('Red');
+  await expect(page.getByTestId('player-1')).toContainText('Blue');
 });
 
 test('the board fits a phone: no sideways scrolling at 360 px wide', async ({ page }) => {
