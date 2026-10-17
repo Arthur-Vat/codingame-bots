@@ -122,8 +122,8 @@ Gate: every item below done. The one-week trial of daily scheduled sessions that
 Background runs stay off until the owner turns them on.
 
 - [x] Decision record on the league and the rating model (owner, 2026-10-16, [ADR 0038](adr/0038-incremental-league.md)): Bradley-Terry over all stored pairings; each new release plays 8 opponents once (the previous release, the 5 nearest in rating, greedy and the first release), at full time, on its pull request
-- [ ] Results kept across runs in a file per game, never replayed, with `games/<game>/LEADERBOARD.md` generated from them (ADR 0038)
-- [ ] Arena: opponent choice and results file; League workflow on release pull requests with its comment and canary; the archive's new source; then the bootstrap, replaying history, on the owner's go-ahead (ADR 0038)
+- [x] Results kept across runs in a file per game, never replayed, with `games/<game>/LEADERBOARD.md` generated from them (ADR 0038)
+- [x] Arena: opponent choice and results file; League workflow on release pull requests with its comment and canary; the archive's new source; then the bootstrap, replaying history, on the owner's go-ahead (ADR 0038): Ultimate Tic-Tac-Toe's bootstrap replayed `greedy` and `uttt-v001` to `uttt-v018` on 2026-10-17 (League runs 39009461382 and 39029150086); canary `v009,v008`
 
 ### E. CI, fixed checks
 
