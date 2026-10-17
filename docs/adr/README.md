@@ -34,7 +34,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0027](0027-game-records.md) | Game records: one format, a sample of each run, kept on the owner's computer | Accepted; decision 3 completed by 0030, decisions 2 and 3 by 0031 |
 | [0028](0028-job-logs-from-sessions.md) | Job logs readable from Claude's sessions | Accepted |
 | [0029](0029-ci-scoped-by-area-and-game.md) | CI scoped by area and game | Accepted; the league's part of decision 6 superseded by 0038 |
-| [0030](0030-studio-on-github-pages.md) | The studio also runs in the browser, published on GitHub Pages | Accepted; decision 6 completed by 0031, decision 2 by 0032 |
+| [0030](0030-studio-on-github-pages.md) | The studio also runs in the browser, published on GitHub Pages | Accepted; decision 6 completed by 0031, decision 2 by 0032, decision 4 by 0040 |
 | [0031](0031-arena-games-archive.md) | Arena games: one archive per game on GitHub, shown read-only in the studio | Accepted; the league sample's source in decision 2 superseded by 0038 |
 | [0032](0032-analysis-engine.md) | Analysis: one program per game, run as WebAssembly in the page or natively by the local server | Accepted |
 | [0033](0033-no-daily-scheduled-session.md) | No daily scheduled session | Accepted; the usage line of decision 3 superseded by 0034 |
