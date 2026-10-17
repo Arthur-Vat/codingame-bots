@@ -1,0 +1,23 @@
+[package]
+name = "ice-and-fire-policy"
+description = "A simple greedy turn policy for A Code of Ice and Fire, shared by the per-league bots. Standard library only."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+# Only workspace crates: the bundler copies this crate into bots.
+[dependencies]
+cg-core.workspace = true
+ice-and-fire-engine.workspace = true
+
+# Used by the tests only; never part of a bot.
+[dev-dependencies]
+cg-arena.workspace = true
+ice-and-fire-referee.workspace = true
+
+[lints]
+workspace = true
