@@ -25,7 +25,7 @@ Status is `Not started`, `In progress`, `Waiting for the owner` or `Done (YYYY-M
 
 Referee and engine: the list in the [playbook](../../docs/NEW_GAME.md).
 
-- [x] Readable referee and map generator (this PR)
+- [x] Readable referee and map generator (#161)
 - [x] A fast, standard-library engine; parity tests against the referee on many random games; property tests (this PR)
 - [x] A speed baseline in the game's README (`cargo run --release -p ice-and-fire-engine --example speed`)
 - [ ] A `rules-check` bot (skill `rules-check`), pasted by the owner on CodinGame in the league where the full rules apply

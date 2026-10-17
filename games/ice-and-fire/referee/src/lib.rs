@@ -275,6 +275,10 @@ impl IceAndFireReferee {
     /// A game on `map`, whose two HQ cells, (0, 0) and (11, 11), are not void.
     /// Red's start of turn has run.
     pub fn from_map(map: Map, league: League) -> Self {
+        assert!(
+            !map.void[hq_cell(0)] && !map.void[hq_cell(1)],
+            "the HQ cells (0, 0) and (11, 11) of the map must not be void"
+        );
         let mut owner = [None; CELLS];
         let mut building = [None; CELLS];
         for seat in 0..2 {
