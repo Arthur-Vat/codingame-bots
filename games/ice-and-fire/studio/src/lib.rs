@@ -34,8 +34,14 @@
 //!   referee's `military_power`);
 //! - `turn`: the game turn, 1 to 100 ([`IceAndFireReferee::game_turn`]);
 //! - `to_move`: `0`, `1`, or `null` when the game is over;
-//! - `last`: `null` in frame 0; otherwise
-//!   `{"seat": 0|1, "answer": "<the answer line as sent>", "moved": [{"id", "from": [x, y], "to": [x, y]}], "trained": [{"id", "level", "x", "y"}], "built": [{"kind": "mine"|"tower", "x", "y"}], "removed": [{"id", "owner", "level", "x", "y"}]}`:
+//! - `last`: `null` in frame 0; otherwise an object:
+//!   - `seat`: `0` or `1`, the seat that answered;
+//!   - `answer`: the answer line as sent;
+//!   - `moved`: `[{"id", "from": [x, y], "to": [x, y]}, ...]`;
+//!   - `trained`: `[{"id", "level", "x", "y"}, ...]`;
+//!   - `built`: `[{"kind": "mine"|"tower", "x", "y"}, ...]`;
+//!   - `removed`: `[{"id", "owner", "level", "x", "y"}, ...]`;
+//!
 //!   what changed between the previous frame and this one, found by comparing
 //!   the two (units by id, buildings by cell), not by reading the rules.
 //!   `moved`, `trained` and `removed` are sorted by `id`, `built` by `y` then
