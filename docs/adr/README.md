@@ -29,7 +29,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0022](0022-scopes-and-names.md) | Scopes for decision records and pull requests | Accepted; decision 2 completed by 0025 |
 | [0023](0023-chat-approved-merges.md) | The owner approves merges in the conversation; Claude carries them out | Accepted |
 | [0024](0024-handoff-branch.md) | A handoff file on a standing branch carries state between sessions | Accepted; the usage line of decision 3 superseded by 0034 |
-| [0025](0025-studio.md) | A local studio to play and review games in the browser | Accepted; decision 1 superseded by 0030; decisions 2, 3, 4 and 5 completed by 0030, decision 6 by 0032 |
+| [0025](0025-studio.md) | A local studio to play and review games in the browser | Accepted; decision 1 superseded by 0030; decisions 2, 3, 4 and 5 completed by 0030, decision 6 by 0032, decision 4 also by 0040 |
 | [0026](0026-node-for-the-studio.md) | Node and npm build the studio's front end | Accepted; decision 3 completed by 0030 |
 | [0027](0027-game-records.md) | Game records: one format, a sample of each run, kept on the owner's computer | Accepted; decision 3 completed by 0030, decisions 2 and 3 by 0031 |
 | [0028](0028-job-logs-from-sessions.md) | Job logs readable from Claude's sessions | Accepted |
@@ -43,6 +43,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0036](0036-ranks-optional.md) | CodinGame ranks are reported only when the owner wishes | Accepted |
 | [0037](0037-size-limit-in-characters.md) | Count a bot's size in characters, and pack its data with Rust tools | Accepted |
 | [0038](0038-incremental-league.md) | An incremental league at full time, with a leaderboard kept in the repository | Accepted |
+| [0040](0040-baseline-bots-in-the-studio.md) | The studio also plays each game's baseline bots | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 
