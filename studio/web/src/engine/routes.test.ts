@@ -83,6 +83,13 @@ describe('the routes', () => {
         analysis: true,
         human_play: true,
       },
+      {
+        id: 'ice-and-fire',
+        name: 'A Code of Ice and Fire',
+        releases: [],
+        analysis: false,
+        human_play: false,
+      },
     ]);
   });
 
@@ -96,6 +103,13 @@ describe('the routes', () => {
         releases: [],
         analysis: true,
         human_play: true,
+      },
+      {
+        id: 'ice-and-fire',
+        name: 'A Code of Ice and Fire',
+        releases: [],
+        analysis: false,
+        human_play: false,
       },
     ]);
   });

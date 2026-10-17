@@ -1,6 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 
+/** The board shown: the hidden Play tab draws an empty board of its own. */
+const view = (page: Page) => page.locator('.iaf').filter({ visible: true });
+
 // A game of A Code of Ice and Fire on the analysis board, by the browser engine as GitHub Pages
 // serves it (nothing mocked; it runs in the project "browser-engine"): the rules program knows the
 // game, reads the record and gives the frames the board draws. The record is a real game of the
@@ -47,56 +50,56 @@ test('a record is loaded into the history and stepped through on the analysis bo
 }) => {
   await openRecord(page);
   const board = page.getByRole('group', { name: /^A Code of Ice and Fire board/ });
-  const units = page.locator('.iaf .unit');
+  const units = view(page).locator('.unit');
   const next = page.getByRole('button', { name: 'Next move' });
 
   // The start: red to move, nothing on the map but the two HQs, no last answer.
   await expect(page.getByRole('button', { name: 'First move' })).toBeVisible();
   await expect(board).toHaveAttribute('aria-label', /turn 1 \/ 100, Red to move/);
-  await expect(page.locator('.iaf .building')).toHaveCount(2);
+  await expect(view(page).locator('.building')).toHaveCount(2);
   await expect(units).toHaveCount(0);
-  await expect(page.locator('.iaf-answer')).toHaveText('');
+  await expect(view(page).locator('.iaf-answer')).toHaveText('');
 
   // Red trains two units: they appear with a ring, and the answer is shown whole.
   await next.click();
   await expect(units).toHaveCount(2);
-  await expect(page.locator('.iaf .unit.r')).toHaveCount(2);
-  await expect(page.locator('.iaf .trained')).toHaveCount(2);
-  await expect(page.locator('.iaf-answer')).toHaveText('Red: TRAIN 1 1 0;TRAIN 1 2 0');
+  await expect(view(page).locator('.unit.r')).toHaveCount(2);
+  await expect(view(page).locator('.trained')).toHaveCount(2);
+  await expect(view(page).locator('.iaf-answer')).toHaveText('Red: TRAIN 1 1 0;TRAIN 1 2 0');
   await expect(board).toHaveAttribute('aria-label', /Blue to move/);
 
   // Blue trains one.
   await next.click();
-  await expect(page.locator('.iaf .unit.b')).toHaveCount(1);
-  await expect(page.locator('.iaf-answer')).toHaveText('Blue: TRAIN 2 10 10');
+  await expect(view(page).locator('.unit.b')).toHaveCount(1);
+  await expect(view(page).locator('.iaf-answer')).toHaveText('Blue: TRAIN 2 10 10');
 
   // Red moves both: an arrow for each move, and the rings are gone.
   await next.click();
-  await expect(page.locator('.iaf .move')).toHaveCount(2);
-  await expect(page.locator('.iaf .trained')).toHaveCount(0);
-  await expect(page.locator('.iaf-answer')).toHaveText('Red: MOVE 2 2 1;MOVE 1 1 1');
+  await expect(view(page).locator('.move')).toHaveCount(2);
+  await expect(view(page).locator('.trained')).toHaveCount(0);
+  await expect(view(page).locator('.iaf-answer')).toHaveText('Red: MOVE 2 2 1;MOVE 1 1 1');
 
   // The end: the capture of blue's HQ, in the result and on the board.
   await page.getByRole('button', { name: 'Last move' }).click();
   await expect(page.getByTestId('result').filter({ visible: true })).toContainText(
     "Red captured Blue's HQ.",
   );
-  await expect(page.locator('.iaf-turn .to-move')).toHaveText('Game over');
+  await expect(view(page).locator('.iaf-turn .to-move')).toHaveText('Game over');
   await expect(page.getByTestId('result').filter({ visible: true })).toContainText(
     '1–0 · Red wins',
   );
 
   // The seats are Red and Blue, not X and O.
-  await expect(page.getByTestId('player-0')).toContainText('Red');
-  await expect(page.getByTestId('player-1')).toContainText('Blue');
+  await expect(page.getByTestId('player-0').filter({ visible: true })).toContainText('Red');
+  await expect(page.getByTestId('player-1').filter({ visible: true })).toContainText('Blue');
 });
 
 test('the board fits a phone: no sideways scrolling at 360 px wide', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
   await openRecord(page);
   await page.getByRole('button', { name: 'Next move' }).click();
-  await expect(page.locator('.iaf .unit')).toHaveCount(2);
-  const box = await page.locator('.iaf').boundingBox();
+  await expect(view(page).locator('.unit')).toHaveCount(2);
+  const box = await view(page).boundingBox();
   expect(box).not.toBeNull();
   expect(box!.x).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width).toBeLessThanOrEqual(360);

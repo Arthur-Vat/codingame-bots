@@ -27,6 +27,7 @@ describe('the rules program', () => {
     const rules = await loadedRules();
     expect(rules.call({ op: 'games' })).toEqual([
       { id: 'uttt', name: 'Ultimate Tic-Tac-Toe', human_play: true },
+      { id: 'ice-and-fire', name: 'A Code of Ice and Fire', human_play: false },
     ]);
   });
 
@@ -146,7 +147,7 @@ describe('the runner', () => {
     await rules.ready();
     await rules.ready();
     expect(loads).toBe(1);
-    expect(rules.call({ op: 'games' })).toHaveLength(1);
+    expect(rules.call({ op: 'games' })).toHaveLength(2);
   });
 
   it('gives an answer as the text the program wrote, and refuses as call does', async () => {
@@ -169,6 +170,6 @@ describe('the runner', () => {
     });
     await expect(rules.ready()).rejects.toThrow('offline');
     await rules.ready();
-    expect(rules.call({ op: 'games' })).toHaveLength(1);
+    expect(rules.call({ op: 'games' })).toHaveLength(2);
   });
 });
