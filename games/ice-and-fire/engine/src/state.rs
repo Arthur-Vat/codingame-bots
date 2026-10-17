@@ -19,7 +19,7 @@ pub const MAX_TURNS: u32 = 100;
 /// Gold each player starts with.
 const START_GOLD: i64 = 20;
 /// Cost of a mine or a tower.
-const BUILD_COST: i64 = 15;
+pub const BUILD_COST: i64 = 15;
 /// Gold per turn of a unit of level 1, 2 and 3 on an active cell.
 const UPKEEP: [i64; 3] = [1, 4, 20];
 /// The headquarters cell of each seat.
@@ -370,8 +370,9 @@ impl State {
     /// The cells that a unit of `level` of `seat` may enter, by training or
     /// moving (RULES.md, "Capture"): empty cells, and the opponent's cells
     /// whose unit, if any, it beats, unless a tower blocks them from units
-    /// below level 3.
+    /// below level 3. `level` is 1 to 3.
     pub fn enterable(&self, seat: usize, level: u8) -> Bits {
+        debug_assert!((1..=3).contains(&level), "unit level {level} is not 1 to 3");
         let opponent = 1 - seat;
         let units = self.units[0] | self.units[1];
         let empty = self.empty_cells();

@@ -17,7 +17,7 @@ use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::{IceAndFireReferee, League as RefereeLeague};
 
 /// Maps per seat and league. A debug build is much slower, so it plays fewer.
-const SEEDS: u64 = if cfg!(debug_assertions) { 20 } else { 200 };
+const SEEDS: u64 = if cfg!(debug_assertions) { 100 } else { 200 };
 
 /// The time a turn must stay under (CodinGame allows 50 ms).
 const SLOW: Duration = Duration::from_millis(20);

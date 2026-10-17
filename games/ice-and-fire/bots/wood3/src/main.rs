@@ -3,8 +3,10 @@
 //! beats another and only level 1 exists. A means of promotion, not a strong
 //! bot.
 //!
-//! The input never names the league, so this bot fixes it. Input that cannot
-//! be read is answered with `WAIT`; debug output goes to stderr only.
+//! The input never names the league, so this bot fixes it. A turn whose
+//! text does not read as a state is answered with `WAIT`; a bad count line or
+//! input that ends in the middle of a turn ends the bot with exit code 1.
+//! Debug output goes to stderr only.
 
 use std::io;
 

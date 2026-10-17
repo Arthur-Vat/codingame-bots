@@ -6,10 +6,9 @@
 //! mines); then trainings with the gold left.
 
 use ice_and_fire_engine::map::NONE;
+use ice_and_fire_engine::state::BUILD_COST;
 use ice_and_fire_engine::{Bits, Command, Outcome, State, CELLS, HQ, SIZE};
 
-/// Gold a mine or a tower costs.
-const BUILD_COST: i64 = 15;
 /// Enemy units this close to our HQ (steps on the map) are a threat.
 const THREAT_DISTANCE: i64 = 3;
 /// Enemy units this close can take the HQ next turn.
