@@ -61,9 +61,9 @@ pub const NO_HUMAN_PLAY: &str = "this game has no human play: both seats must be
 
 /// Checks `request`. `game_known` says whether its game is registered;
 /// `human_play` says whether the game lets a human take a seat (only read
-/// when the game is known); `known_releases` lists the game's releases, and is only called once the
-/// rest of the request is right. The error is the message of the 400 the
-/// server answers.
+/// when the game is known); `known_releases` lists the game's releases, and
+/// is only called once the rest of the request is right. The error is the
+/// message of the 400 the server answers.
 pub fn validate(
     request: CreateRequest,
     game_known: bool,
