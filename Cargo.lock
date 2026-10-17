@@ -258,6 +258,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ice-and-fire-studio"
+version = "0.0.0"
+dependencies = [
+ "cg-arena",
+ "ice-and-fire-engine",
+ "ice-and-fire-policy",
+ "ice-and-fire-referee",
+ "serde_json",
+ "studio-game",
+]
+
+[[package]]
 name = "is_terminal_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -373,6 +385,7 @@ name = "studio-core"
 version = "0.0.0"
 dependencies = [
  "cg-arena",
+ "ice-and-fire-studio",
  "serde",
  "serde_json",
  "studio-game",

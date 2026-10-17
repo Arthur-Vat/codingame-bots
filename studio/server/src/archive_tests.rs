@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use studio_core::history::{parse_record, record_id};
 
 use crate::archive::{build, InputSummary, Options, Summary};
-use crate::history_tests::{finished_record, friend_record};
+use crate::history_tests::{finished_record, friend_record, ice_and_fire_record};
 use crate::tests::{state, TempDir};
 
 /// A game that resigned after `plies` moves, played at `unix_time`.
@@ -219,6 +219,32 @@ fn a_game_option_refuses_records_of_other_games() {
     assert!(!out.exists());
 
     let built = build(&options(&out, Some("uttt"), &[&input])).unwrap();
+    assert_eq!(built.written, 2);
+}
+
+#[test]
+fn an_ice_and_fire_arena_record_is_archived_with_the_uttt_ones() {
+    let dir = TempDir::new("archive-ice-and-fire");
+    let uttt = record(&dir, 1, 2, 1000);
+    let ice_and_fire = ice_and_fire_record(&["WAIT"; 200], json!({"kind": "finished"}), json!(1));
+    let input = dir.path().join("in");
+    put(&input, "uttt.json", &uttt);
+    put(&input, "ice-and-fire/a.json", &ice_and_fire);
+    let out = dir.path().join("out");
+
+    // `--game` keeps the games apart.
+    let errors = build(&options(&out, Some("uttt"), &[&input])).unwrap_err();
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    assert!(errors[0].contains("--game"), "{errors:?}");
+    assert!(!out.exists());
+    let only = dir.path().join("only");
+    put(&only, "a.json", &ice_and_fire);
+    let built = build(&options(&out, Some("ice-and-fire"), &[&only])).unwrap();
+    assert_eq!(built.written, 1);
+    assert_eq!(index_ids(&out), [id_of(&ice_and_fire)]);
+
+    let both = dir.path().join("both");
+    let built = build(&options(&both, None, &[&input])).unwrap();
     assert_eq!(built.written, 2);
 }
 

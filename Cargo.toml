@@ -40,6 +40,7 @@ cg-search = { path = "crates/cg-search" }
 ice-and-fire-engine = { path = "games/ice-and-fire/engine" }
 ice-and-fire-policy = { path = "games/ice-and-fire/policy" }
 ice-and-fire-referee = { path = "games/ice-and-fire/referee" }
+ice-and-fire-studio = { path = "games/ice-and-fire/studio" }
 studio-core = { path = "studio/core" }
 studio-game = { path = "studio/game" }
 uttt-analysis = { path = "games/uttt/analysis" }

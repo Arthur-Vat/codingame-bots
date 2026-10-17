@@ -83,7 +83,10 @@ fn play_through(mut state: Value) -> (Value, Value) {
 fn the_games_are_listed() {
     assert_eq!(
         ok(json!({"op": "games"})),
-        json!([{"id": "uttt", "name": "Ultimate Tic-Tac-Toe"}])
+        json!([
+            {"id": "uttt", "name": "Ultimate Tic-Tac-Toe", "human_play": true},
+            {"id": "ice-and-fire", "name": "A Code of Ice and Fire", "human_play": false},
+        ])
     );
 }
 
@@ -143,6 +146,40 @@ fn a_new_game_is_validated_like_a_session() {
     )
     .contains("unknown variant"));
     assert!(error(json!({"op": "new", "request": two_humans()})).starts_with("invalid request"));
+}
+
+#[test]
+fn a_game_without_human_play_takes_bot_seats_only() {
+    let human = json!({"kind": "human"});
+    let ice_bot = bot("ice-and-fire-v001", 100, "fixed");
+    let releases = json!(["ice-and-fire-v001"]);
+    let new = |seats: Value| {
+        json!({"op": "new", "releases": releases,
+               "request": {"game": "ice-and-fire", "seed": 1, "seats": seats}})
+    };
+    for seats in [
+        json!([human, ice_bot]),
+        json!([ice_bot, human]),
+        json!([human, human]),
+    ] {
+        assert_eq!(
+            error(new(seats)),
+            "this game has no human play: both seats must be bots"
+        );
+    }
+    // Two bots are checked as before.
+    assert_eq!(
+        error(new(json!([ice_bot, bot("nope", 100, "fixed")]))),
+        "unknown release \"nope\""
+    );
+    let state = ok(new(json!([ice_bot, ice_bot])));
+    assert_eq!(state["game"], "ice-and-fire");
+    let settled = ok(json!({"op": "settle", "state": state}));
+    assert_eq!(settled["next"]["kind"], "bot");
+    assert_eq!(settled["next"]["seat"], 0);
+    assert_eq!(settled["human_moves"], json!([]));
+    assert_eq!(settled["frames"].as_array().unwrap().len(), 1);
+    assert_eq!(settled["frames"][0]["to_move"], 0);
 }
 
 #[test]

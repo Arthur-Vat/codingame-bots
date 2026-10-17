@@ -63,7 +63,7 @@ fn list_games() -> Value {
         .iter()
         .map(|game| {
             let info = game.info();
-            json!({ "id": info.id, "name": info.name })
+            json!({ "id": info.id, "name": info.name, "human_play": game.human_play() })
         })
         .collect();
     Value::Array(games)
@@ -78,7 +78,12 @@ struct NewArgs {
 fn new(args: NewArgs) -> Result<Value, String> {
     let games = games::registered();
     let game = games::find(&games, &args.request.game);
-    let new = request::validate(args.request, game.is_some(), || args.releases)?;
+    let new = request::validate(
+        args.request,
+        game.is_some(),
+        game.is_some_and(|game| game.human_play()),
+        || args.releases,
+    )?;
     let game = game.ok_or_else(|| format!("unknown game {:?}", new.game))?;
     let state = GameState::new(game, new.seed, new.opening_plies, new.seats);
     Ok(state_json(&state))

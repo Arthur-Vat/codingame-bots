@@ -98,6 +98,28 @@ pub(crate) fn finished_record(state: &State, seed: u64) -> Value {
     record
 }
 
+/// A record of an A Code of Ice and Fire game in the shape the arena writes
+/// (`ice-and-fire-arena match ... --records DIR`): bots only, the answers of
+/// every turn, red first. `answers` are the lines of the turns, seat by seat.
+pub(crate) fn ice_and_fire_record(answers: &[&str], end: Value, winner: Value) -> Value {
+    let player = |name: &str, bot_seed: u64| {
+        json!({"name": name, "kind": "bot", "bot_seed": bot_seed,
+               "command": format!("target/release/{name}"), "time_scale": 1.0,
+               "fixed_iters": null})
+    };
+    let turns: Vec<Value> = answers
+        .iter()
+        .enumerate()
+        .map(|(index, line)| json!([{"seat": index % 2, "lines": [line], "ms": 0.0296}]))
+        .collect();
+    json!({
+        "format": 1, "game": "ice-and-fire", "seed": 16_527_869_579_695_550_001_u64,
+        "opening_plies": 0, "unix_time": 1_792_248_615_u64, "source": "arena match",
+        "players": [player("a", 15_049_573_743_139_681_644), player("b", 14_427_084_160_284_535_356)],
+        "turns": turns, "end": end, "winner": winner,
+    })
+}
+
 fn save(state: &State, record: &Value) -> (u16, Value) {
     call(state, "POST", "/api/history", record)
 }
@@ -794,4 +816,87 @@ fn a_bad_filter_body_or_query_is_a_400_with_the_usual_error() {
         let error: Value = serde_json::from_slice(&response.body).unwrap();
         assert_eq!(error["error"], message);
     }
+}
+
+#[test]
+fn an_ice_and_fire_arena_record_is_saved_listed_and_viewed() {
+    let dir = TempDir::new("history-ice-and-fire");
+    let state = new_state(&dir);
+    // Nobody does anything for 100 game turns: blue has the larger military
+    // power.
+    let record = ice_and_fire_record(&["WAIT"; 200], json!({"kind": "finished"}), json!(1));
+    let (status, saved) = save(&state, &record);
+    assert_eq!(status, 200, "{saved}");
+    let id = saved["id"].as_str().unwrap().to_string();
+    assert!(id.starts_with("ice-and-fire-1792248615-"), "{id}");
+
+    let (_, list) = call(
+        &state,
+        "GET",
+        "/api/history?game=ice-and-fire",
+        &Value::Null,
+    );
+    assert_eq!(
+        list,
+        json!([{
+            "id": id, "game": "ice-and-fire", "unix_time": 1_792_248_615_u64,
+            "players": ["a", "b"], "winner": 1, "end": "finished",
+            "turns": 200, "source": "arena match",
+        }])
+    );
+    assert!(ids(&state, "?game=uttt").is_empty());
+
+    let (status, view) = call(
+        &state,
+        "GET",
+        &format!("/api/history/{id}/view"),
+        &Value::Null,
+    );
+    assert_eq!(status, 200, "{view}");
+    assert_eq!(view["opening_turns"], 0);
+    assert_eq!(view["shown_turns"], 200);
+    let frames = view["frames"].as_array().unwrap();
+    assert_eq!(frames.len(), 201);
+    assert_eq!(frames[200]["result"], json!({"winner": 1, "end": "turns"}));
+    assert_eq!(frames[200]["to_move"], Value::Null);
+}
+
+#[test]
+fn an_ice_and_fire_record_must_agree_with_the_referee() {
+    let dir = TempDir::new("history-ice-and-fire-wrong");
+    let state = new_state(&dir);
+    let post = |record: &Value| {
+        let (status, body) = save(&state, record);
+        (status, body["error"].as_str().unwrap_or("").to_string())
+    };
+    // The wrong winner.
+    let wrong = ice_and_fire_record(&["WAIT"; 200], json!({"kind": "finished"}), json!(0));
+    let (status, error) = post(&wrong);
+    assert_eq!(status, 400);
+    assert!(error.contains("the referee ends the game"), "{error}");
+    // A game that is not over after its turns.
+    let short = ice_and_fire_record(&["WAIT"; 4], json!({"kind": "finished"}), json!(1));
+    assert_eq!(post(&short).0, 400);
+    // A turn the referee rejects, in the middle of the record.
+    let broken = ice_and_fire_record(
+        &["WAIT", "WAIT", "JUMP 1 1", "WAIT"],
+        json!({"kind": "aborted", "reason": "x"}),
+        Value::Null,
+    );
+    let (status, error) = post(&broken);
+    assert_eq!(status, 400);
+    assert!(error.contains("turn 2"), "{error}");
+    assert_eq!(files(&dir), 0);
+
+    // The answer that lost the game is the last turn, and is not shown.
+    let invalid = ice_and_fire_record(
+        &["WAIT", "JUMP 1 1"],
+        json!({"kind": "invalid", "seat": 1, "reason": "unrecognised command \"JUMP 1 1\""}),
+        json!(0),
+    );
+    let (status, saved) = save(&state, &invalid);
+    assert_eq!(status, 200, "{saved}");
+    let (_, view) = call(&state, "POST", "/api/view", &invalid);
+    assert_eq!(view["shown_turns"], 1);
+    assert_eq!(view["frames"].as_array().unwrap().len(), 2);
 }

@@ -56,13 +56,18 @@ pub fn think_ms_message() -> String {
     )
 }
 
+/// The message of a human seat in a game without human play.
+pub const NO_HUMAN_PLAY: &str = "this game has no human play: both seats must be bots";
+
 /// Checks `request`. `game_known` says whether its game is registered;
-/// `known_releases` lists the game's releases, and is only called once the
+/// `human_play` says whether the game lets a human take a seat (only read
+/// when the game is known); `known_releases` lists the game's releases, and is only called once the
 /// rest of the request is right. The error is the message of the 400 the
 /// server answers.
 pub fn validate(
     request: CreateRequest,
     game_known: bool,
+    human_play: bool,
     known_releases: impl FnOnce() -> Vec<String>,
 ) -> Result<NewGame, String> {
     if !game_known {
@@ -82,6 +87,14 @@ pub fn validate(
     }
     if request.seats.len() != SEATS {
         return Err(format!("seats must hold exactly {SEATS} seats"));
+    }
+    if !human_play
+        && request
+            .seats
+            .iter()
+            .any(|seat| matches!(seat, SeatRequest::Human { .. }))
+    {
+        return Err(NO_HUMAN_PLAY.to_string());
     }
     let known = known_releases();
     let mut seats = Vec::new();

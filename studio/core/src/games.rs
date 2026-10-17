@@ -5,7 +5,10 @@ use studio_game::StudioGame;
 
 /// The registered games, in the order the studio lists them.
 pub fn registered() -> Vec<Box<dyn StudioGame>> {
-    vec![Box::new(uttt_studio::Uttt)]
+    vec![
+        Box::new(uttt_studio::Uttt),
+        Box::new(ice_and_fire_studio::IceAndFire),
+    ]
 }
 
 /// The game called `id` among `games`.
