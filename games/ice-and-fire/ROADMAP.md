@@ -2,7 +2,7 @@
 
 The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md), [ADR 0035](../../docs/adr/0035-new-game-lifecycle.md)). The owner decides at the end of every stage; each gate records his answer and its date. Skill `new-game` reads this file to name the next stage.
 
-**Stage in progress:** 7. Studio, while stage 5 waits for the `rules-check` run on CodinGame; next, 8. Research
+**Stage in progress:** 8. Research (next, in a fresh session), while stage 5 waits for the `rules-check` run on CodinGame
 **Owner's stopping rule:** none yet
 
 | # | Stage | Status | Gate: the owner's answer |
@@ -13,7 +13,7 @@ The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME
 | 4 | Framework gaps | Done (2026-10-17) | [ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md) merged (#160); "Merge #160" (form, 2026-10-17) |
 | 5 | Referee and engine | In progress | |
 | 6 | Arena and baseline bots | Done (2026-10-17) | Arena, baselines and the game's numbers, #166 merged; "Merge #166", then "Fresh session, then stage 7" (forms, 2026-10-17) |
-| 7 | Studio | In progress | |
+| 7 | Studio | Done (2026-10-17) | Adapter, renderer and baseline bots, #167-#169 merged; "The studio works perfectly", with the card's picture changed (2026-10-17) |
 | 8 | Research | Not started | |
 | 9 | Approach and first bot | Not started | |
 | 10 | Iteration | Not started | |
@@ -44,7 +44,7 @@ Studio: the list in the [playbook](../../docs/NEW_GAME.md).
 
 - [x] The adapter crate `studio/` (`ice-and-fire-studio`) and the board renderer in `studio/web/src/games/ice-and-fire/`; bot seats only, no human play (ADR 0039, decision 4)
 - [x] The game's baseline bots in the studio, so that it has bots before its first release ([ADR 0040](../../docs/adr/0040-baseline-bots-in-the-studio.md))
-- [ ] The owner's gate: the game tried in the studio
+- [x] The owner's gate: the game tried in the studio (2026-10-17), and the home card's picture of the game
 
 ## Open questions
 
@@ -53,6 +53,7 @@ Studio: the list in the [playbook](../../docs/NEW_GAME.md).
 
 ## Decisions
 
+- 2026-10-17: stage 7 passed: "The studio works perfectly"; the owner asked for a picture of the game on its home card, in the style of the others. Stage 8 in a fresh session (form: "Stage 8, fresh session (Recommended)").
 - 2026-10-17: the studio also offers each game's baseline bots, so that this game can be watched before its first release (form: "Baseline bots (Recommended)", [ADR 0040](../../docs/adr/0040-baseline-bots-in-the-studio.md)).
 - 2026-10-17: stage 6 passed: "Merge #166", then stage 7 in a fresh session (form: "Fresh session, then stage 7").
 - 2026-10-17: evaluation time scale 0.2 (10 ms of 50, plus 5 ms tolerance), as ADR 0013 (form: "0.2: 10 ms, as ADR 0013").
