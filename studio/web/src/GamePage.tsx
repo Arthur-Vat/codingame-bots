@@ -63,6 +63,8 @@ import { useSession } from './useSession';
 
 const GAME_BLURBS: Record<string, string> = {
   uttt: 'Nine small boards. Your move sends the opponent to the small board matching the cell you played. Win three small boards in a row, or the most small boards when no move is left.',
+  'ice-and-fire':
+    "Train and move units on a 12 by 12 map to take territory and the opponent's headquarters. Cells cut off from your headquarters are lost, and so are the units on them. Bots only: watch two bots play.",
 };
 
 interface Props {
@@ -532,6 +534,7 @@ export function GamePage({
           initialMode={dialogMode}
           onModeChange={setLastMode}
           releases={game.releases}
+          humanPlay={game.human_play}
           onStart={start}
           onClose={closeDialog}
           endsRunningGame={gameInProgress}

@@ -25,7 +25,9 @@ async function newState(seats: unknown[], seed = 5): Promise<{ state: RulesState
 describe('the rules program', () => {
   it('lists the games', async () => {
     const rules = await loadedRules();
-    expect(rules.call({ op: 'games' })).toEqual([{ id: 'uttt', name: 'Ultimate Tic-Tac-Toe' }]);
+    expect(rules.call({ op: 'games' })).toEqual([
+      { id: 'uttt', name: 'Ultimate Tic-Tac-Toe', human_play: true },
+    ]);
   });
 
   it('refuses a bad request with its own message', async () => {

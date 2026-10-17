@@ -16,6 +16,15 @@ describe('the registry lookups', () => {
     expect(resultDetailFor('uttt', { nope: true })).toBeNull();
   });
 
+  it('find the entries of Ice and Fire, which has a board but no moves to read or write', () => {
+    expect(renderers['ice-and-fire']).toBeTypeOf('function');
+    expect(emptyFrameFor('ice-and-fire')).toBeTypeOf('object');
+    expect(resultDetailFor('ice-and-fire', { nope: true })).toBeNull();
+    expect(moveCellFor('ice-and-fire', '1 2')).toBeNull();
+    expect(actionTextFor('ice-and-fire', { row: 1, col: 2 })).toBeNull();
+    expect(hasActionTexts('ice-and-fire')).toBe(false);
+  });
+
   it('find nothing for an unknown game, and nothing a plain object inherits', () => {
     for (const id of ['nope', '', 'constructor', '__proto__', 'toString', 'hasOwnProperty']) {
       expect(renderers[id], id).toBeUndefined();

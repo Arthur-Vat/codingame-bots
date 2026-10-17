@@ -6,7 +6,6 @@ import {
   DEFAULT_THINK_INDEX,
   INCREMENTS,
   MINUTES,
-  MODES,
   MODE_TITLES,
   THINK_MS,
   botThinkIndexes,
@@ -14,6 +13,8 @@ import {
   defaultRelease,
   defaultSecondRelease,
   minutesLabel,
+  modesFor,
+  offeredMode,
   orderReleases,
   releaseLabel,
   resolveSeed,
@@ -42,6 +43,8 @@ interface Props {
   onModeChange?: (mode: Mode) => void;
   /** The release names of the game. */
   releases: readonly string[];
+  /** Whether a person can play the game; when false, only the game between bots is offered. */
+  humanPlay?: boolean;
   /** Starts the game; a rejected promise shows its message in the dialog. */
   onStart: (result: SetupResult) => Promise<void>;
   onClose: () => void;
@@ -116,6 +119,7 @@ export function SetupDialog({
   initialMode,
   onModeChange,
   releases,
+  humanPlay = true,
   onStart,
   onClose,
   endsRunningGame = false,
@@ -125,7 +129,7 @@ export function SetupDialog({
   const startRef = useRef<HTMLButtonElement>(null);
 
   // What was chosen in each mode stays while the menu is open and the mode is switched.
-  const [mode, setMode] = useState<Mode>(initialMode);
+  const [mode, setMode] = useState<Mode>(() => offeredMode(humanPlay, initialMode));
   const [release, setRelease] = useState(() => defaultRelease(releases));
   const [thinkIndex, setThinkIndex] = useState(DEFAULT_THINK_INDEX);
   const [xRelease, setXRelease] = useState(() => defaultRelease(releases));
@@ -208,6 +212,8 @@ export function SetupDialog({
   };
 
   const timed = mode === 'friend' || mode === 'computer';
+  // A game against or between bots needs a bot to choose.
+  const noBots = mode !== 'friend' && releases.length === 0;
 
   return (
     <div
@@ -225,7 +231,7 @@ export function SetupDialog({
         </header>
         <div className="body">
           <div className="modes" role="group" aria-label="Mode">
-            {MODES.map((choice) => (
+            {modesFor(humanPlay).map((choice) => (
               <button
                 key={choice}
                 type="button"
@@ -236,7 +242,12 @@ export function SetupDialog({
               </button>
             ))}
           </div>
-          {mode === 'computer' && (
+          {noBots && (
+            <p className="hint no-bots" role="status">
+              This game has no bot yet, so no game can be started here.
+            </p>
+          )}
+          {mode === 'computer' && !noBots && (
             <>
               <div className="pair">
                 <div className="field">
@@ -290,7 +301,7 @@ export function SetupDialog({
               </div>
             </>
           )}
-          {mode === 'bots' && (
+          {mode === 'bots' && !noBots && (
             <>
               <div className="pair">
                 <div className="field">
@@ -324,7 +335,7 @@ export function SetupDialog({
               )}
             </>
           )}
-          {timed && (
+          {timed && !noBots && (
             <div className="pair">
               <div className="field">
                 <label htmlFor={id('minutes')}>
@@ -370,7 +381,7 @@ export function SetupDialog({
           </label>
           {advanced && (
             <div className="adv">
-              {mode === 'bots' && (
+              {mode === 'bots' && !noBots && (
                 <div className="pair">
                   <div className="field">
                     <ThinkSlider
@@ -422,7 +433,7 @@ export function SetupDialog({
             ref={startRef}
             className="btn primary"
             type="button"
-            disabled={busy}
+            disabled={busy || noBots}
             onClick={() => void start()}
           >
             {busy ? 'Starting…' : endsRunningGame ? 'End this game and start' : 'Start'}

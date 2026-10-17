@@ -7,6 +7,8 @@ import {
   clockSeed,
   defaultRelease,
   defaultSecondRelease,
+  modesFor,
+  offeredMode,
   orderReleases,
   releaseLabel,
   resolveSeed,
@@ -158,5 +160,21 @@ describe('botThinkIndexes', () => {
 
   it('gives each bot its own think time when advanced mode is on', () => {
     expect(botThinkIndexes(true, 2, 0, 6)).toEqual([0, 6]);
+  });
+});
+
+describe('the modes a game offers', () => {
+  it('offers all three when a person can play, and only the bot game when not', () => {
+    expect(modesFor(true)).toEqual(['friend', 'computer', 'bots']);
+    expect(modesFor(false)).toEqual(['bots']);
+  });
+
+  it('keeps the mode when it is offered, else falls back to the bot game', () => {
+    for (const mode of ['friend', 'computer', 'bots'] as const) {
+      expect(offeredMode(true, mode)).toBe(mode);
+    }
+    expect(offeredMode(false, 'bots')).toBe('bots');
+    expect(offeredMode(false, 'computer')).toBe('bots');
+    expect(offeredMode(false, 'friend')).toBe('bots');
   });
 });

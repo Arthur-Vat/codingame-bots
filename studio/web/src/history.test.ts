@@ -122,8 +122,20 @@ describe('table cells', () => {
 
 describe('releaseOptions', () => {
   const games = [
-    { id: 'uttt', name: 'U', releases: ['uttt-v010', 'uttt-v009', 'uttt-v010'], analysis: true },
-    { id: 'other', name: 'O', releases: ['uttt-v009', 'other-v001'], analysis: false },
+    {
+      id: 'uttt',
+      name: 'U',
+      releases: ['uttt-v010', 'uttt-v009', 'uttt-v010'],
+      analysis: true,
+      human_play: true,
+    },
+    {
+      id: 'other',
+      name: 'O',
+      releases: ['uttt-v009', 'other-v001'],
+      analysis: false,
+      human_play: true,
+    },
   ];
 
   it('lists the releases of the game only, once each', () => {
