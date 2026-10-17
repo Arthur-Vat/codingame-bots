@@ -47,6 +47,7 @@ Arena and baseline bots: the list in the [playbook](../../docs/NEW_GAME.md).
 
 ## Decisions
 
+- 2026-10-17: evaluation time scale 0.2 (10 ms of 50, plus 5 ms tolerance), as ADR 0013 (form: "0.2: 10 ms, as ADR 0013").
 - 2026-10-17: stage 6 started while the owner climbs the Wood leagues (form: "Stage 6: arena").
 - 2026-10-17: stage 5 go-ahead, in this session (form: "Go, in this session").
 - 2026-10-17: framework gaps (form): (1) cg-search and multi-command turns: "Decide at stage 9"; (2) maps: "Own generator + check" ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)); (3) studio: "No human play for this game, replay first play later" (ADR 0039).

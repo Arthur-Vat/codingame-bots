@@ -74,6 +74,10 @@ fn main() {
         .nth(1)
         .and_then(|arg| arg.parse().ok())
         .unwrap_or(1000);
+    if games == 0 {
+        eprintln!("numbers: the number of games must be at least 1");
+        std::process::exit(2);
+    }
     println!(
         "Games per row: {games}, one per map (maps 0 to {}).\n",
         games - 1
@@ -84,7 +88,7 @@ fn main() {
         (Bot::Bronze, Bot::Random),
     ];
     println!(
-        "| Red | Blue | Red's score | 95% interval | Red wins | Draws | Blue wins | \
+        "| Red | Blue | Red's score | 95% interval (Wilson) | Red wins | Draws | Blue wins | \
          Mean game turns | Median | Reach turn 100 | HQ captured | Ended on power |"
     );
     println!("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |");
@@ -186,12 +190,12 @@ fn hq_captured(referee: &IceAndFireReferee) -> bool {
 fn report(red: Bot, blue: Bot, games: &[Game]) {
     let n = games.len() as f64;
     let mean = games.iter().map(|game| game.red).sum::<f64>() / n;
-    let variance = games
-        .iter()
-        .map(|game| (game.red - mean).powi(2))
-        .sum::<f64>()
-        / (n - 1.0);
-    let half = 1.96 * (variance / n).sqrt();
+    // The Wilson score interval of the score (a draw counts half), which
+    // stays inside 0 to 1 and is not empty when every game has one result.
+    let z = 1.96_f64;
+    let scale = 1.0 + z * z / n;
+    let centre = (mean + z * z / (2.0 * n)) / scale;
+    let half = z * (mean * (1.0 - mean) / n + z * z / (4.0 * n * n)).sqrt() / scale;
     let count = |score: f64| games.iter().filter(|game| game.red == score).count();
     let mut turns: Vec<u32> = games.iter().map(|game| game.turn).collect();
     turns.sort_unstable();
@@ -204,8 +208,8 @@ fn report(red: Bot, blue: Bot, games: &[Game]) {
         red.name(),
         blue.name(),
         100.0 * mean,
-        100.0 * (mean - half),
-        100.0 * (mean + half),
+        100.0 * (centre - half),
+        100.0 * (centre + half),
         count(1.0),
         count(0.5),
         count(0.0),

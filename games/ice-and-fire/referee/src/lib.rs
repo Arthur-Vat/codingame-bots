@@ -266,8 +266,8 @@ impl IceAndFireReferee {
 
     /// A game of `league` on the map of `setup.seed`.
     ///
-    /// `setup.opening_plies` is ignored: stage 6 decides how this game varies
-    /// its openings.
+    /// `setup.opening_plies` is ignored: the map varies each game, so the
+    /// game's `evaluation.env` sets `OPENING_PLIES=0`.
     pub fn with_league(setup: &GameSetup, league: League) -> Self {
         Self::from_map(map::generate(setup.seed, league), league)
     }
