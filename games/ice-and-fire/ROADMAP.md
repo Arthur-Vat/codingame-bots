@@ -2,15 +2,15 @@
 
 The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md), [ADR 0035](../../docs/adr/0035-new-game-lifecycle.md)). The owner decides at the end of every stage; each gate records his answer and its date. Skill `new-game` reads this file to name the next stage.
 
-**Stage in progress:** 2. Rules
+**Stage in progress:** 3. Model and 4. Framework gaps, in one pull request (owner, 2026-10-17)
 **Owner's stopping rule:** none yet
 
 | # | Stage | Status | Gate: the owner's answer |
 | --- | --- | --- | --- |
 | 1 | Intake | Done (2026-10-17) | Facts in [README.md](README.md), #157 merged; "Merge 157 and go on" (2026-10-17) |
-| 2 | Rules | In progress | |
-| 3 | Model | Not started | |
-| 4 | Framework gaps | Not started | |
+| 2 | Rules | Done (2026-10-17) | [RULES.md](RULES.md), #158 merged; "Merge #158, go on" (form, 2026-10-17) |
+| 3 | Model | In progress | |
+| 4 | Framework gaps | In progress | |
 | 5 | Referee and engine | Not started | |
 | 6 | Arena and baseline bots | Not started | |
 | 7 | Studio | Not started | |
@@ -23,13 +23,13 @@ Status is `Not started`, `In progress`, `Waiting for the owner` or `Done (YYYY-M
 
 ## Current stage
 
-Rules: [RULES.md](RULES.md), in our own words, a source for every rule.
+Model and framework gaps: [MODEL.md](MODEL.md).
 
-- [ ] `RULES.md` in our own words, a source for every rule
-- [ ] The protocol: inputs, outputs, what makes an answer invalid
-- [ ] End of game, scoring and tiebreaks, with their edge cases
-- [ ] Every point the statement and the source disagree on, and which one applies
-- [ ] Reviewed by `pr-reviewer`, briefed to check each rule against the statement and the source
+- [ ] The problem in plain English, then a short formal part
+- [ ] State, actions (a turn of several commands), transitions, outcome, game length, time, size
+- [ ] Symmetries and what can be precomputed; the class of game and the families of methods (ranked at stage 8)
+- [ ] The framework gaps listed, each with where it is, what would change and whether the game can wait
+- [ ] Each gap decided by the owner, with a decision record when costly to reverse
 
 ## Open questions
 
@@ -38,6 +38,8 @@ Rules: [RULES.md](RULES.md), in our own words, a source for every rule.
 
 ## Decisions
 
+- 2026-10-17: stages 3 and 4 in one pull request, the gaps listed, each then brought to the owner (form: "One PR, gaps listed").
+- 2026-10-17: stage 2 passed: "Merge #158, go on" (form).
 - 2026-10-17: stage 1 passed: "Merge 157 and go on".
 - 2026-10-17: the forum thread is read later, for stage 8 (research), not at intake.
 - 2026-10-17: the rules come from the source's statement template (`config/statement_en.html.tpl`) rather than a pasted CodinGame page; stage 5's `rules-check` bot checks them against CodinGame's real games.
