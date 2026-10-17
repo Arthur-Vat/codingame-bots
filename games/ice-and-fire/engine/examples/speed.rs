@@ -36,19 +36,28 @@ fn main() {
     let games = measure_games(&maps, &mut rng, budget);
     let turns_per_second = games.turns as f64 / games.seconds;
 
-    // Turns generated alone, on positions from the middle of games.
+    // Turns generated alone, on positions from the middle of games. They have
+    // their own generator: the timed loops above draw a number of random
+    // turns that depends on the machine's speed. A game that ended before
+    // turn 40 is left out, since no player receives an input after the end
+    // and `read` rightly refuses a captured HQ.
+    let mut position_rng = Rng::new(2);
     let positions: Vec<State> = maps
         .iter()
-        .map(|map| {
+        .filter_map(|map| {
             let mut state = new_state(map);
             let mut turn = Vec::new();
             for _ in 0..40 {
-                state.random_turn(&mut rng, &mut turn);
+                state.random_turn(&mut position_rng, &mut turn);
                 state.play_turn(&turn);
+                if state.outcome().is_some() {
+                    return None;
+                }
             }
-            state
+            Some(state)
         })
         .collect();
+    assert!(!positions.is_empty(), "every game ended before turn 40");
     let generated = count(budget, |round| {
         let mut turn = Vec::new();
         positions[round % positions.len()].random_turn(&mut rng, &mut turn);
