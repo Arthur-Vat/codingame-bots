@@ -12,6 +12,7 @@ rust-version.workspace = true
 
 [dependencies]
 cg-arena.workspace = true
+cg-bundler.workspace = true
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -6,24 +6,33 @@
 # - OUT/<game>/<release>.wasm: every release, games/<game>/releases/<release>.rs,
 #   compiled unchanged with rustc (edition 2021, opt-level 3, symbols
 #   stripped);
+# - OUT/<game>/<game>-<folder>.wasm: every baseline bot of the game
+#   (ADR 0040), games/<game>/bots/<folder>, bundled from the current code by
+#   cg-bundler (no rustfmt) and compiled like a release. The adapters name
+#   the baseline bots: the script asks the rules program (run natively), so
+#   that no second list exists;
 # - OUT/<game>/analysis.wasm: the game's analysis program, the crate
 #   <game>-analysis (ADR 0032), for each game with a games/<game>/analysis
 #   folder, built with cargo like the rules program (symbols stripped);
 # - OUT/manifest.json:
-#   {"games":[{"id":"uttt","releases":["uttt-v010",...],"analysis":true}]},
-#   the releases that compiled, newest first (the order of the server's
-#   list of releases), and whether the game has an analysis program.
+#   {"games":[{"id":"uttt","releases":["uttt-v010",...],
+#   "baselines":["uttt-greedy",...],"analysis":true}]}, for each game with a
+#   release or a baseline bot: the releases that compiled, newest first (the
+#   order of the server's list of releases), the baseline bots that compiled,
+#   in the adapter's order, and whether the game has an analysis program.
 #
-# A release that does not compile to WebAssembly is skipped with a warning on
-# stderr and left out of the manifest: it is not offered in the browser. The
-# release files are never changed. An analysis program that does not build is
-# an error, not skipped.
+# A release or a baseline bot that does not compile to WebAssembly is skipped
+# with a warning on stderr and left out of the manifest: it is not offered in
+# the browser. The release files are never changed. An analysis program that
+# does not build is an error, not skipped.
+#
+# Needs jq (preinstalled on GitHub's Ubuntu runners) and builds cg-bundler.
 #
 # Usage: scripts/build-studio-wasm.sh [OUT] [--strict]
 #   OUT       the output folder, relative to the current folder (default:
 #             studio/web/public/wasm in the repository, not committed)
-#   --strict  also fail when a release could not be built, so that nothing is
-#             skipped without notice (used by CI)
+#   --strict  also fail when a release or a baseline bot could not be built,
+#             so that nothing is skipped without notice (used by CI)
 set -euo pipefail
 
 caller=$PWD
@@ -66,14 +75,32 @@ if ((installed == 0)); then
   exit 1
 fi
 
+if ! command -v jq >/dev/null; then
+  echo "build-studio-wasm: jq is needed" >&2
+  exit 1
+fi
+
 mkdir -p "$out"
 # Without symbols the file is about a fifth smaller.
 CARGO_PROFILE_RELEASE_STRIP=symbols cargo build --locked --release --target "$target" -p studio-rules
 cp "${CARGO_TARGET_DIR:-target}/$target/release/studio-rules.wasm" "$out/rules.wasm"
 
+# The baseline bots of each game, from the adapters.
+games_json="$(echo '{"op":"games"}' | cargo run -q --locked -p studio-rules)"
+jq -e '.ok' >/dev/null <<<"$games_json" || {
+  echo "build-studio-wasm: the rules program cannot list the games: $games_json" >&2
+  exit 1
+}
+cargo build -q --locked --release -p cg-bundler
+bundler="${CARGO_TARGET_DIR:-target}/release/cg-bundler"
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+
 shopt -s nullglob
 total=0
 built=0
+baseline_total=0
+baseline_built=0
 analyses=0
 manifest='{"games":['
 separator=
@@ -92,7 +119,11 @@ for game_dir in games/*/; do
       [[ $number =~ ^[0-9]+$ ]] && printf '%s %s\n' "$((10#$number))" "$name"
     done | sort -k1,1nr -k2,2r | cut -d' ' -f2
   )
-  ((${#names[@]} > 0)) || continue
+  baselines=()
+  while IFS= read -r name; do
+    baselines+=("$name")
+  done < <(jq -r --arg game "$game" '.ok[] | select(.id == $game) | .baselines[]' <<<"$games_json")
+  ((${#names[@]} + ${#baselines[@]} > 0)) || continue
   mkdir -p "$out/$game"
   # A game without an analysis program must not keep an old file.
   rm -f "$out/$game/analysis.wasm"
@@ -121,14 +152,38 @@ for game_dir in games/*/; do
   for name in ${compiled[@]+"${compiled[@]}"}; do
     list+="${list:+,}\"$name\""
   done
-  manifest+="$separator{\"id\":\"$game\",\"releases\":[$list],\"analysis\":$analysis}"
+  compiled=()
+  for name in ${baselines[@]+"${baselines[@]}"}; do
+    baseline_total=$((baseline_total + 1))
+    wasm="$out/$game/$name.wasm"
+    rm -f "$wasm"
+    folder="${name#"$game"-}"
+    manifest_file="games/$game/bots/$folder/Cargo.toml"
+    package=
+    [[ -f $manifest_file ]] && package="$(sed -n 's/^name = "\(.*\)"$/\1/p' "$manifest_file" | head -n 1)"
+    if [[ -n $package ]] &&
+      "$bundler" "$package" --no-format --output "$work/$name.rs" &&
+      rustc --edition 2021 -C opt-level=3 -C strip=symbols --target "$target" \
+        --crate-name baseline_bot -o "$wasm" "$work/$name.rs"; then
+      compiled+=("$name")
+      baseline_built=$((baseline_built + 1))
+    else
+      rm -f "$wasm"
+      echo "build-studio-wasm: warning: the baseline bot $name does not compile to $target; it is left out of the manifest" >&2
+    fi
+  done
+  baseline_list=
+  for name in ${compiled[@]+"${compiled[@]}"}; do
+    baseline_list+="${baseline_list:+,}\"$name\""
+  done
+  manifest+="$separator{\"id\":\"$game\",\"releases\":[$list],\"baselines\":[$baseline_list],\"analysis\":$analysis}"
   separator=,
 done
 manifest+=']}'
 printf '%s\n' "$manifest" >"$out/manifest.json"
 
-if ((strict == 1 && built < total)); then
-  echo "build-studio-wasm: only $built of $total releases are in the manifest (--strict)" >&2
+if ((strict == 1 && (built < total || baseline_built < baseline_total))); then
+  echo "build-studio-wasm: only $built of $total releases and $baseline_built of $baseline_total baseline bots are in the manifest (--strict)" >&2
   exit 1
 fi
-echo "ok   studio wasm: rules.wasm, analysis.wasm for $analyses game(s) and $built of $total releases in $out"
+echo "ok   studio wasm: rules.wasm, analysis.wasm for $analyses game(s), $built of $total releases and $baseline_built of $baseline_total baseline bots in $out"

@@ -66,7 +66,7 @@ fn update(session: &SharedSession, generation: u64, change: impl FnOnce(&mut Ses
     true
 }
 
-/// Compiles the releases, measures the "fixed" ones, starts the bots and
+/// Compiles the bots, measures the "fixed" ones, starts the bots and
 /// replays the turns into them. `Ok(false)` when the thread was replaced.
 fn prepare(state: &State, session: &SharedSession, generation: u64) -> Result<bool, String> {
     let (game_id, setup, seats, turns) = {
@@ -98,7 +98,7 @@ fn prepare(state: &State, session: &SharedSession, generation: u64) -> Result<bo
         else {
             continue;
         };
-        let compiled = state.releases().compile(&game_id, release)?;
+        let compiled = state.releases().compile(game, release)?;
         let (scale, fixed_iters, limit) = match mode {
             Mode::Fixed => {
                 if state.speed().cached(release, &compiled).is_none()

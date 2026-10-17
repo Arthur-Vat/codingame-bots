@@ -63,7 +63,12 @@ fn list_games() -> Value {
         .iter()
         .map(|game| {
             let info = game.info();
-            json!({ "id": info.id, "name": info.name, "human_play": game.human_play() })
+            json!({
+                "id": info.id,
+                "name": info.name,
+                "human_play": game.human_play(),
+                "baselines": studio_game::baseline_names(game.as_ref()),
+            })
         })
         .collect();
     Value::Array(games)
@@ -82,6 +87,7 @@ fn new(args: NewArgs) -> Result<Value, String> {
         args.request,
         game.is_some(),
         game.is_some_and(|game| game.human_play()),
+        &game.map(studio_game::baseline_names).unwrap_or_default(),
         || args.releases,
     )?;
     let game = game.ok_or_else(|| format!("unknown game {:?}", new.game))?;

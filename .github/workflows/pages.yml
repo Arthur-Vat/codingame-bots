@@ -69,7 +69,7 @@ jobs:
       - name: Install the locked dependencies
         run: |
           "$GITHUB_WORKSPACE/scripts/annotate.sh" run "npm ci" npm ci
-      - name: Build the rules and the releases to WebAssembly
+      - name: Build the rules, the releases and the baseline bots to WebAssembly
         # --strict: a release that does not compile to WebAssembly fails the
         # build instead of silently missing from the site. Writes public/wasm/.
         run: |
@@ -98,7 +98,7 @@ jobs:
           "$GITHUB_WORKSPACE/scripts/annotate.sh" run "License notices" npm run notices
       - name: Check the site
         run: |
-          for file in index.html wasm/rules.wasm wasm/uttt/analysis.wasm wasm/manifest.json coi-sw.js THIRD-PARTY-NOTICES.txt rust-library-copyright.html; do
+          for file in index.html wasm/rules.wasm wasm/uttt/analysis.wasm wasm/ice-and-fire/ice-and-fire-bronze.wasm wasm/manifest.json coi-sw.js THIRD-PARTY-NOTICES.txt rust-library-copyright.html; do
             test -s "dist/$file" || { echo "::error title=Check the site::dist/$file is missing or empty"; exit 1; }
           done
           ls -l dist dist/wasm

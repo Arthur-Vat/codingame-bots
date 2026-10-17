@@ -129,6 +129,10 @@ impl StudioGame for Uttt {
         Box::new(referee(setup))
     }
 
+    fn baseline_bots(&self) -> &'static [&'static str] {
+        &["greedy", "random"]
+    }
+
     fn opening_turns(&self, setup: &GameSetup) -> usize {
         // The referee may cut the opening short of `opening_plies`.
         referee(setup).opening().len()

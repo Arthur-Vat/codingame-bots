@@ -18,7 +18,7 @@
 //!   (the `studio-archive` tool, [ADR 0031](../../../docs/adr/0031-arena-games-archive.md)).
 //! - [`session`]: one game in progress, its JSON view and its record.
 //! - [`runner`]: the threads that start bots and play their turns.
-//! - [`releases`]: lists a game's releases and compiles them on first use.
+//! - [`releases`]: lists a game's releases and compiles its releases and baseline bots on first use.
 //! - [`speed`]: measures a release's iterations per millisecond.
 //! - [`web`]: serves the front end's files.
 //! - [`server`]: the sockets.

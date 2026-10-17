@@ -83,6 +83,14 @@ pub trait StudioGame: Send + Sync {
         true
     }
 
+    /// The game's baseline bots (ADR 0040): folder names under
+    /// `games/<game>/bots/`, in the order the studio lists them, strongest
+    /// first. A bot's name for the studio is `<game>-<folder>`
+    /// ([`baseline_names`]). None for a game that offers no baseline.
+    fn baseline_bots(&self) -> &'static [&'static str] {
+        &[]
+    }
+
     /// Whether the game has an analysis program (ADR 0032).
     fn has_analysis(&self) -> bool {
         false
@@ -98,6 +106,17 @@ pub trait StudioGame: Send + Sync {
         let _ = (request, stop);
         emit(r#"{"error":"this game has no analysis"}"#);
     }
+}
+
+/// The studio names of `game`'s baseline bots, in the order of
+/// [`StudioGame::baseline_bots`]: `<game>-<folder>`, the name of the bot's
+/// bundle.
+pub fn baseline_names(game: &dyn StudioGame) -> Vec<String> {
+    let id = game.info().id;
+    game.baseline_bots()
+        .iter()
+        .map(|folder| format!("{id}-{folder}"))
+        .collect()
 }
 
 /// The game at the position after `turns`, replayed with a fresh referee.

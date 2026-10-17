@@ -62,12 +62,14 @@ pub const NO_HUMAN_PLAY: &str = "this game has no human play: both seats must be
 /// Checks `request`. `game_known` says whether its game is registered;
 /// `human_play` says whether the game lets a human take a seat (only read
 /// when the game is known); `known_releases` lists the game's releases, and is only called once the
-/// rest of the request is right. The error is the message of the 400 the
-/// server answers.
+/// rest of the request is right; `baselines` are the names of its baseline
+/// bots (ADR 0040). A bot seat names one release or one baseline. The error
+/// is the message of the 400 the server answers.
 pub fn validate(
     request: CreateRequest,
     game_known: bool,
     human_play: bool,
+    baselines: &[String],
     known_releases: impl FnOnce() -> Vec<String>,
 ) -> Result<NewGame, String> {
     if !game_known {
@@ -112,7 +114,7 @@ pub fn validate(
                 think_ms,
                 mode,
             } => {
-                if !known.contains(&release) {
+                if !known.contains(&release) && !baselines.contains(&release) {
                     return Err(format!("unknown release {release:?}"));
                 }
                 let Some(think_ms) = think_ms.filter(|ms| THINK_MS.contains(ms)) else {

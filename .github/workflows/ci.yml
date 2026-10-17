@@ -284,7 +284,8 @@ jobs:
           toolchain: ${{ env.CG_RUST }}
           # The tests may bundle bots, which formats the result.
           components: rustfmt
-          # The rules program and the releases are built to WebAssembly.
+          # The rules program, the releases and the baseline bots are built to
+          # WebAssembly.
           targets: wasm32-wasip1
       - uses: Swatinem/rust-cache@v2
       - name: Test the studio and the games' adapters
@@ -306,9 +307,10 @@ jobs:
         # turns its feature "analysis" on. Alone it is built without, as in the
         # rules program, and its test of that case runs only here.
         run: scripts/annotate.sh run "Adapter without analysis" cargo test --locked -p uttt-studio
-      - name: Build the rules and the releases to WebAssembly
-        # --strict: a release that does not compile to WebAssembly fails the
-        # step, so that none is left out of the browser's list unnoticed.
+      - name: Build the rules, the releases and the baseline bots to WebAssembly
+        # --strict: a release or a baseline bot that does not compile to
+        # WebAssembly fails the step, so that none is left out of the
+        # browser's list unnoticed.
         run: scripts/annotate.sh run "WebAssembly build" scripts/build-studio-wasm.sh "$RUNNER_TEMP/wasm" --strict
 
   studio-web:
@@ -324,8 +326,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.CG_RUST }}
-          # The browser engine runs the rules program and the releases as
-          # WebAssembly (ADR 0030): the tests need them built.
+          # The browser engine runs the rules program, the releases and the
+          # baseline bots as WebAssembly (ADR 0030): the tests need them built.
           targets: wasm32-wasip1
       - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-node@v7
@@ -358,11 +360,11 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
           "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Type check" npm run typecheck
-      - name: Build the rules and the releases to WebAssembly
+      - name: Build the rules, the releases and the baseline bots to WebAssembly
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        # --strict: a release that does not compile to WebAssembly fails the
-        # step. The unit tests of the browser engine and the browser tests
-        # read the files it writes in public/wasm/.
+        # --strict: a release or a baseline bot that does not compile to
+        # WebAssembly fails the step. The unit tests of the browser engine and
+        # the browser tests read the files it writes in public/wasm/.
         run: |
           "$GITHUB_WORKSPACE/scripts/annotate.sh" run "WebAssembly build" "$GITHUB_WORKSPACE/scripts/build-studio-wasm.sh" --strict
       - name: Unit tests
