@@ -2,7 +2,7 @@
 
 CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-programming/a-code-of-ice-and-fire) is the second game of this framework, named by the owner on 2026-10-17 (phase 7 of the [main roadmap](../../docs/ROADMAP.md)). Two players on a 12×12 map build armies, buildings and territory to capture the opposing headquarters. It began as a 10-day contest, now over; bots can still be submitted to it as a multiplayer game (source's README).
 
-**Status:** stage 1, intake ([ROADMAP.md](ROADMAP.md)). No rules, engine or bot yet.
+**Status:** stage 2, rules ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md). No engine or bot yet.
 
 ## Sources
 
@@ -15,7 +15,7 @@ CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-p
 
 ## Facts
 
-Each fact gives its source. Stage 2 turns them into `RULES.md` with the edge cases.
+Each fact gives its source. [RULES.md](RULES.md) gives the full rules with their edge cases.
 
 | Fact | Value | Source |
 | --- | --- | --- |
@@ -27,7 +27,7 @@ Each fact gives its source. Stage 2 turns them into `RULES.md` with the edge cas
 | Randomness | Only the map, generated from the game's seed; the mine spots are given once, at the start | `antiyoy/GameState.java` line 41 (`new Random(seed)`); `game/Referee.java`, `sendInitialInput` |
 | Map | 12×12 cells, each void, neutral, or owned (active or not). The headquarters are at (0,0) for red and (11,11) for blue; the cells next to each headquarters, diagonals included, are never void; blue also owns (11,10) at the start | Statement, "The map" and "Expert Rules"; `antiyoy/GameState.java`, `createHQs` (lines 367-383) |
 | Map symmetry | The generator makes the map symmetric | `antiyoy/GameState.java` comments at lines 227 and 299; the kind of symmetry is to be stated in stage 2 |
-| Mine spots | Between 6 and 15% of the non-void cells, an even number; always one right of the red headquarters and one left of the blue headquarters. The code counts only the cells nobody owns at that point (so not the headquarters' cells nor blue's extra cell), and places mine spots only from Wood 1 on; stage 2 settles the count | Statement, "Expert Rules"; `antiyoy/GameState.java` lines 316-333 |
+| Mine spots | Between 6 and 15% of the non-void cells, an even number; always one right of the red headquarters and one left of the blue headquarters. The code counts the non-void cells before the headquarters are placed, as the statement says, and places mine spots only from Wood 1 on | Statement, "Expert Rules"; `antiyoy/GameState.java` lines 316-333 |
 | End of the game | A headquarters captured, a player losing by its answer, or 100 game turns. After 100 turns the higher military power wins: gold plus the training cost of the units alive | Statement, "Victory Conditions"; `antiyoy/Constants.java` (`MAX_TURNS = 100`); `game/Referee.java`, `discriminateEndGame` and `checkForHqCapture`; `antiyoy/GameState.java`, `getScores` |
 | Time limits | 1,000 ms for the first turn, 50 ms for the others | Statement, "Constraints" |
 | Input | At the start: the number of mine spots and their coordinates. Each turn: own gold and income, the opponent's, 12 rows of 12 characters, the buildings (owner, type, x, y) and the units (owner, id, level, x, y) | Statement, "Game Input" |
