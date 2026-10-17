@@ -175,6 +175,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ice-and-fire-bot-rules-check"
+version = "0.0.0"
+dependencies = [
+ "cg-arena",
+ "cg-core",
+ "ice-and-fire-engine",
+ "ice-and-fire-referee",
+]
+
+[[package]]
 name = "ice-and-fire-bot-wait"
 version = "0.0.0"
 
