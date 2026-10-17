@@ -8,8 +8,8 @@ use ice_and_fire_engine::{answer_line, Command, League, Outcome, State, HQ};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::{IceAndFireReferee, League as RefereeLeague};
 
-/// Games per league, as required: 2,000 in Bronze, 300 in each wood league.
-const BRONZE_GAMES: u64 = 2_000;
+/// Games per league, as required: 2,000 in Bronze (four tests of 500 seeds, so
+/// that they run on parallel threads), 300 in each wood league.
 const WOOD_GAMES: u64 = 300;
 
 fn referee_league(league: League) -> RefereeLeague {
@@ -138,11 +138,12 @@ fn play_game(seed: u64, league: League, rng: &mut Rng) -> (bool, u64) {
     (captured, turns)
 }
 
-fn run(league: League, games: u64, rng_seed: u64) -> (u64, u64) {
+fn run(league: League, seeds: std::ops::Range<u64>, rng_seed: u64) -> (u64, u64) {
     let mut rng = Rng::new(rng_seed);
     let mut captures = 0;
     let mut turns = 0;
-    for seed in 0..games {
+    let games = seeds.end - seeds.start;
+    for seed in seeds {
         let (captured, played) = play_game(seed, league, &mut rng);
         captures += u64::from(captured);
         turns += played;
@@ -152,25 +153,43 @@ fn run(league: League, games: u64, rng_seed: u64) -> (u64, u64) {
 }
 
 #[test]
-fn bronze_games_agree_with_the_referee() {
-    let (captures, _) = run(League::Bronze, BRONZE_GAMES, 11);
+fn bronze_seeds_0_to_500_agree_with_the_referee() {
+    let (captures, _) = run(League::Bronze, 0..500, 11);
+    assert!(captures > 0, "no Bronze game ended by an HQ capture");
+}
+
+#[test]
+fn bronze_seeds_500_to_1000_agree_with_the_referee() {
+    let (captures, _) = run(League::Bronze, 500..1000, 21);
+    assert!(captures > 0, "no Bronze game ended by an HQ capture");
+}
+
+#[test]
+fn bronze_seeds_1000_to_1500_agree_with_the_referee() {
+    let (captures, _) = run(League::Bronze, 1000..1500, 31);
+    assert!(captures > 0, "no Bronze game ended by an HQ capture");
+}
+
+#[test]
+fn bronze_seeds_1500_to_2000_agree_with_the_referee() {
+    let (captures, _) = run(League::Bronze, 1500..2000, 41);
     assert!(captures > 0, "no Bronze game ended by an HQ capture");
 }
 
 #[test]
 fn wood1_games_agree_with_the_referee() {
-    let (captures, _) = run(League::Wood1, WOOD_GAMES, 12);
+    let (captures, _) = run(League::Wood1, 0..WOOD_GAMES, 12);
     assert!(captures > 0, "no Wood 1 game ended by an HQ capture");
 }
 
 #[test]
 fn wood2_games_agree_with_the_referee() {
-    let (captures, _) = run(League::Wood2, WOOD_GAMES, 13);
+    let (captures, _) = run(League::Wood2, 0..WOOD_GAMES, 13);
     assert!(captures > 0, "no Wood 2 game ended by an HQ capture");
 }
 
 #[test]
 fn wood3_games_agree_with_the_referee() {
-    let (captures, _) = run(League::Wood3, WOOD_GAMES, 14);
+    let (captures, _) = run(League::Wood3, 0..WOOD_GAMES, 14);
     assert!(captures > 0, "no Wood 3 game ended by an HQ capture");
 }

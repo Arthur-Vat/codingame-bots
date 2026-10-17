@@ -1,7 +1,7 @@
 //! What is fixed for a whole game: the void cells, the mine spots, the
 //! neighbours of every cell and the distances between cells.
 //!
-//! The distance table costs about 100 microseconds to build and 20 KB to
+//! The distance table costs about 123 microseconds to build and 20 KB to
 //! keep, so a state shares it through an `Arc` instead of copying it: a search
 //! clones states by the thousand. `Arc` and not `Rc` so that states can move
 //! between threads. A bot that reads a state every turn would rebuild the

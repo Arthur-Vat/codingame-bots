@@ -734,3 +734,82 @@ fn an_unknown_or_foreign_move_is_dropped_but_a_trained_unit_cannot_move() {
     assert!(after.contains("\n0 7 1 0 2\n"), "{after}");
     assert!(after.contains("\n1 6 1 10 11\n"), "{after}");
 }
+
+/// Red's turn on `OPEN_MAP` with (0, 1) a mine spot, 40 gold and the income 5
+/// that the input shows (the cells really pay 3, so a recomputation shows).
+fn red_with_a_mine_spot() -> State {
+    let text = turn_text(OPEN_MAP, &["0 0 0 0", "1 0 11 11"], &[]).replacen(
+        "20\n5\n20\n5\n",
+        "40\n5\n20\n5\n",
+        1,
+    );
+    let state = State::read("1\n0 1\n", &text, League::Bronze, 1).unwrap();
+    assert_eq!((state.gold(0), state.income(0)), (40, 5));
+    state
+}
+
+#[test]
+fn incomes_are_recomputed_after_a_build() {
+    let mut state = red_with_a_mine_spot();
+    assert!(state.apply(Command::BuildMine { x: 0, y: 1 }));
+    // Three active cells and a mine on an active one.
+    assert_eq!(state.income(0), 3 + 4);
+    assert_eq!(state.gold(0), 25);
+}
+
+#[test]
+fn incomes_are_recomputed_after_a_training() {
+    let mut state = red_with_a_mine_spot();
+    // A level 2 unit on an active cell costs 4 a turn at once.
+    assert!(state.apply(Command::Train {
+        level: 2,
+        x: 1,
+        y: 0
+    }));
+    assert_eq!(state.income(0), 3 - 4);
+    // Taking a neutral cell adds 1 and a level 1 unit's upkeep takes 1.
+    assert!(state.apply(Command::Train {
+        level: 1,
+        x: 2,
+        y: 0
+    }));
+    assert_eq!(state.income(0), 4 - 4 - 1);
+}
+
+#[test]
+fn incomes_are_recomputed_after_a_move() {
+    let text = turn_text(OPEN_MAP, &["0 0 0 0", "1 0 11 11"], &["0 5 1 1 0"]);
+    let mut state = State::read("0\n", &text, League::Bronze, 1).unwrap();
+    assert_eq!(state.income(0), 5);
+    // The unit takes the neutral (2, 0): one more cell, same upkeep.
+    assert!(state.apply(Command::Move { id: 5, x: 2, y: 0 }));
+    assert_eq!(state.income(0), 4 - 1);
+}
+
+#[test]
+fn gold_and_income_beyond_a_billion_are_refused() {
+    let (initial, turn) = valid_turn_input();
+    let read = |turn: &str| State::read(&initial, turn, League::Bronze, 1);
+    for value in ["9223372036854775807", "-9223372036854775807", "1000000001"] {
+        for line in 0..4 {
+            let mut lines: Vec<&str> = turn.lines().collect();
+            lines[line] = value;
+            let error = read(&lines.join("\n")).unwrap_err();
+            assert!(error.contains("out of range"), "{error}");
+        }
+    }
+    // The bound itself is fine, and playing on from it does not overflow.
+    let mut lines: Vec<&str> = turn.lines().collect();
+    lines[0] = "1000000000";
+    lines[2] = "1000000000";
+    let mut state = read(&lines.join("\n")).unwrap();
+    state.play_turn(&[]);
+    state.play_turn(&[]);
+}
+
+#[cfg(debug_assertions)]
+#[test]
+#[should_panic(expected = "has no mine spots")]
+fn mine_spots_in_a_wood_league_are_refused_by_a_debug_build() {
+    State::new(&[false; CELLS], &[(1, 0), (10, 11)], League::Wood2);
+}

@@ -92,7 +92,15 @@ impl State {
     /// The start of a game on a map whose HQ cells, (0, 0) and (11, 11), are
     /// not void. Red's start of turn has run, as in the referee's `from_map`.
     /// Mine spots outside the map or on void cells are ignored.
+    ///
+    /// The caller's map must follow the league, as the referee's
+    /// `map::generate` does: Wood 3 and Wood 2 have no mine spots (RULES.md,
+    /// "Mine spots"). A debug build panics if `mine_spots` is not empty there.
     pub fn new(void: &[bool; CELLS], mine_spots: &[(usize, usize)], league: League) -> State {
+        debug_assert!(
+            league.has_mine_spots() || mine_spots.is_empty(),
+            "{league:?} has no mine spots"
+        );
         let mut void_bits = Bits::EMPTY;
         for (cell, _) in void.iter().enumerate().filter(|&(_, &is_void)| is_void) {
             void_bits.set(cell);

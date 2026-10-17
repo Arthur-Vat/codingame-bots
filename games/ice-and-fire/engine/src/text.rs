@@ -9,6 +9,10 @@ use crate::league::League;
 use crate::map::MapData;
 use crate::state::{State, HQ};
 
+/// The largest gold or income `read` accepts, in absolute value. A real game
+/// stays far below it; the bound keeps later sums from overflowing.
+const MAX_MONEY: i64 = 1_000_000_000;
+
 /// Building types in the input.
 const HQ_TYPE: i64 = 0;
 const MINE_TYPE: i64 = 1;
@@ -134,6 +138,9 @@ impl State {
                 .zip(["gold", "income", "opponent's gold", "opponent's income"])
         {
             let [number] = numbers(next_line(&mut lines, what)?, what)?;
+            if number.abs() > MAX_MONEY {
+                return Err(format!("{what}: {number} is out of range"));
+            }
             *value = number;
         }
 

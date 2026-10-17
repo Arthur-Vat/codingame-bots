@@ -83,7 +83,7 @@ Measured on 2026-10-17 with Rust 1.90.0, one thread of a shared 4-core machine (
 | `read` (the map of the last read) | 206,329 per second |
 | `State::new` (builds the distance table) | 8,750 per second |
 
-A turn here is one player's turn, so a game of 147.6 turns is about 74 game turns. A random turn clones the state (about 1 KB and a reference count) to choose commands on a scratch copy. `read` rebuilds the 144 × 144 distance table, about 115 microseconds, only when the map differs from the last one it read on the thread; a bot reads the same map every turn.
+A turn here is one player's turn, so a game of 147.6 turns is about 74 game turns. A random turn clones the state (about 1 KB and a reference count) to choose commands on a scratch copy. `read` rebuilds the 144 × 144 distance table, about 123 microseconds, only when the map differs from the last one it read on the thread; a bot reads the same map every turn.
 
 ## Notes on the owner's criteria
 
