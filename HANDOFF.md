@@ -4,7 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- **League bootstrap: go-ahead answered in the conversation, 2026-10-17 (form): "Yes, in a fresh session".** Next session starts it: dispatch `league.yml` on a `claude/` branch with `bots: greedy v001 v002 ... v018` (about 10 runner-hours, 2-3 runs of up to 5 hours), copy each run's lines into one bootstrap PR with `LEADERBOARD.md`, then set `LEAGUE_CANARY`. Do it before the next experiment: until `games/uttt/league.jsonl` exists, the gate does not hold a release PR.
+- **League bootstrap: go-ahead answered in the conversation, 2026-10-17 (form): "Yes, in a fresh session"; started 2026-10-17 on the owner's request ("do the bootstrap").** Branch `claude/uttt-league-bootstrap` (from main d86a85a). Run 1: https://github.com/Arthur-Vat/codingame-bots/actions/runs/39009461382 (06:19 UTC, `greedy v001 ... v018`, stop after 300 min). Next: read each bot's lines from the job log (`---- new results of <bot> ----`), commit them to `games/uttt/league.jsonl` on that branch with `LEADERBOARD.md`, dispatch the next run on that branch with the bots after `Next:` (the GitHub MCP tool `actions_run_trigger` works; `gh api` dispatches were refused by the session's permission check), then one bootstrap PR for the owner's approval, then set `LEAGUE_CANARY`. Do it before the next experiment: until `games/uttt/league.jsonl` exists, the gate does not hold a release PR.
 
 ## Open questions
 
