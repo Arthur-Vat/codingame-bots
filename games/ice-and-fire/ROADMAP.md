@@ -2,7 +2,7 @@
 
 The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md), [ADR 0035](../../docs/adr/0035-new-game-lifecycle.md)). The owner decides at the end of every stage; each gate records his answer and its date. Skill `new-game` reads this file to name the next stage.
 
-**Stage in progress:** 5. Referee and engine; next, 6. Arena and baseline bots
+**Stage in progress:** 6. Arena and baseline bots, while stage 5 waits for the `rules-check` run on CodinGame; next, 7. Studio
 **Owner's stopping rule:** none yet
 
 | # | Stage | Status | Gate: the owner's answer |
@@ -12,7 +12,7 @@ The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME
 | 3 | Model | Done (2026-10-17) | [MODEL.md](MODEL.md), #159 merged; "Merge #159" (form, 2026-10-17) |
 | 4 | Framework gaps | Done (2026-10-17) | [ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md) merged (#160); "Merge #160" (form, 2026-10-17) |
 | 5 | Referee and engine | In progress | |
-| 6 | Arena and baseline bots | Not started | |
+| 6 | Arena and baseline bots | In progress | |
 | 7 | Studio | Not started | |
 | 8 | Research | Not started | |
 | 9 | Approach and first bot | Not started | |
@@ -32,6 +32,14 @@ Referee and engine: the list in the [playbook](../../docs/NEW_GAME.md).
 - [x] A `rules-check` bot (skill `rules-check`), written (`bots/rules-check/`)
 - [ ] The `rules-check` bot pasted by the owner on CodinGame in the league where the full rules apply (pending)
 
+Arena and baseline bots: the list in the [playbook](../../docs/NEW_GAME.md).
+
+- [x] The game's arena binary (`arena/`) and `evaluation.env`
+- [x] Baseline bots: `random` (the anchor of the ratings) and the greedy `bronze`; a first-valid bot is not needed, since `wait` is always valid (the checklist's "first valid, random, greedy")
+- [x] The game's numbers from the arena: seat advantage, game length, draw rate, and how the SPRT's seeds are drawn ([README.md](README.md#numbers))
+- [x] CI: `ci.sh` plays the arena's games and the evaluation controls (`scripts/ci-scopes.sh` picks up the game's folder by itself)
+- [ ] The owner's gate: a pull request for stage 6 merged
+
 ## Open questions
 
 - Leagues above Bronze today, and how many players the leaderboard and Legend hold (asked 2026-10-17). They inform the stopping rule; the owner may leave them unknown.
@@ -39,6 +47,8 @@ Referee and engine: the list in the [playbook](../../docs/NEW_GAME.md).
 
 ## Decisions
 
+- 2026-10-17: evaluation time scale 0.2 (10 ms of 50, plus 5 ms tolerance), as ADR 0013 (form: "0.2: 10 ms, as ADR 0013").
+- 2026-10-17: stage 6 started while the owner climbs the Wood leagues (form: "Stage 6: arena").
 - 2026-10-17: stage 5 go-ahead, in this session (form: "Go, in this session").
 - 2026-10-17: framework gaps (form): (1) cg-search and multi-command turns: "Decide at stage 9"; (2) maps: "Own generator + check" ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)); (3) studio: "No human play for this game, replay first play later" (ADR 0039).
 - 2026-10-17: stage 3 passed: "Merge #159" (form).

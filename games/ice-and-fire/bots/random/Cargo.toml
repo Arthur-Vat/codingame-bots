@@ -1,0 +1,22 @@
+[package]
+name = "ice-and-fire-bot-random"
+description = "A Code of Ice and Fire bot that plays a random valid turn: the baseline every rating is anchored to."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+cg-core.workspace = true
+ice-and-fire-engine.workspace = true
+
+# Used by the tests only: the bot is played in-process against the referee.
+[dev-dependencies]
+cg-arena.workspace = true
+ice-and-fire-referee.workspace = true
+
+[lints]
+workspace = true

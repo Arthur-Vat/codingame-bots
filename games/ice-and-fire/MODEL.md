@@ -1,6 +1,6 @@
 # A Code of Ice and Fire: model
 
-The problem as a search or learning problem, for stages 3 and 4 of [docs/NEW_GAME.md](../../docs/NEW_GAME.md). Rules are in [RULES.md](RULES.md); this file says how to think about them. Numbers marked "estimate" come from the rules alone; stage 6 replaces them with measures.
+The problem as a search or learning problem, for stages 3 and 4 of [docs/NEW_GAME.md](../../docs/NEW_GAME.md). Rules are in [RULES.md](RULES.md); this file says how to think about them. Numbers marked "estimate" come from the rules alone; stage 6 replaced the ones it could with measures (2026-10-17, [README.md](README.md#numbers)).
 
 ## In plain English
 
@@ -16,9 +16,10 @@ A player wants to capture the enemy HQ. Failing that, it wants more military pow
 | --- | --- | --- |
 | Players | 2, red moving first; blue starts with one more cell | RULES.md |
 | Map | 12×12, about half the cells void (estimate: the source makes 45% void before smoothing); 6 to about 12 mine spots (estimate: 15% of about 60 to 80 non-void cells) | RULES.md; estimate |
-| Turns per game | At most 100 per player (200 answers); typical length unknown, estimate 20 to 100 game turns | RULES.md; estimate, measured at stage 6 |
+| Turns per game | At most 100 per player (200 answers). Measured 2026-10-17 over 1,000 games each: random turns against random turns, mean 71.6 game turns, median 74, 41.5% reach turn 100, 58.7% end by HQ capture; the Bronze bot against itself, mean 15.3, median 13, 99.6% end by HQ capture | RULES.md; measure at stage 6 (README.md, "Numbers") |
+| Seat advantage | Depends on the players: red scores 44.5% with random turns (blue ahead) and 58.0% with the Bronze bot (red ahead), 1,000 games each, 95% intervals 41.4% to 47.6% and 54.9% to 61.0%. Draws: 7 in 10,000 random games, 0 in 10,000 Bronze games | measure, 2026-10-17 (README.md, "Numbers") |
 | Commands per turn | 0 to a few dozen: one move per unit, plus trainings and buildings as gold allows | estimate |
-| Distinct answers per turn | Start: under 10 (20 gold, two cells to train on). Middle: with 10 units of about 3 useful moves each and a few training cells, about 10^5 to 10^8 move sets, more with orders and trainings. Late: more. Not enumerable in general | estimate |
+| Distinct answers per turn | Start: 6 trainings of one command and 0.5 buildings. Middle (game turn 20, random players): 12 units that can move, 29 cells they can move to, about 75 trainings (level, cell) and 20 buildings, about 10^6 move sets before trainings, buildings and orders; about 10^7 at turn 40. Not enumerable in general | measure on the referee's positions, 2026-10-17 (README.md, "Numbers"; the sets ignore units getting in each other's way) |
 | State size | About 200 to 400 bytes: 144 cells of about 1 byte (owner, active, mine spot, building, unit level), or about ten 144-bit planes, plus units' ids and both golds | estimate, then the engine at stage 5 |
 | Time per turn | 1,000 ms for the first answer, 50 ms later | RULES.md |
 | Engine speed | Unknown until stage 5 | stage 5 |
@@ -57,6 +58,6 @@ What the framework assumes that this game breaks (stage 4). Each gap goes to the
 
 Checked and not gaps:
 
-- **`cg-arena`.** Its referee interface already takes answers as lines, sends a game's map once (`initial_input`), and ends a game with a win or a draw. Its seat-swapped pairs play the same seed, so both bots meet each map from both seats, which cancels red's first move and blue's extra cell. Random opening plies (`OPENING_PLIES` in a game's `evaluation.env`, passed to the referee as `GameSetup::opening_plies`) are not needed to vary games, since the map does; the game's evaluation settings choose at stage 6.
+- **`cg-arena`.** Its referee interface already takes answers as lines, sends a game's map once (`initial_input`), and ends a game with a win or a draw. Its seat-swapped pairs play the same seed, so both bots meet each map from both seats, which cancels red's first move and blue's extra cell. Random opening plies (`OPENING_PLIES` in a game's `evaluation.env`, passed to the referee as `GameSetup::opening_plies`) are not needed to vary games, since the map does; the game's `evaluation.env` sets `OPENING_PLIES=0` and the referee ignores the value.
 - **`cg-bundler` and the 100,000-character limit.** Nothing in this game needs more than a uttt bot does.
 - **Time.** 50 ms per answer is half of uttt's 100 ms. Each bot sets its own budget, and the arena's time scale (`CG_TIME_SCALE`, `crates/cg-core/src/time.rs`) applies as for uttt.

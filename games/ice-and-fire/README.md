@@ -2,7 +2,7 @@
 
 CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-programming/a-code-of-ice-and-fire) is the second game of this framework, named by the owner on 2026-10-17 (phase 7 of the [main roadmap](../../docs/ROADMAP.md)). Two players on a 12×12 map build armies, buildings and territory to capture the opposing headquarters. It began as a 10-day contest, now over; bots can still be submitted to it as a multiplayer game (source's README).
 
-**Status:** stage 5, referee and engine ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator, a fast engine checked against it, the `wait` bot, a bot per league and the `rules-check` bot. No arena yet.
+**Status:** stage 6, arena and baseline bots, with stage 5 still waiting for the `rules-check` run on CodinGame ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator, a fast engine checked against it, an arena, the `random` bot that anchors the ratings, the `wait` bot, a bot per league, the `rules-check` bot, and the game's [numbers](#numbers).
 
 ## Layout
 
@@ -14,8 +14,10 @@ CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-p
 | [referee/](referee/) | `ice-and-fire-referee`: readable reference implementation of the rules, with our own map generator ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)), for the arena |
 | [engine/](engine/) | `ice-and-fire-engine`: the fast, standard-library engine for bots (bitboards, random turns, CodinGame's text protocol), with parity tests against the referee and the speed example |
 | [policy/](policy/) | `ice-and-fire-policy`: the greedy turn policy and the input/output loop that the per-league bots share; its tests play every league's bot against the referee |
+| [arena/](arena/) | `ice-and-fire-arena`: plays bots against each other through the referee, in Bronze (all the rules) |
 | [bots/](bots/) | The bots, listed in "Bots" below |
-| [ci.sh](ci.sh) | The game's CI steps, run after the bots are bundled ([ADR 0029](../../docs/adr/0029-ci-scoped-by-area-and-game.md)); no arena games until stage 6 |
+| [evaluation.env](evaluation.env) | Settings of the SPRT, the league (opponents, pairs, canary) and the arena for evaluations ([ADR 0012](../../docs/adr/0012-evaluation.md), [ADR 0038](../../docs/adr/0038-incremental-league.md)) |
+| [ci.sh](ci.sh) | The game's CI steps, run after the bots are bundled ([ADR 0029](../../docs/adr/0029-ci-scoped-by-area-and-game.md)): the arena games, the evaluation controls and a small league, then the engine speed |
 
 ## Bots
 
@@ -23,6 +25,7 @@ Each league has its own bot, since the input never names the league; each is a s
 
 | Bot | Strategy | Purpose |
 | --- | --- | --- |
+| [random](bots/random/) | Plays `State::random_turn` (moves, trainings and buildings the rules accept), seeded by `CG_SEED` | The anchor of the ratings and the smoke test's opponent |
 | [wait](bots/wait/) | Reads every turn's input and answers `WAIT` | An always-valid opponent for the arena and the CI |
 | [wood3](bots/wood3/) | The greedy policy with the Wood 3 rules (level 1 only, level 1 beats level 1) | Promotion out of Wood 3 |
 | [wood2](bots/wood2/) | The same policy with levels 1 to 3 | Promotion out of Wood 2 |
@@ -40,6 +43,48 @@ Measured on 2026-10-17 over 200 maps in each seat (400 games per row, Rust 1.90.
 | Wood 2 | 400/400 | 400/400 |
 | Wood 1 | 400/400 | 400/400 |
 | Bronze | 400/400 | 400/400 |
+
+## Arena
+
+```sh
+cargo build --release -p ice-and-fire-arena -p ice-and-fire-bot-random -p ice-and-fire-bot-bronze
+target/release/ice-and-fire-arena --help
+target/release/ice-and-fire-arena match \
+  --bot random=target/release/ice-and-fire-bot-random \
+  --bot bronze=target/release/ice-and-fire-bot-bronze --pairs 100
+```
+
+The arena plays Bronze games: all the rules, on the map of the pair's seed ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)). Each pair plays one seed twice with the seats swapped, so both bots play the same map from both seats. The referee ignores `--opening-plies`: the maps vary the games. `sprt` and `league` take the same options, and `scripts/sprt.sh ice-and-fire CANDIDATE.rs` uses [evaluation.env](evaluation.env): 10 ms per turn (a time scale of 0.2) plus 5 ms of tolerance, since no bot of the game is in Legend ([ADR 0013](../../docs/adr/0013-evaluation-time-limits.md), [ADR 0020](../../docs/adr/0020-full-time-sprt-in-legend.md)). `ci.sh` plays the arena's games in CI; the bots keep CodinGame's exact limits there.
+
+## Numbers
+
+Measured on 2026-10-17 with `cargo run --release -p ice-and-fire-policy --example numbers -- 1000` (the example plays Bronze games in-process through the reference referee, fed with its text as CodinGame would send it; one game per map, on maps 0 to 999; `random` is the random bot's turn and `bronze` the Bronze bot's policy). The arena agrees with real processes: `ice-and-fire-arena match` on its own maps, 500 pairs of the bot against a copy of itself, gave red 42.9% of 1,000 games with the random bot and 55.2% with the Bronze bot, inside the intervals below.
+
+| Red | Blue | Red's score | 95% interval (Wilson) | Red wins | Draws | Blue wins | Mean game turns | Median | Reach turn 100 | HQ captured | Ended on power |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| random | random | 44.5% | 41.4% to 47.6% | 445 | 0 | 555 | 71.6 | 74 | 41.5% | 58.7% | 41.3% |
+| bronze | bronze | 58.0% | 54.9% to 61.0% | 580 | 0 | 420 | 15.3 | 13 | 0.4% | 99.6% | 0.4% |
+| bronze | random | 100.0% | 99.6% to 100.0% | 1000 | 0 | 0 | 12.5 | 12 | 0.0% | 100.0% | 0.0% |
+
+- **Seat advantage.** It depends on the bots, and it is large. With random turns blue is ahead: red scores 44.5% (45.6%, 44.6% to 46.6%, over 10,000 maps) (blue starts with one more cell, and the cause is not studied here). With the Bronze bot red is ahead: 58.0% (56.6%, 55.7% to 57.6%, over 10,000 maps), and games are a race to the enemy HQ, which moving first helps (not studied here either). The seat-swapped pairs cancel it, and each pair plays one map from both seats; no opening needs to be imposed. The score of a bot is the score of its pairs.
+- **Game length** is in game turns (both players have moved), at most 100. Random turns: mean 71.6, median 74, 41.5% of the games reach turn 100 (HQ captures on that turn included). The Bronze bot ends games with a chain of trainings to the enemy HQ after a mean of 15.3 game turns (median 13), against random turns after 12.5; fewer than 1 in 100 games reach turn 100. A game between the engine's random players is 143.6 answers long on average in the arena, 71.8 game turns.
+- **How games end.** 58.7% by HQ capture and 41.3% by military power at turn 100 for random turns; 99.6% by capture for the Bronze bot. The share that reaches turn 100 is the first column's figure, so a search bot that survives early rushes will play many more turns than these baselines do.
+- **Draws.** Equal military power at turn 100 is a draw in our referee, pending the `rules-check` run (RULES.md): 0 of 3,000 games above, 7 of 10,000 random games (0.07%), none of 10,000 Bronze games. Draws do not matter to the SPRT.
+- **Distinct answers per turn.** Counted by trying each command on a copy of the position, in games between two players of the same kind, both seats pooled, at the start of the turn (`numbers` prints the table). "Cells units can move to" is the number of cells a unit can end a move on, summed over the units that can move; "move sets" is the product over those units of (1 + their end cells), a count of the sets of moves that ignores that units get in each other's way and the order of commands. A turn also holds trainings and buildings, chosen among the trainings (level, cell) and buildings listed, and their order.
+
+| Players | Game turn | Units that can move | Cells units can move to | Trainings (level, cell) | Buildings | log10 of the move sets |
+| --- | --- | --- | --- | --- | --- | --- |
+| random | 1 | 0.0 | 0.0 | 6.0 | 0.5 | 0.0 |
+| random | 5 | 1.5 | 4.6 | 3.4 | 0.3 | 0.9 |
+| random | 10 | 3.8 | 11.3 | 19.6 | 5.0 | 2.2 |
+| random | 20 | 12.0 | 29.3 | 75.4 | 19.9 | 6.1 |
+| random | 40 | 18.9 | 29.7 | 57.2 | 17.7 | 6.9 |
+| random | 60 | 21.9 | 24.0 | 43.4 | 14.2 | 5.8 |
+| bronze | 10 | 5.0 | 10.6 | 85.8 | 14.2 | 2.3 |
+
+Bronze games are too short to be sampled later. In the middle of a game between random players a turn offers about 10^6 to 10^7 move sets before trainings, buildings and orders, which fits the estimate in [MODEL.md](MODEL.md).
+
+- **How the SPRT draws its seeds.** The arena derives the seed of pair *n* from the tournament seed (`--seed`, `SEED=1` in [evaluation.env](evaluation.env)); both games of the pair use it, so the pair plays one map from both seats, and the referee builds the map from that seed alone. The seed of each bot's own random choices is derived from the pair's seed, the seat and the bot's name. Two deterministic bots (the Bronze bot) therefore tie every pair against a copy of themselves, which makes the A/A control exact: Elo 0, verdict REJECTED after 30 pairs.
 
 ## Sources
 
