@@ -24,6 +24,8 @@ pub struct Session {
     turn: u32,
     checks: u32,
     differences: u32,
+    /// The turn of the first difference.
+    first_difference: Option<u32>,
     prediction: Option<Prediction>,
 }
 
@@ -44,6 +46,7 @@ impl Session {
             turn: 0,
             checks: 0,
             differences: 0,
+            first_difference: None,
             prediction: None,
         }
     }
@@ -63,6 +66,7 @@ impl Session {
     pub fn note_difference(&mut self, what: &str) -> String {
         self.checks += 1;
         self.differences += 1;
+        self.first_difference.get_or_insert(self.turn + 1);
         format!("rules-check: DIFFERENCE turn {}: {what}", self.turn + 1)
     }
 
@@ -104,12 +108,18 @@ impl Session {
 
         self.checks += report.checks;
         self.differences += report.differences.len() as u32;
+        if !report.differences.is_empty() {
+            self.first_difference.get_or_insert(turn);
+        }
         let mut log = info;
         for difference in &report.differences {
             log.push(format!("rules-check: DIFFERENCE turn {turn}: {difference}"));
         }
+        let first = self
+            .first_difference
+            .map_or(String::new(), |first| format!(" (first at turn {first})"));
         log.push(format!(
-            "rules-check: turn {turn}, {} checks, {} differences",
+            "rules-check: turn {turn}, {} checks, {} differences{first}",
             self.checks, self.differences
         ));
         TurnOutput { log, answer }

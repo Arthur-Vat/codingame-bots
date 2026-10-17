@@ -7,7 +7,8 @@
 //!
 //! Use it in the IDE from Bronze league upward, where the full rules apply.
 //! Every turn it prints one line to stderr ending with running totals
-//! (`rules-check: turn N, X checks, M differences`), so the last line of a
+//! (`rules-check: turn N, X checks, M differences`, with `(first at turn K)`
+//! added once there is a difference), so the last line of a
 //! game sums it up. Differences are printed on lines starting with
 //! `rules-check: DIFFERENCE`. A turn's input that does not parse is a
 //! difference too, and the answer is `WAIT`.

@@ -71,15 +71,16 @@ Leagues above Bronze, and how many players each holds, are not in the sources (o
 
 The parity tests prove the engine and the referee agree with each other, not that both agree with CodinGame. The `rules-check` bot checks that, and logs the maps CodinGame draws so that they can be set beside our generator's ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md), decision 3). To run it, once, in Bronze league or above (the bot assumes the Bronze rules):
 
-1. Paste `target/cg/ice-and-fire-rules-check.rs` (`scripts/bundle-bots.sh ice-and-fire`; CI also publishes it in the `paste-ready-bots-ice-and-fire` artifact) into the IDE and click **Play my code** a few times, against different opponents, so that both seats are played.
-2. For each game, copy from the console: the line `rules-check: MAP ...` (once, on the first turn), the last `rules-check: turn N, X checks, M differences` line, every line starting with `rules-check: DIFFERENCE`, and the result on the end screen.
+1. Paste `target/cg/ice-and-fire-rules-check.rs` (`scripts/bundle-bots.sh ice-and-fire`; CI also publishes it in the `paste-ready-bots-ice-and-fire` artifact) into the IDE and click **Play my code** a few times, against different opponents.
+2. Check that the MAP lines across the games show both `red` and `blue`, and say so if they all show the same seat: the rules differ between the seats (red plays first, blue starts with one more cell), and the first turn as each is checked.
+3. For each game, copy from the console: the line `rules-check: MAP ...` (once, on the first turn), the last `rules-check: turn N, X checks, M differences` line (with `(first at turn K)` after a difference), every line starting with `rules-check: DIFFERENCE`, and the result on the end screen.
 
 Each turn the bot answers a random turn and checks:
 
 - the input alone: each player's active cells against their connection to its HQ, no unit of either player on its own inactive cell, both incomes against the income formula (the bot's own income after a wipe-out of its units is allowed to be the one from before it), mines only on mine spots and towers never, and, on the first turn, the start of the game;
 - the input against what the engine predicted after the bot's own commands last turn: gold (plus the income shown, or 0 after a wipe-out), the cells, units and buildings of the bot, the ids of the opponent's units, and that each command the engine carried out shows up unless the opponent captured the cell.
 
-It prints `rules-check: EXPECT win for <red|blue> (HQ captured)` when its own commands capture the opponent's HQ, and on turn 100 both military powers and the result it expects, to compare with the end screen (equal powers are printed as a draw, which RULES.md does not confirm). Any difference, a turn's input that does not parse included, is a `rules-check: DIFFERENCE` line with both sides, and the bot answers `WAIT` to input it cannot read. With `CG_RULES_CHECK_STRICT` set it exits at the first difference.
+It prints `rules-check: EXPECT win for <red|blue> (HQ captured)` when its own commands capture the opponent's HQ, and on turn 100 both military powers and the result it expects, to compare with the end screen (equal powers are printed as a draw, which RULES.md does not confirm). Any difference, a turn's input that does not parse included, is a `rules-check: DIFFERENCE` line with both sides, and the bot answers `WAIT` to input it cannot read. With `CG_RULES_CHECK_STRICT` set it exits at the first difference (CI only: the owner cannot set it on CodinGame).
 
 The MAP line is `rules-check: MAP <red|blue> <144 characters, row by row> <mine spots as x,y separated by spaces>`, with `#` for a void cell and `.` for any other.
 

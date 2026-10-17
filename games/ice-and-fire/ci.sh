@@ -8,10 +8,10 @@
 #   games/ice-and-fire/ci.sh
 #
 # It expects the compiled bundles in target/cg/bin/ (ice-and-fire-wait and
-# ice-and-fire-rules-check). The game has no arena yet, so for now it checks
-# the rules-check bot against the referee in-process (below) and measures the
-# engine's speed
-# (a report, not a check: ADR 0029, decision 7; it fails only if the
+# ice-and-fire-rules-check). The game has no arena yet, so for now it smoke
+# tests the rules-check bundle (below; the bot's agreement with the referee is
+# checked by its tests, which the game's test job runs) and measures the
+# engine's speed (a report, not a check: ADR 0029, decision 7; it fails only if the
 # measurement itself crashes; with GITHUB_STEP_SUMMARY set, the table goes to
 # the job summary); stage 6 adds the arena's games here.
 #
@@ -27,16 +27,6 @@ for bot in wait rules-check; do
     exit 2
   fi
 done
-
-# The rules-check bot's own tests play its checker against the referee, with
-# the referee's exact text as input, in 600 Bronze games (300 seeds against a
-# waiting and 300 against a random opponent) and fail on any difference: the
-# in-process counterpart of the uttt step that plays the bundle with
-# CG_RULES_CHECK_STRICT. It cannot be run as a bundle until stage 6 adds an
-# arena, which is the only thing here that plays a binary against the referee.
-echo "== The rules-check bot agrees with the referee (in-process)"
-scripts/annotate.sh run "Rules-check against the referee" \
-  cargo test --release --locked -p ice-and-fire-bot-rules-check agrees_with_the_referee
 
 echo "== The rules-check bundle starts and stops cleanly"
 # An empty input is a game that never started: strict mode must not fail.
