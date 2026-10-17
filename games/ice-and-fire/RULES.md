@@ -87,7 +87,7 @@ A turn's answer is one line of commands separated by `;` (statement, "Output"). 
 
 The whole line is read first; the commands are carried out afterwards (`Referee.java`, `readInput`, then `gameTurn`).
 
-- The line is split on `;`, and each part then loses its leading and trailing spaces. Parts that are already empty before trimming, at the very end of the line, are dropped (Java's `String.split`); any other part left empty, an empty line or a last part of only spaces included, is an unrecognised command (`Referee.java`, `readInput`).
+- The line is split on `;`, and each part then loses its leading and trailing whitespace (Java's `trim`: spaces, tabs and other characters up to U+0020). Parts that are already empty before trimming, at the very end of the line, are dropped (Java's `String.split`); any other part left empty, an empty line or a last part of only spaces included, is an unrecognised command (`Referee.java`, `readInput`).
 - A part must then match exactly: `WAIT`; `MSG`, a space and any text (a bare `MSG` is unrecognised, since trimming removed its space); `MOVE` or `TRAIN` and three non-negative integers; or `BUILD`, `MINE` or `TOWER`, and two non-negative integers; in upper case, separated by single spaces (`Constants.java`, the patterns; `Referee.java`, `matchMsg`, `matchMoveTrain`, `matchBuild`). A part that matches none of them, or whose integer does not fit a 32-bit signed integer, is **unrecognised: the player loses at once** (statement, "Lose Conditions"; `Referee.java`, `readInput`). The parts before it have been read but none is carried out.
 - While reading, a recognised command is dropped, with a note in the game summary and no other effect, when (`Referee.java`, `matchMoveTrain`, `matchBuild`, `createTrainAction`, `createMoveAction`):
   - (x, y) is off the map or a void cell;
@@ -106,9 +106,9 @@ A player's unit of level L may enter a cell, by training or moving, when (`Cell.
 2. the cell does not hold an opponent's tower, active or not, unless L is 3;
 3. and either the cell is empty (no unit, no building), or it is not the player's own and its unit, if any, can be beaten: a unit of level 3 beats any unit, a unit of level 2 beats level 1, a unit of level 1 beats none (in Wood 3, where only level 1 exists, level 1 beats level 1).
 
-So a player never enters its own cell when it holds a unit or a building, its HQ included; an opponent's mine or HQ can be entered by any level.
+So a player never enters its own cell when it holds a unit or a building, its HQ included; an opponent's mine or HQ can be entered by any level, subject to rules 1 and 2 (a level 1 or 2 unit cannot enter an HQ protected by a tower).
 
-On entering, the unit takes the cell: a unit there dies, a mine or tower there is destroyed, and the cell becomes the player's (`GameState.java`, `addUnit`, `moveUnit`, `clearCell`). An HQ is never destroyed: a player whose HQ cell an opponent's unit has entered has lost (below). The attacker always survives (statement, "Armies").
+On entering, the unit takes the cell: a unit there dies, a mine or tower there is destroyed, and the cell becomes the player's (`GameState.java`, `addUnit`, `moveUnit`, `clearCell`). An HQ is never destroyed: a player whose HQ cell an opponent's unit has entered has lost (below). The attacker always survives (statement, "Armies"). A cell changes owner only when a unit enters it: a unit that leaves a cell leaves it owned (`GameState.java`, `moveUnit`).
 
 #### Protection
 
