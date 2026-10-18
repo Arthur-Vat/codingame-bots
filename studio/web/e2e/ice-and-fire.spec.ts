@@ -109,6 +109,74 @@ test('the board fits a phone: no sideways scrolling at 360 px wide', async ({ pa
   expect(wider).toBe(false);
 });
 
+test('the board is drawn with the default themes, and the choice is made in Board settings and remembered', async ({
+  page,
+}) => {
+  await openRecord(page);
+  const board = view(page);
+  await expect(board).toHaveAttribute('data-pieces', 'lava');
+  await expect(board).toHaveAttribute('data-board', 'scandinavian');
+  // Every cell has a ground image, a file of the build.
+  const tiles = board.locator('image.tile');
+  await expect(tiles).toHaveCount(144);
+  expect(
+    await tiles.evaluateAll((images) =>
+      images.every((image) => /\.svg$/.test(image.getAttribute('href') ?? '')),
+    ),
+  ).toBe(true);
+
+  const settings = page.getByRole('region', { name: 'Board settings' }).filter({ visible: true });
+  const pieces = settings.getByLabel('Pieces');
+  const ground = settings.getByLabel('Board', { exact: true });
+  await expect(pieces).toHaveValue('lava');
+  await expect(ground).toHaveValue('scandinavian');
+  await expect(pieces.locator('option')).toHaveText([
+    'Lava and glacier',
+    'Storybook',
+    'Ink and watercolour',
+    'Japanese print',
+    'Bauhaus',
+    'Scandinavian minimal',
+    'Art deco',
+  ]);
+
+  await pieces.selectOption('storybook');
+  await ground.selectOption('japanese');
+  await expect(board).toHaveAttribute('data-pieces', 'storybook');
+  await expect(board).toHaveAttribute('data-board', 'japanese');
+
+  await page.reload();
+  await expect.poll(() => isolated(page), { timeout: 30_000 }).toBe(true);
+  await expect(view(page)).toHaveAttribute('data-pieces', 'storybook');
+  await expect(view(page)).toHaveAttribute('data-board', 'japanese');
+  await expect(
+    page
+      .getByRole('region', { name: 'Board settings' })
+      .filter({ visible: true })
+      .getByLabel('Pieces'),
+  ).toHaveValue('storybook');
+});
+
+test('the board still fits 360 px wide with other themes chosen', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 740 });
+  await openRecord(page);
+  await page.evaluate(() => {
+    localStorage.setItem('studio.theme.ice-and-fire.pieces', 'bauhaus');
+    localStorage.setItem('studio.theme.ice-and-fire.board', 'deco');
+  });
+  await page.reload();
+  await expect.poll(() => isolated(page), { timeout: 30_000 }).toBe(true);
+  await expect(view(page)).toHaveAttribute('data-board', 'deco');
+  const box = await view(page).boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(360);
+  const wider = await page.evaluate<boolean>(
+    'document.documentElement.scrollWidth > document.documentElement.clientWidth',
+  );
+  expect(wider).toBe(false);
+});
+
 test('the setup menu of a game without human play offers only two bots', async ({ page }) => {
   await open(page, '/#/game/ice-and-fire');
   const dialog = page.getByRole('dialog', { name: 'Game setup' });

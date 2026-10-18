@@ -20,6 +20,7 @@ export default function ThemeSettings({ gameId }: { gameId: string }) {
         <label key={kind} className="switch theme-pick">
           {label}
           <select
+            aria-label={label}
             value={chosen[kind]}
             onChange={(event) => setGameTheme(gameId, kind, event.target.value)}
           >
