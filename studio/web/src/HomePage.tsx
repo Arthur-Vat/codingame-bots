@@ -1,4 +1,5 @@
-import { BoardThumb } from './BoardThumb';
+import { createElement } from 'react';
+import { thumbFor } from './games/registry';
 import type { GamesState } from './hooks';
 import { HOME_HEADING, SERVER_HINT, botSummary } from './home';
 import { defaultRelease } from './setup';
@@ -37,9 +38,7 @@ export function HomePage({ state }: { state: GamesState }) {
         <div className="cards">
           {games.map((game) => (
             <a key={game.id} className="card live" href={`#/game/${encodeURIComponent(game.id)}`}>
-              <div className="thumb">
-                <BoardThumb />
-              </div>
+              <div className="thumb">{createElement(thumbFor(game.id))}</div>
               <h2>{game.name}</h2>
               <div className="meta">
                 <span>{botSummary(game.releases.length, game.baselines.length)}</span>
