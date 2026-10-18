@@ -226,53 +226,11 @@ describe('Board markup', () => {
   });
 });
 
-/** The badges of a markup: [side class, shape, text], in drawing order. */
-const badges = (html: string): [string, string, string][] =>
-  [
-    ...html.matchAll(
-      /<g class="badge ([rb])"><(rect|circle)[^>]*><\/\2><text[^>]*>([^<]*)<\/text>/g,
-    ),
-  ].map((m) => [m[1]!, m[2]!, m[3]!]);
 /** The overlays of a markup, which no theme changes. */
 const overlays = (html: string): string[] =>
-  [
-    ...html.matchAll(
-      /<g class="(?:hatches|badges)">.*?<\/g>(?=<g class="(?:badges|last)"|<\/svg>)/g,
-    ),
-  ].map((m) => m[0]);
+  [...html.matchAll(/<g class="hatches">.*?<\/g>(?=<g class="last"|<\/svg>)/g)].map((m) => m[0]);
 
-describe('the marks that do not depend on the theme', () => {
-  it('gives a unit a badge with its level, a rounded square for Red and a circle for Blue', () => {
-    const levels = badges(render()).filter(([, , text]) => /^\d$/.test(text));
-    expect(levels).toEqual([
-      ['r', 'rect', '1'],
-      ['b', 'circle', '3'],
-    ]);
-    expect(render()).toMatch(/<rect class="plate"[^>]* rx="/);
-  });
-
-  it('gives a building a badge with the letter of its side, in the same shapes', () => {
-    const frame = sample();
-    frame.buildings.push(
-      { owner: 0, kind: 'mine', x: 3, y: 3 },
-      { owner: 1, kind: 'tower', x: 10, y: 10 },
-    );
-    const letters = badges(render({ frame })).filter(([, , text]) => /^[RB]$/.test(text));
-    expect(letters).toEqual([
-      ['r', 'rect', 'R'],
-      ['b', 'circle', 'B'],
-      ['r', 'rect', 'R'],
-      ['b', 'circle', 'B'],
-    ]);
-  });
-
-  it('puts a unit’s badge in the bottom-right corner of its cell and a building’s top-right', () => {
-    const html = render();
-    // The Red unit at 1,0 and the Red HQ at 0,0, with a badge of 0.36 centred 0.21 from the edges.
-    expect(html).toContain('<rect class="plate" x="1.61" y="0.61"');
-    expect(html).toContain('<rect class="plate" x="0.61" y="0.03"');
-  });
-
+describe('the mark that does not depend on the theme', () => {
   it('hatches the owned cells cut off from their HQ, and no active or neutral one', () => {
     const html = render();
     expect(count(html, /class="hatch /g)).toBe(1);
@@ -282,12 +240,12 @@ describe('the marks that do not depend on the theme', () => {
     expect(count(render({ frame }), /class="hatch /g)).toBe(0);
     frame.owner[5]![5] = 1;
     expect(count(render({ frame }), /class="hatch b"/g)).toBe(1);
-    expect(count(render({ frame: emptyFrame() }), /class="(hatch|badge) /g)).toBe(0);
+    expect(count(render({ frame: emptyFrame() }), /class="hatch /g)).toBe(0);
   });
 
-  it('draws the same hatch and badges whatever the themes are', () => {
+  it('draws the same hatch whatever the themes are', () => {
     const plain = overlays(render());
-    expect(plain).toHaveLength(2);
+    expect(plain).toHaveLength(1);
     try {
       for (const [pieces, board] of [
         ['bauhaus', 'japanese'],
