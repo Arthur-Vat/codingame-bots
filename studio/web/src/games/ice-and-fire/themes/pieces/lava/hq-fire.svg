@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs>
+<linearGradient id="body" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b3261e"/><stop offset=".35" stop-color="#ff7a2f"/><stop offset=".55" stop-color="#ffe08a"/><stop offset="1" stop-color="#b3261e"/></linearGradient>
+<linearGradient id="base" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b3261e"/><stop offset="1" stop-color="#4a0d08"/></linearGradient>
+<radialGradient id="aura" cx="50%" cy="60%" r="50%"><stop offset="0" stop-color="#ffb347" stop-opacity=".55"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
+</defs>
+
+<ellipse cx="32" cy="50" rx="24" ry="14" fill="url(#aura)"/>
+<ellipse cx="32" cy="57.5" rx="17" ry="4" fill="#000" opacity=".35"/>
+<path d="M15 55 C15 51 21 49 32 49 C43 49 49 51 49 55 C49 58 43 60 32 60 C21 60 15 58 15 55Z" fill="url(#base)" stroke="#240604" stroke-width="1.4"/>
+<path d="M18 51.5 C22 50.5 27 50 32 50 C37 50 42 50.5 46 51.5" fill="none" stroke="#ffe08a" stroke-width="1" opacity=".55"/>
+
+<path d="M18 50 V28 h4 v-4 h4 v4 h4 v-4 h4 v4 h4 v-4 h4 v4 h4 V50Z" fill="url(#body)" stroke="#240604" stroke-width="1.5" stroke-linejoin="round"/>
+<path d="M18 36 h28 M18 43 h28" stroke="#240604" stroke-width=".8" opacity=".4"/>
+<path d="M28 50 V43 a4 4 0 0 1 8 0 V50Z" fill="#4a0d08" stroke="#240604" stroke-width="1.1"/>
+<path d="M22 31 h20 l-2 -2 h-16z" fill="none"/>
+<path d="M26 26 C26 18 38 18 38 26" fill="none"/>
+<path d="M32 9 C34 13 37 14 37 18 C37 21 35 23 32 23 C29 23 27 21 27 18 C27 15 29 14 29 12 C30 13 31 14 31 15 C31 13 31 11 32 9Z" fill="#ffb347" stroke="#240604" stroke-width="1.1"/>
+</svg>

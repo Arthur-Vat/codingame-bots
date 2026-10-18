@@ -17,6 +17,7 @@ import { botsPlaying, unplayedView } from './botGame';
 import { PlayingOverlay } from './PlayingOverlay';
 import { downloadText, errorMessage, typesText } from './browser';
 import { BoardSlot } from './BoardSlot';
+import ThemeSettings from './ThemeSettings';
 import { clockSeed } from './setup';
 import {
   emptyFrameFor,
@@ -435,6 +436,7 @@ export function GamePage({
                 onChange={(event) => setCoordinates(event.target.checked)}
               />
             </label>
+            <ThemeSettings gameId={gameId} />
             <p className="hint">
               {over
                 ? 'Keys: ← → step, Home/End jump, Space plays.'

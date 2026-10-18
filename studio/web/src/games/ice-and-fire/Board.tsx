@@ -1,4 +1,14 @@
 import './board.css';
+import { useGameTheme } from '../../gameThemes';
+import {
+  boardThemeOf,
+  groundName,
+  groundUrl,
+  mirrored,
+  pieceThemeOf,
+  pieceUrl,
+  sideName,
+} from './themes';
 import {
   SIZE,
   answerText,
@@ -38,58 +48,87 @@ const SEATS: Seat[] = [0, 1];
 
 const side = (seat: Seat): 'r' | 'b' => (seat === 0 ? 'r' : 'b');
 
-/* A building spans a cell, drawn in 0..1 cell units from the cell's corner. */
-const HQ_PATH = 'M.15 .85V.25H.32V.38H.43V.25H.57V.38H.68V.25H.85V.85Z';
-const MINE_PATH = 'M.5 .1L.9 .5L.5 .9L.1 .5Z';
-const MINE_CORE = 'M.5 .32L.68 .5L.5 .68L.32 .5Z';
-const TOWER_PATH = 'M.5 .1L.9 .88H.1Z';
+/* The mark of a mine spot over the ground of an owned cell that has no mine: a small diamond,
+   drawn in 0..1 cell units from the cell's corner. */
 const SPOT_PATH = 'M.5 .26L.74 .5L.5 .74L.26 .5Z';
+const CROSS_PATH = 'M.3 .3L.7 .7M.7 .3L.3 .7';
 
-function BuildingMark({ building }: { building: Building }) {
-  const { owner, kind, x, y } = building;
-  const name = `${seatName(owner)} ${kindName(kind)} at ${x},${y}`;
-  return (
-    <g className={`building ${kind} ${side(owner)}`} transform={`translate(${x} ${y})`}>
-      <title>{name}</title>
-      {kind === 'hq' && (
-        <>
-          <path className="shape" d={HQ_PATH} />
-          <text className="letter" x={0.5} y={0.7}>
-            {owner === 0 ? 'R' : 'B'}
-          </text>
-        </>
-      )}
-      {kind === 'mine' && (
-        <>
-          <path className="shape" d={MINE_PATH} />
-          <path className="gold" d={MINE_CORE} />
-        </>
-      )}
-      {kind === 'tower' && <path className="shape" d={TOWER_PATH} />}
-    </g>
-  );
-}
+/* The badges, in every theme the same: a rounded square for Red and a circle for Blue, so the
+   side reads by shape as well as by colour. Drawn in 0..1 cell units from the cell's corner. */
+const BADGE = 0.36;
+const BADGE_RADIUS = 0.08;
+/** How far the badge's centre is from the cell's edges. */
+const BADGE_INSET = 0.21;
 
-function UnitMark({ unit }: { unit: Unit }) {
-  const { owner, level, x, y } = unit;
+/** A badge centred at (cx, cy) in cell units: the shape of the side, with a letter or a digit. */
+function Badge({ owner, cx, cy, text }: { owner: Seat; cx: number; cy: number; text: string }) {
+  const half = BADGE / 2;
+  const r = (n: number): number => +n.toFixed(3);
   return (
-    <g className={`unit ${side(owner)}`} transform={`translate(${x} ${y})`}>
-      <title>{`${seatName(owner)} unit level ${level} at ${x},${y}`}</title>
-      {owner === 1 && <circle className="halo" cx={0.5} cy={0.5} r={0.42} />}
-      <circle className="disc" cx={0.5} cy={0.5} r={0.32} />
-      <text className="level" x={0.5} y={0.52}>
-        {level}
+    <g className={`badge ${side(owner)}`}>
+      {owner === 0 ? (
+        <rect
+          className="plate"
+          x={r(cx - half)}
+          y={r(cy - half)}
+          width={BADGE}
+          height={BADGE}
+          rx={BADGE_RADIUS}
+        />
+      ) : (
+        <circle className="plate" cx={r(cx)} cy={r(cy)} r={half} />
+      )}
+      <text className="mark" x={r(cx)} y={r(cy)}>
+        {text}
       </text>
     </g>
   );
 }
 
-function RemovedMark({ owner, level, x, y }: { owner: Seat; level: Level; x: number; y: number }) {
+/** A piece, drawn at the full cell: its drawing carries its own margins and shadow. */
+function Piece({ href }: { href: string }) {
+  return <image href={href} x={0} y={0} width={1} height={1} />;
+}
+
+function BuildingMark({ building, theme }: { building: Building; theme: string }) {
+  const { owner, kind, x, y } = building;
+  const name = `${seatName(owner)} ${kindName(kind)} at ${x},${y}`;
+  return (
+    <g className={`building ${kind} ${side(owner)}`} transform={`translate(${x} ${y})`}>
+      <title>{name}</title>
+      <Piece href={pieceUrl(theme, `${kind}-${sideName(owner)}`)} />
+    </g>
+  );
+}
+
+function UnitMark({ unit, theme }: { unit: Unit; theme: string }) {
+  const { owner, level, x, y } = unit;
+  return (
+    <g className={`unit ${side(owner)}`} transform={`translate(${x} ${y})`}>
+      <title>{`${seatName(owner)} unit level ${level} at ${x},${y}`}</title>
+      <Piece href={pieceUrl(theme, `unit-${sideName(owner)}-${level}`)} />
+    </g>
+  );
+}
+
+interface RemovedProps {
+  owner: Seat;
+  level: Level;
+  x: number;
+  y: number;
+  theme: string;
+}
+
+/** A unit removed by the last turn: its piece, faded, under a cross. */
+function RemovedMark({ owner, level, x, y, theme }: RemovedProps) {
   return (
     <g className={`removed ${side(owner)}`} transform={`translate(${x} ${y})`}>
       <title>{`${seatName(owner)} unit level ${level} removed at ${x},${y}`}</title>
-      <circle className="disc" cx={0.5} cy={0.5} r={0.32} />
-      <path className="cross" d="M.34 .34L.66 .66M.66 .34L.34 .66" />
+      <g className="faded">
+        <Piece href={pieceUrl(theme, `unit-${sideName(owner)}-${level}`)} />
+      </g>
+      <path className="cross casing" d={CROSS_PATH} />
+      <path className="cross" d={CROSS_PATH} />
     </g>
   );
 }
@@ -105,27 +144,57 @@ function SeatSummary({ frame, seat }: { frame: IceAndFireFrame; seat: Seat }) {
   );
 }
 
+interface Tile {
+  x: number;
+  y: number;
+  href: string;
+  flip: boolean;
+  /** A mine spot that holds no mine. */
+  spot: boolean;
+  owned: boolean;
+}
+
 export default function Board({ frame, showCoordinates }: BoardProps) {
-  const tiles: { x: number; y: number; className: string }[] = [];
+  const chosen = useGameTheme('ice-and-fire');
+  // The stored ids are looked up in the lists: an unknown one gives the default.
+  const pieces = pieceThemeOf(chosen.pieces).id;
+  const ground = boardThemeOf(chosen.board);
+  const built = new Set(frame.buildings.map((b) => `${b.x},${b.y}`));
+  const spotCells = new Set(frame.mine_spots.map(([x, y]) => `${x},${y}`));
+  const tiles: Tile[] = [];
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {
-      if (frame.void[y]?.[x] === true) continue;
       const owner = frame.owner[y]?.[x] ?? null;
-      const active = frame.active[y]?.[x] === true;
-      const className =
-        owner === null ? 'tile neutral' : `tile ${side(owner)}${active ? '' : ' off'}`;
-      tiles.push({ x, y, className });
+      const mineSpot = spotCells.has(`${x},${y}`);
+      const name = groundName({
+        void: frame.void[y]?.[x] === true,
+        owner,
+        active: frame.active[y]?.[x] === true,
+        mineSpot,
+      });
+      tiles.push({
+        x,
+        y,
+        href: groundUrl(ground.id, name),
+        flip: ground.mirror && mirrored(x, y),
+        spot: mineSpot && !built.has(`${x},${y}`),
+        owned: owner !== null,
+      });
     }
   }
-  const built = new Set(frame.buildings.map((b) => `${b.x},${b.y}`));
-  const spots = frame.mine_spots.filter(([x, y]) => !built.has(`${x},${y}`));
   const last = frame.last;
   const answer = answerText(frame);
   const toMove = toMoveText(frame);
   const label = boardLabel(frame);
 
   return (
-    <div className={`iaf${showCoordinates ? '' : ' coords-off'}`} role="group" aria-label={label}>
+    <div
+      className={`iaf${showCoordinates ? '' : ' coords-off'}`}
+      role="group"
+      aria-label={label}
+      data-pieces={pieces}
+      data-board={ground.id}
+    >
       <div className="iaf-strip">
         <div className="iaf-turn">
           <span>{turnText(frame)}</span>
@@ -163,46 +232,85 @@ export default function Board({ frame, showCoordinates }: BoardProps) {
           ))}
         </g>
         <g className="tiles">
-          {tiles.map(({ x, y, className }) => (
-            <rect
+          {tiles.map(({ x, y, href, flip, spot, owned }) => (
+            <image
               key={`${x},${y}`}
-              className={className}
-              x={x + 0.03}
-              y={y + 0.03}
-              width={0.94}
-              height={0.94}
-            />
+              className="tile"
+              href={href}
+              x={x}
+              y={y}
+              width={1}
+              height={1}
+              preserveAspectRatio="none"
+              transform={flip ? `matrix(-1 0 0 1 ${2 * x + 1} 0)` : undefined}
+            >
+              {spot && !owned && <title>{`Mine spot at ${x},${y}`}</title>}
+            </image>
           ))}
         </g>
-        <path className="hatch r" d={hatchPath(inactiveCells(frame, 0))} />
-        <path className="hatch b" d={hatchPath(inactiveCells(frame, 1))} />
         <g className="spots">
-          {spots.map(([x, y]) => (
-            <path
-              key={`${x},${y}`}
-              className="spot"
-              d={SPOT_PATH}
-              transform={`translate(${x} ${y})`}
-            >
-              <title>{`Mine spot at ${x},${y}`}</title>
-            </path>
-          ))}
+          {tiles
+            .filter(({ spot, owned }) => spot && owned)
+            .map(({ x, y }) => (
+              <path
+                key={`${x},${y}`}
+                className="spot"
+                d={SPOT_PATH}
+                transform={`translate(${x} ${y})`}
+              >
+                <title>{`Mine spot at ${x},${y}`}</title>
+              </path>
+            ))}
         </g>
         <g className="buildings">
           {frame.buildings.map((building) => (
-            <BuildingMark key={`${building.x},${building.y}`} building={building} />
+            <BuildingMark key={`${building.x},${building.y}`} building={building} theme={pieces} />
           ))}
         </g>
         {last !== null && (
           <g className="removed-units">
             {last.removed.map((r) => (
-              <RemovedMark key={r.id} owner={r.owner} level={r.level} x={r.x} y={r.y} />
+              <RemovedMark
+                key={r.id}
+                owner={r.owner}
+                level={r.level}
+                x={r.x}
+                y={r.y}
+                theme={pieces}
+              />
             ))}
           </g>
         )}
         <g className="units">
           {frame.units.map((unit) => (
-            <UnitMark key={unit.id} unit={unit} />
+            <UnitMark key={unit.id} unit={unit} theme={pieces} />
+          ))}
+        </g>
+        <g className="hatches">
+          {SEATS.flatMap((seat) =>
+            inactiveCells(frame, seat).map(([x, y]) => (
+              <path key={`${x},${y}`} className={`hatch ${side(seat)}`} d={hatchPath([[x, y]])} />
+            )),
+          )}
+        </g>
+        <g className="badges">
+          {frame.buildings.map(({ owner, x, y }) => (
+            <Badge
+              key={`b${x},${y}`}
+              owner={owner}
+              cx={x + 1 - BADGE_INSET}
+              cy={y + BADGE_INSET}
+              text={owner === 0 ? 'R' : 'B'}
+            />
+          ))}
+          {frame.units.map(({ id, owner, level, x, y }) => (
+            <Badge
+              key={`u${id}`}
+              owner={owner}
+              cx={x + 1 - BADGE_INSET}
+              cy={y + 1 - BADGE_INSET}
+              text={String(level)}
+            />
           ))}
         </g>
         {last !== null && (

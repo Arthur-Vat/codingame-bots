@@ -8,6 +8,7 @@ import {
   renderers,
   resultDetailFor,
   seatNamesFor,
+  themesFor,
   thumbFor,
 } from './registry';
 import { BoardThumb } from '../BoardThumb';
@@ -83,6 +84,33 @@ describe('the registry lookups', () => {
     expect(seatNamesFor('ice-and-fire')).toEqual(['Red', 'Blue']);
     for (const id of ['uttt', 'nope', 'constructor', '__proto__']) {
       expect(seatNamesFor(id), id).toEqual(['X', 'O']);
+    }
+  });
+
+  it('offers Ice and Fire a pieces and a board theme, and no other game any', () => {
+    const offered = themesFor('ice-and-fire')!;
+    expect(offered.pieces.default).toBe('lava');
+    expect(offered.board.default).toBe('scandinavian');
+    expect(offered.pieces.options.map((o) => o.label)).toEqual([
+      'Lava and glacier',
+      'Storybook',
+      'Ink and watercolour',
+      'Japanese print',
+      'Bauhaus',
+      'Scandinavian minimal',
+      'Art deco',
+    ]);
+    expect(offered.board.options.map((o) => o.id)).toEqual([
+      'scandinavian',
+      'storybook',
+      'lava',
+      'watercolour',
+      'japanese',
+      'bauhaus',
+      'deco',
+    ]);
+    for (const id of ['uttt', 'nope', 'constructor', '__proto__']) {
+      expect(themesFor(id), id).toBeUndefined();
     }
   });
 

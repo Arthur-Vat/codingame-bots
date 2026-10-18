@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs>
+<linearGradient id="body" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b3261e"/><stop offset=".35" stop-color="#ff7a2f"/><stop offset=".55" stop-color="#ffe08a"/><stop offset="1" stop-color="#b3261e"/></linearGradient>
+<linearGradient id="base" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b3261e"/><stop offset="1" stop-color="#4a0d08"/></linearGradient>
+<radialGradient id="aura" cx="50%" cy="60%" r="50%"><stop offset="0" stop-color="#ffb347" stop-opacity=".55"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
+</defs>
+
+<ellipse cx="32" cy="50" rx="24" ry="14" fill="url(#aura)"/>
+<ellipse cx="32" cy="57.5" rx="17" ry="4" fill="#000" opacity=".35"/>
+<path d="M15 55 C15 51 21 49 32 49 C43 49 49 51 49 55 C49 58 43 60 32 60 C21 60 15 58 15 55Z" fill="url(#base)" stroke="#240604" stroke-width="1.4"/>
+<path d="M18 51.5 C22 50.5 27 50 32 50 C37 50 42 50.5 46 51.5" fill="none" stroke="#ffe08a" stroke-width="1" opacity=".55"/>
+
+<path d="M23 50 C24 45 25 41 26 37 L25 25 H39 L38 37 C39 41 40 45 41 50Z" fill="url(#body)" stroke="#240604" stroke-width="1.4" stroke-linejoin="round"/>
+<path d="M22 25 V15 h4.5 v4 h3 v-4 h5 v4 h3 v-4 h4.5 V25Z" fill="url(#body)" stroke="#240604" stroke-width="1.4" stroke-linejoin="round"/>
+<path d="M22 25 h20" stroke="#240604" stroke-width="1.6"/>
+<path d="M30.5 31 a1.5 1.5 0 0 1 3 0 v4 h-3z" fill="#ffb347" stroke="#240604" stroke-width=".8"/>
+<path d="M33.5 25 v25" stroke="#fff" stroke-width="1.2" opacity=".35"/>
+</svg>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs>
+<radialGradient id="rim" cx="40%" cy="30%" r="75%"><stop offset="0" stop-color="#5aa2f0"/><stop offset="1" stop-color="#173f86"/></radialGradient>
+<radialGradient id="field" cx="50%" cy="35%" r="70%"><stop offset="0" stop-color="#eef8ff" stop-opacity=".95"/><stop offset=".55" stop-color="#9fd0ff"/><stop offset="1" stop-color="#3f8ae0"/></radialGradient>
+<linearGradient id="steel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef1f4"/><stop offset=".5" stop-color="#a9b3bd"/><stop offset="1" stop-color="#5d6873"/></linearGradient>
+<linearGradient id="flame" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#1d5fc4"/><stop offset=".55" stop-color="#9fd0ff"/><stop offset="1" stop-color="#eef8ff"/></linearGradient>
+</defs>
+<ellipse cx="32" cy="58" rx="20" ry="4" fill="#000" opacity=".25"/>
+<circle cx="32" cy="31" r="27" fill="url(#rim)" stroke="#0a1830" stroke-width="2"/>
+<circle cx="32" cy="31" r="21.5" fill="url(#field)" stroke="#0a1830" stroke-width="1.2" stroke-opacity=".6"/>
+<g>
+<path d="M26 22 L27 13 L30 18 L32 8 L34 18 L37 13 L38 22Z" fill="#eef8ff" stroke="#0a1830" stroke-width="1.4" stroke-linejoin="round"/>
+<path d="M30 18 L32 8 L34 18Z" fill="#9fd0ff"/>
+<path d="M21 44 V31 C21 24 26 20 32 20 C38 20 43 24 43 31 V44 C39 47 25 47 21 44Z" fill="url(#steel)" stroke="#0a1830" stroke-width="1.6"/>
+<path d="M32 20 V44" stroke="#0a1830" stroke-width="1" opacity=".5"/>
+<rect x="24" y="30" width="16" height="4" rx="1.5" fill="#0a1830"/>
+<circle cx="28.5" cy="32" r="1.1" fill="#9fd0ff"/><circle cx="35.5" cy="32" r="1.1" fill="#9fd0ff"/>
+<path d="M24 38 h16" stroke="#0a1830" stroke-width="1" opacity=".5"/>
+<circle cx="25" cy="41" r="0.9" fill="#0a1830"/><circle cx="39" cy="41" r="0.9" fill="#0a1830"/>
+<path d="M38 37 h9 v6 c0 4 -4.5 6 -4.5 6 c0 0 -4.5 -2 -4.5 -6z" fill="#1d5fc4" stroke="#0a1830" stroke-width="1.4"/>
+<path d="M42.5 38.6 v6.4 M39.7 40.2 l5.6 3.2 M45.3 40.2 l-5.6 3.2" stroke="#eef8ff" stroke-width="1.1" stroke-linecap="round"/>
+</g>
+<path d="M14 18 A22 22 0 0 1 30 9" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".45"/>
+<path d="M27 54.5 l3.2 3.2 -3.2 3.2 -3.2 -3.2z" fill="#ffd166" stroke="#0a1830" stroke-width="1"/><path d="M37 54.5 l3.2 3.2 -3.2 3.2 -3.2 -3.2z" fill="#ffd166" stroke="#0a1830" stroke-width="1"/>
+</svg>

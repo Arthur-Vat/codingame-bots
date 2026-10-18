@@ -20,6 +20,11 @@ export default defineConfig({
   // behaves like GitHub Pages, which cannot set headers (public/coi-sw.js does it there) and has
   // no API. The browser tests rely on that.
   preview: { headers: {}, proxy: {} },
+  build: {
+    // The board's drawings (SVG) stay files, fetched when a theme uses them: inlined, all the
+    // themes' would weigh down the script.
+    assetsInlineLimit: (file) => (file.endsWith('.svg') ? false : undefined),
+  },
   // Module workers (the bots), as ES modules.
   worker: { format: 'es' },
   test: {

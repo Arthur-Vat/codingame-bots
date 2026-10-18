@@ -9,6 +9,7 @@ import { DEFAULT_SEAT_NAMES, type SeatNames } from '../sessionView';
 import { BoardThumb } from '../BoardThumb';
 import { IceAndFireThumb } from './ice-and-fire/Thumb';
 import UtttBoard from './uttt/Board';
+export { themes, themesFor, type GameThemes, type ThemeChoice } from './themeChoices';
 import {
   asUtttFrame,
   cellKey as utttCellKey,
