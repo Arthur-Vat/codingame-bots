@@ -6,6 +6,8 @@ import {
   resultDetail as iceAndFireResultDetail,
 } from './ice-and-fire/view';
 import { DEFAULT_SEAT_NAMES, type SeatNames } from '../sessionView';
+import { BoardThumb } from '../BoardThumb';
+import { IceAndFireThumb } from './ice-and-fire/Thumb';
 import UtttBoard from './uttt/Board';
 export { themes, themesFor, type GameThemes, type ThemeChoice } from './themeChoices';
 import {
@@ -177,4 +179,18 @@ export function hasSeatNames(gameId: string): boolean {
 /** A game's empty board, if it has one. */
 export function emptyFrameFor(gameId: string): unknown {
   return ownEntry(emptyFrames, gameId)?.();
+}
+
+/**
+ * A game's picture on its home page card: a fixed drawing of a game in progress. A game without
+ * one shows Ultimate Tic-Tac-Toe's.
+ */
+export const thumbs: Record<string, ComponentType> = byId({
+  uttt: BoardThumb,
+  'ice-and-fire': IceAndFireThumb,
+});
+
+/** A game's picture for its card. */
+export function thumbFor(gameId: string): ComponentType {
+  return ownEntry(thumbs, gameId) ?? BoardThumb;
 }

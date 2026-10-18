@@ -9,7 +9,10 @@ import {
   resultDetailFor,
   seatNamesFor,
   themesFor,
+  thumbFor,
 } from './registry';
+import { BoardThumb } from '../BoardThumb';
+import { IceAndFireThumb } from './ice-and-fire/Thumb';
 
 describe('the registry lookups', () => {
   it('find the entries of a registered game', () => {
@@ -25,6 +28,12 @@ describe('the registry lookups', () => {
     expect(moveCellFor('ice-and-fire', '1 2')).toBeNull();
     expect(actionTextFor('ice-and-fire', { row: 1, col: 2 })).toBeNull();
     expect(hasActionTexts('ice-and-fire')).toBe(false);
+  });
+
+  it("give each game its card picture, and an unknown game the first game's", () => {
+    expect(thumbFor('uttt')).toBe(BoardThumb);
+    expect(thumbFor('ice-and-fire')).toBe(IceAndFireThumb);
+    for (const id of ['nope', 'constructor', '__proto__']) expect(thumbFor(id)).toBe(BoardThumb);
   });
 
   it('find nothing for an unknown game, and nothing a plain object inherits', () => {
