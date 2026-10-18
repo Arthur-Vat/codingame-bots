@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs>
+<linearGradient id="stone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9b0a4"/><stop offset="1" stop-color="#7b7268"/></linearGradient>
+<linearGradient id="wood" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#a0683a"/><stop offset="1" stop-color="#6b4223"/></linearGradient>
+<linearGradient id="crystal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#bfe3ff"/><stop offset="1" stop-color="#5aa2f0"/></linearGradient>
+<linearGradient id="fireg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#b3261e"/><stop offset=".55" stop-color="#f7934c"/><stop offset="1" stop-color="#ffd166"/></linearGradient>
+</defs>
+<ellipse cx="32" cy="58" rx="24" ry="4" fill="#000" opacity=".25"/>
+<path d="M12 57 V30 h5 v-4 h4 v4 h4 v-4 h4 v4 h6 v-4 h4 v4 h4 v-4 h4 v4 h5 V57Z" fill="url(#stone)" stroke="#2a221c" stroke-width="1.6" stroke-linejoin="round"/>
+<path d="M22 57 V24 h4 v-5 h4 v5 h4 v-5 h4 v5 h4 V57Z" fill="#a39a8f" stroke="#2a221c" stroke-width="1.6" stroke-linejoin="round"/>
+<path d="M14 38 h36 M14 46 h36 M22 31 h20" stroke="#2a221c" stroke-width=".8" opacity=".35"/>
+<path d="M27 57 V47 a5 5 0 0 1 10 0 V57Z" fill="#2b1810" stroke="#2a221c" stroke-width="1.2"/>
+<path d="M28.5 33 a3.5 3.5 0 0 1 7 0 V39 h-7z" fill="#ffd166" stroke="#2a221c" stroke-width="1"/>
+<path d="M17 41 a2 2 0 0 1 4 0 v4 h-4z M43 41 a2 2 0 0 1 4 0 v4 h-4z" fill="#ffb347" stroke="#2a221c" stroke-width=".9"/>
+<path d="M26 19 C25 14 27 12 29 9 C29 12 31 13 31 15 C32 12 34 11 34 8 C37 11 39 15 38 19Z" fill="url(#fireg)" stroke="#2b0d0a" stroke-width="1.2" stroke-linejoin="round"/>
+<path d="M16 26 v-13" stroke="#3a2a1c" stroke-width="1.6" stroke-linecap="round"/><path d="M16 13 q5 1.5 10 -1 v6 q-5 2.5 -10 1z" fill="#b3261e" stroke="#2b0d0a" stroke-width="1.1" stroke-linejoin="round"/><path d="M48 26 v-13" stroke="#3a2a1c" stroke-width="1.6" stroke-linecap="round"/><path d="M48 13 q-5 1.5 -10 -1 v6 q5 2.5 10 1z" fill="#b3261e" stroke="#2b0d0a" stroke-width="1.1" stroke-linejoin="round"/>
+</svg>

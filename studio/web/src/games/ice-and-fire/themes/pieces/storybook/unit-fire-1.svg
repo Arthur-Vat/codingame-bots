@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><defs>
+<radialGradient id="rim" cx="40%" cy="30%" r="75%"><stop offset="0" stop-color="#e9553a"/><stop offset="1" stop-color="#8e1c14"/></radialGradient>
+<radialGradient id="field" cx="50%" cy="35%" r="70%"><stop offset="0" stop-color="#ffd166" stop-opacity=".95"/><stop offset=".55" stop-color="#f7934c"/><stop offset="1" stop-color="#e2452b"/></radialGradient>
+<linearGradient id="steel" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef1f4"/><stop offset=".5" stop-color="#a9b3bd"/><stop offset="1" stop-color="#5d6873"/></linearGradient>
+<linearGradient id="flame" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#b3261e"/><stop offset=".55" stop-color="#f7934c"/><stop offset="1" stop-color="#ffd166"/></linearGradient>
+</defs>
+<ellipse cx="32" cy="58" rx="20" ry="4" fill="#000" opacity=".25"/>
+<circle cx="32" cy="31" r="27" fill="url(#rim)" stroke="#2b0d0a" stroke-width="2"/>
+<circle cx="32" cy="31" r="21.5" fill="url(#field)" stroke="#2b0d0a" stroke-width="1.2" stroke-opacity=".6"/>
+<g>
+<path d="M32 12 C35 18 40 19 41 25 C43 21 42 18 41 16 C47 21 49 29 46 37 C44 44 39 47 32 47 C25 47 20 44 18 37 C16 30 19 24 23 21 C23 24 24 26 26 27 C25 21 28 16 32 12Z" fill="url(#flame)" stroke="#2b0d0a" stroke-width="1.6" stroke-linejoin="round"/>
+<path d="M32 26 C35 30 38 32 37 37 C36 41 34 43 32 43 C29 43 27 41 27 37 C27 33 30 31 32 26Z" fill="#ffd166" opacity=".9"/>
+<ellipse cx="27.8" cy="35" rx="2.4" ry="3.0" fill="#fff" stroke="#2b0d0a" stroke-width="1"/><ellipse cx="36.2" cy="35" rx="2.4" ry="3.0" fill="#fff" stroke="#2b0d0a" stroke-width="1"/><circle cx="28.400000000000002" cy="35.6" r="1.32" fill="#2b0d0a"/><circle cx="36.800000000000004" cy="35.6" r="1.32" fill="#2b0d0a"/>
+<path d="M29 40.5 Q32 43 35 40.5" fill="none" stroke="#2b0d0a" stroke-width="1.4" stroke-linecap="round"/>
+</g>
+<path d="M14 18 A22 22 0 0 1 30 9" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".45"/>
+<path d="M32 54.5 l3.2 3.2 -3.2 3.2 -3.2 -3.2z" fill="#ffd166" stroke="#2b0d0a" stroke-width="1"/>
+</svg>
