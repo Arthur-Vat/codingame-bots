@@ -274,27 +274,3 @@ export function arrow(
     .join(' ');
   return { x1: fx + ux * 0.3, y1: fy + uy * 0.3, x2: baseX, y2: baseY, head };
 }
-
-/** The diagonal strokes, one path, that mark cells as cut off from their owner's HQ. */
-export function hatchPath(cells: readonly Point[]): string {
-  const r = (n: number): number => +n.toFixed(2);
-  return cells
-    .map(
-      ([x, y]) =>
-        `M${r(x + 0.12)} ${r(y + 0.88)}L${r(x + 0.88)} ${r(y + 0.12)}` +
-        `M${r(x + 0.12)} ${r(y + 0.5)}L${r(x + 0.5)} ${r(y + 0.12)}` +
-        `M${r(x + 0.5)} ${r(y + 0.88)}L${r(x + 0.88)} ${r(y + 0.5)}`,
-    )
-    .join('');
-}
-
-/** The cells a seat owns that are cut off from its HQ (owned but not active). */
-export function inactiveCells(frame: IceAndFireFrame, owner: Seat): Point[] {
-  const cells: Point[] = [];
-  for (let y = 0; y < SIZE; y++) {
-    for (let x = 0; x < SIZE; x++) {
-      if (frame.owner[y]?.[x] === owner && frame.active[y]?.[x] !== true) cells.push([x, y]);
-    }
-  }
-  return cells;
-}

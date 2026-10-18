@@ -1,16 +1,9 @@
 /* A Code of Ice and Fire's board: a status strip over a 12 x 12 map drawn as one SVG. The whole
    component is square, as the shell's board slot is: the map takes the room the strip leaves and
-   scales to it, so it fits a phone's width and never makes the page scroll sideways. Owners differ
-   by colour and also by shape or label: the HQ carries the owner's letter, blue units have a ring,
-   cells cut off from their HQ are hatched. */
+   scales to it, so it fits a phone's width and never makes the page scroll sideways. The ground
+   and the pieces are drawings of the chosen themes (themes/): the sides differ by their palettes
+   and by their shapes, and a cell cut off from its HQ has its own paler ground. */
 .iaf {
-  --red: #c62f26;
-  --blue: #1d5fc4;
-  --red-tile: #e9a39b;
-  --blue-tile: #9ec3ef;
-  --red-off: #f3d6d2;
-  --blue-off: #d6e5f7;
-  --neutral: #8ca2ad;
   --gold: #f2c14e;
   --mark: var(--amber, #e0a50d);
   --ink: #1a1c1f;
@@ -105,41 +98,6 @@
   dominant-baseline: central;
 }
 
-.tile.neutral {
-  fill: var(--neutral);
-}
-
-.tile.r {
-  fill: var(--red-tile);
-}
-
-.tile.b {
-  fill: var(--blue-tile);
-}
-
-.tile.r.off {
-  fill: var(--red-off);
-}
-
-.tile.b.off {
-  fill: var(--blue-off);
-}
-
-.hatch {
-  fill: none;
-  stroke-width: 0.07px;
-  stroke-linecap: round;
-  opacity: 0.55;
-}
-
-.hatch.r {
-  stroke: var(--red);
-}
-
-.hatch.b {
-  stroke: var(--blue);
-}
-
 .spot {
   fill: none;
   stroke: var(--gold);
@@ -148,85 +106,21 @@
   paint-order: stroke;
 }
 
-.building .shape {
-  stroke: #fff;
-  stroke-width: 0.05px;
-  stroke-linejoin: round;
-}
-
-.building.r .shape {
-  fill: var(--red);
-}
-
-.building.b .shape {
-  fill: var(--blue);
-}
-
-.building .gold {
-  fill: var(--gold);
-  stroke: var(--ink);
-  stroke-width: 0.03px;
-}
-
-.building .letter,
-.unit .level {
-  fill: #fff;
-  font-weight: 700;
-  text-anchor: middle;
-  dominant-baseline: central;
-  font-family: var(--font, system-ui, sans-serif);
-}
-
-.building .letter {
-  font-size: 0.4px;
-}
-
-.unit .disc {
-  stroke: #fff;
-  stroke-width: 0.06px;
-}
-
-.unit.r .disc {
-  fill: var(--red);
-}
-
-.unit.b .disc {
-  fill: var(--blue);
-}
-
-.unit .halo {
-  fill: none;
-  stroke: var(--blue);
-  stroke-width: 0.05px;
-}
-
-.unit .level {
-  font-size: 0.45px;
-}
-
-.removed {
+/* The faded piece of a removed unit, under its cross. */
+.removed .faded {
   opacity: 0.45;
 }
 
-.removed .disc {
-  fill: none;
-  stroke-width: 0.07px;
-  stroke-dasharray: 0.1 0.07;
-}
-
-.removed.r .disc,
-.removed.r .cross {
-  stroke: var(--red);
-}
-
-.removed.b .disc,
-.removed.b .cross {
-  stroke: var(--blue);
-}
-
 .removed .cross {
+  fill: none;
+  stroke: var(--mark);
   stroke-width: 0.07px;
   stroke-linecap: round;
+}
+
+.removed .cross.casing {
+  stroke: var(--ink);
+  stroke-width: 0.14px;
 }
 
 .built {

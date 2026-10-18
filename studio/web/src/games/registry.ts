@@ -7,6 +7,7 @@ import {
 } from './ice-and-fire/view';
 import { DEFAULT_SEAT_NAMES, type SeatNames } from '../sessionView';
 import UtttBoard from './uttt/Board';
+export { themes, themesFor, type GameThemes, type ThemeChoice } from './themeChoices';
 import {
   asUtttFrame,
   cellKey as utttCellKey,

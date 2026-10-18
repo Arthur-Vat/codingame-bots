@@ -26,6 +26,7 @@ import {
 } from './analysis';
 import { arenaRecordText } from './arena';
 import { BoardSlot } from './BoardSlot';
+import ThemeSettings from './ThemeSettings';
 import { downloadText, errorMessage, takesSpace, typesText } from './browser';
 import {
   actionTextFor,
@@ -463,6 +464,7 @@ function AnalysisScreen({
                 />
               </label>
             )}
+            <ThemeSettings gameId={model.game} />
             <p className="hint">Keys: ← → step, Home/End jump, Space plays.</p>
           </section>
         </aside>

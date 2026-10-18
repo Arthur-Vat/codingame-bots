@@ -4,7 +4,9 @@ import { describe, expect, it } from 'vitest';
 import { renderers, resultDetails } from '../registry';
 import type { RendererProps } from '../registry';
 import Board, { type BoardProps } from './Board';
+import { forgetChosenThemes, setGameTheme } from '../../gameThemes';
 import { sample } from './sample';
+import { groundUrl, pieceUrl } from './themes';
 import { emptyFrame } from './view';
 
 const props = (extra: Partial<BoardProps> = {}): BoardProps => ({
@@ -17,6 +19,9 @@ const props = (extra: Partial<BoardProps> = {}): BoardProps => ({
 const render = (extra: Partial<BoardProps> = {}): string =>
   renderToStaticMarkup(createElement(Board, props(extra)));
 const count = (html: string, pattern: RegExp): number => (html.match(pattern) ?? []).length;
+/** How many ground images of a board theme's tile. */
+const tiles = (html: string, theme: string, name: string): number =>
+  count(html, new RegExp(`<image class="tile" href="${groundUrl(theme, name)}"`, 'g'));
 
 describe('Board markup', () => {
   it('describes the board, with the turn and the gold, for a screen reader', () => {
@@ -27,18 +32,23 @@ describe('Board markup', () => {
     );
   });
 
-  it('draws a tile for every cell that is not void, and none for a void cell', () => {
+  it('draws a ground image for every cell, a void cell included, from the default board', () => {
     const html = render();
-    expect(count(html, /<rect class="tile /g)).toBe(143);
-    expect(count(html, /class="tile neutral"/g)).toBe(143 - 4);
-    expect(count(html, /class="tile r"/g)).toBe(2);
-    expect(count(html, /class="tile r off"/g)).toBe(1);
-    expect(count(html, /class="tile b"/g)).toBe(1);
+    expect(html).toContain('data-board="scandinavian"');
+    expect(count(html, /<image class="tile"/g)).toBe(144);
+    expect(tiles(html, 'scandinavian', 'ground-void')).toBe(1);
+    expect(tiles(html, 'scandinavian', 'ground-neutral')).toBe(144 - 1 - 4 - 2);
+    expect(tiles(html, 'scandinavian', 'ground-mine-spot')).toBe(2);
+    expect(tiles(html, 'scandinavian', 'ground-fire')).toBe(2);
+    expect(tiles(html, 'scandinavian', 'ground-fire-cut-off')).toBe(1);
+    expect(tiles(html, 'scandinavian', 'ground-ice')).toBe(1);
+    expect(tiles(html, 'scandinavian', 'ground-ice-cut-off')).toBe(0);
+    expect(count(html, /preserveAspectRatio="none"/g)).toBe(144);
   });
 
-  it('draws a bare map of 144 tiles for the empty frame, and nothing on it', () => {
+  it('draws a bare map of 144 neutral tiles for the empty frame, and nothing on it', () => {
     const html = render({ frame: emptyFrame() });
-    expect(count(html, /class="tile neutral"/g)).toBe(144);
+    expect(tiles(html, 'scandinavian', 'ground-neutral')).toBe(144);
     expect(count(html, /class="unit /g)).toBe(0);
     expect(count(html, /class="building /g)).toBe(0);
     expect(html).toContain('turn 1 / 100');
@@ -46,48 +56,83 @@ describe('Board markup', () => {
     expect(html).not.toContain('NaN');
   });
 
-  it('marks the cells cut off from their HQ with hatching, one path per owner', () => {
-    const html = render();
-    expect(html).toContain('class="hatch r" d="M0.12 2.88');
-    expect(html).toContain('class="hatch b" d=""');
+  it('mirrors the tiles of a board theme that asks for it on some cells, and no other', () => {
+    try {
+      setGameTheme('ice-and-fire', 'board', 'japanese');
+      const mirrors = count(render(), /transform="matrix\(-1 0 0 1 /g);
+      expect(mirrors).toBeGreaterThan(40);
+      expect(mirrors).toBeLessThan(104);
+      setGameTheme('ice-and-fire', 'board', 'bauhaus');
+      expect(count(render(), /matrix\(-1/g)).toBe(0);
+    } finally {
+      forgetChosenThemes();
+    }
   });
 
   it('draws mine spots that hold no mine, with a title', () => {
     const frame = sample();
     frame.buildings.push({ owner: 0, kind: 'mine', x: 3, y: 3 });
     const html = render({ frame });
-    expect(count(html, /class="spot"/g)).toBe(1);
     expect(html).toContain('Mine spot at 8,8');
     expect(html).not.toContain('Mine spot at 3,3');
   });
 
-  it('draws an HQ with its owner letter, a mine and a tower in different shapes', () => {
+  it('keeps a small mark on an owned mine spot without a mine, and none on a neutral one', () => {
+    const frame = sample();
+    expect(count(render({ frame }), /class="spot"/g)).toBe(0);
+    frame.owner[3]![3] = 0;
+    frame.active[3]![3] = true;
+    const html = render({ frame });
+    expect(count(html, /class="spot"/g)).toBe(1);
+    expect(html).toContain('Mine spot at 3,3');
+    frame.buildings.push({ owner: 0, kind: 'mine', x: 3, y: 3 });
+    expect(count(render({ frame }), /class="spot"/g)).toBe(0);
+  });
+
+  it('draws an HQ, a mine and a tower as the chosen theme’s pieces, by owner', () => {
     const frame = sample();
     frame.buildings.push(
       { owner: 0, kind: 'mine', x: 3, y: 3 },
       { owner: 1, kind: 'tower', x: 10, y: 10 },
     );
     const html = render({ frame });
+    expect(html).toContain('data-pieces="lava"');
     expect(html).toContain('Red HQ at 0,0');
     expect(html).toContain('Blue HQ at 11,11');
-    expect(html).toContain('>R<');
-    expect(html).toContain('>B<');
     expect(html).toContain('Red mine at 3,3');
     expect(html).toContain('Blue tower at 10,10');
-    const shape = (kind: string): string =>
-      new RegExp(
-        `class="building ${kind} [rb]"[^>]*>(?:<title>[^<]*</title>)?<path class="shape" d="([^"]*)"`,
-      ).exec(html)?.[1] ?? '';
-    expect(new Set([shape('hq'), shape('mine'), shape('tower')]).size).toBe(3);
+    for (const name of ['hq-fire', 'hq-ice', 'mine-fire', 'tower-ice']) {
+      expect(count(html, new RegExp(`<image href="${pieceUrl('lava', name)}"`, 'g')), name).toBe(1);
+    }
+    expect(count(html, /class="building /g)).toBe(4);
   });
 
-  it('draws a unit as a disc with its level and owner, blue ones with a ring', () => {
+  it('draws a unit as the piece of its owner and level', () => {
     const html = render();
     expect(count(html, /class="unit /g)).toBe(2);
     expect(html).toContain('Red unit level 1 at 1,0');
     expect(html).toContain('Blue unit level 3 at 11,10');
-    expect(count(html, /class="halo"/g)).toBe(1);
-    expect(html).toMatch(/<text class="level"[^>]*>3<\/text>/);
+    expect(html).toContain(`<image href="${pieceUrl('lava', 'unit-fire-1')}"`);
+    expect(html).toContain(`<image href="${pieceUrl('lava', 'unit-ice-3')}"`);
+  });
+
+  it('draws the chosen themes, and the default for a stored id it does not know', () => {
+    try {
+      setGameTheme('ice-and-fire', 'pieces', 'storybook');
+      setGameTheme('ice-and-fire', 'board', 'japanese');
+      const html = render();
+      expect(html).toContain('data-pieces="storybook"');
+      expect(html).toContain('data-board="japanese"');
+      expect(html).toContain(pieceUrl('storybook', 'unit-ice-3'));
+      expect(html).not.toContain(pieceUrl('lava', 'unit-ice-3'));
+      expect(tiles(html, 'japanese', 'ground-void')).toBe(1);
+      // An id outside the lists is refused, never used to build a URL.
+      setGameTheme('ice-and-fire', 'pieces', '../../x');
+      expect(render()).toContain('data-pieces="storybook"');
+    } finally {
+      forgetChosenThemes();
+    }
+    expect(render()).toContain('data-pieces="lava"');
   });
 
   it('draws up to a unit on every cell', () => {

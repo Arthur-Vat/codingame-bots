@@ -327,6 +327,17 @@
   background: #fff;
 }
 
+.theme-pick select {
+  min-width: 0;
+  max-width: 60%;
+  background: var(--bg);
+  color: inherit;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font: inherit;
+}
+
 .switch input:disabled {
   opacity: 0.4;
   cursor: default;
