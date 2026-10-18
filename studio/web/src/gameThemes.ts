@@ -8,8 +8,10 @@ import { themesFor, type ThemeChoice } from './games/themeChoices';
 
 export type ThemeKind = 'pieces' | 'board';
 
+const THEME_PREFIX = 'studio.theme.';
+
 export const themeKey = (gameId: string, kind: ThemeKind): string =>
-  `studio.theme.${gameId}.${kind}`;
+  `${THEME_PREFIX}${gameId}.${kind}`;
 
 function browserStorage(): SettingsStorage | null {
   try {
@@ -68,10 +70,13 @@ export function writeTheme(
 const chosen = new Map<string, string>();
 const listeners = new Set<() => void>();
 
-function subscribe(listener: () => void): () => void {
+/** Hears of every change of a theme; exported for the tests. */
+export function subscribe(listener: () => void): () => void {
   listeners.add(listener);
   // Another tab changed a setting: what is stored counts again.
-  const onStorage = () => {
+  const onStorage = (event: StorageEvent) => {
+    // A setting of another kind (or another page's key) leaves the choices alone.
+    if (event.key !== null && !event.key.startsWith(THEME_PREFIX)) return;
     chosen.clear();
     listener();
   };

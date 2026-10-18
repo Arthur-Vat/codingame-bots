@@ -5,6 +5,8 @@ import {
   asIceAndFireFrame,
   boardLabel,
   emptyFrame,
+  hatchPath,
+  inactiveCells,
   resultDetail,
   signed,
   toMoveText,
@@ -242,6 +244,18 @@ describe('the geometry', () => {
     expect(a.x2).toBeLessThan(a.x1);
     expect(a.y2).toBeLessThan(a.y1);
     expect(a.head).not.toContain('NaN');
+  });
+
+  it('finds the owned cells that are cut off, per owner', () => {
+    const frame = sample();
+    expect(inactiveCells(frame, 0)).toEqual([[0, 2]]);
+    expect(inactiveCells(frame, 1)).toEqual([]);
+  });
+
+  it('writes one stroke group per cell and none for no cells', () => {
+    expect(hatchPath([])).toBe('');
+    expect(hatchPath([[0, 2]]).match(/M/g)).toHaveLength(3);
+    expect(hatchPath([[0, 2]])).not.toContain('NaN');
   });
 
   it('has an empty frame with nothing on a 12 x 12 map', () => {

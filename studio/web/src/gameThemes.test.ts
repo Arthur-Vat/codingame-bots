@@ -1,11 +1,12 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SettingsStorage } from './analysisSettings';
 import {
   forgetChosenThemes,
   readTheme,
   setGameTheme,
+  subscribe,
   themeKey,
   useGameTheme,
   writeTheme,
@@ -98,5 +99,33 @@ describe('the remembered themes', () => {
     setGameTheme('ice-and-fire', 'board', 'deco');
     setGameTheme('ice-and-fire', 'pieces', 'nope');
     expect(html()).toBe('<i data-pieces="lava" data-board="deco"></i>');
+  });
+});
+
+describe('the storage event', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** Sends the event to a listener on a stand-in window, and says what it did to the choices. */
+  function after(key: string | null): { heard: number; board: string } {
+    const win = new EventTarget();
+    vi.stubGlobal('window', win);
+    let heard = 0;
+    const unsubscribe = subscribe(() => heard++);
+    setGameTheme('ice-and-fire', 'board', 'deco');
+    heard = 0;
+    win.dispatchEvent(Object.assign(new Event('storage'), { key }));
+    unsubscribe();
+    return { heard, board: readTheme('ice-and-fire', 'board', null) };
+  }
+
+  it('clears the choices made on the page when a theme key changed, or all storage did', () => {
+    // Nothing is stored under test, so a cleared choice reads as the default again.
+    expect(after('studio.theme.ice-and-fire.board')).toEqual({ heard: 1, board: 'scandinavian' });
+    expect(after(null)).toEqual({ heard: 1, board: 'scandinavian' });
+  });
+
+  it('leaves the choices alone when another key changed', () => {
+    const result = after('studio.analysis.settings');
+    expect(result.heard).toBe(0);
   });
 });

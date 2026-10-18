@@ -2,7 +2,11 @@
    component is square, as the shell's board slot is: the map takes the room the strip leaves and
    scales to it, so it fits a phone's width and never makes the page scroll sideways. The ground
    and the pieces are drawings of the chosen themes (themes/): the sides differ by their palettes
-   and by their shapes, and a cell cut off from its HQ has its own paler ground. */
+   and, in some themes, by their shapes, and a cell cut off from its HQ has its own paler ground.
+   None of that is promised, so the board adds marks that are the same in every theme and do not
+   rest on colour alone: a hatch over each owned cell cut off from its HQ, and a badge on every
+   piece, a rounded square for Red and a circle for Blue, with the unit's level or the
+   building's letter (R or B). */
 .iaf {
   --gold: #f2c14e;
   --mark: var(--amber, #e0a50d);
@@ -104,6 +108,37 @@
   stroke-width: 0.07px;
   stroke-dasharray: 0.12 0.08;
   paint-order: stroke;
+}
+
+/* Over the ground and the pieces, the same in every theme. */
+.hatch {
+  fill: none;
+  stroke: #000;
+  stroke-opacity: 0.25;
+  stroke-width: 0.05px;
+  stroke-linecap: round;
+}
+
+.badge .plate {
+  stroke: #fff;
+  stroke-width: 0.035px;
+}
+
+.badge.r .plate {
+  fill: #c62f24;
+}
+
+.badge.b .plate {
+  fill: #2a62c4;
+}
+
+.badge .mark {
+  fill: #fff;
+  font-size: 0.27px;
+  font-weight: 700;
+  font-family: var(--sans, system-ui, sans-serif);
+  text-anchor: middle;
+  dominant-baseline: central;
 }
 
 /* The faded piece of a removed unit, under its cross. */

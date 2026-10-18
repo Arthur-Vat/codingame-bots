@@ -14,6 +14,8 @@ import {
   answerText,
   arrow,
   boardLabel,
+  hatchPath,
+  inactiveCells,
   kindName,
   seatName,
   signed,
@@ -50,6 +52,38 @@ const side = (seat: Seat): 'r' | 'b' => (seat === 0 ? 'r' : 'b');
    drawn in 0..1 cell units from the cell's corner. */
 const SPOT_PATH = 'M.5 .26L.74 .5L.5 .74L.26 .5Z';
 const CROSS_PATH = 'M.3 .3L.7 .7M.7 .3L.3 .7';
+
+/* The badges, in every theme the same: a rounded square for Red and a circle for Blue, so the
+   side reads by shape as well as by colour. Drawn in 0..1 cell units from the cell's corner. */
+const BADGE = 0.36;
+const BADGE_RADIUS = 0.08;
+/** How far the badge's centre is from the cell's edges. */
+const BADGE_INSET = 0.21;
+
+/** A badge centred at (cx, cy) in cell units: the shape of the side, with a letter or a digit. */
+function Badge({ owner, cx, cy, text }: { owner: Seat; cx: number; cy: number; text: string }) {
+  const half = BADGE / 2;
+  const r = (n: number): number => +n.toFixed(3);
+  return (
+    <g className={`badge ${side(owner)}`}>
+      {owner === 0 ? (
+        <rect
+          className="plate"
+          x={r(cx - half)}
+          y={r(cy - half)}
+          width={BADGE}
+          height={BADGE}
+          rx={BADGE_RADIUS}
+        />
+      ) : (
+        <circle className="plate" cx={r(cx)} cy={r(cy)} r={half} />
+      )}
+      <text className="mark" x={r(cx)} y={r(cy)}>
+        {text}
+      </text>
+    </g>
+  );
+}
 
 /** A piece, drawn at the full cell: its drawing carries its own margins and shadow. */
 function Piece({ href }: { href: string }) {
@@ -250,6 +284,33 @@ export default function Board({ frame, showCoordinates }: BoardProps) {
         <g className="units">
           {frame.units.map((unit) => (
             <UnitMark key={unit.id} unit={unit} theme={pieces} />
+          ))}
+        </g>
+        <g className="hatches">
+          {SEATS.flatMap((seat) =>
+            inactiveCells(frame, seat).map(([x, y]) => (
+              <path key={`${x},${y}`} className={`hatch ${side(seat)}`} d={hatchPath([[x, y]])} />
+            )),
+          )}
+        </g>
+        <g className="badges">
+          {frame.buildings.map(({ owner, x, y }) => (
+            <Badge
+              key={`b${x},${y}`}
+              owner={owner}
+              cx={x + 1 - BADGE_INSET}
+              cy={y + BADGE_INSET}
+              text={owner === 0 ? 'R' : 'B'}
+            />
+          ))}
+          {frame.units.map(({ id, owner, level, x, y }) => (
+            <Badge
+              key={`u${id}`}
+              owner={owner}
+              cx={x + 1 - BADGE_INSET}
+              cy={y + 1 - BADGE_INSET}
+              text={String(level)}
+            />
           ))}
         </g>
         {last !== null && (
