@@ -77,8 +77,8 @@ as the best bot of the ladder and the one tested by the SPRT; the SPRT
 against `bronze` decides whether the step is worth keeping, and the league
 then rates the reference bots beside it.
 
-**Time** (`banker`, 300 pairs against `bronze`, 1 job, the bot's own clock per
-turn, 8,138 turns): mean 0.12 ms, 99.9% under 1.8 ms, longest 3.2 ms. The
+**Time** (`banker` built with Rust 1.90.0, 300 pairs against `bronze`, 1 job,
+the bot's own clock per turn, 8,138 turns): mean 0.12 ms, 99.9% under 1.8 ms, longest 3.2 ms. The
 bundle is 60,282 characters. In that run each bot lost one game on time to the
 machine's load (wrapped in a shell script that logs its stderr); the bot's own
 clock never passed 3.3 ms.

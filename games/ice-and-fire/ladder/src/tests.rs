@@ -40,6 +40,21 @@ fn position(
     buildings: &[(u8, u8, u8, u8)],
     units: &[(u8, u32, u8, u8, u8)],
 ) -> State {
+    position_with_spots(&[], rows, gold, buildings, units)
+}
+
+/// [`position`] with mine spots on the given cells (x, y).
+fn position_with_spots(
+    spots: &[(u8, u8)],
+    rows: [&str; 12],
+    gold: [i64; 2],
+    buildings: &[(u8, u8, u8, u8)],
+    units: &[(u8, u32, u8, u8, u8)],
+) -> State {
+    let mut initial = format!("{}\n", spots.len());
+    for (x, y) in spots {
+        initial.push_str(&format!("{x} {y}\n"));
+    }
     let mut active = [Bits::EMPTY; 2];
     for (y, row) in rows.iter().enumerate() {
         for (x, symbol) in row.bytes().enumerate() {
@@ -81,7 +96,7 @@ fn position(
     for (owner, id, level, x, y) in units {
         turn.push_str(&format!("{owner} {id} {level} {x} {y}\n"));
     }
-    State::read("0\n", &turn, League::Bronze, 10).expect("a valid position")
+    State::read(&initial, &turn, League::Bronze, 10).expect("a valid position")
 }
 
 /// The commands of the bot in `state`, checked to be accepted in order, and
@@ -334,6 +349,105 @@ fn the_last_check_undoes_spending_that_exposes_the_hq() {
     let (commands, after) = planned(&state, guard);
     assert!(margin(&after, 0) > 0, "{commands:?}");
     assert!(commands.is_empty(), "{commands:?}");
+}
+
+/// Red holds (0, 0) to (2, 0) and (0, 1), (1, 1), with a mine spot on (1, 1);
+/// blue's level 3 unit stands on (3, 0), three steps from red's HQ.
+const GATE: [&str; 12] = [
+    "OOOXXXXXXXXX",
+    "OO#########X",
+    "###########X",
+    "###########X",
+    "###########X",
+    "###########X",
+    "###########X",
+    "###########X",
+    "###########X",
+    "###########X",
+    "###########X",
+    "###########X",
+];
+
+fn gate(enemy_gold: i64) -> State {
+    position_with_spots(&[(1, 1)], GATE, [40, enemy_gold], &[], &[(1, 7, 3, 3, 0)])
+}
+
+fn count(commands: &[Command], what: fn(&Command) -> bool) -> usize {
+    commands.iter().filter(|command| what(command)).count()
+}
+
+fn is_tower(command: &Command) -> bool {
+    matches!(command, Command::BuildTower { .. })
+}
+
+fn is_mine(command: &Command) -> bool {
+    matches!(command, Command::BuildMine { .. })
+}
+
+#[test]
+fn a_defence_leaves_the_tower_by_the_hq_to_mines() {
+    // The enemy, with 30 gold, could take the HQ: guard's defence builds a
+    // tower, and the enemy unit stays within 3 steps of the HQ. Bronze's
+    // tower by the HQ is not built on top of it: the gold goes to the mine.
+    let state = gate(30);
+    assert!(margin(&state, 0) <= 0, "the position holds no threat");
+    let (commands, after) = planned(&state, LADDER[2]);
+    assert_eq!(count(&commands, is_tower), 1, "{commands:?}");
+    assert!(
+        commands.contains(&Command::BuildMine { x: 1, y: 1 }),
+        "{commands:?}"
+    );
+    assert!(margin(&after, 0) > 0, "{commands:?}");
+}
+
+#[test]
+fn without_a_defence_the_tower_by_the_hq_is_bronzes() {
+    // With no gold for a chain the enemy is no threat, so no defence is
+    // played; its unit is within 3 steps all the same, and bronze's rule
+    // builds the tower by the HQ instead of the mine.
+    let state = gate(0);
+    assert!(margin(&state, 0) > 0, "the position holds a threat");
+    let (commands, _) = planned(&state, LADDER[2]);
+    assert_eq!(count(&commands, is_tower), 1, "{commands:?}");
+    assert_eq!(count(&commands, is_mine), 0, "{commands:?}");
+    let (bronze, _) = planned(&state, Steps::NONE);
+    assert_eq!(commands, bronze);
+}
+
+/// Blue's tower on (9, 0) makes (8, 0) to (10, 0) cost a level 3 unit each,
+/// and a blue unit on (11, 5) a level 2 one. Taking the tower first makes
+/// (10, 0) cheap, so the chain to blue's HQ costs 270 where the static
+/// estimate says 290. Red has 280.
+fn tower_world() -> State {
+    let rows = [
+        "O.......XXXX",
+        "###########X",
+        "###########X",
+        "###########X",
+        "###########X",
+        "###########X",
+        "###########X",
+        "###########X",
+        "###########X",
+        "###########X",
+        "###########X",
+        "###########X",
+    ];
+    position(rows, [280, 20], &[(1, 2, 9, 0)], &[(1, 1, 1, 11, 5)])
+}
+
+#[test]
+fn the_tower_chain_takes_the_hq_behind_an_enemy_tower() {
+    let state = tower_world();
+    let chain = Steps {
+        tower_chain: true,
+        ..Steps::NONE
+    };
+    let (commands, after) = planned(&state, chain);
+    assert_eq!(after.outcome(), Some(Outcome::Win(0)), "{commands:?}");
+    // Bronze's static chain cannot pay for the HQ.
+    let (commands, after) = planned(&state, Steps::NONE);
+    assert_eq!(after.outcome(), None, "{commands:?}");
 }
 
 fn start(seed: u64) -> State {
