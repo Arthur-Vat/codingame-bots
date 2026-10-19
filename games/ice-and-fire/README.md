@@ -2,7 +2,7 @@
 
 CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-programming/a-code-of-ice-and-fire) is the second game of this framework, named by the owner on 2026-10-17 (phase 7 of the [main roadmap](../../docs/ROADMAP.md)). Two players on a 12×12 map build armies, buildings and territory to capture the opposing headquarters. It began as a 10-day contest, now over; bots can still be submitted to it as a multiplayer game (source's README).
 
-**Status:** stage 8, research, is next, with stage 5 still waiting for the `rules-check` run on CodinGame ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator, a fast engine checked against it, an arena, the `random` bot that anchors the ratings, the `wait` bot, a bot per league, the `rules-check` bot, the game's [numbers](#numbers), and its [studio](#studio) adapter.
+**Status:** stage 8, research, is next, with stage 5 still waiting for the `rules-check` run on CodinGame ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator (which reproduces the source's maps), a fast engine checked against it, an arena, the `random` bot that anchors the ratings, the `wait` bot, a bot per league, the `rules-check` bot, the game's [numbers](#numbers), and its [studio](#studio) adapter.
 
 ## Layout
 
@@ -12,7 +12,7 @@ CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-p
 | [MAP_GENERATOR.md](MAP_GENERATOR.md) | How the source draws a map, in our own words: the spec of our referee's generator ([ADR 0041](../../docs/adr/0041-ice-and-fire-source-maps-from-a-spec.md)) |
 | [MODEL.md](MODEL.md) | The game as a search problem: numbers, a formal model, what follows for bots |
 | [ROADMAP.md](ROADMAP.md) | The game's stages in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md)) |
-| [referee/](referee/) | `ice-and-fire-referee`: readable reference implementation of the rules, with our own map generator ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)), for the arena |
+| [referee/](referee/) | `ice-and-fire-referee`: readable reference implementation of the rules, with a map generator that reproduces the source's maps ([ADR 0041](../../docs/adr/0041-ice-and-fire-source-maps-from-a-spec.md)), for the arena |
 | [engine/](engine/) | `ice-and-fire-engine`: the fast, standard-library engine for bots (bitboards, random turns, CodinGame's text protocol), with parity tests against the referee and the speed example |
 | [policy/](policy/) | `ice-and-fire-policy`: the greedy turn policy and the input/output loop that the per-league bots share; its tests play every league's bot against the referee |
 | [arena/](arena/) | `ice-and-fire-arena`: plays bots against each other through the referee, in Bronze (all the rules) |
@@ -37,7 +37,7 @@ Each league has its own bot, since the input never names the league; each is a s
 
 The policy plans a turn on a scratch copy of the engine's state and keeps only the commands the rules accept. In order: a lethal move or chain of trainings to the enemy HQ if the gold pays for it (found by a cheapest-path search through the cells next to the territory); moves, the unit nearest the enemy HQ first, each to the neighbouring cell that gains the most (new cells, enemy cells, kills, cuts of enemy territory, mine spots) and gets nearer; a tower by the HQ under threat, else mines; trainings on the best cells next to the territory, level 1 unless a higher level is the only way to enter (to kill a unit or pass a tower), with income after upkeep kept at least 0 and a small gold reserve. It does no search and takes a few ms per turn (tested under 20 ms). It is a means of promotion, not a strong bot; it beats the source's league bosses in our referee (below).
 
-Measured on 2026-10-17 over 200 maps in each seat (400 games per row, Rust 1.90.0 and current, release build), each bot in its own league against the reference referee (`cargo test -p ice-and-fire-policy --release`):
+Measured on 2026-10-19 over 200 maps in each seat (400 games per row, Rust 1.90.0 and current, release build), each bot in its own league against the reference referee (`cargo test -p ice-and-fire-policy --release`):
 
 | League | Against `WAIT` | Against random turns (`State::random_turn`) |
 | --- | --- | --- |
@@ -46,7 +46,7 @@ Measured on 2026-10-17 over 200 maps in each seat (400 games per row, Rust 1.90.
 | Wood 1 | 400/400 | 400/400 |
 | Bronze | 400/400 | 400/400 |
 
-The game's source has a boss for each league up to Bronze and none above: `config/level1/Boss.py3` (Wood 3), `config/level2/Boss.py3` (Wood 2), `config/level3/Boss.py3` (Wood 1), and the default boss `config/Boss.cpp`, which plays in Bronze since that league has none of its own. They are GPL, so they are neither copied nor translated here. Measured on 2026-10-19, with the bosses run unchanged outside the repository as processes, through a local build of the arena whose referee played each league's rules: 100 seat-swapped pairs per league at CodinGame's exact time limits, each bot against its league's boss. Each bot won 200 of 200 games, with no timeout, crash or invalid answer on either side. CodinGame's bosses may differ from the source's.
+The game's source has a boss for each league up to Bronze and none above: `config/level1/Boss.py3` (Wood 3), `config/level2/Boss.py3` (Wood 2), `config/level3/Boss.py3` (Wood 1), and the default boss `config/Boss.cpp`, which plays in Bronze since that league has none of its own. They are GPL, so they are neither copied nor translated here. Measured on 2026-10-19, on the maps of ADR 0041 (the same result as on our earlier generator's maps), with the bosses run unchanged outside the repository as processes, through a local build of the arena whose referee played each league's rules: 100 seat-swapped pairs per league at CodinGame's exact time limits, each bot against its league's boss. Each bot won 200 of 200 games, with no timeout, crash or invalid answer on either side. CodinGame's bosses may differ from the source's.
 
 ## Arena
 
@@ -68,29 +68,29 @@ The board is drawn with illustrated SVG artwork, in two independent themes chose
 
 ## Numbers
 
-Measured on 2026-10-17 with `cargo run --release -p ice-and-fire-policy --example numbers -- 1000` (the example plays Bronze games in-process through the reference referee, fed with its text as CodinGame would send it; one game per map, on maps 0 to 999; `random` is the random bot's turn and `bronze` the Bronze bot's policy). The arena agrees with real processes: `ice-and-fire-arena match` on its own maps, 500 pairs of the bot against a copy of itself, gave red 42.9% of 1,000 games with the random bot and 55.2% with the Bronze bot, inside the intervals below.
+Measured on 2026-10-19 with `cargo run --release -p ice-and-fire-policy --example numbers -- 1000` (the example plays Bronze games in-process through the reference referee, fed with its text as CodinGame would send it; one game per map, on maps 0 to 999; `random` is the random bot's turn and `bronze` the Bronze bot's policy). The arena agrees with real processes: `ice-and-fire-arena match` on its own maps, 500 pairs of the bot against a copy of itself, gave red 47.6% of 1,000 games with the random bot, inside the interval below, and 56.6% with the Bronze bot, a little under the interval below but near the 58.1% of the 10,000 maps (the arena's maps are others, and 1,000 games give about 1.6 points of noise).
 
 | Red | Blue | Red's score | 95% interval (Wilson) | Red wins | Draws | Blue wins | Mean game turns | Median | Reach turn 100 | HQ captured | Ended on power |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| random | random | 44.5% | 41.4% to 47.6% | 445 | 0 | 555 | 71.6 | 74 | 41.5% | 58.7% | 41.3% |
-| bronze | bronze | 58.0% | 54.9% to 61.0% | 580 | 0 | 420 | 15.3 | 13 | 0.4% | 99.6% | 0.4% |
-| bronze | random | 100.0% | 99.6% to 100.0% | 1000 | 0 | 0 | 12.5 | 12 | 0.0% | 100.0% | 0.0% |
+| random | random | 48.0% | 44.9% to 51.1% | 480 | 0 | 520 | 70.6 | 71 | 42.8% | 57.4% | 42.6% |
+| bronze | bronze | 61.0% | 57.9% to 64.0% | 610 | 0 | 390 | 15.0 | 13 | 0.2% | 99.8% | 0.2% |
+| bronze | random | 100.0% | 99.6% to 100.0% | 1000 | 0 | 0 | 12.3 | 12 | 0.0% | 100.0% | 0.0% |
 
-- **Seat advantage.** It depends on the bots, and it is large. With random turns blue is ahead: red scores 44.5% (45.6%, 44.6% to 46.6%, over 10,000 maps) (blue starts with one more cell, and the cause is not studied here). With the Bronze bot red is ahead: 58.0% (56.6%, 55.7% to 57.6%, over 10,000 maps), and games are a race to the enemy HQ, which moving first helps (not studied here either). The seat-swapped pairs cancel it, and each pair plays one map from both seats; no opening needs to be imposed. The score of a bot is the score of its pairs.
-- **Game length** is in game turns (both players have moved), at most 100. Random turns: mean 71.6, median 74, 41.5% of the games reach turn 100 (HQ captures on that turn included). The Bronze bot ends games with a chain of trainings to the enemy HQ after a mean of 15.3 game turns (median 13), against random turns after 12.5; fewer than 1 in 100 games reach turn 100. A game between the engine's random players is 143.6 answers long on average in the arena, 71.8 game turns.
-- **How games end.** 58.7% by HQ capture and 41.3% by military power at turn 100 for random turns; 99.6% by capture for the Bronze bot. The share that reaches turn 100 is the first column's figure, so a search bot that survives early rushes will play many more turns than these baselines do.
+- **Seat advantage.** It depends on the bots, and it is large. With random turns blue is ahead: red scores 48.0% (46.3%, 45.3% to 47.3%, over 10,000 maps) (blue starts with one more cell, and the cause is not studied here). With the Bronze bot red is ahead: 61.0% (58.1%, 57.2% to 59.1%, over 10,000 maps), and games are a race to the enemy HQ, which moving first helps (not studied here either). The seat-swapped pairs cancel it, and each pair plays one map from both seats; no opening needs to be imposed. The score of a bot is the score of its pairs.
+- **Game length** is in game turns (both players have moved), at most 100. Random turns: mean 70.6, median 71, 42.8% of the games reach turn 100 (HQ captures on that turn included). The Bronze bot ends games with a chain of trainings to the enemy HQ after a mean of 15.0 game turns (median 13), against random turns after 12.3; fewer than 1 in 100 games reach turn 100. A game between the engine's random players is 141.0 answers long on average in the arena, 70.5 game turns.
+- **How games end.** 57.4% by HQ capture and 42.6% by military power at turn 100 for random turns; 99.8% by capture for the Bronze bot. The share that reaches turn 100 is the first column's figure, so a search bot that survives early rushes will play many more turns than these baselines do.
 - **Draws.** Equal military power at turn 100 is a draw in our referee, pending the `rules-check` run (RULES.md): 0 of 3,000 games above, 7 of 10,000 random games (0.07%), none of 10,000 Bronze games. Draws do not matter to the SPRT.
 - **Distinct answers per turn.** Counted by trying each command on a copy of the position, in games between two players of the same kind, both seats pooled, at the start of the turn (`numbers` prints the table). "Cells units can move to" is the number of cells a unit can end a move on, summed over the units that can move; "move sets" is the product over those units of (1 + their end cells), a count of the sets of moves that ignores that units get in each other's way and the order of commands. A turn also holds trainings and buildings, chosen among the trainings (level, cell) and buildings listed, and their order.
 
 | Players | Game turn | Units that can move | Cells units can move to | Trainings (level, cell) | Buildings | log10 of the move sets |
 | --- | --- | --- | --- | --- | --- | --- |
 | random | 1 | 0.0 | 0.0 | 6.0 | 0.5 | 0.0 |
-| random | 5 | 1.5 | 4.6 | 3.4 | 0.3 | 0.9 |
-| random | 10 | 3.8 | 11.3 | 19.6 | 5.0 | 2.2 |
-| random | 20 | 12.0 | 29.3 | 75.4 | 19.9 | 6.1 |
-| random | 40 | 18.9 | 29.7 | 57.2 | 17.7 | 6.9 |
-| random | 60 | 21.9 | 24.0 | 43.4 | 14.2 | 5.8 |
-| bronze | 10 | 5.0 | 10.6 | 85.8 | 14.2 | 2.3 |
+| random | 5 | 1.5 | 4.5 | 3.3 | 0.3 | 0.9 |
+| random | 10 | 3.8 | 11.2 | 19.4 | 4.9 | 2.2 |
+| random | 20 | 11.7 | 29.0 | 74.4 | 19.7 | 6.1 |
+| random | 40 | 18.6 | 29.6 | 55.4 | 17.4 | 6.8 |
+| random | 60 | 22.2 | 24.1 | 37.9 | 12.6 | 5.9 |
+| bronze | 10 | 4.9 | 10.5 | 85.9 | 14.4 | 2.3 |
 
 Bronze games are too short to be sampled later. In the middle of a game between random players a turn offers about 10^6 to 10^7 move sets before trainings, buildings and orders, which fits the estimate in [MODEL.md](MODEL.md).
 
@@ -149,7 +149,7 @@ The Wood 3 page confirms that the rules stop growing at Bronze. Leagues above Br
 
 ## Checking the rules on CodinGame
 
-The parity tests prove the engine and the referee agree with each other, not that both agree with CodinGame. The `rules-check` bot checks that, and logs the maps CodinGame draws so that they can be set beside our generator's ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md), decision 3). To run it, once, in Bronze league or above (the bot assumes the Bronze rules):
+The parity tests prove the engine and the referee agree with each other, not that both agree with CodinGame. The `rules-check` bot checks that, and logs the maps CodinGame draws so that they can be set beside the generator's statistics ([ADR 0041](../../docs/adr/0041-ice-and-fire-source-maps-from-a-spec.md), decision 4). To run it, once, in Bronze league or above (the bot assumes the Bronze rules):
 
 1. Paste `target/cg/ice-and-fire-rules-check.rs` (`scripts/bundle-bots.sh ice-and-fire`; CI also publishes it in the `paste-ready-bots-ice-and-fire` artifact) into the IDE and click **Play my code** a few times, against different opponents.
 2. Check that the MAP lines across the games show both `red` and `blue`, and say so if they all show the same seat: the rules differ between the seats (red plays first, blue starts with one more cell), and the first turn as each is checked.
@@ -170,27 +170,27 @@ What the bot cannot check from its input: the opponent's commands, gold and upke
 
 `cargo +1.90.0 run --release -p ice-and-fire-engine --example speed -- [SECONDS]` plays Bronze games on 64 of the referee's maps with random turns (`State::random_turn`, then `play_turn`), then times `turn_input` and `read` on positions from move 40 of those games. CodinGame compiles with Rust 1.90.0, so measure with it (`rustup toolchain install 1.90.0 --profile minimal`). CI runs it from [`ci.sh`](ci.sh) and shows the table in the job summary; it is a report, not a check.
 
-Measured on 2026-10-17 with Rust 1.90.0, one thread of a shared 4-core machine (Intel(R) Xeon(R) Processor @ 2.10GHz; it varies by about 10% between runs), 2 s per row:
+Measured on 2026-10-19 with Rust 1.90.0, one thread of a shared 4-core machine (Intel(R) Xeon(R) Processor @ 2.80GHz; the figures of 2026-10-17 came from a 2.10GHz one; it varies by about 10% between runs), 2 s per row:
 
 | Engine benchmark | Result |
 | --- | --- |
-| Random turns generated and played | 139,582 per second |
-| Random turns generated alone (from move 40 of a game) | 312,073 per second |
-| Whole random games (Bronze) | 946 per second |
-| Turns per random game | 147.6 |
-| `turn_input` | 213,415 per second |
-| `read` (a new map every time) | 7,902 per second |
-| `read` (the map of the last read) | 206,329 per second |
-| `State::new` (builds the distance table) | 8,750 per second |
+| Random turns generated and played | 137,142 per second |
+| Random turns generated alone (from move 40 of a game) | 274,449 per second |
+| Whole random games (Bronze) | 988 per second |
+| Turns per random game | 138.8 |
+| `turn_input` | 202,351 per second |
+| `read` (a new map every time) | 8,990 per second |
+| `read` (the map of the last read) | 283,875 per second |
+| `State::new` (builds the distance table) | 9,999 per second |
 
-A turn here is one player's turn, so a game of 147.6 turns is about 74 game turns. A random turn clones the state (about 1 KB and a reference count) to choose commands on a scratch copy. `read` rebuilds the 144 × 144 distance table, about 123 microseconds, only when the map differs from the last one it read on the thread; a bot reads the same map every turn.
+A turn here is one player's turn, so a game of 138.8 turns is about 69 game turns. A random turn clones the state (about 1 KB and a reference count) to choose commands on a scratch copy. `read` rebuilds the 144 × 144 distance table, about 111 microseconds, only when the map differs from the last one it read on the thread; a bot reads the same map every turn.
 
 ## Notes on the owner's criteria
 
 The owner named these criteria on 2026-10-13. They inform; they do not grade the game he chose.
 
 - **Interest and research value.** Unlike Ultimate Tic-Tac-Toe, a turn is a sequence of commands (moves, training, buildings) with an economy behind it, so a turn has far more possible answers than one move, and a search over single moves no longer fits as is. Territory connectivity (cells cut from the headquarters go inactive and their units die) gives tactical shots that a search can find. Stage 3 (model) gives the numbers; stage 8 (research) reads the contest's write-ups.
-- **Source and license.** The referee is public but under the GPL: facts only, so the referee and engine are our own. Bots never need the map generator, since CodinGame sends the map. Our arena needs maps too, and how it makes them (its own generator from the stated facts, or another way) is a question for stage 4.
+- **Source and license.** The referee is public but under the GPL: facts only, so the referee and engine are our own. Bots never need the map generator, since CodinGame sends the map. Our arena needs maps too: its generator is ours, written from the steps in [MAP_GENERATOR.md](MAP_GENERATOR.md) by someone who has not read the source, and it reproduces the source's maps exactly, checked against maps the source printed ([ADR 0041](../../docs/adr/0041-ice-and-fire-source-maps-from-a-spec.md)).
 - **Framework gaps already visible** (for stage 4): several commands per turn; an end of game decided on a score after a turn limit, not only a win; an asymmetric start (red first, blue's extra cell); a random map each game.
 - **How it shows in the studio.** A 12×12 grid with territory, units and buildings draws well. Human play needs a way to build a turn of several commands before sending it.
 - **Depth of the leaderboard.** Not in the sources; the owner can tell, or it stays unknown.

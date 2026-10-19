@@ -1,6 +1,6 @@
 [package]
 name = "ice-and-fire-referee"
-description = "Readable reference implementation of CodinGame's A Code of Ice and Fire rules, with its own map generator, used by the arena."
+description = "Readable reference implementation of CodinGame's A Code of Ice and Fire rules, with a map generator that reproduces the source's maps, used by the arena."
 version.workspace = true
 authors.workspace = true
 license.workspace = true

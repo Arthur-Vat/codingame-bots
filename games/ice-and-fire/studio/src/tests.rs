@@ -144,9 +144,9 @@ fn frame_zero_on_seed_one_is_the_start() {
     assert_eq!(start["last"], Value::Null);
     assert_eq!(start["result"], Value::Null);
     let spots = start["mine_spots"].as_array().unwrap();
-    assert_eq!(spots.len(), 14);
+    assert_eq!(spots.len(), 12);
     assert_eq!(spots[0], json!([1, 0]));
-    assert_eq!(spots[13], json!([10, 11]));
+    assert_eq!(spots[11], json!([10, 11]));
 }
 
 #[test]
@@ -353,8 +353,8 @@ fn check_last_against_units(before: &Value, after: &Value) {
 #[test]
 fn units_that_are_killed_show_as_removed() {
     // Both seats play the policy: their units meet and kill each other.
-    let turns = policy_game(1, [true, true], 400);
-    let frames = frames_of(1, &turns);
+    let turns = policy_game(2, [true, true], 400);
+    let frames = frames_of(2, &turns);
     let mut removed = 0;
     for pair in frames.windows(2) {
         check_last_against_units(&pair[0], &pair[1]);

@@ -3,7 +3,8 @@
 //!
 //! It is written to be obviously correct rather than fast: the arena uses it
 //! to judge matches, and faster engines used inside bots are checked against
-//! it. Maps come from our own generator, [`map::generate`] (ADR 0039).
+//! it. Maps come from [`map::generate`], which reproduces the source's maps from the
+//! spec `MAP_GENERATOR.md` (ADR 0041).
 
 use std::collections::VecDeque;
 use std::time::Duration;

@@ -26,6 +26,7 @@ Status is `Not started`, `In progress`, `Waiting for the owner` or `Done (YYYY-M
 Referee and engine: the list in the [playbook](../../docs/NEW_GAME.md).
 
 - [x] Readable referee and map generator (#161)
+- [x] Map generator reproducing the source's maps ([ADR 0041](../../docs/adr/0041-ice-and-fire-source-maps-from-a-spec.md)), checked against maps printed by the source
 - [x] A fast, standard-library engine; parity tests against the referee on many random games; property tests (#162)
 - [x] A speed baseline in the game's README (`cargo run --release -p ice-and-fire-engine --example speed`)
 - [x] One bot per league (`wood3`, `wood2`, `wood1`, `bronze`) to climb to Bronze, where the `rules-check` bot can run (owner: never played the game, and one bot per league, 2026-10-17)

@@ -12,6 +12,36 @@ fn for_all_maps(check: impl Fn(u64, League, &Map)) {
     }
 }
 
+/// The cells 4-connected to cell `start` through land.
+fn component(void: &[bool; CELLS], start: usize) -> [bool; CELLS] {
+    let mut seen = [false; CELLS];
+    seen[start] = true;
+    let mut stack = vec![start];
+    while let Some(index) = stack.pop() {
+        let (x, y) = (index % SIZE, index / SIZE);
+        let mut neighbours = Vec::new();
+        if x > 0 {
+            neighbours.push(index - 1);
+        }
+        if x + 1 < SIZE {
+            neighbours.push(index + 1);
+        }
+        if y > 0 {
+            neighbours.push(index - SIZE);
+        }
+        if y + 1 < SIZE {
+            neighbours.push(index + SIZE);
+        }
+        for next in neighbours {
+            if !void[next] && !seen[next] {
+                seen[next] = true;
+                stack.push(next);
+            }
+        }
+    }
+    seen
+}
+
 fn open_cells(map: &Map) -> usize {
     map.void.iter().filter(|&&void| !void).count()
 }
@@ -31,17 +61,6 @@ fn void_cells_and_mine_spots_are_symmetric_under_a_half_turn() {
             }
         }
     });
-}
-
-#[test]
-fn smoothing_keeps_a_symmetric_grid_symmetric() {
-    let mut rng = Rng::new(7);
-    for _ in 0..200 {
-        let grid = smooth(&random_voids(&mut rng));
-        for (index, &cell) in grid.iter().enumerate() {
-            assert_eq!(cell, grid[mirror(index)]);
-        }
-    }
 }
 
 #[test]
@@ -137,55 +156,93 @@ fn off_map_cells_are_void() {
     assert!(!map.is_void(0, 0));
 }
 
-#[test]
-fn the_closest_pair_breaks_ties_by_the_index_of_a_then_of_b() {
-    // The corner block as the area.
-    let mut void = [true; CELLS];
-    let mut area = [false; CELLS];
-    for y in 0..3 {
-        for x in 0..3 {
-            void[y * SIZE + x] = false;
-            area[y * SIZE + x] = true;
+fn league_named(name: &str) -> League {
+    match name {
+        "WOOD3" => League::Wood3,
+        "WOOD2" => League::Wood2,
+        "WOOD1" => League::Wood1,
+        "BRONZE" => League::Bronze,
+        _ => panic!("golden.txt: unknown league {name:?}"),
+    }
+}
+
+/// The cells of a map as 12 rows, `#` for void, for failure messages.
+fn drawing(map: &Map) -> String {
+    let mut text = String::new();
+    for y in 0..SIZE {
+        text.push('\n');
+        for x in 0..SIZE {
+            let spot = map.is_mine_spot(x, y);
+            text.push(match (map.is_void(x, y), spot) {
+                (true, _) => '#',
+                (false, true) => 'o',
+                (false, false) => '.',
+            });
         }
     }
-    // (5, 0) is 3 from (2, 0); (3, 2) is 1 from (2, 2): the nearest wins.
-    void[5] = false;
-    void[2 * SIZE + 3] = false;
-    assert_eq!(
-        closest_pair(&void, &area),
-        Some((2 * SIZE + 2, 2 * SIZE + 3))
-    );
-    // (5, 0) and (0, 5) are both 3 away: the smaller index of a wins.
-    void[2 * SIZE + 3] = true;
-    void[5 * SIZE] = false;
-    assert_eq!(closest_pair(&void, &area), Some((2, 5)));
-    // (3, 0) and (3, 1) are both 1 away: the smaller index of a wins.
-    void[SIZE + 3] = false;
-    void[3] = false;
-    assert_eq!(closest_pair(&void, &area), Some((2, 3)));
-    // Nothing outside the area.
-    assert_eq!(closest_pair(&void, &[true; CELLS]), None);
+    text.push_str(&format!("\nspots {:?}", map.mine_spots));
+    text
+}
+
+/// Parses one non-comment line of `golden.txt`, failing loudly if it is malformed.
+fn parse_golden(line: &str) -> (u64, League, usize, Map) {
+    let mut fields = line.split(' ');
+    let mut field = |what: &str| {
+        fields
+            .next()
+            .unwrap_or_else(|| panic!("golden.txt: missing {what} in {line:?}"))
+    };
+    let seed = field("seed").parse::<u64>().expect("golden.txt: bad seed");
+    let league = league_named(field("league"));
+    let count = field("count")
+        .parse::<usize>()
+        .expect("golden.txt: bad count");
+    let cells = field("cells");
+    assert_eq!(cells.len(), CELLS, "golden.txt: {CELLS} cells, seed {seed}");
+    let mut void = [false; CELLS];
+    for (cell, symbol) in void.iter_mut().zip(cells.chars()) {
+        *cell = match symbol {
+            '#' => true,
+            '.' => false,
+            other => panic!("golden.txt: bad cell {other:?}, seed {seed}"),
+        };
+    }
+    let mine_spots = fields
+        .map(|spot| {
+            let (x, y) = spot.split_once(',').expect("golden.txt: bad mine spot");
+            let x: usize = x.parse().expect("golden.txt: bad mine spot x");
+            let y: usize = y.parse().expect("golden.txt: bad mine spot y");
+            assert!(
+                x < SIZE && y < SIZE,
+                "golden.txt: spot off the map, seed {seed}"
+            );
+            (x, y)
+        })
+        .collect();
+    (seed, league, count, Map { void, mine_spots })
 }
 
 #[test]
-fn connect_carves_along_a_row_then_a_column() {
-    let mut void = [true; CELLS];
-    for y in 0..3 {
-        for x in 0..3 {
-            void[y * SIZE + x] = false;
+fn it_draws_the_maps_that_the_source_printed() {
+    let mut checked = 0;
+    for line in include_str!("golden.txt").lines() {
+        if line.starts_with('#') {
+            continue;
         }
+        let (seed, league, count, expected) = parse_golden(line);
+        let map = generate(seed, league);
+        assert_eq!(
+            map.mine_spots.len(),
+            count,
+            "seed {seed} {league:?}: mine spot count"
+        );
+        assert!(
+            map == expected,
+            "seed {seed} {league:?}\nexpected:{}\ngot:{}",
+            drawing(&expected),
+            drawing(&map)
+        );
+        checked += 1;
     }
-    void[4 * SIZE + 5] = false; // (5, 4), nearest to a = (2, 2)
-    connect(&mut void);
-    // Row 2 from x = 2 to 5, then column 5 from y = 2 to 4.
-    for x in 3..=5 {
-        assert!(!void[2 * SIZE + x], "({x}, 2)");
-    }
-    for y in 3..=4 {
-        assert!(!void[y * SIZE + 5], "(5, {y})");
-    }
-    // The mirrored corridor joins the same area.
-    assert!(!void[CELLS - 1 - (2 * SIZE + 4)]);
-    let area = component(&void, 0);
-    assert!((0..CELLS).all(|index| area[index] != void[index]));
+    assert!(checked >= 100, "golden.txt holds only {checked} maps");
 }

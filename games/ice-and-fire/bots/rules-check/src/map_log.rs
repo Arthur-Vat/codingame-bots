@@ -1,5 +1,5 @@
-//! The map of the game as one log line, for comparing our map generator with
-//! CodinGame's (ADR 0039, decision 3). It reads the raw text, not the engine's
+//! The map of the game as one log line, for comparing the generator's maps with
+//! CodinGame's (ADR 0041, decision 4). It reads the raw text, not the engine's
 //! state, so that it still works when the engine rejects the input.
 
 use ice_and_fire_engine::SIZE;
