@@ -2,7 +2,7 @@
 
 CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-programming/a-code-of-ice-and-fire) is the second game of this framework, named by the owner on 2026-10-17 (phase 7 of the [main roadmap](../../docs/ROADMAP.md)). Two players on a 12×12 map build armies, buildings and territory to capture the opposing headquarters. It began as a 10-day contest, now over; bots can still be submitted to it as a multiplayer game (source's README).
 
-**Status:** stage 8, research, is next; stage 5 ended with the `rules-check` run on CodinGame, no difference in 4 Bronze games ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator (which reproduces the source's maps), a fast engine checked against it, an arena, the `random` bot that anchors the ratings, the `wait` bot, a bot per league, the `rules-check` bot, the game's [numbers](#numbers), and its [studio](#studio) adapter.
+**Status:** stage 8, research, waits for the owner's choice of prototypes ([research/README.md](research/README.md)); stage 5 ended with the `rules-check` run on CodinGame, no difference in 4 Bronze games ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator (which reproduces the source's maps), a fast engine checked against it, an arena, the `random` bot that anchors the ratings, the `wait` bot, a bot per league, the `rules-check` bot, the game's [numbers](#numbers), and its [studio](#studio) adapter.
 
 ## Layout
 
@@ -11,6 +11,7 @@ CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-p
 | [RULES.md](RULES.md) | The rules in our own words, with sources |
 | [MAP_GENERATOR.md](MAP_GENERATOR.md) | How the source draws a map, in our own words: the spec of our referee's generator ([ADR 0041](../../docs/adr/0041-ice-and-fire-source-maps-from-a-spec.md)) |
 | [MODEL.md](MODEL.md) | The game as a search problem: numbers, a formal model, what follows for bots |
+| [research/](research/README.md) | Stage 8: what strong bots do, the approaches ranked, the prototypes proposed for stage 9 |
 | [ROADMAP.md](ROADMAP.md) | The game's stages in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md)) |
 | [referee/](referee/) | `ice-and-fire-referee`: readable reference implementation of the rules, with a map generator that reproduces the source's maps ([ADR 0041](../../docs/adr/0041-ice-and-fire-source-maps-from-a-spec.md)), for the arena |
 | [engine/](engine/) | `ice-and-fire-engine`: the fast, standard-library engine for bots (bitboards, random turns, CodinGame's text protocol), with parity tests against the referee and the speed example |
