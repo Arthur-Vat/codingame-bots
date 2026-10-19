@@ -205,6 +205,9 @@ fn baseline_bots_are_bot_folders_of_their_game_named_by_it() {
     assert_eq!(
         names[1],
         [
+            "ice-and-fire-cutter",
+            "ice-and-fire-guard",
+            "ice-and-fire-chain",
             "ice-and-fire-bronze",
             "ice-and-fire-wood1",
             "ice-and-fire-wood2",

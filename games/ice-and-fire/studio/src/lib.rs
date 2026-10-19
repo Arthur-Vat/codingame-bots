@@ -341,7 +341,9 @@ impl StudioGame for IceAndFire {
     }
 
     fn baseline_bots(&self) -> &'static [&'static str] {
-        &["bronze", "wood1", "wood2", "wood3", "random"]
+        &[
+            "cutter", "guard", "chain", "bronze", "wood1", "wood2", "wood3", "random",
+        ]
     }
 
     fn opening_turns(&self, _setup: &GameSetup) -> usize {

@@ -1,0 +1,16 @@
+[package]
+name = "ice-and-fire-bot-chain"
+description = "Chain bot for A Code of Ice and Fire: bronze's turn, with lethal chains that know the towers. The first step of the ladder."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ice-and-fire-ladder.workspace = true
+
+[lints]
+workspace = true

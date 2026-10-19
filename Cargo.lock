@@ -175,6 +175,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ice-and-fire-bot-banker"
+version = "0.0.0"
+dependencies = [
+ "ice-and-fire-ladder",
+]
+
+[[package]]
 name = "ice-and-fire-bot-bronze"
 version = "0.0.0"
 dependencies = [
@@ -183,13 +190,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "ice-and-fire-bot-phases"
+name = "ice-and-fire-bot-chain"
 version = "0.0.0"
 dependencies = [
- "cg-core",
- "ice-and-fire-engine",
- "ice-and-fire-referee",
- "ice-and-fire-tactics",
+ "ice-and-fire-ladder",
+]
+
+[[package]]
+name = "ice-and-fire-bot-cutter"
+version = "0.0.0"
+dependencies = [
+ "ice-and-fire-ladder",
+]
+
+[[package]]
+name = "ice-and-fire-bot-guard"
+version = "0.0.0"
+dependencies = [
+ "ice-and-fire-ladder",
 ]
 
 [[package]]
@@ -247,6 +265,17 @@ dependencies = [
  "cg-arena",
  "cg-core",
  "ice-and-fire-referee",
+]
+
+[[package]]
+name = "ice-and-fire-ladder"
+version = "0.0.0"
+dependencies = [
+ "cg-core",
+ "ice-and-fire-engine",
+ "ice-and-fire-policy",
+ "ice-and-fire-referee",
+ "ice-and-fire-tactics",
 ]
 
 [[package]]

@@ -87,7 +87,8 @@ fn the_games_are_listed() {
             {"id": "uttt", "name": "Ultimate Tic-Tac-Toe", "human_play": true,
              "baselines": ["uttt-greedy", "uttt-random"]},
             {"id": "ice-and-fire", "name": "A Code of Ice and Fire", "human_play": false,
-             "baselines": ["ice-and-fire-bronze", "ice-and-fire-wood1", "ice-and-fire-wood2",
+             "baselines": ["ice-and-fire-cutter", "ice-and-fire-guard", "ice-and-fire-chain",
+                           "ice-and-fire-bronze", "ice-and-fire-wood1", "ice-and-fire-wood2",
                            "ice-and-fire-wood3", "ice-and-fire-random"]},
         ])
     );

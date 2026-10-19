@@ -1,4 +1,4 @@
-//! The loop of the bot: read CodinGame's input, answer with the plan, flush.
+//! The loop of a bot: read CodinGame's input, answer with the plan, flush.
 //! The protocol is the policy crate's (`ice_and_fire_policy::io`), whose loop
 //! cannot take another turn function.
 
@@ -7,12 +7,21 @@ use std::time::Instant;
 
 use ice_and_fire_engine::League;
 
+use crate::Steps;
+
 /// Lines of a turn before the building count: four numbers, then the map.
 const HEADER_LINES: usize = 4 + 12;
 
-/// Plays turns of a game of `league` until the input ends. Prints the time
-/// of each turn to stderr (debug output goes there only).
-pub fn play(league: League, input: impl BufRead, mut output: impl Write) -> Result<(), String> {
+/// Plays turns of a Bronze game with the `steps` of the ladder until the
+/// input ends. Prints the time of each turn to stderr under `name` (debug
+/// output goes there only).
+pub fn play(
+    name: &str,
+    steps: Steps,
+    input: impl BufRead,
+    mut output: impl Write,
+) -> Result<(), String> {
+    let league = League::Bronze;
     let mut lines = Lines { reader: input };
 
     // The initial input. End of input before it means there is no game.
@@ -41,8 +50,8 @@ pub fn play(league: League, input: impl BufRead, mut output: impl Write) -> Resu
         }
 
         let start = Instant::now();
-        let answer = crate::answer(&initial, &text, league, turn);
-        eprintln!("turn {turn} ({league:?}): {:?}", start.elapsed());
+        let answer = crate::answer(&initial, &text, league, turn, steps);
+        eprintln!("turn {turn} ({name}): {:?}", start.elapsed());
         writeln!(output, "{answer}")
             .and_then(|()| output.flush())
             .map_err(|err| format!("turn {turn}: cannot write the answer: {err}"))?;

@@ -110,6 +110,9 @@ fn the_games_list_has_the_games_their_releases_and_whether_humans_play() {
     assert_eq!(
         games[1]["baselines"],
         json!([
+            "ice-and-fire-cutter",
+            "ice-and-fire-guard",
+            "ice-and-fire-chain",
             "ice-and-fire-bronze",
             "ice-and-fire-wood1",
             "ice-and-fire-wood2",

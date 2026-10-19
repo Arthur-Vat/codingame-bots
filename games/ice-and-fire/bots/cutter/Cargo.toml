@@ -1,0 +1,16 @@
+[package]
+name = "ice-and-fire-bot-cutter"
+description = "Cutter bot for A Code of Ice and Fire: the guard bot with cuts of the enemy's territory. The third step of the ladder."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ice-and-fire-ladder.workspace = true
+
+[lints]
+workspace = true
