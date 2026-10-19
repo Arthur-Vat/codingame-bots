@@ -2,7 +2,7 @@
 
 The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md), [ADR 0035](../../docs/adr/0035-new-game-lifecycle.md)). The owner decides at the end of every stage; each gate records his answer and its date. Skill `new-game` reads this file to name the next stage.
 
-**Stage in progress:** 8. Research (next, in a fresh session), while stage 5 waits for the `rules-check` run on CodinGame
+**Stage in progress:** 8. Research (next, in a fresh session)
 **Owner's stopping rule:** none yet
 
 | # | Stage | Status | Gate: the owner's answer |
@@ -11,7 +11,7 @@ The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME
 | 2 | Rules | Done (2026-10-17) | [RULES.md](RULES.md), #158 merged; "Merge #158, go on" (form, 2026-10-17) |
 | 3 | Model | Done (2026-10-17) | [MODEL.md](MODEL.md), #159 merged; "Merge #159" (form, 2026-10-17) |
 | 4 | Framework gaps | Done (2026-10-17) | [ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md) merged (#160); "Merge #160" (form, 2026-10-17) |
-| 5 | Referee and engine | In progress | |
+| 5 | Referee and engine | Done (2026-10-19) | `rules-check` on CodinGame: no difference in 4 Bronze games, both seats ([RULES.md](RULES.md)); "Merge #175, then record (Recommended)" (form, 2026-10-19) |
 | 6 | Arena and baseline bots | Done (2026-10-17) | Arena, baselines and the game's numbers, #166 merged; "Merge #166", then "Fresh session, then stage 7" (forms, 2026-10-17) |
 | 7 | Studio | Done (2026-10-17) | Adapter, renderer and baseline bots, #167-#169 merged; "The studio works perfectly", with the card's picture changed (2026-10-17) |
 | 8 | Research | Not started | |
@@ -32,7 +32,7 @@ Referee and engine: the list in the [playbook](../../docs/NEW_GAME.md).
 - [x] One bot per league (`wood3`, `wood2`, `wood1`, `bronze`) to climb to Bronze, where the `rules-check` bot can run (owner: never played the game, and one bot per league, 2026-10-17)
 - [x] A `rules-check` bot (skill `rules-check`), written (`bots/rules-check/`)
 - [x] Each league's bot against the source's boss of that league, run outside the repository: 200 of 200 games won in each league ([README.md](README.md#bots), 2026-10-19)
-- [ ] The `rules-check` bot pasted by the owner on CodinGame in the league where the full rules apply (pending)
+- [x] The `rules-check` bot pasted by the owner on CodinGame in Bronze, where the full rules apply: 4 games as red and blue, 0 differences, the longest 95 turns and 4,045 checks; the maps CodinGame sent hold every map fact of RULES.md (2026-10-19)
 
 Arena and baseline bots: the list in the [playbook](../../docs/NEW_GAME.md).
 
@@ -51,7 +51,7 @@ Studio: the list in the [playbook](../../docs/NEW_GAME.md).
 ## Open questions
 
 - Leagues above Bronze today, and how many players the leaderboard and Legend hold (asked 2026-10-17). They inform the stopping rule; the owner may leave them unknown.
-- Platform facts for stage 5's `rules-check` bot, not guessed here (2026-10-17): whether equal military power after 100 turns is a draw on CodinGame; whether a pairing is played from both seats; whether CodinGame's referee still matches the source's `develop` branch.
+- Whether equal military power after 100 turns is a draw on CodinGame (asked 2026-10-17): not seen in the `rules-check` games. The seats (either) and CodinGame's referee (no difference from the source's) were settled on 2026-10-19 ([RULES.md](RULES.md#platform-facts-to-check)).
 
 ## Decisions
 

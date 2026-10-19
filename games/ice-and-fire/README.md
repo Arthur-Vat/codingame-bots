@@ -2,7 +2,7 @@
 
 CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-programming/a-code-of-ice-and-fire) is the second game of this framework, named by the owner on 2026-10-17 (phase 7 of the [main roadmap](../../docs/ROADMAP.md)). Two players on a 12×12 map build armies, buildings and territory to capture the opposing headquarters. It began as a 10-day contest, now over; bots can still be submitted to it as a multiplayer game (source's README).
 
-**Status:** stage 8, research, is next, with stage 5 still waiting for the `rules-check` run on CodinGame ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator (which reproduces the source's maps), a fast engine checked against it, an arena, the `random` bot that anchors the ratings, the `wait` bot, a bot per league, the `rules-check` bot, the game's [numbers](#numbers), and its [studio](#studio) adapter.
+**Status:** stage 8, research, is next; stage 5 ended with the `rules-check` run on CodinGame, no difference in 4 Bronze games ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator (which reproduces the source's maps), a fast engine checked against it, an arena, the `random` bot that anchors the ratings, the `wait` bot, a bot per league, the `rules-check` bot, the game's [numbers](#numbers), and its [studio](#studio) adapter.
 
 ## Layout
 
@@ -143,9 +143,9 @@ The Wood 3 page confirms that the rules stop growing at Bronze. Leagues above Br
 ### Disagreements and points to settle
 
 - The statement template declares five league levels; the referee knows four and treats every level from 4 up as Bronze (`game/Referee.java`, lines 66-86).
-- Equal military power after 100 turns: the referee gives both players their score (`discriminateEndGame`); whether CodinGame then reports a draw is a platform fact to check in stage 5, not guessed here.
-- Red always plays first, and blue's extra cell at (11,10) offsets that (statement, "Expert Rules"). Whether CodinGame plays each pairing from both seats is a platform fact to check.
-- The source is the `develop` branch at commit `efe9e78` (2020-11-25); CodinGame's referee may differ. The `rules-check` bot of stage 5 settles it, and CodinGame's behaviour wins.
+- Equal military power after 100 turns: the referee gives both players their score (`discriminateEndGame`); whether CodinGame then reports a draw is a platform fact not seen yet ([RULES.md](RULES.md#platform-facts-to-check)), not guessed here.
+- Red always plays first, and blue's extra cell at (11,10) offsets that (statement, "Expert Rules"). CodinGame gives a bot either seat: the `rules-check` bot played both (2026-10-19).
+- The source is the `develop` branch at commit `efe9e78` (2020-11-25); CodinGame's referee may differ. The `rules-check` bot found no difference in 4 Bronze games (2026-10-19), and CodinGame's behaviour wins.
 
 ## Checking the rules on CodinGame
 

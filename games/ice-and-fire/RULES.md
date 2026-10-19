@@ -8,7 +8,7 @@ These are the rules our referee and engine will implement, written in our own wo
 
 The source is under the GNU GPL 3, so it is read for facts only: nothing of it is translated or copied ([ADR 0035](../../docs/adr/0035-new-game-lifecycle.md)). Where the statement is silent, the rule comes from the source and says so. The points where the two differ, and the platform facts neither gives, are listed at the end.
 
-**Checked on CodinGame:** the Wood 3 page agrees with these rules (2026-10-19); CodinGame's games not yet. Stage 5's `rules-check` bot compares these rules with CodinGame's games; CodinGame's behaviour wins.
+**Checked on CodinGame:** on 2026-10-19, in Bronze league, the `rules-check` bot played 4 games, as red and as blue, and found no difference between what CodinGame sent and what our engine predicted on any turn: gold, incomes, cells, units and their ids, buildings, and the start of the game from each seat. The longest game lasted 95 turns and 4,045 checks. The 4 maps CodinGame sent that day (one in Wood 3) hold every map fact below. The Wood 3 page agrees with these rules too. Not yet seen on CodinGame: a game ending on equal military power, and an end screen set beside the bot's expected result. CodinGame's behaviour wins if a difference appears.
 
 ## Board and players
 
@@ -207,9 +207,9 @@ Neither contradicts the other on any rule above; the source adds detail where th
 
 ## Platform facts to check
 
-Neither source gives these; stage 5's `rules-check` bot checks them on CodinGame, and nothing here guesses them:
+Neither source gives these, and nothing here guesses them:
 
-- Whether equal military power after 100 turns is a draw.
-- Whether CodinGame's referee still matches commit `efe9e78`.
-- Whether the time limits measure as the statement says.
-- Which seat a bot gets: red, which plays first, or blue, which starts with one more cell.
+- Whether equal military power after 100 turns is a draw: not seen yet (it ends about 7 in 10,000 games between random players).
+- Whether CodinGame's referee still matches commit `efe9e78`: it does on everything the `rules-check` bot sees (4 Bronze games, 2026-10-19).
+- Whether the time limits measure as the statement says: not measured; the bot answers in a few milliseconds and never timed out.
+- Which seat a bot gets: either. The `rules-check` bot played red in 2 of the games and blue in 1 (2026-10-19).
