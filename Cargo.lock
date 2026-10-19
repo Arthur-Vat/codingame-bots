@@ -270,6 +270,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ice-and-fire-tactics"
+version = "0.0.0"
+dependencies = [
+ "cg-core",
+ "ice-and-fire-engine",
+ "ice-and-fire-referee",
+]
+
+[[package]]
 name = "is_terminal_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
