@@ -28,7 +28,7 @@ The contest ran in May 2019; the multiplayer game that followed changed mines (f
 | [Perez-Liebana et al. 2021](https://arxiv.org/abs/2104.08641), Generating Diverse and Competitive Play-Styles for Strategy Games | paper | Portfolio MCTS: the search chooses among 57 scripts rather than raw actions, with progressive unpruning; it beat plain MCTS 65.6% in Tribes |
 | [Ontañón 2017](https://arxiv.org/abs/1710.04805), Combinatorial Multi-armed Bandits for Real-Time Strategy Games, JAIR | paper | Naive sampling: one bandit per unit plus one over whole combinations, assuming units independent; it pulls ahead of other samplers as the branching factor grows. This game's units are not independent (teccles, and the cuts below) |
 | [Villabrille and Montoliu 2022](https://ceur-ws.org/Vol-3305/paper3.pdf), NTBOE, CEUR Vol-3305 | paper | Online evolution with an n-tuple bandit model standing in for the forward model, ahead of OEP and MCTS on a small card game; a model cheaper than the game's rules is what makes it go deeper |
-| Churchill and Buro 2013, Portfolio Greedy Search and Simulation for Large-Scale Combat in StarCraft, CIG | paper, not read | The PDF at cs.mun.ca answered 404 on 2026-10-19; only the search engine's abstract was seen (hill climbing over a portfolio of scripts, ahead of alpha-beta and UCT at 40 ms). the OEP paper above cites it as a search over scripted behaviours rather than actions |
+| Churchill and Buro 2013, Portfolio Greedy Search and Simulation for Large-Scale Combat in StarCraft, CIG | paper, not read | The PDF at cs.mun.ca answered 404 on 2026-10-19; only the search engine's abstract was seen (hill climbing over a portfolio of scripts, ahead of alpha-beta and UCT at 40 ms). The OEP paper above cites it as a search over scripted behaviours rather than actions |
 
 No top player's code for this game was found published.
 
@@ -47,7 +47,7 @@ No top player's code for this game was found published.
 
 ## Candidate approaches
 
-Given our engine: about 137,000 random turns, generated and played, per second on one thread, a state clone of about 1 KB, and single commands applied with `State::apply` ([README.md](../README.md#engine-speed)); 50 ms a turn, 1,000 ms for the first. All six share the pieces above: the cheapest-chain search, a cut finder with a flood fill from each HQ, and an evaluation of a state.
+Given our engine: about 137,000 random turns, generated and played, per second on one thread, a state clone of about 1 KB, and single commands applied with `State::apply` ([README.md](../README.md#engine-speed)); 50 ms a turn, 1,000 ms for the first. Ranks 1 to 4 share the pieces above: the cheapest-chain search, a cut finder with a flood fill from each HQ, and an evaluation of a state.
 
 | Rank | Approach | Expected strength | Cost to build | Why |
 | --- | --- | --- | --- | --- |
