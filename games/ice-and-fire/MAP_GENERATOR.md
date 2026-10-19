@@ -1,6 +1,6 @@
 # A Code of Ice and Fire: how the source draws a map
 
-The steps by which the game's source draws a map, written in our own words for our referee's generator ([ADR 0041](../../docs/adr/0041-ice-and-fire-source-maps-from-a-spec.md)). They state behaviour, not code: the source is GPL, read for facts only ([ADR 0035](../../docs/adr/0035-new-game-lifecycle.md)), and our generator is written from this page by someone who has not read the source. Maps printed by the source's generator, run unchanged, check it map by map (`referee/src/map/golden.txt`). The source is [Azkellas/a-code-of-ice-and-fire](https://github.com/Azkellas/a-code-of-ice-and-fire), commit `efe9e78`, `GameState.java` (`generateMap` and the methods it calls) and `Constants.java`.
+The steps by which the game's source draws a map, written in our own words for our referee's generator ([ADR 0041](../../docs/adr/0041-ice-and-fire-source-maps-from-a-spec.md)). They state behaviour, not code: the source is GPL, read for facts only ([ADR 0035](../../docs/adr/0035-new-game-lifecycle.md)), and our generator is written from this page by someone who has not read the source. Maps printed by the source's generator, run unchanged, check it map by map (`referee/src/map/golden.txt`, committed with the generator). The source is [Azkellas/a-code-of-ice-and-fire](https://github.com/Azkellas/a-code-of-ice-and-fire), commit `efe9e78`, `GameState.java` (`generateMap` and the methods it calls) and `Constants.java`.
 
 The map's facts, as bots see them, are in [RULES.md](RULES.md) ("The map"); this page adds only what reproducing the maps exactly needs.
 
@@ -17,12 +17,12 @@ One generator is created from the seed at the start and used by every step, in t
 
 - **Seed:** the seed is a 64-bit signed integer; our arena's 64-bit unsigned seed is taken bit for bit. The state starts as `(seed XOR 0x5DEECE66D) AND (2^48 - 1)`.
 - **Next `b` bits** (b from 1 to 32): the state becomes `(state × 0x5DEECE66D + 0xB) mod 2^48`, computed with wrapping 64-bit arithmetic; the result is the state's top `b` bits (`state >> (48 - b)`) read as a 32-bit signed integer.
-- **Integer below `n`** (n > 0): take 31 bits as `r`. If n is a power of two, the result is `(n × r) >> 31`, computed in 64 bits. Otherwise, repeat: the result candidate is `r mod n`; accept it if `r - candidate + (n - 1)`, computed as a wrapping 32-bit signed integer, is not negative; else take 31 new bits as `r` and try again.
+- **Integer below `n`** (n > 0): take 31 bits as `r`. If n is a power of two (1 included), the result is `(n × r) >> 31`, computed in 64 bits. Otherwise, repeat: the result candidate is `r mod n`; accept it if `r - candidate + (n - 1)`, computed as a wrapping 32-bit signed integer, is not negative; else take 31 new bits as `r` and try again. A draw below 1 still takes its 31 bits and gives 0: it is never skipped.
 - **Fraction:** take 24 bits and divide by 2^24 in single precision (f32). The result is in [0, 1).
 
 ## Steps
 
-In this order. Only steps 4 and 9 depend on the league.
+In this order. Only steps 3 and 9 depend on the league, and only through the mine spots.
 
 1. **Noise.** Scan the grid; for each cell draw a fraction, and the cell is land if the fraction is **strictly greater than 0.45** (single precision), else void.
 2. **Home corner.** Make (0, 0), (1, 0), (0, 1) and (1, 1) land.
@@ -43,7 +43,7 @@ In this order. Only steps 4 and 9 depend on the league.
    - Let `max` be the larger of 6 and `n × 0.15` computed in single precision (f32) and rounded toward zero.
    - Draw an integer below `max - 5`, add 6, halve rounding down, and double: that is the number of mine spots, `count`.
    - `count / 2 - 1` times (integer division; it is at least 2): draw a column x, then a row y, each an integer below 12. While `(x, y)` is void, already a mine spot, or one of (0, 0), (11, 11), (0, 1) and (11, 10), draw a new x, then a new y. Then make `(x, y)` and its mirror mine spots.
-   - Our map lists the mine spots that the cells hold. That list may be shorter than `count` when a cell drawn is its own mirror, which cannot happen on a 12 × 12 grid, so the list always holds `count` cells.
+   - No cell is its own mirror on a 12 × 12 grid, so the map holds exactly `count` mine spots.
 10. The headquarters are placed afterwards and do not change the map: red's at (0, 0), blue's at (11, 11), with blue also owning (11, 10) (RULES.md, "Start of the game").
 
 ## What follows
