@@ -8,7 +8,7 @@ const view = (page: Page) => page.locator('.iaf').filter({ visible: true });
 // serves it (nothing mocked; it runs in the project "browser-engine"): the rules program knows the
 // game, reads the record and gives the frames the board draws. The record is a real game of the
 // arena, bronze (red) against random (blue), ended by the capture of blue's HQ after 21 answers:
-// ice-and-fire-game.json, made by `ice-and-fire-arena match --pairs 1 --records DIR`.
+// ice-and-fire-game.json, made by `ice-and-fire-arena match --pairs 1 --seed 2 --records DIR`.
 
 async function isolated(page: Page): Promise<boolean> {
   try {
@@ -71,7 +71,7 @@ test('a record is loaded into the history and stepped through on the analysis bo
   // Blue trains one.
   await next.click();
   await expect(view(page).locator('.unit.b')).toHaveCount(1);
-  await expect(view(page).locator('.iaf-answer')).toHaveText('Blue: TRAIN 2 10 10');
+  await expect(view(page).locator('.iaf-answer')).toHaveText('Blue: TRAIN 2 11 10');
 
   // Red moves both: an arrow for each move, and the rings are gone.
   await next.click();

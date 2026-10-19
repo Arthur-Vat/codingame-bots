@@ -1,22 +1,22 @@
-//! The map of A Code of Ice and Fire and our own generator for it (ADR 0039).
+//! The map of A Code of Ice and Fire. The generator reproduces the source's maps
+//! from the spec `games/ice-and-fire/MAP_GENERATOR.md` (ADR 0041): for a seed and
+//! a league it returns the map the source draws, checked against maps the source
+//! printed (`map/golden.txt`). It is deterministic per seed.
 //!
-//! The generator is designed from the map facts of `games/ice-and-fire/RULES.md`
-//! ("The map") and imitates no other generator. It is deterministic per seed.
-//! The half-turn mirror of `(x, y)` is `(11 - x, 11 - y)`.
-
-use cg_core::rng::Rng;
+//! The half-turn mirror of `(x, y)` is `(11 - x, 11 - y)`. The step numbers in
+//! the comments are those of the spec.
 
 use crate::{League, SIZE};
+
+mod java_random;
+
+use java_random::JavaRandom;
 
 /// Number of cells.
 pub const CELLS: usize = SIZE * SIZE;
 
-/// Chance that a cell of the first half is void before smoothing. To be tuned
-/// against real maps (ADR 0039, decision 3).
-pub const VOID_SHARE: f64 = 0.42;
-
-/// Number of smoothing passes over the grid.
-pub const SMOOTHING_PASSES: usize = 2;
+/// Smoothing passes (step 4).
+const SMOOTHING_PASSES: usize = 3;
 
 /// The map: which cells are void, and where the mine spots are.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -39,165 +39,183 @@ impl Map {
     }
 }
 
-/// The index of the cell opposite `index` under the half-turn.
-fn mirror(index: usize) -> usize {
-    CELLS - 1 - index
+/// The index of `(x, y)`.
+fn at(x: usize, y: usize) -> usize {
+    y * SIZE + x
 }
 
-/// Whether `index` is in one of the two clear corner blocks.
-fn in_corner_block(index: usize) -> bool {
-    let (x, y) = (index % SIZE, index / SIZE);
-    (x <= 2 && y <= 2) || (x >= SIZE - 3 && y >= SIZE - 3)
+/// The index of the cell opposite `(x, y)` under the half-turn.
+fn mirror(x: usize, y: usize) -> usize {
+    at(SIZE - 1 - x, SIZE - 1 - y)
 }
 
 /// Makes the map of a game: deterministic for a seed and a league.
 pub fn generate(seed: u64, league: League) -> Map {
-    let mut rng = Rng::new(seed);
-    let mut void = random_voids(&mut rng);
-    for _ in 0..SMOOTHING_PASSES {
-        void = smooth(&void);
-    }
-    for (index, cell) in void.iter_mut().enumerate() {
-        if in_corner_block(index) {
-            *cell = false;
+    // The seed is taken bit for bit as the source's signed 64-bit seed.
+    let mut rng = JavaRandom::new(seed as i64);
+    let mut land = [false; CELLS];
+    let mut spot = [false; CELLS];
+
+    // Step 1: noise, x being the outer loop.
+    for x in 0..SIZE {
+        for y in 0..SIZE {
+            land[at(x, y)] = rng.fraction() > 0.45f32;
         }
     }
-    connect(&mut void);
-    let mine_spots = if league.has_mine_spots() {
-        place_mine_spots(&void, &mut rng)
-    } else {
-        Vec::new()
-    };
+    // Step 2: the home corner.
+    for (x, y) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+        land[at(x, y)] = true;
+    }
+    // Step 3: the first mine spots.
+    if league.has_mine_spots() {
+        spot[at(1, 0)] = true;
+        spot[mirror(1, 0)] = true;
+    }
+    // Step 4: smoothing.
+    for _ in 0..SMOOTHING_PASSES {
+        land = smooth(&land);
+    }
+    // Step 5: inversion.
+    for cell in land.iter_mut() {
+        *cell = !*cell;
+    }
+    // Step 6: mirroring, in place and in this order.
+    for x in 0..SIZE {
+        for y in 0..=x {
+            land[mirror(x, y)] = land[at(x, y)];
+        }
+    }
+    // Step 7: corner blocks.
+    for i in 0..3 {
+        for j in 0..3 {
+            land[at(i, j)] = true;
+            land[mirror(i, j)] = true;
+        }
+    }
+    // Step 8: joining the areas.
+    join_areas(&mut land, &mut rng);
+    // Step 9: mine spots.
+    if league.has_mine_spots() {
+        place_mine_spots(&land, &mut spot, &mut rng);
+    }
+
+    let mut void = [false; CELLS];
+    for (cell, &is_land) in void.iter_mut().zip(&land) {
+        *cell = !is_land;
+    }
+    let mut mine_spots = Vec::new();
+    for y in 0..SIZE {
+        for x in 0..SIZE {
+            if spot[at(x, y)] {
+                mine_spots.push((x, y));
+            }
+        }
+    }
     Map { void, mine_spots }
 }
 
-/// Step 1: voids drawn for the first half and mirrored.
-fn random_voids(rng: &mut Rng) -> [bool; CELLS] {
-    let mut void = [false; CELLS];
-    for index in 0..CELLS / 2 {
-        let is_void = rng.unit() < VOID_SHARE;
-        void[index] = is_void;
-        void[mirror(index)] = is_void;
-    }
-    void
-}
-
-/// Step 2: one cellular-automaton pass, computed from a copy of the grid. A
-/// cell with at least 5 non-void neighbours among its 8 becomes non-void, one
-/// with at most 2 becomes void. Off-map neighbours count as void.
-fn smooth(void: &[bool; CELLS]) -> [bool; CELLS] {
-    let mut next = *void;
-    for y in 0..SIZE as i32 {
-        for x in 0..SIZE as i32 {
-            let mut open = 0;
-            for dy in -1..=1 {
-                for dx in -1..=1 {
+/// Step 4, one pass: a cell becomes land if at least 6 of the 9 cells of the
+/// 3 × 3 block around it, itself included, are land; off-map cells count as
+/// land. Every cell is computed from the grid before the pass.
+fn smooth(land: &[bool; CELLS]) -> [bool; CELLS] {
+    let mut next = [false; CELLS];
+    let size = SIZE as i32;
+    for x in 0..size {
+        for y in 0..size {
+            let mut count = 0;
+            for dx in -1..=1 {
+                for dy in -1..=1 {
                     let (nx, ny) = (x + dx, y + dy);
-                    let on_map = (0..SIZE as i32).contains(&nx) && (0..SIZE as i32).contains(&ny);
-                    if (dx, dy) != (0, 0) && on_map && !void[ny as usize * SIZE + nx as usize] {
-                        open += 1;
+                    let off_map = nx < 0 || ny < 0 || nx >= size || ny >= size;
+                    if off_map || land[at(nx as usize, ny as usize)] {
+                        count += 1;
                     }
                 }
             }
-            let index = y as usize * SIZE + x as usize;
-            if open >= 5 {
-                next[index] = false;
-            } else if open <= 2 {
-                next[index] = true;
-            }
+            next[at(x as usize, y as usize)] = count >= 6;
         }
     }
     next
 }
 
-/// The indices of the non-void cells 4-connected to `start`.
-fn component(void: &[bool; CELLS], start: usize) -> [bool; CELLS] {
+/// The depth-first walk of step 8 on `(x, y)`: the cell is added to `area`,
+/// then the neighbours are tried left, right, up, down.
+fn walk(
+    land: &[bool; CELLS],
+    seen: &mut [bool; CELLS],
+    (x, y): (usize, usize),
+    area: &mut Vec<usize>,
+) {
+    area.push(at(x, y));
+    seen[at(x, y)] = true;
+    // Wrapped subtractions land far off the grid and fail the bounds check.
+    let neighbours = [
+        (x.wrapping_sub(1), y),
+        (x + 1, y),
+        (x, y.wrapping_sub(1)),
+        (x, y + 1),
+    ];
+    for (nx, ny) in neighbours {
+        if nx < SIZE && ny < SIZE && land[at(nx, ny)] && !seen[at(nx, ny)] {
+            walk(land, seen, (nx, ny), area);
+        }
+    }
+}
+
+/// Step 8: joins the areas of land with corridors.
+fn join_areas(land: &mut [bool; CELLS], rng: &mut JavaRandom) {
     let mut seen = [false; CELLS];
-    seen[start] = true;
-    let mut stack = vec![start];
-    while let Some(index) = stack.pop() {
-        let (x, y) = (index % SIZE, index / SIZE);
-        let mut neighbours = Vec::with_capacity(4);
-        if x > 0 {
-            neighbours.push(index - 1);
-        }
-        if x + 1 < SIZE {
-            neighbours.push(index + 1);
-        }
-        if y > 0 {
-            neighbours.push(index - SIZE);
-        }
-        if y + 1 < SIZE {
-            neighbours.push(index + SIZE);
-        }
-        for next in neighbours {
-            if !void[next] && !seen[next] {
-                seen[next] = true;
-                stack.push(next);
+    let mut areas: Vec<Vec<usize>> = Vec::new();
+    for x in 0..SIZE {
+        for y in 0..SIZE {
+            if land[at(x, y)] && !seen[at(x, y)] {
+                let mut area = Vec::new();
+                walk(land, &mut seen, (x, y), &mut area);
+                areas.push(area);
             }
         }
     }
-    seen
-}
-
-/// The pair `(a, b)` with `a` in `area` and `b` a non-void cell outside it
-/// that has the smallest Manhattan distance. Ties go to the smaller index of
-/// `a`, then of `b`. `None` when no non-void cell is outside `area`.
-fn closest_pair(void: &[bool; CELLS], area: &[bool; CELLS]) -> Option<(usize, usize)> {
-    let mut best: Option<(usize, usize, usize)> = None;
-    for a in (0..CELLS).filter(|&a| area[a]) {
-        for b in (0..CELLS).filter(|&b| !void[b] && !area[b]) {
-            let distance = (a % SIZE).abs_diff(b % SIZE) + (a / SIZE).abs_diff(b / SIZE);
-            // Ascending scans with a strict comparison break ties as stated.
-            if best.is_none_or(|(smallest, _, _)| distance < smallest) {
-                best = Some((distance, a, b));
+    if areas.len() <= 1 {
+        return;
+    }
+    let picked: Vec<(usize, usize)> = areas
+        .iter()
+        .map(|area| {
+            let index = area[rng.below(area.len() as i32) as usize];
+            (index % SIZE, index / SIZE)
+        })
+        .collect();
+    for (i, &(ax, ay)) in picked.iter().enumerate() {
+        for &(bx, by) in &picked[i + 1..] {
+            for x in ax.min(bx)..=ax.max(bx) {
+                land[at(x, by)] = true;
+                land[mirror(x, by)] = true;
+            }
+            for y in ay.min(by)..=ay.max(by) {
+                land[at(ax, y)] = true;
+                land[mirror(ax, y)] = true;
             }
         }
     }
-    best.map(|(_, a, b)| (a, b))
 }
 
-/// Step 4: joins the areas to the one holding (0, 0) with L-shaped corridors,
-/// closest pair first, until there is one area.
-fn connect(void: &mut [bool; CELLS]) {
-    while let Some((a, b)) = closest_pair(void, &component(void, 0)) {
-        let (ax, ay, bx, by) = (a % SIZE, a / SIZE, b % SIZE, b / SIZE);
-        // Along a's row to b's column, then along that column to b.
-        let mut carved = Vec::new();
-        carved.extend((ax.min(bx)..=ax.max(bx)).map(|x| ay * SIZE + x));
-        carved.extend((ay.min(by)..=ay.max(by)).map(|y| y * SIZE + bx));
-        for index in carved {
-            void[index] = false;
-            void[mirror(index)] = false;
+/// Step 9: an even number of mine spots, symmetric, added to `spot`.
+fn place_mine_spots(land: &[bool; CELLS], spot: &mut [bool; CELLS], rng: &mut JavaRandom) {
+    let lands = land.iter().filter(|&&cell| cell).count();
+    let most = 6.max((lands as f32 * 0.15f32) as i32);
+    let count = (rng.below(most - 5) + 6) / 2 * 2;
+    let size = SIZE as i32;
+    let forbidden = [(0, 0), (SIZE - 1, SIZE - 1), (0, 1), (SIZE - 1, SIZE - 2)];
+    for _ in 0..count / 2 - 1 {
+        let mut x = rng.below(size) as usize;
+        let mut y = rng.below(size) as usize;
+        while !land[at(x, y)] || spot[at(x, y)] || forbidden.contains(&(x, y)) {
+            x = rng.below(size) as usize;
+            y = rng.below(size) as usize;
         }
+        spot[at(x, y)] = true;
+        spot[mirror(x, y)] = true;
     }
-}
-
-/// Step 5: an even number of mine spots, symmetric, with (1, 0) and (10, 11).
-fn place_mine_spots(void: &[bool; CELLS], rng: &mut Rng) -> Vec<(usize, usize)> {
-    let open = void.iter().filter(|&&cell| !cell).count();
-    let most = (open * 15 / 100).max(6);
-    let pairs = 3 + rng.below((most / 2 - 2) as u64) as usize;
-    let count = 2 * pairs;
-
-    let forbidden = [0, SIZE, CELLS - 1, CELLS - 1 - SIZE];
-    let mut spot = [false; CELLS];
-    spot[1] = true;
-    spot[mirror(1)] = true;
-    let mut placed = 2;
-    while placed < count {
-        let index = rng.below(CELLS as u64) as usize;
-        if void[index] || forbidden.contains(&index) || spot[index] {
-            continue;
-        }
-        spot[index] = true;
-        spot[mirror(index)] = true;
-        placed += 2;
-    }
-    (0..CELLS)
-        .filter(|&index| spot[index])
-        .map(|index| (index % SIZE, index / SIZE))
-        .collect()
 }
 
 #[cfg(test)]
