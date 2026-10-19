@@ -26,7 +26,7 @@ Status is `Not started`, `In progress`, `Waiting for the owner` or `Done (YYYY-M
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 
 - [x] Shared tactics: cheapest chain with towers, cut finder, evaluation (`tactics/`)
-- [ ] `phases`, grown from the `bronze` policy; ice-and-fire-v001 once it beats `bronze` in the SPRT
+- [ ] `phases`, grown from the `bronze` policy; ice-and-fire-v001 once it beats `bronze` in the SPRT (the bot is written and its candidate release `ice-and-fire-v001` frozen, [E001](journal/E001-phases.md); screened at 75% to 80% against `bronze`, the SPRT is pending)
 - [ ] `plan`: the plan search with a memory of opponent replies, compared with v001; v002 if it wins
 - [ ] The owner pastes v001 on CodinGame
 
