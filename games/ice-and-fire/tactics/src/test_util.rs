@@ -166,3 +166,19 @@ pub fn ready_to_win() -> State {
     }
     .state()
 }
+
+/// A position that makes the cut search large: red holds rows 0 to 5, blue
+/// rows 6 to 11, all active, and red has `gold`.
+pub fn heavy(gold: i64) -> State {
+    let red = "OOOOOOOOOOOO";
+    let blue = "XXXXXXXXXXXX";
+    Position {
+        rows: [
+            red, red, red, red, red, red, blue, blue, blue, blue, blue, blue,
+        ],
+        gold: [gold, 20],
+        buildings: &[],
+        units: &[],
+    }
+    .state()
+}

@@ -96,11 +96,36 @@ fn main() {
             state.play_turn(&commands);
         }
     }
+    // A heavy position: red holds rows 0 to 5 and blue rows 6 to 11, all
+    // active, and red has 100,000 gold. The search ends at its node limit.
+    let heavy = {
+        let mut turn = String::from("100000\n72\n20\n72\n");
+        for y in 0..12 {
+            turn.push_str(if y < 6 {
+                "OOOOOOOOOOOO\n"
+            } else {
+                "XXXXXXXXXXXX\n"
+            });
+        }
+        turn.push_str("2\n0 0 0 0\n1 0 11 11\n0\n");
+        State::read("0\n", &turn, League::Bronze, 10).expect("the heavy position")
+    };
+    let mut heavy_cuts = [
+        (2, Timing::new("cuts(2, 100000 gold, 8), heavy")),
+        (4, Timing::new("cuts(4, 100000 gold, 8), heavy")),
+        (6, Timing::new("cuts(6, 100000 gold, 8), heavy")),
+        (10, Timing::new("cuts(10, 100000 gold, 8), heavy")),
+    ];
+    for (len, timing) in &mut heavy_cuts {
+        for _ in 0..20 {
+            timing.time(1, || cuts(&heavy, *len, 100_000, 8));
+        }
+    }
     println!("{positions} positions, game turns {FIRST_TURN} to {LAST_TURN}");
     println!();
     println!("| Call | Calls | Mean (us) | Max (us) |");
     println!("| --- | ---: | ---: | ---: |");
-    for timing in [
+    let mut timings = vec![
         &reach,
         &reach_moves,
         &chain,
@@ -108,7 +133,9 @@ fn main() {
         &eval,
         &chain_rich,
         &cut_rich,
-    ] {
+    ];
+    timings.extend(heavy_cuts.iter().map(|(_, timing)| timing));
+    for timing in timings {
         println!(
             "| {} | {} | {:.1} | {:.1} |",
             timing.name,

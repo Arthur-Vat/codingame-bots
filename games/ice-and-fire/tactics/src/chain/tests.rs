@@ -267,6 +267,8 @@ fn chain_to_a_cell_already_taken_is_free() {
     let chain = chain_to(&state, HQ[0], 0).expect("already ours");
     assert!(chain.commands.is_empty());
     assert_eq!(chain.cost, 0);
+    // A negative budget is no budget at all, even for a cell already held.
+    assert_eq!(chain_to(&state, HQ[0], -1), None);
 }
 
 #[test]

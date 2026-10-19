@@ -1,7 +1,7 @@
 use ice_and_fire_engine::{League, Outcome, State, CELLS, SIZE};
 
 use super::*;
-use crate::test_util::{random_positions, ready_to_win, unit_value, won_state, Position};
+use crate::test_util::{heavy, random_positions, ready_to_win, unit_value, won_state, Position};
 
 fn train(level: u8, x: u8, y: u8) -> Command {
     Command::Train { level, x, y }
@@ -174,22 +174,48 @@ fn nothing_to_cut_gives_nothing() {
 
 #[test]
 fn the_search_stops_at_the_node_limit() {
-    // On an open map from a start with a lot of gold the search is large; it
-    // must return, deterministically, with results that apply.
-    let mut state = State::new(&[false; CELLS], &[], League::Bronze);
-    let mut commands = Vec::new();
-    let mut rng = cg_core::rng::Rng::new(3);
-    for _ in 0..30 {
-        state.random_turn(&mut rng, &mut commands);
-        state.play_turn(&commands);
+    // Red holds the top half, blue the bottom half, and red has gold for
+    // anything: the search tree is far larger than the limit, so the search
+    // must stop at it, return, and give deterministic cuts that apply.
+    let state = heavy(100_000);
+    let (found, nodes) = search(&state, 10, 100_000, 8);
+    assert_eq!(nodes, MAX_NODES, "the limit ends the search");
+    assert_eq!(found.len(), 8);
+    for cut in &found {
+        apply_all(&state, &cut.commands);
     }
-    if state.outcome().is_none() {
-        let found = cuts(&state, 6, 10_000, 8);
-        assert_eq!(found, cuts(&state, 6, 10_000, 8));
-        for cut in &found {
-            apply_all(&state, &cut.commands);
-        }
-    }
+    assert_eq!(found, cuts(&state, 10, 100_000, 8));
+    // A short search does not reach the limit.
+    let (short, nodes) = search(&state, 2, 100_000, 8);
+    assert!(nodes < MAX_NODES, "{nodes}");
+    assert_eq!(short.len(), 8);
+}
+
+#[test]
+fn a_duplicate_set_keeps_the_cheaper_chain() {
+    // Two orders of the same cells are one cut: the heavy position has many
+    // of them, and none repeats.
+    let state = heavy(100_000);
+    let found = cuts(&state, 4, 100_000, 100_000);
+    let mut sets: Vec<Vec<(u8, u8)>> = found
+        .iter()
+        .map(|cut| {
+            let mut cells: Vec<(u8, u8)> = cut
+                .commands
+                .iter()
+                .map(|command| match *command {
+                    Command::Train { x, y, .. } => (x, y),
+                    other => panic!("not a training: {other:?}"),
+                })
+                .collect();
+            cells.sort_unstable();
+            cells
+        })
+        .collect();
+    let all = sets.len();
+    sets.sort();
+    sets.dedup();
+    assert_eq!(sets.len(), all);
 }
 
 const SEEDS: u64 = if cfg!(debug_assertions) { 60 } else { 200 };

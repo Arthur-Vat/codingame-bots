@@ -208,7 +208,7 @@ fn attempt(state: &State, me: usize, goals: &[usize], budget: i64) -> Option<Cha
 /// Applying its commands in order to `state` succeeds, and then `target` is
 /// the player's (or the player has won).
 pub fn chain_to(state: &State, target: usize, budget: i64) -> Option<Chain> {
-    if state.outcome().is_some() || target >= CELLS || state.map().void.test(target) {
+    if budget < 0 || state.outcome().is_some() || target >= CELLS || state.map().void.test(target) {
         return None;
     }
     let me = state.to_act();
