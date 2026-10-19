@@ -97,3 +97,12 @@ fn fractions_are_in_zero_to_one() {
         assert!((0.0..1.0).contains(&fraction));
     }
 }
+
+#[test]
+fn a_draw_below_one_gives_zero_and_takes_its_bits() {
+    let mut random = JavaRandom::new(42);
+    let mut fresh = JavaRandom::new(42);
+    assert_eq!(random.below(1), 0);
+    fresh.below(12);
+    assert_eq!(random.below(1_000_003), fresh.below(1_000_003));
+}

@@ -149,7 +149,7 @@ The Wood 3 page confirms that the rules stop growing at Bronze. Leagues above Br
 
 ## Checking the rules on CodinGame
 
-The parity tests prove the engine and the referee agree with each other, not that both agree with CodinGame. The `rules-check` bot checks that, and logs the maps CodinGame draws so that they can be set beside our generator's ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md), decision 3). To run it, once, in Bronze league or above (the bot assumes the Bronze rules):
+The parity tests prove the engine and the referee agree with each other, not that both agree with CodinGame. The `rules-check` bot checks that, and logs the maps CodinGame draws so that they can be set beside the generator's statistics ([ADR 0041](../../docs/adr/0041-ice-and-fire-source-maps-from-a-spec.md), decision 4). To run it, once, in Bronze league or above (the bot assumes the Bronze rules):
 
 1. Paste `target/cg/ice-and-fire-rules-check.rs` (`scripts/bundle-bots.sh ice-and-fire`; CI also publishes it in the `paste-ready-bots-ice-and-fire` artifact) into the IDE and click **Play my code** a few times, against different opponents.
 2. Check that the MAP lines across the games show both `red` and `blue`, and say so if they all show the same seat: the rules differ between the seats (red plays first, blue starts with one more cell), and the first turn as each is checked.

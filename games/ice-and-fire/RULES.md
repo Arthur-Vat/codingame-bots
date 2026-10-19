@@ -25,7 +25,7 @@ Bots receive the map; these facts matter for an arena that makes its own maps.
 - It is symmetric under a half-turn: (x, y) and (11 − x, 11 − y) are both void or both not, and both mine spots or both not (`GameState.java`, `generateMap` and `linkComponents`).
 - The 3×3 block of cells at each corner of an HQ, (0..2, 0..2) and (9..11, 9..11), is never void (`GameState.java`, `generateMap`; the statement says the cells next to an HQ, diagonals included, are never void, which this implies).
 - The non-void cells form one connected area (`GameState.java`, `linkComponents`).
-- The source draws the void cells at random, smooths them with a cellular automaton, mirrors them, clears the HQ corners and joins separate areas with straight corridors. Our arena's generator reproduces its maps exactly, from the steps written in [MAP_GENERATOR.md](MAP_GENERATOR.md) ([ADR 0041](../../docs/adr/0041-ice-and-fire-source-maps-from-a-spec.md)).
+- The source draws the void cells at random, smooths them with a cellular automaton, mirrors them, clears the HQ corners and joins separate areas with L-shaped corridors (along a row, then along a column). Our arena's generator reproduces its maps exactly, from the steps written in [MAP_GENERATOR.md](MAP_GENERATOR.md) ([ADR 0041](../../docs/adr/0041-ice-and-fire-source-maps-from-a-spec.md)).
 
 ### Mine spots
 
