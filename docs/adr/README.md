@@ -57,4 +57,5 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 
 | # | Decision | Status |
 | --- | --- | --- |
-| [0039](0039-ice-and-fire-maps-and-studio.md) | A Code of Ice and Fire: our own map generator, and replay before human play in the studio | Accepted |
+| [0039](0039-ice-and-fire-maps-and-studio.md) | A Code of Ice and Fire: our own map generator, and replay before human play in the studio | Accepted; decisions 1 and 3 superseded by 0041 |
+| [0041](0041-ice-and-fire-source-maps-from-a-spec.md) | A Code of Ice and Fire: the source's maps, rebuilt from a written spec | Accepted |
