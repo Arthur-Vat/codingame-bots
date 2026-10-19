@@ -54,6 +54,7 @@ Studio: the list in the [playbook](../../docs/NEW_GAME.md).
 
 ## Decisions
 
+- 2026-10-19: the arena's maps become exactly the source's, rebuilt from a written spec ([MAP_GENERATOR.md](MAP_GENERATOR.md)) by an implementer that never reads the source, and checked against maps printed by the source run unchanged ([ADR 0041](../../docs/adr/0041-ice-and-fire-source-maps-from-a-spec.md); forms: "Clean-room spec (Recommended)", then "Go, in this session (Recommended)").
 - 2026-10-19: the owner pasted CodinGame's Wood 3 page, recorded as a source of RULES.md (it agrees with it), and asked for the source's league bosses to be played locally, unchanged and outside the repository (form: "Play bosses locally (Recommended)", "Record the pasted page").
 - 2026-10-17: stage 7 passed: "The studio works perfectly"; the owner asked for a picture of the game on its home card, in the style of the others. Stage 8 in a fresh session (form: "Stage 8, fresh session (Recommended)").
 - 2026-10-17: the studio also offers each game's baseline bots, so that this game can be watched before its first release (form: "Baseline bots (Recommended)", [ADR 0040](../../docs/adr/0040-baseline-bots-in-the-studio.md)).

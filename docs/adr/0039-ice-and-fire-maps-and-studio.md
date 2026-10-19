@@ -1,6 +1,6 @@
 # 0039. A Code of Ice and Fire: our own map generator, and replay before human play in the studio
 
-- Status: accepted (owner, 2026-10-17)
+- Status: accepted (owner, 2026-10-17); decisions 1 and 3 superseded by [0041](0041-ice-and-fire-source-maps-from-a-spec.md)
 - Date: 2026-10-17
 - Scope: ice-and-fire
 

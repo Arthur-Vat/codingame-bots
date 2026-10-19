@@ -9,6 +9,7 @@ CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-p
 | Path | What it is |
 | --- | --- |
 | [RULES.md](RULES.md) | The rules in our own words, with sources |
+| [MAP_GENERATOR.md](MAP_GENERATOR.md) | How the source draws a map, in our own words: the spec of our referee's generator ([ADR 0041](../../docs/adr/0041-ice-and-fire-source-maps-from-a-spec.md)) |
 | [MODEL.md](MODEL.md) | The game as a search problem: numbers, a formal model, what follows for bots |
 | [ROADMAP.md](ROADMAP.md) | The game's stages in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md)) |
 | [referee/](referee/) | `ice-and-fire-referee`: readable reference implementation of the rules, with our own map generator ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)), for the arena |
