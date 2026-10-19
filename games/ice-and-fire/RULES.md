@@ -1,13 +1,14 @@
 # A Code of Ice and Fire rules on CodinGame
 
-These are the rules our referee and engine will implement, written in our own words. They come from two sources (see [README.md](README.md)):
+These are the rules our referee and engine will implement, written in our own words. They come from two sources, and a third confirms part of them (see [README.md](README.md)):
 
 - **Statement:** the statement template of the game's source, `config/statement_en.html.tpl`, which the owner chose on 2026-10-17 over pasting CodinGame's page;
-- **Source:** the referee, [Azkellas/a-code-of-ice-and-fire](https://github.com/Azkellas/a-code-of-ice-and-fire), branch `develop`, commit `efe9e78`. Paths are relative to `src/main/java/com/codingame/`: `game/Referee.java` (the turn loop and the parsing of answers) and, under `antiyoy/`, `GameState.java` (map, turn start, income, actions), `Cell.java` (capture and protection), `Pathfinding.java` (where a move goes), `Unit.java` and `Constants.java`.
+- **Source:** the referee, [Azkellas/a-code-of-ice-and-fire](https://github.com/Azkellas/a-code-of-ice-and-fire), branch `develop`, commit `efe9e78`. Paths are relative to `src/main/java/com/codingame/`: `game/Referee.java` (the turn loop and the parsing of answers) and, under `antiyoy/`, `GameState.java` (map, turn start, income, actions), `Cell.java` (capture and protection), `Pathfinding.java` (where a move goes), `Unit.java` and `Constants.java`;
+- **Wood 3 page:** CodinGame's own statement of the game in Wood 3, pasted by the owner on 2026-10-19. No rule it states differs from those below; it confirms the Wood 3 rules and that all the rules are unlocked in Bronze.
 
 The source is under the GNU GPL 3, so it is read for facts only: nothing of it is translated or copied ([ADR 0035](../../docs/adr/0035-new-game-lifecycle.md)). Where the statement is silent, the rule comes from the source and says so. The points where the two differ, and the platform facts neither gives, are listed at the end.
 
-**Checked on CodinGame:** not yet. Stage 5's `rules-check` bot compares these rules with CodinGame's games; CodinGame's behaviour wins.
+**Checked on CodinGame:** the Wood 3 page agrees with these rules (2026-10-19); CodinGame's games not yet. Stage 5's `rules-check` bot compares these rules with CodinGame's games; CodinGame's behaviour wins.
 
 ## Board and players
 
@@ -185,7 +186,7 @@ One line per turn, as in "Commands" above (statement, "Output"). The game shows 
 
 ## Leagues
 
-The rules grow with the leagues (statement, league notes; `Referee.java`, `init`; `Constants.java`):
+The rules grow with the leagues, and stop growing at Bronze (statement, league notes; Wood 3 page; `Referee.java`, `init`; `Constants.java`):
 
 | League | Units | Level 1 against level 1 | Buildings | Mine spots |
 | --- | --- | --- | --- | --- |
