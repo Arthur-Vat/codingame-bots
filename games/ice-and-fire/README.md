@@ -2,7 +2,7 @@
 
 CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-programming/a-code-of-ice-and-fire) is the second game of this framework, named by the owner on 2026-10-17 (phase 7 of the [main roadmap](../../docs/ROADMAP.md)). Two players on a 12×12 map build armies, buildings and territory to capture the opposing headquarters. It began as a 10-day contest, now over; bots can still be submitted to it as a multiplayer game (source's README).
 
-**Status:** stage 6, arena and baseline bots, with stage 5 still waiting for the `rules-check` run on CodinGame ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator, a fast engine checked against it, an arena, the `random` bot that anchors the ratings, the `wait` bot, a bot per league, the `rules-check` bot, and the game's [numbers](#numbers).
+**Status:** stage 8, research, is next, with stage 5 still waiting for the `rules-check` run on CodinGame ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator, a fast engine checked against it, an arena, the `random` bot that anchors the ratings, the `wait` bot, a bot per league, the `rules-check` bot, the game's [numbers](#numbers), and its [studio](#studio) adapter.
 
 ## Layout
 
@@ -34,7 +34,7 @@ Each league has its own bot, since the input never names the league; each is a s
 | [bronze](bots/bronze/) | The same policy with all the rules: a tower next to its HQ when enemy units come within 3 steps. Also serves above Bronze until real bots exist | Playing Bronze, where the `rules-check` bot runs |
 | [rules-check](bots/rules-check/) | Plays random turns and checks every turn's input against RULES.md and the engine; logs the game's map | Checking our rules against CodinGame's, in Bronze or above ([below](#checking-the-rules-on-codingame)) |
 
-The policy plans a turn on a scratch copy of the engine's state and keeps only the commands the rules accept. In order: a lethal move or chain of trainings to the enemy HQ if the gold pays for it (found by a cheapest-path search through the cells next to the territory); moves, the unit nearest the enemy HQ first, each to the neighbouring cell that gains the most (new cells, enemy cells, kills, cuts of enemy territory, mine spots) and gets nearer; a tower by the HQ under threat, else mines; trainings on the best cells next to the territory, level 1 unless a higher level is the only way to enter (to kill a unit or pass a tower), with income after upkeep kept at least 0 and a small gold reserve. It does no search and takes a few ms per turn (tested under 20 ms). It is a means of promotion, not a strong bot; none of the bosses of the leagues has been played yet.
+The policy plans a turn on a scratch copy of the engine's state and keeps only the commands the rules accept. In order: a lethal move or chain of trainings to the enemy HQ if the gold pays for it (found by a cheapest-path search through the cells next to the territory); moves, the unit nearest the enemy HQ first, each to the neighbouring cell that gains the most (new cells, enemy cells, kills, cuts of enemy territory, mine spots) and gets nearer; a tower by the HQ under threat, else mines; trainings on the best cells next to the territory, level 1 unless a higher level is the only way to enter (to kill a unit or pass a tower), with income after upkeep kept at least 0 and a small gold reserve. It does no search and takes a few ms per turn (tested under 20 ms). It is a means of promotion, not a strong bot; it beats the source's league bosses in our referee (below).
 
 Measured on 2026-10-17 over 200 maps in each seat (400 games per row, Rust 1.90.0 and current, release build), each bot in its own league against the reference referee (`cargo test -p ice-and-fire-policy --release`):
 
@@ -44,6 +44,8 @@ Measured on 2026-10-17 over 200 maps in each seat (400 games per row, Rust 1.90.
 | Wood 2 | 400/400 | 400/400 |
 | Wood 1 | 400/400 | 400/400 |
 | Bronze | 400/400 | 400/400 |
+
+The game's source has a boss for each league up to Bronze and none above: `config/level1/Boss.py3` (Wood 3), `config/level2/Boss.py3` (Wood 2), `config/level3/Boss.py3` (Wood 1), and the default boss `config/Boss.cpp`, which plays in Bronze since that league has none of its own. They are GPL, so they are neither copied nor translated here. Measured on 2026-10-19, with the bosses run unchanged outside the repository as processes, through a local build of the arena whose referee played each league's rules: 100 seat-swapped pairs per league at CodinGame's exact time limits, each bot against its league's boss. Each bot won 200 of 200 games, with no timeout, crash or invalid answer on either side. CodinGame's bosses may differ from the source's.
 
 ## Arena
 
@@ -98,6 +100,7 @@ Bronze games are too short to be sampled later. In the middle of a game between 
 | Short name | What it is |
 | --- | --- |
 | Statement | The statement template in the game's source, `config/statement_en.html.tpl`. The owner chose it on 2026-10-17 over pasting CodinGame's page; the page may have changed since the source was written, so the `rules-check` bot of stage 5 compares it with CodinGame's real games |
+| Wood 3 page | CodinGame's statement of the game in Wood 3, pasted by the owner on 2026-10-19. It agrees with [RULES.md](RULES.md) on every rule it states (the map, active cells, income and upkeep, the wipe-out when upkeep cannot be paid, level 1 units and their fights, training and moves, the end after 100 turns, the input and output), says that all the rules are unlocked in Bronze, and lists the rules added by Wood 2, Wood 1 and Bronze only |
 | Source | The referee, [Azkellas/a-code-of-ice-and-fire](https://github.com/Azkellas/a-code-of-ice-and-fire) on its `develop` branch, commit `efe9e78`, in Java on CodinGame's game engine. File paths below are relative to `src/main/java/com/codingame/` |
 
 **License of the source: GNU GPL version 3** (`LICENSE.md`). Under [ADR 0035](../../docs/adr/0035-new-game-lifecycle.md), the source is read for facts only: nothing of it is translated or copied here, the statement template and its pictures included. Our rules, referee and engine are written from our own `RULES.md`.
@@ -134,7 +137,7 @@ The rules grow with the leagues; Bronze and above play them all (statement; `gam
 | Wood 1 | Mines |
 | Bronze | Towers: all the rules |
 
-Leagues above Bronze, and how many players each holds, are not in the sources (open questions in [ROADMAP.md](ROADMAP.md)).
+The Wood 3 page confirms that the rules stop growing at Bronze. Leagues above Bronze, and how many players each holds, are not in the sources (open questions in [ROADMAP.md](ROADMAP.md)).
 
 ### Disagreements and points to settle
 

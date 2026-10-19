@@ -30,6 +30,7 @@ Referee and engine: the list in the [playbook](../../docs/NEW_GAME.md).
 - [x] A speed baseline in the game's README (`cargo run --release -p ice-and-fire-engine --example speed`)
 - [x] One bot per league (`wood3`, `wood2`, `wood1`, `bronze`) to climb to Bronze, where the `rules-check` bot can run (owner: never played the game, and one bot per league, 2026-10-17)
 - [x] A `rules-check` bot (skill `rules-check`), written (`bots/rules-check/`)
+- [x] Each league's bot against the source's boss of that league, run outside the repository: 200 of 200 games won in each league ([README.md](README.md#bots), 2026-10-19)
 - [ ] The `rules-check` bot pasted by the owner on CodinGame in the league where the full rules apply (pending)
 
 Arena and baseline bots: the list in the [playbook](../../docs/NEW_GAME.md).
@@ -53,6 +54,7 @@ Studio: the list in the [playbook](../../docs/NEW_GAME.md).
 
 ## Decisions
 
+- 2026-10-19: the owner pasted CodinGame's Wood 3 page, recorded as a source of RULES.md (it agrees with it), and asked for the source's league bosses to be played locally, unchanged and outside the repository (form: "Play bosses locally (Recommended)", "Record the pasted page").
 - 2026-10-17: stage 7 passed: "The studio works perfectly"; the owner asked for a picture of the game on its home card, in the style of the others. Stage 8 in a fresh session (form: "Stage 8, fresh session (Recommended)").
 - 2026-10-17: the studio also offers each game's baseline bots, so that this game can be watched before its first release (form: "Baseline bots (Recommended)", [ADR 0040](../../docs/adr/0040-baseline-bots-in-the-studio.md)).
 - 2026-10-17: stage 6 passed: "Merge #166", then stage 7 in a fresh session (form: "Fresh session, then stage 7").
