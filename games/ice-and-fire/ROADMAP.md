@@ -2,7 +2,7 @@
 
 The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md), [ADR 0035](../../docs/adr/0035-new-game-lifecycle.md)). The owner decides at the end of every stage; each gate records his answer and its date. Skill `new-game` reads this file to name the next stage.
 
-**Stage in progress:** 8. Research (next, in a fresh session)
+**Stage in progress:** 8. Research (waiting for the owner: the prototypes of stage 9)
 **Owner's stopping rule:** none yet
 
 | # | Stage | Status | Gate: the owner's answer |
@@ -14,7 +14,7 @@ The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME
 | 5 | Referee and engine | Done (2026-10-19) | `rules-check` on CodinGame: no difference in 4 Bronze games, both seats ([RULES.md](RULES.md)); "Merge #175, then record (Recommended)" (form, 2026-10-19) |
 | 6 | Arena and baseline bots | Done (2026-10-17) | Arena, baselines and the game's numbers, #166 merged; "Merge #166", then "Fresh session, then stage 7" (forms, 2026-10-17) |
 | 7 | Studio | Done (2026-10-17) | Adapter, renderer and baseline bots, #167-#169 merged; "The studio works perfectly", with the card's picture changed (2026-10-17) |
-| 8 | Research | Not started | |
+| 8 | Research | Waiting for the owner | [research/README.md](research/README.md): the approaches ranked and two prototypes proposed |
 | 9 | Approach and first bot | Not started | |
 | 10 | Iteration | Not started | |
 | 11 | Retrospective | Not started | |
@@ -22,6 +22,12 @@ The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME
 Status is `Not started`, `In progress`, `Waiting for the owner` or `Done (YYYY-MM-DD)`.
 
 ## Current stage
+
+Research: the list in the [playbook](../../docs/NEW_GAME.md).
+
+- [x] The contest's post-mortems (the forum, read in full on 2026-10-19) and papers on turns of many commands: 4 forum threads with 15 post-mortems, and 7 papers (one could not be opened) ([research/README.md](research/README.md))
+- [x] The approaches ranked by expected strength and cost; the generic method in [docs/research/multi-action-turns.md](../../docs/research/multi-action-turns.md)
+- [ ] The owner's gate: the prototypes of stage 9 chosen
 
 Referee and engine: the list in the [playbook](../../docs/NEW_GAME.md).
 
