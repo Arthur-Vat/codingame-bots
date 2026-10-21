@@ -4,8 +4,8 @@ name: SPRT
 # job per game that gets a new release (ADR 0029): a smoke test against the
 # random bot, a sequential probability ratio test against the previous
 # release, then, if accepted and the game asks for it, a confirmation match
-# at CodinGame's exact time limits. In Legend the SPRT itself plays at those
-# limits (scripts/sprt.sh, the game's evaluation.env). A game's result is
+# at CodinGame's exact time limits. The SPRT itself plays at those limits
+# (ADR 0042; scripts/sprt.sh, the game's evaluation.env). A game's result is
 # kept for the framework's code and that game's code only. After the SPRT
 # accepts, the league job plays the release's league (ADR 0038,
 # scripts/league.sh) and posts the new result lines as a comment; the job
@@ -274,7 +274,9 @@ jobs:
     # needs no league.
     if: needs.releases.outputs.games != '[]' && needs.sprt.result == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    # 800 pairs per pairing at full time (ADR 0042): about 3.5 hours for
+    # Ultimate Tic-Tac-Toe, which fits 300 minutes; GitHub's limit is 360.
+    timeout-minutes: 300
     strategy:
       fail-fast: false
       matrix:

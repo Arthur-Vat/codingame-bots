@@ -20,11 +20,11 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0010](0010-codingame-rust-toolchain.md) | Target CodinGame's Rust: 1.90.0, edition 2021 | Accepted |
 | [0011](0011-framework-structure.md) | Framework structure: text-protocol referees, reference rules, textual bundler | Accepted; the bundle's comments superseded by 0016 |
 | [0012](0012-evaluation.md) | Evaluation: SPRT on game pairs, seeded openings, frozen releases | Accepted; decision 7 superseded by 0013, part of decision 5 by 0015; decisions 10 and 12 completed by 0029; the league of decision 12 superseded by 0038 |
-| [0013](0013-evaluation-time-limits.md) | Evaluation time limits: 20 ms plus 5 ms of tolerance, full time for strong bots | Accepted; decision 3 put in place by 0014, part of decision 1 superseded by 0015, and for games in Legend by 0020 and 0038 |
-| [0014](0014-full-time-confirmation.md) | Confirm accepted candidates at CodinGame's time limits | Accepted; part of decision 3 superseded by 0015; superseded for games in Legend by 0020 |
+| [0013](0013-evaluation-time-limits.md) | Evaluation time limits: 20 ms plus 5 ms of tolerance, full time for strong bots | Accepted; decision 3 put in place by 0014, part of decision 1 superseded by 0015, and for games in Legend by 0020 and 0038; decisions 1 and 3 superseded by 0042 |
+| [0014](0014-full-time-confirmation.md) | Confirm accepted candidates at CodinGame's time limits | Accepted; part of decision 3 superseded by 0015; superseded for games in Legend by 0020, and for all games by 0042 |
 | [0015](0015-tolerate-rare-timeouts.md) | Tolerate rare timeouts: up to 1% of games, counted as losses | Accepted |
 | [0016](0016-self-play-training.md) | Train from self-play on GitHub Actions, with a pure-Rust tool | Accepted; decision 2 completed by 0021 |
-| [0020](0020-full-time-sprt-in-legend.md) | In Legend, the SPRT plays at CodinGame's time limits | Accepted; the league's part of decision 5 superseded by 0038 |
+| [0020](0020-full-time-sprt-in-legend.md) | In Legend, the SPRT plays at CodinGame's time limits | Accepted; the league's part of decision 5 superseded by 0038; decisions 2, 3 and 5 by 0042 |
 | [0021](0021-prune-finished-branches.md) | Delete finished branches, keeping their content | Accepted |
 | [0022](0022-scopes-and-names.md) | Scopes for decision records and pull requests | Accepted; decision 2 completed by 0025 |
 | [0023](0023-chat-approved-merges.md) | The owner approves merges in the conversation; Claude carries them out | Accepted |
@@ -42,8 +42,9 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0035](0035-new-game-lifecycle.md) | A lifecycle for each new game | Accepted |
 | [0036](0036-ranks-optional.md) | CodinGame ranks are reported only when the owner wishes | Accepted |
 | [0037](0037-size-limit-in-characters.md) | Count a bot's size in characters, and pack its data with Rust tools | Accepted |
-| [0038](0038-incremental-league.md) | An incremental league at full time, with a leaderboard kept in the repository | Accepted |
+| [0038](0038-incremental-league.md) | An incremental league at full time, with a leaderboard kept in the repository | Accepted; the 100 pairs of decision 2 and the cost estimate in its consequences superseded by 0042 |
 | [0040](0040-baseline-bots-in-the-studio.md) | The studio also plays each game's baseline bots | Accepted |
+| [0042](0042-official-time-limits-and-800-pairs.md) | Every strength evaluation at CodinGame's time limits, and 800 pairs per league pairing | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 
