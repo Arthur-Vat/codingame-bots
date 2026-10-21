@@ -26,7 +26,7 @@ CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-p
 | [journal/](journal/README.md) | One entry per experiment ([E001](journal/E001-ladder.md): the ladder of reference bots) |
 | [releases/](releases/) | The released bots, one file each, pasted into CodinGame; never changed |
 | [evaluation.env](evaluation.env) | Settings of the SPRT, the league (opponents, pairs, canary) and the arena for evaluations ([ADR 0012](../../docs/adr/0012-evaluation.md), [ADR 0038](../../docs/adr/0038-incremental-league.md)) |
-| [league.jsonl](league.jsonl) | The league's results, one line per pairing ([ADR 0038](../../docs/adr/0038-incremental-league.md)); bootstrapped on 2026-10-21 with `bronze`, `chain`, `guard`, `cutter` and `ice-and-fire-v001` (League run 39670620715) |
+| [league.jsonl](league.jsonl) | The league's results, one line per pairing ([ADR 0038](../../docs/adr/0038-incremental-league.md)); bootstrapped on 2026-10-21 with `bronze`, `chain`, `guard`, `cutter` and `ice-and-fire-v001`, 800 pairs per pairing at CodinGame's limits (League run 39678931208, ADR 0042) |
 | [LEADERBOARD.md](LEADERBOARD.md) | The ratings of the releases and the baseline bots, generated from `league.jsonl` |
 | [ci.sh](ci.sh) | The game's CI steps, run after the bots are bundled ([ADR 0029](../../docs/adr/0029-ci-scoped-by-area-and-game.md)): the arena games, the evaluation controls and a small league, then the engine speed |
 
