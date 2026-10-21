@@ -124,6 +124,8 @@ Background runs stay off until the owner turns them on.
 - [x] Decision record on the league and the rating model (owner, 2026-10-16, [ADR 0038](adr/0038-incremental-league.md)): Bradley-Terry over all stored pairings; each new release plays 8 opponents once (the previous release, the 5 nearest in rating, greedy and the first release), at full time, on its pull request
 - [x] Results kept across runs in a file per game, never replayed, with `games/<game>/LEADERBOARD.md` generated from them (ADR 0038)
 - [x] Arena: opponent choice and results file; League workflow on release pull requests with its comment and canary; the archive's new source; then the bootstrap, replaying history, on the owner's go-ahead (ADR 0038): Ultimate Tic-Tac-Toe's bootstrap replayed `greedy` and `uttt-v001` to `uttt-v018` on 2026-10-17 (League runs 39009461382 and 39029150086); canary `v009,v008`
+- [x] Decision record (owner, 2026-10-21, [ADR 0042](adr/0042-official-time-limits-and-800-pairs.md)): every strength evaluation at CodinGame's exact limits in every game, no confirmation at full time, 800 pairs per league pairing, league job limit 300 minutes
+- [ ] Replay the leagues at full time and 800 pairs (ADR 0042): Ultimate Tic-Tac-Toe's history (124 pairings, about 45 runner-hours over many League runs, `stop_after_minutes` about 140) and A Code of Ice and Fire's bootstrap, after the pull request of ADR 0042 merges
 
 ### E. CI, fixed checks
 
@@ -223,7 +225,7 @@ Framework work that a game's plan needs but every game can use.
 | --- | --- | --- |
 | CodinGame changes its Rust version | Code that builds locally fails on CodinGame | `rust-version` plus CI on 1.90.0 and the standalone compile; re-run the probe in [CODINGAME.md](CODINGAME.md) after language updates |
 | Our engine differs from CodinGame's | The bot wins locally and loses on CodinGame | Parity tests, checks against real CodinGame games, dedicated tiebreak tests |
-| Timing noise on shared runners | Timeouts and wrong SPRT verdicts | One game per core, A/A test in CI, time limits revisited with the first real bot ([ADR 0013](adr/0013-evaluation-time-limits.md)), CodinGame's exact limits for games in Legend ([ADR 0020](adr/0020-full-time-sprt-in-legend.md)) |
+| Timing noise on shared runners | Timeouts and wrong SPRT verdicts | One game per core, A/A test in CI, time limits revisited with the first real bot ([ADR 0013](adr/0013-evaluation-time-limits.md)), CodinGame's exact limits in every evaluation ([ADR 0042](adr/0042-official-time-limits-and-800-pairs.md)) |
 | Claude plan usage limits | Slower iteration | Actions does the compute; no scheduled session ([ADR 0033](adr/0033-no-daily-scheduled-session.md)); cheaper models implement |
 | CodinGame rules on outside help | Problems in prize contests | Multiplayer leaderboards only, no contests ([ADR 0035](adr/0035-new-game-lifecycle.md)) |
 | A release does not replay identically | A wrong takeback against that release | Each release is tested; one that fails offers no takeback ([ADR 0025](adr/0025-studio.md)) |

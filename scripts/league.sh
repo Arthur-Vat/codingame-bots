@@ -10,7 +10,7 @@
 # from games/GAME/bots/greedy). They are played in order, each as a new
 # release would be: against the opponents the arena chooses among the bots of
 # the results file and of its pool, at the SPRT's time limits (SPRT_TIME_SCALE
-# and SPRT_TIME_TOLERANCE_MS when the game sets them). The pool of a NEW is the
+# and SPRT_TIME_TOLERANCE_MS when set; CodinGame's exact limits, ADR 0042). The pool of a NEW is the
 # baseline bots of LEAGUE_BOTS (only those up to and including NEW when NEW is
 # a baseline) and, when NEW is a release, every release up to and including
 # NEW: a release after NEW is never passed to the arena, so that a replay of
