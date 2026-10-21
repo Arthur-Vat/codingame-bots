@@ -79,9 +79,18 @@ then rates the reference bots beside it.
 
 **Time** (`banker` built with Rust 1.90.0, 300 pairs against `bronze`, 1 job,
 the bot's own clock per turn, 8,138 turns): mean 0.12 ms, 99.9% under 1.8 ms, longest 3.2 ms. The
-bundle is 60,282 characters. In that run each bot lost one game on time to the
+bundle is 60,403 characters. In that run each bot lost one game on time to the
 machine's load (wrapped in a shell script that logs its stderr); the bot's own
 clock never passed 3.3 ms.
+
+**In the studio's browser engine** the first build of the release crashed
+on its first turn: the cut finder's `HashMap` used std's default hasher,
+which asks the system for random numbers, and the studio's WASI gives none
+(`random_get` answers "not supported", so std panics). The map now has a
+fixed hasher (`BuildHasherDefault<DefaultHasher>`); it is only looked up,
+so the play is the same. CodinGame was not affected: the SPRT's first run
+(head 04b2bae, accepted, +196.5 Elo, then +207.0 at full time) had no crash.
+A browser test now plays the release to the end.
 
 The SPRT result, the Elo and the decision are added after the pull request's
 SPRT.

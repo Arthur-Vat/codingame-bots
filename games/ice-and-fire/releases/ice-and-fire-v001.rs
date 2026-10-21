@@ -2247,7 +2247,9 @@ best
 }
 }
 pub mod cut {
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::hash::BuildHasherDefault;
 use crate::ice_and_fire_engine::{Bits, Command, Outcome, State, SIZE};
 pub const MAX_NODES: usize = 20_000;
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -2290,7 +2292,7 @@ budget: i64,
 nodes: usize,
 path: Vec<Command>,
 found: Vec<Cut>,
-index: HashMap<Key, usize>,
+index: HashMap<Key, usize, BuildHasherDefault<DefaultHasher>>,
 }
 type Key = [u64; 3];
 fn with_cell(mut key: Key, cell: usize) -> Key {
@@ -2408,7 +2410,7 @@ budget,
 nodes: 0,
 path: Vec::new(),
 found: Vec::new(),
-index: HashMap::new(),
+index: HashMap::default(),
 };
 run.descend(state, None, [0; 3], 0);
 let nodes = run.nodes;

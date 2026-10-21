@@ -187,7 +187,7 @@ test('the setup menu of a game without human play offers only two bots', async (
   await expect(modes.first()).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('the setup menu offers the baseline bots of a game without release, bronze against wood1 first', async ({
+test('the setup menu offers the release, then the baseline bots, v001 against itself first', async ({
   page,
 }) => {
   await open(page, '/#/game/ice-and-fire');
@@ -196,12 +196,38 @@ test('the setup menu offers the baseline bots of a game without release, bronze 
   await expect(dialog.getByText('This game has no bot yet')).toHaveCount(0);
   const red = dialog.getByLabel(/^Red \(moves first\)/);
   const blue = dialog.getByLabel('Blue', { exact: true });
-  await expect(red).toHaveValue('ice-and-fire-bronze');
-  await expect(blue).toHaveValue('ice-and-fire-wood1');
-  // Only baseline bots, in a group, by their folder.
+  await expect(red).toHaveValue('ice-and-fire-v001');
+  await expect(blue).toHaveValue('ice-and-fire-v001');
+  // The release first, then the baseline bots in a group, by their folder.
+  await expect(red.locator(':scope > option')).toHaveCount(1);
   await expect(red.locator('optgroup')).toHaveAttribute('label', 'Baseline bots');
-  await expect(red.locator('option')).toHaveText(['bronze', 'wood1', 'wood2', 'wood3', 'random']);
+  await expect(red.locator('optgroup option')).toHaveText([
+    'cutter',
+    'guard',
+    'chain',
+    'bronze',
+    'wood1',
+    'wood2',
+    'wood3',
+    'random',
+  ]);
   await expect(dialog.getByRole('button', { name: 'Start' })).toBeEnabled();
+});
+
+test('the release plays random to the end in the browser and wins', async ({ page }) => {
+  test.setTimeout(240_000);
+  await open(page, '/#/game/ice-and-fire');
+  const dialog = page.getByRole('dialog', { name: 'Game setup' });
+  await expect(dialog).toBeVisible({ timeout: 30_000 });
+  await dialog.getByLabel('Blue', { exact: true }).selectOption('ice-and-fire-random');
+  await dialog.getByLabel(/^Think time/).fill('0');
+  await dialog.getByRole('button', { name: 'Start' }).click();
+
+  await expect(page.getByTestId('playback')).toBeVisible({ timeout: 180_000 });
+  await expect(page.getByTestId('result').filter({ visible: true })).toContainText('Red');
+  await expect(page.getByTestId('player-0').filter({ visible: true })).toContainText(
+    'ice-and-fire-v001',
+  );
 });
 
 test('bronze plays random to the end in the browser, and the game is kept under their names', async ({
@@ -211,6 +237,7 @@ test('bronze plays random to the end in the browser, and the game is kept under 
   await open(page, '/#/game/ice-and-fire');
   const dialog = page.getByRole('dialog', { name: 'Game setup' });
   await expect(dialog).toBeVisible({ timeout: 30_000 });
+  await dialog.getByLabel(/^Red \(moves first\)/).selectOption('ice-and-fire-bronze');
   await dialog.getByLabel('Blue', { exact: true }).selectOption('ice-and-fire-random');
   await dialog.getByLabel(/^Think time/).fill('0');
   await dialog.getByRole('button', { name: 'Start' }).click();

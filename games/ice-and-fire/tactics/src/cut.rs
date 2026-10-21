@@ -9,7 +9,9 @@
 //! depth-first search over the chains of trainings that stay on the enemy's
 //! territory and the cells next to it.
 
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::hash::BuildHasherDefault;
 
 use ice_and_fire_engine::{Bits, Command, Outcome, State, SIZE};
 
@@ -74,8 +76,10 @@ struct Search {
     found: Vec<Cut>,
     /// For each set of cells (a [`Key`]) the index in `found` of its cut.
     /// Only looked up, never iterated, so the output does not depend on its
-    /// order.
-    index: HashMap<Key, usize>,
+    /// order. Its hasher has fixed keys: the default one asks the system for
+    /// random numbers, which the studio's browser engine does not give (its
+    /// WASI has no `random_get`), so a bot using it crashed there.
+    index: HashMap<Key, usize, BuildHasherDefault<DefaultHasher>>,
 }
 
 /// The words of a set of cells, to key a map by.
@@ -211,7 +215,7 @@ fn search(state: &State, max_len: usize, budget: i64, limit: usize) -> (Vec<Cut>
         nodes: 0,
         path: Vec::new(),
         found: Vec::new(),
-        index: HashMap::new(),
+        index: HashMap::default(),
     };
     run.descend(state, None, [0; 3], 0);
     let nodes = run.nodes;
