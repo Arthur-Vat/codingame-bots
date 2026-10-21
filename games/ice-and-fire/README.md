@@ -26,6 +26,8 @@ CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-p
 | [journal/](journal/README.md) | One entry per experiment ([E001](journal/E001-ladder.md): the ladder of reference bots) |
 | [releases/](releases/) | The released bots, one file each, pasted into CodinGame; never changed |
 | [evaluation.env](evaluation.env) | Settings of the SPRT, the league (opponents, pairs, canary) and the arena for evaluations ([ADR 0012](../../docs/adr/0012-evaluation.md), [ADR 0038](../../docs/adr/0038-incremental-league.md)) |
+| [league.jsonl](league.jsonl) | The league's results, one line per pairing ([ADR 0038](../../docs/adr/0038-incremental-league.md)); bootstrapped on 2026-10-21 with `bronze`, `chain`, `guard`, `cutter` and `ice-and-fire-v001`, 800 pairs per pairing at CodinGame's limits (League run 39678931208, ADR 0042) |
+| [LEADERBOARD.md](LEADERBOARD.md) | The ratings of the releases and the baseline bots, generated from `league.jsonl` |
 | [ci.sh](ci.sh) | The game's CI steps, run after the bots are bundled ([ADR 0029](../../docs/adr/0029-ci-scoped-by-area-and-game.md)): the arena games, the evaluation controls and a small league, then the engine speed |
 
 ## Bots
@@ -70,7 +72,7 @@ target/release/ice-and-fire-arena match \
   --bot bronze=target/release/ice-and-fire-bot-bronze --pairs 100
 ```
 
-The arena plays Bronze games: all the rules, on the map of the pair's seed ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)). Each pair plays one seed twice with the seats swapped, so both bots play the same map from both seats. The referee ignores `--opening-plies`: the maps vary the games. `sprt` and `league` take the same options, and `scripts/sprt.sh ice-and-fire CANDIDATE.rs` uses [evaluation.env](evaluation.env): 10 ms per turn (a time scale of 0.2) plus 5 ms of tolerance, since no bot of the game is in Legend ([ADR 0013](../../docs/adr/0013-evaluation-time-limits.md), [ADR 0020](../../docs/adr/0020-full-time-sprt-in-legend.md)). `ci.sh` plays the arena's games in CI; the bots keep CodinGame's exact limits there.
+The arena plays Bronze games: all the rules, on the map of the pair's seed ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)). Each pair plays one seed twice with the seats swapped, so both bots play the same map from both seats. The referee ignores `--opening-plies`: the maps vary the games. `sprt` and `league` take the same options, and `scripts/sprt.sh ice-and-fire CANDIDATE.rs` uses [evaluation.env](evaluation.env): CodinGame's exact limits (50 ms per turn, 1,000 ms for the first, no tolerance) for the smoke test, the SPRT, the league and local screening, with 800 pairs per league pairing, a league of up to 8 pairings that fits the job's 300 minutes only if a game averages 5.6 s or less (about 140 answers of 40 ms), to be checked with the first search bot's game length ([ADR 0042](../../docs/adr/0042-official-time-limits-and-800-pairs.md)). `ci.sh` plays the arena's games in CI, also at CodinGame's exact limits.
 
 ## Studio
 

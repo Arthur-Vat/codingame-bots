@@ -69,6 +69,7 @@ Studio: the list in the [playbook](../../docs/NEW_GAME.md).
 
 ## Decisions
 
+- 2026-10-21: official time limits in all games and 800 pairs per league pairing: "I would like to have the official time control in all games"; "What about 800 pairs? Is it within the job limit? If yes go on with this" ([ADR 0042](../../docs/adr/0042-official-time-limits-and-800-pairs.md)), superseding the 0.2 scale of 2026-10-17.
 - 2026-10-19: the first bot is a ladder of reference bots rather than one bot called `phases`: `chain`, `guard`, `cutter`, `banker`, each adding one step to the one before and all published as baseline bots in one pull request; only `banker` is released, as v001 (the owner disliked the name `phases`).
 - 2026-10-19: stage 9 releases early (form: "Release early (Recommended)"): shared tactics first, then `phases` as v001 once it beats `bronze`, then `plan` as v002 if it beats v001; the owner wants several modest versions in several pull requests rather than one strong bot at once.
 - 2026-10-19: stage 8 passed: #177 merged; prototypes `plan` and `phases`, no `anneal` (form: "plan + phases (Recommended)").
