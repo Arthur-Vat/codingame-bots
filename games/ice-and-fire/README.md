@@ -2,7 +2,7 @@
 
 CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-programming/a-code-of-ice-and-fire) is the second game of this framework, named by the owner on 2026-10-17 (phase 7 of the [main roadmap](../../docs/ROADMAP.md)). Two players on a 12×12 map build armies, buildings and territory to capture the opposing headquarters. It began as a 10-day contest, now over; bots can still be submitted to it as a multiplayer game (source's README).
 
-**Current release:** [`ice-and-fire-v001`](releases/ice-and-fire-v001.rs) (E001, the `banker` bot, the last step of the ladder of reference bots: bronze's turn with lethal chains aware of towers, a defence of the HQ, cuts and banking; its SPRT against `bronze` is pending; [journal](journal/)).
+**Current release:** [`ice-and-fire-v002`](releases/ice-and-fire-v002.rs) (E002, the `plan` bot: a search over the whole turn against a memory of the opponent's replies; screened against `ice-and-fire-v001` (E001, the `banker` bot, the last step of the ladder of reference bots), its SPRT is pending; [journal](journal/)).
 
 **Status:** stage 9, approach and first bot, in progress: the owner chose the prototypes `plan` and the phases of local searches after the research ([research/README.md](research/README.md)); the shared tactics ([tactics/](tactics/)) and the ladder of reference bots built on them ([ladder/](ladder/), E001) are done; stage 5 ended with the `rules-check` run on CodinGame, no difference in 4 Bronze games ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator (which reproduces the source's maps), a fast engine checked against it, an arena, the `random` bot that anchors the ratings, the `wait` bot, a bot per league, the `rules-check` bot, the game's [numbers](#numbers), and its [studio](#studio) adapter.
 
@@ -30,7 +30,7 @@ CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-p
 
 ## Bots
 
-Each league has its own bot, since the input never names the league; each is a small `main` that fixes its league and runs the policy of [policy/](policy/). The four bots of the ladder (`chain`, `guard`, `cutter`, `banker`) are each a small `main` that runs [ladder/](ladder/) with one more step than the bot before; they are reference bots for the league and the studio, and only `banker` is released. Bundles are `target/cg/ice-and-fire-<bot>.rs`.
+Each league has its own bot, since the input never names the league; each is a small `main` that fixes its league and runs the policy of [policy/](policy/). The four bots of the ladder (`chain`, `guard`, `cutter`, `banker`) are each a small `main` that runs [ladder/](ladder/) with one more step than the bot before; they are reference bots for the league and the studio, and only `banker` was released (as `ice-and-fire-v001`). Bundles are `target/cg/ice-and-fire-<bot>.rs`.
 
 | Bot | Strategy | Purpose |
 | --- | --- | --- |

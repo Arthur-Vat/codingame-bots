@@ -43,7 +43,9 @@ describe('the manifest', () => {
       'uttt-random',
     ]);
     const iceAndFire = manifest.games.find((game) => game.id === 'ice-and-fire');
-    expect(iceAndFire?.releases).toContain('ice-and-fire-v001');
+    expect(iceAndFire?.releases).toEqual(
+      expect.arrayContaining(['ice-and-fire-v001', 'ice-and-fire-v002']),
+    );
     expect(iceAndFire?.baselines).toContain('ice-and-fire-bronze');
   });
 });
