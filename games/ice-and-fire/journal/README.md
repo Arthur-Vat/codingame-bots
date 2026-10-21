@@ -11,4 +11,4 @@ One entry per experiment, failures included, so that ideas are not retried blind
 
 | Entry | Date | Hypothesis | SPRT | Decision |
 | --- | --- | --- | --- | --- |
-| [E001](E001-ladder.md) | 2026-10-19 | A ladder of reference bots, each adding one step (lethal chains aware of towers, a defence of the HQ, cuts, banking) to bronze's turn, ends in a bot that beats the greedy `bronze` bot (first release, `ice-and-fire-v001`, from `banker`) | Pending | Pending |
+| [E001](E001-ladder.md) | 2026-10-19 | A ladder of reference bots, each adding one step (lethal chains aware of towers, a defence of the HQ, cuts, banking) to bronze's turn, ends in a bot that beats the greedy `bronze` bot (first release, `ice-and-fire-v001`, from `banker`) | Accepted, +196.5 Elo; +207.0 at full time | Promoted: `ice-and-fire-v001` |

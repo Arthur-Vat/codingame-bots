@@ -6,11 +6,11 @@ parent: bronze (no release yet)
 hypothesis: Bronze's turn plus four steps from the shared tactics - a lethal chain that knows the towers, a defence of the HQ, cuts of the enemy's territory and gold kept for the winning chain - plays better than the greedy bronze policy alone, and each step adds to the one before.
 change: A ladder of four reference bots, chain, guard, cutter and banker, each adding one step to the one before, all built from the crate games/ice-and-fire/ladder; the last, banker, is the first release.
 release: ice-and-fire-v001
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +196.5 [+137.4, +268.4] at a time scale of 0.2
+pairs: 82
+full_time: +207.0 [+184.4, +231.3] in the confirmation at CodinGame's limits (500 pairs), no timeout in 1,000 games, slowest answer 3.0 ms
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -92,5 +92,20 @@ so the play is the same. CodinGame was not affected: the SPRT's first run
 (head 04b2bae, accepted, +196.5 Elo, then +207.0 at full time) had no crash.
 A browser test now plays the release to the end.
 
-The SPRT result, the Elo and the decision are added after the pull request's
-SPRT.
+**SPRT** (head c97d37a, time scale 0.2 and 5 ms of tolerance, against
+`bronze`): accepted after 82 pairs, 124 wins and 40 losses (75.6%), +196.5 Elo
+[+137.4, +268.4], LLR 2.96. Smoke test: 200 of 200 against `random`.
+Confirmation at CodinGame's limits: 500 pairs, 767 wins and 233 losses
+(76.7%), +207.0 Elo [+184.4, +231.3]. No timeout, crash or invalid answer in
+any stage; slowest answer 3.0 ms.
+
+**League** of v001 (100 pairs each, time scale 0.2): 76.0% against `bronze`,
+78.5% against `chain`, 81.0% against `guard`, 51.0% against `cutter`, 100%
+against `random`. The game has no league results file yet, so nothing was
+copied; the reference bots get their ratings when the game's league is
+bootstrapped.
+
+**Decision:** promoted, `ice-and-fire-v001`. Cuts carry nearly all of the
+gain; banking is within noise against `cutter`, and the tower-aware chain
+never changes a game against `bronze`, though it finds winning chains
+`bronze` misses on other positions.
