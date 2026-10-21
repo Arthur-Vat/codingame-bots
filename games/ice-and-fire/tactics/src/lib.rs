@@ -11,6 +11,11 @@
 //! Each function takes engine states only and never panics on a cell off the
 //! map or void: such a cell is unreachable. The weights of [`eval`] and the
 //! scores of [`cut`] are placeholders, to be tuned by later experiments.
+//!
+//! The reference bots of the ladder (`games/ice-and-fire/ladder`) use these
+//! functions, so a change keeps the behaviour of the existing ones: add a new
+//! function (or a new module) instead. Only a bug fix may change what one
+//! returns, and the journal records it.
 
 pub mod chain;
 pub mod cut;

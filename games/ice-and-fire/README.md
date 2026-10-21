@@ -2,7 +2,9 @@
 
 CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-programming/a-code-of-ice-and-fire) is the second game of this framework, named by the owner on 2026-10-17 (phase 7 of the [main roadmap](../../docs/ROADMAP.md)). Two players on a 12×12 map build armies, buildings and territory to capture the opposing headquarters. It began as a 10-day contest, now over; bots can still be submitted to it as a multiplayer game (source's README).
 
-**Status:** stage 9, approach and first bot, in progress: the owner chose the prototypes `plan` and `phases` after the research ([research/README.md](research/README.md)), and the shared tactics come first ([tactics/](tactics/)); stage 5 ended with the `rules-check` run on CodinGame, no difference in 4 Bronze games ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator (which reproduces the source's maps), a fast engine checked against it, an arena, the `random` bot that anchors the ratings, the `wait` bot, a bot per league, the `rules-check` bot, the game's [numbers](#numbers), and its [studio](#studio) adapter.
+**Current release:** [`ice-and-fire-v001`](releases/ice-and-fire-v001.rs) (E001, the `banker` bot, the last step of the ladder of reference bots: bronze's turn with lethal chains aware of towers, a defence of the HQ, cuts and banking; its SPRT against `bronze` is pending; [journal](journal/)).
+
+**Status:** stage 9, approach and first bot, in progress: the owner chose the prototypes `plan` and the phases of local searches after the research ([research/README.md](research/README.md)); the shared tactics ([tactics/](tactics/)) and the ladder of reference bots built on them ([ladder/](ladder/), E001) are done; stage 5 ended with the `rules-check` run on CodinGame, no difference in 4 Bronze games ([ROADMAP.md](ROADMAP.md)): [RULES.md](RULES.md), [MODEL.md](MODEL.md), a readable referee with its map generator (which reproduces the source's maps), a fast engine checked against it, an arena, the `random` bot that anchors the ratings, the `wait` bot, a bot per league, the `rules-check` bot, the game's [numbers](#numbers), and its [studio](#studio) adapter.
 
 ## Layout
 
@@ -19,13 +21,16 @@ CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-p
 | [tactics/](tactics/) | `ice-and-fire-tactics`: what the first real bots share, in the standard library only: the cheapest chain of trainings (aware of towers), a cut finder and a static evaluation of a state, with a timing example; the weights of the evaluation and the scores of the cuts are placeholders for later experiments |
 | [arena/](arena/) | `ice-and-fire-arena`: plays bots against each other through the referee, in Bronze (all the rules) |
 | [studio/](studio/) | `ice-and-fire-studio`: the game's adapter for the studio, bot seats only ([below](#studio)) |
+| [ladder/](ladder/) | `ice-and-fire-ladder`: the ladder of reference bots, bronze's turn plus the steps of the shared tactics, one more step for each bot (`chain`, `guard`, `cutter`, `banker`); its play does not change once merged, since the bots and their ratings are built from it |
 | [bots/](bots/) | The bots, listed in "Bots" below |
+| [journal/](journal/README.md) | One entry per experiment ([E001](journal/E001-ladder.md): the ladder of reference bots) |
+| [releases/](releases/) | The released bots, one file each, pasted into CodinGame; never changed |
 | [evaluation.env](evaluation.env) | Settings of the SPRT, the league (opponents, pairs, canary) and the arena for evaluations ([ADR 0012](../../docs/adr/0012-evaluation.md), [ADR 0038](../../docs/adr/0038-incremental-league.md)) |
 | [ci.sh](ci.sh) | The game's CI steps, run after the bots are bundled ([ADR 0029](../../docs/adr/0029-ci-scoped-by-area-and-game.md)): the arena games, the evaluation controls and a small league, then the engine speed |
 
 ## Bots
 
-Each league has its own bot, since the input never names the league; each is a small `main` that fixes its league and runs the policy of [policy/](policy/). Bundles are `target/cg/ice-and-fire-<bot>.rs`.
+Each league has its own bot, since the input never names the league; each is a small `main` that fixes its league and runs the policy of [policy/](policy/). The four bots of the ladder (`chain`, `guard`, `cutter`, `banker`) are each a small `main` that runs [ladder/](ladder/) with one more step than the bot before; they are reference bots for the league and the studio, and only `banker` is released. Bundles are `target/cg/ice-and-fire-<bot>.rs`.
 
 | Bot | Strategy | Purpose |
 | --- | --- | --- |
@@ -35,6 +40,10 @@ Each league has its own bot, since the input never names the league; each is a s
 | [wood2](bots/wood2/) | The same policy with levels 1 to 3 | Promotion out of Wood 2 |
 | [wood1](bots/wood1/) | The same policy, building mines on free mine spots | Promotion out of Wood 1 |
 | [bronze](bots/bronze/) | The same policy with all the rules: a tower next to its HQ when enemy units come within 3 steps. Also serves above Bronze until real bots exist | Playing Bronze, where the `rules-check` bot runs |
+| [chain](bots/chain/) | Bronze's turn, with the lethal chain of the shared [tactics](tactics/) (cheapest chain of trainings, aware of towers) | Ladder step 1 (E001), a reference bot |
+| [guard](bots/guard/) | `chain`, plus a defence: while the enemy could take its HQ next turn, the tower or training that most raises what the enemy lacks, and a last check that undoes spending that exposes the HQ | Ladder step 2, a reference bot |
+| [cutter](bots/cutter/) | `guard`, plus up to 2 cuts of the enemy's territory a turn that leave the HQ no more exposed | Ladder step 3, a reference bot |
+| [banker](bots/banker/) | `cutter`, plus banking: no more mines or trainings when the chain to the enemy HQ is affordable next turn | Ladder step 4, the game's first release `ice-and-fire-v001` |
 | [rules-check](bots/rules-check/) | Plays random turns and checks every turn's input against RULES.md and the engine; logs the game's map | Checking our rules against CodinGame's, in Bronze or above ([below](#checking-the-rules-on-codingame)) |
 
 The policy plans a turn on a scratch copy of the engine's state and keeps only the commands the rules accept. In order: a lethal move or chain of trainings to the enemy HQ if the gold pays for it (found by a cheapest-path search through the cells next to the territory); moves, the unit nearest the enemy HQ first, each to the neighbouring cell that gains the most (new cells, enemy cells, kills, cuts of enemy territory, mine spots) and gets nearer; a tower by the HQ under threat, else mines; trainings on the best cells next to the territory, level 1 unless a higher level is the only way to enter (to kill a unit or pass a tower), with income after upkeep kept at least 0 and a small gold reserve. It does no search and takes a few ms per turn (tested under 20 ms). It is a means of promotion, not a strong bot; it beats the source's league bosses in our referee (below).

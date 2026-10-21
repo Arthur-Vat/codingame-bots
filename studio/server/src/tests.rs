@@ -110,6 +110,9 @@ fn the_games_list_has_the_games_their_releases_and_whether_humans_play() {
     assert_eq!(
         games[1]["baselines"],
         json!([
+            "ice-and-fire-cutter",
+            "ice-and-fire-guard",
+            "ice-and-fire-chain",
             "ice-and-fire-bronze",
             "ice-and-fire-wood1",
             "ice-and-fire-wood2",
@@ -137,7 +140,7 @@ fn a_game_without_human_play_refuses_human_seats() {
     let state = plain_state(&dir);
     let human = json!({"kind": "human"});
     let bot =
-        json!({"kind": "bot", "release": "ice-and-fire-v001", "think_ms": 100, "mode": "fixed"});
+        json!({"kind": "bot", "release": "ice-and-fire-v999", "think_ms": 100, "mode": "fixed"});
     for seats in [
         json!([human, bot]),
         json!([bot, human]),
@@ -151,11 +154,11 @@ fn a_game_without_human_play_refuses_human_seats() {
             "this game has no human play: both seats must be bots"
         );
     }
-    // Two bots are checked as before: this game has no release yet.
+    // Two bots are checked as before: this release does not exist.
     let body = json!({"game": "ice-and-fire", "seed": 1, "seats": [bot, bot]});
     let (status, error) = call(&state, "POST", "/api/sessions", &body);
     assert_eq!(status, 400, "{body}");
-    assert_eq!(error["error"], "unknown release \"ice-and-fire-v001\"");
+    assert_eq!(error["error"], "unknown release \"ice-and-fire-v999\"");
     // The game that has human play still takes humans.
     let body = json!({"game": "uttt", "seed": 1, "seats": [human, human]});
     let (status, _) = call(&state, "POST", "/api/sessions", &body);

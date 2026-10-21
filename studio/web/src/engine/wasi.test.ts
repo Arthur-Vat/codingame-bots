@@ -228,6 +228,9 @@ describe('a real program', () => {
           name: 'A Code of Ice and Fire',
           human_play: false,
           baselines: [
+            'ice-and-fire-cutter',
+            'ice-and-fire-guard',
+            'ice-and-fire-chain',
             'ice-and-fire-bronze',
             'ice-and-fire-wood1',
             'ice-and-fire-wood2',

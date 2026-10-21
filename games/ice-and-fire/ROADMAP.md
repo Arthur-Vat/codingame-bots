@@ -26,7 +26,8 @@ Status is `Not started`, `In progress`, `Waiting for the owner` or `Done (YYYY-M
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 
 - [x] Shared tactics: cheapest chain with towers, cut finder, evaluation (`tactics/`)
-- [ ] `phases`, grown from the `bronze` policy; ice-and-fire-v001 once it beats `bronze` in the SPRT
+- [x] The ladder of reference bots, each adding one step to the one before ([E001](journal/E001-ladder.md), `ladder/`): `chain`, `guard`, `cutter`, `banker`, all published as baseline bots
+- [x] ice-and-fire-v001 from `banker`: SPRT accepted against `bronze`, +196.5 Elo, +207.0 at CodinGame's limits (#179)
 - [ ] `plan`: the plan search with a memory of opponent replies, compared with v001; v002 if it wins
 - [ ] The owner pastes v001 on CodinGame
 
@@ -68,6 +69,7 @@ Studio: the list in the [playbook](../../docs/NEW_GAME.md).
 
 ## Decisions
 
+- 2026-10-19: the first bot is a ladder of reference bots rather than one bot called `phases`: `chain`, `guard`, `cutter`, `banker`, each adding one step to the one before and all published as baseline bots in one pull request; only `banker` is released, as v001 (the owner disliked the name `phases`).
 - 2026-10-19: stage 9 releases early (form: "Release early (Recommended)"): shared tactics first, then `phases` as v001 once it beats `bronze`, then `plan` as v002 if it beats v001; the owner wants several modest versions in several pull requests rather than one strong bot at once.
 - 2026-10-19: stage 8 passed: #177 merged; prototypes `plan` and `phases`, no `anneal` (form: "plan + phases (Recommended)").
 - 2026-10-19: the arena's maps become exactly the source's, rebuilt from a written spec ([MAP_GENERATOR.md](MAP_GENERATOR.md)) by an implementer that never reads the source, and checked against maps printed by the source run unchanged ([ADR 0041](../../docs/adr/0041-ice-and-fire-source-maps-from-a-spec.md); forms: "Clean-room spec (Recommended)", then "Go, in this session (Recommended)").
