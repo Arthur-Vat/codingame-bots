@@ -1,16 +1,16 @@
 ---
 id: E002
 date: 2026-10-21
-pull_request: "TBD"
+pull_request: "#182"
 parent: ice-and-fire-v001
 hypothesis: A search over the whole turn, as the contest's winner did (hill climbing over single actions, replayed against a memory of the opponent's replies), plays better than the fixed phases of the ladder's `banker`, which only look at the opponent through a few rules.
 change: A new bot, `plan` (games/ice-and-fire/bots/plan), that takes a lethal move or chain if there is one, else climbs over moves, trainings, towers, mines, the best cuts and a lethal chain, scoring each plan against the opponent's replies it remembers.
 release: ice-and-fire-v002
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +126.4 [+83.8, +173.0] at CodinGame's limits
+pairs: 109
+full_time: +126.4 [+83.8, +173.0] (the SPRT's own, ADR 0042), no timeout in 218 games, slowest answer 26.5 ms
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -110,3 +110,18 @@ cheap, bought more than 25% more time did.
   cheap on average (about 24 microseconds) but its worst case is a few
   milliseconds.
 - The first turn has 1,000 ms on CodinGame and the bot uses 40 ms there.
+
+**SPRT** (head 41aaf0d, CodinGame's limits: time scale 1, no tolerance,
+against `ice-and-fire-v001`): accepted after 109 pairs, 66.5% of 218 games,
++126.4 Elo [+83.8, +173.0], LLR 2.95. Smoke test: 200 of 200 against
+`random`. No timeout, crash or invalid answer; answers after the first:
+median 1.9 ms, 99.9% 25.9 ms, slowest 26.5 ms. The whole SPRT took under a
+minute on the runner and the league about 2 minutes: most turns end their
+climbs early, far below the ADR 0042 estimates made for a bot that always
+uses its 40 ms.
+
+**League** of v002 (800 pairs each, CodinGame's limits): 66.9% against v001,
+69.7% against `cutter`, 79.6% against `guard`, 81.3% against `chain`, 81.0%
+against `bronze`, 100% against `random`.
+
+**Decision:** promoted, `ice-and-fire-v002`.
