@@ -27,7 +27,7 @@ Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 
 - [x] Shared tactics: cheapest chain with towers, cut finder, evaluation (`tactics/`)
 - [x] The ladder of reference bots, each adding one step to the one before ([E001](journal/E001-ladder.md), `ladder/`): `chain`, `guard`, `cutter`, `banker`, all published as baseline bots
-- [ ] ice-and-fire-v001 from `banker` once it beats `bronze` in the SPRT (the candidate is frozen; screened at 75% against `bronze`, the SPRT is pending)
+- [x] ice-and-fire-v001 from `banker`: SPRT accepted against `bronze`, +196.5 Elo, +207.0 at CodinGame's limits (#179)
 - [ ] `plan`: the plan search with a memory of opponent replies, compared with v001; v002 if it wins
 - [ ] The owner pastes v001 on CodinGame
 
