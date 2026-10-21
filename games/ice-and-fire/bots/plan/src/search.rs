@@ -361,7 +361,7 @@ pub fn think(state: &State, limit: Limit) -> Thought {
     thought.memory = memory.len();
 
     // The plan that scores best against the whole memory, the latest on a
-    // tie. The first is always scored; later ones while time remains.
+    // tie. The latest is always scored; earlier ones while time remains.
     let mut best: Option<(i64, usize)> = None;
     for (index, plan) in plans.iter().enumerate().rev() {
         if best.is_some() && limit.hard.is_some_and(|t| Instant::now() >= t) {
