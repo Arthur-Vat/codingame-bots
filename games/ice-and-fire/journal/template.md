@@ -9,7 +9,7 @@ release: the candidate's file name without .rs, or none once dropped
 sprt: pending | accepted | rejected | inconclusive | smoke test failed
 elo: the SPRT's Elo estimate with its 95% interval
 pairs: pairs played by the SPRT
-full_time: the Elo with its 95% interval at CodinGame's limits: the SPRT's own since ADR 0020, the confirmation's before
+full_time: the Elo with its 95% interval at CodinGame's limits: the SPRT's own since ADR 0042 for this game, the confirmation's before
 decision: pending | promoted | dropped
 cg_rank: rank and league on CodinGame if the owner reports one, else not reported (none for a dropped experiment)
 ---

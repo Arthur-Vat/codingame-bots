@@ -25,8 +25,9 @@ on:
       stop_after_minutes:
         # A bot started late must still finish within the job's 360 minutes:
         # at 800 pairs a uttt bot takes about 3.5 hours (ADR 0042), so 140;
-        # A Code of Ice and Fire's bots are faster (230 is safe for them).
-        description: "Start no bot after this many minutes (uttt 140, ice-and-fire 230; ADR 0042)"
+        # A Code of Ice and Fire's league depends on its bots' game length:
+        # measure the first search bot's before raising it (ADR 0042).
+        description: "Start no bot after this many minutes (uttt 140; ice-and-fire: measure first, ADR 0042)"
         required: false
         default: "140"
 
