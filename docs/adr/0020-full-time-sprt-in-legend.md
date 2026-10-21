@@ -1,6 +1,6 @@
 # 0020. In Legend, the SPRT plays at CodinGame's time limits
 
-- Status: accepted (owner, 2026-10-09); the league's part of decision 5 superseded by [0038](0038-incremental-league.md)
+- Status: accepted (owner, 2026-10-09); the league's part of decision 5 superseded by [0038](0038-incremental-league.md); decisions 2, 3 and 5 superseded by [0042](0042-official-time-limits-and-800-pairs.md)
 - Date: 2026-10-09
 - Supersedes: for games whose bot is in Legend, decision 1 of [ADR 0013](0013-evaluation-time-limits.md) for the smoke test and the SPRT, and [ADR 0014](0014-full-time-confirmation.md)
 - Scope: framework

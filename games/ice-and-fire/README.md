@@ -69,7 +69,7 @@ target/release/ice-and-fire-arena match \
   --bot bronze=target/release/ice-and-fire-bot-bronze --pairs 100
 ```
 
-The arena plays Bronze games: all the rules, on the map of the pair's seed ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)). Each pair plays one seed twice with the seats swapped, so both bots play the same map from both seats. The referee ignores `--opening-plies`: the maps vary the games. `sprt` and `league` take the same options, and `scripts/sprt.sh ice-and-fire CANDIDATE.rs` uses [evaluation.env](evaluation.env): 10 ms per turn (a time scale of 0.2) plus 5 ms of tolerance, since no bot of the game is in Legend ([ADR 0013](../../docs/adr/0013-evaluation-time-limits.md), [ADR 0020](../../docs/adr/0020-full-time-sprt-in-legend.md)). `ci.sh` plays the arena's games in CI; the bots keep CodinGame's exact limits there.
+The arena plays Bronze games: all the rules, on the map of the pair's seed ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)). Each pair plays one seed twice with the seats swapped, so both bots play the same map from both seats. The referee ignores `--opening-plies`: the maps vary the games. `sprt` and `league` take the same options, and `scripts/sprt.sh ice-and-fire CANDIDATE.rs` uses [evaluation.env](evaluation.env): CodinGame's exact limits (50 ms per turn, 1,000 ms for the first, no tolerance) for the smoke test, the SPRT, the league and local screening, with 800 pairs per league pairing, about 1 to 2 hours a release for a bot that uses its 40 ms ([ADR 0042](../../docs/adr/0042-official-time-limits-and-800-pairs.md)). `ci.sh` plays the arena's games in CI, also at CodinGame's exact limits.
 
 ## Studio
 
