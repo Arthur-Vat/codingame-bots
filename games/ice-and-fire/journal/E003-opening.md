@@ -143,7 +143,9 @@ from v002). It lost its units to debt 0.02 times a game, v002 0.09. At game turn
 against `ice-and-fire-v002`): accepted after 43 pairs (LLR 2.97 after 41),
 84.9% of 86 games, +299.8 Elo [+212.9, +435.6]. Smoke test: 200 of 200
 against `random`. No timeout, crash or invalid answer; answers after the
-first: median 3.3 ms, 99.9% 26.3 ms, slowest 26.4 ms.
+first: median 3.3 ms, 99.9% 26.3 ms, slowest 26.4 ms. Run again on af40d05,
+after the studio test's change: accepted after 55 pairs, 84.5% of 110 games,
++295.2 Elo [+210.3, +425.5], LLR 3.02, no faults, slowest answer 28.1 ms.
 
 **League** of v003 (800 pairs each, CodinGame's limits): 82.4% against v002,
 94.5% against v001, 96.2% against `cutter`, 99.3% against `guard`, 99.3%
