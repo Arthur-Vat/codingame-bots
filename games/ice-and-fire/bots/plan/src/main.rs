@@ -5,7 +5,7 @@
 //!
 //! A turn is a list of commands, the plan. The bot first looks for a lethal
 //! move or chain of trainings and plays it. While the two territories are far
-//! apart it plays the opening (`opening.rs`): units take free cells, and
+//! apart it plays the opening (`ice_and_fire_opening::econ`): units take free cells, and
 //! trainings and mines are bought while they pay back. Else it climbs: from
 //! the start of the turn it keeps adding the single action (a move, a
 //! training, a tower, a mine, one of the best cuts, a lethal chain) that most
@@ -28,7 +28,6 @@
 
 mod actions;
 mod eval;
-mod opening;
 mod search;
 mod session;
 

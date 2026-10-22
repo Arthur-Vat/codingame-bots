@@ -100,3 +100,32 @@ Measured in E003 ([journal entry](../journal/E003-opening.md), all the tables): 
 | `plan` (v002) | 0 | 18.7, 13.8, 18.6, 0 | 1.2, 8.3 |
 
 What the theory got right: every unit taking a free cell each turn is most of the gain (`fill` alone is worth +224); mines pay once a unit is valued only for the cells it takes before contact, and the one next to the HQ gets built in most games; a thin line toward the enemy HQ (v002, `rush`) is the weakest shape. What it did not foresee: the trainings' stopping rule never binds, since the territories meet around turn 8 with free cells still on each side; and a search for the most gold and income at contact (`rollout`) did a little worse than the rule it searched over, by giving up cells and units. The reserve, the debt check and the hand-over gap made no measured difference; the debt check stays, since it fixes the wipe-out of the owner's replay at no cost. The candidate is `econ`: `ice-and-fire-v003`.
+
+## The middle-game score (E004)
+
+E004 compares openings without playing whole games: the owner asked (2026-10-22) to "benchmark them only in the early game: consider we reached the middle game when one player can reach the opponent territory", with a score "based on heuristics that you should determine carefully", never fitted to games. The crate [`ice-and-fire-opening`](../opening/) holds the openings, the middle game and the score; its harness (`cargo run --release -p ice-and-fire-opening --example early`) plays openings against each other, in process, from both seats of many source maps, and scores both sides there.
+
+- **The middle game** starts at the first start of a player's turn whose gold pays a chain of trainings to an enemy cell, its units' steps counted as free (`middle::reached`). With E003's openings it comes at game turn 7.5 to 8.
+- **The score** (`score::score`) of a seat is its value less the enemy's, in gold. Its terms follow the owner's direction (the economy first, then the Voronoi share, with "the time horizon for the score evaluation in the middle game, not long after the early game") and the sections above:
+
+| Term | Value | Why |
+| --- | --- | --- |
+| Economy | gold + 3 × income | The gold held 3 turns into the middle game, when the first fights are fought and gold pays for them ("Income at contact", above) |
+| Voronoi share | 1 gold for each cell nearer the side's active cells than the enemy's (a tie half) | NinjaDoggy's first criterion (3rd); the map each side holds once the opening ends. A cell is worth one turn of the income it brings once taken, so that the share decides between positions of about the same economy |
+| Exposure | − what the enemy's best cut on its next turn takes: 3 a cell taken or cut off and 3 × 4 a mine (their income until the horizon), the units' value | "Shape", above: a thin territory is cut by one capture |
+| Debt | − the units' value if gold + income < 0 | "Solvency", above: the units die |
+| Loss | − 1,000 if the enemy can pay a chain to the HQ on its next turn | The game is lost |
+
+Its rates are prices of the rules (income a turn, a mine 4 a turn, a unit its training), not fitted. The economy's 3 turns is the only free choice; rankings are checked at 2 and 5 turns.
+
+In the harness, over 1,000 maps from both seats (the row's score against the column, ± the 95% interval):
+
+| Ours | `econ` | `fill` | `rush` |
+| --- | ---: | ---: | ---: |
+| `econ` | 0 | +20.0 ± 1.6 | +37.4 ± 1.0 |
+| `fill` | −20.0 ± 1.6 | 0 | +10.3 ± 1.0 |
+| `rush` | −37.4 ± 1.0 | −10.3 ± 1.0 | 0 |
+
+The order is the same at 2 and 5 turns (`econ` over `fill` +18.7 and +22.7, over `rush` +34.5 and +43.3).
+
+**Earlier versions, replaced.** The plan agreed on 2026-10-22 first counted gold + (20 − turn) × income + the free cells left to take, less the enemy's cuts after banking 1 to 3 turns; a change of its territory term was made after comparing it with E003's games, a method the owner judged wrong (a score must define a good position from heuristics, not be shaped by played games). A second version put the Voronoi share first, at 10 gold a cell, and the economy second; the opening that maximised it led v003 by 15 Voronoi cells at the middle game of real games, with 11 gold against 29, and lost, −97 Elo (E004's journal). The owner then set the economy first.

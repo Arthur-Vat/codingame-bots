@@ -12,6 +12,7 @@ rust-version.workspace = true
 [dependencies]
 cg-core.workspace = true
 ice-and-fire-engine.workspace = true
+ice-and-fire-opening.workspace = true
 ice-and-fire-policy.workspace = true
 ice-and-fire-tactics.workspace = true
 

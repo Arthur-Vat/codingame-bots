@@ -16,6 +16,7 @@ ice-and-fire-referee.workspace = true
 # Used by the opening benchmark (examples/opening.rs) only.
 [dev-dependencies]
 ice-and-fire-engine.workspace = true
+ice-and-fire-opening.workspace = true
 ice-and-fire-tactics.workspace = true
 serde_json.workspace = true
 

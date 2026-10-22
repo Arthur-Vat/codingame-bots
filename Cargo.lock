@@ -172,6 +172,7 @@ version = "0.0.0"
 dependencies = [
  "cg-arena",
  "ice-and-fire-engine",
+ "ice-and-fire-opening",
  "ice-and-fire-referee",
  "ice-and-fire-tactics",
  "serde_json",
@@ -220,6 +221,7 @@ dependencies = [
  "cg-arena",
  "cg-core",
  "ice-and-fire-engine",
+ "ice-and-fire-opening",
  "ice-and-fire-policy",
  "ice-and-fire-referee",
  "ice-and-fire-tactics",
@@ -289,6 +291,15 @@ dependencies = [
  "cg-core",
  "ice-and-fire-engine",
  "ice-and-fire-policy",
+ "ice-and-fire-referee",
+ "ice-and-fire-tactics",
+]
+
+[[package]]
+name = "ice-and-fire-opening"
+version = "0.0.0"
+dependencies = [
+ "ice-and-fire-engine",
  "ice-and-fire-referee",
  "ice-and-fire-tactics",
 ]
