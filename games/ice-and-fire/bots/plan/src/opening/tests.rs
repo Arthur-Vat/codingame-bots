@@ -120,15 +120,29 @@ fn the_opening_trains_level_1_only_and_keeps_its_income() {
 }
 
 #[test]
-fn the_first_turn_trains_two_units_next_to_the_hq() {
+fn the_first_turn_trains_two_units_next_to_the_start() {
     for seed in 1..=20 {
-        let state = start(seed);
-        let commands = turn(&state).expect("the opening plays the first turn");
-        let trainings = commands
-            .iter()
-            .filter(|c| matches!(c, Command::Train { level: 1, .. }))
-            .count();
-        assert_eq!(trainings, 2, "seed {seed}: {commands:?}");
+        let mut state = start(seed);
+        for (seat, hq) in HQ.into_iter().enumerate() {
+            let commands = turn(&state).expect("the opening plays the first turn");
+            let cells: Vec<usize> = commands
+                .iter()
+                .filter_map(|c| match *c {
+                    Command::Train { level: 1, x, y } => Some(at(x, y)),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(cells.len(), 2, "seed {seed}, seat {seat}: {commands:?}");
+            for cell in cells {
+                // Within two steps of the HQ (a training may follow another),
+                // one more for blue, which starts on (11, 10) as well.
+                assert!(
+                    state.map().distance(hq, cell) <= 2 + seat as u8,
+                    "seed {seed}, seat {seat}: a training at {cell}"
+                );
+            }
+            state.play_turn(&commands);
+        }
     }
 }
 

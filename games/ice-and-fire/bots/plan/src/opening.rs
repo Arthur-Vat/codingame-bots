@@ -6,13 +6,14 @@
 //!
 //! 1. **Moves.** Every unit that has a free (neutral) neighbour takes one, a
 //!    different cell for each unit; the unit with the fewest such cells moves
-//!    first, and each takes the free cell worth most (`Turn::value`:
-//!    contested cells near the enemy first, then cells that open more free
-//!    cells). The other units walk toward the nearest free cell of our side
-//!    of the map, else the nearest free cell.
+//!    first, and each takes the free cell worth most (`Turn::value`: a
+//!    weighted sum of the free cells next to it and of its nearness to the
+//!    enemy's territory). The other units walk toward the nearest free cell
+//!    of our side of the map, else the nearest free cell.
 //! 2. **Purchases**, while the gold allows: a level 1 training on the free
-//!    cell next to the territory worth most, or a mine on an own mine spot of
-//!    our side, whichever returns more gold by game turn [`HORIZON`] (at least
+//!    cell next to the territory worth most, or a mine on the own empty mine
+//!    spot nearest the HQ among those more than `SAFE_SPOT` steps from the
+//!    enemy's territory, whichever returns more gold by game turn [`HORIZON`] (at least
 //!    [`MIN_TURNS_LEFT`] turns away). A unit
 //!    is worth the cells it can take before the territories meet; a mine 4 a
 //!    turn. A purchase that does not pay back by the horizon is not made.

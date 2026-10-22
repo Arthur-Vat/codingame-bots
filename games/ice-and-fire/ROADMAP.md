@@ -25,7 +25,7 @@ Status is `Not started`, `In progress`, `Waiting for the owner` or `Done (YYYY-M
 
 Iteration: one experiment per pull request ([journal](journal/README.md)).
 
-- [ ] E003, the early game: research ([research/early-game.md](research/early-game.md)), an opening benchmark, the openings inside the `plan` bot, the best as `ice-and-fire-v003` through the SPRT against v002 ([E003](journal/E003-opening.md))
+- [x] E003, the early game: research ([research/early-game.md](research/early-game.md)), an opening benchmark, the openings inside the `plan` bot, the best as `ice-and-fire-v003` through the SPRT against v002: accepted, +299.8 Elo ([E003](journal/E003-opening.md), #183)
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 

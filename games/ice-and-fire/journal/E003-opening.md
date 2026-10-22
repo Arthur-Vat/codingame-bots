@@ -6,11 +6,11 @@ parent: ice-and-fire-v002
 hypothesis: An opening by rules that takes free cells with every unit and buys trainings and mines only while they pay back, then hands over to the plan search when the territories meet, reaches the middle game with more income, more gold and a less exposed territory than v002's hill climb, and so beats v002.
 change: The `plan` bot plays the `econ` opening (games/ice-and-fire/bots/plan/src/opening.rs) while the territories are more than 3 steps apart, and its evaluation counts a side that cannot pay its upkeep as having lost its units.
 release: ice-and-fire-v003
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +299.8 [+212.9, +435.6] at CodinGame's limits
+pairs: 43
+full_time: +299.8 [+212.9, +435.6] (the SPRT's own, ADR 0042), no timeout in 86 games, slowest answer 26.4 ms
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -29,7 +29,8 @@ closer, against +4 for a training and +7 for a move onto a free cell, and −3
 for a mine (`ice_and_fire_tactics::eval::evaluate`). So in the opening it
 sends a line of units along an edge toward the enemy HQ, never builds a mine
 (it trains on the mine spot next to its HQ on turn 1), and keeps few units
-taking new cells. At game turn 12 it holds about 22 cells, an income of 16
+taking new cells. At game turn 12 of the round robin below (against all the
+candidates) it holds about 22 cells, an income of 16
 and 25 gold, where the idealized model of the research note reaches 49
 cells, 37 and 76.
 
@@ -137,3 +138,16 @@ from v002). It lost its units to debt 0.02 times a game, v002 0.09. At game turn
 - The opening's cell values (3 a free neighbour, 2 a step of contest) were
   not tuned; nor was the horizon.
 - The first turn's 1,000 ms and the 40 ms of the opening's turns are unused.
+
+**SPRT** (head 2becdb6, CodinGame's limits: time scale 1, no tolerance,
+against `ice-and-fire-v002`): accepted after 43 pairs (LLR 2.97 after 41),
+84.9% of 86 games, +299.8 Elo [+212.9, +435.6]. Smoke test: 200 of 200
+against `random`. No timeout, crash or invalid answer; answers after the
+first: median 3.3 ms, 99.9% 26.3 ms, slowest 26.4 ms.
+
+**League** of v003 (800 pairs each, CodinGame's limits): 82.4% against v002,
+94.5% against v001, 96.2% against `cutter`, 99.3% against `guard`, 99.3%
+against `chain`, 99.2% against `bronze`, 100% against `random`; rated
++1975.5 against v002's +1607.1 (random at 0).
+
+**Decision:** promoted, `ice-and-fire-v003`.
