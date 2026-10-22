@@ -249,26 +249,28 @@ fn a_search_with_more_room_climbs_again_with_a_memory() {
 
 #[test]
 fn takes_a_cheap_gain_the_hill_climb_must_find() {
-    // One unit with room to spread and gold for trainings: the plan is not
-    // empty and spends gold on territory.
+    // Room to spread and gold for trainings, the enemy near enough that the
+    // plan search plays rather than the opening: the plan is not empty and
+    // spends gold on territory.
     let state = position(
         [
             "OOOO........",
             "O...........",
-            "............",
-            "............",
-            "............",
-            "............",
-            "............",
-            "............",
-            "............",
-            "............",
+            "....XXXXXXXX",
+            "...........X",
+            "...........X",
+            "...........X",
+            "...........X",
+            "...........X",
+            "...........X",
+            "...........X",
             "...........X",
             "...........X",
         ],
         [30, 30],
         &[],
     );
+    assert!(crate::opening::gap(&state) <= crate::opening::GAP);
     let thought = think(&state, evals(500));
     assert!(!thought.commands.is_empty());
     assert!(thought
@@ -401,4 +403,38 @@ fn never_panics_on_garbage_that_has_the_right_shape() {
     let junk = "a\nb\nc\nd\n".to_string() + &"?\n".repeat(12) + "0\n0\n";
     let input = format!("0\n{junk}{junk}");
     assert_eq!(run(&input).unwrap(), "WAIT\nWAIT\n");
+}
+
+#[test]
+fn a_side_that_cannot_pay_its_upkeep_counts_its_units_as_lost() {
+    // Red holds 3 cells and a level 3 unit: income 3 - 20 = -17, and 5 gold
+    // cannot pay it, so the unit dies at red's next start of turn.
+    let mut rows = [
+        "OOO.........",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "...........X",
+        "...........X",
+    ];
+    let state = position(rows, [5, 20], &[(0, 1, 3, 2, 0)]);
+    assert_eq!(state.income(0), -17);
+    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0);
+    assert_eq!(crate::eval::eval(&state, 0), shared - 2 * 30);
+    // With the gold to pay it, nothing is taken.
+    let state = position(rows, [17, 20], &[(0, 1, 3, 2, 0)]);
+    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0);
+    assert_eq!(crate::eval::eval(&state, 0), shared);
+    // Blue's debt counts for red.
+    rows[0] = "O...........";
+    let state = position(rows, [5, 0], &[(1, 1, 2, 11, 10)]);
+    assert_eq!(state.income(1), 2 - 4);
+    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0);
+    assert_eq!(crate::eval::eval(&state, 0), shared + 2 * 20);
 }
