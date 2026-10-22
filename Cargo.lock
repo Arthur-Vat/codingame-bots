@@ -222,8 +222,8 @@ dependencies = [
  "cg-core",
  "ice-and-fire-engine",
  "ice-and-fire-opening",
- "ice-and-fire-policy",
  "ice-and-fire-referee",
+ "ice-and-fire-search",
  "ice-and-fire-tactics",
 ]
 
@@ -299,6 +299,7 @@ dependencies = [
 name = "ice-and-fire-opening"
 version = "0.0.0"
 dependencies = [
+ "cg-core",
  "ice-and-fire-engine",
  "ice-and-fire-referee",
  "ice-and-fire-tactics",
@@ -320,6 +321,15 @@ version = "0.0.0"
 dependencies = [
  "cg-arena",
  "cg-core",
+]
+
+[[package]]
+name = "ice-and-fire-search"
+version = "0.0.0"
+dependencies = [
+ "ice-and-fire-engine",
+ "ice-and-fire-policy",
+ "ice-and-fire-tactics",
 ]
 
 [[package]]

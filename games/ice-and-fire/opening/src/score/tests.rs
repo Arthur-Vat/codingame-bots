@@ -86,7 +86,14 @@ fn the_economy_is_counted_a_few_turns_into_the_middle_game() {
     // Income 4: four cells, no units.
     let terms = terms(&state, 0, Settings::DEFAULT);
     assert_eq!((terms.gold, terms.income), (7, TURNS * 4));
-    let five = super::terms(&state, 0, Settings { turns: 5 });
+    let five = super::terms(
+        &state,
+        0,
+        Settings {
+            turns: 5,
+            ..Settings::DEFAULT
+        },
+    );
     assert_eq!(five.income, 20);
 }
 

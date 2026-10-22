@@ -6,8 +6,8 @@ use ice_and_fire_engine::{Command, League, Outcome, State, SIZE};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::{IceAndFireReferee, League as RefereeLeague};
 
-use crate::actions::{generate as actions_of, Action};
 use crate::search::{think, Limit};
+use ice_and_fire_search::actions::{generate as actions_of, Action};
 
 /// The bot's opening, new for each call.
 fn opening() -> ice_and_fire_opening::planned::Planned {
@@ -434,15 +434,15 @@ fn a_side_that_cannot_pay_its_upkeep_counts_its_units_as_lost() {
     let state = position(rows, [5, 20], &[(0, 1, 3, 2, 0)]);
     assert_eq!(state.income(0), -17);
     let shared = ice_and_fire_tactics::eval::evaluate(&state, 0);
-    assert_eq!(crate::eval::eval(&state, 0), shared - 2 * 30);
+    assert_eq!(ice_and_fire_search::eval::eval(&state, 0), shared - 2 * 30);
     // With the gold to pay it, nothing is taken.
     let state = position(rows, [17, 20], &[(0, 1, 3, 2, 0)]);
     let shared = ice_and_fire_tactics::eval::evaluate(&state, 0);
-    assert_eq!(crate::eval::eval(&state, 0), shared);
+    assert_eq!(ice_and_fire_search::eval::eval(&state, 0), shared);
     // Blue's debt counts for red.
     rows[0] = "O...........";
     let state = position(rows, [5, 0], &[(1, 1, 2, 11, 10)]);
     assert_eq!(state.income(1), 2 - 4);
     let shared = ice_and_fire_tactics::eval::evaluate(&state, 0);
-    assert_eq!(crate::eval::eval(&state, 0), shared + 2 * 20);
+    assert_eq!(ice_and_fire_search::eval::eval(&state, 0), shared + 2 * 20);
 }

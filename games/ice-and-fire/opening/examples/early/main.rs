@@ -186,7 +186,8 @@ impl Player for Bot {
     }
 }
 
-/// The planner of a name: `beam[:WIDTH]`.
+/// The planner of a name: `beam[:WIDTH]`, `choose` (S2 over the `--base`
+/// sets) or `search` (S2, then hill climbing on the weights in the time).
 fn planner(name: &str) -> Option<Planner> {
     let (kind, arg) = name.split_once(':').unwrap_or((name, ""));
     let arg: Option<usize> = arg.parse().ok();
@@ -198,6 +199,8 @@ fn planner(name: &str) -> Option<Planner> {
                 replan: (width / 4).max(4),
             }
         }
+        "choose" => Planner::Choose,
+        "search" => Planner::Search,
         _ => return None,
     })
 }
@@ -207,6 +210,8 @@ struct PlannerSettings {
     base: Vec<Params>,
     time_ms: u64,
     replan_ms: u64,
+    /// How the planners score the middle game.
+    score: Settings,
 }
 
 static PLANNER: std::sync::OnceLock<PlannerSettings> = std::sync::OnceLock::new();
@@ -218,9 +223,12 @@ fn player(name: &str) -> Option<Box<dyn Player>> {
             base: vec![Params::V003],
             time_ms: 600,
             replan_ms: 35,
+            score: Settings::DEFAULT,
         });
+        let mut planned = Planned::new(planner, settings.base.clone(), Params::V003);
+        planned.settings = settings.score;
         return Some(Box::new(Bot {
-            planned: Planned::new(planner, settings.base.clone(), Params::V003),
+            planned,
             first_ms: settings.time_ms,
             replan_ms: settings.replan_ms,
         }));
@@ -255,7 +263,7 @@ struct Options {
 }
 
 const USAGE: &str = "usage: early [--ours A,B] [--theirs C,D] [--maps N] [--first-seed S] \
-[--threads T] [--turns T1,T2] [--cap TURN] [--base SPEC[+SPEC...]] [--time-ms MS] [--replan-ms MS] \
+[--threads T] [--turns T1,T2] [--cap TURN] [--base SPEC[+SPEC...]] [--time-ms MS] [--replan-ms MS] [--plan-turns T] [--plan-cell G] [--plan-gold K] \
 [--tune SPEC] [--build-portfolio FILE --sets N]";
 
 fn parse_args() -> Result<Options, String> {
@@ -274,6 +282,7 @@ fn parse_args() -> Result<Options, String> {
     let mut base: Option<String> = None;
     let mut time_ms = 600;
     let mut replan_ms = 35;
+    let mut plan_score = Settings::DEFAULT;
     let mut args = std::env::args().skip(1);
     while let Some(flag) = args.next() {
         let mut value = || args.next().ok_or_else(|| format!("{flag} needs a value"));
@@ -298,6 +307,9 @@ fn parse_args() -> Result<Options, String> {
             "--base" => base = Some(value()?),
             "--time-ms" => time_ms = number(value()?)?,
             "--replan-ms" => replan_ms = number(value()?)?,
+            "--plan-turns" => plan_score.turns = number(value()?)? as i64,
+            "--plan-cell" => plan_score.cell = number(value()?)? as i64,
+            "--plan-gold" => plan_score.gold = number(value()?)? as i64,
             "--build-portfolio" => options.build_portfolio = Some(value()?),
             "--sets" => options.sets = number(value()?)?.max(1) as usize,
             "--turns" => {
@@ -330,6 +342,7 @@ fn parse_args() -> Result<Options, String> {
         base: sets,
         time_ms,
         replan_ms,
+        score: plan_score,
     });
     if options.maps == 0 {
         return Err("--maps must be at least 1".into());
@@ -387,7 +400,10 @@ fn play(ours: &str, theirs: &str, seed: u64, seat: usize, options: &Options) -> 
         }
         state.play_turn(&commands);
     }
-    let settings = |turns| Settings { turns };
+    let settings = |turns| Settings {
+        turns,
+        ..Settings::DEFAULT
+    };
     let main = settings(options.turns[0]);
     let ours_terms = score::terms(&state, seat, main);
     let theirs_terms = score::terms(&state, 1 - seat, main);
@@ -582,6 +598,7 @@ fn candidate_table(
     }
     let main = Settings {
         turns: options.turns[0],
+        ..Settings::DEFAULT
     };
     sets.iter()
         .map(|params| {

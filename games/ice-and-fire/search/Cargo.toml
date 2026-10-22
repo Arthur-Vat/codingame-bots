@@ -1,0 +1,19 @@
+[package]
+name = "ice-and-fire-search"
+description = "The plan search of A Code of Ice and Fire's `plan` bot (E002): hill climbing over single actions and macro actions against a memory of the opponent's replies, with the bot's evaluation. Standard library only."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+# Only workspace crates: the bundler copies this crate into bots.
+[dependencies]
+ice-and-fire-engine.workspace = true
+ice-and-fire-policy.workspace = true
+ice-and-fire-tactics.workspace = true
+
+[lints]
+workspace = true

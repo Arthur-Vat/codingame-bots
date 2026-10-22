@@ -31,8 +31,6 @@
 //! times `CG_TIME_SCALE`, 600 ms on the first turn (of CodinGame's 1,000
 //! ms). Debug output goes to stderr only.
 
-mod actions;
-mod eval;
 mod search;
 mod session;
 

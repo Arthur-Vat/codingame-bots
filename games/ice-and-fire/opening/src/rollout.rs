@@ -5,6 +5,8 @@
 
 use std::time::Instant;
 
+use cg_core::rng::Rng;
+
 use ice_and_fire_engine::{Command, State};
 
 use crate::econ::{self, Params};
@@ -73,6 +75,70 @@ pub fn choose(
         }
     }
     best.map_or(0, |(_, index)| index)
+}
+
+/// Changes one or two of `params`' weights by a small step, within their
+/// ranges.
+pub fn mutate(params: &Params, rng: &mut Rng) -> Params {
+    let mut p = *params;
+    let changes = 1 + rng.below(2);
+    for _ in 0..changes {
+        let up = rng.below(2) == 0;
+        let step = |v: i64, low: i64, high: i64| {
+            if up {
+                (v + 1).min(high)
+            } else {
+                (v - 1).max(low)
+            }
+        };
+        match rng.below(10) {
+            0 => p.open = step(p.open, 0, 8),
+            1 => p.contest = step(p.contest, 0, 8),
+            2 => p.contest_cap = step(i64::from(p.contest_cap), 4, 22) as u8,
+            3 => p.hq_div = [0, 1, 2, 4, 8][rng.below(5) as usize],
+            4 => p.horizon = step(p.horizon, 8, 26),
+            5 => p.min_turns_left = step(p.min_turns_left, 1, 12),
+            6 => p.safe_spot = step(i64::from(p.safe_spot), 0, 10) as u8,
+            7 => p.contact_offset = step(p.contact_offset, 0, 5),
+            8 => p.contact_div = step(p.contact_div, 1, 4),
+            _ => p.after_contact = step(p.after_contact, 0, 8),
+        }
+    }
+    p
+}
+
+/// The weights that score best for the player to act within the time: the
+/// best of `sets` by [`value_of`], then, until `deadline` (or `max_tries`
+/// more rollouts), hill climbing from it on [`mutate`]d weights, a change
+/// kept when its rollout scores higher. The first set if none was scored.
+pub fn search(
+    state: &State,
+    sets: &[Params],
+    model: &Params,
+    settings: Settings,
+    deadline: Option<Instant>,
+    max_tries: usize,
+    seed: u64,
+) -> Params {
+    let index = choose(state, sets, model, settings, deadline);
+    let mut best = sets[index];
+    let mut best_value = value_of(state, &best, model, settings);
+    let mut rng = Rng::new(seed);
+    for _ in 0..max_tries {
+        if deadline.is_some_and(|t| Instant::now() >= t) {
+            break;
+        }
+        let trial = mutate(&best, &mut rng);
+        if trial == best {
+            continue;
+        }
+        let value = value_of(state, &trial, model, settings);
+        if value > best_value {
+            best = trial;
+            best_value = value;
+        }
+    }
+    best
 }
 
 #[cfg(test)]

@@ -13,12 +13,12 @@ rust-version.workspace = true
 cg-core.workspace = true
 ice-and-fire-engine.workspace = true
 ice-and-fire-opening.workspace = true
-ice-and-fire-policy.workspace = true
-ice-and-fire-tactics.workspace = true
+ice-and-fire-search.workspace = true
 
 # Used by the tests only: the bot is played in-process against the referee.
 [dev-dependencies]
 cg-arena.workspace = true
+ice-and-fire-tactics.workspace = true
 ice-and-fire-referee.workspace = true
 
 [lints]

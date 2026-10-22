@@ -10,6 +10,7 @@ members = [
     "games/*/policy",
     "games/*/tactics",
     "games/*/opening",
+    "games/*/search",
     "games/*/ladder",
     "games/*/trainer",
     "games/*/value",
@@ -47,6 +48,7 @@ ice-and-fire-opening = { path = "games/ice-and-fire/opening" }
 ice-and-fire-policy = { path = "games/ice-and-fire/policy" }
 ice-and-fire-tactics = { path = "games/ice-and-fire/tactics" }
 ice-and-fire-referee = { path = "games/ice-and-fire/referee" }
+ice-and-fire-search = { path = "games/ice-and-fire/search" }
 ice-and-fire-studio = { path = "games/ice-and-fire/studio" }
 studio-core = { path = "studio/core" }
 studio-game = { path = "studio/game" }

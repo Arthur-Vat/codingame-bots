@@ -50,11 +50,19 @@ const CUTS_KEPT: usize = 8;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Settings {
     pub turns: i64,
+    /// Gold for a cell of Voronoi share ([`CELL`] in the score of E004).
+    pub cell: i64,
+    /// How many times the gold in hand counts (1 in the score of E004).
+    pub gold: i64,
 }
 
 impl Settings {
     /// The score of E004.
-    pub const DEFAULT: Settings = Settings { turns: TURNS };
+    pub const DEFAULT: Settings = Settings {
+        turns: TURNS,
+        cell: CELL,
+        gold: 1,
+    };
 }
 
 /// The terms of a side's value, in gold.
@@ -108,8 +116,8 @@ pub fn terms(state: &State, seat: usize, settings: Settings) -> Terms {
     let income = state.income(seat);
     let lost = threatened(state, seat);
     Terms {
-        voronoi: CELL * voronoi_halves(state, seat) / 2,
-        gold,
+        voronoi: settings.cell * voronoi_halves(state, seat) / 2,
+        gold: settings.gold * gold,
         income: settings.turns * income,
         exposure: if lost {
             0
