@@ -1,7 +1,7 @@
 ---
 id: E007
 date: 2026-10-22
-pull_request: pending
+pull_request: "#186"
 parent: ice-and-fire-v004
 hypothesis: A side cut in the middle game with less than 20 gold left keeps losing cells while one with 20 or more holds, so a plan search that keeps 20 gold after its turn, except for attacks, beats v004.
 change: In the middle game, the plan search refuses an action that spends gold, leaves less than 20 and is not an attack (a cut or chain macro action, or a training on an enemy cell).
