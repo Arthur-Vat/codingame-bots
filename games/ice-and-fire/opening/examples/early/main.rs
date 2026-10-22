@@ -11,8 +11,8 @@
 //! played twice, our opening in each seat. A game stops at the middle game
 //! (`ice_and_fire_opening::middle::reached`), or at the start of game turn
 //! `--cap` if it never comes. There both sides are scored for us: our value
-//! less theirs, at each horizon of `--horizons` (the first is the main one)
-//! with `--lookahead` turns of banking in the exposure. An opening plays its
+//! less theirs, with the economy counted at each of `--turns` turns into the
+//! middle game (the first is the main one). An opening plays its
 //! rules whatever the gap between the territories. The mean is over maps, each
 //! map the mean of its two games, with a 95% interval.
 //!
@@ -61,13 +61,12 @@ struct Options {
     maps: u64,
     first_seed: u64,
     threads: usize,
-    lookahead: u32,
-    horizons: Vec<i64>,
+    turns: Vec<i64>,
     cap: u32,
 }
 
 const USAGE: &str = "usage: early [--ours A,B] [--theirs C,D] [--maps N] [--first-seed S] \
-[--threads T] [--lookahead J] [--horizons H1,H2] [--cap TURN]";
+[--threads T] [--turns T1,T2] [--cap TURN]";
 
 fn parse_args() -> Result<Options, String> {
     let mut options = Options {
@@ -76,8 +75,7 @@ fn parse_args() -> Result<Options, String> {
         maps: 200,
         first_seed: 1,
         threads: std::thread::available_parallelism().map_or(1, |n| n.get()),
-        lookahead: score::LOOKAHEAD,
-        horizons: vec![score::HORIZON],
+        turns: vec![score::TURNS],
         cap: 30,
     };
     let mut args = std::env::args().skip(1);
@@ -99,15 +97,17 @@ fn parse_args() -> Result<Options, String> {
             "--maps" => options.maps = number(value()?)?,
             "--first-seed" => options.first_seed = number(value()?)?,
             "--threads" => options.threads = number(value()?)?.max(1) as usize,
-            "--lookahead" => options.lookahead = number(value()?)? as u32,
             "--cap" => options.cap = number(value()?)? as u32,
-            "--horizons" => {
-                options.horizons = list(value()?)
+            "--turns" => {
+                options.turns = list(value()?)
                     .into_iter()
-                    .map(|h| h.parse::<i64>().map_err(|_| format!("bad horizon {h}")))
+                    .map(|t| {
+                        t.parse::<i64>()
+                            .map_err(|_| format!("bad number of turns {t}"))
+                    })
                     .collect::<Result<_, _>>()?;
-                if options.horizons.is_empty() {
-                    return Err("--horizons needs at least one".into());
+                if options.turns.is_empty() {
+                    return Err("--turns needs at least one".into());
                 }
             }
             "--help" | "-h" => return Err(USAGE.into()),
@@ -131,7 +131,7 @@ struct Game {
     /// Game turn of the middle game (or of the cap).
     turn: u32,
     capped: bool,
-    /// Score for us at each horizon.
+    /// Score for us at each number of turns.
     scores: Vec<i64>,
     ours: Terms,
     theirs: Terms,
@@ -165,16 +165,13 @@ fn play(ours: &str, theirs: &str, seed: u64, seat: usize, options: &Options) -> 
         }
         state.play_turn(&commands);
     }
-    let settings = |horizon| Settings {
-        horizon,
-        lookahead: options.lookahead,
-    };
-    let main = settings(options.horizons[0]);
+    let settings = |turns| Settings { turns };
+    let main = settings(options.turns[0]);
     let ours_terms = score::terms(&state, seat, main);
     let theirs_terms = score::terms(&state, 1 - seat, main);
     let mut scores = vec![ours_terms.value() - theirs_terms.value()];
-    for &horizon in &options.horizons[1..] {
-        scores.push(score::score(&state, seat, settings(horizon)));
+    for &turns in &options.turns[1..] {
+        scores.push(score::score(&state, seat, settings(turns)));
     }
     Game {
         seed,
@@ -242,13 +239,13 @@ fn report(ours: &str, theirs: &str, games: &[Game], options: &Options, seconds: 
     let mean = |f: &dyn Fn(&Game) -> f64| games.iter().map(f).sum::<f64>() / n;
     let (score, half) = mean_interval(&per_map(games, |g| g.scores[0] as f64));
     println!(
-        "{ours} vs {theirs}: {} maps, score {score:+.1} ± {half:.1} (H {})",
+        "{ours} vs {theirs}: {} maps, score {score:+.1} ± {half:.1} ({} turns)",
         games.len() / 2,
-        options.horizons[0]
+        options.turns[0]
     );
-    for (index, horizon) in options.horizons.iter().enumerate().skip(1) {
+    for (index, turns) in options.turns.iter().enumerate().skip(1) {
         let (s, h) = mean_interval(&per_map(games, |g| g.scores[index] as f64));
-        println!("  at H {horizon}: {s:+.1} ± {h:.1}");
+        println!("  at {turns} turns: {s:+.1} ± {h:.1}");
     }
     let capped = games.iter().filter(|g| g.capped).count();
     println!(
@@ -259,11 +256,11 @@ fn report(ours: &str, theirs: &str, games: &[Game], options: &Options, seconds: 
     let row = |name: &str, pick: &dyn Fn(&Game) -> Terms| {
         let t = |f: &dyn Fn(Terms) -> i64| mean(&|g| f(pick(g)) as f64);
         println!(
-            "  {name:<6} value {:7.1} = gold {:6.1} + L×income {:6.1} + territory {:6.1} - exposure {:6.1} - debt {:5.1} - loss {:5.1}",
+            "  {name:<6} value {:7.1} = Voronoi {:6.1} + gold {:6.1} + turns × income {:6.1} - exposure {:6.1} - debt {:5.1} - loss {:5.1}",
             t(&|x| x.value()),
+            t(&|x| x.voronoi),
             t(&|x| x.gold),
             t(&|x| x.income),
-            t(&|x| x.territory),
             t(&|x| x.exposure),
             t(&|x| x.debt),
             t(&|x| x.loss),

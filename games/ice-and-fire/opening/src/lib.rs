@@ -8,8 +8,9 @@
 //! - [`middle`]: when the middle game starts: the first start of a player's
 //!   turn whose gold pays a chain of trainings to an enemy cell.
 //! - [`score`]: a hand-built score of a state in gold, for comparing openings
-//!   at the middle game: what each side has, will earn and can take by game
-//!   turn 20, less what the enemy could cut from it.
+//!   at the middle game: each side's Voronoi share of the map, then its
+//!   economy 3 turns into the middle game, less what the enemy could cut
+//!   from it.
 //!
 //! The harness (`examples/early`) plays openings against each other from both
 //! seats of many maps, up to the middle game, and reports the score.

@@ -189,7 +189,7 @@ struct Totals {
 
 /// The terms as numbers, in the order of the table.
 fn term_list(t: &Terms) -> [f64; 6] {
-    [t.gold, t.income, t.territory, t.exposure, t.debt, t.loss].map(|x| x as f64)
+    [t.voronoi, t.gold, t.income, t.exposure, t.debt, t.loss].map(|x| x as f64)
 }
 
 fn margin(state: &State) -> i64 {
@@ -329,8 +329,8 @@ fn analyse(
             t.at.add(&at);
         }
         if let Some(mid) = &at_middle {
-            let ours = score::terms(mid, seat, Settings::FULL);
-            let theirs = score::terms(mid, 1 - seat, Settings::FULL);
+            let ours = score::terms(mid, seat, Settings::DEFAULT);
+            let theirs = score::terms(mid, 1 - seat, Settings::DEFAULT);
             let value = ours.value() - theirs.value();
             t.middles += 1;
             t.middle_score += value as f64;
@@ -416,7 +416,7 @@ fn main() -> ExitCode {
         }
     };
     files.sort();
-    let mut csv = String::from("bot,result,turn,score,gold,income,territory,exposure,debt,loss,their_gold,their_income,their_territory,their_exposure,their_debt,their_loss\n");
+    let mut csv = String::from("bot,result,turn,score,voronoi,gold,income,exposure,debt,loss,their_voronoi,their_gold,their_income,their_exposure,their_debt,their_loss\n");
     for file in files
         .iter()
         .filter(|f| f.extension().is_some_and(|e| e == "json"))
@@ -496,7 +496,7 @@ fn main() -> ExitCode {
     println!();
     println!("At the middle game (means; the score is the bot's value less the opponent's, the terms are the bot's, then the opponent's):");
     println!();
-    println!("| Bot | Games | Turn | Score | Sign agrees with the winner | Gold | L × income | Territory | Exposure | Debt | Loss | Opponent: gold, L × income, territory, exposure |");
+    println!("| Bot | Games | Turn | Score | Sign agrees with the winner | Voronoi | Gold | 3 × income | Exposure | Debt | Loss | Opponent: Voronoi, gold, 3 × income, exposure |");
     println!("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |");
     for (name, t) in &totals {
         let n = t.middles.max(1) as f64;
