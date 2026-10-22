@@ -57,7 +57,7 @@ impl Player for Econ {
 }
 
 /// The weights of `econ` that a spec can set, by name.
-const KNOBS: [&str; 10] = [
+const KNOBS: [&str; 11] = [
     "open",
     "contest",
     "contest_cap",
@@ -68,6 +68,7 @@ const KNOBS: [&str; 10] = [
     "contact_offset",
     "contact_div",
     "after_contact",
+    "compact",
 ];
 
 fn knob<'a>(params: &'a mut Params, name: &str) -> Option<KnobRef<'a>> {
@@ -82,6 +83,7 @@ fn knob<'a>(params: &'a mut Params, name: &str) -> Option<KnobRef<'a>> {
         "contact_offset" => KnobRef::I(&mut params.contact_offset),
         "contact_div" => KnobRef::I(&mut params.contact_div),
         "after_contact" => KnobRef::I(&mut params.after_contact),
+        "compact" => KnobRef::I(&mut params.compact),
         _ => return None,
     })
 }

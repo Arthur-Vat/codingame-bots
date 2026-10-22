@@ -66,6 +66,10 @@ pub struct Params {
     pub contact_offset: i64,
     pub contact_div: i64,
     pub after_contact: i64,
+    /// A free cell's value also counts this much for each of its neighbours
+    /// that is ours (or claimed this turn): a compact territory is harder to
+    /// cut (E005). 0 in v003's and v004's weights.
+    pub compact: i64,
 }
 
 impl Params {
@@ -81,6 +85,7 @@ impl Params {
         contact_offset: 2,
         contact_div: 2,
         after_contact: 0,
+        compact: 0,
     };
 }
 
@@ -133,6 +138,8 @@ struct Turn<'a> {
     /// The free cells of our side: at least as near our territory as the
     /// enemy's.
     side: Bits,
+    /// Our cells and those claimed by a command of this turn.
+    ours: Bits,
 }
 
 impl Turn<'_> {
@@ -155,6 +162,7 @@ impl Turn<'_> {
             to_hq,
             free,
             side,
+            ours: state.owned(me),
         }
     }
 
@@ -171,7 +179,8 @@ impl Turn<'_> {
         } else {
             0
         };
-        p.open * open + p.contest * contest - hq
+        let own = i64::from((Bits::cell(cell).neighbours() & self.ours).count());
+        p.open * open + p.contest * contest - hq + p.compact * own
     }
 
     /// The cell of `cells` worth most, the lowest index on a tie.
@@ -184,6 +193,7 @@ impl Turn<'_> {
     fn claim(&mut self, cell: usize) {
         self.free.clear(cell);
         self.side.clear(cell);
+        self.ours.set(cell);
     }
 }
 

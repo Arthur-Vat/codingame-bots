@@ -19,6 +19,7 @@ const fn set(w: [i64; 10]) -> Params {
         contact_offset: w[7],
         contact_div: w[8],
         after_contact: w[9],
+        compact: 0,
     }
 }
 
