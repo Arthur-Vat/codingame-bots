@@ -9,6 +9,11 @@ use ice_and_fire_referee::{IceAndFireReferee, League as RefereeLeague};
 use crate::actions::{generate as actions_of, Action};
 use crate::search::{think, Limit};
 
+/// The bot's opening with a narrow beam, so that unoptimised tests run fast.
+fn small() -> ice_and_fire_opening::planned::Planned {
+    crate::opening(2)
+}
+
 /// A limit with no deadline: only the number of plans scored ends the
 /// climbs, so a search is deterministic.
 fn evals(max_evals: u64) -> Limit {
@@ -118,7 +123,7 @@ fn every_command_is_accepted_in_order() {
     let mut checked = 0;
     for seed in 0..14 {
         for state in positions(seed, &PHASES) {
-            let thought = think(&state, evals(100));
+            let thought = think(&state, evals(100), &mut small());
             let mut scratch = state.clone();
             for &command in &thought.commands {
                 assert!(scratch.apply(command), "seed {seed}: {command:?} refused");
@@ -151,7 +156,7 @@ fn every_action_generated_is_a_command_of_the_rules() {
 fn plays_a_chain_of_trainings_that_takes_the_enemy_hq() {
     // 25 gold pay two level 1 trainings: (11, 10), then the HQ.
     let state = position(CORRIDOR, [25, 20], &[]);
-    let thought = think(&state, evals(50));
+    let thought = think(&state, evals(50), &mut small());
     let mut scratch = state.clone();
     for &command in &thought.commands {
         assert!(scratch.apply(command));
@@ -165,7 +170,7 @@ fn a_unit_next_to_the_enemy_hq_steps_in() {
     let mut rows = CORRIDOR;
     rows[10] = "###########O";
     let state = position(rows, [0, 20], &[(0, 1, 1, 11, 10)]);
-    let thought = think(&state, evals(50));
+    let thought = think(&state, evals(50), &mut small());
     assert_eq!(
         thought.commands,
         vec![Command::Move {
@@ -190,7 +195,7 @@ fn does_not_play_when_the_game_is_over() {
         y: 11
     }));
     assert!(state.outcome().is_some());
-    assert!(think(&state, evals(50)).commands.is_empty());
+    assert!(think(&state, evals(50), &mut small()).commands.is_empty());
 }
 
 #[test]
@@ -204,7 +209,7 @@ fn the_search_respects_its_deadline_on_a_heavy_position() {
             hard: Some(start + budget),
             max_evals: u64::MAX,
         };
-        let thought = think(&state, limit);
+        let thought = think(&state, limit, &mut small());
         let elapsed = start.elapsed();
         // Tests run unoptimised: one try of an action may take a while, so
         // the margin is generous. The arena measures the real answers.
@@ -224,8 +229,8 @@ fn the_search_respects_its_deadline_on_a_heavy_position() {
 fn the_same_input_gives_the_same_answer() {
     for seed in 0..6 {
         for state in positions(seed, &PHASES) {
-            let a = think(&state, evals(150));
-            let b = think(&state, evals(150));
+            let a = think(&state, evals(150), &mut small());
+            let b = think(&state, evals(150), &mut small());
             assert_eq!(a.commands, b.commands, "seed {seed}");
             assert_eq!((a.climbs, a.evals, a.memory), (b.climbs, b.evals, b.memory));
         }
@@ -237,12 +242,12 @@ fn a_search_with_more_room_climbs_again_with_a_memory() {
     // On a middle-game position the first climb's plan gets replies, which
     // the next climb plays against.
     let state = &positions(3, &[30])[1];
-    let thought = think(state, evals(5_000));
+    let thought = think(state, evals(5_000), &mut small());
     assert!(thought.climbs >= 2, "{} climbs", thought.climbs);
     assert!(thought.memory >= 1);
     assert!(thought.memory <= 8);
     // And a tight limit still answers, with the first climb cut short.
-    let short = think(state, evals(5));
+    let short = think(state, evals(5), &mut small());
     assert_eq!(short.climbs, 1);
     assert_eq!(short.memory, 0);
 }
@@ -250,7 +255,7 @@ fn a_search_with_more_room_climbs_again_with_a_memory() {
 #[test]
 fn takes_a_cheap_gain_the_hill_climb_must_find() {
     // Room to spread and gold for trainings, the enemy near enough that the
-    // plan search plays rather than the opening: the plan is not empty and
+    // middle game has begun and the plan search plays rather than the opening: the plan is not empty and
     // spends gold on territory.
     let state = position(
         [
@@ -270,8 +275,8 @@ fn takes_a_cheap_gain_the_hill_climb_must_find() {
         [30, 30],
         &[],
     );
-    assert!(ice_and_fire_opening::econ::gap(&state) <= ice_and_fire_opening::econ::GAP);
-    let thought = think(&state, evals(500));
+    assert!(ice_and_fire_opening::middle::reached(&state));
+    let thought = think(&state, evals(500), &mut small());
     assert!(!thought.commands.is_empty());
     assert!(thought
         .commands
@@ -281,14 +286,17 @@ fn takes_a_cheap_gain_the_hill_climb_must_find() {
 
 #[test]
 fn the_limit_of_a_turn_follows_the_time_scale() {
-    let start = Instant::now();
-    let limit = crate::limit(start);
-    let (soft, hard) = (limit.soft.unwrap(), limit.hard.unwrap());
-    assert!(start < soft && soft < hard);
     let scale = cg_core::time::time_scale().min(100.0);
-    let budget = hard - start;
-    let expected = Duration::from_secs_f64(0.040 * scale);
-    assert!(budget >= expected && budget < expected + Duration::from_millis(1));
+    // 600 ms on the first turn, 40 ms on the others.
+    for (turn, ms) in [(1, 0.600), (2, 0.040), (30, 0.040)] {
+        let start = Instant::now();
+        let limit = crate::limit(start, turn);
+        let (soft, hard) = (limit.soft.unwrap(), limit.hard.unwrap());
+        assert!(start < soft && soft < hard);
+        let budget = hard - start;
+        let expected = Duration::from_secs_f64(ms * scale);
+        assert!(budget >= expected && budget < expected + Duration::from_millis(1));
+    }
 }
 
 // --- The loop ---
@@ -299,7 +307,7 @@ const MAP: &str = "O...........\n............\n............\n............\n.....
 
 fn run(input: &str) -> Result<String, String> {
     let mut output = Vec::new();
-    crate::session::play(&|_| evals(40), input.as_bytes(), &mut output)?;
+    crate::session::play(&|_, _| evals(40), small(), input.as_bytes(), &mut output)?;
     Ok(String::from_utf8(output).expect("answers are ASCII"))
 }
 

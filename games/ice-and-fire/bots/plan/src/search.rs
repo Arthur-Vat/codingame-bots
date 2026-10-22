@@ -1,6 +1,6 @@
 //! The plan search (see the crate's docs): lethal first, then the opening
-//! while the territories are far apart, then hill climbing over actions
-//! against a memory of the opponent's replies.
+//! until the middle game, then hill climbing over actions against a memory
+//! of the opponent's replies.
 //!
 //! A climb starts from the state at the start of the turn and adds, one at a
 //! time, the action that raises the score of the plan most. Trying every
@@ -19,6 +19,7 @@ use std::hash::BuildHasherDefault;
 use std::time::Instant;
 
 use ice_and_fire_engine::{Command, Outcome, State, HQ, SIZE};
+use ice_and_fire_opening::planned::Planned;
 use ice_and_fire_policy::greedy_turn;
 use ice_and_fire_tactics::chain::chain_to;
 use ice_and_fire_tactics::cut::cuts;
@@ -316,8 +317,9 @@ impl Search {
     }
 }
 
-/// The commands to play in `state` for the player to act, within `limit`.
-pub fn think(state: &State, limit: Limit) -> Thought {
+/// The commands to play in `state` for the player to act, within `limit`;
+/// `opening` plays until the middle game (`ice_and_fire_opening::middle`).
+pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
     let me = state.to_act();
     let mut thought = Thought {
         commands: Vec::new(),
@@ -332,8 +334,14 @@ pub fn think(state: &State, limit: Limit) -> Thought {
         thought.commands = commands;
         return thought;
     }
-    if let Some(commands) = ice_and_fire_opening::econ::turn(state) {
-        thought.commands = commands;
+    if !ice_and_fire_opening::middle::reached(state) {
+        // The plan's search stops at 76% of the turn: the hard limit is
+        // the whole budget.
+        let at = |share: f64| match (limit.soft, limit.hard) {
+            (Some(soft), Some(hard)) => Some(soft + (hard - soft).mul_f64(share)),
+            _ => None,
+        };
+        thought.commands = opening.turn(state, at(0.4));
         return thought;
     }
     let mut search = Search {

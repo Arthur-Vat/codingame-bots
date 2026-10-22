@@ -299,6 +299,7 @@ dependencies = [
 name = "ice-and-fire-opening"
 version = "0.0.0"
 dependencies = [
+ "cg-core",
  "ice-and-fire-engine",
  "ice-and-fire-referee",
  "ice-and-fire-tactics",

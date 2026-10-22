@@ -1,12 +1,16 @@
-//! Plan bot for A Code of Ice and Fire (experiments E002 and E003): a search
+//! Plan bot for A Code of Ice and Fire (experiments E002 to E004): a search
 //! after the contest's winner (`games/ice-and-fire/research/README.md`,
-//! "What strong bots do"), with an opening by rules
+//! "What strong bots do"), with a planned opening
 //! (`games/ice-and-fire/research/early-game.md`).
 //!
 //! A turn is a list of commands, the plan. The bot first looks for a lethal
-//! move or chain of trainings and plays it. While the two territories are far
-//! apart it plays the opening (`ice_and_fire_opening::econ`): units take free cells, and
-//! trainings and mines are bought while they pay back. Else it climbs: from
+//! move or chain of trainings and plays it. Until the middle game (it can pay
+//! a chain of trainings to an enemy cell) it plays the opening
+//! (`ice_and_fire_opening::planned`, E004): on the first turn a planner
+//! searches our turns up to the middle game, the opponent simulated as v003's
+//! opening, for the position the opening's score rates best; the plan is
+//! replayed while our side of the board is as predicted, and made again
+//! within the turn's time otherwise. Else it climbs: from
 //! the start of the turn it keeps adding the single action (a move, a
 //! training, a tower, a mine, one of the best cuts, a lethal chain) that most
 //! raises the score of the plan, until none does or the time is up. The score
@@ -23,7 +27,7 @@
 //! scratch copy of the state. A turn whose text does not read as a state is
 //! answered with `WAIT`; a bad count line or input that ends in the middle of
 //! a turn ends the bot with exit code 1. The time budget of a turn is 40 ms
-//! times `CG_TIME_SCALE` on every turn, the first included. Debug output goes
+//! times `CG_TIME_SCALE`, 600 ms on the first turn (of CodinGame's 1,000 ms). Debug output goes
 //! to stderr only.
 
 mod actions;
@@ -34,22 +38,35 @@ mod session;
 use std::io;
 use std::time::{Duration, Instant};
 
+use ice_and_fire_opening::econ::Params;
+use ice_and_fire_opening::planned::{Planned, Planner};
+use ice_and_fire_opening::portfolio::PORTFOLIO;
+
 use crate::search::Limit;
 
 /// The time of a turn at CodinGame's limits, milliseconds: 50 ms, less a
-/// margin for the input, the output and a busy machine. The first turn's
-/// 1,000 ms is not used.
+/// margin for the input, the output and a busy machine.
 const BUDGET_MS: f64 = 40.0;
+/// The first turn's time, of CodinGame's 1,000 ms (E004).
+const FIRST_BUDGET_MS: f64 = 600.0;
+/// The beam's width on the first turn and when the plan is made again.
+const BEAM_WIDTH: usize = 150;
+const REPLAN_WIDTH: usize = 8;
 
 /// The share of the budget after which no new climb or reply search starts;
 /// the rest is for choosing the plan to play.
 const SOFT_SHARE: f64 = 0.6;
 
-/// The limits of a turn that started at `start`.
-fn limit(start: Instant) -> Limit {
+/// The limits of the turn `turn` (1 first) that started at `start`.
+fn limit(start: Instant, turn: u32) -> Limit {
     // A scale beyond 100 is no use and could overflow the clock.
     let scale = cg_core::time::time_scale().min(100.0);
-    let budget = Duration::from_secs_f64(BUDGET_MS / 1000.0 * scale);
+    let ms = if turn == 1 {
+        FIRST_BUDGET_MS
+    } else {
+        BUDGET_MS
+    };
+    let budget = Duration::from_secs_f64(ms / 1000.0 * scale);
     Limit {
         soft: Some(start + budget.mul_f64(SOFT_SHARE)),
         hard: Some(start + budget),
@@ -57,10 +74,22 @@ fn limit(start: Instant) -> Limit {
     }
 }
 
+/// The opening: a beam search of `width` over v003's weights and the
+/// portfolio's, the opponent simulated as v003.
+fn opening(width: usize) -> Planned {
+    let mut sets = vec![Params::V003];
+    sets.extend_from_slice(&PORTFOLIO);
+    let planner = Planner::Beam {
+        width,
+        replan: REPLAN_WIDTH,
+    };
+    Planned::new(planner, sets, Params::V003)
+}
+
 fn main() {
     let stdin = io::stdin();
     let stdout = io::stdout();
-    if let Err(err) = session::play(&limit, stdin.lock(), stdout.lock()) {
+    if let Err(err) = session::play(&limit, opening(BEAM_WIDTH), stdin.lock(), stdout.lock()) {
         eprintln!("plan: {err}");
         std::process::exit(1);
     }

@@ -17,6 +17,10 @@
 
 pub mod econ;
 pub mod middle;
+pub mod plan;
+pub mod planned;
+pub mod portfolio;
+pub mod rollout;
 pub mod score;
 
 #[cfg(test)]

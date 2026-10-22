@@ -11,6 +11,7 @@ rust-version.workspace = true
 
 # Only workspace crates: the bundler copies this crate into bots.
 [dependencies]
+cg-core.workspace = true
 ice-and-fire-engine.workspace = true
 ice-and-fire-tactics.workspace = true
 
