@@ -341,9 +341,9 @@ fn analyse(
             for (sum, x) in t.theirs.iter_mut().zip(term_list(&theirs)) {
                 *sum += x;
             }
-            if score[seat] != 0.5 {
+            if score[seat] != 0.5 && value != 0 {
                 t.decided += 1;
-                if (value > 0) == (score[seat] == 1.0) && value != 0 {
+                if (value > 0) == (score[seat] == 1.0) {
                     t.agree += 1;
                 }
             }

@@ -114,6 +114,9 @@ fn parse_args() -> Result<Options, String> {
             _ => return Err(format!("unknown argument {flag}\n{USAGE}")),
         }
     }
+    if options.maps == 0 {
+        return Err("--maps must be at least 1".into());
+    }
     for name in options.ours.iter().chain(&options.theirs) {
         if player(name).is_none() {
             return Err(format!("unknown opening {name}"));
@@ -297,7 +300,7 @@ fn main() -> ExitCode {
     }
     if table.len() * options.theirs.len() > 1 {
         println!("\n| Ours | {} | Mean |", options.theirs.join(" | "));
-        println!("| --- |{}---: |", " ---: |".repeat(options.theirs.len()));
+        println!("| --- |{} ---: |", " ---: |".repeat(options.theirs.len()));
         for (name, row) in &table {
             let cells: Vec<String> = row.iter().map(|s| format!("{s:+.1}")).collect();
             let mean = row.iter().sum::<f64>() / row.len() as f64;

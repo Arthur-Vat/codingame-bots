@@ -125,7 +125,8 @@ fn a_chain_the_enemy_pays_next_turn_is_a_loss() {
     // of level 1 on red's HQ.
     let state = next_door();
     assert!(threatened(&state, 0));
-    assert_eq!(terms(&state, 0, Settings::FULL).loss, LOSS);
+    let red = terms(&state, 0, Settings::FULL);
+    assert_eq!((red.loss, red.exposure), (LOSS, 0));
     // Red, to act, can pay nothing: blue's HQ is safe.
     assert!(!threatened(&state, 1));
     assert!(!threatened(&start(1), 0));

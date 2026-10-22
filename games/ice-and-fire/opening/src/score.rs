@@ -21,7 +21,8 @@
 //! - less the value of all its units if its gold plus income is below 0
 //!   (**debt**: they die at its next start of turn);
 //! - less [`LOSS`] if the enemy can pay a chain of trainings to its HQ
-//!   (**loss**), with its gold if it is to act, else its gold plus income.
+//!   (**loss**), with its gold if it is to act, else its gold plus income;
+//!   the exposure is then 0, so that the loss counts once.
 //!
 //! The score of a state for a seat is its value less the enemy's.
 
@@ -119,17 +120,23 @@ pub fn terms(state: &State, seat: usize, settings: Settings) -> Terms {
     let left = turns_left(state, settings.horizon);
     let gold = state.gold(seat);
     let income = state.income(seat);
+    let lost = threatened(state, seat);
     Terms {
         gold,
         income: left * income,
         territory: territory(state, seat, left),
-        exposure: exposure(state, seat, settings),
+        // The loss counts the cut that takes the HQ once.
+        exposure: if lost {
+            0
+        } else {
+            exposure(state, seat, settings)
+        },
         debt: if gold + income < 0 {
             unit_value(state, seat)
         } else {
             0
         },
-        loss: if threatened(state, seat) { LOSS } else { 0 },
+        loss: if lost { LOSS } else { 0 },
     }
 }
 
