@@ -130,8 +130,10 @@ fn side(state: &State, seat: usize) -> String {
     let mines = (state.mines() & state.active(seat)).count();
     let (c30, u30) = vulnerable(state, seat, 30);
     let (c50, u50) = vulnerable(state, seat, 50);
+    // What this side could take from the enemy now with its own gold.
+    let (cn, un) = vulnerable(state, 1 - seat, state.gold(seat).max(0));
     format!(
-        "gold {:3} income {:3} cells {:2} units {:2} mines {} voronoi {:4.1} cut30 {c30}/{u30} cut50 {c50}/{u50}",
+        "gold {:3} income {:3} cells {:2} units {:2} mines {} voronoi {:4.1} cut30 {c30}/{u30} cut50 {c50}/{u50} can {cn}/{un}",
         state.gold(seat),
         state.income(seat),
         state.active(seat).count(),
