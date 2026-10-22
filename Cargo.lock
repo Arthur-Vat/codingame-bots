@@ -302,6 +302,7 @@ dependencies = [
  "cg-core",
  "ice-and-fire-engine",
  "ice-and-fire-referee",
+ "ice-and-fire-search",
  "ice-and-fire-tactics",
 ]
 

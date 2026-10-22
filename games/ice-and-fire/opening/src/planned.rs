@@ -11,7 +11,7 @@ use ice_and_fire_engine::{Command, State};
 
 use crate::econ::{Buy, Params};
 use crate::plan::{self, side_key, Context, Step};
-use crate::rollout::{choose, search, CAP};
+use crate::rollout::{choose, choose_deep, search, CAP};
 use crate::score::Settings;
 
 /// Which planner makes the plans.
@@ -26,6 +26,10 @@ pub enum Planner {
     /// S2, then hill climbing on the chosen weights until the deadline
     /// ([`crate::rollout::search`]).
     Search,
+    /// S2 judged a few turns into the fights: the weights whose rollout,
+    /// played on with the plan search for `turns` turns of each side
+    /// (`evals` plans a turn), scores best ([`crate::rollout::choose_deep`]).
+    Deep { turns: u32, evals: u64 },
 }
 
 /// The opening's memory between turns.
@@ -116,6 +120,12 @@ impl Planned {
                         seed,
                     );
                     chosen(found, &mut self.sets)
+                }
+                Planner::Deep { turns, evals } => {
+                    let (sets, model) = (&self.sets, &self.model);
+                    let index =
+                        choose_deep(state, sets, model, self.settings, deadline, turns, evals);
+                    chosen(self.sets[index], &mut self.sets)
                 }
                 Planner::Choose => {
                     let index = choose(state, &self.sets, &self.model, self.settings, deadline);

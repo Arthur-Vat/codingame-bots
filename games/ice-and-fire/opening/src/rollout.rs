@@ -141,5 +141,59 @@ pub fn search(
     best
 }
 
+/// The score for `me` after playing `econ` with `params` from `state` to the
+/// middle game against the model, then `turns` more turns of each side with
+/// the plan search of the `plan` bot, `evals` plans scored a turn (E005: the
+/// opening judged a few turns into the fights).
+pub fn deep_value(
+    state: &State,
+    params: &Params,
+    model: &Params,
+    settings: Settings,
+    turns: u32,
+    evals: u64,
+) -> i64 {
+    let me = state.to_act();
+    let mut sim = play(state, model, |_, s| econ::rules_turn_with(s, params));
+    let limit = ice_and_fire_search::plan::Limit {
+        soft: None,
+        hard: None,
+        max_evals: evals,
+    };
+    for _ in 0..2 * turns {
+        if sim.outcome().is_some() {
+            break;
+        }
+        let thought = ice_and_fire_search::plan::think(&sim, limit);
+        sim.play_turn(&thought.commands);
+    }
+    score::score(&sim, me, settings)
+}
+
+/// The index of the weights of `sets` whose deep rollout ([`deep_value`])
+/// scores best, the first on a tie; sets are tried in order until
+/// `deadline`, the first always.
+pub fn choose_deep(
+    state: &State,
+    sets: &[Params],
+    model: &Params,
+    settings: Settings,
+    deadline: Option<Instant>,
+    turns: u32,
+    evals: u64,
+) -> usize {
+    let mut best: Option<(i64, usize)> = None;
+    for (index, params) in sets.iter().enumerate() {
+        if best.is_some() && deadline.is_some_and(|t| Instant::now() >= t) {
+            break;
+        }
+        let value = deep_value(state, params, model, settings, turns, evals);
+        if best.is_none_or(|(top, _)| value > top) {
+            best = Some((value, index));
+        }
+    }
+    best.map_or(0, |(_, index)| index)
+}
+
 #[cfg(test)]
 mod tests;

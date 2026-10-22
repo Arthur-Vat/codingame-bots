@@ -201,6 +201,13 @@ fn planner(name: &str) -> Option<Planner> {
         }
         "choose" => Planner::Choose,
         "search" => Planner::Search,
+        // deep:TURNS:EVALS
+        "deep" => {
+            let mut parts = name.split(':').skip(1);
+            let turns = parts.next().and_then(|t| t.parse().ok()).unwrap_or(3);
+            let evals = parts.next().and_then(|e| e.parse().ok()).unwrap_or(200);
+            Planner::Deep { turns, evals }
+        }
         _ => return None,
     })
 }
