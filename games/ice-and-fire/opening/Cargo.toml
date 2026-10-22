@@ -1,0 +1,22 @@
+[package]
+name = "ice-and-fire-opening"
+description = "The early game of A Code of Ice and Fire: the openings a bot can play until the middle game, and the score that compares them there (E003, E004). Standard library only."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+# Only workspace crates: the bundler copies this crate into bots.
+[dependencies]
+ice-and-fire-engine.workspace = true
+ice-and-fire-tactics.workspace = true
+
+# Used by the tests and the harness example only; never part of a bot.
+[dev-dependencies]
+ice-and-fire-referee.workspace = true
+
+[lints]
+workspace = true

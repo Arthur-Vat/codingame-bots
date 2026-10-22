@@ -270,7 +270,7 @@ fn takes_a_cheap_gain_the_hill_climb_must_find() {
         [30, 30],
         &[],
     );
-    assert!(crate::opening::gap(&state) <= crate::opening::GAP);
+    assert!(ice_and_fire_opening::econ::gap(&state) <= ice_and_fire_opening::econ::GAP);
     let thought = think(&state, evals(500));
     assert!(!thought.commands.is_empty());
     assert!(thought

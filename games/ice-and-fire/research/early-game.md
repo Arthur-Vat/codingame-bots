@@ -100,3 +100,30 @@ Measured in E003 ([journal entry](../journal/E003-opening.md), all the tables): 
 | `plan` (v002) | 0 | 18.7, 13.8, 18.6, 0 | 1.2, 8.3 |
 
 What the theory got right: every unit taking a free cell each turn is most of the gain (`fill` alone is worth +224); mines pay once a unit is valued only for the cells it takes before contact, and the one next to the HQ gets built in most games; a thin line toward the enemy HQ (v002, `rush`) is the weakest shape. What it did not foresee: the trainings' stopping rule never binds, since the territories meet around turn 8 with free cells still on each side; and a search for the most gold and income at contact (`rollout`) did a little worse than the rule it searched over, by giving up cells and units. The reserve, the debt check and the hand-over gap made no measured difference; the debt check stays, since it fixes the wipe-out of the owner's replay at no cost. The candidate is `econ`: `ice-and-fire-v003`.
+
+## The middle-game score (E004)
+
+E004 compares openings without playing whole games: the owner asked (2026-10-22) to "benchmark them only in the early game: consider we reached the middle game when one player can reach the opponent territory", with a score "based on heuristics that you should determine carefully", never fitted to games. The crate [`ice-and-fire-opening`](../opening/) holds the openings, the middle game and the score; its harness (`cargo run --release -p ice-and-fire-opening --example early`) plays openings against each other, in process, from both seats of many source maps, and scores both sides there.
+
+- **The middle game** starts at the first start of a player's turn whose gold pays a chain of trainings to an enemy cell, its units' steps counted as free (`middle::reached`). With E003's openings it comes at game turn 7.5 to 8.
+- **The score** (`score::score`) of a seat is its value less the enemy's, in gold at game turn 20, with L = max(1, 20 − turn): gold + L × income + the free cells it can still take (nearer its territory than the enemy's, a tie half; the k-th, at distance d, taken on turn max(d, k) and then earning L − that) − its exposure − the value of its units if it cannot pay its upkeep − 1,000 if the enemy can pay a chain to its HQ. The **exposure** is the most the enemy could take after banking 1, 2 or 3 turns while the side only builds towers: the cut finder's worst cut for it (up to 4 + j trainings within the enemy's gold), after up to j towers placed greedily against that cut, costing the cells × (L − j), the units' value, 4 (L − j) per mine and 15 per tower built.
+
+**The check against games.** The score must rank E003's openings in the order their games did (`econ` > `fill` > `rush` > v002). Each of them played v003 (`econ`) at CodinGame's limits, 200 pairs on seed 31, and the arena's opening benchmark scored both sides at the middle game of every game:
+
+| Opening against v003 | Elo in the games | Score as first written | Score with one cell a turn | Its sign agrees with the winner |
+| --- | ---: | ---: | ---: | ---: |
+| `fill` | −15.6 [−46.5, +14.9] | +42.5 | −15.5 | 55.0% |
+| `rush` | −135.0 [−171.9, −100.7] | −10.0 | −56.1 | 66.5% |
+| v002 | −246.3 [−296.5, −203.6] | −45.9 | −81.8 | 77.8% |
+
+As first written, with n units taking n cells a turn (the k-th on turn max(d, ceil(k / n))), the territory term put `fill`, which buys more units and no mine, 42 gold above `econ`, in games that `fill` lost. Of the terms, territory was the largest difference (+52 gold for `fill`) and tracked the result least (correlation +0.05 with the game's result, against +0.17 for gold, +0.18 for income and −0.17 for exposure). Units take free cells until the territories meet; from the middle game on they fight, and the plan search does not send them back to fill. With one cell a turn, whatever the units, the order matches the games, and the sign of the score agrees with the winner in 67% of these 1,200 games (62% before). Looking 1 or 2 turns ahead in the exposure, instead of 3, changed the means by less than 7 gold and was kept at 3.
+
+In the harness, over 1,000 maps from both seats (scores of the row against the column, ± the 95% interval near 2):
+
+| Ours | `econ` | `fill` | `rush` |
+| --- | ---: | ---: | ---: |
+| `econ` | 0 | +32.9 | +70.2 |
+| `fill` | −32.9 | 0 | +28.8 |
+| `rush` | −70.2 | −28.8 | 0 |
+
+The order is the same at horizons 15 and 25 (`econ` over `fill` +30.3 and +35.3, over `rush` +54.6 and +86.4).

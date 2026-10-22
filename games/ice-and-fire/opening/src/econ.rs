@@ -1,5 +1,5 @@
-//! The opening: the turns before the two territories meet (experiment E003,
-//! `games/ice-and-fire/research/early-game.md`).
+//! The `econ` opening of `ice-and-fire-v003`: the turns before the two
+//! territories meet (experiment E003, `games/ice-and-fire/research/early-game.md`).
 //!
 //! While the territories are more than [`GAP`] steps apart, a turn is played
 //! by rules instead of the plan search:
@@ -168,12 +168,19 @@ pub fn turn(state: &State) -> Option<Vec<Command>> {
     if state.outcome().is_some() || gap(state) <= GAP {
         return None;
     }
+    Some(rules_turn(state))
+}
+
+/// The opening's rules for the player to act, whatever the gap: what
+/// [`turn`] plays while the territories are far apart. The harness plays them
+/// on until the middle game.
+pub fn rules_turn(state: &State) -> Vec<Command> {
     let mut scratch = state.clone();
     let mut turn = Turn::new(state);
     let mut out = Vec::new();
     moves(&mut scratch, &mut turn, &mut out);
     purchases(&mut scratch, &mut turn, &mut out);
-    Some(out)
+    out
 }
 
 /// Units with a free neighbour, fewest choices first, each take the free

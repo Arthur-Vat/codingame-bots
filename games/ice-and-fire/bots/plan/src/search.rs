@@ -332,7 +332,7 @@ pub fn think(state: &State, limit: Limit) -> Thought {
         thought.commands = commands;
         return thought;
     }
-    if let Some(commands) = crate::opening::turn(state) {
+    if let Some(commands) = ice_and_fire_opening::econ::turn(state) {
         thought.commands = commands;
         return thought;
     }

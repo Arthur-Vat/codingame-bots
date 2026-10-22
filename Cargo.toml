@@ -9,6 +9,7 @@ members = [
     "games/*/arena",
     "games/*/policy",
     "games/*/tactics",
+    "games/*/opening",
     "games/*/ladder",
     "games/*/trainer",
     "games/*/value",
@@ -42,6 +43,7 @@ cg-packer = { path = "crates/cg-packer" }
 cg-search = { path = "crates/cg-search" }
 ice-and-fire-engine = { path = "games/ice-and-fire/engine" }
 ice-and-fire-ladder = { path = "games/ice-and-fire/ladder" }
+ice-and-fire-opening = { path = "games/ice-and-fire/opening" }
 ice-and-fire-policy = { path = "games/ice-and-fire/policy" }
 ice-and-fire-tactics = { path = "games/ice-and-fire/tactics" }
 ice-and-fire-referee = { path = "games/ice-and-fire/referee" }

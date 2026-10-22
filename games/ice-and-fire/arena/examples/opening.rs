@@ -23,15 +23,26 @@
 //! bot's wipe-outs (its gold could not pay its upkeep), its trainings of
 //! level 2 or 3 before contact, and the game's result.
 //!
+//! At the **middle game** (`ice_and_fire_opening::middle`: the first start of
+//! a player's turn whose gold pays a chain of trainings to an enemy cell) it
+//! scores both sides with `ice_and_fire_opening::score` (E004) and reports
+//! each bot's mean score and terms there, and how often the sign of the score
+//! agrees with the game's winner. With `OPENING_CSV=FILE`, it also writes one
+//! line per game and seat: the bot, the result, the middle game's turn, the
+//! score and the terms of each side.
+//!
 //! Records whose games end before contact count in the results only.
 
 use std::collections::BTreeMap;
+use std::fmt::Write as _;
 use std::fs;
 use std::path::Path;
 use std::process::ExitCode;
 
 use cg_arena::record::Record;
 use ice_and_fire_engine::{Bits, Command, League, State, HQ};
+use ice_and_fire_opening::middle;
+use ice_and_fire_opening::score::{self, Settings, Terms};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_tactics::chain::{Reach, UNREACHABLE};
 use ice_and_fire_tactics::cut::cuts;
@@ -163,6 +174,22 @@ struct Totals {
     wipes: u64,
     high_level: u64,
     game_turns: f64,
+    /// Games that reached the middle game, and the sums there of the bot's
+    /// score, its terms and the opponent's terms.
+    middles: u64,
+    middle_score: f64,
+    middle_turn: f64,
+    ours: [f64; 6],
+    theirs: [f64; 6],
+    /// Games won or lost with a score of the winner's sign (draws and scores of
+    /// 0 aside), and games won or lost.
+    agree: u64,
+    decided: u64,
+}
+
+/// The terms as numbers, in the order of the table.
+fn term_list(t: &Terms) -> [f64; 6] {
+    [t.gold, t.income, t.territory, t.exposure, t.debt, t.loss].map(|x| x as f64)
 }
 
 fn margin(state: &State) -> i64 {
@@ -175,7 +202,11 @@ fn margin(state: &State) -> i64 {
     }
 }
 
-fn analyse(record: &Record, totals: &mut BTreeMap<String, Totals>) -> Result<(), String> {
+fn analyse(
+    record: &Record,
+    totals: &mut BTreeMap<String, Totals>,
+    csv: &mut String,
+) -> Result<(), String> {
     let map = generate(record.seed, ice_and_fire_referee::League::Bronze);
     let mut state = State::new(&map.void, &map.mine_spots, League::Bronze);
     let names = [
@@ -191,6 +222,8 @@ fn analyse(record: &Record, totals: &mut BTreeMap<String, Totals>) -> Result<(),
     let mut high = [0u64; 2];
     // The seat whose exposure is measured at this start of turn.
     let mut pending: Option<usize> = None;
+    // The state at the middle game.
+    let mut at_middle: Option<State> = None;
 
     for answers in &record.turns {
         if state.outcome().is_some() {
@@ -198,6 +231,9 @@ fn analyse(record: &Record, totals: &mut BTreeMap<String, Totals>) -> Result<(),
         }
         let seat = state.to_act();
         let turn = state.game_turn();
+        if at_middle.is_none() && middle::reached(&state) {
+            at_middle = Some(state.clone());
+        }
         // A wipe-out: the gold left last turn plus the income could not pay.
         if let Some(g) = end_gold[seat] {
             if units_before[seat] > 0 && g + state.income(seat) < 0 {
@@ -292,6 +328,37 @@ fn analyse(record: &Record, totals: &mut BTreeMap<String, Totals>) -> Result<(),
             t.contacts += 1;
             t.at.add(&at);
         }
+        if let Some(mid) = &at_middle {
+            let ours = score::terms(mid, seat, Settings::FULL);
+            let theirs = score::terms(mid, 1 - seat, Settings::FULL);
+            let value = ours.value() - theirs.value();
+            t.middles += 1;
+            t.middle_score += value as f64;
+            t.middle_turn += f64::from(mid.game_turn());
+            for (sum, x) in t.ours.iter_mut().zip(term_list(&ours)) {
+                *sum += x;
+            }
+            for (sum, x) in t.theirs.iter_mut().zip(term_list(&theirs)) {
+                *sum += x;
+            }
+            if score[seat] != 0.5 {
+                t.decided += 1;
+                if (value > 0) == (score[seat] == 1.0) && value != 0 {
+                    t.agree += 1;
+                }
+            }
+            let list = |x: &Terms| term_list(x).map(|v| format!("{v}")).join(",");
+            let _ = writeln!(
+                csv,
+                "{},{},{},{},{},{}",
+                names[seat],
+                score[seat],
+                mid.game_turn(),
+                value,
+                list(&ours),
+                list(&theirs)
+            );
+        }
     }
     Ok(())
 }
@@ -349,6 +416,7 @@ fn main() -> ExitCode {
         }
     };
     files.sort();
+    let mut csv = String::from("bot,result,turn,score,gold,income,territory,exposure,debt,loss,their_gold,their_income,their_territory,their_exposure,their_debt,their_loss\n");
     for file in files
         .iter()
         .filter(|f| f.extension().is_some_and(|e| e == "json"))
@@ -358,7 +426,7 @@ fn main() -> ExitCode {
             .and_then(|text| serde_json::from_str::<Record>(&text).map_err(|e| e.to_string()));
         match parsed {
             Ok(record) => {
-                if let Err(err) = analyse(&record, &mut totals) {
+                if let Err(err) = analyse(&record, &mut totals, &mut csv) {
                     eprintln!("opening: {}: {err}", file.display());
                 }
             }
@@ -424,6 +492,30 @@ fn main() -> ExitCode {
             })
             .collect();
         println!("| {name} | {} |", cols.join(" | "));
+    }
+    println!();
+    println!("At the middle game (means; the score is the bot's value less the opponent's, the terms are the bot's, then the opponent's):");
+    println!();
+    println!("| Bot | Games | Turn | Score | Sign agrees with the winner | Gold | L × income | Territory | Exposure | Debt | Loss | Opponent: gold, L × income, territory, exposure |");
+    println!("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |");
+    for (name, t) in &totals {
+        let n = t.middles.max(1) as f64;
+        let o = t.ours.map(|x| x / n);
+        let e = t.theirs.map(|x| x / n);
+        println!(
+            "| {name} | {} | {:.1} | {:+.1} | {:.1}% | {:.1} | {:.1} | {:.1} | {:.1} | {:.1} | {:.1} | {:.1}, {:.1}, {:.1}, {:.1} |",
+            t.middles,
+            t.middle_turn / n,
+            t.middle_score / n,
+            100.0 * t.agree as f64 / t.decided.max(1) as f64,
+            o[0], o[1], o[2], o[3], o[4], o[5], e[0], e[1], e[2], e[3],
+        );
+    }
+    if let Ok(path) = std::env::var("OPENING_CSV") {
+        if let Err(err) = fs::write(&path, csv) {
+            eprintln!("opening: cannot write {path}: {err}");
+            return ExitCode::FAILURE;
+        }
     }
     ExitCode::SUCCESS
 }
