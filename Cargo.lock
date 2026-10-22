@@ -330,6 +330,7 @@ version = "0.0.0"
 dependencies = [
  "ice-and-fire-engine",
  "ice-and-fire-policy",
+ "ice-and-fire-referee",
  "ice-and-fire-tactics",
 ]
 

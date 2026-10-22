@@ -15,5 +15,9 @@ ice-and-fire-engine.workspace = true
 ice-and-fire-policy.workspace = true
 ice-and-fire-tactics.workspace = true
 
+# Used by the tests only.
+[dev-dependencies]
+ice-and-fire-referee.workspace = true
+
 [lints]
 workspace = true
