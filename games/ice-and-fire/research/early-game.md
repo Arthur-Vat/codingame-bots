@@ -106,26 +106,26 @@ What the theory got right: every unit taking a free cell each turn is most of th
 E004 compares openings without playing whole games: the owner asked (2026-10-22) to "benchmark them only in the early game: consider we reached the middle game when one player can reach the opponent territory", with a score "based on heuristics that you should determine carefully", never fitted to games. The crate [`ice-and-fire-opening`](../opening/) holds the openings, the middle game and the score; its harness (`cargo run --release -p ice-and-fire-opening --example early`) plays openings against each other, in process, from both seats of many source maps, and scores both sides there.
 
 - **The middle game** starts at the first start of a player's turn whose gold pays a chain of trainings to an enemy cell, its units' steps counted as free (`middle::reached`). With E003's openings it comes at game turn 7.5 to 8.
-- **The score** (`score::score`) of a seat is its value less the enemy's, in gold. Its terms follow the owner's direction ("something like Voronoi first, but then take into account economy", with "the time horizon for the score evaluation in the middle game, not long after the early game") and the sections above:
+- **The score** (`score::score`) of a seat is its value less the enemy's, in gold. Its terms follow the owner's direction (the economy first, then the Voronoi share, with "the time horizon for the score evaluation in the middle game, not long after the early game") and the sections above:
 
 | Term | Value | Why |
 | --- | --- | --- |
-| Voronoi share | 10 gold for each cell nearer the side's active cells than the enemy's (a tie half) | NinjaDoggy's first criterion (3rd); the map each side holds once the opening ends. A cell is worth a training, the price of taking a free cell |
-| Economy | gold + 3 × income | The gold held 3 turns into the middle game, when the first fights are fought ("Income at contact", above) |
-| Exposure | − what the enemy's best cut on its next turn takes: 10 a cell taken or cut off, the units' value, 3 × 4 a mine | "Shape", above: a thin territory is cut by one capture |
+| Economy | gold + 3 × income | The gold held 3 turns into the middle game, when the first fights are fought and gold pays for them ("Income at contact", above) |
+| Voronoi share | 1 gold for each cell nearer the side's active cells than the enemy's (a tie half) | NinjaDoggy's first criterion (3rd); the map each side holds once the opening ends. A cell is worth one turn of the income it brings once taken, so that the share decides between positions of about the same economy |
+| Exposure | − what the enemy's best cut on its next turn takes: 3 a cell taken or cut off and 3 × 4 a mine (their income until the horizon), the units' value | "Shape", above: a thin territory is cut by one capture |
 | Debt | − the units' value if gold + income < 0 | "Solvency", above: the units die |
 | Loss | − 1,000 if the enemy can pay a chain to the HQ on its next turn | The game is lost |
 
-Its rates are prices of the rules (a training 10, a mine 4 a turn), not fitted. The economy's 3 turns is the only free choice; rankings are checked at 2 and 5 turns.
+Its rates are prices of the rules (income a turn, a mine 4 a turn, a unit its training), not fitted. The economy's 3 turns is the only free choice; rankings are checked at 2 and 5 turns.
 
 In the harness, over 1,000 maps from both seats (the row's score against the column, ± the 95% interval):
 
 | Ours | `econ` | `fill` | `rush` |
 | --- | ---: | ---: | ---: |
-| `econ` | 0 | −88.7 ± 3.2 | +16.3 ± 5.7 |
-| `fill` | +88.7 ± 3.2 | 0 | +110.1 ± 6.2 |
-| `rush` | −16.3 ± 5.7 | −110.1 ± 6.2 | 0 |
+| `econ` | 0 | +20.0 ± 1.6 | +37.4 ± 1.0 |
+| `fill` | −20.0 ± 1.6 | 0 | +10.3 ± 1.0 |
+| `rush` | −37.4 ± 1.0 | −10.3 ± 1.0 | 0 |
 
-The order is the same at 2 and 5 turns (`fill` over `econ` +89.3 and +87.7). It prefers `fill`, whose units spread wider, to `econ`, which E003's games put slightly ahead (54.2% head to head): the score says what a good position is, the games say which bot wins from it with the plan search behind it.
+The order is the same at 2 and 5 turns (`econ` over `fill` +18.7 and +22.7, over `rush` +34.5 and +43.3).
 
-**A first version, replaced.** The plan agreed on 2026-10-22 counted gold + (20 − turn) × income + the free cells left to take, less the enemy's cuts after banking 1 to 3 turns. Checked against E003's games, it ranked `fill` above `econ`, and a change of its territory term made it rank the games' order. Openings that maximised that score did not win: a beam search over the opening that led v003 by 47 gold at the middle game of real games scored 49.8% against it. The owner judged the method wrong (2026-10-22): a score should define a good position from heuristics, not be shaped by played games. This version replaces it.
+**Earlier versions, replaced.** The plan agreed on 2026-10-22 first counted gold + (20 − turn) × income + the free cells left to take, less the enemy's cuts after banking 1 to 3 turns; a change of its territory term was made after comparing it with E003's games, a method the owner judged wrong (a score must define a good position from heuristics, not be shaped by played games). A second version put the Voronoi share first, at 10 gold a cell, and the economy second; the opening that maximised it led v003 by 15 Voronoi cells at the middle game of real games, with 11 gold against 29, and lost, −97 Elo (E004's journal). The owner then set the economy first.

@@ -186,11 +186,8 @@ fn exposure_is_the_enemy_s_best_cut_on_its_next_turn() {
     let state = dead_end();
     assert_eq!(state.income(1), 17);
     // After red's turn blue has 17 gold: one training, on (5, 2), takes three
-    // cells, the mine and the unit.
-    assert_eq!(
-        exposure(&state, 0, Settings::DEFAULT),
-        3 * CELL + 10 + 4 * TURNS
-    );
+    // cells and the mine (their income until the horizon) and the unit.
+    assert_eq!(exposure(&state, 0, Settings::DEFAULT), TURNS * (3 + 4) + 10);
     // Blue's territory is a single line: red has no gold to cut it.
     assert_eq!(exposure(&state, 1, Settings::DEFAULT), 0);
 }

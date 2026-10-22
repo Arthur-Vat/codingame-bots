@@ -1,25 +1,26 @@
 //! A hand-built score of a position at the end of the opening (E004), from
 //! the early game's research (`games/ice-and-fire/research/early-game.md`),
-//! never fitted to games. The owner's direction (2026-10-22): "something like
-//! Voronoi first, but then take into account economy", with "the time
-//! horizon for the score evaluation in the middle game, not long after the
-//! early game".
+//! never fitted to games. The owner's direction (2026-10-22): the economy
+//! first, then the Voronoi share, with "the time horizon for the score
+//! evaluation in the middle game, not long after the early game".
 //!
 //! The value of a side, in gold, is
 //!
-//! - its **Voronoi share** × [`CELL`]: the cells nearer its active cells
-//!   than the enemy's (steps over non-void cells; its own active cells
-//!   included, a tie half), each worth a training, the price of taking a
-//!   free cell. It is the 3rd-placed player's first criterion for his
-//!   opening search, and the map a side will hold once the opening is over;
 //! - its **economy** [`TURNS`] turns into the middle game: gold +
 //!   [`TURNS`] × income, the gold it holds then if nothing changes. A few
-//!   turns, since the first fights begin at the middle game;
+//!   turns, since the first fights begin at the middle game, and gold pays
+//!   for them;
+//! - its **Voronoi share** × [`CELL`]: the cells nearer its active cells
+//!   than the enemy's (steps over non-void cells; its own active cells
+//!   included, a tie half), each worth one turn of the income it brings once
+//!   taken, so that the share decides between positions of about the same
+//!   economy. It is the 3rd-placed player's first criterion for his opening
+//!   search, and the map a side will hold once the opening is over;
 //! - less its **exposure**: what the enemy's best cut on its next turn would
 //!   take, with the enemy's gold then (gold, plus its income if it is not to
-//!   act): the cells it takes or cuts off × [`CELL`], the value of the units
-//!   it kills or cuts off, and [`TURNS`] × 4 per mine; [`LOSS`] if the cut
-//!   takes the HQ;
+//!   act): [`TURNS`] for each cell it takes or cuts off (its income until the
+//!   horizon), the value of the units it kills or cuts off, and [`TURNS`] × 4
+//!   per mine; [`LOSS`] if the cut takes the HQ;
 //! - less the value of all its units if its gold plus income is below 0
 //!   (**debt**: they die at its next start of turn);
 //! - less [`LOSS`] if the enemy can pay a chain of trainings to its HQ
@@ -32,8 +33,8 @@ use ice_and_fire_engine::{Bits, Outcome, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::Reach;
 use ice_and_fire_tactics::cut::cuts;
 
-/// The worth of a cell of Voronoi share, in gold: a training.
-pub const CELL: i64 = 10;
+/// The worth of a cell of Voronoi share, in gold: a turn of its income.
+pub const CELL: i64 = 1;
 /// Turns into the middle game at which the economy is counted.
 pub const TURNS: i64 = 3;
 /// The value of a lost game, in gold: more than anything else in the score.
@@ -70,7 +71,7 @@ pub struct Terms {
 }
 
 impl Terms {
-    /// The side's value: its map and economy, less what it may lose.
+    /// The side's value: its economy and map, less what it may lose.
     pub fn value(&self) -> i64 {
         self.voronoi + self.gold + self.income - self.exposure - self.debt - self.loss
     }
@@ -208,7 +209,7 @@ pub fn exposure(state: &State, victim: usize, settings: Settings) -> i64 {
         let loss = if after.outcome() == Some(Outcome::Win(enemy)) {
             LOSS
         } else {
-            CELL * cut.cells + cut.units + 4 * settings.turns * (mines_before - mines(&after))
+            settings.turns * (cut.cells + 4 * (mines_before - mines(&after))) + cut.units
         };
         worst = worst.max(loss);
     }
