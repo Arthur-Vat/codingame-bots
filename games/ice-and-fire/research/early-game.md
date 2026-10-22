@@ -78,7 +78,7 @@ Each is an opening module of the `plan` bot, played while the territories are mo
 | `rush` | The gold boss's rule (k4ng0u): each unit to the neighbour nearest the enemy HQ, each training on the free cell next to the territory nearest the enemy HQ, as gold allows | Early contact, a big share of the middle, a thin territory; v002's shape without its waste | Low |
 | `fill` | Free cells first: units, those with the fewest options first, each to a free neighbour that no other unit takes, preferring cells with more free cells around them and contested cells (nearer the enemy); units with no free neighbour walk to the nearest free cell; trainings on free cells next to the territory, contested first, while the side's free cells are more than k per unit | The most cells per turn, a compact territory; contact later | Medium |
 | `econ` | `fill`, plus mines on the side's own spots, nearest the HQ first, when a mine's return to the horizon beats a unit's | The highest income at contact, fewer cells | Low once `fill` exists |
-| `beam` | A search over our own next turns (MSmits, NinjaDoggy), each step a whole turn drawn from `fill`'s and `econ`'s rules with varied choices, the leaves scored on income, gold and Voronoi share at a horizon; the 1,000 ms of the first turn for a long plan, 40 ms on later turns | The best solution of the solo problem if the evaluation is right | High |
+| `rollout` | A search over the turn (after MSmits' and NinjaDoggy's beams, in the cheaper form of a rollout): up to 30 variants of the `econ` turn (fewer purchases, mines or not, more or less weight on contested cells), each played on with `econ` for both sides until contact, the one whose end is worth most kept (gold plus income to the horizon, ours minus theirs); within the turn's time | No worse than `econ` if the value of the end is right, since `econ` is among the variants | Medium |
 
 On top of the best opening, the safety rules:
 
@@ -88,4 +88,15 @@ On top of the best opening, the safety rules:
 
 ## Benchmark
 
-To be filled in by E003: [the journal entry](../journal/E003-opening.md).
+Measured in E003 ([journal entry](../journal/E003-opening.md), all the tables): each opening inside the `plan` bot, at CodinGame's limits, against v002 and in a round robin of 200 pairs per pairing, with the opening benchmark (`cargo run --release -p ice-and-fire-arena --example opening`, [README](../README.md#arena)) reading the games. Ratings of the round robin, v002 at 0:
+
+| Opening | Elo | At contact: cells, income, gold, mines | The opponent's best cut after it: cells, unit value |
+| --- | ---: | --- | --- |
+| `econ` | +255.7 ± 21.6 | 20.3, 20.0, 30.5, 0.89 | 1.0, 9.5 |
+| `econ` with a reserve of 15 | +245.8 | 20.5, 18.9, 32.1, 0.60 | 1.1, 9.5 |
+| `rollout` | +230.1 | 19.8, 21.0, 29.6, 1.22 | 1.0, 9.6 |
+| `fill` | +223.9 | 21.1, 16.0, 19.9, 0 | 1.0, 8.0 |
+| `rush` | +143.2 | 20.4, 15.4, 20.4, 0 | 1.0, 7.7 |
+| `plan` (v002) | 0 | 18.7, 13.8, 18.6, 0 | 1.2, 8.3 |
+
+What the theory got right: every unit taking a free cell each turn is most of the gain (`fill` alone is worth +224); mines pay once a unit is valued only for the cells it takes before contact, and the one next to the HQ gets built in most games; a thin line toward the enemy HQ (v002, `rush`) is the weakest shape. What it did not foresee: the trainings' stopping rule never binds, since the territories meet around turn 8 with free cells still on each side; and a search for the most gold and income at contact (`rollout`) did a little worse than the rule it searched over, by giving up cells and units. The reserve, the debt check and the hand-over gap made no measured difference; the debt check stays, since it fixes the wipe-out of the owner's replay at no cost. The candidate is `econ`: `ice-and-fire-v003`.

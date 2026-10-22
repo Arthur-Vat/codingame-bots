@@ -2,7 +2,7 @@
 
 The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md), [ADR 0035](../../docs/adr/0035-new-game-lifecycle.md)). The owner decides at the end of every stage; each gate records his answer and its date. Skill `new-game` reads this file to name the next stage.
 
-**Stage in progress:** 9. Approach and first bot
+**Stage in progress:** 10. Iteration
 **Owner's stopping rule:** none yet
 
 | # | Stage | Status | Gate: the owner's answer |
@@ -15,13 +15,17 @@ The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME
 | 6 | Arena and baseline bots | Done (2026-10-17) | Arena, baselines and the game's numbers, #166 merged; "Merge #166", then "Fresh session, then stage 7" (forms, 2026-10-17) |
 | 7 | Studio | Done (2026-10-17) | Adapter, renderer and baseline bots, #167-#169 merged; "The studio works perfectly", with the card's picture changed (2026-10-17) |
 | 8 | Research | Done (2026-10-19) | [research/README.md](research/README.md), #177 merged; prototypes "plan + phases (Recommended)", no anneal (form, 2026-10-19) |
-| 9 | Approach and first bot | In progress | |
-| 10 | Iteration | Not started | |
+| 9 | Approach and first bot | Done (2026-10-22) | `plan` is the approach: [E002](journal/E002-plan.md), `ice-and-fire-v002`, #182 merged; "Merge #182 (Recommended)" (form, 2026-10-22) |
+| 10 | Iteration | In progress | |
 | 11 | Retrospective | Not started | |
 
 Status is `Not started`, `In progress`, `Waiting for the owner` or `Done (YYYY-MM-DD)`.
 
 ## Current stage
+
+Iteration: one experiment per pull request ([journal](journal/README.md)).
+
+- [ ] E003, the early game: research ([research/early-game.md](research/early-game.md)), an opening benchmark, the openings inside the `plan` bot, the best as `ice-and-fire-v003` through the SPRT against v002 ([E003](journal/E003-opening.md))
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 
@@ -68,6 +72,9 @@ Studio: the list in the [playbook](../../docs/NEW_GAME.md).
 - Whether equal military power after 100 turns is a draw on CodinGame (asked 2026-10-17): not seen in the `rules-check` games. The seats (either) and CodinGame's referee (no difference from the source's) were settled on 2026-10-19 ([RULES.md](RULES.md#platform-facts-to-check)).
 
 ## Decisions
+
+- 2026-10-22: the early game before anything else: "Before implementing anything, I would like you to think about strategies for the early game ... The goal is to maximize the expansion to generate the most income, while also being safe when the middle game begins. You should consider several approaches from a theoretical point of view, then benchmark them. Once best candidates are selected you can use them as part of a full bot, and then you can pick the best" (E003).
+- 2026-10-22: stage 9 passed: #182 merged ("Merge #182 (Recommended)", form); `plan`, as `ice-and-fire-v002`, is the approach.
 
 - 2026-10-21: official time limits in all games and 800 pairs per league pairing: "I would like to have the official time control in all games"; "What about 800 pairs? Is it within the job limit? If yes go on with this" ([ADR 0042](../../docs/adr/0042-official-time-limits-and-800-pairs.md)), superseding the 0.2 scale of 2026-10-17.
 - 2026-10-19: the first bot is a ladder of reference bots rather than one bot called `phases`: `chain`, `guard`, `cutter`, `banker`, each adding one step to the one before and all published as baseline bots in one pull request; only `banker` is released, as v001 (the owner disliked the name `phases`).

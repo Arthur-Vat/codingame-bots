@@ -1,18 +1,22 @@
-//! Plan bot for A Code of Ice and Fire (experiment E002): a search after the
-//! contest's winner (`games/ice-and-fire/research/README.md`, "What strong
-//! bots do").
+//! Plan bot for A Code of Ice and Fire (experiments E002 and E003): a search
+//! after the contest's winner (`games/ice-and-fire/research/README.md`,
+//! "What strong bots do"), with an opening by rules
+//! (`games/ice-and-fire/research/early-game.md`).
 //!
 //! A turn is a list of commands, the plan. The bot first looks for a lethal
-//! move or chain of trainings and plays it. Else it climbs: from the start
-//! of the turn it keeps adding the single action (a move, a training, a
-//! tower, a mine, one of the best cuts, a lethal chain) that most raises the
-//! score of the plan, until none does or the time is up. The score of a plan
-//! is the worst evaluation of the state after it, our turn ended, over the
-//! replies of the opponent in a memory (its lethal chain, its best cuts and
-//! bronze's greedy turn, each answered by the plan). After a climb the
-//! opponent's replies to the plan are added to the memory and the plan is
+//! move or chain of trainings and plays it. While the two territories are far
+//! apart it plays the opening (`opening.rs`): units take free cells, and
+//! trainings and mines are bought while they pay back. Else it climbs: from
+//! the start of the turn it keeps adding the single action (a move, a
+//! training, a tower, a mine, one of the best cuts, a lethal chain) that most
+//! raises the score of the plan, until none does or the time is up. The score
+//! of a plan is the worst evaluation of the state after it, our turn ended,
+//! over the replies of the opponent in a memory (its lethal chain, its best
+//! cuts and bronze's greedy turn, each answered by the plan). After a climb
+//! the opponent's replies to the plan are added to the memory and the plan is
 //! searched again against them; the plan that scores best against the whole
-//! memory is played.
+//! memory is played. The evaluation counts a side that cannot pay its upkeep
+//! as having lost its units.
 //!
 //! The input never names the league, so the bot plays with all the rules
 //! (Bronze). Each command sent was accepted by the engine, in order, on a

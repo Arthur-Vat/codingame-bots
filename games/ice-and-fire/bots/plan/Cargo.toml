@@ -1,6 +1,6 @@
 [package]
 name = "ice-and-fire-bot-plan"
-description = "Plan-search bot for A Code of Ice and Fire (E002): hill climbing over single actions and macro actions, replayed against a memory of the opponent's replies, after the contest's winner."
+description = "Plan-search bot for A Code of Ice and Fire (E002, E003): an opening by rules until the territories meet, then hill climbing over single actions and macro actions, replayed against a memory of the opponent's replies, after the contest's winner."
 version.workspace = true
 authors.workspace = true
 license.workspace = true

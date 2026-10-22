@@ -1,5 +1,6 @@
-//! The plan search (see the crate's docs): lethal first, then hill climbing
-//! over actions against a memory of the opponent's replies.
+//! The plan search (see the crate's docs): lethal first, then the opening
+//! while the territories are far apart, then hill climbing over actions
+//! against a memory of the opponent's replies.
 //!
 //! A climb starts from the state at the start of the turn and adds, one at a
 //! time, the action that raises the score of the plan most. Trying every
@@ -331,7 +332,7 @@ pub fn think(state: &State, limit: Limit) -> Thought {
         thought.commands = commands;
         return thought;
     }
-    if let Some(commands) = crate::opening::turn(state, &crate::opening::config(), limit.soft) {
+    if let Some(commands) = crate::opening::turn(state) {
         thought.commands = commands;
         return thought;
     }
