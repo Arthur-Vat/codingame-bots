@@ -26,7 +26,7 @@ Status is `Not started`, `In progress`, `Waiting for the owner` or `Done (YYYY-M
 Iteration: one experiment per pull request ([journal](journal/README.md)).
 
 - [x] E003, the early game: research ([research/early-game.md](research/early-game.md)), an opening benchmark, the openings inside the `plan` bot, the best as `ice-and-fire-v003` through the SPRT against v002: accepted, +299.8 Elo ([E003](journal/E003-opening.md), #183)
-- [ ] E004, the early game planned on the first turn: a crate for the opening, a heuristic score of the middle game and an in-process harness (#184); tuned weights, a portfolio of weights chosen per map and five turn-1 planners compared at equal time by a heuristic score (the economy, then the Voronoi share); the portfolio, the best against v003 in the arena, inside the `plan` bot as `ice-and-fire-v004` through the SPRT against v003 ([E004](journal/E004-planned-opening.md))
+- [x] E004, the early game planned on the first turn: a crate for the opening, a heuristic score of the middle game and an in-process harness (#184); tuned weights, a portfolio of weights chosen per map and five turn-1 planners compared at equal time by a heuristic score (the economy, then the Voronoi share); the portfolio, the best against v003 in the arena, inside the `plan` bot as `ice-and-fire-v004` through the SPRT against v003: accepted, +51.9 Elo ([E004](journal/E004-planned-opening.md), #184, #185)
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 

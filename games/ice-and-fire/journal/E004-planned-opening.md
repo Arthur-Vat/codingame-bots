@@ -6,11 +6,11 @@ parent: ice-and-fire-v003
 hypothesis: v003's opening with weights chosen per map on the first turn, among v003's and a portfolio of 16, for the middle game that a heuristic score rates best (the economy 3 turns into the middle game, then the Voronoi share) against v003's opening simulated, beats v003's fixed weights.
 change: Until the middle game the `plan` bot plays v003's opening with the weights whose rollout against v003's opening scores best, chosen on the first turn and again when our side differs from the prediction; the plan search takes over for good at the middle game instead of at a gap of 3.
 release: ice-and-fire-v004
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +51.9 [+27.1, +77.3] at CodinGame's limits
+pairs: 364
+full_time: +51.9 [+27.1, +77.3] (the SPRT's own, ADR 0042), no timeout in 729 games, slowest answer 27.5 ms
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -148,4 +148,15 @@ the middle game: at our first start of turn that is one, or when the
 choice's prediction, on track to its end, has reached it at the enemy's
 start of turn. The SPRT runs again on the fixed head.
 
-**SPRT:** pending.
+**SPRT** (head 9f37be7, CodinGame's limits: time scale 1, no tolerance,
+against `ice-and-fire-v003`): accepted after 364 pairs, 57.5% of 729
+games, +51.9 Elo [+27.1, +77.3], LLR 2.97. Smoke test: 200 of 200 against
+`random`. No timeout, crash or invalid answer; answers after the first:
+median 2.5 ms, 99.9% 25.6 ms, slowest 27.5 ms.
+
+**League** of v004 (800 pairs each, CodinGame's limits): 55.9% against
+v003, 83.7% against v002, 96.9% against v001, 96.5% against `cutter`,
+99.8% against `guard` and `chain`, 99.7% against `bronze`; rated +2019.4
+against v003's +1979.4 (random at 0).
+
+**Decision:** promoted, `ice-and-fire-v004`.
