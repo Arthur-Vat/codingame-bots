@@ -18,11 +18,10 @@ Asked by the owner on 2026-10-22 after E006, in a form: "Do you see any
 other improvement for the early game, based on the qualitative analysis
 that you did?" Of the three ideas proposed, he chose "Strike timing
 (Recommended)": in the first turns of the middle game, choose between
-cutting now and saving one turn. E005 (turn-1 heuristics and time) and
-E006 (necks in the plan search) were dropped before it; their entries are
-still to be written. The study they and this entry rely on is in
-`games/ice-and-fire/research/game-study.md` on the branch
-`claude/ice-and-fire-e005-first-turn`.
+cutting now and saving one turn. [E005](E005-first-turn.md) (turn-1
+heuristics and time) and [E006](E006-necks.md) (necks in the plan search)
+were dropped before it. The study they and this entry rely on is
+[research/game-study.md](../research/game-study.md).
 
 ## What the games said
 
