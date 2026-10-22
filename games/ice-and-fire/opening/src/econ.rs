@@ -41,6 +41,49 @@ const UNIT_COST: i64 = 10;
 /// steps from it.
 const SAFE_SPOT: u8 = 3;
 
+/// The opening's weights. [`Params::V003`] are those of `ice-and-fire-v003`,
+/// which [`turn`] plays.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Params {
+    /// A free cell's value: this much for each free cell next to it...
+    pub open: i64,
+    /// ...this much for each step it is nearer the enemy's territory than
+    /// [`Params::contest_cap`]...
+    pub contest: i64,
+    pub contest_cap: u8,
+    /// ...less its steps to the enemy HQ divided by this (0: no such term).
+    pub hq_div: i64,
+    /// The game turn by which a purchase must pay back...
+    pub horizon: i64,
+    /// ...but never fewer than this many turns from now.
+    pub min_turns_left: i64,
+    /// A mine spot is used only when the enemy's territory is more than this
+    /// many steps from it.
+    pub safe_spot: u8,
+    /// The turns until the territories meet are estimated as
+    /// `(gap − contact_offset) / contact_div`, and a unit is expected to take
+    /// a cell a turn until then and `after_contact` cells after.
+    pub contact_offset: i64,
+    pub contact_div: i64,
+    pub after_contact: i64,
+}
+
+impl Params {
+    /// The weights of `ice-and-fire-v003` (E003).
+    pub const V003: Params = Params {
+        open: 3,
+        contest: 2,
+        contest_cap: 12,
+        hq_div: 4,
+        horizon: HORIZON,
+        min_turns_left: MIN_TURNS_LEFT,
+        safe_spot: SAFE_SPOT,
+        contact_offset: 2,
+        contact_div: 2,
+        after_contact: 0,
+    };
+}
+
 fn xy(cell: usize) -> (u8, u8) {
     ((cell % SIZE) as u8, (cell / SIZE) as u8)
 }
@@ -78,7 +121,8 @@ pub fn gap(state: &State) -> u8 {
 }
 
 /// What one turn of the opening knows about the map.
-struct Turn {
+struct Turn<'a> {
+    params: &'a Params,
     me: usize,
     /// Steps from the enemy's territory.
     theirs: [u8; CELLS],
@@ -91,8 +135,8 @@ struct Turn {
     side: Bits,
 }
 
-impl Turn {
-    fn new(state: &State) -> Turn {
+impl Turn<'_> {
+    fn new<'a>(state: &State, params: &'a Params) -> Turn<'a> {
         let me = state.to_act();
         let mine = distances(state, state.owned(me));
         let theirs = distances(state, state.owned(1 - me));
@@ -105,6 +149,7 @@ impl Turn {
             }
         }
         Turn {
+            params,
             me,
             theirs,
             to_hq,
@@ -117,9 +162,16 @@ impl Turn {
     /// it, 2 for each step it is nearer the enemy's territory than 12, less a
     /// quarter of its steps to the enemy HQ (a tie-break toward the middle).
     fn value(&self, cell: usize) -> i64 {
+        let p = self.params;
         let open = i64::from((Bits::cell(cell).neighbours() & self.free).count());
-        let contest = 12 - i64::from(self.theirs[cell].min(12));
-        3 * open + 2 * contest - i64::from(self.to_hq[cell].min(30)) / 4
+        let cap = p.contest_cap;
+        let contest = i64::from(cap) - i64::from(self.theirs[cell].min(cap));
+        let hq = if p.hq_div > 0 {
+            i64::from(self.to_hq[cell].min(30)) / p.hq_div
+        } else {
+            0
+        };
+        p.open * open + p.contest * contest - hq
     }
 
     /// The cell of `cells` worth most, the lowest index on a tie.
@@ -171,22 +223,45 @@ pub fn turn(state: &State) -> Option<Vec<Command>> {
     Some(rules_turn(state))
 }
 
+/// [`rules_turn`] with other weights.
+pub fn rules_turn_with(state: &State, params: &Params) -> Vec<Command> {
+    turn_with(state, params, Buy::Payback)
+}
+
+/// How a turn of the opening buys.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Buy {
+    /// While a purchase pays back by the horizon (`econ`'s rule).
+    Payback,
+    /// Up to this many mines, then up to this many trainings, where `econ`
+    /// would place them, whatever they return.
+    Exact { mines: u8, units: u8 },
+}
+
+/// The opening's moves with the weights `params`, then purchases by `buy`.
+pub fn turn_with(state: &State, params: &Params, buy: Buy) -> Vec<Command> {
+    let mut scratch = state.clone();
+    let mut turn = Turn::new(state, params);
+    let mut out = Vec::new();
+    moves(&mut scratch, &mut turn, &mut out);
+    match buy {
+        Buy::Payback => purchases(&mut scratch, &mut turn, &mut out),
+        Buy::Exact { mines, units } => exact(&mut scratch, &mut turn, mines, units, &mut out),
+    }
+    out
+}
+
 /// The opening's rules for the player to act, whatever the gap: what
 /// [`turn`] plays while the territories are far apart. The harness plays them
 /// on until the middle game.
 pub fn rules_turn(state: &State) -> Vec<Command> {
-    let mut scratch = state.clone();
-    let mut turn = Turn::new(state);
-    let mut out = Vec::new();
-    moves(&mut scratch, &mut turn, &mut out);
-    purchases(&mut scratch, &mut turn, &mut out);
-    out
+    rules_turn_with(state, &Params::V003)
 }
 
 /// Units with a free neighbour, fewest choices first, each take the free
 /// neighbour worth most that no other unit took; the others walk toward the
 /// nearest free cell, of our side first.
-fn moves(state: &mut State, turn: &mut Turn, out: &mut Vec<Command>) {
+fn moves(state: &mut State, turn: &mut Turn<'_>, out: &mut Vec<Command>) {
     let me = turn.me;
     let mut idle: Vec<usize> = Vec::new();
     loop {
@@ -228,12 +303,14 @@ fn moves(state: &mut State, turn: &mut Turn, out: &mut Vec<Command>) {
 
 /// Trainings and mines, the one that returns more by the horizon first, while
 /// the gold allows and the purchase pays back.
-fn purchases(state: &mut State, turn: &mut Turn, out: &mut Vec<Command>) {
+fn purchases(state: &mut State, turn: &mut Turn<'_>, out: &mut Vec<Command>) {
     let me = turn.me;
-    let h = (HORIZON - i64::from(state.game_turn())).max(MIN_TURNS_LEFT);
+    let p = turn.params;
+    let h = (p.horizon - i64::from(state.game_turn())).max(p.min_turns_left);
     // Both sides grow toward each other, so the gap closes by about two steps
     // a turn; a unit takes a cell a turn until then.
-    let to_contact = (i64::from(gap(state)) - 2).max(0) / 2;
+    let to_contact =
+        (i64::from(gap(state)) - p.contact_offset).max(0) / p.contact_div.max(1) + p.after_contact;
     loop {
         let gold = state.gold(me);
         let units = state.unit_count(me) as i64;
@@ -242,10 +319,7 @@ fn purchases(state: &mut State, turn: &mut Turn, out: &mut Vec<Command>) {
         let unit_gain = unit_return(h, (room / (units + 1)).min(to_contact));
         let can_unit = cell.is_some() && gold >= UNIT_COST && unit_gain > 0;
         let mine_gain = 4 * h - BUILD_COST;
-        let spot = (state.map().spots & state.active(me) & state.empty_cells())
-            .iter()
-            .filter(|&spot| turn.theirs[spot] > SAFE_SPOT)
-            .min_by_key(|&spot| (state.map().distance(HQ[me], spot), spot));
+        let spot = mine_spot(state, turn);
         let can_mine = spot.is_some() && gold >= BUILD_COST && mine_gain > 0;
         if can_mine && (!can_unit || mine_gain >= unit_gain) {
             let (x, y) = xy(spot.unwrap_or_default());
@@ -255,6 +329,42 @@ fn purchases(state: &mut State, turn: &mut Turn, out: &mut Vec<Command>) {
             break;
         }
         let Some(cell) = cell.filter(|_| can_unit) else {
+            break;
+        };
+        let (x, y) = xy(cell);
+        if !play(state, Command::Train { level: 1, x, y }, out) {
+            break;
+        }
+        turn.claim(cell);
+    }
+}
+
+/// The own empty mine spot nearest the HQ among those more than
+/// `safe_spot` steps from the enemy's territory.
+fn mine_spot(state: &State, turn: &Turn<'_>) -> Option<usize> {
+    let me = turn.me;
+    (state.map().spots & state.active(me) & state.empty_cells())
+        .iter()
+        .filter(|&spot| turn.theirs[spot] > turn.params.safe_spot)
+        .min_by_key(|&spot| (state.map().distance(HQ[me], spot), spot))
+}
+
+/// Up to `mines` mines, then up to `units` trainings, where the payback rule
+/// would place them, while the gold allows.
+fn exact(state: &mut State, turn: &mut Turn<'_>, mines: u8, units: u8, out: &mut Vec<Command>) {
+    let me = turn.me;
+    for _ in 0..mines {
+        let Some(spot) = mine_spot(state, turn) else {
+            break;
+        };
+        let (x, y) = xy(spot);
+        if !play(state, Command::BuildMine { x, y }, out) {
+            break;
+        }
+    }
+    for _ in 0..units {
+        let Some(cell) = turn.best(state.near_active(me) & turn.free & state.enterable(me, 1))
+        else {
             break;
         };
         let (x, y) = xy(cell);

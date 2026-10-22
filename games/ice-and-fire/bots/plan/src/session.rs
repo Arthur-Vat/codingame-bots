@@ -6,6 +6,7 @@ use std::io::{BufRead, Write};
 use std::time::Instant;
 
 use ice_and_fire_engine::{answer_line, League, State};
+use ice_and_fire_opening::planned::Planned;
 
 use crate::search::{think, Limit};
 
@@ -13,10 +14,13 @@ use crate::search::{think, Limit};
 const HEADER_LINES: usize = 4 + 12;
 
 /// Plays turns of a Bronze game until the input ends. `limit` gives the
-/// search's limits from the instant the turn's first line arrived. Prints a
-/// debug line per turn to stderr (debug output goes there only).
+/// search's limits from the instant the turn's first line arrived and the
+/// number of the turn (1 first); `opening` plays the opening and keeps its
+/// plan between turns. Prints a debug line per turn to stderr (debug output
+/// goes there only).
 pub fn play(
-    limit: &dyn Fn(Instant) -> Limit,
+    limit: &dyn Fn(Instant, u32) -> Limit,
+    mut opening: Planned,
     input: impl BufRead,
     mut output: impl Write,
 ) -> Result<(), String> {
@@ -51,12 +55,13 @@ pub fn play(
 
         let answer = match State::read(&initial, &text, league, turn) {
             Ok(state) => {
-                let thought = think(&state, limit(start));
+                let thought = think(&state, limit(start, turn), &mut opening);
                 eprintln!(
-                    "turn {turn} (plan): climbs {}, actions tried {}, memory {}, {:?}",
+                    "turn {turn} (plan): climbs {}, actions tried {}, memory {}, opening plans {}, {:?}",
                     thought.climbs,
                     thought.evals,
                     thought.memory,
+                    opening.plans,
                     start.elapsed()
                 );
                 answer_line(&thought.commands)
