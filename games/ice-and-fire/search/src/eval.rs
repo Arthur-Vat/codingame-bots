@@ -17,7 +17,10 @@
 //!   value cut off by the most damaging joint the enemy could take by a
 //!   chain of trainings within its gold plus two turns of income (the cells
 //!   beyond it, not the joint itself) is taken from the side's score; half, since the threat is two turns away and the side
-//!   has a turn to answer. A cell is valued as the shared evaluation values
+//!   has a turn to answer. Only the side's own necks count: crediting it
+//!   with the enemy's, within its own banked gold, made the search hoard
+//!   gold instead of growing (−79.5 Elo against v004, E006); its cuts of the
+//!   enemy's necks are already among its actions. A cell is valued as the shared evaluation values
 //!   it: 7 (4, and 3 times its income), 12 more with a mine, 10 more with a
 //!   tower, and the training cost of its unit.
 
@@ -131,7 +134,6 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         return score;
     }
     score - 2 * debt(state, seat) + 2 * debt(state, 1 - seat) - neck(state, seat)
-        + neck(state, 1 - seat)
 }
 
 #[cfg(test)]
