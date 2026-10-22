@@ -420,3 +420,6 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
     }
     thought
 }
+
+#[cfg(test)]
+mod tests;

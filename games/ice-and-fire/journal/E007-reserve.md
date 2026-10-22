@@ -64,8 +64,12 @@ later turns (turn 17: 52 gold against 44, 36 cells against 31, Voronoi
 share 54 against 46) and had 20 gold or more at its answer to its first
 large cut in 43% of games (v004 34%), but it suffered more large cuts in
 all (286 against 223; the first large cut of the game 168 against 161).
-Answers after the first: median 4.1 ms, 99.9% 31.9 ms, slowest 61.7 ms
-(v004 in the same runs: 49.8 ms).
+
+Answers after the first, as the arena reports them (the median, 99.9% and
+slowest of the answers it timed), with 20 gold: seed 131, median 4.1 ms,
+99.9% 31.9 ms, slowest 42.9 ms (v004 5.0, 32.8, 49.8 ms); seed 141, median
+4.3 ms, 99.9% 30.3 ms, slowest 61.7 ms (v004 4.8, 29.6, 44.6 ms). Each
+side had one timeout in the seed 141 run, none in the seed 131 run.
 
 The owner chose the SPRT on a new branch (form, 2026-10-22: "SPRT on new
 branch (Recommended)").
