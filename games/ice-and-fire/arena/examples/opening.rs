@@ -496,7 +496,8 @@ fn main() -> ExitCode {
     println!();
     println!("At the middle game (means; the score is the bot's value less the opponent's, the terms are the bot's, then the opponent's):");
     println!();
-    println!("| Bot | Games | Turn | Score | Sign agrees with the winner | Voronoi | Gold | 3 × income | Exposure | Debt | Loss | Opponent: Voronoi, gold, 3 × income, exposure |");
+    let t = score::TURNS;
+    println!("| Bot | Games | Turn | Score | Sign agrees with the winner | Voronoi | Gold | {t} × income | Exposure | Debt | Loss | Opponent: Voronoi, gold, {t} × income, exposure |");
     println!("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |");
     for (name, t) in &totals {
         let n = t.middles.max(1) as f64;
