@@ -334,8 +334,8 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
         thought.commands = commands;
         return thought;
     }
-    if !ice_and_fire_opening::middle::reached(state) {
-        // The plan's search stops at 76% of the turn: the hard limit is
+    if opening.playing(state) {
+        // The opening's choice stops at 76% of the turn: the hard limit is
         // the whole budget.
         let at = |share: f64| match (limit.soft, limit.hard) {
             (Some(soft), Some(hard)) => Some(soft + (hard - soft).mul_f64(share)),

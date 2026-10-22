@@ -86,3 +86,73 @@ fn the_plan_scores_at_least_the_default_opening_on_its_own_model() {
         );
     }
 }
+
+/// v003's weights and the portfolio's, chosen by rollouts, as the bot plays.
+fn chooser() -> Planned {
+    let mut sets = vec![Params::V003];
+    sets.extend_from_slice(&PORTFOLIO);
+    Planned::new(Planner::Choose, sets, Params::V003)
+}
+
+#[test]
+fn against_the_model_the_portfolio_s_choice_is_made_once() {
+    for seed in 1..=6 {
+        for seat in 0..2 {
+            let mut state = start(seed);
+            let mut ours = chooser();
+            let mut turns = 0;
+            while state.outcome().is_none() {
+                if state.to_act() == seat {
+                    if !ours.playing(&state) {
+                        break;
+                    }
+                    turns += 1;
+                    let commands = ours.turn(&state, None);
+                    state.play_turn(&commands);
+                } else {
+                    let commands = econ::rules_turn(&state);
+                    state.play_turn(&commands);
+                }
+                assert!(
+                    state.game_turn() < 25,
+                    "seed {seed}: the opening never ends"
+                );
+            }
+            assert_eq!(ours.plans, 1, "seed {seed}, seat {seat}");
+            assert!(turns >= 3, "seed {seed}, seat {seat}: {turns} turns");
+        }
+    }
+}
+
+#[test]
+fn once_the_middle_game_has_begun_the_opening_never_comes_back() {
+    let mut ours = chooser();
+    assert!(ours.playing(&start(1)));
+    // Red holds a row to (3, 0), blue the end of the row from (6, 0): 30 gold
+    // pay the chain of three trainings to (6, 0).
+    let column = "###########X";
+    let near = crate::test_util::Position {
+        rows: [
+            "OOOO..XXXXXX",
+            column,
+            column,
+            column,
+            column,
+            column,
+            column,
+            column,
+            column,
+            column,
+            column,
+            column,
+        ],
+        gold: [30, 0],
+        buildings: &[],
+        units: &[],
+    }
+    .state();
+    assert!(middle::reached(&near));
+    assert!(!ours.playing(&near));
+    // A later turn short of gold is still the middle game.
+    assert!(!ours.playing(&start(1)));
+}

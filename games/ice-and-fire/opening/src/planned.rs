@@ -38,6 +38,8 @@ pub struct Planned {
     played: usize,
     /// Plans made so far, the first included.
     pub plans: u32,
+    /// Whether the middle game has begun: the opening is then over for good.
+    over: bool,
 }
 
 impl Planned {
@@ -50,7 +52,21 @@ impl Planned {
             expected: Vec::new(),
             played: 0,
             plans: 0,
+            over: false,
         }
+    }
+
+    /// Whether the opening still plays in `state`, at our start of turn. It
+    /// ends for good at the middle game: when we can pay a chain of trainings
+    /// to an enemy cell ([`crate::middle::reached`]), or when the plan's
+    /// prediction, on track to its end, has reached the middle game (at the
+    /// enemy's start of turn, which we do not see).
+    pub fn playing(&mut self, state: &State) -> bool {
+        let predicted = self.plans > 0 && self.played >= self.expected.len();
+        if !self.over && (predicted || crate::middle::reached(state)) {
+            self.over = true;
+        }
+        !self.over
     }
 
     /// The commands of our turn in `state`: the plan's next step, after a new

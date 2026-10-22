@@ -362,7 +362,7 @@ if let Some(commands) = lethal(state) {
 thought.commands = commands;
 return thought;
 }
-if !crate::ice_and_fire_opening::middle::reached(state) {
+if opening.playing(state) {
 let at = |share: f64| match (limit.soft, limit.hard) {
 (Some(soft), Some(hard)) => Some(soft + (hard - soft).mul_f64(share)),
 _ => None,
@@ -2446,6 +2446,7 @@ plan: Vec<Step>,
 expected: Vec<u64>,
 played: usize,
 pub plans: u32,
+over: bool,
 }
 impl Planned {
 pub fn new(planner: Planner, sets: Vec<Params>, model: Params) -> Planned {
@@ -2457,7 +2458,16 @@ plan: Vec::new(),
 expected: Vec::new(),
 played: 0,
 plans: 0,
+over: false,
 }
+}
+pub fn playing(&mut self, state: &State) -> bool {
+let predicted = self.plans > 0 && self.played >= self.expected.len();
+if !self.over && (predicted || crate::ice_and_fire_opening::middle::reached(state))
+{
+self.over = true;
+}
+!self.over
 }
 pub fn turn(&mut self, state: &State, deadline: Option<Instant>) -> Vec<Command> {
 let ctx = Context {

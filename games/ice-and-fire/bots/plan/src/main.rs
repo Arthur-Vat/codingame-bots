@@ -28,8 +28,8 @@
 //! scratch copy of the state. A turn whose text does not read as a state is
 //! answered with `WAIT`; a bad count line or input that ends in the middle of
 //! a turn ends the bot with exit code 1. The time budget of a turn is 40 ms
-//! times `CG_TIME_SCALE`, 600 ms on the first turn (of CodinGame's 1,000 ms). Debug output goes
-//! to stderr only.
+//! times `CG_TIME_SCALE`, 600 ms on the first turn (of CodinGame's 1,000
+//! ms). Debug output goes to stderr only.
 
 mod actions;
 mod eval;

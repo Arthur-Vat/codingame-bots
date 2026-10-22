@@ -4,7 +4,7 @@ date: 2026-10-22
 pull_request: "#185"
 parent: ice-and-fire-v003
 hypothesis: v003's opening with weights chosen per map on the first turn, among v003's and a portfolio of 16, for the middle game that a heuristic score rates best (the economy 3 turns into the middle game, then the Voronoi share) against v003's opening simulated, beats v003's fixed weights.
-change: Until the middle game the `plan` bot plays v003's opening with the weights whose rollout against v003's opening scores best, chosen on the first turn and again when our side differs from the prediction; the plan search takes over at the middle game instead of at a gap of 3.
+change: Until the middle game the `plan` bot plays v003's opening with the weights whose rollout against v003's opening scores best, chosen on the first turn and again when our side differs from the prediction; the plan search takes over for good at the middle game instead of at a gap of 3.
 release: ice-and-fire-v004
 sprt: pending
 elo: pending
@@ -129,10 +129,23 @@ commits keep the portfolio's choice in the bot and the beam in the crate.
 
 ## The candidate
 
-The `plan` bot (bundle 89,650 characters): lethal first; until the middle
+The `plan` bot (bundle 89,885 characters): lethal first; until the middle
 game, v003's opening with the weights chosen on the first turn from v003's
 and the 16 of the portfolio (`ice_and_fire_opening::planned`,
 `Planner::Choose`, about 20 ms of the first turn's 600), chosen again when
-our side differs from the prediction; then v003's plan search.
+our side differs from the prediction; then, for good, v003's plan search.
+
+**The first head (834c450)** passed the SPRT: accepted after 325 pairs,
+57.6% of 651 games, +52.8 Elo [+27.9, +78.3], LLR 2.95, no timeout, crash
+or invalid answer (answers after the first: median 4.1 ms, 99.9% 26.5 ms,
+slowest 30.4 ms); smoke test 200 of 200 against `random`. Its review then
+found that the opening could come back after the middle game: the test of
+the middle game (can the player to act pay a chain to an enemy cell?) was
+made afresh each turn, so a later turn short of gold played the opening,
+which ignores threats (55 such turns in 30 games of the bot against itself,
+54 of them with the enemy able to strike). The opening now ends for good at
+the middle game: at our first start of turn that is one, or when the
+choice's prediction, on track to its end, has reached it at the enemy's
+start of turn. The SPRT runs again on the fixed head.
 
 **SPRT:** pending.
