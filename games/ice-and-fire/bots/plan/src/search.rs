@@ -331,6 +331,10 @@ pub fn think(state: &State, limit: Limit) -> Thought {
         thought.commands = commands;
         return thought;
     }
+    if let Some(commands) = crate::opening::turn(state, &crate::opening::config(), limit.soft) {
+        thought.commands = commands;
+        return thought;
+    }
     let mut search = Search {
         me,
         limit,

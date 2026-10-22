@@ -1,0 +1,91 @@
+# A Code of Ice and Fire: the early game
+
+Research for experiment E003, asked by the owner on 2026-10-22 after a CodinGame replay of `ice-and-fire-v002` (as blue: 3 gold and an income of −9 at turn 7, a thin line of units, then the army wiped out by the debt rule): "think about strategies for the early game ... The goal is to maximize the expansion to generate the most income, while also being safe when the middle game begins. You should consider several approaches from a theoretical point of view, then benchmark them. Once best candidates are selected you can use them as part of a full bot, and then you can pick the best."
+
+The early game here is the **opening**: from the first turn until the two territories meet. Stage 8's research ([README.md](README.md)) covers the rest of the game; this note keeps to the opening and to the hand-over to the middle game.
+
+## Sources
+
+| Source | What was taken from it |
+| --- | --- |
+| [MSmits, 17th](https://forum.codingame.com/t/a-code-of-ice-fire-feedbacks-and-strategies/105722/21) | Beam search of the first 12 turns in the first turn's 1,000 ms (width 5,000), stopping once half the map is taken; it maximised cells owned and nearness to the enemy HQ, which "sort of has the effect of the bot trying to get as far out as possible", and he believed it reached the highest income possible; the territory was sometimes "messy, hard to defend"; replanning each turn with a Voronoi term would have answered the opponent |
+| [NinjaDoggy, 3rd](https://forum.codingame.com/t/a-code-of-ice-fire-feedbacks-and-strategies/105722/45) | The opening lasts while the nearest units of the two players are at least 3 cells apart; a beam search moves the units, trains as many as it can, then simulates 3 more turns of moves; it ranks states by the difference of Voronoi territory, then cells owned, then the units' distance to the enemy HQ |
+| [Magus, about 15th](https://forum.codingame.com/t/a-code-of-ice-fire-feedbacks-and-strategies/105722/3) | A Monte Carlo search over 10 actions (a move or a training) that maximises cells owned, until the enemy's territory can be reached |
+| [reCurse, 1st](https://forum.codingame.com/t/a-code-of-ice-fire-feedbacks-and-strategies/105722/30) | No opening of its own: the plan search with terms that "favor early spread and territory grab" (capturable cells per unit) and early aggression (distance to the front line); no level 2 or 3 outside chains, since upkeep cripples "the most precious game resource: gold income"; the weight of gold and income doubled after some turn |
+| [k4ng0u, 25th](https://forum.codingame.com/t/a-code-of-ice-fire-feedbacks-and-strategies/105722/41) | The gold boss's rule (each move and training to the cell nearest the enemy HQ, with tie-breaks that spread the units) gave "fast expansion to the center while spreading territory", worth 20 to 30 ranks; towers only where a border cell is in danger, the rest spent on expansion ("game changer"); mines nearest the HQ with leftover gold when the income is below the opponent's |
+| [eulerscheZahl, 4th](https://forum.codingame.com/t/a-code-of-ice-fire-feedbacks-and-strategies/105722/5) | Moves as an assignment of units to cells (Hungarian method); early trainings as near the enemy base as possible, then expansion of the own territory once the opponent is close; mines with leftover gold, far from the opponent, of doubtful use |
+| [teccles, 2nd](https://forum.codingame.com/t/a-code-of-ice-fire-feedbacks-and-strategies/105722/25) | His units moved greedily (enemy cells, then neutral cells, then cells that do not block allies, near the enemy HQ, not next to friends), and "filling territory near-optimally shouldn't be too hard": the opening was the part he would have done better |
+| [Nerchio, WinterThrone 2020](https://forum.codingame.com/t/debriefing-winterthrone2020-code-of-ice-and-fire/186956) | A fixed first turn ("build-order"); units with only one cell left to take move first; reaching the centre fast; banking from about turn 8, when the armies meet in the middle; groups of units and connected territory, which are hard to cut |
+| [a1k0n, Google AI Challenge 2010 (Tron)](https://www.a1k0n.net/2010/03/04/google-ai-postmortem.html) and [Janzert's Tron bots](https://janzert.com/tron/) | Voronoi territory, each cell to the player who reaches it first, as the evaluation of a race for space |
+| [Artificial Generals Intelligence, 2025](https://arxiv.org/abs/2507.06825) | In generals.io, territory is the economy (every cell grows the army), the same compounding as here; not used further |
+
+No source gives numbers for an opening's economy: they are worked out below.
+
+## The economy of the opening
+
+From [RULES.md](../RULES.md): income is +1 per active cell, +4 per mine on an active cell, minus 1 per level 1 unit (4 per level 2, 20 per level 3). A unit costs 10 gold, a mine or tower 15. Each player starts with 20 gold; red owns 1 cell, blue 2.
+
+Before the armies meet only level 1 units and mines matter. With C active cells, U level 1 units and M mines, the income is I = C + 4M − U, and:
+
+| Action | Gold | Change of income |
+| --- | ---: | ---: |
+| A unit moves onto a neutral cell | 0 | +1 for the rest of the game |
+| A unit moves onto an own cell | 0 | 0 |
+| Train a unit on a neutral cell | −10 | 0 (its cell +1, its upkeep −1) |
+| Build a mine on an own empty mine spot | −15 | +4 |
+| Build a tower | −15 | 0 |
+
+So **trainings do not raise income; moves do.** A unit pays back through the cells it walks onto afterwards. Measured in gold collected by a horizon H turns later:
+
+- a **mine** built now returns 4H − 15: it pays back after 4 turns;
+- a **unit** trained now that takes a new cell on each of its next k turns returns about kH − k(k+1)/2 − 10; when it stops at the horizon (k = H − 1) that is H(H − 1)/2 − 10, which pays back after 5 turns. A unit that finds no free cell returns −10, and −1 a turn after that.
+
+Hence three facts:
+
+1. **Every unit should take a new cell every turn** while free cells are near: it is free income. The units must not block each other, and those inside the territory must walk to where free cells are.
+2. **Trainings pay only while free cells remain for them.** Each side's half of the map (cells nearer its HQ than the other) holds about 49 cells, out of 106 (2,000 source maps, `--maps`). A unit trained 4 turns or fewer before its side is full never pays back.
+3. **Mines pay back faster than units** (4 turns against 5) and need no free cells, but they take no territory, and territory the player does not take, the enemy takes. The mine spot next to each HQ ((1, 0) for red) is the safest mine of the game; the next spot on a side is about 5 steps from the HQ (4.8 spots per side on average).
+
+An idealized model (one free cell per unit per turn until the side's 49 cells are taken, no enemy, mines on the spot by the HQ from turn 2 and on a second spot from turn 6) gives, at the start of each turn:
+
+| Policy | Turn 9: gold, cells, income | Turn 15: gold, cells, income |
+| --- | --- | --- |
+| Train whenever gold allows | 4, 37, 28 | 187, 49, 37 |
+| The same, two mines first | 1, 30, 30 | 223, 49, 46 |
+| The same, mines with what is left | 4, 37, 28 | 189, 49, 45 |
+| Each gold use only when it pays back by turn 15, units before mines | 8, 32, 34 | 281, 49, 51 |
+
+Training whenever gold allows fills the side by turn 10, then leaves 12 units that cost 12 a turn and earn nothing. Stopping the trainings when they no longer pay back, and building mines, gives about 50% more gold by turn 15 in this model. The model overstates every policy: units walk to free cells and the enemy contests the middle, so the real figures are lower and the trade between cells now and income later is measured below.
+
+What v002 does (100 pairs against v001 at CodinGame's limits, the benchmark below): its evaluation pays +10 for each step that brings the chain to the enemy HQ closer, against +4 for a training and +7 for a move onto a free cell, and −3 for a mine. So it never builds a mine (it trains on the mine spot next to its HQ on turn 1), and sends a line of units along the edge of the map toward the enemy HQ: at contact, about turn 8.8, it has 23.5 cells and an income of 17.4; v001, which builds mines, has 18.1 cells and an income of 24.4. At game turn 12 v002 has 30.7 cells, an income of 23.4 and 29.4 gold, where the idealized model reaches 49 cells, 37 and 76.
+
+## Safety when the middle game begins
+
+Games between strong bots end by a chain of trainings to the HQ after both sides bank gold (top games lasted 17.5 turns on average, research README). So what the opening leaves matters in four ways:
+
+- **Income at contact** decides who first affords the decisive chain (Magus's "time to win"): the opening's main product.
+- **Shape.** A thin line is cut by one capture: the cells beyond stop paying and its units die. Cuts are worth their cells and unit value (the tactics' cut finder). A compact territory, with units side by side on the front, is costly to cut.
+- **Units on the front** raise the enemy's chain cost: a level 1 unit on a cell makes it cost 20 instead of 10 to take.
+- **Solvency.** At its start of turn a player whose gold plus income is below 0 loses all its units (RULES.md). Level 2 and 3 units (upkeep 4 and 20) are what makes the income negative, as in the owner's replay. A plan must end with gold + income ≥ 0, with a margin for a cut that removes income.
+
+## Approaches
+
+Each is an opening module of the `plan` bot, played while the territories are more than 3 cells apart (the hand-over below); the plan search plays from contact on, as in v002.
+
+| Name | Idea | Expected | Cost |
+| --- | --- | --- | --- |
+| `plan` (v002) | The hill climb with its static evaluation | The baseline: cells along one line, no mines | None |
+| `rush` | The gold boss's rule (k4ng0u): each unit to the neighbour nearest the enemy HQ, each training on the free cell next to the territory nearest the enemy HQ, as gold allows | Early contact, a big share of the middle, a thin territory; v002's shape without its waste | Low |
+| `fill` | Free cells first: units, those with the fewest options first, each to a free neighbour that no other unit takes, preferring cells with more free cells around them and contested cells (nearer the enemy); units with no free neighbour walk to the nearest free cell; trainings on free cells next to the territory, contested first, while the side's free cells are more than k per unit | The most cells per turn, a compact territory; contact later | Medium |
+| `econ` | `fill`, plus mines on the side's own spots, nearest the HQ first, when a mine's return to the horizon beats a unit's | The highest income at contact, fewer cells | Low once `fill` exists |
+| `beam` | A search over our own next turns (MSmits, NinjaDoggy), each step a whole turn drawn from `fill`'s and `econ`'s rules with varied choices, the leaves scored on income, gold and Voronoi share at a horizon; the 1,000 ms of the first turn for a long plan, 40 ms on later turns | The best solution of the solo problem if the evaluation is right | High |
+
+On top of the best opening, the safety rules:
+
+- **Debt guard**, in every phase: the evaluation counts a player whose gold plus income is below 0 as having lost its units (v002's flaw).
+- **Reserve at contact**: the last turns before contact keep gold for the first exchanges (a tower is 15, a level 2 unit 20).
+- **Hand-over distance**: the opening ends at a gap of 3 (the plan search sees the first contact turn) or more.
+
+## Benchmark
+
+To be filled in by E003: [the journal entry](../journal/E003-opening.md).

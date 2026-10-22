@@ -24,6 +24,7 @@
 
 mod actions;
 mod eval;
+mod opening;
 mod search;
 mod session;
 
