@@ -13,16 +13,18 @@
 //!   capture cuts other cells off from the HQ (an articulation point of the
 //!   territory, the HQ as root). The games of
 //!   `games/ice-and-fire/research/game-study.md` were decided by such cuts,
-//!   made with the gold the enemy had banked for a turn or two. Half the
-//!   value cut off by the most damaging joint the enemy could take by a
-//!   chain of trainings within its gold plus two turns of income (the cells
-//!   beyond it, not the joint itself) is taken from the side's score; half, since the threat is two turns away and the side
-//!   has a turn to answer. Only the side's own necks count: crediting it
-//!   with the enemy's, within its own banked gold, made the search hoard
-//!   gold instead of growing (−79.5 Elo against v004, E006); its cuts of the
-//!   enemy's necks are already among its actions. A cell is valued as the shared evaluation values
-//!   it: 7 (4, and 3 times its income), 12 more with a mine, 10 more with a
-//!   tower, and the training cost of its unit.
+//!   made with the gold the enemy had banked for a turn or two. The joints
+//!   of the side at the start of its turn ([`Necks`]) are fixed with the
+//!   value each cuts off then; a state where one of them is still a joint
+//!   the enemy can take by a chain of trainings within its gold plus two
+//!   turns of income loses half the value of the worst (the value it cuts
+//!   off now if that is less). The value is fixed at the start of the turn,
+//!   so growing beyond a joint costs nothing, and covering or widening it
+//!   gains: a penalty that grew with the territory beyond the joint made the
+//!   search hoard gold instead of growing (−79.5 and −43.7 Elo against
+//!   v004, E006). A cell is valued as the shared evaluation values it: 7 (4,
+//!   and 3 times its income), 12 more with a mine, 10 more with a tower, and
+//!   the training cost of its unit.
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::Reach;
@@ -93,14 +95,13 @@ impl Joints {
     }
 }
 
-/// Half the value cut off by the most damaging joint of `seat`'s territory
-/// that the enemy can take within its gold plus two turns of income (see the
-/// module's docs); 0 if there is none.
-pub fn neck(state: &State, seat: usize) -> i64 {
+/// The value each active cell of `seat` cuts off from its HQ if taken (0
+/// for a cell that is not a joint), or `None` if its HQ is not active.
+fn severed(state: &State, seat: usize) -> Option<[i64; CELLS]> {
     let active = state.active(seat);
     let root = HQ[seat];
     if !active.test(root) {
-        return 0;
+        return None;
     }
     let mut joints = Joints {
         active,
@@ -115,16 +116,68 @@ pub fn neck(state: &State, seat: usize) -> i64 {
         joints.value[cell] = cell_value(state, cell);
     }
     joints.visit(root);
-    let enemy = 1 - seat;
-    let budget = state.gold(enemy) + 2 * state.income(enemy).max(0);
-    let reach = Reach::new(state, enemy, false);
-    let worst = active
-        .iter()
-        .filter(|&cell| cell != root && reach.cost[cell] <= budget)
-        .map(|cell| joints.severed[cell] - joints.value[cell])
-        .max()
-        .unwrap_or(0);
-    worst / 2
+    let mut out = [0; CELLS];
+    for cell in active.iter() {
+        if cell != root {
+            out[cell] = joints.severed[cell] - joints.value[cell];
+        }
+    }
+    Some(out)
+}
+
+/// Most joints kept in [`Necks`], the most valuable.
+const MAX_NECKS: usize = 8;
+
+/// The joints of a side's territory at the start of its turn, with the
+/// value each cuts off then, most valuable first (see the module's docs).
+#[derive(Clone, Debug, Default)]
+pub struct Necks {
+    pub seat: usize,
+    pub joints: Vec<(usize, i64)>,
+}
+
+impl Necks {
+    /// The joints of `seat`'s territory in `state`.
+    pub fn of(state: &State, seat: usize) -> Necks {
+        let mut joints = Vec::new();
+        if let Some(cut) = severed(state, seat) {
+            for cell in state.active(seat).iter() {
+                if cut[cell] > 0 {
+                    joints.push((cell, cut[cell]));
+                }
+            }
+        }
+        joints.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+        joints.truncate(MAX_NECKS);
+        Necks { seat, joints }
+    }
+
+    /// Half the value cut off by the worst of these joints that is still a
+    /// joint in `state` and that the enemy can take within its gold plus two
+    /// turns of income (see the module's docs); 0 if there is none.
+    pub fn exposed(&self, state: &State) -> i64 {
+        if self.joints.is_empty() {
+            return 0;
+        }
+        let Some(cut) = severed(state, self.seat) else {
+            return 0;
+        };
+        let enemy = 1 - self.seat;
+        let budget = state.gold(enemy) + 2 * state.income(enemy).max(0);
+        let mut reach: Option<Reach> = None;
+        let mut worst = 0;
+        for &(cell, value) in &self.joints {
+            let now = value.min(cut[cell]);
+            if now <= worst {
+                continue;
+            }
+            let reach = reach.get_or_insert_with(|| Reach::new(state, enemy, false));
+            if reach.cost[cell] <= budget {
+                worst = now;
+            }
+        }
+        worst / 2
+    }
 }
 
 /// The score of `state` for `seat`, higher is better for it.
@@ -133,7 +186,17 @@ pub fn eval(state: &State, seat: usize) -> i64 {
     if state.outcome().is_some() {
         return score;
     }
-    score - 2 * debt(state, seat) + 2 * debt(state, 1 - seat) - neck(state, seat)
+    score - 2 * debt(state, seat) + 2 * debt(state, 1 - seat)
+}
+
+/// [`eval`] less what the side's joints at the start of its turn still
+/// expose ([`Necks::exposed`]).
+pub fn eval_with(state: &State, necks: &Necks) -> i64 {
+    let score = eval(state, necks.seat);
+    if state.outcome().is_some() {
+        return score;
+    }
+    score - necks.exposed(state)
 }
 
 #[cfg(test)]

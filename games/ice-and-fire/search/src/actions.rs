@@ -5,7 +5,9 @@
 //! higher level only where it kills a unit or passes a tower), each tower on a
 //! border cell and each mine on a mine spot. Macro actions: the best few cuts
 //! of the enemy's territory and the lethal chain of trainings, if there is
-//! one. Every action is checked by applying it on a clone, so a list may hold
+//! one; and bypasses (E006): two level 1 trainings that join the cells beyond
+//! one of our joints at the start of the turn ([`Necks`]) to the rest of our
+//! territory by a second path. Every action is checked by applying it on a clone, so a list may hold
 //! some that the rules refuse.
 
 use ice_and_fire_engine::state::BUILD_COST;
@@ -13,10 +15,16 @@ use ice_and_fire_engine::{Bits, Command, State, HQ, SIZE};
 use ice_and_fire_tactics::chain::chain_to;
 use ice_and_fire_tactics::cut::cuts;
 
+use crate::eval::Necks;
+
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
 /// Longest cut, in trainings.
 pub const CUT_LENGTH: usize = 4;
+/// Joints, the most valuable, for which bypasses are offered.
+pub const BYPASS_JOINTS: usize = 2;
+/// Bypasses offered for one joint.
+pub const BYPASSES: usize = 4;
 
 /// One step of a plan: a command, or a short chain of commands that go
 /// together.
@@ -39,9 +47,75 @@ fn xy(cell: usize) -> (u8, u8) {
     ((cell % SIZE) as u8, (cell / SIZE) as u8)
 }
 
+/// The cells of `within` joined to `from` through `within`.
+fn flood(from: Bits, within: Bits) -> Bits {
+    let mut seen = from & within;
+    loop {
+        let next = (seen | seen.neighbours()) & within;
+        if next == seen {
+            return seen;
+        }
+        seen = next;
+    }
+}
+
+/// Bypasses of the joints of `necks` that are still joints of our territory
+/// in `state`: two level 1 trainings, the first next to the cells joined to
+/// the HQ without the joint, the second next to the first and to the cells
+/// beyond the joint. A single training that does it is a training already.
+fn bypasses(state: &State, necks: &Necks, enter: Bits, out: &mut Vec<Action>) {
+    let me = necks.seat;
+    if state.to_act() != me || state.gold(me) < 20 {
+        return;
+    }
+    let active = state.active(me);
+    let free = enter.and_not(state.owned(me));
+    for &(joint, _) in necks.joints.iter().take(BYPASS_JOINTS) {
+        if !active.test(joint) {
+            continue;
+        }
+        let rest = active.and_not(Bits::cell(joint));
+        let near = flood(Bits::cell(HQ[me]), rest);
+        let beyond = rest.and_not(near);
+        if beyond.is_empty() {
+            continue;
+        }
+        let mut found = 0;
+        for first in (free & near.neighbours())
+            .and_not(beyond.neighbours())
+            .iter()
+        {
+            let seconds = free & beyond.neighbours() & Bits::cell(first).neighbours();
+            for second in seconds.iter() {
+                let ((x1, y1), (x2, y2)) = (xy(first), xy(second));
+                out.push(Action::Many(vec![
+                    Command::Train {
+                        level: 1,
+                        x: x1,
+                        y: y1,
+                    },
+                    Command::Train {
+                        level: 1,
+                        x: x2,
+                        y: y2,
+                    },
+                ]));
+                found += 1;
+                if found == BYPASSES {
+                    break;
+                }
+            }
+            if found == BYPASSES {
+                break;
+            }
+        }
+    }
+}
+
 /// The actions for the player to act in `state`, in `out` (cleared first), in
-/// a fixed order.
-pub fn generate(state: &State, out: &mut Vec<Action>) {
+/// a fixed order. `necks` are the joints of our territory at the start of
+/// the turn, for the bypasses.
+pub fn generate(state: &State, necks: &Necks, out: &mut Vec<Action>) {
     out.clear();
     if state.outcome().is_some() {
         return;
@@ -115,4 +189,8 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
             out.push(Action::Many(chain.commands));
         }
     }
+    bypasses(state, necks, enter[0], out);
 }
+
+#[cfg(test)]
+mod tests;

@@ -24,7 +24,7 @@ use ice_and_fire_tactics::cut::cuts;
 use ice_and_fire_tactics::eval::WIN;
 
 use crate::actions::{generate, Action, CUT_LENGTH};
-use crate::eval::eval;
+use crate::eval::{eval_with, Necks};
 
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8;
@@ -83,6 +83,8 @@ struct Search {
     /// climb tries the actions first, since the first steps of a climb
     /// resemble those of the one before.
     hints: Gains,
+    /// Our joints at the start of the turn (E006).
+    necks: Necks,
 }
 
 /// Whether every command of `commands` is accepted in order by `state`.
@@ -169,11 +171,11 @@ impl Search {
             return WIN;
         }
         if memory.is_empty() {
-            return eval(end, self.me);
+            return eval_with(end, &self.necks);
         }
         let mut worst = i64::MAX;
         for reply in memory {
-            worst = worst.min(eval(&after_reply(end, &reply.commands), self.me));
+            worst = worst.min(eval_with(&after_reply(end, &reply.commands), &self.necks));
             if worst <= bound {
                 break;
             }
@@ -236,7 +238,7 @@ impl Search {
         let mut actions = Vec::new();
         let mut order: Vec<(i64, usize)> = Vec::new();
         while cur.outcome().is_none() && !self.out_of_time() {
-            generate(&cur, &mut actions);
+            generate(&cur, &self.necks, &mut actions);
             order.clear();
             for (index, action) in actions.iter().enumerate() {
                 let k = key(action.commands());
@@ -305,7 +307,7 @@ impl Search {
             if memory.iter().any(|r| r.commands == commands) {
                 continue;
             }
-            let damage = eval(&after_reply(end, &commands), self.me);
+            let damage = eval_with(&after_reply(end, &commands), &self.necks);
             memory.push(Reply { commands, damage });
         }
         // Stable: the older reply stays first on a tie.
@@ -348,6 +350,7 @@ pub fn plans(state: &State, limit: Limit) -> Thought {
         limit,
         evals: 0,
         hints: Gains::default(),
+        necks: Necks::of(state, me),
     };
     let mut memory: Vec<Reply> = Vec::new();
     let mut plans: Vec<Plan> = Vec::new();

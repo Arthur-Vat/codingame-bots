@@ -8,6 +8,7 @@ use ice_and_fire_referee::{IceAndFireReferee, League as RefereeLeague};
 
 use crate::search::{think, Limit};
 use ice_and_fire_search::actions::{generate as actions_of, Action};
+use ice_and_fire_search::eval::Necks;
 
 /// The bot's opening, new for each call.
 fn opening() -> ice_and_fire_opening::planned::Planned {
@@ -142,7 +143,7 @@ fn every_action_generated_is_a_command_of_the_rules() {
     for seed in 0..8 {
         for state in positions(seed, &PHASES) {
             let mut list = Vec::new();
-            actions_of(&state, &mut list);
+            actions_of(&state, &Necks::of(&state, state.to_act()), &mut list);
             for action in &list {
                 if let Action::One(command) = action {
                     assert!(state.clone().apply(*command), "seed {seed}: {command:?}");
