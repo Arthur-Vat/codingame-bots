@@ -1,6 +1,6 @@
 # A Code of Ice and Fire: research
 
-Stage 8 of the [new game playbook](../../../docs/NEW_GAME.md): what is known about playing this game well, and which approaches to prototype at stage 9. The early game has its own note, [early-game.md](early-game.md) (E003). A focused scan, done on 2026-10-19: the contest's post-mortems on the CodinGame forum, then papers on games whose turns hold many commands. The generic method is in [docs/research/multi-action-turns.md](../../../docs/research/multi-action-turns.md); this note keeps what is particular to this game.
+Stage 8 of the [new game playbook](../../../docs/NEW_GAME.md): what is known about playing this game well, and which approaches to prototype at stage 9. The early game has its own note, [early-game.md](early-game.md) (E003), and a study of what decides games between our bots, [game-study.md](game-study.md) (2026-10-22). A focused scan, done on 2026-10-19: the contest's post-mortems on the CodinGame forum, then papers on games whose turns hold many commands. The generic method is in [docs/research/multi-action-turns.md](../../../docs/research/multi-action-turns.md); this note keeps what is particular to this game.
 
 The contest ran in May 2019; the multiplayer game that followed changed mines (fewer mine spots, 15 gold flat), which our [RULES.md](../RULES.md) already follows. Ranks below are final contest ranks, as each author gave them.
 
