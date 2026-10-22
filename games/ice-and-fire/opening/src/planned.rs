@@ -11,6 +11,7 @@ use ice_and_fire_engine::{Command, State};
 
 use crate::econ::{Buy, Params};
 use crate::plan::{self, side_key, Context, Step};
+use crate::rollout::{choose, CAP};
 use crate::score::Settings;
 
 /// Which planner makes the plans.
@@ -19,14 +20,8 @@ pub enum Planner {
     /// [`plan::beam`] with this width on the first turn and the replan width
     /// later.
     Beam { width: usize, replan: usize },
-    /// [`plan::schedule`], this many schedules checked.
-    Schedule(usize),
-    /// [`plan::anneal`].
-    Anneal,
-    /// [`plan::cross_entropy`], this many plans a round.
-    CrossEntropy(usize),
-    /// S2: the weight set whose rollout scores best, played with the
-    /// payback rule ([`crate::rollout::choose`]).
+    /// S2: the weight set whose rollout scores best, played with the payback
+    /// rule ([`crate::rollout::choose`]).
     Choose,
 }
 
@@ -75,29 +70,18 @@ impl Planned {
         let on_track = self.expected.get(self.played) == Some(&side_key(state, me));
         if !on_track {
             let first = self.plans == 0;
-            let seed = 0x5eed ^ u64::from(state.game_turn());
             self.plan = match self.planner {
                 Planner::Beam { width, replan } => {
                     plan::beam(state, &ctx, if first { width } else { replan })
                 }
-                Planner::Schedule(checked) => plan::schedule(state, &ctx, checked),
-                Planner::Anneal => plan::anneal(state, &ctx, seed, usize::MAX),
-                Planner::CrossEntropy(samples) => {
-                    plan::cross_entropy(state, &ctx, seed, samples, usize::MAX)
-                }
                 Planner::Choose => {
-                    let weights = crate::rollout::choose(
-                        state,
-                        &self.sets,
-                        &self.model,
-                        ctx.settings,
-                        deadline,
-                    );
+                    let sets = &self.sets;
+                    let weights = choose(state, sets, &self.model, ctx.settings, deadline);
                     let step = Step {
                         weights: weights as u8,
                         buy: Buy::Payback,
                     };
-                    vec![step; usize::from(crate::rollout::CAP as u8)]
+                    vec![step; CAP as usize]
                 }
             };
             self.expected = plan::predicted_keys(state, &self.plan, &ctx);

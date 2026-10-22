@@ -6,11 +6,12 @@
 //! A turn is a list of commands, the plan. The bot first looks for a lethal
 //! move or chain of trainings and plays it. Until the middle game (it can pay
 //! a chain of trainings to an enemy cell) it plays the opening
-//! (`ice_and_fire_opening::planned`, E004): on the first turn a planner
-//! searches our turns up to the middle game, the opponent simulated as v003's
-//! opening, for the position the opening's score rates best; the plan is
-//! replayed while our side of the board is as predicted, and made again
-//! within the turn's time otherwise. Else it climbs: from
+//! (`ice_and_fire_opening::planned`, E004): v003's opening by rules, with the
+//! weights that, among v003's and 16 of a portfolio, reach the middle game
+//! the opening's score rates best (the economy, then the Voronoi share) when
+//! played on against v003's opening, chosen on the first turn; the choice is
+//! kept while our side of the board is as predicted, and made again within
+//! the turn's time otherwise. Else it climbs: from
 //! the start of the turn it keeps adding the single action (a move, a
 //! training, a tower, a mine, one of the best cuts, a lethal chain) that most
 //! raises the score of the plan, until none does or the time is up. The score
@@ -47,11 +48,9 @@ use crate::search::Limit;
 /// The time of a turn at CodinGame's limits, milliseconds: 50 ms, less a
 /// margin for the input, the output and a busy machine.
 const BUDGET_MS: f64 = 40.0;
-/// The first turn's time, of CodinGame's 1,000 ms (E004).
+/// The first turn's time, of CodinGame's 1,000 ms (E004); the opening's
+/// choice takes about 20 ms of it.
 const FIRST_BUDGET_MS: f64 = 600.0;
-/// The beam's width on the first turn and when the plan is made again.
-const BEAM_WIDTH: usize = 150;
-const REPLAN_WIDTH: usize = 8;
 
 /// The share of the budget after which no new climb or reply search starts;
 /// the rest is for choosing the plan to play.
@@ -74,22 +73,18 @@ fn limit(start: Instant, turn: u32) -> Limit {
     }
 }
 
-/// The opening: a beam search of `width` over v003's weights and the
-/// portfolio's, the opponent simulated as v003.
-fn opening(width: usize) -> Planned {
+/// The opening: v003's opening with the weights, of v003's and the
+/// portfolio's, whose rollout against v003's opening scores best.
+fn opening() -> Planned {
     let mut sets = vec![Params::V003];
     sets.extend_from_slice(&PORTFOLIO);
-    let planner = Planner::Beam {
-        width,
-        replan: REPLAN_WIDTH,
-    };
-    Planned::new(planner, sets, Params::V003)
+    Planned::new(Planner::Choose, sets, Params::V003)
 }
 
 fn main() {
     let stdin = io::stdin();
     let stdout = io::stdout();
-    if let Err(err) = session::play(&limit, opening(BEAM_WIDTH), stdin.lock(), stdout.lock()) {
+    if let Err(err) = session::play(&limit, opening(), stdin.lock(), stdout.lock()) {
         eprintln!("plan: {err}");
         std::process::exit(1);
     }

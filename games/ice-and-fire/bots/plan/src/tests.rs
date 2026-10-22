@@ -9,9 +9,9 @@ use ice_and_fire_referee::{IceAndFireReferee, League as RefereeLeague};
 use crate::actions::{generate as actions_of, Action};
 use crate::search::{think, Limit};
 
-/// The bot's opening with a narrow beam, so that unoptimised tests run fast.
+/// The bot's opening.
 fn small() -> ice_and_fire_opening::planned::Planned {
-    crate::opening(2)
+    crate::opening()
 }
 
 /// A limit with no deadline: only the number of plans scored ends the

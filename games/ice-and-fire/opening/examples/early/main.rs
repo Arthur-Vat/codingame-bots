@@ -186,9 +186,7 @@ impl Player for Bot {
     }
 }
 
-/// The planner of a name: `beam[:WIDTH]`, `dp[:CHECKED]`, `sa`,
-/// `cem[:SAMPLES]` or `choose` (S2 through the planner's frame, over the
-/// `--base` sets).
+/// The planner of a name: `beam[:WIDTH]`.
 fn planner(name: &str) -> Option<Planner> {
     let (kind, arg) = name.split_once(':').unwrap_or((name, ""));
     let arg: Option<usize> = arg.parse().ok();
@@ -200,10 +198,6 @@ fn planner(name: &str) -> Option<Planner> {
                 replan: (width / 4).max(4),
             }
         }
-        "dp" => Planner::Schedule(arg.unwrap_or(20)),
-        "sa" => Planner::Anneal,
-        "cem" => Planner::CrossEntropy(arg.unwrap_or(64)),
-        "choose" => Planner::Choose,
         _ => return None,
     })
 }
