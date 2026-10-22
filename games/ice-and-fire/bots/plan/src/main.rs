@@ -1,4 +1,4 @@
-//! Plan bot for A Code of Ice and Fire (experiments E002 to E004, E007): a search
+//! Plan bot for A Code of Ice and Fire (experiments E002 to E004): a search
 //! after the contest's winner (`games/ice-and-fire/research/README.md`,
 //! "What strong bots do"), with a planned opening
 //! (`games/ice-and-fire/research/early-game.md`).
@@ -21,8 +21,7 @@
 //! the opponent's replies to the plan are added to the memory and the plan is
 //! searched again against them; the plan that scores best against the whole
 //! memory is played. The evaluation counts a side that cannot pay its upkeep
-//! as having lost its units. A climb may not spend below 20 gold except on
-//! an attack (a cut, a chain, a training on an enemy cell; E007).
+//! as having lost its units.
 //!
 //! The input never names the league, so the bot plays with all the rules
 //! (Bronze). Each command sent was accepted by the engine, in order, on a

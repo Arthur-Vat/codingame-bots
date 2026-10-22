@@ -5,13 +5,13 @@ pull_request: "#186"
 parent: ice-and-fire-v004
 hypothesis: A side cut in the middle game with less than 20 gold left keeps losing cells while one with 20 or more holds, so a plan search that keeps 20 gold after its turn, except for attacks, beats v004.
 change: In the middle game, the plan search refuses an action that spends gold, leaves less than 20 and is not an attack (a cut or chain macro action, or a training on an enemy cell).
-release: ice-and-fire-v005
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
-cg_rank: not reported
+release: none
+sprt: rejected
+elo: −15.9 [−32.7, +0.9]
+pairs: 504
+full_time: −15.9 [−32.7, +0.9] (the SPRT's own, at CodinGame's limits)
+decision: dropped
+cg_rank: none
 ---
 
 Asked by the owner on 2026-10-22 after E006, in a form: "Do you see any
@@ -79,4 +79,23 @@ branch (Recommended)").
 `ice-and-fire-v005`: v004 with the reserve of 20 (bundle 90,339
 characters, identical to the screened one).
 
-**SPRT:** pending.
+**SPRT (#186, head 7b413ac): rejected** after 502 pairs, 1,008 games:
+481 wins, 527 losses (47.7%), −15.9 Elo [−32.7, +0.9], LLR −2.95 (bounds
+±2.94); no timeout, crash or invalid answer (answers after the first:
+median 3.4 ms, 99.9% 26.8 ms, slowest 54.0 ms); smoke test 200 of 200
+against `random`.
+
+## What was learned
+
+- The SPRT and the local screening disagree by about 31 Elo, at the edges
+  of their intervals (+15.6 [+0.3, +31.0] over 600 local pairs, seeds 131
+  and 141). The local runs played two games at a time on a busy 4-CPU
+  machine; the SPRT played other maps (seed 1). A screening result whose
+  interval barely clears zero is not enough to expect an SPRT to accept.
+- Keeping gold does what the study suggested it would (more gold left
+  after a cut, more cells and Voronoi share in the longer games), but the
+  turns not spent growing let the enemy cut more often: in the screening,
+  286 large cuts suffered against v004's 223. A fixed reserve trades
+  territory for resilience about evenly.
+- The code (`breaks_reserve` in the plan bot's `search.rs`, and its tests)
+  stays reachable in this pull request's commits e25b283 and 7b413ac.
