@@ -34,6 +34,10 @@ const MEMORY_CAP: usize = 8;
 const REPLY_CUTS: usize = 3;
 /// Most climbs in one turn.
 const MAX_CLIMBS: usize = 8;
+/// Gold kept after our turn (E007): an action that spends, other than an
+/// attack, may not leave less. A side cut with less than 20 gold left kept
+/// losing cells; with 20 or more it held (game study, E007).
+const RESERVE: i64 = 20;
 
 /// When the search stops.
 #[derive(Clone, Copy, Debug)]
@@ -90,6 +94,26 @@ struct Search {
 /// Whether every command of `commands` is accepted in order by `state`.
 fn apply_all(state: &mut State, commands: &[Command]) -> bool {
     commands.iter().all(|&command| state.apply(command))
+}
+
+/// Whether `action`, played in `cur` to reach `next`, spends gold that the
+/// reserve keeps ([`RESERVE`]): it spends, leaves less than the reserve, and
+/// is no attack. Attacks are the macro actions (cuts and chains) and
+/// trainings on enemy cells.
+fn breaks_reserve(cur: &State, action: &Action, next: &State) -> bool {
+    let me = cur.to_act();
+    let gold = next.gold(me);
+    if gold >= RESERVE || gold >= cur.gold(me) {
+        return false;
+    }
+    match action {
+        Action::Many(_) => false,
+        Action::One(Command::Train { x, y, .. }) => {
+            let cell = usize::from(*y) * SIZE + usize::from(*x);
+            !cur.owned(1 - me).test(cell)
+        }
+        Action::One(_) => true,
+    }
 }
 
 /// A key to remember an action by.
@@ -215,7 +239,7 @@ impl Search {
             done[index] = true;
             let commands = actions[index].commands();
             let mut next = cur.clone();
-            if !apply_all(&mut next, commands) {
+            if !apply_all(&mut next, commands) || breaks_reserve(cur, &actions[index], &next) {
                 gains.insert(key(commands), i64::MIN / 4);
                 continue;
             }
