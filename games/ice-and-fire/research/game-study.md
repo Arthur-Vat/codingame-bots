@@ -5,8 +5,8 @@ A qualitative study of games between `ice-and-fire-v004` and `ice-and-fire-v003`
 ## Method
 
 - **Games:** 100 seat-swapped pairs of v004 against v003 at CodinGame's limits (arena, seed 121; v004 55.0%, +34.9 Elo [−10.9, +81.9]). Of the 100 maps, 28 were won by v004 from both seats and 18 by v003 from both: on those 46 maps the play decided the game, not the seat. Those 92 games are the sample; 88 of them were replayed without error.
-- **Tool:** the arena example `boards` (kept in the archive pull request #187, not on `main`): `cargo run --release -p ice-and-fire-arena --example boards -- GAME.json [--past N] [--every K]` replays a record and prints, at each red start of turn, both sides' gold, income, active cells, units, mines, Voronoi share, and what the enemy's best cut would take with 30 and with 50 gold, then the board and both sides' commands.
-- **Reading:** boards of 15 games on 13 maps (p0, p3, p11, p15, p29, p30, p40, p43, p51, p59, p61; 8 lost by v004, 7 won), turn by turn around the opening's end and around the decisive event, both seats; the numbers of every turn for all 88 games.
+- **Tool:** the arena example `boards`, in the archive pull request #187 only (not on `main`): `cargo run --release -p ice-and-fire-arena --example boards -- GAME.json [--past N] [--every K]` replays a record and prints, at each red start of turn, both sides' gold, income, active cells, units, mines, Voronoi share, and what the enemy's best cut would take with 30 and with 50 gold, then the board and both sides' commands.
+- **Reading:** boards of 15 games (8 lost by v004, 7 won) on maps among them p0, p3, p11, p15, p29, p30, p40, p43, p51, p59 and p61, turn by turn around the opening's end and around the decisive event, both seats; the numbers of every turn for all 88 games.
 
 ## What the games show
 
@@ -36,8 +36,8 @@ Hmo####Axxx#                              Hmo####::::#
 
 ## What it means for the early game
 
-- **No score of the end of the opening can separate these games**: the positions are equivalent by every measure tried. That is why the turn-1 experiments of E005 found nothing: more time or another weighting of the same position cannot see a difference that is not there. Against v004 at CodinGame's limits (seed 111, 200 pairs each): hill climbing on the opening's weights to 300 ms −3.5 Elo [−26.6, +19.6]; the economy counted at 1 turn −27.9, at 5 turns −1.7; a Voronoi cell worth 0 gold −5.2, 3 gold −24.4; gold counted twice −36.6; the choice judged after 2 turns of simulated middle game −36.6 [−70.2, −3.7], after 3 turns with 900 ms −12.2 [−45.9, +21.4].
-- **What the opening can still change is the shape it hands over**: whether the territory is a set of thin lines with single roots, or a compact block whose roots are wide and covered by units. A first test, a weight that makes the opening favour free cells touching our territory, did not help on its own: −6.9 [−37.5, +23.5] at weight 2, −20.9 [−52.3, +10.2] at weight 4, against v004. The necks that decide games grow later, and a compact opening hands over less map.
+- **No score of the end of the opening can separate these games**: the positions are equivalent by every measure tried. That is why the turn-1 experiments of E005 found nothing: more time or another weighting of the same position cannot see a difference that is not there. Their results against v004 are in [E005](../journal/E005-first-turn.md).
+- **What the opening can still change is the shape it hands over**: whether the territory is a set of thin lines with single roots, or a compact block whose roots are wide and covered by units. A first test, a weight that makes the opening favour free cells touching our territory, did not help on its own ([E005](../journal/E005-first-turn.md)). The necks that decide games grow later, and a compact opening hands over less map.
 - **The larger gain is in the early middle game**: the decisive necks grow there, under the plan search.
 
 ## Proposed heuristics, for the owner's decision
