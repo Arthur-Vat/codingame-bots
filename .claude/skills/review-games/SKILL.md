@@ -52,7 +52,7 @@ It ends with any review whose JSON block could not be read: retry those (step 3)
 
 ## 5. Summarize the batch
 
-Start one `review-summarizer` agent with the batch's directory, the summary file to write, `BATCH/summary.md`, and what to look for.
+Start one `review-summarizer` agent with the batch's directory and what to look for. Its reply is the summary (agents may not write summary files): save it, unchanged, as `BATCH/summary.md`. This is the one long text the main session reads.
 
 ## 6. Land the batch
 
