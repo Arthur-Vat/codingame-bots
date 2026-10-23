@@ -1,6 +1,6 @@
 /* A small WASI layer (wasi_snapshot_preview1) of our own, for the WebAssembly programs the browser
    engine runs: the rules and the releases. It offers the calls they make: environment, clock,
-   read, write and exit. Any other function a module imports from that namespace is a stub that
+   random bytes, read, write and exit. Any other function a module imports from that namespace is a stub that
    fails with ENOSYS, so a future release that needs more fails cleanly instead of not loading. */
 
 const ERRNO_SUCCESS = 0;
@@ -110,6 +110,12 @@ export function makeWasi(module: WebAssembly.Module, options: WasiOptions): Wasi
         total += len;
       }
       view.setUint32(writtenPtr, total, true);
+      return ERRNO_SUCCESS;
+    },
+    random_get(bufferPtr: number, length: number): number {
+      // Always zeros: Rust's hash maps take their keys from here, and the same bytes on every run
+      // keep a program's answers the same, which a replay needs.
+      new Uint8Array(mem().buffer, bufferPtr, length).fill(0);
       return ERRNO_SUCCESS;
     },
     proc_exit(code: number): number {
