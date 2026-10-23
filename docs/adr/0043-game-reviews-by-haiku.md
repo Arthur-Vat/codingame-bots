@@ -6,7 +6,7 @@
 
 ## Context
 
-Reading games to see why a bot wins or loses helped before: the qualitative study of 200 games between `ice-and-fire-v004` and `ice-and-fire-v003` (`games/ice-and-fire/research/game-study.md`, 2026-10-22) found what decides those games, a cut through a neck of the territory. That study was read by the main session, on the most capable and most costly model.
+Reading games to see why a bot wins or loses helped before: the qualitative study of 200 games between `ice-and-fire-v004` and `ice-and-fire-v003` (A Code of Ice and Fire's experiment E005, 2026-10-22) found what decides those games, a cut through a neck of the territory. That study was read by the main session, on the most capable and most costly model.
 
 On 2026-10-23 the owner asked for reviews of full games by a light model (Haiku) instead, "since it is costly to do it with the orchestrator": a commentary of the good and bad plays in the early game, the middle game and the endgame; the games turned into ASCII maps on which red and blue are easy to tell apart; core metrics tracked turn by turn and correlated with the analysis; the decisive moments; and this for many bots, the new ones included. He answered the details in forms the same day: A Code of Ice and Fire first, built so other games can plug in; two characters a cell; the reviews kept as Markdown in the repository; run on demand; 20 games a batch; the endgame starting when the game is decided; as decisive moments the large cuts, the lead changes, the threats to an HQ and debt, plus the reviewer's own picks; the reviewer reads every turn in full.
 
@@ -24,5 +24,6 @@ On 2026-10-23 the owner asked for reviews of full games by a light model (Haiku)
 - A batch costs about 21 Haiku agents of a few tens of thousands of tokens each, instead of the main session reading the games.
 - The agent guard (`scripts/agent-guard.sh`) allows the two new agents.
 - A Haiku review can be wrong; decision 4 measures how often, and a summary must say how far to trust it.
+- The agents may write only one file each by their instructions, not by their tools: Write reaches the whole repository. Their input is the output of the project's own bots and tools, so the risk is low; a batch's pull request shows any stray file.
 - Another game gets reviews by writing its own review binary over `cg-review`: a replay into a trace, its metrics, phases and moments.
 - Changing a metric or a phase changes what a rebuilt game file shows; a batch's README names the tool's commit it was made with.

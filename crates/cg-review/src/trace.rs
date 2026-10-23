@@ -1,6 +1,8 @@
 //! What a game's replay gives the review: every ply, the phases and the
 //! decisive moments.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 /// The sides, by seat.
@@ -13,6 +15,9 @@ pub struct Metric {
     pub key: String,
     /// What it measures, in one sentence.
     pub meaning: String,
+    /// A value that means "none" (for example no path exists), which the
+    /// summary leaves out of its means.
+    pub none: Option<i64>,
 }
 
 /// One ply: the position at the start of a player's turn, and what the
@@ -129,6 +134,11 @@ impl Trace {
             endgame: self.endgame,
             lead: self.lead.clone(),
             metrics: self.metrics.iter().map(|m| m.key.clone()).collect(),
+            none: self
+                .metrics
+                .iter()
+                .filter_map(|m| m.none.map(|value| (m.key.clone(), value)))
+                .collect(),
             moments: self.moments.clone(),
         }
     }
@@ -147,5 +157,8 @@ pub struct GameSummary {
     pub endgame: Option<usize>,
     pub lead: String,
     pub metrics: Vec<String>,
+    /// The metrics that have a value meaning "none", with that value.
+    #[serde(default)]
+    pub none: BTreeMap<String, i64>,
     pub moments: Vec<Moment>,
 }
