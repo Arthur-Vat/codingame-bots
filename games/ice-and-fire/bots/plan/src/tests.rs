@@ -434,16 +434,45 @@ fn a_side_that_cannot_pay_its_upkeep_counts_its_units_as_lost() {
     ];
     let state = position(rows, [5, 20], &[(0, 1, 3, 2, 0)]);
     assert_eq!(state.income(0), -17);
-    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0);
+    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
     assert_eq!(crate::eval::eval(&state, 0), shared - 2 * 30);
     // With the gold to pay it, nothing is taken.
     let state = position(rows, [17, 20], &[(0, 1, 3, 2, 0)]);
-    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0);
+    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
     assert_eq!(crate::eval::eval(&state, 0), shared);
     // Blue's debt counts for red.
     rows[0] = "O...........";
     let state = position(rows, [5, 0], &[(1, 1, 2, 11, 10)]);
     assert_eq!(state.income(1), 2 - 4);
-    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0);
+    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
     assert_eq!(crate::eval::eval(&state, 0), shared + 2 * 20);
+}
+
+#[test]
+fn a_cell_that_cuts_others_off_weakens_its_side() {
+    // Red's line (0,0)-(1,0)-(2,0): (1,0) is a joint that cuts 1 cell off,
+    // a weakness of 2; blue's two cells have none.
+    let rows = [
+        "OOO.........",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "...........X",
+        "...........X",
+    ];
+    let state = position(rows, [20, 20], &[]);
+    assert_eq!(crate::eval::shape(&state, 0), -2 * 2);
+    assert_eq!(crate::eval::shape(&state, 1), 2 * 2);
+    // A square has no joint.
+    let mut rows = rows;
+    rows[0] = "OO..........";
+    rows[1] = "OO..........";
+    let state = position(rows, [20, 20], &[]);
+    assert_eq!(crate::eval::shape(&state, 0), 0);
 }
