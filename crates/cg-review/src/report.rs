@@ -226,28 +226,27 @@ pub fn slices(games: &[Game], bots: &[String]) -> Vec<Slice> {
         name: "All games".to_string(),
         games: all.clone(),
     }];
-    let mut lengths: Vec<usize> = games.iter().map(last_turn).collect();
-    lengths.sort_unstable();
-    if let (Some(&low), Some(&high)) = (
-        lengths.get(lengths.len() / 3),
-        lengths.get(2 * lengths.len() / 3),
-    ) {
-        let by = |name: String, keep: &dyn Fn(usize) -> bool| Slice {
-            dimension: "Length".to_string(),
-            name,
-            games: all
-                .iter()
-                .copied()
-                .filter(|&i| keep(last_turn(&games[i])))
-                .collect(),
+    // Thirds by rank: the games sorted by length (ties in batch order),
+    // each third named by the lengths it holds.
+    let mut by_length = all.clone();
+    by_length.sort_by_key(|&i| (last_turn(&games[i]), i));
+    let n = by_length.len();
+    for (k, name) in ["Short", "Regular", "Long"].into_iter().enumerate() {
+        let mut part: Vec<usize> = by_length[k * n / 3..(k + 1) * n / 3].to_vec();
+        let (Some(&first), Some(&last)) = (part.first(), part.last()) else {
+            continue;
         };
-        out.push(by(format!("Short (up to {low} turns)"), &|t| t <= low));
-        out.push(by(format!("Regular ({} to {high} turns)", low + 1), &|t| {
-            t > low && t <= high
-        }));
-        out.push(by(format!("Long ({} turns or more)", high + 1), &|t| {
-            t > high
-        }));
+        let (low, high) = (last_turn(&games[first]), last_turn(&games[last]));
+        part.sort_unstable();
+        out.push(Slice {
+            dimension: "Length".to_string(),
+            name: if low == high {
+                format!("{name} ({low} turns)")
+            } else {
+                format!("{name} ({low} to {high} turns)")
+            },
+            games: part,
+        });
     }
     if bots.len() == 2 {
         for red in bots {
@@ -355,8 +354,12 @@ pub fn sliced(games: &[Game]) -> Sliced {
 
 /// The first turn, with at least [`MIN_GAMES`] games, at which the metric
 /// tells the winner (see [`TELLS`]), with the higher share then.
+///
+/// Turn 1 is left out: its values are the start of the game, the same in
+/// every game for each seat, so any share there is the seats' and not the
+/// play's.
 pub fn first_telling(points: &[Point]) -> Option<(usize, usize)> {
-    points.iter().find_map(|p| {
+    points.iter().filter(|p| p.turn >= 2).find_map(|p| {
         let share = p.higher_share()?;
         (p.games >= MIN_GAMES && (share >= TELLS || share <= 100 - TELLS))
             .then_some((p.turn, share))
@@ -413,7 +416,7 @@ pub fn report(games: &[Game], meanings: &BTreeMap<String, String>) -> String {
     if let Some(median) = lengths.get(lengths.len() / 2) {
         let _ = writeln!(out, "\nMedian length: {median} turns.");
     }
-    let running = |turn: usize| games.iter().filter(|g| g.rows.len() >= 2 * turn).count();
+    let running = |turn: usize| games.iter().filter(|g| last_turn(g) >= turn).count();
     out.push_str("\nGames still running at turn:");
     for t in CHECKPOINTS {
         let _ = write!(out, " {t}: {};", running(t));
@@ -423,7 +426,7 @@ pub fn report(games: &[Game], meanings: &BTreeMap<String, String>) -> String {
     // When each metric tells the winner.
     let _ = writeln!(
         out,
-        "\n## When each metric tells the winner\n\nThe share of decided games still running in which the winner's value was higher than the loser's (a tie counting half), at each turn; below 50% a lower value goes with winning. \"Tells from\" is the first turn with at least {MIN_GAMES} games at which the share is at least {TELLS}% or at most {}%.\n",
+        "\n## When each metric tells the winner\n\nThe share of decided games still running in which the winner's value was higher than the loser's (a tie counting half), at each turn; below 50% a lower value goes with winning. \"Tells from\" is the first turn from turn 2 with at least {MIN_GAMES} games at which the share is at least {TELLS}% or at most {}%.\n\nRed and blue are each measured at the start of their own turn, and blue starts with one more cell: in the first turns a metric can tell the winner only because the winner sat in the better seat, above all in a slice where one seat wins most games. Read early turns with the seats in mind.\n",
         100 - TELLS
     );
     out.push_str("| Metric | Tells from |");

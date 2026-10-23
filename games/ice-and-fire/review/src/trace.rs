@@ -429,7 +429,11 @@ pub fn trace(name: &str, record: &Record) -> Trace {
     let mut moments = Vec::new();
     let mut middle_ply = None;
     let mut threats = [false; 2];
-    let mut flows = [Flow::default(); 2];
+    // Before a side's first turn it has kept all its gold.
+    let mut flows = [Flow {
+        kept_share: 100,
+        ..Flow::default()
+    }; 2];
     // Each side's units at the end of its last turn.
     let mut units_after: [Option<i64>; 2] = [None; 2];
     for answers in &record.turns {
