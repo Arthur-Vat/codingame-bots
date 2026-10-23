@@ -72,6 +72,6 @@ target/release/<game>-review report SCRATCH/games --curves SCRATCH/curves.json >
 ```
 
 - **Interpretation:** start one `review-summarizer` agent, briefed that this is a metrics report, with `BATCH/report.md` and what to look for. Save its reply, unchanged, as `BATCH/summary.md`.
-- **Charts:** publish a private page from `SCRATCH/curves.json` (each metric's curve over the turns: the winners' and losers' means, and each bot's), and link it from the batch's README.
+- **Charts:** publish a private page from `SCRATCH/curves.json`, which holds every slice of the games (all, length thirds, seatings, each bot's wins, the lead at turn 10), each lined up from the start and before the end: each metric's curve over the turns (the winners' and losers' means, and each bot's), with the slice and the alignment to choose. Link it from the batch's README.
 - **Land:** the batch keeps `README.md` (bots, seed, pairs, results, the tool's commit, the commands above, the charts' link), `report.md` and `summary.md`; the records and game files stay in scratch, rebuilt from the seed. A documentation pull request, as above.
 

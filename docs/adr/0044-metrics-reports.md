@@ -20,7 +20,8 @@ ADR 0043 set up reviews of full games by Haiku agents, one agent a game, 20 game
 
 ## Consequences
 
-- A batch of 1,000 games costs local compute (about 15 minutes of play at CodinGame's limits, then about a minute of measuring) and one Haiku reply on a report of a few thousand words, against one Haiku agent per game for full reviews.
+- A batch costs local compute (playing the games at CodinGame's limits, then measuring them) and one Haiku reply on a report, against one Haiku agent per game for full reviews.
 - A metric tells only what it measures: the report shows what goes with winning and how the bots differ, not why a given play was bad. Reading games, by a full batch or by the main session, stays the way to see the why.
-- Telling the winner is correlation: a metric can follow from winning (cells late in a game) rather than cause it. The report's turns help tell the two apart, the earlier the more causal, and the interpretation must say so.
+- Telling the winner is correlation: a metric can follow from winning (cells late in a game) rather than cause it. The report's turns help tell the two apart, the earlier the more causal, and the interpretation must say so. Early turns carry the seats' difference too: each side is measured at the start of its own turn, and blue starts with one more cell.
+- Slices by length, by winner or by lead are cut by the outcome: they show how games of each kind differ, not what caused them to be of that kind.
 - Another game gets metrics reports by measuring its own metrics in its review binary; the report is written by the shared crate `cg-review` for every game.

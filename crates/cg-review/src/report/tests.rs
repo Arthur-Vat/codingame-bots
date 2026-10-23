@@ -99,7 +99,7 @@ fn long_game(turns: usize, players: [&str; 2], winner: usize, red_cells: fn(usiz
 #[test]
 fn turns_before_the_end_line_games_up_on_their_last_turn() {
     // Red has 5 cells at its last turn, blue 2; one turn before, 1 and 1.
-    let games = vec![batch_game(&game(
+    let games = [batch_game(&game(
         &[(1, 1), (1, 1), (5, 2), (5, 2)],
         Some(0),
     ))];
@@ -121,7 +121,7 @@ fn the_slices_cut_by_length_seats_winner_and_lead() {
     // Lengths 10, 12 and 14 turns; alpha red in the first two. Red leads at
     // turn 10 in the first and third games (11 cells against 10), blue in
     // the second (9 against 10).
-    let games = vec![
+    let games = [
         long_game(10, ["alpha", "beta"], 0, |_| 11),
         long_game(12, ["alpha", "beta"], 0, |_| 9),
         long_game(14, ["beta", "alpha"], 1, |_| 11),
@@ -130,9 +130,10 @@ fn the_slices_cut_by_length_seats_winner_and_lead() {
     let s = super::slices(&games, &bots);
     let get = |name: &str| s.iter().find(|x| x.name == name).map(|x| x.games.clone());
     assert_eq!(get("All games"), Some(vec![0, 1, 2]));
-    assert_eq!(get("Short (up to 12 turns)"), Some(vec![0, 1]));
-    assert_eq!(get("Regular (13 to 14 turns)"), Some(vec![2]));
-    assert_eq!(get("Long (15 turns or more)"), Some(vec![]));
+    // One game a third, by rank.
+    assert_eq!(get("Short (10 turns)"), Some(vec![0]));
+    assert_eq!(get("Regular (12 turns)"), Some(vec![1]));
+    assert_eq!(get("Long (14 turns)"), Some(vec![2]));
     assert_eq!(get("alpha red, beta blue"), Some(vec![0, 1]));
     assert_eq!(get("beta red, alpha blue"), Some(vec![2]));
     assert_eq!(get("alpha won"), Some(vec![0, 1, 2]));

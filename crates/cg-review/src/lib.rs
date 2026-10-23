@@ -16,8 +16,9 @@
 //!   the way they said;
 //! - [`report`]: a metrics report of a large batch (ADR 0044): from which
 //!   turn each metric tells the winner, the metrics that tell it best, and
-//!   the two bots compared, with every metric's points turn by turn for
-//!   charts.
+//!   the two bots compared, then the same by slice (length thirds, seats,
+//!   winner, lead at turn 10) from the start and before the end, with every
+//!   slice's points turn by turn for charts.
 
 pub mod detect;
 pub mod report;
