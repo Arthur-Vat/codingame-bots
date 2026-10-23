@@ -30,10 +30,14 @@ pub enum Planner {
     Choose,
     /// E010: [`solo::plan`] over `turns` of our turns, the opponent passing,
     /// with [`solo::SETS`] as the weight sets (`sets` must hold them), the
-    /// default [`Objective`], and beams up to `width` when there is no
-    /// deadline; again for `turns` turns whenever the plan runs out or our
-    /// side differs from it. The opening ends only at the middle game.
-    Solo { turns: usize, width: usize },
+    /// `objective`, and beams up to `width` when there is no deadline; again
+    /// for `turns` turns whenever the plan runs out or our side differs from
+    /// it. The opening ends only at the middle game.
+    Solo {
+        turns: usize,
+        width: usize,
+        objective: Objective,
+    },
 }
 
 /// The opening's memory between turns.
@@ -111,8 +115,12 @@ impl Planned {
                     };
                     vec![step; CAP as usize]
                 }
-                Planner::Solo { turns, width } => {
-                    let objective = &Objective::DEFAULT;
+                Planner::Solo {
+                    turns,
+                    width,
+                    objective,
+                } => {
+                    let objective = &objective;
                     let rest = solo::REST;
                     let mut steps =
                         solo::plan(state, &self.sets, rest, turns, width, deadline, objective);

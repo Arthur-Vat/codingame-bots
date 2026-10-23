@@ -10,7 +10,7 @@
 //! opening by rules, with weights for a compact shape and a pull toward the
 //! enemy HQ chosen turn by turn by a beam search over our next 7 turns as if
 //! the opponent passed (`ice_and_fire_opening::solo`), which rates the
-//! territory, the income and the gold, less the cells one capture would cut
+//! territory, the income and the gold (a gold as much as an income), less the cells one capture would cut
 //! off, the joints and the ends of lines, plus the land nearer us than the
 //! enemy and the progress toward its HQ. The plan is made on the first turn,
 //! kept while our side of the board is as predicted, and made again within
@@ -45,7 +45,7 @@ use std::time::{Duration, Instant};
 
 use ice_and_fire_opening::econ::Params;
 use ice_and_fire_opening::planned::{Planned, Planner};
-use ice_and_fire_opening::solo;
+use ice_and_fire_opening::solo::{self, Objective};
 
 use crate::search::Limit;
 
@@ -81,6 +81,14 @@ fn limit(start: Instant, turn: u32) -> Limit {
 /// at our eighth turn in the median game (E010).
 const OPENING_TURNS: usize = 7;
 
+/// What the opening's plans maximize: the solo planner's default, with gold
+/// worth as much as income, so that the middle game starts with a bank for
+/// the first strikes (E010).
+const OBJECTIVE: Objective = Objective {
+    gold: 3,
+    ..Objective::DEFAULT
+};
+
 /// The opening: v003's opening with the solo planner's weight sets, planned
 /// over [`OPENING_TURNS`] of our turns within the turn's time.
 fn opening() -> Planned {
@@ -92,6 +100,7 @@ fn opening_of(width: usize) -> Planned {
     let planner = Planner::Solo {
         turns: OPENING_TURNS,
         width,
+        objective: OBJECTIVE,
     };
     Planned::new(planner, solo::SETS.to_vec(), Params::V003)
 }

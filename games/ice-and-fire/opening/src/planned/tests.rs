@@ -159,7 +159,15 @@ fn once_the_middle_game_has_begun_the_opening_never_comes_back() {
 
 fn solo_opening() -> Planned {
     let sets = crate::solo::SETS.to_vec();
-    Planned::new(Planner::Solo { turns: 3, width: 2 }, sets, Params::V003)
+    Planned::new(
+        Planner::Solo {
+            turns: 3,
+            width: 2,
+            objective: crate::solo::Objective::DEFAULT,
+        },
+        sets,
+        Params::V003,
+    )
 }
 
 #[test]
