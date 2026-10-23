@@ -283,8 +283,15 @@ pub fn beam(
         children.truncate(width);
         let last = depth + 1 == turns || out_of_time();
         // The nodes are rated at the end of the early game: their plan
-        // played on with `rest`.
-        for (_, _, plan) in children.iter().take(if last { width } else { 1 }) {
+        // played on with `rest`; past the deadline, the top node only.
+        for (i, (_, _, plan)) in children
+            .iter()
+            .take(if last { width } else { 1 })
+            .enumerate()
+        {
+            if i > 0 && out_of_time() {
+                break;
+            }
             let v = rated(plan);
             if v > best.0 {
                 best = (v, plan.clone());
