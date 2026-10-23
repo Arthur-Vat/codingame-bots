@@ -75,6 +75,17 @@ describe('the clock', () => {
   });
 });
 
+describe('random bytes', () => {
+  it('fills the buffer with the same bytes on every call: zeros', () => {
+    const { call, bytes } = harness();
+    bytes().fill(7, 0, 32);
+    expect(call('random_get', 8, 16)).toBe(0);
+    expect(Array.from(bytes().subarray(8, 24))).toEqual(new Array(16).fill(0));
+    expect(Array.from(bytes().subarray(0, 8))).toEqual(new Array(8).fill(7));
+    expect(Array.from(bytes().subarray(24, 32))).toEqual(new Array(8).fill(7));
+  });
+});
+
 describe('the input and the output', () => {
   it('reads standard input into the buffers, and tells how much', () => {
     const data = new TextEncoder().encode('hello');
