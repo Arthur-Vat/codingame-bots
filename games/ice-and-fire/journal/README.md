@@ -19,3 +19,4 @@ One entry per experiment, failures included, so that ideas are not retried blind
 | [E006](E006-necks.md) | 2026-10-22 | A plan search that guards the necks of its territory, through which the study's games were cut, beats `ice-and-fire-v004` | Not run: clearly weaker in local screening | Dropped |
 | [E007](E007-reserve.md) | 2026-10-22 | In the middle game, a plan search that keeps 20 gold after its turn except for attacks, so that a cut can be answered, beats `ice-and-fire-v004` (candidate `ice-and-fire-v005`) | Rejected, −15.9 Elo at CodinGame's limits | Dropped |
 | [E008](E008-symmetric-opening.md) | 2026-10-23 | A seat-symmetric opening (ties broken as red sees the board) beats `ice-and-fire-v004` | Not run: no gain in local screening | Dropped |
+| [E009](E009-upkeep-check.md) | 2026-10-23 | A plan search that never makes its income negative (no debt wipe-outs) beats `ice-and-fire-v004` | Not run: no gain in local screening | Dropped |
