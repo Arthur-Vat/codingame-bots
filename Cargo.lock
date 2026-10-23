@@ -95,6 +95,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cg-review"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cg-search"
 version = "0.0.0"
 dependencies = [
@@ -320,6 +328,20 @@ version = "0.0.0"
 dependencies = [
  "cg-arena",
  "cg-core",
+]
+
+[[package]]
+name = "ice-and-fire-review"
+version = "0.0.0"
+dependencies = [
+ "cg-arena",
+ "cg-review",
+ "clap",
+ "ice-and-fire-engine",
+ "ice-and-fire-opening",
+ "ice-and-fire-referee",
+ "ice-and-fire-tactics",
+ "serde_json",
 ]
 
 [[package]]

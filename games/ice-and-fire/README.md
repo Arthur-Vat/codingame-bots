@@ -20,6 +20,7 @@ CodinGame's [A Code of Ice and Fire](https://www.codingame.com/multiplayer/bot-p
 | [policy/](policy/) | `ice-and-fire-policy`: the greedy turn policy and the input/output loop that the per-league bots share; its tests play every league's bot against the referee |
 | [tactics/](tactics/) | `ice-and-fire-tactics`: what the first real bots share, in the standard library only: the cheapest chain of trainings (aware of towers), a cut finder and a static evaluation of a state, with a timing example; the weights of the evaluation and the scores of the cuts are placeholders for later experiments |
 | [opening/](opening/) | `ice-and-fire-opening`: the early game, in the standard library only: v003's `econ` opening with its weights as parameters, when the middle game starts, a hand-built score in gold that compares openings there, rollouts against v003's opening, a beam search over whole turns, a portfolio of weights, and the planned opening the `plan` bot plays (E004); its harness example `early` plays openings against each other up to the middle game ([research/early-game.md](research/early-game.md#the-middle-game-score-e004)) |
+| [review/](review/) | `ice-and-fire-review`: turns recorded games into review files (a game file with every ply's board, metrics and commands, the metrics as CSV, the phases and decisive moments) and summarizes a reviewed batch ([below](#game-reviews)) |
 | [arena/](arena/) | `ice-and-fire-arena`: plays bots against each other through the referee, in Bronze (all the rules); its example `opening` measures each bot's opening from game records, up to the middle game's score ([below](#arena)) |
 | [studio/](studio/) | `ice-and-fire-studio`: the game's adapter for the studio, bot seats only ([below](#studio)) |
 | [ladder/](ladder/) | `ice-and-fire-ladder`: the ladder of reference bots, bronze's turn plus the steps of the shared tactics, one more step for each bot (`chain`, `guard`, `cutter`, `banker`); its play does not change once merged, since the bots and their ratings are built from it |
@@ -76,6 +77,23 @@ target/release/ice-and-fire-arena match \
 The arena plays Bronze games: all the rules, on the map of the pair's seed ([ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md)). Each pair plays one seed twice with the seats swapped, so both bots play the same map from both seats. The referee ignores `--opening-plies`: the maps vary the games. `sprt` and `league` take the same options, and `scripts/sprt.sh ice-and-fire CANDIDATE.rs` uses [evaluation.env](evaluation.env): CodinGame's exact limits (50 ms per turn, 1,000 ms for the first, no tolerance) for the smoke test, the SPRT, the league and local screening, with 800 pairs per league pairing, a league of up to 8 pairings that fits the job's 300 minutes only if a game averages 5.6 s or less (about 140 answers of 40 ms), to be checked with the first search bot's game length ([ADR 0042](../../docs/adr/0042-official-time-limits-and-800-pairs.md)). `ci.sh` plays the arena's games in CI, also at CodinGame's exact limits.
 
 To measure the openings of a match's games, keep every game with `--records DIR` and run `cargo run --release -p ice-and-fire-arena --example opening -- DIR`: for each bot, its result, its wipe-outs by debt, and at contact (the first start of its turn with the territories at most 2 steps apart) its cells, income, gold, units, mines and Voronoi share, then its exposure after that turn (the opponent's best cut and its gold against the cheapest chain to the bot's HQ); and at the middle game, both sides' score (`ice_and_fire_opening::score`), its terms and how often its sign agrees with the winner (`OPENING_CSV=FILE` writes them per game). `--maps N` prints the map facts the opening depends on, over seeds 1 to N ([research/early-game.md](research/early-game.md)).
+
+## Game reviews
+
+```sh
+target/release/ice-and-fire-arena match --bot A=... --bot B=... --pairs 10 --records DIR
+cargo run --release -p ice-and-fire-review -- games --out BATCH [--text TEXT] DIR/*.json
+cargo run --release -p ice-and-fire-review -- summary BATCH
+```
+
+`games` writes, for each record, `NAME.md`, the game file a reviewer reads (in `--text`'s directory when given: the game files are large and the records rebuild them): the rules in short, the metrics' meanings, the phases, the decisive moments, then every ply (one player's turn) with the board in two characters a cell, both sides' metrics and the commands; `NAME.csv`, the metrics; and `NAME.json`, the result, phases and moments.
+
+- **Board:** the first character is the owner (`R` red, `B` blue, upper case when active, lower case when cut off from the HQ), the second the content (`.` empty, `1` to `3` a unit, `M` mine, `T` tower, `H` HQ, `*` an empty mine spot); `##` is void.
+- **Metrics,** each side at each ply: gold, income, upkeep, active and cut-off cells, units and their training cost, mines, towers, the Voronoi share, what the enemy could cut with 30 and 50 gold, what the side could cut now, the gold it lacks for a chain to the enemy HQ, and its material (gold + 3 × income + 4 × cells + units' cost + 10 × towers), whose difference is the lead.
+- **Phases:** the early game until the middle game (the player to act can pay a chain of trainings to an enemy cell, `ice_and_fire_opening::middle`); the endgame from the first ply after that at which a side has twice the other's active cells or can pay a chain to the enemy HQ with its gold and one turn of income.
+- **Decisive moments:** a large cut (a side loses 30% of its active cells, and 6 or more, in one ply), a lead change in material (by 20 or more) or a swing of 60 in a turn, the first time a side can pay a chain to the enemy HQ, and a debt that wipes out an army.
+
+`summary` reads a batch's files, and the reviewers' notes in `NAME.review.md` when present (the last fenced `json` block: a list of `{"ply", "side", "verdict", "note"}`), and prints which metrics go with the winner at three points of the game, how often each kind of moment's side won, and whether the plays judged good or bad moved the lead as judged.
 
 ## Studio
 
