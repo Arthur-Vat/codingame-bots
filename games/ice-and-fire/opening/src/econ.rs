@@ -108,6 +108,19 @@ pub fn distances(state: &State, from: Bits) -> [u8; CELLS] {
     dist
 }
 
+/// The order in which `me` breaks ties between cells: the cell's index as
+/// red would see it. The map is the same turned half a turn, so blue's cell
+/// `c` is red's `CELLS - 1 - c`, and both seats then play the same opening,
+/// one the mirror of the other (E008). By index alone, red preferred the
+/// cells next to its HQ and blue those toward the middle.
+fn rank(me: usize, cell: usize) -> usize {
+    if me == 0 {
+        cell
+    } else {
+        CELLS - 1 - cell
+    }
+}
+
 /// The fewest steps from a cell of one territory to a cell of the other,
 /// `u8::MAX` if there is no path.
 pub fn gap(state: &State) -> u8 {
@@ -174,11 +187,11 @@ impl Turn<'_> {
         p.open * open + p.contest * contest - hq
     }
 
-    /// The cell of `cells` worth most, the lowest index on a tie.
+    /// The cell of `cells` worth most, the first by [`rank`] on a tie.
     fn best(&self, cells: Bits) -> Option<usize> {
         cells
             .iter()
-            .max_by_key(|&cell| (self.value(cell), std::cmp::Reverse(cell)))
+            .max_by_key(|&cell| (self.value(cell), std::cmp::Reverse(rank(self.me, cell))))
     }
 
     fn claim(&mut self, cell: usize) {
@@ -274,7 +287,8 @@ fn moves(state: &mut State, turn: &mut Turn<'_>, out: &mut Vec<Command>) {
             let options = (Bits::cell(from).neighbours() & turn.free & enter).count();
             if options == 0 {
                 idle.push(from);
-            } else if pick.is_none_or(|(n, _)| options < n) {
+            } else if pick.is_none_or(|(n, other)| (options, rank(me, from)) < (n, rank(me, other)))
+            {
                 pick = Some((options, from));
             }
         }
@@ -286,6 +300,7 @@ fn moves(state: &mut State, turn: &mut Turn<'_>, out: &mut Vec<Command>) {
             _ => idle.push(from),
         }
     }
+    idle.sort_by_key(|&from| rank(me, from));
     for from in idle {
         if !state.movable_units().test(from) {
             continue;
@@ -293,7 +308,7 @@ fn moves(state: &mut State, turn: &mut Turn<'_>, out: &mut Vec<Command>) {
         let target = [turn.side, turn.free].into_iter().find_map(|cells| {
             cells
                 .iter()
-                .min_by_key(|&cell| (state.map().distance(from, cell), cell))
+                .min_by_key(|&cell| (state.map().distance(from, cell), rank(me, cell)))
         });
         if let Some(target) = target {
             step(state, from, target, out);
@@ -346,7 +361,7 @@ fn mine_spot(state: &State, turn: &Turn<'_>) -> Option<usize> {
     (state.map().spots & state.active(me) & state.empty_cells())
         .iter()
         .filter(|&spot| turn.theirs[spot] > turn.params.safe_spot)
-        .min_by_key(|&spot| (state.map().distance(HQ[me], spot), spot))
+        .min_by_key(|&spot| (state.map().distance(HQ[me], spot), rank(me, spot)))
 }
 
 /// Up to `mines` mines, then up to `units` trainings, where the payback rule
