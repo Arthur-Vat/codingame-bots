@@ -1,5 +1,5 @@
-//! A batch's summary, from the files of each game (`NAME.json`, the
-//! [`GameSummary`]; `NAME.csv`, the metrics) and, when present, the
+//! A batch's summary, from the files of each game (`NAME.summary.json`,
+//! the [`GameSummary`]; `NAME.csv`, the metrics) and, when present, the
 //! reviewer's notes (`NAME.review.md`, whose last fenced `json` block is a
 //! list of [`Note`]s).
 //!
@@ -94,19 +94,23 @@ pub fn parse_notes(review: &str) -> Result<Vec<Note>, String> {
 }
 
 /// What [`load`] reads: the games, the reviewers' notes by game name, and
-/// the reviews whose notes could not be read.
+/// the files that could not be read, each with the reason.
 pub type Batch = (Vec<Game>, BTreeMap<String, Vec<Note>>, Vec<String>);
 
-/// The games of the batch in `dir` (every `NAME.json` with its `NAME.csv`),
-/// by name, and the notes of those that have a `NAME.review.md`. A review
-/// whose notes cannot be read is reported in the second list.
+/// The suffix of a game's [`GameSummary`] file.
+pub const SUMMARY_SUFFIX: &str = ".summary.json";
+
+/// The games of the batch in `dir` (every `NAME.summary.json` with its
+/// `NAME.csv`), by name, and the notes of those that have a
+/// `NAME.review.md`. A game or review that cannot be read is left out and
+/// reported in the third list; only an unreadable directory is an error.
 pub fn load(dir: &Path) -> Result<Batch, String> {
     let mut names: Vec<String> = fs::read_dir(dir)
         .map_err(|e| format!("{}: {e}", dir.display()))?
         .filter_map(|entry| entry.ok())
         .filter_map(|entry| {
             let name = entry.file_name().into_string().ok()?;
-            name.strip_suffix(".json").map(str::to_string)
+            name.strip_suffix(SUMMARY_SUFFIX).map(str::to_string)
         })
         .collect();
     names.sort();
@@ -114,15 +118,31 @@ pub fn load(dir: &Path) -> Result<Batch, String> {
     let mut notes = BTreeMap::new();
     let mut problems = Vec::new();
     for name in names {
-        let read = |ext: &str| fs::read_to_string(dir.join(format!("{name}.{ext}")));
-        let summary: GameSummary = serde_json::from_str(&read("json").map_err(|e| e.to_string())?)
-            .map_err(|e| format!("{name}.json: {e}"))?;
-        let rows = parse_csv(
-            &read("csv").map_err(|e| format!("{name}.csv: {e}"))?,
-            &summary.metrics,
-        )
-        .map_err(|e| format!("{name}.csv: {e}"))?;
-        if let Ok(review) = read("review.md") {
+        let read =
+            |file: &str| fs::read_to_string(dir.join(file)).map_err(|e| format!("{file}: {e}"));
+        let summary_file = format!("{name}{SUMMARY_SUFFIX}");
+        let summary = read(&summary_file).and_then(|text| {
+            serde_json::from_str::<GameSummary>(&text).map_err(|e| format!("{summary_file}: {e}"))
+        });
+        let summary = match summary {
+            Ok(summary) => summary,
+            Err(e) => {
+                problems.push(e);
+                continue;
+            }
+        };
+        let csv_file = format!("{name}.csv");
+        let rows = read(&csv_file).and_then(|text| {
+            parse_csv(&text, &summary.metrics).map_err(|e| format!("{csv_file}: {e}"))
+        });
+        let rows = match rows {
+            Ok(rows) => rows,
+            Err(e) => {
+                problems.push(e);
+                continue;
+            }
+        };
+        if let Ok(review) = read(&format!("{name}.review.md")) {
             match parse_notes(&review) {
                 Ok(list) => {
                     notes.insert(name.clone(), list);
@@ -217,9 +237,10 @@ pub fn summarize(
     // Metrics at the checkpoints.
     out.push_str(
         "\n## Metrics that go with the winner\n\nFor each point of the game, in the decided games \
-         that reach it: how often the winner's value of the metric was higher than the loser's, \
-         lower or equal, and the mean of the winner's value less the loser's. Some metrics are \
-         better low (see their meanings in a game file).\n",
+         that reach it and where both sides have a value: how often the winner's value of the \
+         metric was higher than the loser's, lower or equal (the percentage leaves out the equal \
+         ones), and the mean of the winner's value less the loser's. Some metrics are better low \
+         (see their meanings in a game file).\n",
     );
     let keys = games
         .first()
@@ -238,12 +259,17 @@ pub fn summarize(
         }
         out.push_str("| Metric | Winner's higher | Lower | Equal | Mean difference |\n| --- | ---: | ---: | ---: | ---: |\n");
         for (index, key) in keys.iter().enumerate() {
-            let (mut higher, mut lower, mut equal, mut sum) = (0, 0, 0, 0i64);
+            let (mut higher, mut lower, mut equal, mut sum, mut counted) = (0, 0, 0, 0i64, 0);
             for (game, ply) in &at {
                 let w = game.summary.winner.unwrap_or(0);
                 let values = &game.rows[*ply].values;
+                let none = game.summary.none.get(key);
+                if none.is_some_and(|n| values[0][index] == *n || values[1][index] == *n) {
+                    continue;
+                }
                 let diff = values[w][index] - values[1 - w][index];
                 sum += diff;
+                counted += 1;
                 match diff.signum() {
                     1 => higher += 1,
                     -1 => lower += 1,
@@ -252,9 +278,13 @@ pub fn summarize(
             }
             let _ = writeln!(
                 out,
-                "| {key} | {} ({higher}) | {lower} | {equal} | {:+.1} |",
+                "| {key} | {} ({higher}) | {lower} | {equal} | {} |",
                 percent(higher, higher + lower),
-                sum as f64 / at.len() as f64
+                if counted == 0 {
+                    "–".to_string()
+                } else {
+                    format!("{:+.1}", sum as f64 / counted as f64)
+                }
             );
         }
     }
@@ -306,7 +336,7 @@ pub fn summarize(
         games.len()
     );
     let mut groups: BTreeMap<(String, String), (usize, i64, usize)> = BTreeMap::new();
-    let mut unknown = 0;
+    let (mut unknown, mut last) = (0, 0);
     for game in games {
         let Some(list) = notes.get(&game.summary.name) else {
             continue;
@@ -318,7 +348,16 @@ pub fn summarize(
                 unknown += 1;
                 continue;
             };
-            let next = (note.ply + 2).min(game.rows.len().saturating_sub(1));
+            if game.rows.get(note.ply).is_none_or(|row| row.to_act != side) {
+                unknown += 1;
+                continue;
+            }
+            // The side's next turn, where the lead is measured again.
+            let next = note.ply + 2;
+            if next >= game.rows.len() {
+                last += 1;
+                continue;
+            }
             let (Some(before), Some(after)) =
                 (lead_of(game, note.ply, side), lead_of(game, next, side))
             else {
@@ -358,14 +397,22 @@ pub fn summarize(
             );
         }
     }
+    if last > 0 {
+        let _ = writeln!(
+            out,
+            "\n{last} judgments of a play in a side's last turn of its game were left out: no next \
+             turn shows its effect."
+        );
+    }
     if unknown > 0 {
         let _ = writeln!(
             out,
-            "\n{unknown} judgments named no known side, verdict or ply and were left out."
+            "\n{unknown} judgments named no known side or verdict, or a ply that the side did not \
+             play, and were left out."
         );
     }
     if !problems.is_empty() {
-        out.push_str("\nReviews that could not be read:\n\n");
+        out.push_str("\nFiles that could not be read, left out:\n\n");
         for problem in problems {
             let _ = writeln!(out, "- {problem}");
         }

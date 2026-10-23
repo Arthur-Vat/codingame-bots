@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 
-use super::{parse_csv, parse_notes, summarize, Game, Note};
+use std::fs;
+
+use super::{load, parse_csv, parse_notes, summarize, Game, Note, SUMMARY_SUFFIX};
 use crate::detect::large_drops;
 use crate::test_util::game;
 use crate::text::metrics_csv;
@@ -88,9 +90,27 @@ fn the_summary_counts_winners_moments_and_judgments() {
                 verdict: "bad".to_string(),
                 note: String::new(),
             },
+            // Blue did not play ply 2.
+            Note {
+                ply: 2,
+                side: "blue".to_string(),
+                verdict: "bad".to_string(),
+                note: String::new(),
+            },
+            // Red's last turn: no next turn shows its effect.
+            Note {
+                ply: 4,
+                side: "red".to_string(),
+                verdict: "good".to_string(),
+                note: String::new(),
+            },
         ],
     );
     let text = summarize(&games, &notes, &["x.review.md: no block".to_string()]);
+    assert!(
+        text.contains("1 judgments of a play in a side's last turn"),
+        "{text}"
+    );
     assert!(
         text.contains("2 games, 2 decided; 3.0 turns on average."),
         "{text}"
@@ -115,6 +135,55 @@ fn the_summary_counts_winners_moments_and_judgments() {
         ),
         "{text}"
     );
-    assert!(text.contains("1 judgments named no known side"), "{text}");
+    assert!(text.contains("2 judgments named no known side"), "{text}");
     assert!(text.contains("- x.review.md: no block"), "{text}");
+}
+
+#[test]
+fn a_value_meaning_none_is_left_out_of_the_mean() {
+    let mut games = vec![
+        batch_game(
+            &[(10, 20), (10, 20), (11, 20), (11, 12), (13, 12)],
+            Some(0),
+            "a",
+        ),
+        batch_game(
+            &[(10, 10), (10, 10), (999, 10), (10, 12), (9, 14)],
+            Some(1),
+            "b",
+        ),
+    ];
+    for game in &mut games {
+        game.summary.none.insert("cells".to_string(), 999);
+    }
+    let text = summarize(&games, &BTreeMap::new(), &[]);
+    // Game b's middle game has red at 999: only game a counts.
+    assert!(text.contains("| cells | 0% (0) | 1 | 0 | -9.0 |"), "{text}");
+}
+
+#[test]
+fn unreadable_files_are_left_out_and_reported() {
+    let dir = std::env::temp_dir().join(format!("cg-review-load-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).expect("a scratch directory");
+    let mut trace = crate::test_util::game(&[(1, 2), (3, 4)], Some(0));
+    trace.name = "good".to_string();
+    let summary = serde_json::to_string(&trace.summary()).expect("serializes");
+    fs::write(dir.join(format!("good{SUMMARY_SUFFIX}")), &summary).expect("writes");
+    fs::write(dir.join("good.csv"), crate::text::metrics_csv(&trace)).expect("writes");
+    fs::write(dir.join(format!("bad{SUMMARY_SUFFIX}")), "{}").expect("writes");
+    fs::write(dir.join(format!("lonely{SUMMARY_SUFFIX}")), &summary).expect("writes");
+    // A record, not a summary: ignored.
+    fs::write(dir.join("record.json"), "{}").expect("writes");
+    let (games, notes, problems) = load(&dir).expect("reads the directory");
+    fs::remove_dir_all(&dir).expect("cleans up");
+    assert_eq!(games.len(), 1);
+    assert_eq!(games[0].summary.name, "good");
+    assert!(notes.is_empty());
+    assert_eq!(problems.len(), 2, "{problems:?}");
+    assert!(
+        problems[0].starts_with("bad.summary.json: "),
+        "{problems:?}"
+    );
+    assert!(problems[1].starts_with("lonely.csv: "), "{problems:?}");
 }
