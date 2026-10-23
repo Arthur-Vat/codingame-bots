@@ -12,8 +12,9 @@
 //! A policy is either `NAME:rules[:GROUP:THIN:SPOT:INSIDE:TOWARD]`, the
 //! opening's rules with v003's weights and those terms (`econ::Params`), or
 //! `NAME:beam:WIDTH:MS`, a plan of all the turns found on the first by
-//! `solo::beam` (at most `WIDTH` nodes a turn, `MS` milliseconds) over the
-//! weight sets of [`SETS`], then followed. Each side of each map plays
+//! `solo::plan` (beams of growing width until `MS` milliseconds are spent;
+//! `WIDTH` is unused with a deadline) over the weight sets of `solo::SETS`,
+//! then followed. Each side of each map plays
 //! `--turns` turns (7: the median middle game starts at turn 8), then the
 //! position at the start of its next turn is measured. Both seats of each map
 //! are played, so a map counts twice.
@@ -30,22 +31,10 @@ use std::fmt::Write as _;
 use std::time::{Duration, Instant};
 
 use ice_and_fire_engine::{League, State, HQ, SIZE};
-use ice_and_fire_opening::econ::{rules_turn_with, Buy, Params};
-use ice_and_fire_opening::plan::Step;
+use ice_and_fire_opening::econ::{rules_turn_with, Params};
 use ice_and_fire_opening::solo::{self, Objective, Shape};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::League as RefereeLeague;
-
-/// The weight sets the beam combines, turn by turn: v003's, and v003's with
-/// shape terms, the inside penalty and the pull toward the enemy HQ.
-const SETS: [Params; 6] = [
-    Params::V003,
-    Params::V003.with_shape(2, 3, 0),
-    Params::V003.with_shape(2, 6, 0),
-    Params::V003.with_shape(2, 6, 0).with_course(4, 0),
-    Params::V003.with_shape(2, 6, 0).with_course(4, 1),
-    Params::V003.with_shape(0, 0, 0).with_course(0, 2),
-];
 
 enum Policy {
     Rules(Params),
@@ -115,16 +104,12 @@ fn play(
     if seat == 1 {
         state.play_turn(&[]);
     }
-    let rest = Step {
-        weights: 2,
-        buy: Buy::Payback,
-    };
     let started = Instant::now();
     let plan = match policy {
-        Policy::Beam { width, ms } => solo::beam(
+        Policy::Beam { width, ms } => solo::plan(
             &state,
-            &SETS,
-            rest,
+            &solo::SETS,
+            solo::REST,
             turns,
             *width,
             Some(started + Duration::from_millis(*ms)),
@@ -139,9 +124,11 @@ fn play(
         }
         let commands = match policy {
             Policy::Rules(params) => rules_turn_with(&state, params),
-            Policy::Beam { .. } => {
-                solo::commands(&state, &SETS, plan.get(turn).copied().unwrap_or(rest))
-            }
+            Policy::Beam { .. } => solo::commands(
+                &state,
+                &solo::SETS,
+                plan.get(turn).copied().unwrap_or(solo::REST),
+            ),
         };
         if trace {
             println!(

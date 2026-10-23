@@ -17,6 +17,35 @@ use ice_and_fire_engine::{Bits, Command, State, CELLS, HQ};
 use crate::econ::{self, Params};
 use crate::plan::{side_key, Step, BUYS};
 
+/// The weight sets a plan combines, turn by turn: v003's weights with every
+/// combination of the shape terms `group` (0, 2, 4) and `thin` (0, 3, 6) and
+/// of the pull `toward` the enemy HQ (0, 1, 2), with the `inside` penalty 4
+/// whenever a shape term is on. Index `9 g + 3 t + w`.
+pub const SETS: [Params; 27] = sets();
+
+/// The set a plan plays after its last step: group 2, thin 6, toward 1.
+pub const REST: Step = Step {
+    weights: 16,
+    buy: crate::econ::Buy::Payback,
+};
+
+const fn sets() -> [Params; 27] {
+    let group = [0, 2, 4];
+    let thin = [0, 3, 6];
+    let toward = [0, 1, 2];
+    let mut out = [Params::V003; 27];
+    let mut i = 0;
+    while i < 27 {
+        let (g, t, w) = (i / 9, (i / 3) % 3, i % 3);
+        let inside = if g > 0 || t > 0 { 4 } else { 0 };
+        out[i] = Params::V003
+            .with_shape(group[g], thin[t], 0)
+            .with_course(inside, toward[w]);
+        i += 1;
+    }
+    out
+}
+
 /// How a side stands at the end of the early game.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Shape {
@@ -33,6 +62,9 @@ pub struct Shape {
     pub tips: i64,
     /// Steps from our active cells to the enemy HQ.
     pub reach: i64,
+    /// Non-void cells nearer our active cells than the enemy's (a tie counts
+    /// half, rounded down): the land we are likely to get.
+    pub voronoi: i64,
 }
 
 /// The weights of [`value`].
@@ -45,6 +77,7 @@ pub struct Objective {
     pub joints: i64,
     pub tips: i64,
     pub reach: i64,
+    pub voronoi: i64,
 }
 
 impl Objective {
@@ -52,7 +85,9 @@ impl Objective {
     /// each cell a single capture would cut off costs 2, each joint 2 and
     /// each end of a line 2; each step still to go toward the enemy HQ 6
     /// (with 3 the plans ended a step further from it than the rules', with
-    /// 10 their shape began to suffer: E010).
+    /// 10 their shape began to suffer: E010); each cell of the land nearer
+    /// us than the enemy 1, so that the territory grows toward the middle
+    /// rather than along an edge.
     pub const DEFAULT: Objective = Objective {
         cells: 4,
         income: 3,
@@ -61,6 +96,7 @@ impl Objective {
         joints: 2,
         tips: 2,
         reach: 6,
+        voronoi: 1,
     };
 }
 
@@ -119,6 +155,7 @@ pub fn shape(state: &State, seat: usize) -> Shape {
         income: state.income(seat),
         gold: state.gold(seat),
         reach: i64::MAX,
+        voronoi: crate::score::voronoi_halves(state, seat) / 2,
         ..Shape::default()
     };
     for cell in active.iter() {
@@ -143,6 +180,7 @@ pub fn value(state: &State, seat: usize, objective: &Objective) -> i64 {
         - o.joints * s.joints
         - o.tips * s.tips
         - o.reach * s.reach.min(30)
+        + o.voronoi * s.voronoi
 }
 
 /// Our `commands`, then the opponent passes: our next start of turn.
@@ -177,22 +215,21 @@ pub fn play(state: &State, sets: &[Params], plan: &[Step], rest: Step, turns: us
     sim
 }
 
-/// The distinct steps tried in `state`: each weight set with the payback
-/// rule, and the first set with every purchase of [`BUYS`]; steps whose
-/// commands repeat an earlier one's are left out.
+/// The distinct steps tried in `state`: every weight set with every
+/// purchase of [`BUYS`]; steps whose commands repeat an earlier one's are
+/// left out.
 fn steps(state: &State, sets: &[Params]) -> Vec<(Step, Vec<Command>)> {
-    let mut options: Vec<Step> = (0..sets.len().min(usize::from(u8::MAX)))
-        .map(|weights| Step {
-            weights: weights as u8,
-            buy: econ::Buy::Payback,
-        })
-        .collect();
-    options.extend(BUYS.iter().skip(1).map(|&buy| Step { weights: 0, buy }));
     let mut out: Vec<(Step, Vec<Command>)> = Vec::new();
-    for step in options {
-        let c = commands(state, sets, step);
-        if !out.iter().any(|(_, other)| *other == c) {
-            out.push((step, c));
+    for weights in 0..sets.len().min(usize::from(u8::MAX)) {
+        for &buy in &BUYS {
+            let step = Step {
+                weights: weights as u8,
+                buy,
+            };
+            let c = commands(state, sets, step);
+            if !out.iter().any(|(_, other)| *other == c) {
+                out.push((step, c));
+            }
         }
     }
     out
@@ -257,6 +294,38 @@ pub fn beam(
             break;
         }
         frontier = children.into_iter().map(|(_, s, p)| (s, p)).collect();
+    }
+    best.1
+}
+
+/// An anytime plan: [`beam`] with a width of 2, then 4, 8 and so on, the
+/// best plan of all kept, until `deadline` (each search stops there too) or,
+/// without one, after the width `max_width`. With a deadline the search uses
+/// the time it is given.
+pub fn plan(
+    state: &State,
+    sets: &[Params],
+    rest: Step,
+    turns: usize,
+    max_width: usize,
+    deadline: Option<Instant>,
+    objective: &Objective,
+) -> Vec<Step> {
+    let me = state.to_act();
+    let rated = |plan: &[Step]| value(&play(state, sets, plan, rest, turns), me, objective);
+    let mut best: (i64, Vec<Step>) = (rated(&[]), Vec::new());
+    let mut width = 2;
+    loop {
+        let found = beam(state, sets, rest, turns, width, deadline, objective);
+        let v = rated(&found);
+        if v > best.0 {
+            best = (v, found);
+        }
+        let out_of_time = deadline.is_some_and(|t| Instant::now() >= t);
+        if out_of_time || (deadline.is_none() && width >= max_width) {
+            break;
+        }
+        width *= 2;
     }
     best.1
 }

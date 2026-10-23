@@ -1,6 +1,6 @@
 use ice_and_fire_engine::{League, State};
 
-use super::{beam, play, severed, shape, value, Objective};
+use super::{beam, plan, play, severed, shape, value, Objective, REST, SETS};
 use crate::econ::{Buy, Params};
 use crate::plan::Step;
 use crate::test_util::start;
@@ -29,9 +29,11 @@ fn a_line_has_a_joint_at_every_cell_but_its_tip() {
     // From (3, 1) to (11, 11): 8 + 10 steps.
     assert_eq!(s.reach, 18);
     let o = Objective::DEFAULT;
+    // Blue holds only its HQ: red is nearer most of the map.
+    assert_eq!(s.voronoi, 91);
     assert_eq!(
         value(&state, 0, &o),
-        4 * 5 + 3 * 5 - 2 * 3 - 2 * 3 - 2 - 6 * 18
+        4 * 5 + 3 * 5 - 2 * 3 - 2 * 3 - 2 - 6 * 18 + 91
     );
 }
 
@@ -53,4 +55,15 @@ fn the_beam_finds_a_plan_at_least_as_good_as_the_rules() {
         // The same search gives the same plan.
         assert_eq!(beam(&state, &sets, rest, 7, 20, None, &o), plan);
     }
+}
+
+#[test]
+fn the_anytime_plan_is_never_worse_than_its_first_beam() {
+    let state = start(4);
+    let o = Objective::DEFAULT;
+    let rated = |p: &[Step]| value(&play(&state, &SETS, p, REST, 7), 0, &o);
+    let first = beam(&state, &SETS, REST, 7, 2, None, &o);
+    let anytime = plan(&state, &SETS, REST, 7, 8, None, &o);
+    assert!(rated(&anytime) >= rated(&first));
+    assert!(rated(&anytime) >= rated(&[]));
 }
