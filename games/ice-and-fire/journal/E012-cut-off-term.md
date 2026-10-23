@@ -44,9 +44,15 @@ each, two games at a time:
 | 2. Sum of reachable cuts | −10.4 [−31.2, +10.3] | 36.2% | 60.8% |
 | 3. Largest cut, no joints | −22.6 [−42.8, −2.6] | 34.5% | 59.0% |
 
-All three were weaker; the third clearly. Counting the joints matters even
+All three point lower; only the third, which drops the count of joints, is
+clearly weaker (its interval excludes 0). Counting the joints matters even
 though, across games, the number of joints does not tell the winner: a
-metric that does not separate winners from losers can still be worth
-optimizing, since both bots already keep it low in the games that decide
-the outcome, and a report of correlations does not show what a change to
-the evaluation will do. The screening is the judge.
+report of correlations does not show what a change to the evaluation will
+do, and the screening is the judge.
+
+The variants' code was not kept: each was a few lines in
+`games/ice-and-fire/bots/plan/src/eval.rs`'s weakness function (a constant
+chose the count), built in a scratch worktree for the screening.
+
+E011, a red-seat opening chosen by the owner at the same time, runs on its
+own branch.
