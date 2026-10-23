@@ -1,58 +1,48 @@
 # Summary of the batch
 
-Bots: ice-and-fire-v005 (the current release) against its parent ice-and-fire-v004. 1,000 games in 500 seat-swapped pairs (seed 234), at CodinGame's time limits. v005 won 567 and v004 433 (56.7% for v005). Median length is 18 turns. The report has metrics only: there are no reviews in this batch and no game names or plies.
+Bots: ice-and-fire-v005 (candidate, opening planned on turn 1 for a compact territory toward the enemy HQ, plus a shape term that penalizes joints and cells one capture would cut off) against its parent ice-and-fire-v004. A Code of Ice and Fire, 1,000 games (500 seat-swapped pairs, seed 234, CodinGame time limits). v005 won 567, v004 433; all 1,000 decided, median length 18 turns. This is a metrics report (ADR 0044), so there are no reviews and no plies are discussed.
 
-## What decides these games
+## What wins these games
 
-Economy and reach toward the enemy HQ decide the games from about turn 10. Shares below are the share of still-running decided games in which the winner's value was higher, unless marked "lower wins".
+The metrics tell the winner from turn 10 on, not before. Income, cells, material, gross income and the two change metrics tell from turn 10 at 71 to 74%. Gold, units, army, voronoi and level-1 units tell from turn 11 at 71 to 74%. At turn 8 nothing reaches 70%; the best are cells and material at 62%. By turn 12, income and material are at 83%, cells at 82% and voronoi at 77%. By turn 16, material is at 90% (winners average 480, losers 218), and lower hq_gap (the gold still lacking for the cheapest chain to the enemy HQ) goes with winning at 88%.
 
-- **Material** (the lead metric) is 73% at turn 10, 83% at turn 12, 90% at turns 16 and 20.
-- **Income** is 74%, 83%, 86% and 85% at turns 10, 12, 16 and 20. **Cells** are 71%, 82%, 86% and 85%.
-- **hq_gap** (gold still lacking to reach the enemy HQ) is the strongest signal of reach: lower wins 75% at turn 11, 79% at turn 12, 88% at turns 16 and 20.
-- **reach** (steps to the enemy HQ): lower wins 83% at turn 16.
-- **cut_off** (owned cells cut off from the HQ): lower wins 71% from turn 12.
-- **voronoi** (land nearer one's own cells): 67% at turn 10, 83% at turn 16.
-- **Gold** says little early (the winner had less gold at turn 8 in 54% of games) and tells from turn 11 (71%).
-- The side ahead in material at turn 10 won 731 of 994 decided games (about 74%).
-- One turn before the end, nearly all economy metrics are above 90%. The end state repeats the economy, so the signal worth acting on is earlier.
+The side ahead on material at turn 10 (the report's lead metric) won 731 of the 994 games where it had a lead, 73.5%. The 263 games where the leader lost are the comebacks.
 
-Potential cuts (max_cut, joints, total_cut) never reach the 70% threshold over the batch (max_cut only at turn 38). Actual cut-offs do.
+Cause or consequence: territory comes first. Cells (62% at turn 8, 71% at turn 10) and voronoi (67% at turn 10) are the earliest signals that are plausibly causes. Income and material are built from cells and mines by definition, so they largely follow from territory. Army and units follow from the gold the side could spend. Captured, lost and can_cut tell from turns 11 to 12 and most likely follow from the lead. Everything at one turn before the end is at 90% or more, which is a consequence by construction.
 
-The largest recurring swing in the turn means is material change at turn 12: v005 +19.4 against v004 +5.7 over all games, and +26.6 against -4.1 in the games where v005 was blue and v004 red.
+The shape metrics do not tell the winner early. Joints, total_cut and max_cut stay between 42% and 49% through turn 10 across all games. Their slice results flip with which bot won (the winner had more joints in 84% of v004-won games, fewer in 86% of v005-won games), so they mostly show the bots' styles, not a cause.
 
-## How the slices split
+The slices disagree, so the overall 57% should not be read alone:
+- Seat: v005 won 336 of 500 as blue (67%) and 231 of 500 as red (46%). v004 won 54% as blue and 33% as red. v005 gains 13 points over v004 in each seat. The seat gap is 21 points for each bot, and blue wins 605 of 1,000 overall.
+- Length: v005 won 202 of 333 short games (61%), 198 of 333 regular games (59%) and 167 of 334 long games (50%). Its edge is in the first two thirds. In long games the metrics that tell the winner arrive late: gold from turn 17 (72%), cells, units and voronoi from turns 14 to 15.
+- Turn-10 leader: v005 won 172 of the 263 games the leader lost (65%). The report does not say which bot led, so these counts show who won, not who led.
 
-**Seats.** Blue won 605 of 1,000. Each bot wins about 21 points more as blue: v004 won 53.8% as blue (269 of 500) and 32.8% as red (164 of 500); v005 won 67.2% as blue (336 of 500) and 46.2% as red (231 of 500). v005 is ahead of v004 by 13.4 points in each seat, so its edge does not depend on seat. But as red v005 is not clearly above 50%.
+## How the two bots differ
 
-**Length.** This is the main disagreement with the whole batch. v005 won 60.6% of short games (226 of 373, up to 16 turns), 59.7% of regular games (176 of 295, 17 to 21 turns) and only 49.7% of long games (165 of 332, 22 turns or more). The gap between short and long is about 11 points, with a 95% margin near 7. The edge belongs to short and regular games.
+Means at turn 10 (v004 / v005):
+- Shape: total_cut 60.5 / 7.7, max_cut 23.0 / 3.3, joints 7.0 / 2.4, empty_joints 5.4 / 1.6. The shape term works as designed from turn 5 on (total_cut 19.3 / 6.5), and the gap holds in both seats.
+- Land: voronoi 52.8 / 44.6, room 14.9 / 8.9, border 18.7 / 11.9. v005 holds less land nearer to its cells than the enemy's and leaves less neutral room beside its territory. Voronoi is one of the metrics that tell the winner, so this is a cost.
+- Expansion: far_cells 1.7 / 0.8 at turn 10 and 3.7 / 2.7 at turn 12. Cells are equal (26.1 / 25.4 at turn 10, 37.9 / 38.8 at turn 20). Material is level at turn 10 (260 / 258) and pulls ahead from turn 12 (279 / 296), with material_change at turn 12 of 5.7 / 19.4.
+- Spending: at turn 8 v005 keeps 30% of its gold against v004's 68%, and spends 9.5 against 4.8 on buildings. By turn 20 it holds more gold (67.1 / 55.4).
 
-Long games show different tendencies. At five turns before the end, gold (89%), income (92%), can_cut (80%), inner_units (83%), far_cells (83%) and reach (lower wins 82%) lead. At one turn before the end, mines (74%), towers (65%), tower_cover (70%) and hq_guard (58%) lead, and the winner lost fewer cells in its last turn in 62% of games. Short games at five turns before the end show cells (84%) and income (70%), and gold gives no signal (54%).
+Seat differences (same bot, different seat):
+- Material_change at turn 10: v005 as blue 22.2 against v004 as red 12.5; v005 as red 9.9 against v004 as blue 23.2. v005 gains economically as blue and trails as red.
+- Far cells: v005 as red reaches 0.0 to 0.2 at turns 8 to 10, against v004 as blue at 2.9. v005 as blue reaches 1.4 at turn 10 and 4.7 at turn 12, against v004 as red at 0.6 and 1.3.
+- Shape: the joint and cut gaps are the same in both seats, so the shape change does not depend on the seat. The expansion and economy gains do.
 
-**Leader at turn 10.** The turn-10 leader won 731 games and lost 263. When it lost, the winner came from behind: v005 in 172 of those games and v004 in 91. So 30% of v005's wins came from behind, against 21% of v004's. v005 won 69% of its wins from a turn-10 lead, against 79% for v004. The report does not give each bot's lead conversion, so this is a difference in wins, not a conversion rate.
+## What the report cannot say
 
-**Seat and bot together.** When v005 was red, at turn 10 its far_cells averaged 0.2 against v004's 2.9 (v004 blue), its material change 9.9 against 23.2, and its room 7.2 against 17.6. When v005 was blue, its far_cells averaged 1.4 against v004's 0.6, and its material change 22.2 against 12.5. The red-seat v005 falls behind in tempo around turn 10.
-
-**Winner-conditioned rows.** The "won" slices for joints and empty_joints (v004 wins show more joints at five turns before the end, 87%; v005 wins show fewer, 28%) follow from which bot won, since v004 always has more joints. They are bot identity, not evidence of cause.
-
-## How v005 differs from v004
-
-At turn 10 (v004 / v005 means): total_cut 60.5 / 7.7, max_cut 23.0 / 3.3, empty_joints 5.4 / 1.6, joints 7.0 / 2.4. The shape term does what it aims at. Yet joint counts do not decide who wins, while actual cut-offs do: cut_off is 3.9 / 2.7 at turn 12, and v005 has fewer.
-
-v005 expands less toward the enemy: far_cells 0.8 / 1.7 at turn 10 and room 8.9 / 14.9. Its economy is larger from about turn 12: material 296 / 279 at turn 12 and 432 / 408 at turn 20; gross income 33.3 / 31.4 at turn 12 and 44.2 / 41.9 at turn 20. It spends more on buildings at turn 8 (9.5 / 4.8), and v004 keeps 67.5% of its gold unspent at turn 8 against v005's 30.2%. Army and unit counts are close. Whether the shape term causes the economic lead is not shown here.
-
-## How far to trust the metrics
-
-- There are no reviews, so no judgments and no agreement figures.
-- Length and winner are outcomes, so slices by them are post hoc. Slices by winner mix bot identity.
-- The turn-1 "tells" in the short-game slice (economy metrics at 73%) and the leader-lost slice (hq_gap and reach at 77%) rest on the first turn and have no per-turn values in the report. Treat them as unverified.
-- Ties count half. The one-turn-before figures are near-trivial because the winner is ahead, so they show outcome, not cause.
-- Sample size falls with turn: 999 games at turn 10, 405 at turn 20. Later tells rest on fewer games.
-- Overall v005 share is 56.7% (about 53.6% to 59.8%). Blue's share of wins is 60.5%. The long-game share of 49.7% has a margin near 5.4 points.
+- These are correlations from games that have already ended. Late-turn shares rest on fewer games: 797 games still run at turn 15 and 436 at turn 20. Some late shares come from survivors, such as joints at 72% for turn 28 in the v004-red slice.
+- Blue starts with one more cell, so early tells can be seat effects. The 21-point seat gap is the same for each bot.
+- The 56.7% has a 95% interval of about 53.6% to 59.8%. It covers one seed and one opponent.
+- The report gives no per-length means for v005, so it cannot say what v005 does differently in long games.
+- The opening plan and the shape term changed together, and both show from turn 5. The report cannot separate them.
+- Lead and winner are linked by construction: material is both the lead and a winner tell.
+- It has no plies, no moves and no reviews, so it cannot name the moves behind any gap.
 
 ## Ideas for the next experiment
 
-1. **A seat-aware opening.** Evidence: v005 wins 46.2% as red and 67.2% as blue. As red, its far_cells, room and material change at turn 10 are well below v004's (0.2 against 2.9, 7.2 against 17.6, 9.9 against 23.2). Try a red-only turn-1 plan that claims more ground toward the enemy HQ, and keep the blue plan. Test seat by seat so the blue result is not diluted.
-
-2. **A shape term aimed at real cut-offs.** Evidence: total_cut, max_cut and joints never reach the threshold overall, and in the seat slices they show 45% to 62%. cut_off tells from turn 12 (71%) and v005 already has fewer. Try penalising cut-offs and exposure (exposed30, can_cut) instead of the joint count, or a lower joint weight, and watch far_cells and room so the expansion does not fall further.
-
-3. **A late-game term for long games.** Evidence: v005's edge is gone in long games (49.7% over 332). There, inner_units, far_cells and can_cut lead five turns before the end, and towers, tower_cover and hq_guard lead one turn before. Room drops to 3.7 for v005 by turn 20. Try a late term, after about turn 15, that weighs can_cut and HQ-guard units when room runs out. This is the least certain idea: the long-game signals mix cause and effect, so read per-game reviews of long games before building it.
+1. Separate the two v005 changes. Run v005 with only the turn-1 opening, and with only the shape term, against v004 over seat-swapped pairs. The shape gap appears from turn 5, so this batch cannot tell which change wins games.
+2. Keep the shape term but protect land. v005 holds less land (voronoi 44.6 against 52.8 at turn 10, room 8.9 against 14.9), and voronoi tells the winner at 77% by turn 12. Try a joint penalty that applies only where the cut cells would be lost to the enemy, or raise the weight of voronoi and room. The joint metrics stayed near 50% through turn 10, so the current penalty may cost more land than it protects.
+3. Make the red opening expand. As red, v005 barely pushes outward (far_cells 0.2 against 2.9 at turn 10) and trails in material_change at turn 10. Test a seat-aware opening so red reaches out as blue does, and measure the win rate by seat.
+4. Measure before changing the late game. v005 wins only half of the long games, and the report cannot say why. Before changing the late plan, log what v005 does after turn 20: its gold, its spending, and its cell losses.
