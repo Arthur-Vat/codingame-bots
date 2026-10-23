@@ -1,7 +1,7 @@
 ---
 id: E010
 date: 2026-10-23
-pull_request: "#NN"
+pull_request: "#194"
 parent: ice-and-fire-v004
 hypothesis: An opening planned for our side alone over its first 7 turns, which keeps the territory and the income of v004's but grows it compact (few cells that one capture cuts off), together with the same shape term in the middle-game evaluation, beats v004.
 change: Until the middle game the `plan` bot plays v003's opening rules with weights for a compact shape and a pull toward the enemy HQ, chosen turn by turn by an anytime beam search over our next 7 turns as if the opponent passed (about 610 ms on the first turn); the middle-game evaluation takes 2 from a side's score for each of its joints and each cell of the largest group one capture cuts off.
