@@ -1,0 +1,108 @@
+{
+  "name": "ice-and-fire-151-p1-0",
+  "players": [
+    "v004",
+    "v003"
+  ],
+  "winner": 1,
+  "end": "the rules ended the game",
+  "plies": 38,
+  "last_turn": 19,
+  "middle": 14,
+  "endgame": 20,
+  "lead": "material",
+  "metrics": [
+    "gold",
+    "income",
+    "upkeep",
+    "cells",
+    "cut_off",
+    "units",
+    "army",
+    "mines",
+    "towers",
+    "voronoi",
+    "exposed30",
+    "exposed50",
+    "can_cut",
+    "hq_gap",
+    "material"
+  ],
+  "none": {
+    "hq_gap": 999
+  },
+  "moments": [
+    {
+      "ply": 19,
+      "kind": "large cut",
+      "favours": 1,
+      "text": "blue took red's cells from 32 to 18"
+    },
+    {
+      "ply": 20,
+      "kind": "swing",
+      "favours": 1,
+      "text": "the lead moved 165 material towards blue over the last turn, to blue 170"
+    },
+    {
+      "ply": 21,
+      "kind": "large cut",
+      "favours": 1,
+      "text": "blue took red's cells from 28 to 15"
+    },
+    {
+      "ply": 22,
+      "kind": "swing",
+      "favours": 1,
+      "text": "the lead moved 96 material towards blue over the last turn, to blue 266"
+    },
+    {
+      "ply": 23,
+      "kind": "large cut",
+      "favours": 1,
+      "text": "blue took red's cells from 22 to 14"
+    },
+    {
+      "ply": 24,
+      "kind": "swing",
+      "favours": 1,
+      "text": "the lead moved 75 material towards blue over the last turn, to blue 341"
+    },
+    {
+      "ply": 26,
+      "kind": "swing",
+      "favours": 1,
+      "text": "the lead moved 90 material towards blue over the last turn, to blue 431"
+    },
+    {
+      "ply": 28,
+      "kind": "swing",
+      "favours": 1,
+      "text": "the lead moved 99 material towards blue over the last turn, to blue 530"
+    },
+    {
+      "ply": 30,
+      "kind": "swing",
+      "favours": 1,
+      "text": "the lead moved 68 material towards blue over the last turn, to blue 598"
+    },
+    {
+      "ply": 32,
+      "kind": "swing",
+      "favours": 1,
+      "text": "the lead moved 87 material towards blue over the last turn, to blue 685"
+    },
+    {
+      "ply": 34,
+      "kind": "swing",
+      "favours": 1,
+      "text": "the lead moved 82 material towards blue over the last turn, to blue 767"
+    },
+    {
+      "ply": 37,
+      "kind": "HQ threat",
+      "favours": 1,
+      "text": "blue can pay a chain of trainings to red's HQ this turn, for the first time"
+    }
+  ]
+}

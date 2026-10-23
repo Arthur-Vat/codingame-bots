@@ -1,0 +1,96 @@
+{
+  "name": "ice-and-fire-151-p8-0",
+  "players": [
+    "v004",
+    "v003"
+  ],
+  "winner": 0,
+  "end": "the rules ended the game",
+  "plies": 85,
+  "last_turn": 43,
+  "middle": 14,
+  "endgame": 29,
+  "lead": "material",
+  "metrics": [
+    "gold",
+    "income",
+    "upkeep",
+    "cells",
+    "cut_off",
+    "units",
+    "army",
+    "mines",
+    "towers",
+    "voronoi",
+    "exposed30",
+    "exposed50",
+    "can_cut",
+    "hq_gap",
+    "material"
+  ],
+  "none": {
+    "hq_gap": 999
+  },
+  "moments": [
+    {
+      "ply": 34,
+      "kind": "swing",
+      "favours": 1,
+      "text": "the lead moved 158 material towards blue over the last turn, to blue 182"
+    },
+    {
+      "ply": 36,
+      "kind": "large cut",
+      "favours": 0,
+      "text": "red took blue's cells from 38 to 17"
+    },
+    {
+      "ply": 39,
+      "kind": "debt",
+      "favours": 1,
+      "text": "red could not pay its upkeep at its next turn and lost all its units"
+    },
+    {
+      "ply": 42,
+      "kind": "swing",
+      "favours": 1,
+      "text": "the lead moved 91 material towards blue over the last turn, to blue 237"
+    },
+    {
+      "ply": 46,
+      "kind": "swing",
+      "favours": 1,
+      "text": "the lead moved 61 material towards blue over the last turn, to blue 312"
+    },
+    {
+      "ply": 60,
+      "kind": "large cut",
+      "favours": 0,
+      "text": "red took blue's cells from 32 to 11"
+    },
+    {
+      "ply": 62,
+      "kind": "swing",
+      "favours": 0,
+      "text": "the lead moved 66 material towards red over the last turn, to blue 167"
+    },
+    {
+      "ply": 80,
+      "kind": "lead change",
+      "favours": 0,
+      "text": "red now leads by 70 material, at the start of turn 41"
+    },
+    {
+      "ply": 82,
+      "kind": "debt",
+      "favours": 0,
+      "text": "blue could not pay its upkeep at its next turn and lost all its units"
+    },
+    {
+      "ply": 84,
+      "kind": "HQ threat",
+      "favours": 0,
+      "text": "red can pay a chain of trainings to blue's HQ this turn, for the first time"
+    }
+  ]
+}
