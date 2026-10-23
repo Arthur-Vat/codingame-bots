@@ -24,8 +24,8 @@
 //! active cell other than the HQ with at most one active neighbour of its
 //! own, the end of a line; **reach** is the steps from the territory to the
 //! enemy HQ; **value** is `solo::value` with `solo::Objective::DEFAULT`
-//! (`--reach W` sets its weight of the steps to the enemy HQ, for the beam
-//! and the value).
+//! (`--reach W` and `--income W` set its weights of the steps to the enemy
+//! HQ and of the income, for the beam and the value).
 
 use std::fmt::Write as _;
 use std::time::{Duration, Instant};
@@ -188,6 +188,7 @@ fn main() {
             "--boards" => boards = value().parse().unwrap_or(boards),
             "--trace" => trace = value().parse().ok(),
             "--reach" => objective.reach = value().parse().unwrap_or(objective.reach),
+            "--income" => objective.income = value().parse().unwrap_or(objective.income),
             other => {
                 eprintln!("solo: unknown argument {other}");
                 std::process::exit(2);
