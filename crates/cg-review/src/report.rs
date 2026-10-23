@@ -81,34 +81,89 @@ fn mean(sum: i64, n: usize) -> Option<f64> {
     (n > 0).then(|| sum as f64 / n as f64)
 }
 
-/// The curves of `games`, all with the same metrics: those of the first.
-pub fn curves(games: &[Game]) -> Curves {
-    let Some(first) = games.first() else {
-        return Curves::default();
-    };
-    let metrics = first.summary.metrics.clone();
+/// How a game's turns are lined up across games.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+pub enum Align {
+    /// Turn `t` from the start (1 first).
+    Start,
+    /// `t` turns before the game's last turn (0 the last).
+    End,
+}
+
+/// The game's last turn.
+fn last_turn(game: &Game) -> usize {
+    game.rows.len().div_ceil(2)
+}
+
+/// The turn at `step` of `align` in `game`, if the game has it.
+fn turn_at(game: &Game, align: Align, step: usize) -> Option<usize> {
+    match align {
+        Align::Start => (step >= 1 && step <= last_turn(game)).then_some(step),
+        Align::End => last_turn(game).checked_sub(step).filter(|&t| t >= 1),
+    }
+}
+
+/// The bots of `games`, sorted.
+pub fn bots_of(games: &[Game]) -> Vec<String> {
     let mut bots: Vec<String> = games
         .iter()
         .flat_map(|g| g.summary.players.iter().cloned())
         .collect();
     bots.sort();
     bots.dedup();
+    bots
+}
+
+/// The curves of `games`, all with the same metrics: those of the first;
+/// turns from the start.
+pub fn curves(games: &[Game]) -> Curves {
+    let Some(first) = games.first() else {
+        return Curves::default();
+    };
+    let metrics = first.summary.metrics.clone();
+    let bots = bots_of(games);
+    let refs: Vec<&Game> = games.iter().collect();
+    let points = points_of(&refs, &metrics, &bots, Align::Start);
+    Curves {
+        bots,
+        metrics,
+        points,
+    }
+}
+
+/// Each metric's points over `games` (those with `metrics`), at steps 1 to
+/// [`MAX_TURN`] from the start, or 0 to [`MAX_TURN`] - 1 before the end;
+/// `bot_means` in the order of `bots`.
+pub fn points_of(
+    games: &[&Game],
+    metrics: &[String],
+    bots: &[String],
+    align: Align,
+) -> Vec<Vec<Point>> {
     let games: Vec<&Game> = games
         .iter()
+        .copied()
         .filter(|g| g.summary.metrics == metrics)
         .collect();
+    let steps: Vec<usize> = match align {
+        Align::Start => (1..=MAX_TURN).collect(),
+        Align::End => (0..MAX_TURN).collect(),
+    };
     let mut points = Vec::new();
     for (index, key) in metrics.iter().enumerate() {
         let mut row = Vec::new();
-        for turn in 1..=MAX_TURN {
+        for &step in &steps {
             let mut p = Point {
-                turn,
+                turn: step,
                 bot_means: vec![None; bots.len()],
                 ..Point::default()
             };
             let (mut win_sum, mut win_n, mut lose_sum, mut lose_n) = (0, 0, 0, 0);
             let mut bot_sums = vec![(0i64, 0usize); bots.len()];
             for game in &games {
+                let Some(turn) = turn_at(game, align, step) else {
+                    continue;
+                };
                 let none = game.summary.none.get(key).copied();
                 let values = [0, 1].map(|side| at(game, none, index, turn, side));
                 for (side, value) in values.iter().enumerate() {
@@ -144,10 +199,157 @@ pub fn curves(games: &[Game]) -> Curves {
         }
         points.push(row);
     }
-    Curves {
+    points
+}
+
+/// The turn at which [`slices`] looks for the leader in the lead metric.
+pub const LEAD_TURN: usize = 10;
+
+/// A subset of a batch's games, along one dimension.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct Slice {
+    /// What splits the batch: `All`, `Length`, `Seats`, `Winner` or `Lead`.
+    pub dimension: String,
+    pub name: String,
+    /// The games' indices in the batch.
+    pub games: Vec<usize>,
+}
+
+/// The batch's slices: all games; the shortest, regular and longest thirds
+/// by length; for two bots, each seating and each bot's wins; and the games
+/// the side ahead in the lead metric at turn [`LEAD_TURN`] went on to win or
+/// to lose (games without a leader then are in neither).
+pub fn slices(games: &[Game], bots: &[String]) -> Vec<Slice> {
+    let all: Vec<usize> = (0..games.len()).collect();
+    let mut out = vec![Slice {
+        dimension: "All".to_string(),
+        name: "All games".to_string(),
+        games: all.clone(),
+    }];
+    let mut lengths: Vec<usize> = games.iter().map(last_turn).collect();
+    lengths.sort_unstable();
+    if let (Some(&low), Some(&high)) = (
+        lengths.get(lengths.len() / 3),
+        lengths.get(2 * lengths.len() / 3),
+    ) {
+        let by = |name: String, keep: &dyn Fn(usize) -> bool| Slice {
+            dimension: "Length".to_string(),
+            name,
+            games: all
+                .iter()
+                .copied()
+                .filter(|&i| keep(last_turn(&games[i])))
+                .collect(),
+        };
+        out.push(by(format!("Short (up to {low} turns)"), &|t| t <= low));
+        out.push(by(format!("Regular ({} to {high} turns)", low + 1), &|t| {
+            t > low && t <= high
+        }));
+        out.push(by(format!("Long ({} turns or more)", high + 1), &|t| {
+            t > high
+        }));
+    }
+    if bots.len() == 2 {
+        for red in bots {
+            let blue = bots.iter().find(|b| *b != red).expect("two bots");
+            out.push(Slice {
+                dimension: "Seats".to_string(),
+                name: format!("{red} red, {blue} blue"),
+                games: all
+                    .iter()
+                    .copied()
+                    .filter(|&i| &games[i].summary.players[0] == red)
+                    .collect(),
+            });
+        }
+        for bot in bots {
+            out.push(Slice {
+                dimension: "Winner".to_string(),
+                name: format!("{bot} won"),
+                games: all
+                    .iter()
+                    .copied()
+                    .filter(|&i| {
+                        let g = &games[i].summary;
+                        g.winner.is_some_and(|w| &g.players[w] == bot)
+                    })
+                    .collect(),
+            });
+        }
+    }
+    let leader = |game: &Game| -> Option<usize> {
+        let index = game
+            .summary
+            .metrics
+            .iter()
+            .position(|k| *k == game.summary.lead)?;
+        let red = at(game, None, index, LEAD_TURN, 0)?;
+        let blue = at(game, None, index, LEAD_TURN, 1)?;
+        match red.cmp(&blue) {
+            std::cmp::Ordering::Greater => Some(0),
+            std::cmp::Ordering::Less => Some(1),
+            std::cmp::Ordering::Equal => None,
+        }
+    };
+    for (name, held) in [("won", true), ("lost", false)] {
+        out.push(Slice {
+            dimension: "Lead".to_string(),
+            name: format!("Leader at turn {LEAD_TURN} {name}"),
+            games: all
+                .iter()
+                .copied()
+                .filter(|&i| {
+                    let g = &games[i];
+                    match (leader(g), g.summary.winner) {
+                        (Some(l), Some(w)) => (l == w) == held,
+                        _ => false,
+                    }
+                })
+                .collect(),
+        });
+    }
+    out
+}
+
+/// A slice's points, from the start and before the end.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct SlicePoints {
+    #[serde(flatten)]
+    pub slice: Slice,
+    pub start: Vec<Vec<Point>>,
+    pub end: Vec<Vec<Point>>,
+}
+
+/// Every slice's points, for charts.
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+pub struct Sliced {
+    pub bots: Vec<String>,
+    pub metrics: Vec<String>,
+    pub slices: Vec<SlicePoints>,
+}
+
+/// The points of every slice of `games`.
+pub fn sliced(games: &[Game]) -> Sliced {
+    let Some(first) = games.first() else {
+        return Sliced::default();
+    };
+    let metrics = first.summary.metrics.clone();
+    let bots = bots_of(games);
+    let slices = slices(games, &bots)
+        .into_iter()
+        .map(|slice| {
+            let refs: Vec<&Game> = slice.games.iter().map(|&i| &games[i]).collect();
+            SlicePoints {
+                start: points_of(&refs, &metrics, &bots, Align::Start),
+                end: points_of(&refs, &metrics, &bots, Align::End),
+                slice,
+            }
+        })
+        .collect();
+    Sliced {
         bots,
         metrics,
-        points,
+        slices,
     }
 }
 
@@ -323,6 +525,141 @@ pub fn report(games: &[Game], meanings: &BTreeMap<String, String>) -> String {
                 );
             }
             out.push('\n');
+        }
+    }
+    out.push_str(&by_slice(games, &c));
+    out
+}
+
+/// The report's sections by slice (see [`slices`]).
+fn by_slice(games: &[Game], c: &Curves) -> String {
+    let mut out = String::new();
+    let all = slices(games, &c.bots);
+    let refs = |slice: &Slice| -> Vec<&Game> { slice.games.iter().map(|&i| &games[i]).collect() };
+    let starts: Vec<Vec<Vec<Point>>> = all
+        .iter()
+        .map(|s| points_of(&refs(s), &c.metrics, &c.bots, Align::Start))
+        .collect();
+    let ends: Vec<Vec<Vec<Point>>> = all
+        .iter()
+        .map(|s| points_of(&refs(s), &c.metrics, &c.bots, Align::End))
+        .collect();
+
+    out.push_str("\n## How the batch splits\n\nThe same games cut along four dimensions: length (the shortest, regular and longest thirds), seats, which bot won, and whether the side ahead in the lead metric at turn ");
+    let _ = write!(out, "{LEAD_TURN} went on to win. Each slice is analysed as the whole batch is above.\n\n| Slice | Games |");
+    for bot in &c.bots {
+        let _ = write!(out, " {bot} won |");
+    }
+    out.push_str(" Median length |\n| --- | ---: |");
+    for _ in &c.bots {
+        out.push_str(" ---: |");
+    }
+    out.push_str(" ---: |\n");
+    for slice in &all {
+        let _ = write!(out, "| {} | {} |", slice.name, slice.games.len());
+        for bot in &c.bots {
+            let wins = slice
+                .games
+                .iter()
+                .filter(|&&i| {
+                    let g = &games[i].summary;
+                    g.winner.is_some_and(|w| &g.players[w] == bot)
+                })
+                .count();
+            let _ = write!(out, " {wins} |");
+        }
+        let mut lengths: Vec<usize> = slice.games.iter().map(|&i| last_turn(&games[i])).collect();
+        lengths.sort_unstable();
+        let median = lengths
+            .get(lengths.len() / 2)
+            .map_or("–".to_string(), |m| m.to_string());
+        let _ = writeln!(out, " {median} |");
+    }
+
+    let header = |out: &mut String| {
+        out.push_str("| Metric |");
+        for slice in &all {
+            let _ = write!(out, " {} |", slice.name);
+        }
+        out.push_str("\n| --- |");
+        for _ in &all {
+            out.push_str(" ---: |");
+        }
+        out.push('\n');
+    };
+    let _ = writeln!(
+        out,
+        "\n## When each metric tells the winner, by slice\n\nFrom the start: the first turn at which the metric tells the winner in that slice (at least {MIN_GAMES} games, a share of at least {TELLS}% or at most {}%), with the share then; – when it never does.\n",
+        100 - TELLS
+    );
+    header(&mut out);
+    for (i, metric) in c.metrics.iter().enumerate() {
+        let _ = write!(out, "| {metric} |");
+        for points in &starts {
+            let cell =
+                first_telling(&points[i]).map_or("–".to_string(), |(t, s)| format!("{t} ({s}%)"));
+            let _ = write!(out, " {cell} |");
+        }
+        out.push('\n');
+    }
+
+    for step in [5, 1] {
+        let _ = writeln!(
+            out,
+            "\n## {step} turn{} before the end, by slice\n\nEach game lined up on its last turn: the share of games in which the winner's value was higher, {step} turn{} before it (a tie counting half); – with fewer than {MIN_GAMES} games.\n",
+            if step == 1 { "" } else { "s" },
+            if step == 1 { "" } else { "s" }
+        );
+        header(&mut out);
+        for (i, metric) in c.metrics.iter().enumerate() {
+            let _ = write!(out, "| {metric} |");
+            for points in &ends {
+                let p = &points[i][step];
+                let cell = p
+                    .higher_share()
+                    .filter(|_| p.games >= MIN_GAMES)
+                    .map_or("–".to_string(), |s| format!("{s}%"));
+                let _ = write!(out, " {cell} |");
+            }
+            out.push('\n');
+        }
+    }
+
+    if c.bots.len() == 2 {
+        for (slice, points) in all
+            .iter()
+            .zip(&starts)
+            .filter(|(s, _)| s.dimension == "Seats")
+        {
+            let _ = writeln!(
+                out,
+                "\n## {}: the two bots at turn 10\n\nThe ten metrics on which the bots' means differ most at turn 10 in these games, as `{}` / `{}`, at turns 8, 10 and 12.\n\n| Metric | Turn 8 | Turn 10 | Turn 12 |\n| --- | ---: | ---: | ---: |",
+                slice.name, c.bots[0], c.bots[1]
+            );
+            let gap = |i: usize| {
+                let p = &points[i][9];
+                match (p.bot_means[0], p.bot_means[1]) {
+                    (Some(a), Some(b)) if a.abs().max(b.abs()) > 0.0 => {
+                        ((a - b).abs() / a.abs().max(b.abs()) * 1000.0) as i64
+                    }
+                    _ => 0,
+                }
+            };
+            let mut by_gap: Vec<usize> = (0..c.metrics.len()).collect();
+            by_gap.sort_by_key(|&i| (std::cmp::Reverse(gap(i)), i));
+            for &i in by_gap.iter().take(10) {
+                let _ = write!(out, "| {} |", c.metrics[i]);
+                for t in [8, 10, 12] {
+                    let p = &points[i][t - 1];
+                    let _ = write!(
+                        out,
+                        " {} / {} |",
+                        number(p.bot_means[0]),
+                        number(p.bot_means[1])
+                    );
+                }
+                out.push('\n');
+            }
         }
     }
     out

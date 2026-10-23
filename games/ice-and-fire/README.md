@@ -112,7 +112,7 @@ cargo run --release -p ice-and-fire-review -- games --out GAMES --text TEXT DIR/
 cargo run --release -p ice-and-fire-review -- report GAMES --curves curves.json > report.md
 ```
 
-`report` reads the games' `NAME.csv` and `NAME.summary.json` and prints, for each metric, from which turn it tells the winner (the winner's value higher, or lower, in at least 70% of the games still running, a tie counting half), its share at turns 5 to 20, the ten metrics that tell the winner best at turns 8, 12, 16 and 20 with the winner's and loser's means, and the two bots' means turn by turn. `--curves` writes the same numbers for every turn as JSON, for charts.
+`report` reads the games' `NAME.csv` and `NAME.summary.json` and prints, for each metric, from which turn it tells the winner (the winner's value higher, or lower, in at least 70% of the games still running, a tie counting half), its share at turns 5 to 20, the ten metrics that tell the winner best at turns 8, 12, 16 and 20 with the winner's and loser's means, and the two bots' means turn by turn. It then cuts the games into slices, so that an average over the whole batch does not hide a tendency: the shortest, regular and longest thirds by length, each seating, each bot's wins, and the games the side ahead in material at turn 10 went on to win or to lose; for each slice it gives when each metric tells the winner, and its share 5 turns and 1 turn before each game's last turn (games lined up on their end), and for each seating the metrics on which the two bots differ most. `--curves` writes every slice's numbers for every turn, from the start and before the end, as JSON, for charts.
 
 ## Studio
 

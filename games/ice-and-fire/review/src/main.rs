@@ -55,11 +55,14 @@ enum Command {
     },
     /// Prints the metrics report of the games `games` wrote in DIR (ADR
     /// 0044): from which turn each metric tells the winner, the metrics that
-    /// tell it best at a few turns, and the two bots compared.
+    /// tell it best at a few turns, the two bots compared, and the same by
+    /// slice (length, seats, winner, lead at turn 10), from the start and
+    /// before the end.
     Report {
         /// The directory of the games' NAME.csv and NAME.summary.json.
         dir: PathBuf,
-        /// Also write every metric's points, turn by turn, as JSON here, for
+        /// Also write every metric's points, turn by turn from the start and
+        /// before the end, for every slice of the batch, as JSON here, for
         /// charts.
         #[arg(long)]
         curves: Option<PathBuf>,
@@ -153,7 +156,7 @@ fn run(cli: Cli) -> Result<(), String> {
                 .collect();
             print!("{}", report::report(&games, &meanings));
             if let Some(file) = curves {
-                let json = serde_json::to_string(&report::curves(&games))
+                let json = serde_json::to_string(&report::sliced(&games))
                     .map_err(|e| format!("curves: {e}"))?;
                 fs::write(&file, json).map_err(|e| format!("{}: {e}", file.display()))?;
             }

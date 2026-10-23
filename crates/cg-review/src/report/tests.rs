@@ -84,3 +84,75 @@ fn the_report_has_the_results_the_telling_turns_and_the_bots_compared() {
     assert!(text.contains("| Cells held. |"));
     assert!(text.contains("## alpha against beta"));
 }
+
+/// A game of `turns` turns between `red` and `blue`, `winner` winning,
+/// red's cells `red_cells(turn)` and blue's 10 at each turn.
+fn long_game(turns: usize, players: [&str; 2], winner: usize, red_cells: fn(usize) -> i64) -> Game {
+    let cells: Vec<(i64, i64)> = (0..2 * turns)
+        .map(|ply| (red_cells(ply / 2 + 1), 10))
+        .collect();
+    let mut trace = game(&cells, Some(winner));
+    trace.players = [players[0].to_string(), players[1].to_string()];
+    batch_game(&trace)
+}
+
+#[test]
+fn turns_before_the_end_line_games_up_on_their_last_turn() {
+    // Red has 5 cells at its last turn, blue 2; one turn before, 1 and 1.
+    let games = vec![batch_game(&game(
+        &[(1, 1), (1, 1), (5, 2), (5, 2)],
+        Some(0),
+    ))];
+    let refs: Vec<&Game> = games.iter().collect();
+    let metrics = vec!["cells".to_string()];
+    let bots = vec!["alpha".to_string(), "beta".to_string()];
+    let end = super::points_of(&refs, &metrics, &bots, super::Align::End);
+    assert_eq!(end[0][0].turn, 0);
+    assert_eq!(end[0][0].winner_mean, Some(5.0));
+    assert_eq!(end[0][1].winner_mean, Some(1.0));
+    assert_eq!(end[0][2].games, 0);
+    let start = super::points_of(&refs, &metrics, &bots, super::Align::Start);
+    assert_eq!(start[0][0].turn, 1);
+    assert_eq!(start[0][0].winner_mean, Some(1.0));
+}
+
+#[test]
+fn the_slices_cut_by_length_seats_winner_and_lead() {
+    // Lengths 10, 12 and 14 turns; alpha red in the first two. Red leads at
+    // turn 10 in the first and third games (11 cells against 10), blue in
+    // the second (9 against 10).
+    let games = vec![
+        long_game(10, ["alpha", "beta"], 0, |_| 11),
+        long_game(12, ["alpha", "beta"], 0, |_| 9),
+        long_game(14, ["beta", "alpha"], 1, |_| 11),
+    ];
+    let bots = super::bots_of(&games);
+    let s = super::slices(&games, &bots);
+    let get = |name: &str| s.iter().find(|x| x.name == name).map(|x| x.games.clone());
+    assert_eq!(get("All games"), Some(vec![0, 1, 2]));
+    assert_eq!(get("Short (up to 12 turns)"), Some(vec![0, 1]));
+    assert_eq!(get("Regular (13 to 14 turns)"), Some(vec![2]));
+    assert_eq!(get("Long (15 turns or more)"), Some(vec![]));
+    assert_eq!(get("alpha red, beta blue"), Some(vec![0, 1]));
+    assert_eq!(get("beta red, alpha blue"), Some(vec![2]));
+    assert_eq!(get("alpha won"), Some(vec![0, 1, 2]));
+    assert_eq!(get("beta won"), Some(vec![]));
+    // The test games' lead metric is cells.
+    assert_eq!(get("Leader at turn 10 won"), Some(vec![0]));
+    assert_eq!(get("Leader at turn 10 lost"), Some(vec![1, 2]));
+    let all = super::sliced(&games);
+    assert_eq!(all.slices.len(), s.len());
+    assert_eq!(all.slices[0].start[0].len(), super::MAX_TURN);
+}
+
+#[test]
+fn the_report_has_its_slices() {
+    let meanings = BTreeMap::new();
+    let text = report(&batch(40), &meanings);
+    assert!(text.contains("## How the batch splits"));
+    assert!(text.contains("| All games | 40 | 40 | 0 | 2 |"));
+    assert!(text.contains("## When each metric tells the winner, by slice"));
+    assert!(text.contains("## 5 turns before the end, by slice"));
+    assert!(text.contains("## 1 turn before the end, by slice"));
+    assert!(text.contains("## alpha red, beta blue: the two bots at turn 10"));
+}
