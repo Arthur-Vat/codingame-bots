@@ -1,7 +1,7 @@
 ---
 id: E009
 date: 2026-10-23
-pull_request: pending
+pull_request: "#193"
 parent: ice-and-fire-v004
 hypothesis: The first batch of game reviews saw armies wiped out by debt after buying level 3 units, so a plan search that never makes its income negative beats v004.
 change: None released. Local screening only: v004 whose plan search refuses, in the middle game, an action after which the player's income is below zero and lower than before, unless it wins.
