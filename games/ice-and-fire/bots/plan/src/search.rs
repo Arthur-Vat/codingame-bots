@@ -92,6 +92,15 @@ fn apply_all(state: &mut State, commands: &[Command]) -> bool {
     commands.iter().all(|&command| state.apply(command))
 }
 
+/// Whether the action that turned `cur` into `next` leaves the player's
+/// income below zero and lower than it was, without winning (E009): an army
+/// whose upkeep the territory cannot pay ends in debt, which wipes it out.
+/// Reconnecting cut-off cells raises income, so it is never refused.
+fn breaks_upkeep(cur: &State, next: &State) -> bool {
+    let me = cur.to_act();
+    next.outcome().is_none() && next.income(me) < 0 && next.income(me) < cur.income(me)
+}
+
 /// A key to remember an action by.
 fn key(commands: &[Command]) -> u64 {
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
@@ -215,7 +224,7 @@ impl Search {
             done[index] = true;
             let commands = actions[index].commands();
             let mut next = cur.clone();
-            if !apply_all(&mut next, commands) {
+            if !apply_all(&mut next, commands) || breaks_upkeep(cur, &next) {
                 gains.insert(key(commands), i64::MIN / 4);
                 continue;
             }
@@ -396,3 +405,6 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
     }
     thought
 }
+
+#[cfg(test)]
+mod tests;
