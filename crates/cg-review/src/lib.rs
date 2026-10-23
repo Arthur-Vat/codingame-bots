@@ -13,9 +13,15 @@
 //!   reviewers' notes: which metrics, at which point of the game, go with
 //!   the winner, how often each kind of decisive moment decided the game,
 //!   and whether the plays the reviewers judged good or bad moved the lead
-//!   the way they said.
+//!   the way they said;
+//! - [`report`]: a metrics report of a large batch (ADR 0044): from which
+//!   turn each metric tells the winner, the metrics that tell it best, and
+//!   the two bots compared, then the same by slice (length thirds, seats,
+//!   winner, lead at turn 10) from the start and before the end, with every
+//!   slice's points turn by turn for charts.
 
 pub mod detect;
+pub mod report;
 pub mod summary;
 pub mod text;
 pub mod trace;

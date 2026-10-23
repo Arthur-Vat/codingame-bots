@@ -1,11 +1,11 @@
 ---
 name: review-games
-description: Runs a batch of game reviews - plays two bots against each other, turns the records into game files and metrics, has a Haiku agent review each game and another summarize the batch, and lands the batch in the repository. Use when the owner or a session asks for reviews of a game's bots.
+description: Runs a batch of game reviews - plays two bots against each other, turns the records into game files and metrics, has Haiku agents review each game (or one read a metrics report of a large batch) and summarize the batch, and lands the batch in the repository. Use when the owner or a session asks for reviews of a game's bots.
 ---
 
 # Review a batch of games
 
-The design is in [ADR 0043](../../../docs/adr/0043-game-reviews-by-haiku.md); the tool and the files are described in the game's README ("Game reviews"). A game needs a review binary first (`<game>-review`, over the crate `cg-review`); A Code of Ice and Fire has `ice-and-fire-review`.
+The design is in [ADR 0043](../../../docs/adr/0043-game-reviews-by-haiku.md) (full games) and [ADR 0044](../../../docs/adr/0044-metrics-reports.md) (metrics reports of large batches; see "Metrics reports" below); the tool and the files are described in the game's README ("Game reviews"). A game needs a review binary first (`<game>-review`, over the crate `cg-review`); A Code of Ice and Fire has `ice-and-fire-review`.
 
 The main session runs the tools and starts the agents. It does not read the game files or the reviews: only the agents' short replies and the batch's summary.
 
@@ -60,3 +60,18 @@ Start one `review-summarizer` agent with the batch's directory and what to look 
 - A row for the batch in `games/<game>/reviews/README.md` (create it if missing: what a batch holds, how to make one, and a table of batches).
 - A documentation pull request (`docs(<game>): reviews of <bot> against <bot>`) on a `claude/` branch, light review (skill `review-pr`), merged on the owner's approval.
 - Tell the owner the summary's main findings and its ideas for the next experiment; reading `BATCH/summary.md` is enough.
+
+## Metrics reports
+
+When the question is what goes with winning, or how two bots differ, over many games, measure them by code and have one Haiku agent read the report (ADR 0044). The bots and seed are settled as above.
+
+```sh
+target/release/<game>-arena match --bot NAME_A=SCRATCH/bin/A --bot NAME_B=SCRATCH/bin/B --pairs 500 --seed SEED --records SCRATCH/records
+target/release/<game>-review games --out SCRATCH/games --text SCRATCH/text SCRATCH/records/*.json
+target/release/<game>-review report SCRATCH/games --curves SCRATCH/curves.json > BATCH/report.md
+```
+
+- **Interpretation:** start one `review-summarizer` agent, briefed that this is a metrics report, with `BATCH/report.md` and what to look for. Save its reply, unchanged, as `BATCH/summary.md`.
+- **Charts:** publish a private page from `SCRATCH/curves.json`, which holds every slice of the games (all, length thirds, seatings, each bot's wins, the lead at turn 10), each lined up from the start and before the end: each metric's curve over the turns (the winners' and losers' means, and each bot's), with the slice and the alignment to choose. Link it from the batch's README.
+- **Land:** the batch keeps `README.md` (bots, seed, pairs, results, the tool's commit, the commands above, the charts' link), `report.md` and `summary.md`; the records and game files stay in scratch, rebuilt from the seed. A documentation pull request, as above.
+

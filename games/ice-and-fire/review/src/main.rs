@@ -4,6 +4,7 @@
 //! ```sh
 //! ice-and-fire-review games --out DIR [--text DIR] GAME.json...
 //! ice-and-fire-review summary DIR > DIR/summary-data.md
+//! ice-and-fire-review report DIR [--curves FILE] > report.md
 //! ```
 
 mod trace;
@@ -13,6 +14,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use cg_arena::record::Record;
+use cg_review::report;
 use cg_review::summary::{load, summarize, SUMMARY_SUFFIX};
 use cg_review::text::{game_text, metrics_csv};
 use clap::{Parser, Subcommand};
@@ -50,6 +52,20 @@ enum Command {
     Summary {
         /// The batch's directory.
         dir: PathBuf,
+    },
+    /// Prints the metrics report of the games `games` wrote in DIR (ADR
+    /// 0044): from which turn each metric tells the winner, the metrics that
+    /// tell it best at a few turns, the two bots compared, and the same by
+    /// slice (length, seats, winner, lead at turn 10), from the start and
+    /// before the end.
+    Report {
+        /// The directory of the games' NAME.csv and NAME.summary.json.
+        dir: PathBuf,
+        /// Also write every metric's points, turn by turn from the start and
+        /// before the end, for every slice of the batch, as JSON here, for
+        /// charts.
+        #[arg(long)]
+        curves: Option<PathBuf>,
     },
 }
 
@@ -124,6 +140,26 @@ fn run(cli: Cli) -> Result<(), String> {
                 write_game(path, &out, &text)?;
             }
             eprintln!("wrote {} games to {}", records.len(), out.display());
+            Ok(())
+        }
+        Command::Report { dir, curves } => {
+            let (games, _, problems) = load(&dir)?;
+            if games.is_empty() {
+                return Err(format!("{}: no game files", dir.display()));
+            }
+            for problem in &problems {
+                eprintln!("left out: {problem}");
+            }
+            let meanings = trace::metrics()
+                .into_iter()
+                .map(|m| (m.key, m.meaning))
+                .collect();
+            print!("{}", report::report(&games, &meanings));
+            if let Some(file) = curves {
+                let json = serde_json::to_string(&report::sliced(&games))
+                    .map_err(|e| format!("curves: {e}"))?;
+                fs::write(&file, json).map_err(|e| format!("{}: {e}", file.display()))?;
+            }
             Ok(())
         }
         Command::Summary { dir } => {

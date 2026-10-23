@@ -89,11 +89,30 @@ cargo run --release -p ice-and-fire-review -- summary BATCH
 `games` writes, for each record, `NAME.md`, the game file a reviewer reads (in `--text`'s directory when given: the game files are large and the records rebuild them): the rules in short, the metrics' meanings, the phases, the decisive moments, then every ply (one player's turn) with the board in two characters a cell, both sides' metrics and the commands; `NAME.csv`, the metrics; and `NAME.summary.json`, the result, phases and moments. It refuses to write over a record.
 
 - **Board:** the first character is the owner (`R` red, `B` blue, upper case when active, lower case when cut off from the HQ), the second the content (`.` empty, `1` to `3` a unit, `M` mine, `T` tower, `H` HQ, `*` an empty mine spot); `##` is void.
-- **Metrics,** each side at each ply: gold, income, upkeep, active and cut-off cells, units and their training cost, mines, towers, the Voronoi share, what the enemy could cut with 30 and 50 gold (the most cells among its 8 best cuts), what the side could cut with its gold, the gold it lacks for a chain to the enemy HQ, and its material (gold + 3 × income + 4 × cells + units' cost + 10 × towers), whose difference is the lead.
+- **Metrics,** 50 for each side at each ply, each with its meaning in the game file (`ice-and-fire-review`'s `trace::metrics`):
+  - economy: gold, income before and after upkeep, upkeep, mines and free mine spots;
+  - territory: active and cut-off cells, the Voronoi share, frontier, perimeter, room to grow, cells nearer the enemy HQ, spread from the HQ, steps to the enemy HQ;
+  - shape: joints (cells whose loss cuts others off), the most and the total cut off by single cells, line ends, joints on the frontier, empty and guarded;
+  - army: units by level and their cost, units on the frontier, deep inside and near the HQ, units lost, enemy units in contact;
+  - tactics: what the enemy could cut with 30 and 50 gold (the most cells among its 8 best cuts), what the side could cut with its gold, the gold it lacks for a chain to the enemy HQ, towers and the cells they protect;
+  - its last turn: gold spent on units and on buildings, the share kept, moves, trainings, builds, cells taken and lost, and the change of its cells and material;
+  - and its material (gold + 3 × income + 4 × cells + units' cost + 10 × towers), whose difference is the lead.
 - **Phases:** the early game until the middle game (the player to act can pay a chain of trainings to an enemy cell, `ice_and_fire_opening::middle`); the endgame from the first ply of the middle game on at which a side has twice the other's active cells (so the endgame's `cells` go with the winner partly by construction) or can pay a chain to the enemy HQ with its gold and one turn of income.
 - **Decisive moments:** a large cut (a side loses 30% of its active cells, and 6 or more, in one ply), a lead change in material (by 20 or more) or a swing of 60 in a turn, the first time a side can pay a chain to the enemy HQ, and a debt that wipes out an army.
 
 `summary` reads a batch's files, and the reviewers' notes in `NAME.review.md` when present (the last fenced `json` block: a list of `{"ply", "side", "verdict", "note"}`), and prints which metrics go with the winner at three points of the game, how often each kind of moment's side won, and whether the plays judged good or bad moved the lead as judged.
+
+### Metrics reports
+
+A large batch measured by code and read by one model ([ADR 0044](../../docs/adr/0044-metrics-reports.md)):
+
+```sh
+target/release/ice-and-fire-arena match --bot A=... --bot B=... --pairs 500 --records DIR
+cargo run --release -p ice-and-fire-review -- games --out GAMES --text TEXT DIR/*.json
+cargo run --release -p ice-and-fire-review -- report GAMES --curves curves.json > report.md
+```
+
+`report` reads the games' `NAME.csv` and `NAME.summary.json` and prints, for each metric, from which turn it tells the winner (the winner's value higher, or lower, in at least 70% of the games still running, a tie counting half), its share at turns 5 to 20, the ten metrics that tell the winner best at turns 8, 12, 16 and 20 with the winner's and loser's means, and the two bots' means turn by turn. It then cuts the games into slices, so that an average over the whole batch does not hide a tendency: the shortest, regular and longest thirds by length, each seating, each bot's wins, and the games the side ahead in material at turn 10 went on to win or to lose; for each slice it gives when each metric tells the winner, and its share 5 turns and 1 turn before each game's last turn (games lined up on their end), and for each seating the metrics on which the two bots differ most. `--curves` writes every slice's numbers for every turn, from the start and before the end, as JSON, for charts.
 
 ## Studio
 
