@@ -1,0 +1,57 @@
+{
+  "name": "ice-and-fire-151-p8-1",
+  "players": [
+    "v003",
+    "v004"
+  ],
+  "winner": 1,
+  "end": "the rules ended the game",
+  "plies": 42,
+  "last_turn": 21,
+  "middle": 14,
+  "endgame": 29,
+  "lead": "material",
+  "metrics": [
+    "gold",
+    "income",
+    "upkeep",
+    "cells",
+    "cut_off",
+    "units",
+    "army",
+    "mines",
+    "towers",
+    "voronoi",
+    "exposed30",
+    "exposed50",
+    "can_cut",
+    "hq_gap",
+    "material"
+  ],
+  "moments": [
+    {
+      "ply": 34,
+      "kind": "swing",
+      "favours": 1,
+      "text": "the lead moved 160 material towards blue over the last turn, to blue 223"
+    },
+    {
+      "ply": 39,
+      "kind": "debt",
+      "favours": 1,
+      "text": "red could not pay its upkeep at its next turn and lost all 7 of its units"
+    },
+    {
+      "ply": 40,
+      "kind": "swing",
+      "favours": 1,
+      "text": "the lead moved 152 material towards blue over the last turn, to blue 436"
+    },
+    {
+      "ply": 41,
+      "kind": "HQ threat",
+      "favours": 1,
+      "text": "blue can pay a chain of trainings to red's HQ this turn, for the first time"
+    }
+  ]
+}

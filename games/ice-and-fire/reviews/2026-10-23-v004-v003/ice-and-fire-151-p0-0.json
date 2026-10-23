@@ -1,0 +1,69 @@
+{
+  "name": "ice-and-fire-151-p0-0",
+  "players": [
+    "v004",
+    "v003"
+  ],
+  "winner": 0,
+  "end": "the rules ended the game",
+  "plies": 31,
+  "last_turn": 16,
+  "middle": 14,
+  "endgame": 25,
+  "lead": "material",
+  "metrics": [
+    "gold",
+    "income",
+    "upkeep",
+    "cells",
+    "cut_off",
+    "units",
+    "army",
+    "mines",
+    "towers",
+    "voronoi",
+    "exposed30",
+    "exposed50",
+    "can_cut",
+    "hq_gap",
+    "material"
+  ],
+  "moments": [
+    {
+      "ply": 24,
+      "kind": "large cut",
+      "favours": 0,
+      "text": "red took blue's cells from 42 to 11"
+    },
+    {
+      "ply": 26,
+      "kind": "lead change",
+      "favours": 0,
+      "text": "red now leads by 245 material, at the start of turn 14"
+    },
+    {
+      "ply": 28,
+      "kind": "large cut",
+      "favours": 0,
+      "text": "red took blue's cells from 8 to 2"
+    },
+    {
+      "ply": 28,
+      "kind": "swing",
+      "favours": 0,
+      "text": "the lead moved 116 material towards red over the last turn, to red 361"
+    },
+    {
+      "ply": 30,
+      "kind": "HQ threat",
+      "favours": 0,
+      "text": "red can pay a chain of trainings to blue's HQ this turn, for the first time"
+    },
+    {
+      "ply": 30,
+      "kind": "swing",
+      "favours": 0,
+      "text": "the lead moved 174 material towards red over the last turn, to red 535"
+    }
+  ]
+}
