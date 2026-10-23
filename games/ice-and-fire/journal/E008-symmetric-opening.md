@@ -1,7 +1,7 @@
 ---
 id: E008
 date: 2026-10-23
-pull_request: pending
+pull_request: "#192"
 parent: ice-and-fire-v004
 hypothesis: The first batch of game reviews found that blue almost never builds the mine next to its HQ while red always does; if the opening's tie-breaks (lowest cell index) cause it, breaking ties by the cell's index as red sees it makes blue play the mirror of red's opening and beats v004.
 change: None released. Local screening only: v004 whose opening breaks every tie between cells by the cell's index as red would see it (blue's cell c is red's 143 − c).
