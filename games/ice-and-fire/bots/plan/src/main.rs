@@ -10,7 +10,7 @@
 //! opening by rules, with weights for a compact shape and a pull toward the
 //! enemy HQ chosen turn by turn by a beam search over our next 7 turns as if
 //! the opponent passed (`ice_and_fire_opening::solo`), which rates the
-//! territory, the income and the gold (a gold as much as an income), less the cells one capture would cut
+//! territory, the income and the gold, less the cells one capture would cut
 //! off, the joints and the ends of lines, plus the land nearer us than the
 //! enemy and the progress toward its HQ. The plan is made on the first turn,
 //! kept while our side of the board is as predicted, and made again within

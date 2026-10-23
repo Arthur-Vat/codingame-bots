@@ -172,7 +172,11 @@ prediction hashes every mine on the board (`plan::side_key`), and a plan
 made as if the opponent passed cannot predict them. A key of our side
 alone (our cells, units, our mines and our gold) played +34.3 Elo [+15.2,
 +53.5] against v004 on the same 600 pairs as the candidate's +32.5: no
-measurable difference, so it was left for a later experiment, with two
-stale lines of documentation (`bots/plan/src/main.rs` says gold counts as
-much as an income; `Objective::DEFAULT`'s comment leaves out gold).
+measurable difference, so it was left for a later experiment. Two stale
+comments the review found were fixed before the merge, without changing the
+release file (the bundler drops comments).
+
+The opening crate's part of this work (the new weights of `econ`, `solo`,
+`Planner::Solo` and the example `solo`) was merged first as #196, at the
+owner's request to split the pull request.
 
