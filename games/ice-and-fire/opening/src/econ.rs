@@ -66,6 +66,15 @@ pub struct Params {
     pub contact_offset: i64,
     pub contact_div: i64,
     pub after_contact: i64,
+    /// The territory's shape (E010): this much more for each of our cells
+    /// next to the cell, so that the territory grows as a block...
+    pub group: i64,
+    /// ...and this much less when only one of our cells is next to it, so
+    /// that it does not grow as a thin line.
+    pub thin: i64,
+    /// This much more for a mine spot, so that it is ours early, while a mine
+    /// there still pays back.
+    pub spot: i64,
 }
 
 impl Params {
@@ -81,7 +90,20 @@ impl Params {
         contact_offset: 2,
         contact_div: 2,
         after_contact: 0,
+        group: 0,
+        thin: 0,
+        spot: 0,
     };
+
+    /// These weights with the shape terms `group`, `thin` and `spot` (E010).
+    pub const fn with_shape(self, group: i64, thin: i64, spot: i64) -> Params {
+        Params {
+            group,
+            thin,
+            spot,
+            ..self
+        }
+    }
 }
 
 fn xy(cell: usize) -> (u8, u8) {
@@ -133,6 +155,10 @@ struct Turn<'a> {
     /// The free cells of our side: at least as near our territory as the
     /// enemy's.
     side: Bits,
+    /// Our cells, with those taken by the commands of this turn.
+    ours: Bits,
+    /// The mine spots.
+    spots: Bits,
 }
 
 impl Turn<'_> {
@@ -155,12 +181,16 @@ impl Turn<'_> {
             to_hq,
             free,
             side,
+            ours: state.owned(me),
+            spots: state.map().spots,
         }
     }
 
     /// How much a free cell is worth taking now: 3 for each free cell next to
     /// it, 2 for each step it is nearer the enemy's territory than 12, less a
-    /// quarter of its steps to the enemy HQ (a tie-break toward the middle).
+    /// quarter of its steps to the enemy HQ (a tie-break toward the middle);
+    /// with the shape terms (E010), more for each of our cells next to it and
+    /// less when only one is.
     fn value(&self, cell: usize) -> i64 {
         let p = self.params;
         let open = i64::from((Bits::cell(cell).neighbours() & self.free).count());
@@ -171,7 +201,10 @@ impl Turn<'_> {
         } else {
             0
         };
-        p.open * open + p.contest * contest - hq
+        let own = i64::from((Bits::cell(cell).neighbours() & self.ours).count());
+        let line = if own <= 1 { p.thin } else { 0 };
+        let spot = if self.spots.test(cell) { p.spot } else { 0 };
+        p.open * open + p.contest * contest - hq + p.group * own - line + spot
     }
 
     /// The cell of `cells` worth most, the lowest index on a tie.
@@ -184,6 +217,7 @@ impl Turn<'_> {
     fn claim(&mut self, cell: usize) {
         self.free.clear(cell);
         self.side.clear(cell);
+        self.ours.set(cell);
     }
 }
 
