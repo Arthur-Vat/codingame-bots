@@ -100,7 +100,7 @@ fn against_the_model_the_portfolio_s_choice_is_made_once() {
         for seat in 0..2 {
             let mut state = start(seed);
             let mut ours = chooser();
-            let mut turns = 0;
+            let mut turns: usize = 0;
             while state.outcome().is_none() {
                 if state.to_act() == seat {
                     if !ours.playing(&state) {
@@ -155,4 +155,50 @@ fn once_the_middle_game_has_begun_the_opening_never_comes_back() {
     assert!(!ours.playing(&near));
     // A later turn short of gold is still the middle game.
     assert!(!ours.playing(&start(1)));
+}
+
+fn solo_opening() -> Planned {
+    let sets = crate::solo::SETS.to_vec();
+    Planned::new(
+        Planner::Solo {
+            turns: 3,
+            width: 2,
+            objective: crate::solo::Objective::DEFAULT,
+        },
+        sets,
+        Params::V003,
+    )
+}
+
+#[test]
+fn the_solo_opening_follows_its_plan_and_plays_accepted_commands() {
+    for seed in 1..=3 {
+        for seat in 0..2 {
+            let mut state = start(seed);
+            let mut ours = solo_opening();
+            let mut turns: usize = 0;
+            while state.outcome().is_none() && ours.playing(&state) {
+                let commands = if state.to_act() == seat {
+                    turns += 1;
+                    let commands = ours.turn(&state, None);
+                    let mut scratch = state.clone();
+                    for &command in &commands {
+                        assert!(scratch.apply(command), "seed {seed}: {command:?} refused");
+                    }
+                    commands
+                } else {
+                    Vec::new()
+                };
+                state.play_turn(&commands);
+                assert!(state.game_turn() < 40, "seed {seed}: no middle game");
+            }
+            // Against a passing opponent the prediction is exact: a new plan
+            // only when one runs out, every 3 turns.
+            assert_eq!(
+                ours.plans as usize,
+                turns.div_ceil(3),
+                "seed {seed}, seat {seat}"
+            );
+        }
+    }
 }

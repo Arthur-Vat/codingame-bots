@@ -1,6 +1,6 @@
 //! The early game of A Code of Ice and Fire: the openings a bot plays until
-//! the middle game, and the score that compares them there (experiments E003
-//! and E004, `games/ice-and-fire/research/early-game.md`). Standard library
+//! the middle game, and the score that compares them there (experiments E003,
+//! E004 and E010, `games/ice-and-fire/research/early-game.md`). Standard library
 //! only, so the bundler can copy it into bots.
 //!
 //! - [`econ`]: the opening of `ice-and-fire-v003` (E003): units take free
@@ -12,6 +12,10 @@
 //!   then its Voronoi share of the map, less what the enemy could cut from
 //!   it.
 //!
+//! - [`solo`]: the early game planned for one side alone (E010): shape
+//!   measures (joints, cells one capture cuts off, line ends), a value of a
+//!   position, and an anytime beam search over whole turns.
+//!
 //! The harness (`examples/early`) plays openings against each other from both
 //! seats of many maps, up to the middle game, and reports the score.
 
@@ -22,6 +26,7 @@ pub mod planned;
 pub mod portfolio;
 pub mod rollout;
 pub mod score;
+pub mod solo;
 
 #[cfg(test)]
 mod test_util;
