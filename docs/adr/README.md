@@ -45,6 +45,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0038](0038-incremental-league.md) | An incremental league at full time, with a leaderboard kept in the repository | Accepted; the 100 pairs of decision 2 and the cost estimate in its consequences superseded by 0042 |
 | [0040](0040-baseline-bots-in-the-studio.md) | The studio also plays each game's baseline bots | Accepted |
 | [0042](0042-official-time-limits-and-800-pairs.md) | Every strength evaluation at CodinGame's time limits, and 800 pairs per league pairing | Accepted |
+| [0043](0043-game-reviews-by-haiku.md) | Game reviews written by Haiku agents from game files | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 
