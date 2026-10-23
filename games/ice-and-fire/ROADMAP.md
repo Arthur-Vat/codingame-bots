@@ -30,6 +30,7 @@ Iteration: one experiment per pull request ([journal](journal/README.md)).
 - [x] E005, more time and other heuristics for the first turn's choice, and a study of what decides games ([research/game-study.md](research/game-study.md)): no gain, dropped ([E005](journal/E005-first-turn.md))
 - [x] E006, a plan search that guards its necks: two penalties and neck-safe growth, all weaker than v004, dropped ([E006](journal/E006-necks.md))
 - [x] E007, a gold reserve in the middle game: the plan search kept 20 gold after its turn except for attacks, as `ice-and-fire-v005`; SPRT rejected against v004, −15.9 Elo, dropped ([E007](journal/E007-reserve.md), #186)
+- [x] E008, a seat-symmetric opening (ties broken by the cell's index as red sees it), after the first review batch: level with v004 (+5.2 Elo, 200 pairs), dropped; blue's missing mine comes from its extra starting cell and costs it nothing ([E008](journal/E008-symmetric-opening.md))
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 
