@@ -1,7 +1,7 @@
 ---
 id: E012
 date: 2026-10-23
-pull_request: "#NN"
+pull_request: "#200"
 parent: ice-and-fire-v005
 hypothesis: The metrics report of 1,000 games showed that the joints of a territory do not tell the winner while cells actually cut off do, so a middle-game shape term that counts only the cuts the enemy can reach, rather than the joints, beats v005.
 change: None released. Local screening only: v005 whose evaluation measures a side's weakness as the largest cut through a joint next to an enemy cell, as the sum of such cuts, or as the largest cut without counting joints, instead of the joints plus the largest cut.
