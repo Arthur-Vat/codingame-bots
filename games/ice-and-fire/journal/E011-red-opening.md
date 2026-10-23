@@ -1,7 +1,7 @@
 ---
 id: E011
 date: 2026-10-23
-pull_request: "#NN"
+pull_request: "#201"
 parent: ice-and-fire-v005
 hypothesis: The metrics report of 1,000 games showed v005 winning 46% as red against 67% as blue and pushing little toward the enemy as red, so an opening whose plans, as red only, pull harder toward the enemy HQ and penalize shape less beats v005.
 change: None released. Local screening only: v005 whose turn-1 solo plan uses, as red, an objective with a stronger pull toward the enemy HQ (reach 10 or 14 instead of 6), halved shape penalties (cut, joints and line ends 1 instead of 2), or both; blue's objective unchanged.
