@@ -1,8 +1,8 @@
 {
-  "name": "ice-and-fire-151-p1-1",
+  "name": "ice-and-fire-151-p5-0",
   "players": [
-    "v003",
-    "v004"
+    "v004",
+    "v003"
   ],
   "winner": 1,
   "end": "the rules ended the game",
@@ -28,39 +28,48 @@
     "hq_gap",
     "material"
   ],
+  "none": {
+    "hq_gap": 999
+  },
   "moments": [
     {
       "ply": 21,
       "kind": "large cut",
       "favours": 1,
-      "text": "blue took red's cells from 28 to 16"
+      "text": "blue took red's cells from 31 to 17"
     },
     {
       "ply": 22,
       "kind": "swing",
       "favours": 1,
-      "text": "the lead moved 114 material towards blue over the last turn, to blue 185"
+      "text": "the lead moved 110 material towards blue over the last turn, to blue 209"
     },
     {
       "ply": 25,
       "kind": "large cut",
       "favours": 1,
-      "text": "blue took red's cells from 20 to 11"
+      "text": "blue took red's cells from 28 to 15"
     },
     {
       "ply": 26,
       "kind": "swing",
       "favours": 1,
-      "text": "the lead moved 111 material towards blue over the last turn, to blue 327"
+      "text": "the lead moved 111 material towards blue over the last turn, to blue 292"
     },
     {
-      "ply": 28,
+      "ply": 27,
+      "kind": "large cut",
+      "favours": 1,
+      "text": "blue took red's cells from 21 to 14"
+    },
+    {
+      "ply": 30,
       "kind": "swing",
       "favours": 1,
-      "text": "the lead moved 69 material towards blue over the last turn, to blue 396"
+      "text": "the lead moved 112 material towards blue over the last turn, to blue 448"
     },
     {
-      "ply": 29,
+      "ply": 31,
       "kind": "HQ threat",
       "favours": 1,
       "text": "blue can pay a chain of trainings to red's HQ this turn, for the first time"

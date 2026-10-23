@@ -28,6 +28,9 @@
     "hq_gap",
     "material"
   ],
+  "none": {
+    "hq_gap": 999
+  },
   "moments": [
     {
       "ply": 34,
@@ -39,13 +42,7 @@
       "ply": 39,
       "kind": "debt",
       "favours": 1,
-      "text": "red could not pay its upkeep at its next turn and lost all 7 of its units"
-    },
-    {
-      "ply": 40,
-      "kind": "swing",
-      "favours": 1,
-      "text": "the lead moved 152 material towards blue over the last turn, to blue 436"
+      "text": "red could not pay its upkeep at its next turn and lost all its units"
     },
     {
       "ply": 41,
