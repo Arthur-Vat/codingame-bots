@@ -6,11 +6,11 @@ parent: ice-and-fire-v004
 hypothesis: An opening planned for our side alone over its first 7 turns, which keeps the territory and the income of v004's but grows it compact (few cells that one capture cuts off), together with the same shape term in the middle-game evaluation, beats v004.
 change: Until the middle game the `plan` bot plays v003's opening rules with weights for a compact shape and a pull toward the enemy HQ, chosen turn by turn by an anytime beam search over our next 7 turns as if the opponent passed (about 610 ms on the first turn); the middle-game evaluation takes 2 from a side's score for each of its joints and each cell of the largest group one capture cuts off.
 release: ice-and-fire-v005
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +44.1 [+21.4, +67.2] at CodinGame's limits
+pairs: 412
+full_time: +44.1 [+21.4, +67.2] (the SPRT's own, ADR 0042), no timeout in 824 games, slowest answer 612.7 ms (the first turn)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -135,3 +135,44 @@ after the first 7.1 / 32.2 / 35.2 ms (median, 99%, 99.9%).
 `ice-and-fire-v005` is the `plan` bot with the solo opening (objective as
 above, 7 turns) and the middle-game shape weight 2. The bundle is 98,396
 characters of the 100,000 allowed.
+
+## Result
+
+The SPRT on CI accepted the candidate (at 02fb3f4; the bot did not change after it):
+
+```
+SPRT against ice-and-fire-v004:
+ice-and-fire-v005 vs ice-and-fire-v004: 824 games, 412 complete pairs
+  ice-and-fire-v005: 464 wins, 0 draws, 360 losses (score 56.3%)
+  Elo of ice-and-fire-v005 over ice-and-fire-v004: +44.1 [+21.4, +67.2] (95%, from pairs)
+  pairs by ice-and-fire-v005's points (0, 1/2, 1, 3/2, 2): [70, 0, 220, 0, 122]
+  ice-and-fire-v005 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v004 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  answers after the first (median, 99%, 99.9%): ice-and-fire-v005 3.6, 31.7, 32.2 ms; ice-and-fire-v004 2.8, 24.9, 25.6 ms
+  slowest answer: ice-and-fire-v005 612.7 ms, ice-and-fire-v004 26.2 ms
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 2.95 (bounds -2.94, 2.94) after 412 pairs
+Verdict: ACCEPTED: ice-and-fire-v005 is stronger than ice-and-fire-v004
+```
+
+The league of the release (at 1186556, 800 pairs a pairing) scored v005
+53.9% against v004 (862 wins, 738 losses) and 58.8% against v003, and rated
+it +2041.4 ± 182.6, against v004's +2019.7 ([LEADERBOARD.md](../LEADERBOARD.md)).
+
+In the studio's browser games the release crashed at first: its beam search
+builds a `HashMap`, whose keys Rust takes from WASI's `random_get`, which
+the browser's WASI layer did not offer. #195 gave it zero bytes (the same
+on every run, as replays need), and this pull request carries the same
+commit.
+
+## Left for later
+
+The review found that the solo plan is dropped whenever the opponent
+builds a mine anywhere: the key that checks our side against the plan's
+prediction hashes every mine on the board (`plan::side_key`), and a plan
+made as if the opponent passed cannot predict them. A key of our side
+alone (our cells, units, our mines and our gold) played +34.3 Elo [+15.2,
++53.5] against v004 on the same 600 pairs as the candidate's +32.5: no
+measurable difference, so it was left for a later experiment, with two
+stale lines of documentation (`bots/plan/src/main.rs` says gold counts as
+much as an income; `Objective::DEFAULT`'s comment leaves out gold).
+

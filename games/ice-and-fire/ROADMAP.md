@@ -32,7 +32,7 @@ Iteration: one experiment per pull request ([journal](journal/README.md)).
 - [x] E007, a gold reserve in the middle game: the plan search kept 20 gold after its turn except for attacks, as `ice-and-fire-v005`; SPRT rejected against v004, −15.9 Elo, dropped ([E007](journal/E007-reserve.md), #186)
 - [x] E008, a seat-symmetric opening (ties broken by the cell's index as red sees it), after the first review batch: level with v004 (+5.2 Elo, 200 pairs), dropped; blue's missing mine comes from its extra starting cell and costs it nothing ([E008](journal/E008-symmetric-opening.md))
 - [x] E009, an upkeep check in the plan search (no action that makes income negative): debt wipe-outs fell from 31 to 1 in 400 games but results did not change (+1.7 Elo, 200 pairs), dropped; the wipe-outs come at the end of games already lost ([E009](journal/E009-upkeep-check.md))
-- [ ] E010, the early game planned for our side alone (compact, no thin lines, toward the enemy HQ; an anytime beam over 7 turns) and a shape term in the middle-game evaluation, as `ice-and-fire-v005`: +32.5 Elo against v004 in screening, SPRT pending ([E010](journal/E010-solo-opening.md))
+- [x] E010, the early game planned for our side alone (compact, no thin lines, toward the enemy HQ; an anytime beam over 7 turns) and a shape term in the middle-game evaluation, as `ice-and-fire-v005` through the SPRT against v004: accepted, +44.1 Elo ([E010](journal/E010-solo-opening.md), #194)
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 
