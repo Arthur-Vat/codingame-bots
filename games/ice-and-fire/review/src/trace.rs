@@ -49,9 +49,9 @@ pub fn metrics() -> Vec<Metric> {
         ("mines", "Mines on active cells."),
         ("towers", "Towers on active cells."),
         ("voronoi", "Non-void cells nearer this side's active cells than the enemy's (a tie counts half, rounded down): the land it is likely to get."),
-        ("exposed30", "Active cells the enemy could take or cut off with 30 gold of trainings (its best cut of up to 5 trainings)."),
+        ("exposed30", "Active cells the enemy could take or cut off with 30 gold of trainings: the most among its 8 best cuts of up to 5 trainings."),
         ("exposed50", "The same with 50 gold."),
-        ("can_cut", "Enemy active cells this side could take or cut off now with the gold it has."),
+        ("can_cut", "Enemy active cells this side could take or cut off with the gold it has, in the same way."),
         ("hq_gap", "Gold this side still lacks to pay its cheapest chain of trainings to the enemy HQ: 0 when it can pay now, 999 when no chain reaches it."),
         ("material", "Gold + 3 x income + 4 x cells + army + 10 x towers: a side's holdings as the bots' shared evaluation counts them. The lead is its difference."),
     ]
@@ -59,6 +59,7 @@ pub fn metrics() -> Vec<Metric> {
     .map(|(key, meaning)| Metric {
         key: (*key).to_string(),
         meaning: (*meaning).to_string(),
+        none: (*key == "hq_gap").then_some(NO_CHAIN),
     })
     .collect()
 }
@@ -189,9 +190,12 @@ pub fn side_metrics(state: &State, seat: usize) -> Vec<i64> {
         }
     }
     let cells = i64::from(active.count());
+    let mines = i64::from((state.mines() & active).count());
     let towers = i64::from((state.towers() & active).count());
     let gold = state.gold(seat);
-    let income = state.income(seat);
+    // From its definition: after a debt the engine keeps the income it
+    // showed, which no longer counts the lost units' upkeep.
+    let income = cells + 4 * mines - upkeep;
     let gap = hq_cost(state, seat).map_or(NO_CHAIN, |cost| (cost - gold).max(0));
     vec![
         gold,
@@ -201,7 +205,7 @@ pub fn side_metrics(state: &State, seat: usize) -> Vec<i64> {
         i64::from(state.owned(seat).and_not(active).count()),
         i64::from(units.count()),
         army,
-        i64::from((state.mines() & active).count()),
+        mines,
         towers,
         score::voronoi_halves(state, seat) / 2,
         cut_cells(state, 1 - seat, 30),
@@ -283,7 +287,7 @@ pub fn trace(name: &str, record: &Record) -> Trace {
                 kind: "debt".to_string(),
                 favours: Some(seat),
                 text: format!(
-                    "{} could not pay its upkeep at its next turn and lost all {other_units} of its units",
+                    "{} could not pay its upkeep at its next turn and lost all its units",
                     SIDES[other]
                 ),
             });

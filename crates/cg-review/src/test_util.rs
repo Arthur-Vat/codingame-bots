@@ -30,6 +30,7 @@ pub fn game(cells: &[(i64, i64)], winner: Option<usize>) -> Trace {
         metrics: vec![Metric {
             key: "cells".to_string(),
             meaning: "Cells held.".to_string(),
+            none: None,
         }],
         lead: "cells".to_string(),
         plies,
