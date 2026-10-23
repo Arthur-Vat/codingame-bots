@@ -22,6 +22,8 @@ const fn set(w: [i64; 10]) -> Params {
         group: 0,
         thin: 0,
         spot: 0,
+        inside: 0,
+        toward: 0,
     }
 }
 

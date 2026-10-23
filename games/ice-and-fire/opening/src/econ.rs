@@ -75,6 +75,12 @@ pub struct Params {
     /// This much more for a mine spot, so that it is ours early, while a mine
     /// there still pays back.
     pub spot: i64,
+    /// This much less for a cell with no free cell next to it: a unit there
+    /// has nowhere to go next and walks back through our territory.
+    pub inside: i64,
+    /// This much more for each step nearer the enemy HQ than 22 (the
+    /// longest distance on the map, roughly), to head toward it.
+    pub toward: i64,
 }
 
 impl Params {
@@ -93,6 +99,8 @@ impl Params {
         group: 0,
         thin: 0,
         spot: 0,
+        inside: 0,
+        toward: 0,
     };
 
     /// These weights with the shape terms `group`, `thin` and `spot` (E010).
@@ -101,6 +109,15 @@ impl Params {
             group,
             thin,
             spot,
+            ..self
+        }
+    }
+
+    /// These weights with the terms `inside` and `toward` (E010).
+    pub const fn with_course(self, inside: i64, toward: i64) -> Params {
+        Params {
+            inside,
+            toward,
             ..self
         }
     }
@@ -204,7 +221,9 @@ impl Turn<'_> {
         let own = i64::from((Bits::cell(cell).neighbours() & self.ours).count());
         let line = if own <= 1 { p.thin } else { 0 };
         let spot = if self.spots.test(cell) { p.spot } else { 0 };
-        p.open * open + p.contest * contest - hq + p.group * own - line + spot
+        let stuck = if open == 0 { p.inside } else { 0 };
+        let toward = p.toward * (22 - i64::from(self.to_hq[cell].min(22)));
+        p.open * open + p.contest * contest - hq + p.group * own - line + spot - stuck + toward
     }
 
     /// The cell of `cells` worth most, the lowest index on a tie.

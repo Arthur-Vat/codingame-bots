@@ -22,6 +22,7 @@ pub mod planned;
 pub mod portfolio;
 pub mod rollout;
 pub mod score;
+pub mod solo;
 
 #[cfg(test)]
 mod test_util;
