@@ -81,12 +81,17 @@ fn limit(start: Instant, turn: u32) -> Limit {
 /// at our eighth turn in the median game (E010).
 const OPENING_TURNS: usize = 7;
 
-/// What the opening's plans maximize: the solo planner's default, with gold
-/// worth as much as income, so that the middle game starts with a bank for
-/// the first strikes (E010).
+/// What the opening's plans maximize: the solo planner's weights, written
+/// out (E010).
 const OBJECTIVE: Objective = Objective {
-    gold: 3,
-    ..Objective::DEFAULT
+    cells: 4,
+    income: 3,
+    gold: 1,
+    cut: 2,
+    joints: 2,
+    tips: 2,
+    reach: 6,
+    voronoi: 1,
 };
 
 /// The opening: v003's opening with the solo planner's weight sets, planned
