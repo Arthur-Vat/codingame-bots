@@ -29,7 +29,7 @@ pub const SWING: i64 = 60;
 const PRIMER: &[&str] = &[
     "A Code of Ice and Fire, Bronze rules: a 12 x 12 map; red's HQ is at (0, 0), blue's at (11, 11). Red plays first in each turn. Taking the enemy HQ wins; after 100 turns the side with more gold plus training cost of its units wins.",
     "Each turn a player may train units (level 1, 2 or 3 for 10, 20 or 30 gold) on its own cells or next to them, move each unit one cell, and build mines (15 gold, on mine spots, +4 income) and towers (15 gold). Upkeep each turn: 1, 4 or 20 by level.",
-    "A unit beats a lower level only (level 3 beats all); a cell next to an enemy tower, or holding one, can only be entered by level 3. Entering an enemy cell takes it.",
+    "A unit beats a lower level only (level 3 beats all). Only level 3 may enter a cell holding an enemy tower, or an enemy active cell next to an active enemy tower; a neutral cell next to a tower is not protected. Entering an enemy cell takes it.",
     "A cell is active when a path of its owner's cells joins it to the owner's HQ. Inactive (cut off) cells earn nothing and the units on them die at their owner's next turn: cutting a corridor removes everything beyond it at once. A side whose gold would go below 0 at its turn loses all its units (debt).",
     "Income each turn: active cells, plus 4 for each active mine, less upkeep.",
     "Board: two characters a cell. The first is the owner: R red, B blue, upper case for an active cell, lower case (r, b) for a cut-off one, a space for nobody. The second is the content: . empty, 1 2 3 a unit of that level, M mine, T tower, H HQ, * an empty mine spot. ## is void. Columns are x (0 to 11), rows are y (0 to 11), as in the commands.",
