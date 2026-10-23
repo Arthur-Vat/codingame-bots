@@ -22,10 +22,10 @@ seat: v004 built no mine in 8 of its 10 blue games.
 
 ## What was found
 
-- **The pattern is real.** In the batch's 20 games, both bots as red built
-  a mine at (1,0), next to their HQ, at ply 10 in every game; as blue, they
-  never built one at (10,11), its mirror (v004 3 mines in 10 blue games,
-  v003 14, none of them there).
+- **The pattern is real.** Counted from the batch's 20 records (its
+  `records/` folder), both bots as red built a mine at (1,0), next to their
+  HQ, at ply 10 in every game; as blue, they never built one at (10,11), its
+  mirror (v004 3 mines in its 10 blue games, v003 14, none of them there).
 - **Tie-breaks were part of it.** The opening chose the cell of lowest index
   among equals (in the best cell, the unit to move first, the idle units'
   order and targets, and the mine spot). Low indices lie next to red's HQ
@@ -38,7 +38,9 @@ seat: v004 built no mine in 8 of its 10 blue games.
   (10,10) on value, not on a tie, and claims its spot late or never. Red's
   first training lands on its spot (1,0) by tie-break.
 - **Blue loses nothing by it.** Over 1,800 earlier games between these bots
-  and their variants, blue won 47% to 55% of the games, run by run.
+  and their variants (the local screening runs of E005 to E007 and the game
+  study's 200, whose records were not kept), blue won 47% to 55% of the
+  games, run by run.
 
 ## Screening
 
