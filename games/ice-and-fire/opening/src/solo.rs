@@ -81,8 +81,8 @@ pub struct Objective {
 }
 
 impl Objective {
-    /// A cell is worth 4 and a turn of income 3, as in the shared evaluation;
-    /// each cell a single capture would cut off costs 2, each joint 2 and
+    /// A cell is worth 4, a turn of income 3 and a gold 1, as in the shared
+    /// evaluation (gold weighted 2 or 3 played worse: E010); each cell a single capture would cut off costs 2, each joint 2 and
     /// each end of a line 2; each step still to go toward the enemy HQ 6
     /// (with 3 the plans ended a step further from it than the rules', with
     /// 10 their shape began to suffer: E010); each cell of the land nearer
