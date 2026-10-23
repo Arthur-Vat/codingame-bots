@@ -95,6 +95,33 @@ cargo run --release -p ice-and-fire-review -- summary BATCH
 
 `summary` reads a batch's files, and the reviewers' notes in `NAME.review.md` when present (the last fenced `json` block: a list of `{"ply", "side", "verdict", "note"}`), and prints which metrics go with the winner at three points of the game, how often each kind of moment's side won, and whether the plays judged good or bad moved the lead as judged.
 
+### Excerpt batches
+
+Many games, each read only around its decisive moment ([ADR 0044](../../docs/adr/0044-excerpt-reviews.md)):
+
+```sh
+target/release/ice-and-fire-arena match --bot A=... --bot B=... --pairs 100 --records DIR
+cargo run --release -p ice-and-fire-review -- excerpts --out BATCH --text TEXT [--moves 3] DIR/*.json
+cargo run --release -p ice-and-fire-review -- excerpt-summary BATCH
+```
+
+`excerpts` writes, for each record, `NAME.excerpt.md` into `--text`'s directory: the result, the decisive moment (the first large cut, else the first lead change, else the game's last plies), each side's last `--moves` turns up to the play that caused it, and the position after it; beside them `primer.md`, the rules in short and the metrics' meanings, which every excerpt assumes; and `games.csv` in `--out`'s directory, a row per game (`game,red,blue,winner,plies,moment,moment_ply,favours,from,last`). `excerpt-summary` reads `games.csv` and the reviewers' replies saved as `notes-*.md` (the last fenced `json` block: a list of `{"game", "side", "verdict", "ply", "category", "note"}`) and prints the results by bot and seat, the kinds of decisive moment and how often their side won, and the judgments by bot, verdict and category.
+
+The categories of a judgment, as the reviewers must write them:
+
+| Category | Meaning |
+| --- | --- |
+| `open link` | Left a cell that joins part of its territory to the HQ empty or unguarded, and the enemy took it. |
+| `overextension` | Spent beyond a link or into a pocket it could not hold. |
+| `idle gold` | Kept gold that could have defended or attacked. |
+| `missed cut` | Could have cut the enemy (or reached its HQ) and did not. |
+| `no reconnection` | Did not retake or reconnect its cut-off cells when it could. |
+| `upkeep` | Bought units whose upkeep made its income fall too low, or into debt. |
+| `tower` | Built a tower where it did not help, or instead of what the position needed. |
+| `cut` | Cut enemy cells off (good). |
+| `defence` | Blocked or retook in time (good). |
+| `other` | None of these; the note says what. |
+
 ## Studio
 
 The studio replays and plays this game, but only between bots: [ADR 0039](../../docs/adr/0039-ice-and-fire-maps-and-studio.md) (decision 4) leaves out human play, so the game's `human_play` is false, the server and the browser's rules program refuse a human seat, and the setup menu offers only Bot vs bot. The adapter, [studio/](studio/), replays the Bronze referee and reads each position from its protocol text (`turn_input(0)` and `initial_input(0)`), and `last` is the difference between two positions, not a second reading of the rules; the frame format is documented in the crate. Records from `ice-and-fire-arena match --records DIR` replay in the studio's History (and `studio-archive` accepts them). The game has no release and no analysis program yet, so the studio plays its baseline bots ([ADR 0040](../../docs/adr/0040-baseline-bots-in-the-studio.md)): `bronze`, `wood1`, `wood2`, `wood3` and `random`, built from the current code (the setup menu starts bronze against wood1). The `wait` and `rules-check` bots are not offered.

@@ -13,9 +13,13 @@
 //!   reviewers' notes: which metrics, at which point of the game, go with
 //!   the winner, how often each kind of decisive moment decided the game,
 //!   and whether the plays the reviewers judged good or bad moved the lead
-//!   the way they said.
+//!   the way they said;
+//! - [`excerpt`]: excerpt reviews (ADR 0044): each side's last few moves up
+//!   to a game's decisive moment, a primer shared by the excerpts, a row per
+//!   game, and the counts of the reviewers' judgments.
 
 pub mod detect;
+pub mod excerpt;
 pub mod summary;
 pub mod text;
 pub mod trace;

@@ -100,40 +100,51 @@ pub fn game_text(trace: &Trace) -> String {
     }
 
     out.push_str("\n## Plies\n");
-    for (index, ply) in trace.plies.iter().enumerate() {
-        let _ = writeln!(out, "\n### {}\n\n```text", ply_title(trace, index));
-        for line in &ply.board {
-            let _ = writeln!(out, "{line}");
-        }
-        out.push_str("```\n\n| side |");
-        for metric in &trace.metrics {
-            let _ = write!(out, " {} |", metric.key);
-        }
-        out.push_str("\n| --- |");
-        for _ in &trace.metrics {
-            out.push_str(" ---: |");
-        }
-        out.push('\n');
-        for (name, values) in SIDES.iter().zip(&ply.metrics) {
-            let _ = write!(out, "| {name} |");
-            for value in values {
-                let _ = write!(out, " {value} |");
-            }
-            out.push('\n');
-        }
-        let commands = if ply.commands.trim().is_empty() {
-            "(nothing)".to_string()
-        } else {
-            format!("`{}`", ply.commands.trim())
-        };
-        let _ = writeln!(
-            out,
-            "\n{} played (spent {}): {commands}",
-            side_title(ply.to_act),
-            ply.spent
-        );
+    for index in 0..trace.plies.len() {
+        write_ply(&mut out, trace, index, true);
     }
     out
+}
+
+/// Appends `trace`'s ply `index` to `out`: its heading, the board at its
+/// start and both sides' metrics, then, with `commands`, what the player
+/// sent and the gold it cost.
+pub fn write_ply(out: &mut String, trace: &Trace, index: usize, commands: bool) {
+    let ply = &trace.plies[index];
+    let _ = writeln!(out, "\n### {}\n\n```text", ply_title(trace, index));
+    for line in &ply.board {
+        let _ = writeln!(out, "{line}");
+    }
+    out.push_str("```\n\n| side |");
+    for metric in &trace.metrics {
+        let _ = write!(out, " {} |", metric.key);
+    }
+    out.push_str("\n| --- |");
+    for _ in &trace.metrics {
+        out.push_str(" ---: |");
+    }
+    out.push('\n');
+    for (name, values) in SIDES.iter().zip(&ply.metrics) {
+        let _ = write!(out, "| {name} |");
+        for value in values {
+            let _ = write!(out, " {value} |");
+        }
+        out.push('\n');
+    }
+    if !commands {
+        return;
+    }
+    let sent = if ply.commands.trim().is_empty() {
+        "(nothing)".to_string()
+    } else {
+        format!("`{}`", ply.commands.trim())
+    };
+    let _ = writeln!(
+        out,
+        "\n{} played (spent {}): {sent}",
+        side_title(ply.to_act),
+        ply.spent
+    );
 }
 
 /// The metrics as CSV: one row a ply, `ply,turn,to_act,phase,spent`, then

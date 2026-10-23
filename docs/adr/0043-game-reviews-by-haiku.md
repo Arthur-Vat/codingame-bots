@@ -1,6 +1,6 @@
 # 0043. Game reviews written by Haiku agents from game files
 
-- Status: accepted (owner, 2026-10-23)
+- Status: accepted (owner, 2026-10-23); decisions 2 and 5 completed by [0044](0044-excerpt-reviews.md) (excerpt batches)
 - Date: 2026-10-23
 - Scope: framework
 

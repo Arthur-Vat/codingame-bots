@@ -26,7 +26,7 @@ check() {
   fi
 }
 
-for name in implementer pr-reviewer rules-reviewer game-reviewer review-summarizer Explore Plan claude-code-guide; do
+for name in implementer pr-reviewer rules-reviewer game-reviewer excerpt-reviewer review-summarizer Explore Plan claude-code-guide; do
   check 0 "" "{\"tool_name\":\"Agent\",\"tool_input\":{\"subagent_type\":\"$name\",\"prompt\":\"x\"}}"
 done
 check 2 "not on the list" '{"tool_input":{"subagent_type":"general-purpose"}}'
