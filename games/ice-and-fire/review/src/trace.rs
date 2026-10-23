@@ -6,8 +6,8 @@ use cg_arena::record::Record;
 use cg_arena::runner::EndReason;
 use cg_review::detect::{large_drops, lead_changes};
 use cg_review::trace::{Metric, Moment, Ply, Trace, SIDES};
-use ice_and_fire_engine::{Command, League, State, HQ, SIZE};
-use ice_and_fire_opening::{middle, score};
+use ice_and_fire_engine::{Bits, Command, League, State, HQ, SIZE};
+use ice_and_fire_opening::{middle, score, solo};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_tactics::chain::chain_to;
 use ice_and_fire_tactics::cut::cuts;
@@ -54,6 +54,41 @@ pub fn metrics() -> Vec<Metric> {
         ("can_cut", "Enemy active cells this side could take or cut off with the gold it has, in the same way."),
         ("hq_gap", "Gold this side still lacks to pay its cheapest chain of trainings to the enemy HQ: 0 when it can pay now, 999 when no chain reaches it."),
         ("material", "Gold + 3 x income + 4 x cells + army + 10 x towers: a side's holdings as the bots' shared evaluation counts them. The lead is its difference."),
+        ("gross_income", "Income before upkeep: active cells plus 4 a mine on an active cell."),
+        ("free_spots", "Mine spots on active cells without a mine: mines this side could still build at home."),
+        ("level1", "Level 1 units on active cells."),
+        ("level2", "Level 2 units on active cells."),
+        ("level3", "Level 3 units on active cells."),
+        ("joints", "Active cells whose loss would cut other active cells off from the HQ."),
+        ("max_cut", "The most active cells that the loss of a single cell would cut off."),
+        ("total_cut", "The sum over the joints of the cells each would cut off: how much of the territory hangs on single cells."),
+        ("line_ends", "Active cells other than the HQ with at most one own active neighbour: the tips of thin lines."),
+        ("reach", "Steps from the nearest active cell to the enemy HQ."),
+        ("frontier", "Active cells next to an enemy cell."),
+        ("border", "Active cells next to a cell this side does not own (void aside): the territory's perimeter."),
+        ("room", "Neutral cells next to this side's active cells: where it can still grow without a fight."),
+        ("far_cells", "Active cells nearer the enemy HQ than this side's own (Manhattan distance)."),
+        ("spread", "The mean Manhattan distance of the active cells from this side's HQ, times 10."),
+        ("frontier_joints", "Joints next to an enemy cell: the links the enemy can reach first."),
+        ("empty_joints", "Joints that hold no unit, building or HQ of this side."),
+        ("guarded_joints", "Joints that hold a unit of this side."),
+        ("frontier_units", "Units on frontier cells."),
+        ("inner_units", "Units with no enemy cell within 2 steps: kept away from any fight."),
+        ("units_lost", "Units of this side lost since the end of its last turn: taken by the enemy, cut off, or lost to debt."),
+        ("contact", "Enemy units next to this side's active cells."),
+        ("hq_guard", "Units of this side within 2 steps of its HQ."),
+        ("frontier_towers", "Towers on frontier cells."),
+        ("tower_cover", "Active cells a tower of this side protects (the tower's cell and its neighbours)."),
+        ("spent_units", "Gold this side spent training units in its last turn."),
+        ("spent_buildings", "Gold this side spent building mines and towers in its last turn."),
+        ("kept_share", "The share of its gold this side kept unspent in its last turn, in percent."),
+        ("moves", "Moves this side made in its last turn."),
+        ("trains", "Units this side trained in its last turn."),
+        ("builds", "Mines and towers this side built in its last turn."),
+        ("captured", "Enemy cells this side took in its last turn."),
+        ("lost", "Cells of this side the enemy took in its last turn."),
+        ("cells_change", "The change of this side's active cells since the start of its previous turn."),
+        ("material_change", "The change of this side's material since the start of its previous turn."),
     ]
     .iter()
     .map(|(key, meaning)| Metric {
@@ -178,8 +213,36 @@ fn hq_cost(state: &State, seat: usize) -> Option<i64> {
     chain_to(&view, HQ[1 - seat], AMPLE).map(|c| c.cost)
 }
 
-/// `seat`'s metrics, in the order of [`metrics`].
-pub fn side_metrics(state: &State, seat: usize) -> Vec<i64> {
+/// What a side did in its last turn, and what it had at the start of the
+/// turn before: the metrics that are not seen in one position.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Flow {
+    pub spent_units: i64,
+    pub spent_buildings: i64,
+    pub kept_share: i64,
+    pub moves: i64,
+    pub trains: i64,
+    pub builds: i64,
+    pub captured: i64,
+    /// Cells of this side the enemy took in the enemy's last turn.
+    pub lost: i64,
+    /// Units of this side lost since the end of its last turn.
+    pub units_lost: i64,
+    /// Active cells and material at the start of this side's previous
+    /// turn, if it had one.
+    pub before: Option<(i64, i64)>,
+}
+
+/// Manhattan distance between two cells.
+fn manhattan(a: usize, b: usize) -> i64 {
+    let (ax, ay) = ((a % SIZE) as i64, (a / SIZE) as i64);
+    let (bx, by) = ((b % SIZE) as i64, (b / SIZE) as i64);
+    (ax - bx).abs() + (ay - by).abs()
+}
+
+/// `seat`'s metrics, in the order of [`metrics`], with `flow`, what it did
+/// in its last turn.
+pub fn side_metrics(state: &State, seat: usize, flow: &Flow) -> Vec<i64> {
     let active = state.active(seat);
     let units = state.units(seat) & active;
     let (mut upkeep, mut army) = (0, 0);
@@ -197,7 +260,8 @@ pub fn side_metrics(state: &State, seat: usize) -> Vec<i64> {
     // showed, which no longer counts the lost units' upkeep.
     let income = cells + 4 * mines - upkeep;
     let gap = hq_cost(state, seat).map_or(NO_CHAIN, |cost| (cost - gold).max(0));
-    vec![
+    let material = gold + 3 * income + 4 * cells + army + 10 * towers;
+    let mut out = vec![
         gold,
         income,
         upkeep,
@@ -212,7 +276,106 @@ pub fn side_metrics(state: &State, seat: usize) -> Vec<i64> {
         cut_cells(state, 1 - seat, 50),
         cut_cells(state, seat, gold),
         gap,
-        gold + 3 * income + 4 * cells + army + 10 * towers,
+        material,
+    ];
+    out.extend(shape_metrics(state, seat, material, flow));
+    out
+}
+
+/// The metrics after `material` in [`metrics`]: the army by level, the
+/// territory's shape, where the units stand, and `flow`.
+fn shape_metrics(state: &State, seat: usize, material: i64, flow: &Flow) -> Vec<i64> {
+    let other = 1 - seat;
+    let valid = state.map().valid;
+    let active = state.active(seat);
+    let owned = state.owned(seat);
+    let enemy = state.owned(other);
+    let units = state.units(seat) & active;
+    let near = |cell: usize| Bits::cell(cell).neighbours();
+    let count = |bits: Bits| i64::from(bits.count());
+    let mut levels = [0; 3];
+    for cell in units.iter() {
+        if let Some(level) = state.unit_level(cell) {
+            levels[usize::from(level) - 1] += 1;
+        }
+    }
+    let shape = solo::shape(state, seat);
+    let cut = solo::severed(state, seat);
+    let joints: Bits = active
+        .iter()
+        .filter(|&c| cut[c] > 0)
+        .fold(Bits::EMPTY, |b, c| b | Bits::cell(c));
+    let total_cut: i64 = joints.iter().map(|c| cut[c]).sum();
+    let frontier: Bits = active
+        .iter()
+        .filter(|&c| !(near(c) & enemy).is_empty())
+        .fold(Bits::EMPTY, |b, c| b | Bits::cell(c));
+    let border = active
+        .iter()
+        .filter(|&c| !(near(c) & valid).and_not(owned).is_empty())
+        .count() as i64;
+    let neutral = valid.and_not(owned | enemy);
+    let room = count(active.neighbours() & neutral);
+    let far = active
+        .iter()
+        .filter(|&c| manhattan(c, HQ[other]) < manhattan(c, HQ[seat]))
+        .count() as i64;
+    let spread = if active.is_empty() {
+        0
+    } else {
+        active.iter().map(|c| manhattan(c, HQ[seat])).sum::<i64>() * 10 / count(active)
+    };
+    let held = state.units(seat) | state.mines() | state.towers() | Bits::cell(HQ[seat]);
+    let enemy_near2 = enemy.neighbours().neighbours() | enemy.neighbours() | enemy;
+    let towers = state.towers() & active;
+    let cover = towers
+        .iter()
+        .fold(Bits::EMPTY, |b, t| b | Bits::cell(t) | near(t))
+        & active;
+    let hq_area = near(HQ[seat]).neighbours() | near(HQ[seat]);
+    let (cells_change, material_change) = flow
+        .before
+        .map_or((0, 0), |(c, m)| (count(active) - c, material - m));
+    vec![
+        count(active) + 4 * count(state.mines() & active),
+        count((state.map().spots & active).and_not(state.mines())),
+        levels[0],
+        levels[1],
+        levels[2],
+        count(joints),
+        shape.cut,
+        total_cut,
+        shape.tips,
+        if shape.reach == i64::MAX {
+            0
+        } else {
+            shape.reach
+        },
+        count(frontier),
+        border,
+        room,
+        far,
+        spread,
+        count(joints & enemy.neighbours()),
+        count(joints.and_not(held)),
+        count(joints & state.units(seat)),
+        count(units & frontier),
+        count(units.and_not(enemy_near2)),
+        flow.units_lost,
+        count(state.units(other) & active.neighbours()),
+        count(state.units(seat) & hq_area),
+        count(towers & frontier),
+        count(cover),
+        flow.spent_units,
+        flow.spent_buildings,
+        flow.kept_share,
+        flow.moves,
+        flow.trains,
+        flow.builds,
+        flow.captured,
+        flow.lost,
+        cells_change,
+        material_change,
     ]
 }
 
@@ -228,6 +391,35 @@ fn end_text(record: &Record) -> String {
     }
 }
 
+/// What the player to act in `state` does with `commands`: the gold it
+/// spends on units and on buildings, and its moves, trainings and builds
+/// that the rules accept, applied one by one on a copy.
+fn turn_flow(state: &State, commands: &[Command]) -> Flow {
+    let mut sim = state.clone();
+    let seat = state.to_act();
+    let mut flow = Flow::default();
+    for &command in commands {
+        let gold = sim.gold(seat);
+        if !sim.apply(command) {
+            continue;
+        }
+        let cost = gold - sim.gold(seat);
+        match command {
+            Command::Train { .. } => {
+                flow.spent_units += cost;
+                flow.trains += 1;
+            }
+            Command::BuildMine { .. } | Command::BuildTower { .. } => {
+                flow.spent_buildings += cost;
+                flow.builds += 1;
+            }
+            Command::Move { .. } => flow.moves += 1,
+            Command::Wait => {}
+        }
+    }
+    flow
+}
+
 /// Replays `record` (a Bronze game) into a trace named `name`.
 pub fn trace(name: &str, record: &Record) -> Trace {
     let map = generate(record.seed, ice_and_fire_referee::League::Bronze);
@@ -237,6 +429,9 @@ pub fn trace(name: &str, record: &Record) -> Trace {
     let mut moments = Vec::new();
     let mut middle_ply = None;
     let mut threats = [false; 2];
+    let mut flows = [Flow::default(); 2];
+    // Each side's units at the end of its last turn.
+    let mut units_after: [Option<i64>; 2] = [None; 2];
     for answers in &record.turns {
         if state.outcome().is_some() {
             break;
@@ -254,11 +449,19 @@ pub fn trace(name: &str, record: &Record) -> Trace {
             .cloned()
             .unwrap_or_default();
         let commands: Vec<Command> = line.split(';').filter_map(|p| parse(p.trim())).collect();
+        for (side, after) in units_after.iter().enumerate() {
+            if let Some(after) = after {
+                flows[side].units_lost = (after - state.unit_count(side) as i64).max(0);
+            }
+        }
         let snapshot = Ply {
             game_turn: state.game_turn(),
             to_act: seat,
             board: board(&state),
-            metrics: [side_metrics(&state, 0), side_metrics(&state, 1)],
+            metrics: [
+                side_metrics(&state, 0, &flows[0]),
+                side_metrics(&state, 1, &flows[1]),
+            ],
             commands: line.trim().to_string(),
             spent: 0,
         };
@@ -276,7 +479,22 @@ pub fn trace(name: &str, record: &Record) -> Trace {
         }
         let gold = state.gold(seat);
         let (other_gold, other_units) = (state.gold(other), state.unit_count(other));
+        let start = (snapshot.metrics[seat][3], snapshot.metrics[seat][14]);
+        let mut flow = turn_flow(&state, &commands);
+        let enemy_before = state.owned(other);
         state.play_turn(&commands);
+        flow.captured = i64::from((state.owned(seat) & enemy_before).count());
+        flow.kept_share = if gold > 0 {
+            state.gold(seat).max(0) * 100 / gold
+        } else {
+            100
+        };
+        flow.lost = flows[seat].lost;
+        flow.units_lost = flows[seat].units_lost;
+        units_after[seat] = Some(state.unit_count(seat) as i64);
+        flow.before = Some(start);
+        flows[other].lost = flow.captured;
+        flows[seat] = flow;
         let mut snapshot = snapshot;
         snapshot.spent = (gold - state.gold(seat)).max(0);
         plies.push(snapshot);

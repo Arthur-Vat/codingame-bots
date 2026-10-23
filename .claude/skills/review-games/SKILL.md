@@ -1,11 +1,11 @@
 ---
 name: review-games
-description: Runs a batch of game reviews - plays two bots against each other, turns the records into game files (or excerpts around each game's decisive moment) and metrics, has Haiku agents review them and another summarize the batch, and lands the batch in the repository. Use when the owner or a session asks for reviews of a game's bots.
+description: Runs a batch of game reviews - plays two bots against each other, turns the records into game files and metrics, has Haiku agents review each game (or one read a metrics report of a large batch) and summarize the batch, and lands the batch in the repository. Use when the owner or a session asks for reviews of a game's bots.
 ---
 
 # Review a batch of games
 
-The design is in [ADR 0043](../../../docs/adr/0043-game-reviews-by-haiku.md) (full games) and [ADR 0044](../../../docs/adr/0044-excerpt-reviews.md) (excerpt batches: many games, each read only around its decisive moment; see "Excerpt batches" below); the tool and the files are described in the game's README ("Game reviews"). A game needs a review binary first (`<game>-review`, over the crate `cg-review`); A Code of Ice and Fire has `ice-and-fire-review`.
+The design is in [ADR 0043](../../../docs/adr/0043-game-reviews-by-haiku.md) (full games) and [ADR 0044](../../../docs/adr/0044-metrics-reports.md) (metrics reports of large batches; see "Metrics reports" below); the tool and the files are described in the game's README ("Game reviews"). A game needs a review binary first (`<game>-review`, over the crate `cg-review`); A Code of Ice and Fire has `ice-and-fire-review`.
 
 The main session runs the tools and starts the agents. It does not read the game files or the reviews: only the agents' short replies and the batch's summary.
 
@@ -61,21 +61,17 @@ Start one `review-summarizer` agent with the batch's directory and what to look 
 - A documentation pull request (`docs(<game>): reviews of <bot> against <bot>`) on a `claude/` branch, light review (skill `review-pr`), merged on the owner's approval.
 - Tell the owner the summary's main findings and its ideas for the next experiment; reading `BATCH/summary.md` is enough.
 
-## Excerpt batches
+## Metrics reports
 
-When the question is where a bot loses its games rather than how one game went, play many games and read each only around its decisive moment (ADR 0044). The steps above hold, with these changes.
+When the question is what goes with winning, or how two bots differ, over many games, measure them by code and have one Haiku agent read the report (ADR 0044). The bots and seed are settled as above.
 
-- **Games:** 200 by default, 100 seat-swapped pairs.
-- **Files:** the records go to `SCRATCH/records`, not to the batch: they are many, and the seed rebuilds them.
+```sh
+target/release/<game>-arena match --bot NAME_A=SCRATCH/bin/A --bot NAME_B=SCRATCH/bin/B --pairs 500 --seed SEED --records SCRATCH/records
+target/release/<game>-review games --out SCRATCH/games --text SCRATCH/text SCRATCH/records/*.json
+target/release/<game>-review report SCRATCH/games --curves SCRATCH/curves.json > BATCH/report.md
+```
 
-  ```sh
-  target/release/<game>-arena match --bot NAME_A=SCRATCH/bin/A --bot NAME_B=SCRATCH/bin/B --pairs 100 --seed SEED --records SCRATCH/records
-  target/release/<game>-review excerpts --out BATCH --text SCRATCH/excerpts SCRATCH/records/*.json
-  ```
-
-  `excerpts` writes `BATCH/games.csv` and, into `SCRATCH/excerpts`, one `NAME.excerpt.md` per game and `primer.md`.
-- **Review:** split the games into groups of 20 in `games.csv`'s order, and start one `excerpt-reviewer` agent per group, in the background, up to 10 at a time. Brief each with `SCRATCH/excerpts/primer.md`, its 20 excerpt paths, the categories table of the game's README ("Game reviews") pasted in full, and what to look for. Save each reply, unchanged, as `BATCH/notes-KK.md` (`notes-01.md`, ...). A reply without a readable JSON block gets one more try.
-- **Statistics:** `target/release/<game>-review excerpt-summary BATCH > BATCH/summary-data.md`. Its "Problems" section lists unreadable replies, unknown games or sides, and games without a judgment: retry those groups, then compute again.
-- **Summary:** brief `review-summarizer` that this is an excerpt batch: it reads `summary-data.md` and the `notes-*.md` files instead of `NAME.review.md`, and organizes its findings by category rather than by phase. Save its reply as `BATCH/summary.md`.
-- **Land:** `BATCH/README.md` names the seed and pairs and the command that rebuilds the records and excerpts; the batch keeps only `README.md`, `games.csv`, `notes-*.md`, `summary-data.md` and `summary.md`.
+- **Interpretation:** start one `review-summarizer` agent, briefed that this is a metrics report, with `BATCH/report.md` and what to look for. Save its reply, unchanged, as `BATCH/summary.md`.
+- **Charts:** publish a private page from `SCRATCH/curves.json` (each metric's curve over the turns: the winners' and losers' means, and each bot's), and link it from the batch's README.
+- **Land:** the batch keeps `README.md` (bots, seed, pairs, results, the tool's commit, the commands above, the charts' link), `report.md` and `summary.md`; the records and game files stay in scratch, rebuilt from the seed. A documentation pull request, as above.
 

@@ -1,6 +1,6 @@
 ---
 name: review-summarizer
-description: Drafts the summary of a batch of game reviews - what each bot does well and badly in each phase (or, for an excerpt batch, by category), the decisive moments that recur, and which metrics go with winning - from the reviews and the batch's computed summary, and returns it as its reply for the session to save. Use through the review-games skill, after the game-reviewer agents; it runs on Haiku so that reviews stay cheap.
+description: Drafts the summary of a batch of game reviews - what each bot does well and badly in each phase, the decisive moments that recur, and which metrics go with winning - from the reviews and the batch's computed summary (or from a metrics report of a large batch alone), and returns it as its reply for the session to save. Use through the review-games skill, after the game-reviewer agents; it runs on Haiku so that reviews stay cheap.
 model: haiku
 tools: Read, Glob
 ---
@@ -28,15 +28,15 @@ Your reply is the summary itself, a Markdown document of about 800 to 1,200 word
 4. `## How far to trust the reviews`: what `summary-data.md` says of the judgments' agreement with the lead, and any review that contradicts the metrics or another review.
 5. `## Ideas for the next experiment`: two to four concrete changes to a bot that these games point to, each with the evidence for it.
 
-## An excerpt batch
+## A metrics report
 
-When the brief says the batch is an excerpt batch (ADR 0044), it holds `summary-data.md` (the results by bot and seat, the kinds of decisive moment and how often their side won, and the reviewers' judgments counted by bot, verdict and category), `games.csv` (a row per game) and the reviewers' replies, `notes-*.md` (a few sentences per game, then a JSON list of judgments), instead of one review per game. Read them all, then write the same document with these sections instead of sections 2 to 4:
+When the brief says the batch is a metrics report (ADR 0044), it holds `report.md` alone: about 50 metrics a side measured by code over many games, with from which turn each metric tells the winner, the metrics that tell it best at a few turns, and the two bots' means turn by turn. There are no reviews. Read the whole report, then write the same document with these sections instead of sections 2 to 4:
 
-2. `## How these games are lost`: for each bot, its most frequent bad categories (quote the counts) with two or three examples each (game name and ply).
-3. `## How they are won`: for each bot, its good categories, the same way.
-4. `## How far to trust the notes`: how many judgments fell in `other`, any note that contradicts its excerpt's metrics or another note, and the problems `summary-data.md` lists.
+2. `## What wins these games`: the metrics that tell the winner earliest and best, grouped by what they measure (economy, territory, shape, army, tactics, the last turn); say which probably cause the win and which only follow from it (cells late in a game follow from winning; something that tells the winner by turn 8 is more likely a cause).
+3. `## How the two bots differ`: the metrics on which their means differ most, and when, and whether the difference is in the direction that goes with winning.
+4. `## What the report cannot say`: the limits of these numbers for the questions asked.
 
-Keep section 1 and section 5 (`## Ideas for the next experiment`).
+Keep section 1 and section 5 (`## Ideas for the next experiment`), each idea backed by the report's numbers.
 
 ## Rules
 

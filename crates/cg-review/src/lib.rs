@@ -14,12 +14,13 @@
 //!   the winner, how often each kind of decisive moment decided the game,
 //!   and whether the plays the reviewers judged good or bad moved the lead
 //!   the way they said;
-//! - [`excerpt`]: excerpt reviews (ADR 0044): each side's last few moves up
-//!   to a game's decisive moment, a primer shared by the excerpts, a row per
-//!   game, and the counts of the reviewers' judgments.
+//! - [`report`]: a metrics report of a large batch (ADR 0044): from which
+//!   turn each metric tells the winner, the metrics that tell it best, and
+//!   the two bots compared, with every metric's points turn by turn for
+//!   charts.
 
 pub mod detect;
-pub mod excerpt;
+pub mod report;
 pub mod summary;
 pub mod text;
 pub mod trace;
