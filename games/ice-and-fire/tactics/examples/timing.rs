@@ -16,7 +16,7 @@ use cg_core::rng::Rng;
 use ice_and_fire_engine::{League, State, HQ};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::League as RefereeLeague;
-use ice_and_fire_tactics::chain::{chain_to, Reach};
+use ice_and_fire_tactics::chain::{chain_to, cost_to, Reach};
 use ice_and_fire_tactics::cut::cuts;
 use ice_and_fire_tactics::eval::evaluate;
 
@@ -61,6 +61,8 @@ impl Timing {
 fn main() {
     let mut reach = Timing::new("Reach::new");
     let mut reach_moves = Timing::new("Reach::new (moves)");
+    let mut cost = Timing::new("cost_to(HQ)");
+    let mut cost_moves = Timing::new("cost_to(HQ, moves)");
     let mut chain = Timing::new("chain_to(HQ, gold)");
     let mut cut = Timing::new("cuts(4, gold, 8)");
     let mut eval = Timing::new("evaluate");
@@ -80,6 +82,8 @@ fn main() {
                 let target = HQ[1 - me];
                 reach.time(200, || Reach::new(&state, me, false));
                 reach_moves.time(200, || Reach::new(&state, me, true));
+                cost.time(200, || cost_to(&state, me, false, target));
+                cost_moves.time(200, || cost_to(&state, me, true, target));
                 chain.time(20, || chain_to(&state, target, gold));
                 cut.time(1, || cuts(&state, 4, gold, 8));
                 eval.time(100, || evaluate(&state, me));
@@ -128,6 +132,8 @@ fn main() {
     let mut timings = vec![
         &reach,
         &reach_moves,
+        &cost,
+        &cost_moves,
         &chain,
         &cut,
         &eval,

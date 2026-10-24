@@ -440,3 +440,29 @@ fn the_start_of_every_map_has_costs_of_distance_times_ten_for_the_neighbours() {
         }
     }
 }
+
+#[test]
+fn cost_to_is_the_cost_of_reach_on_every_cell() {
+    let mut checked = 0;
+    for seed in 1..=40 {
+        for league in [League::Bronze, League::Wood1, League::Wood3] {
+            for state in random_positions(seed, league, &[4, 10, 18, 26, 34, 44, 60]) {
+                for seat in 0..2 {
+                    for moves in [false, true] {
+                        let reach = Reach::new(&state, seat, moves);
+                        for target in 0..CELLS {
+                            assert_eq!(
+                                cost_to(&state, seat, moves, target),
+                                reach.cost[target],
+                                "seed {seed}, {league:?}, turn {}, seat {seat}, moves {moves}, cell {target}",
+                                state.game_turn()
+                            );
+                            checked += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert!(checked > 100_000, "{checked} cells checked");
+}

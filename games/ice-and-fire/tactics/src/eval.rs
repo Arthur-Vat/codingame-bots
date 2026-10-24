@@ -5,7 +5,7 @@
 
 use ice_and_fire_engine::{Outcome, State, HQ};
 
-use crate::chain::{Reach, UNREACHABLE};
+use crate::chain::{cost_to, UNREACHABLE};
 
 /// Score of a won or lost game.
 pub const WIN: i64 = 1_000_000;
@@ -33,7 +33,7 @@ fn side(state: &State, seat: usize) -> i64 {
 /// gold and income pay for it, else minus the shortfall, at least
 /// `-MAX_PRESSURE`.
 fn pressure(state: &State, seat: usize) -> i64 {
-    let cost = Reach::new(state, seat, false).cost[HQ[1 - seat]];
+    let cost = cost_to(state, seat, false, HQ[1 - seat]);
     if cost == UNREACHABLE {
         return -MAX_PRESSURE;
     }
@@ -61,9 +61,7 @@ pub fn evaluate(state: &State, seat: usize) -> i64 {
     if seat == state.to_act() {
         let mut next = state.clone();
         next.end_turn();
-        if next.outcome().is_none()
-            && Reach::new(&next, other, true).cost[HQ[seat]] <= next.gold(other)
-        {
+        if next.outcome().is_none() && cost_to(&next, other, true, HQ[seat]) <= next.gold(other) {
             score -= WIN / 2;
         }
     }
