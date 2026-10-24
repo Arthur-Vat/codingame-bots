@@ -27,9 +27,11 @@
 # release; with several, each is played against the stored results only, and
 # the choice of the second ignores the pairings of the first.
 #
-# The canary LEAGUE_CANARY (A,B), when not empty and both bots are in the
-# pool, is replayed after the pairings; a line `warning: canary ...` of the
-# arena becomes a warning annotation.
+# The canary LEAGUE_CANARY (A,B), when not empty, both bots are in the pool
+# and the results file holds their pairing, is replayed after the pairings; a
+# line `warning: canary ...` of the arena becomes a warning annotation. While
+# the pairing is not stored yet (a replay of the history from an empty
+# results file, before it plays A or B), it is not replayed, with a warning.
 #
 # Exit status: 0 on success; 1 when NEW faults (--expect-no-faults-from NEW,
 # up to MAX_TIMEOUT_RATE); 2 on errors. It stops at the first NEW that fails.
@@ -248,7 +250,12 @@ for new in "${news[@]}"; do
       fi
     done
     if [[ $canary_a == "$canary_b" || $in_pool -eq 2 ]]; then
-      extra+=(--canary "$canary")
+      if grep -Fq "\"a\":\"$canary_a\",\"b\":\"$canary_b\"" "$results" 2>/dev/null ||
+        grep -Fq "\"a\":\"$canary_b\",\"b\":\"$canary_a\"" "$results" 2>/dev/null; then
+        extra+=(--canary "$canary")
+      else
+        echo "::warning title=League canary::$canary is not in $results yet: not replayed"
+      fi
     fi
   fi
   new_results="$dir/$game-$new.jsonl"
