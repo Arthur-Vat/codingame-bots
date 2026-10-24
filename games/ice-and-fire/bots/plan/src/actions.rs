@@ -41,7 +41,7 @@ fn xy(cell: usize) -> (u8, u8) {
 
 /// The actions for the player to act in `state`, in `out` (cleared first), in
 /// a fixed order.
-pub fn generate(state: &State, out: &mut Vec<Action>, cut_length: usize) {
+pub fn generate(state: &State, out: &mut Vec<Action>) {
     out.clear();
     if state.outcome().is_some() {
         return;
@@ -105,7 +105,7 @@ pub fn generate(state: &State, out: &mut Vec<Action>, cut_length: usize) {
 
     // Macro actions: the best cuts, and the lethal chain. A cut of one
     // training is a single training already.
-    for cut in cuts(state, cut_length, gold, MACRO_CUTS) {
+    for cut in cuts(state, CUT_LENGTH, gold, MACRO_CUTS) {
         if cut.commands.len() > 1 {
             out.push(Action::Many(cut.commands));
         }
