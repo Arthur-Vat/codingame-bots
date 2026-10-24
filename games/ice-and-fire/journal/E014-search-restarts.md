@@ -6,11 +6,11 @@ parent: ice-and-fire-v005
 hypothesis: v005's middle-game search stops at about 10 ms in most turns because its climbs find nothing new, not for lack of time; a search that climbs again from other first actions until its time is up, with cuts of up to 5 trainings, beats v005.
 change: When a climb teaches nothing new (a plan found before, or replies the memory already holds), the next climb may not start with the first action of any plan found so far, until the soft limit or 32 climbs (8 before); cuts, ours and the opponent's replies, are chains of up to 5 trainings (4 before). Time limits, memory and the opening are v005's.
 release: ice-and-fire-v006
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +74.1 [+43.5, +106.0] at CodinGame's limits
+pairs: 176
+full_time: +74.1 [+43.5, +106.0] (the SPRT's own, ADR 0042), no timeout in 352 games, slowest answer 615.9 ms (the first turn)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -84,6 +84,27 @@ The owner chose restart-cut5 as the candidate ("restart + cut5
 (Recommended)"): the higher in both stages, the simpler change (v005's time
 limits and memory), and the one with more room under 50 ms.
 
-## SPRT
+## Result
 
-Pending.
+The SPRT on CI accepted the candidate (at ebc53fb, after the review's
+fixes; an earlier run at 99afe5a had accepted it too, +72.2 after 161
+pairs):
+
+```
+SPRT against ice-and-fire-v005:
+ice-and-fire-v006 vs ice-and-fire-v005: 352 games, 176 complete pairs
+  ice-and-fire-v006: 213 wins, 0 draws, 139 losses (score 60.5%)
+  Elo of ice-and-fire-v006 over ice-and-fire-v005: +74.1 [+43.5, +106.0] (95%, from pairs)
+  pairs by ice-and-fire-v006's points (0, 1/2, 1, 3/2, 2): [15, 0, 109, 0, 52]
+  ice-and-fire-v006 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v005 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  answers after the first (median, 99%, 99.9%): ice-and-fire-v006 24.5, 32.6, 34.9 ms; ice-and-fire-v005 5.7, 32.3, 34.7 ms
+  slowest answer: ice-and-fire-v006 615.9 ms, ice-and-fire-v005 618.3 ms
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 2.95 (bounds -2.94, 2.94) after 176 pairs
+Verdict: ACCEPTED: ice-and-fire-v006 is stronger than ice-and-fire-v005
+```
+
+The league of the release (at ebc53fb, 800 pairs a pairing) scored v006
+60.8% against v005 (973 wins, 627 losses), 64.6% against v004 and 66.1%
+against v003, and rated it +2105.9 ± 182.5, against v005's +2037.7
+([LEADERBOARD.md](../LEADERBOARD.md)).
