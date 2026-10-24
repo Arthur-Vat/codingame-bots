@@ -1,0 +1,117 @@
+---
+id: E015
+date: 2026-10-24
+pull_request: "#206"
+parent: ice-and-fire-v006
+hypothesis: Three quarters of the middle-game search's time goes to the shortest chain of trainings to the enemy HQ, computed three times per evaluation by a Dijkstra over arrays; the same cost found on bitboards lets the search score more plans in its time, which beats v006.
+change: The shared evaluation (`ice_and_fire_tactics::eval`) takes the cost of the cheapest chain to an HQ from `chain::cost_to`, which grows the reached cells one step of 10 gold at a time on bitboards and stops at the target, instead of `Reach::new`; the costs are the same on every cell. The search, its limits and the evaluation's terms are v006's.
+release: ice-and-fire-v007
+sprt: accepted
+elo: +57.7 [+31.5, +84.6] at CodinGame's limits
+pairs: 164
+full_time: +57.7 [+31.5, +84.6] (the SPRT's own, ADR 0042), no timeout in 328 games, slowest answer 613.5 ms (the first turn)
+decision: promoted
+cg_rank: not reported
+---
+
+Asked by the owner on 2026-10-24: "could you analyze what takes time during
+the thinking step (except in the early game)? What are the priorities for
+optimization? Is the state/board representation efficient?", then, from
+the answer, "Bitboard path cost (Recommended)".
+
+## Where the time went
+
+A profile of v006's middle game under callgrind (self-play, 110 middle-game
+turns of 4 games, each turn scoring 330 plans, as a real 24 ms turn did)
+counted its instructions:
+
+| Part | Share of the middle game |
+| --- | ---: |
+| The evaluation of a position | about 87% |
+| of which `Reach::new`, three a position (the two sides' chains to the enemy HQ, and the threat to ours after the turn) | about 76% |
+| of which the shape term | about 8% |
+| The engine's moves and trainings (with the active cells' flood) | about 9% |
+| The actions' list, with the cut finder | about 6% |
+
+`Reach::new` is a Dijkstra over the 144 cells that picks its next cell by
+scanning a list, about 62,000 instructions a call, where the evaluation
+needs one number. The state is already bitboards (owners, active cells,
+units by owner and level, mines, towers; three 64-bit words holding whole
+rows), so a copy is cheap and the engine's work was about 10 to 15% of the
+time.
+
+## The change
+
+Entering a cell costs 10 gold times the lowest level that may enter it, so
+every cost is a multiple of 10: `cost_to` keeps four bitboards of the cells
+first reached at the next four costs, settles them in order, and stops at
+the target. A test checks it against `Reach::new` on all 144 cells of 8,872
+cases (2,218 positions of random games in the four leagues, after odd and
+even plies so that either seat is to act, each seat, with or without the
+units' steps): 1,277,568 cells. The review's own check found no difference
+on 15,019,776 more (seeds 1 to 400), with towers and level 2 and 3 units.
+The tactics' timing example (3,560 positions of random games) measures 0.2
+µs a call against 4.6 µs, and 0.4 against 5.3 with the units' steps: 10 to
+20 times faster.
+
+In self-play with the real limits the search scored 592 plans a turn
+against v006's 329, and under callgrind the same work took 3.7 times fewer
+instructions in the middle game. The rest is now spread out: the shape term
+about 31%, the engine's moves with the flood about 34%, the actions' list
+about 21%, the chains' paths about 20% (the parts overlap).
+
+## Screening
+
+Against `ice-and-fire-v006` at CodinGame's limits, 400 seat-swapped pairs
+each, seed 15015, two games at a time:
+
+| Variant | Elo against v006 | Score as red | Score as blue | Variant's timeouts | Answers after the first (median, 99%, 99.9%) |
+| --- | --- | ---: | ---: | ---: | --- |
+| cost_to | **+54.3 [+34.4, +74.6]** | 45.0% | 70.5% | 2 | 7.0, 32.1, 34.6 ms |
+| cost_to, 64 climbs (32) | **+52.5 [+33.6, +71.7]** | 40.5% | 74.5% | 2 | 7.0, 32.1, 34.3 ms |
+
+The cap on the climbs does not bind: with either cap the median answer
+takes 7 ms, against v006's 22.6 ms, so most turns end before both the cap
+and the time limit. The candidate keeps 32.
+
+## Confirmation
+
+On 600 new pairs, seed 15016: **+37.8 [+22.9, +52.8]**, 41.5% as red and
+69.3% as blue, 2 timeouts in 1,200 games (v006: 2), answers after the
+first (median, 99%, 99.9%) of 6.8, 32.2 and 34.7 ms. The owner chose the
+candidate ("Candidate v007 + SPRT (Recommended)").
+
+The function was then written more compactly, with the same results (the
+same test), so that the paste-ready file fits: 99,887 characters, 1,012
+more than v006's.
+
+## Result
+
+The SPRT on CI accepted the candidate (at 6a238dd):
+
+```
+SPRT against ice-and-fire-v006:
+ice-and-fire-v007 vs ice-and-fire-v006: 328 games, 164 complete pairs
+  ice-and-fire-v007: 191 wins, 0 draws, 137 losses (score 58.2%)
+  Elo of ice-and-fire-v007 over ice-and-fire-v006: +57.7 [+31.5, +84.6] (95%, from pairs)
+  pairs by ice-and-fire-v007's points (0, 1/2, 1, 3/2, 2): [8, 0, 121, 0, 35]
+  ice-and-fire-v007 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v006 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  answers after the first (median, 99%, 99.9%): ice-and-fire-v007 7.7, 32.1, 34.2 ms; ice-and-fire-v006 24.2, 32.1, 34.6 ms
+  slowest answer: ice-and-fire-v007 613.5 ms, ice-and-fire-v006 622.2 ms
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.02 (bounds -2.94, 2.94) after 164 pairs
+Verdict: ACCEPTED: ice-and-fire-v007 is stronger than ice-and-fire-v006
+```
+
+The league of the release (at 6a238dd, 800 pairs a pairing) scored v007
+57.4% against v006 (919 wins, 681 losses), 64.2% against v005 and 68.2%
+against v004, and rated it +2137.4 ± 182.5, against v006's +2100.7
+([LEADERBOARD.md](../LEADERBOARD.md)).
+
+## Left for later
+
+In self-play with the real limits, 75% of v007's middle-game turns end
+before the time limit (median 4.3 ms for those), when no first action at
+the root improves the plan any more; the turns then take 11 ms on average
+of the 50 ms. The owner pointed to longer cuts, ours and the opponent's,
+for that time (E016).

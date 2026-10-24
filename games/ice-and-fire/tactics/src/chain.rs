@@ -27,6 +27,49 @@ pub struct Reach {
     pub before: [u8; CELLS],
 }
 
+/// The cost of [`Reach::new`]`(state, seat, moves).cost[target]`: the same
+/// number, found on bitboards (E015). Every cost is a multiple of 10, so the
+/// cells are reached one step of 10 gold at a time, in four buckets of the
+/// cells first reached at each of the next costs, and the search stops at
+/// `target`.
+pub fn cost_to(state: &State, seat: usize, moves: bool, target: usize) -> i64 {
+    let max = state.league().max_level();
+    // `entry[l - 1]`: the cells whose cheapest level to enter is `l`.
+    let mut entry = [Bits::EMPTY; 3];
+    let mut seen = Bits::EMPTY;
+    for level in 1..=max {
+        let bits = state.enterable(seat, level);
+        entry[usize::from(level) - 1] = bits.and_not(seen);
+        seen |= bits;
+    }
+    // `open[c % 4]`: cells first reached at the cost of `c` steps.
+    let mut open = [state.active(seat), Bits::EMPTY, Bits::EMPTY, Bits::EMPTY];
+    if moves && seat == state.to_act() {
+        for cell in state.movable_units().iter() {
+            if let Some(level) = state.unit_level(cell).filter(|&level| level <= max) {
+                open[0] |= Bits::cell(cell).neighbours() & state.enterable(seat, level);
+            }
+        }
+    }
+    let mut done = Bits::EMPTY;
+    for step in 0.. {
+        let new = open[step % 4].and_not(done);
+        open[step % 4] = Bits::EMPTY;
+        if new.test(target) {
+            return 10 * step as i64;
+        }
+        done |= new;
+        let next = new.neighbours().and_not(done);
+        for (ahead, cells) in entry.iter().enumerate() {
+            open[(step + ahead + 1) % 4] |= next & *cells;
+        }
+        if open.iter().all(|bits| bits.and_not(done).is_empty()) {
+            break;
+        }
+    }
+    UNREACHABLE
+}
+
 impl Reach {
     /// Dijkstra from the seat's active cells. Entering a cell costs 10 × the
     /// lowest level L in 1..=league.max_level() with `state.enterable(seat, L)`
