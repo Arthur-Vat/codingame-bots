@@ -2,7 +2,7 @@
 
 The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME.md), [ADR 0035](../../docs/adr/0035-new-game-lifecycle.md)). The owner decides at the end of every stage; each gate records his answer and its date. Skill `new-game` reads this file to name the next stage.
 
-**Stage in progress:** 9. Approach and first bot
+**Stage in progress:** 10. Iteration
 **Owner's stopping rule:** none yet
 
 | # | Stage | Status | Gate: the owner's answer |
@@ -15,20 +15,33 @@ The state of this game in the new-game lifecycle ([playbook](../../docs/NEW_GAME
 | 6 | Arena and baseline bots | Done (2026-10-17) | Arena, baselines and the game's numbers, #166 merged; "Merge #166", then "Fresh session, then stage 7" (forms, 2026-10-17) |
 | 7 | Studio | Done (2026-10-17) | Adapter, renderer and baseline bots, #167-#169 merged; "The studio works perfectly", with the card's picture changed (2026-10-17) |
 | 8 | Research | Done (2026-10-19) | [research/README.md](research/README.md), #177 merged; prototypes "plan + phases (Recommended)", no anneal (form, 2026-10-19) |
-| 9 | Approach and first bot | In progress | |
-| 10 | Iteration | Not started | |
+| 9 | Approach and first bot | Done (2026-10-22) | `plan` is the approach: [E002](journal/E002-plan.md), `ice-and-fire-v002`, #182 merged; "Merge #182 (Recommended)" (form, 2026-10-22) |
+| 10 | Iteration | In progress | |
 | 11 | Retrospective | Not started | |
 
 Status is `Not started`, `In progress`, `Waiting for the owner` or `Done (YYYY-MM-DD)`.
 
 ## Current stage
 
+Iteration: one experiment per pull request ([journal](journal/README.md)).
+
+- [x] E003, the early game: research ([research/early-game.md](research/early-game.md)), an opening benchmark, the openings inside the `plan` bot, the best as `ice-and-fire-v003` through the SPRT against v002: accepted, +299.8 Elo ([E003](journal/E003-opening.md), #183)
+- [x] E004, the early game planned on the first turn: a crate for the opening, a heuristic score of the middle game and an in-process harness (#184); tuned weights, a portfolio of weights chosen per map and five turn-1 planners compared at equal time by a heuristic score (the economy, then the Voronoi share); the portfolio, the best against v003 in the arena, inside the `plan` bot as `ice-and-fire-v004` through the SPRT against v003: accepted, +51.9 Elo ([E004](journal/E004-planned-opening.md), #184, #185)
+- [x] E005, more time and other heuristics for the first turn's choice, and a study of what decides games ([research/game-study.md](research/game-study.md)): no gain, dropped ([E005](journal/E005-first-turn.md))
+- [x] E006, a plan search that guards its necks: two penalties and neck-safe growth, all weaker than v004, dropped ([E006](journal/E006-necks.md))
+- [x] E007, a gold reserve in the middle game: the plan search kept 20 gold after its turn except for attacks, as `ice-and-fire-v005`; SPRT rejected against v004, −15.9 Elo, dropped ([E007](journal/E007-reserve.md), #186)
+- [x] E008, a seat-symmetric opening (ties broken by the cell's index as red sees it), after the first review batch: level with v004 (+5.2 Elo, 200 pairs), dropped; blue's missing mine comes from its extra starting cell and costs it nothing ([E008](journal/E008-symmetric-opening.md))
+- [x] E009, an upkeep check in the plan search (no action that makes income negative): debt wipe-outs fell from 31 to 1 in 400 games but results did not change (+1.7 Elo, 200 pairs), dropped; the wipe-outs come at the end of games already lost ([E009](journal/E009-upkeep-check.md))
+- [x] E010, the early game planned for our side alone (compact, no thin lines, toward the enemy HQ; an anytime beam over 7 turns) and a shape term in the middle-game evaluation, as `ice-and-fire-v005` through the SPRT against v004: accepted, +44.1 Elo ([E010](journal/E010-solo-opening.md), #194)
+- [x] E011, a red-seat opening that pulls harder toward the enemy HQ and penalizes shape less, after the first metrics report: four forms; the best (+16.5 Elo, 400 pairs) lost on 600 new pairs (−18.5), dropped ([E011](journal/E011-red-opening.md))
+- [x] E012, a middle-game shape term on the cuts the enemy can reach instead of the joints, after the first metrics report: three forms, all pointing lower than v005 (−10 to −23 Elo, 400 pairs) and the one without joints clearly weaker, dropped ([E012](journal/E012-cut-off-term.md))
+
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 
 - [x] Shared tactics: cheapest chain with towers, cut finder, evaluation (`tactics/`)
 - [x] The ladder of reference bots, each adding one step to the one before ([E001](journal/E001-ladder.md), `ladder/`): `chain`, `guard`, `cutter`, `banker`, all published as baseline bots
 - [x] ice-and-fire-v001 from `banker`: SPRT accepted against `bronze`, +196.5 Elo, +207.0 at CodinGame's limits (#179)
-- [ ] `plan`: the plan search with a memory of opponent replies, compared with v001; v002 if it wins
+- [x] `plan`: the plan search with a memory of opponent replies, compared with v001: `ice-and-fire-v002`, SPRT accepted against v001, +126.4 Elo at CodinGame's limits ([E002](journal/E002-plan.md), #182)
 - [ ] The owner pastes v001 on CodinGame
 
 Research: the list in the [playbook](../../docs/NEW_GAME.md).
@@ -68,6 +81,9 @@ Studio: the list in the [playbook](../../docs/NEW_GAME.md).
 - Whether equal military power after 100 turns is a draw on CodinGame (asked 2026-10-17): not seen in the `rules-check` games. The seats (either) and CodinGame's referee (no difference from the source's) were settled on 2026-10-19 ([RULES.md](RULES.md#platform-facts-to-check)).
 
 ## Decisions
+
+- 2026-10-22: the early game before anything else: "Before implementing anything, I would like you to think about strategies for the early game ... The goal is to maximize the expansion to generate the most income, while also being safe when the middle game begins. You should consider several approaches from a theoretical point of view, then benchmark them. Once best candidates are selected you can use them as part of a full bot, and then you can pick the best" (E003).
+- 2026-10-22: stage 9 passed: #182 merged ("Merge #182 (Recommended)", form); `plan`, as `ice-and-fire-v002`, is the approach.
 
 - 2026-10-21: official time limits in all games and 800 pairs per league pairing: "I would like to have the official time control in all games"; "What about 800 pairs? Is it within the job limit? If yes go on with this" ([ADR 0042](../../docs/adr/0042-official-time-limits-and-800-pairs.md)), superseding the 0.2 scale of 2026-10-17.
 - 2026-10-19: the first bot is a ladder of reference bots rather than one bot called `phases`: `chain`, `guard`, `cutter`, `banker`, each adding one step to the one before and all published as baseline bots in one pull request; only `banker` is released, as v001 (the owner disliked the name `phases`).

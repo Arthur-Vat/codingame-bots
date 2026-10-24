@@ -11,11 +11,11 @@ Every bot change is judged by CI: unit tests, a check that the bot compiles on C
 | Game | CodinGame league | Current release | Journal |
 | --- | --- | --- | --- |
 | [Ultimate Tic-Tac-Toe](games/uttt/) | Legend since 2026-10-07; 59th with `uttt-v008` (2026-10-08) | [`uttt-v018`](games/uttt/releases/uttt-v018.rs) | [journal](games/uttt/journal/) |
-| [A Code of Ice and Fire](games/ice-and-fire/) | Not on CodinGame yet | [`ice-and-fire-v001`](games/ice-and-fire/releases/ice-and-fire-v001.rs) | [journal](games/ice-and-fire/journal/) |
+| [A Code of Ice and Fire](games/ice-and-fire/) | Not on CodinGame yet | [`ice-and-fire-v005`](games/ice-and-fire/releases/ice-and-fire-v005.rs) | [journal](games/ice-and-fire/journal/) |
 
 ## Where things are
 
-- [`crates/`](crates/): code shared by every game. `cg-core` reads CodinGame's input and gives bots a seeded random generator and the time scale. `cg-search` is a game trait with Monte Carlo tree search. `cg-arena` is the referee trait, the match runner, the SPRT, the ratings and the command line. `cg-bundler` turns a bot and the crates it uses into one paste-ready file. `cg-pack` decodes data packed into characters, which `cg-packer` encodes.
+- [`crates/`](crates/): code shared by every game. `cg-core` reads CodinGame's input and gives bots a seeded random generator and the time scale. `cg-search` is a game trait with Monte Carlo tree search. `cg-arena` is the referee trait, the match runner, the SPRT, the ratings and the command line. `cg-bundler` turns a bot and the crates it uses into one paste-ready file. `cg-pack` decodes data packed into characters, which `cg-packer` encodes. `cg-review` turns recorded games into files a reviewer reads and summarizes a reviewed batch.
 - [`games/<game>/`](games/): everything for one game. Its rules (`RULES.md`), a readable referee, a fast engine, an arena binary, a trainer, the bots, the frozen releases, the journal of experiments, the reports of training runs, and the settings of its evaluations.
 - [`studio/`](studio/): the studio, an app to play and review games in the browser (phase 6), run locally or published on GitHub Pages at <https://arthur-vat.github.io/codingame-bots/> (rules and bots in the browser as WebAssembly). Its front end is in TypeScript, React and Vite, in `studio/web/`.
 - [`docs/`](docs/): architecture, roadmap, workflow, CodinGame facts, and the decision records in `docs/adr/`.

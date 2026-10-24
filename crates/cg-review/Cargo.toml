@@ -1,0 +1,17 @@
+[package]
+name = "cg-review"
+description = "Turns recorded games into reviewable text: boards, metrics, phases and decisive moments, and summarizes a batch of reviewed games."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

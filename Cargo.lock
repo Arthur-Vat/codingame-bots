@@ -95,6 +95,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cg-review"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "cg-search"
 version = "0.0.0"
 dependencies = [
@@ -171,7 +179,11 @@ name = "ice-and-fire-arena"
 version = "0.0.0"
 dependencies = [
  "cg-arena",
+ "ice-and-fire-engine",
+ "ice-and-fire-opening",
  "ice-and-fire-referee",
+ "ice-and-fire-tactics",
+ "serde_json",
 ]
 
 [[package]]
@@ -208,6 +220,19 @@ name = "ice-and-fire-bot-guard"
 version = "0.0.0"
 dependencies = [
  "ice-and-fire-ladder",
+]
+
+[[package]]
+name = "ice-and-fire-bot-plan"
+version = "0.0.0"
+dependencies = [
+ "cg-arena",
+ "cg-core",
+ "ice-and-fire-engine",
+ "ice-and-fire-opening",
+ "ice-and-fire-policy",
+ "ice-and-fire-referee",
+ "ice-and-fire-tactics",
 ]
 
 [[package]]
@@ -279,6 +304,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ice-and-fire-opening"
+version = "0.0.0"
+dependencies = [
+ "ice-and-fire-engine",
+ "ice-and-fire-referee",
+ "ice-and-fire-tactics",
+]
+
+[[package]]
 name = "ice-and-fire-policy"
 version = "0.0.0"
 dependencies = [
@@ -294,6 +328,20 @@ version = "0.0.0"
 dependencies = [
  "cg-arena",
  "cg-core",
+]
+
+[[package]]
+name = "ice-and-fire-review"
+version = "0.0.0"
+dependencies = [
+ "cg-arena",
+ "cg-review",
+ "clap",
+ "ice-and-fire-engine",
+ "ice-and-fire-opening",
+ "ice-and-fire-referee",
+ "ice-and-fire-tactics",
+ "serde_json",
 ]
 
 [[package]]
