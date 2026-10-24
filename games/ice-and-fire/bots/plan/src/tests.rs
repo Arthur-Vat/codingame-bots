@@ -254,6 +254,21 @@ fn a_search_with_more_room_climbs_again_with_a_memory() {
 }
 
 #[test]
+fn a_search_that_learns_nothing_new_climbs_from_other_first_actions() {
+    // E014: once the memory stops growing, each climb is barred from the
+    // first actions of the plans found before, so with room enough the
+    // search goes on to its most climbs (8 before E014, where it stopped).
+    let state = &positions(3, &[30])[1];
+    let thought = think(state, evals(1_000_000), &mut opening());
+    assert_eq!(thought.climbs, 32);
+    assert!(thought.memory <= 8);
+    let mut scratch = state.clone();
+    for &command in &thought.commands {
+        assert!(scratch.apply(command), "{command:?}");
+    }
+}
+
+#[test]
 fn takes_a_cheap_gain_the_hill_climb_must_find() {
     // Room to spread and gold for trainings, the enemy near enough that the
     // middle game has begun and the plan search plays, not the opening: the plan is not empty and
