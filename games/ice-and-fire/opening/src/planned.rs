@@ -40,19 +40,6 @@ pub enum Planner {
     },
 }
 
-/// What the opening does when our side of the board is not what the plan
-/// predicted for this turn (E013).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum OffTrack {
-    /// Make a new plan from the board (E004, E010).
-    Replan,
-    /// Keep playing the plan's steps on the board; a new plan is made only
-    /// when the plan runs out.
-    Keep,
-    /// End the opening: the middle-game search plays from this turn.
-    End,
-}
-
 /// The opening's memory between turns.
 pub struct Planned {
     pub planner: Planner,
@@ -68,15 +55,6 @@ pub struct Planned {
     pub plans: u32,
     /// Whether the middle game has begun: the opening is then over for good.
     over: bool,
-    /// What to do off track ([`OffTrack::Replan`] by default).
-    pub off_track: OffTrack,
-    /// The most of our turns the opening plays, if any (E013).
-    pub max_turns: Option<usize>,
-    /// The fewest of our turns the opening plays before the middle game may
-    /// end it, if any (E013).
-    pub min_turns: Option<usize>,
-    /// Our turns the opening has played.
-    turns: usize,
 }
 
 impl Planned {
@@ -90,10 +68,6 @@ impl Planned {
             played: 0,
             plans: 0,
             over: false,
-            off_track: OffTrack::Replan,
-            max_turns: None,
-            min_turns: None,
-            turns: 0,
         }
     }
 
@@ -105,13 +79,7 @@ impl Planned {
     pub fn playing(&mut self, state: &State) -> bool {
         let solo = matches!(self.planner, Planner::Solo { .. });
         let predicted = !solo && self.plans > 0 && self.played >= self.expected.len();
-        let capped = self.max_turns.is_some_and(|max| self.turns >= max);
-        let early = self.min_turns.is_some_and(|min| self.turns < min);
-        let middle = !early && crate::middle::reached(state);
-        if !self.over && (predicted || capped || middle) {
-            self.over = true;
-        }
-        if !self.over && self.off_track == OffTrack::End && self.diverged(state) {
+        if !self.over && (predicted || crate::middle::reached(state)) {
             self.over = true;
         }
         !self.over
@@ -130,14 +98,9 @@ impl Planned {
             deadline,
             settings: Settings::DEFAULT,
         };
-        let replan = match self.off_track {
-            OffTrack::Keep => self.plans == 0 || self.played >= self.plan.len(),
-            OffTrack::Replan | OffTrack::End => {
-                self.expected.get(self.played) != Some(&side_key(state, state.to_act()))
-            }
-        };
-        self.turns += 1;
-        if replan {
+        let me = state.to_act();
+        let on_track = self.expected.get(self.played) == Some(&side_key(state, me));
+        if !on_track {
             let first = self.plans == 0;
             self.plan = match self.planner {
                 Planner::Beam { width, replan } => {
@@ -176,16 +139,6 @@ impl Planned {
         let step = self.plan.get(self.played).copied().unwrap_or(ctx.rest);
         self.played += 1;
         ctx.commands(state, step)
-    }
-}
-
-impl Planned {
-    /// Whether a plan is being played and our side in `state` is not what it
-    /// predicted for this turn.
-    fn diverged(&self, state: &State) -> bool {
-        self.plans > 0
-            && self.played < self.expected.len()
-            && self.expected[self.played] != side_key(state, state.to_act())
     }
 }
 
