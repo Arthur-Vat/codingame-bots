@@ -21,7 +21,7 @@
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use ice_and_fire_engine::{Command, Outcome, State, HQ, SIZE};
 use ice_and_fire_opening::planned::Planned;
@@ -37,8 +37,31 @@ use crate::eval::eval;
 const MEMORY_CAP: usize = 8;
 /// The opponent's best cuts added to the memory after a climb.
 const REPLY_CUTS: usize = 3;
+/// E016 screening only: the variant from the build's environment.
+fn variant() -> &'static str {
+    option_env!("E016").unwrap_or("")
+}
+
 /// Most climbs in one turn.
-const MAX_CLIMBS: usize = 32;
+fn max_climbs() -> usize {
+    if variant().contains("deep") {
+        128
+    } else {
+        32
+    }
+}
+
+/// The longest cuts the search deepens to once the climbs find nothing new
+/// at the current length (E016).
+fn max_cut() -> usize {
+    if variant().contains("x10") {
+        10
+    } else if variant().contains("deep") {
+        8
+    } else {
+        CUT_LENGTH
+    }
+}
 
 /// When the search stops.
 #[derive(Clone, Copy, Debug)]
@@ -48,6 +71,8 @@ pub struct Limit {
     pub soft: Option<Instant>,
     /// The choice among the plans stops scoring more of them after this.
     pub hard: Option<Instant>,
+    /// The opening's deadline.
+    pub opening: Option<Instant>,
     /// Most plans scored (one try of an action is one) during the climbs. The
     /// tests use it in place of a deadline, so that they are deterministic.
     pub max_evals: u64,
@@ -88,6 +113,8 @@ type Gains = HashMap<u64, i64, BuildHasherDefault<DefaultHasher>>;
 
 struct Search {
     me: usize,
+    /// The longest cuts tried, ours and the opponent's replies.
+    cut_length: usize,
     limit: Limit,
     evals: u64,
     /// The best gain each action ever had in an earlier climb: where a new
@@ -160,6 +187,11 @@ fn lethal(state: &State) -> Option<Vec<Command>> {
 }
 
 impl Search {
+    /// Whether `margin` is left before the soft limit (always, without one).
+    fn has_time(&self, margin: Duration) -> bool {
+        self.limit.soft.is_none_or(|t| Instant::now() + margin < t)
+    }
+
     /// Whether the climbs must stop.
     fn out_of_time(&self) -> bool {
         self.evals >= self.limit.max_evals || self.limit.soft.is_some_and(|t| Instant::now() >= t)
@@ -249,7 +281,7 @@ impl Search {
         let mut actions = Vec::new();
         let mut order: Vec<(i64, usize)> = Vec::new();
         while cur.outcome().is_none() && !self.out_of_time() {
-            generate(&cur, &mut actions);
+            generate(&cur, &mut actions, self.cut_length);
             order.clear();
             for (index, action) in actions.iter().enumerate() {
                 let k = key(action.commands());
@@ -311,7 +343,7 @@ impl Search {
         if let Some(chain) = chain_to(&next, HQ[self.me], gold) {
             out.push(chain.commands);
         }
-        for cut in cuts(&next, CUT_LENGTH, gold, REPLY_CUTS) {
+        for cut in cuts(&next, self.cut_length, gold, REPLY_CUTS) {
             out.push(cut.commands);
         }
         let mut greedy = Vec::new();
@@ -361,15 +393,12 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
     if opening.playing(state) {
         // The opening's choice stops at 76% of the turn: the hard limit is
         // the whole budget.
-        let at = |share: f64| match (limit.soft, limit.hard) {
-            (Some(soft), Some(hard)) => Some(soft + (hard - soft).mul_f64(share)),
-            _ => None,
-        };
-        thought.commands = opening.turn(state, at(0.4));
+        thought.commands = opening.turn(state, limit.opening);
         return thought;
     }
     let mut search = Search {
         me,
+        cut_length: CUT_LENGTH,
         limit,
         evals: 0,
         hints: Gains::default(),
@@ -377,7 +406,7 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
     let mut memory: Vec<Reply> = Vec::new();
     let mut plans: Vec<Plan> = Vec::new();
     let mut banned: Vec<u64> = Vec::new();
-    while thought.climbs < MAX_CLIMBS && (plans.is_empty() || !search.out_of_time()) {
+    while thought.climbs < max_climbs() && (plans.is_empty() || !search.out_of_time()) {
         let plan = search.climb(state, &memory, &banned);
         thought.climbs += 1;
         // A climb that ends on a plan found before has nothing new to learn.
@@ -398,6 +427,20 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
         if !more {
             match first {
                 Some(first) => banned.push(first),
+                // E016: nothing new from the root at this length: look for
+                // longer cuts, ours and the opponent's, and climb again.
+                None if search.cut_length < max_cut()
+                    && search.has_time(Duration::from_millis(8)) =>
+                {
+                    search.cut_length += 1;
+                    banned.clear();
+                    for plan in &plans {
+                        if search.out_of_time() {
+                            break;
+                        }
+                        search.remember(&plan.end, &mut memory);
+                    }
+                }
                 None => break,
             }
         }

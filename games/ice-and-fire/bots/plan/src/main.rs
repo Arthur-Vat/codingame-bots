@@ -71,10 +71,19 @@ fn limit(start: Instant, turn: u32) -> Limit {
     } else {
         BUDGET_MS
     };
-    let budget = Duration::from_secs_f64(ms / 1000.0 * scale);
+    let base = Duration::from_secs_f64(ms / 1000.0 * scale);
+    // E016 screening only: 45 ms a turn, no new climb after 40, from the
+    // build's environment; the opening keeps its deadline, 76% of the base.
+    let t45 = turn > 1 && option_env!("E016").unwrap_or("").contains("45");
+    let (budget, share) = if t45 {
+        (Duration::from_secs_f64(0.045 * scale), 40.0 / 45.0)
+    } else {
+        (base, SOFT_SHARE)
+    };
     Limit {
-        soft: Some(start + budget.mul_f64(SOFT_SHARE)),
+        soft: Some(start + budget.mul_f64(share)),
         hard: Some(start + budget),
+        opening: Some(start + base.mul_f64(SOFT_SHARE + (1.0 - SOFT_SHARE) * 0.4)),
         max_evals: u64::MAX,
     }
 }

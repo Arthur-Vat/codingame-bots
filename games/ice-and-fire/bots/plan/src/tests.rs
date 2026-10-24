@@ -21,6 +21,7 @@ fn evals(max_evals: u64) -> Limit {
     Limit {
         soft: None,
         hard: None,
+        opening: None,
         max_evals,
     }
 }
@@ -143,7 +144,7 @@ fn every_action_generated_is_a_command_of_the_rules() {
     for seed in 0..8 {
         for state in positions(seed, &PHASES) {
             let mut list = Vec::new();
-            actions_of(&state, &mut list);
+            actions_of(&state, &mut list, crate::actions::CUT_LENGTH);
             for action in &list {
                 if let Action::One(command) = action {
                     assert!(state.clone().apply(*command), "seed {seed}: {command:?}");
@@ -208,6 +209,7 @@ fn the_search_respects_its_deadline_on_a_heavy_position() {
         let limit = Limit {
             soft: Some(start + budget.mul_f64(0.75)),
             hard: Some(start + budget),
+            opening: Some(start + budget.mul_f64(0.85)),
             max_evals: u64::MAX,
         };
         let thought = think(&state, limit, &mut opening());
