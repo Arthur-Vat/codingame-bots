@@ -15,8 +15,8 @@ use ice_and_fire_tactics::cut::cuts;
 
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
-/// Longest cut, in trainings.
-pub const CUT_LENGTH: usize = 4;
+/// Longest cut, in trainings: 5 since E014 (4 before).
+pub const CUT_LENGTH: usize = 5;
 
 /// One step of a plan: a command, or a short chain of commands that go
 /// together.
