@@ -3,7 +3,7 @@ id: E016
 date: 2026-10-24
 pull_request: "#207"
 parent: ice-and-fire-v007
-hypothesis: v007's middle-game search ends at about 8 ms in most turns because no first action at the root improves its plans at the current cut length; looking then for longer cuts, ours and the opponent's, and thinking up to 45 ms a turn beats v007.
+hypothesis: v007's middle-game search answers in 7.9 ms in the median (self-play, real limits), most turns ending because no first action at the root improves its plans at the current cut length; looking then for longer cuts, ours and the opponent's, and thinking up to 45 ms a turn beats v007.
 change: None released. Local screening only: v007 whose search, when a climb from the root finds nothing new, raises the cut length by one (to 8 or 10 trainings) while 8 ms remain before the soft limit, adds the opponent's longer cuts against the plans found to the memory and climbs again (up to 128 climbs); and a budget of 45 ms a turn with no new climb after 40 (the opening keeps its deadline).
 release: none
 sprt: not run: no gain in local screening
@@ -56,8 +56,8 @@ v007 answered in 6.5 to 6.8 ms in the median in these games.
 
 ## What was learned
 
-- The variants use the time (median answers of 17 to 27 ms against 7, and
-  up to 45 ms), and none wins more: the plans that longer cuts and more
+- The deepening variants use the time (median answers of 17 to 27 ms
+  against 7, and up to 45 ms), and none wins more: the plans that longer cuts and more
   time find are no better by the evaluation that chooses among them. The
   limit is now what the search is told to want, not how long it looks.
 - Raising the time limits alone (t45) changes nothing, as E014's soft30
