@@ -239,8 +239,7 @@ for new in "${news[@]}"; do
     done
   done
   if [[ -n $canary ]]; then
-    # Both bots of the canary must be in the pool, else it is not replayed. A
-    # value that is not A,B goes to the arena, which refuses it.
+    # Both bots of the canary must be in the pool, else it is not replayed.
     canary_a="${canary%%,*}"
     canary_b="${canary#*,}"
     in_pool=0
@@ -249,7 +248,12 @@ for new in "${news[@]}"; do
         in_pool=$((in_pool + 1))
       fi
     done
-    if [[ $canary_a == "$canary_b" || $in_pool -eq 2 ]]; then
+    # A value that is not A,B (both halves equal) goes straight to the arena.
+    # Otherwise the canary is replayed only once the results file stores its
+    # pairing, which a replay of the history has not done before both bots play.
+    if [[ $canary_a == "$canary_b" ]]; then
+      extra+=(--canary "$canary")
+    elif [[ $in_pool -eq 2 ]]; then
       if grep -Fq "\"a\":\"$canary_a\",\"b\":\"$canary_b\"" "$results" 2>/dev/null ||
         grep -Fq "\"a\":\"$canary_b\",\"b\":\"$canary_a\"" "$results" 2>/dev/null; then
         extra+=(--canary "$canary")
