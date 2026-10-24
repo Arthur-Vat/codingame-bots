@@ -37,7 +37,7 @@ Iteration: one experiment per pull request ([journal](journal/README.md)).
 - [x] E012, a middle-game shape term on the cuts the enemy can reach instead of the joints, after the first metrics report: three forms, all pointing lower than v005 (−10 to −23 Elo, 400 pairs) and the one without joints clearly weaker, dropped ([E012](journal/E012-cut-off-term.md))
 - [x] E013, the opening's length and replans, after the time per move of the first metrics batch: nine variants against v005 (400 pairs each); the mine fix and no replans level (−10 Elo), shorter openings −52 to −300, longer ones −92 to −460, dropped ([E013](journal/E013-opening-length.md))
 - [x] E014, a middle-game search that climbs again from other first actions until its time is up, with cuts of up to 5 trainings, as `ice-and-fire-v006` through the SPRT against v005: accepted, +74.1 Elo ([E014](journal/E014-search-restarts.md), #204)
-- [ ] E015, the cheapest chain to an HQ on bitboards in the evaluation (the same costs, 10 to 20 times faster), after a profile of the middle game, as `ice-and-fire-v007`: +37.8 Elo against v006 on 600 new pairs locally; SPRT pending ([E015](journal/E015-path-cost.md))
+- [x] E015, the cheapest chain to an HQ on bitboards in the evaluation (the same costs, 10 to 20 times faster), after a profile of the middle game, as `ice-and-fire-v007` through the SPRT against v006: accepted, +57.7 Elo ([E015](journal/E015-path-cost.md), #206)
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 

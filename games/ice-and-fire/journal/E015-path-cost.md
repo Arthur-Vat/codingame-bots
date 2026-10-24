@@ -6,11 +6,11 @@ parent: ice-and-fire-v006
 hypothesis: Three quarters of the middle-game search's time goes to the shortest chain of trainings to the enemy HQ, computed three times per evaluation by a Dijkstra over arrays; the same cost found on bitboards lets the search score more plans in its time, which beats v006.
 change: The shared evaluation (`ice_and_fire_tactics::eval`) takes the cost of the cheapest chain to an HQ from `chain::cost_to`, which grows the reached cells one step of 10 gold at a time on bitboards and stops at the target, instead of `Reach::new`; the costs are the same on every cell. The search, its limits and the evaluation's terms are v006's.
 release: ice-and-fire-v007
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +57.7 [+31.5, +84.6] at CodinGame's limits
+pairs: 164
+full_time: +57.7 [+31.5, +84.6] (the SPRT's own, ADR 0042), no timeout in 328 games, slowest answer 613.5 ms (the first turn)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -85,6 +85,33 @@ The function was then written more compactly, with the same results (the
 same test), so that the paste-ready file fits: 99,887 characters, 1,012
 more than v006's.
 
-## SPRT
+## Result
 
-Pending.
+The SPRT on CI accepted the candidate (at 6a238dd):
+
+```
+SPRT against ice-and-fire-v006:
+ice-and-fire-v007 vs ice-and-fire-v006: 328 games, 164 complete pairs
+  ice-and-fire-v007: 191 wins, 0 draws, 137 losses (score 58.2%)
+  Elo of ice-and-fire-v007 over ice-and-fire-v006: +57.7 [+31.5, +84.6] (95%, from pairs)
+  pairs by ice-and-fire-v007's points (0, 1/2, 1, 3/2, 2): [8, 0, 121, 0, 35]
+  ice-and-fire-v007 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v006 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  answers after the first (median, 99%, 99.9%): ice-and-fire-v007 7.7, 32.1, 34.2 ms; ice-and-fire-v006 24.2, 32.1, 34.6 ms
+  slowest answer: ice-and-fire-v007 613.5 ms, ice-and-fire-v006 622.2 ms
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.02 (bounds -2.94, 2.94) after 164 pairs
+Verdict: ACCEPTED: ice-and-fire-v007 is stronger than ice-and-fire-v006
+```
+
+The league of the release (at 6a238dd, 800 pairs a pairing) scored v007
+57.4% against v006 (919 wins, 681 losses), 64.2% against v005 and 68.2%
+against v004, and rated it +2137.4 ± 182.5, against v006's +2100.7
+([LEADERBOARD.md](../LEADERBOARD.md)).
+
+## Left for later
+
+In self-play with the real limits, 75% of v007's middle-game turns end
+before the time limit (median 4.3 ms for those), when no first action at
+the root improves the plan any more; the turns then take 11 ms on average
+of the 50 ms. The owner pointed to longer cuts, ours and the opponent's,
+for that time (E016).
