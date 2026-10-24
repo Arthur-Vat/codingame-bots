@@ -44,7 +44,7 @@ use std::io;
 use std::time::{Duration, Instant};
 
 use ice_and_fire_opening::econ::Params;
-use ice_and_fire_opening::planned::{Planned, Planner};
+use ice_and_fire_opening::planned::{OffTrack, Planned, Planner};
 use ice_and_fire_opening::solo::{self, Objective};
 
 use crate::search::Limit;
@@ -97,7 +97,17 @@ const OBJECTIVE: Objective = Objective {
 /// The opening: v003's opening with the solo planner's weight sets, planned
 /// over [`OPENING_TURNS`] of our turns within the turn's time.
 fn opening() -> Planned {
-    opening_of(64)
+    let mut planned = opening_of(64);
+    // E013 screening only: the variant comes from the build's environment.
+    let variant = option_env!("E013").unwrap_or("fix");
+    planned.off_track = match variant {
+        "keep" => OffTrack::Keep,
+        "contact" => OffTrack::End,
+        _ => OffTrack::Replan,
+    };
+    planned.max_turns = variant.strip_prefix("cap").and_then(|n| n.parse().ok());
+    planned.min_turns = variant.strip_prefix("min").and_then(|n| n.parse().ok());
+    planned
 }
 
 /// The opening with beams up to `width` when a turn has no deadline.

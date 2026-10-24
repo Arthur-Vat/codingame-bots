@@ -202,3 +202,118 @@ fn the_solo_opening_follows_its_plan_and_plays_accepted_commands() {
         }
     }
 }
+
+#[test]
+fn our_side_s_key_ignores_the_enemy_s_mines() {
+    let position = |buildings: &'static [(u8, u8, u8, u8)]| {
+        crate::test_util::Position {
+            rows: [
+                "OOOO........",
+                "OOOO........",
+                "OOOO........",
+                "............",
+                "............",
+                "............",
+                "............",
+                "............",
+                "............",
+                "........XXXX",
+                "........XXXX",
+                "........XXXX",
+            ],
+            gold: [10, 10],
+            buildings,
+            units: &[],
+        }
+        .state()
+    };
+    let key = |state: &State| crate::plan::side_key(state, 0);
+    let bare = key(&position(&[]));
+    assert_eq!(bare, key(&position(&[(1, 1, 9, 10)])), "an enemy mine");
+    assert_ne!(bare, key(&position(&[(0, 1, 2, 1)])), "a mine of ours");
+}
+
+/// Plays the solo opening in `seat` against `opponent` while it plays,
+/// asking it only on our turns as the bot does; returns our turns played.
+fn play_solo(
+    ours: &mut Planned,
+    seed: u64,
+    seat: usize,
+    mut opponent: impl FnMut(&State) -> Vec<ice_and_fire_engine::Command>,
+) -> usize {
+    let mut state = start(seed);
+    let mut turns = 0;
+    while state.outcome().is_none() {
+        let commands = if state.to_act() == seat {
+            if !ours.playing(&state) {
+                break;
+            }
+            turns += 1;
+            let commands = ours.turn(&state, None);
+            let mut scratch = state.clone();
+            for &command in &commands {
+                assert!(scratch.apply(command), "seed {seed}: {command:?} refused");
+            }
+            commands
+        } else {
+            opponent(&state)
+        };
+        state.play_turn(&commands);
+        assert!(state.game_turn() < 40, "seed {seed}: no middle game");
+    }
+    turns
+}
+
+fn pass(_: &State) -> Vec<ice_and_fire_engine::Command> {
+    Vec::new()
+}
+
+#[test]
+fn a_capped_opening_plays_at_most_its_turns() {
+    for seed in 1..=3 {
+        for seat in 0..2 {
+            let mut ours = solo_opening();
+            ours.max_turns = Some(2);
+            assert_eq!(play_solo(&mut ours, seed, seat, pass), 2, "seed {seed}");
+        }
+    }
+}
+
+/// The map and seat where the rules opponent, on our 9th turn of the solo
+/// opening, has made our side differ from the plan's prediction.
+const OFF_TRACK: (u64, usize) = (33, 0);
+
+#[test]
+fn off_track_replan_plans_again() {
+    let (seed, seat) = OFF_TRACK;
+    let mut ours = solo_opening();
+    let turns = play_solo(&mut ours, seed, seat, econ::rules_turn);
+    assert!(
+        ours.plans as usize > turns.div_ceil(3),
+        "{} plans",
+        ours.plans
+    );
+}
+
+#[test]
+fn off_track_keep_and_end_never_plan_again_before_the_plan_runs_out() {
+    for off_track in [OffTrack::Keep, OffTrack::End] {
+        for (seed, seat) in [(1, 0), (2, 1), (3, 0), OFF_TRACK] {
+            let mut ours = solo_opening();
+            ours.off_track = off_track;
+            let turns = play_solo(&mut ours, seed, seat, econ::rules_turn);
+            assert_eq!(
+                ours.plans as usize,
+                turns.div_ceil(3),
+                "{off_track:?}, seed {seed}, seat {seat}"
+            );
+        }
+    }
+    // Off track, the opening that ends gives way to the middle game sooner.
+    let (seed, seat) = OFF_TRACK;
+    let mut replan = solo_opening();
+    let mut end = solo_opening();
+    end.off_track = OffTrack::End;
+    let replan_turns = play_solo(&mut replan, seed, seat, econ::rules_turn);
+    assert!(play_solo(&mut end, seed, seat, econ::rules_turn) < replan_turns);
+}

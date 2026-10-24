@@ -165,11 +165,14 @@ pub fn predicted_keys(state: &State, plan: &[Step], ctx: &Context<'_>) -> Vec<u6
     keys
 }
 
-/// A key of our side of a state: our cells, units, the mines and our gold.
+/// A key of our side of a state: our cells, units, our mines and our gold.
+/// The enemy's mines are not ours (E013): one built anywhere would make a
+/// plan look off track.
 pub fn side_key(state: &State, me: usize) -> u64 {
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
     let mut mix = |word: u64| hash = (hash ^ word).wrapping_mul(0x0100_0000_01b3);
-    for (tag, bits) in [state.owned(me), state.units(me), state.mines()]
+    let mines = state.mines() & state.owned(me);
+    for (tag, bits) in [state.owned(me), state.units(me), mines]
         .into_iter()
         .enumerate()
     {
