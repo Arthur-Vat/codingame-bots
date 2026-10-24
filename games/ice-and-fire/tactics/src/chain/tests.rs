@@ -445,8 +445,10 @@ fn the_start_of_every_map_has_costs_of_distance_times_ten_for_the_neighbours() {
 fn cost_to_is_the_cost_of_reach_on_every_cell() {
     let mut checked = 0;
     for seed in 1..=40 {
-        for league in [League::Bronze, League::Wood1, League::Wood3] {
-            for state in random_positions(seed, league, &[4, 10, 18, 26, 34, 44, 60]) {
+        for league in [League::Bronze, League::Wood1, League::Wood2, League::Wood3] {
+            // Odd plies too, so that both seats are to act (the units' steps).
+            let plies = [3, 4, 9, 10, 17, 18, 25, 26, 33, 34, 43, 44, 59, 60];
+            for state in random_positions(seed, league, &plies) {
                 for seat in 0..2 {
                     for moves in [false, true] {
                         let reach = Reach::new(&state, seat, moves);

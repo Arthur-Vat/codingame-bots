@@ -1,7 +1,7 @@
 ---
 id: E015
 date: 2026-10-24
-pull_request: "#NN"
+pull_request: "#206"
 parent: ice-and-fire-v006
 hypothesis: Three quarters of the middle-game search's time goes to the shortest chain of trainings to the enemy HQ, computed three times per evaluation by a Dijkstra over arrays; the same cost found on bitboards lets the search score more plans in its time, which beats v006.
 change: The shared evaluation (`ice_and_fire_tactics::eval`) takes the cost of the cheapest chain to an HQ from `chain::cost_to`, which grows the reached cells one step of 10 gold at a time on bitboards and stops at the target, instead of `Reach::new`; the costs are the same on every cell. The search, its limits and the evaluation's terms are v006's.
@@ -45,11 +45,14 @@ time.
 Entering a cell costs 10 gold times the lowest level that may enter it, so
 every cost is a multiple of 10: `cost_to` keeps four bitboards of the cells
 first reached at the next four costs, settles them in order, and stops at
-the target. A test checks it against `Reach::new` on every cell of about
-480,000 (seed, league, position, seat, with or without the units' steps)
-from random games in Bronze, Wood 1 and Wood 3. The tactics' timing example
-(3,560 positions of random games) measures 0.2 µs a call against 4.6 µs, and
-0.4 against 5.3 with the units' steps.
+the target. A test checks it against `Reach::new` on all 144 cells of 8,872
+cases (2,218 positions of random games in the four leagues, after odd and
+even plies so that either seat is to act, each seat, with or without the
+units' steps): 1,277,568 cells. The review's own check found no difference
+on 15,019,776 more (seeds 1 to 400), with towers and level 2 and 3 units.
+The tactics' timing example (3,560 positions of random games) measures 0.2
+µs a call against 4.6 µs, and 0.4 against 5.3 with the units' steps: 10 to
+20 times faster.
 
 In self-play with the real limits the search scored 592 plans a turn
 against v006's 329, and under callgrind the same work took 3.7 times fewer
