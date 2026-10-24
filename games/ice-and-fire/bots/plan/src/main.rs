@@ -25,8 +25,8 @@
 //! searched again against them; when that teaches nothing new, the next climb
 //! may not start with the first action of a plan found so far (E014), until
 //! the time is up. The plan that scores best against the whole memory is
-//! played. Cuts are chains of up to 5 trainings (E014). The evaluation counts a side that cannot pay its upkeep
-//! as having lost its units.
+//! played. Cuts are chains of up to 5 trainings (E014). The evaluation
+//! counts a side that cannot pay its upkeep as having lost its units.
 //!
 //! The input never names the league, so the bot plays with all the rules
 //! (Bronze). Each command sent was accepted by the engine, in order, on a

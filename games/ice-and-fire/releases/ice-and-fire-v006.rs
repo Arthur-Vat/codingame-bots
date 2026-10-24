@@ -155,6 +155,7 @@ pub commands: Vec<Command>,
 pub climbs: usize,
 pub evals: u64,
 pub memory: usize,
+pub plans: usize,
 }
 struct Reply {
 commands: Vec<Command>,
@@ -385,6 +386,7 @@ commands: Vec::new(),
 climbs: 0,
 evals: 0,
 memory: 0,
+plans: 0,
 };
 if state.outcome().is_some() {
 return thought;
@@ -434,6 +436,7 @@ None => break,
 }
 thought.evals = search.evals;
 thought.memory = memory.len();
+thought.plans = plans.len();
 let mut best: Option<(i64, usize)> = None;
 for (index, plan) in plans.iter().enumerate().rev() {
 if best.is_some() && limit.hard.is_some_and(|t| Instant::now() >= t) {

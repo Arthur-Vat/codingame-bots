@@ -63,6 +63,8 @@ pub struct Thought {
     pub evals: u64,
     /// Replies in the memory at the end.
     pub memory: usize,
+    /// Different plans found by the climbs.
+    pub plans: usize,
 }
 
 /// One opponent reply: commands, each kept only if the rules accept it, and
@@ -347,6 +349,7 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
         climbs: 0,
         evals: 0,
         memory: 0,
+        plans: 0,
     };
     if state.outcome().is_some() {
         return thought;
@@ -401,6 +404,7 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
     }
     thought.evals = search.evals;
     thought.memory = memory.len();
+    thought.plans = plans.len();
 
     // The plan that scores best against the whole memory, the latest on a
     // tie. The latest is always scored; earlier ones while time remains.
