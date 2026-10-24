@@ -1,7 +1,7 @@
 ---
 id: E014
 date: 2026-10-24
-pull_request: "#NN"
+pull_request: "#204"
 parent: ice-and-fire-v005
 hypothesis: v005's middle-game search stops at about 10 ms in most turns because its climbs find nothing new, not for lack of time; a search that climbs again from other first actions until its time is up, with cuts of up to 5 trainings, beats v005.
 change: When a climb teaches nothing new (a plan found before, or replies the memory already holds), the next climb may not start with the first action of any plan found so far, until the soft limit or 32 climbs (8 before); cuts, ours and the opponent's replies, are chains of up to 5 trainings (4 before). Time limits, memory and the opening are v005's.
