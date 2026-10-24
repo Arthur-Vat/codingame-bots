@@ -34,6 +34,7 @@ Iteration: one experiment per pull request ([journal](journal/README.md)).
 - [x] E009, an upkeep check in the plan search (no action that makes income negative): debt wipe-outs fell from 31 to 1 in 400 games but results did not change (+1.7 Elo, 200 pairs), dropped; the wipe-outs come at the end of games already lost ([E009](journal/E009-upkeep-check.md))
 - [x] E010, the early game planned for our side alone (compact, no thin lines, toward the enemy HQ; an anytime beam over 7 turns) and a shape term in the middle-game evaluation, as `ice-and-fire-v005` through the SPRT against v004: accepted, +44.1 Elo ([E010](journal/E010-solo-opening.md), #194)
 - [x] E011, a red-seat opening that pulls harder toward the enemy HQ and penalizes shape less, after the first metrics report: four forms; the best (+16.5 Elo, 400 pairs) lost on 600 new pairs (−18.5), dropped ([E011](journal/E011-red-opening.md))
+- [x] E012, a middle-game shape term on the cuts the enemy can reach instead of the joints, after the first metrics report: three forms, all pointing lower than v005 (−10 to −23 Elo, 400 pairs) and the one without joints clearly weaker, dropped ([E012](journal/E012-cut-off-term.md))
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 
