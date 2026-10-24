@@ -38,6 +38,7 @@ Iteration: one experiment per pull request ([journal](journal/README.md)).
 - [x] E013, the opening's length and replans, after the time per move of the first metrics batch: nine variants against v005 (400 pairs each); the mine fix and no replans level (−10 Elo), shorter openings −52 to −300, longer ones −92 to −460, dropped ([E013](journal/E013-opening-length.md))
 - [x] E014, a middle-game search that climbs again from other first actions until its time is up, with cuts of up to 5 trainings, as `ice-and-fire-v006` through the SPRT against v005: accepted, +74.1 Elo ([E014](journal/E014-search-restarts.md), #204)
 - [x] E015, the cheapest chain to an HQ on bitboards in the evaluation (the same costs, 10 to 20 times faster), after a profile of the middle game, as `ice-and-fire-v007` through the SPRT against v006: accepted, +57.7 Elo ([E015](journal/E015-path-cost.md), #206)
+- [x] E016, longer cuts (to 8 or 10 trainings) when the climbs find nothing new, and 45 ms turns: four variants against v007 (400 pairs each), all level (−8.7 to +4.3 Elo) though they think 2 to 4 times longer, dropped ([E016](journal/E016-deeper-cuts.md))
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 
