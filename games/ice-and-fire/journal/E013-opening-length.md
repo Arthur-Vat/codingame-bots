@@ -1,7 +1,7 @@
 ---
 id: E013
 date: 2026-10-24
-pull_request: "#NN"
+pull_request: "#203"
 parent: ice-and-fire-v005
 hypothesis: v005's opening plans again whenever our side of the board differs from its plan (even for an enemy mine), spending 30 ms on a plan that assumes a passing opponent just as the sides meet; fixing the trigger, keeping the plan, ending the opening on contact or after a fixed number of turns beats v005.
 change: None released. Local screening only: v005 with the mine fix (its side key counts our mines only), and with the opening kept off track, ended off track, capped at 3 to 6 of our turns, or kept for at least 8 or 10 turns.
@@ -16,8 +16,8 @@ cg_rank: none
 
 Asked by the owner on 2026-10-24 ("try to fix these, and try many variant
 with fix lengths opening or varying lengths openings vs the current one"),
-after the time per move of the 1,000-game batch
-([summary](../reviews/2026-10-23-v005-v004-metrics/summary.md)) showed v005
+after the time per move, measured from the game records of the 1,000-game
+batch ([README](../reviews/2026-10-23-v005-v004-metrics/README.md)), showed v005
 answering in under 1 ms on its turns 2 to 4 (the turn-1 plan replayed) and
 in about 30 ms on 28 to 48% of its turns 5 to 7.
 
@@ -63,7 +63,7 @@ plans again off track as v005 does.
 Against `ice-and-fire-v005` at CodinGame's limits, 400 seat-swapped pairs
 each, seed 13013, two games at a time.
 
-| Variant | Elo against v005 | Score as red | Score as blue | Timeouts |
+| Variant | Elo against v005 | Score as red | Score as blue | Variant's timeouts |
 | --- | --- | ---: | ---: | ---: |
 | fix | −10.4 [−27.8, +6.9] | 37.2% | 59.8% | 0 |
 | keep | −10.4 [−30.8, +9.8] | 34.5% | 62.5% | 2 |
@@ -88,8 +88,9 @@ only lose more than.
   then the solo planner plays the early contact better than the search; from
   then on, it ignores attacks that it can no longer afford to ignore.
 - **The replans neither help nor hurt measurably.** The mine fix cuts the
-  turns 5 to 7 replans (20% of those turns against about 38% in v005, on 10
-  pairs) and keeping the plan without replanning removes them; both score
+  turns 5 to 7 replans (answers of 20 ms or more: 12 of 60 turns against
+  v005's 21 of 60 in the same 10 pairs, a check run before the screening)
+  and keeping the plan without replanning removes them (0 of 60); both score
   −10 Elo, within noise of v005. The 30 ms they cost buys nothing visible,
   and saving it buys nothing either.
 - The time per move that started this (under 1 ms on turns 2 to 4, about
