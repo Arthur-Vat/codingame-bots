@@ -48,8 +48,9 @@ held-out ones worse (0.297), so mines overfit.
 ## Screening
 
 Against `ice-and-fire-v007` at CodinGame's limits, 400 seat-swapped pairs
-each, seed 17018, two games at a time. The threat to the HQ stayed as in
-v007 (half a win).
+each, seed 17018, two games at a time. The threat to the HQ was fitted
+too (−37 gold without mines, −29 with them) but stayed as in v007 (half a
+win), since it decides the game rather than weighs against the rest.
 
 | Variant | Elo against v007 | Score as red | Score as blue | Variant's timeouts | Median answer (v007's) |
 | --- | --- | ---: | ---: | ---: | --- |
@@ -78,7 +79,8 @@ All three are clearly weaker, the more so the further from v007's weights.
 The owner chose next a search that looks one turn deeper ("Drop E017,
 then 2-turn look (Recommended)").
 
-The variants' code was not kept: it is in this pull request's first
-commit (`games/ice-and-fire/review/examples/features.rs`, the fitting
+The variants' code was not kept: it is in commit 88424a1 of this pull
+request (`games/ice-and-fire/review/examples/features.rs`, the fitting
 script `fit_weights.py` beside it, and the weighted evaluation behind a
-build-time switch in the plan bot's `eval.rs`), removed by the next.
+build-time switch in the plan bot's `eval.rs`), removed by its last
+commit.
