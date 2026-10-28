@@ -40,17 +40,6 @@ const REPLY_CUTS: usize = 3;
 /// Most climbs in one turn.
 const MAX_CLIMBS: usize = 32;
 
-/// Most plans scored one turn deeper at the end of a turn (E018 variants).
-fn deep_plans() -> usize {
-    match option_env!("E018") {
-        Some("top2") => 2,
-        Some("top4") => 4,
-        Some("top8") => 8,
-        Some("all") => usize::MAX,
-        _ => 0,
-    }
-}
-
 /// When the search stops.
 #[derive(Clone, Copy, Debug)]
 pub struct Limit {
@@ -76,8 +65,6 @@ pub struct Thought {
     pub memory: usize,
     /// Different plans found by the climbs.
     pub plans: usize,
-    /// Plans scored one turn deeper (E018).
-    pub deep: usize,
 }
 
 /// One opponent reply: commands, each kept only if the rules accept it, and
@@ -141,25 +128,6 @@ fn after_reply(end: &State, reply: &[Command]) -> State {
     }
     next.end_turn();
     next
-}
-
-/// The turns tried for the side to act in `state`: its lethal chain, its
-/// best cuts and bronze's greedy turn.
-fn turns(state: &State) -> Vec<Vec<Command>> {
-    let mut out = Vec::new();
-    let side = state.to_act();
-    let gold = state.gold(side);
-    if let Some(chain) = chain_to(state, HQ[1 - side], gold) {
-        out.push(chain.commands);
-    }
-    for cut in cuts(state, CUT_LENGTH, gold, REPLY_CUTS) {
-        out.push(cut.commands);
-    }
-    let mut greedy = Vec::new();
-    greedy_turn(state, &mut greedy);
-    out.push(greedy);
-    out.retain(|commands| !commands.is_empty());
-    out
 }
 
 /// The plan, a lethal move or chain, that takes the enemy HQ now, if there is
@@ -329,46 +297,28 @@ impl Search {
     }
 
     /// The replies of the opponent to the plan that ends in `end`: its
-    /// turns (see [`turns`]) on the state after our turn ends.
+    /// lethal chain, its best cuts and bronze's greedy turn, on the state
+    /// after our turn ends.
     fn replies(&self, end: &State) -> Vec<Vec<Command>> {
         let mut next = end.clone();
         next.end_turn();
+        let mut out = Vec::new();
         if next.outcome().is_some() {
-            return Vec::new();
+            return out;
         }
-        turns(&next)
-    }
-
-    /// The score of the plan whose state is `end` one turn deeper (E018): the
-    /// worst, over the replies in `memory`, of our best answer to it (or of
-    /// no answer). Stops once the score is no more than `bound`, as
-    /// [`Search::rate`] does.
-    fn deep(&self, end: &State, memory: &[Reply], bound: i64) -> i64 {
-        if end.outcome() == Some(Outcome::Win(self.me)) {
-            return WIN;
+        let opponent = next.to_act();
+        let gold = next.gold(opponent);
+        if let Some(chain) = chain_to(&next, HQ[self.me], gold) {
+            out.push(chain.commands);
         }
-        if memory.is_empty() {
-            return self.rate(end, memory, bound);
+        for cut in cuts(&next, CUT_LENGTH, gold, REPLY_CUTS) {
+            out.push(cut.commands);
         }
-        let mut worst = i64::MAX;
-        for reply in memory {
-            let next = after_reply(end, &reply.commands);
-            let mut best = eval(&next, self.me);
-            if next.outcome().is_none() {
-                for answer in turns(&next) {
-                    let mut after = next.clone();
-                    for command in answer {
-                        after.apply(command);
-                    }
-                    best = best.max(eval(&after, self.me));
-                }
-            }
-            worst = worst.min(best);
-            if worst <= bound {
-                break;
-            }
-        }
-        worst
+        let mut greedy = Vec::new();
+        greedy_turn(&next, &mut greedy);
+        out.push(greedy);
+        out.retain(|commands| !commands.is_empty());
+        out
     }
 
     /// Adds the replies to the plan that ends in `end` that the memory does
@@ -400,7 +350,6 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
         evals: 0,
         memory: 0,
         plans: 0,
-        deep: 0,
     };
     if state.outcome().is_some() {
         return thought;
@@ -460,35 +409,14 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
     // The plan that scores best against the whole memory, the latest on a
     // tie. The latest is always scored; earlier ones while time remains.
     let mut best: Option<(i64, usize)> = None;
-    let mut rated: Vec<(i64, usize)> = Vec::new();
     for (index, plan) in plans.iter().enumerate().rev() {
         if best.is_some() && limit.hard.is_some_and(|t| Instant::now() >= t) {
             break;
         }
         let score = search.rate(&plan.end, &memory, i64::MIN);
-        rated.push((score, index));
         if best.is_none_or(|(top, _)| score > top) {
             best = Some((score, index));
         }
-    }
-    // E018: the best plans, best first, scored one turn deeper while time
-    // remains; the best of those scored is played.
-    let deepest = deep_plans();
-    if deepest > 1 && rated.len() > 1 {
-        rated.sort_by(|a, b| b.0.cmp(&a.0).then(b.1.cmp(&a.1)));
-        let mut top: Option<(i64, usize)> = None;
-        for &(_, index) in rated.iter().take(deepest) {
-            if top.is_some() && limit.hard.is_some_and(|t| Instant::now() >= t) {
-                break;
-            }
-            let bound = top.map_or(i64::MIN, |(score, _)| score);
-            let score = search.deep(&plans[index].end, &memory, bound);
-            thought.deep += 1;
-            if top.is_none_or(|(score_top, _)| score > score_top) {
-                top = Some((score, index));
-            }
-        }
-        best = top;
     }
     if let Some((_, index)) = best {
         // Each command is checked once more, in order, on a scratch copy.

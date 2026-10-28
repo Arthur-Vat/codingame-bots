@@ -57,11 +57,10 @@ pub fn play(
             Ok(state) => {
                 let thought = think(&state, limit(start, turn), &mut opening);
                 eprintln!(
-                    "turn {turn} (plan): climbs {}, actions tried {}, memory {}, deep {}, opening plans {}, {:?}",
+                    "turn {turn} (plan): climbs {}, actions tried {}, memory {}, opening plans {}, {:?}",
                     thought.climbs,
                     thought.evals,
                     thought.memory,
-                    thought.deep,
                     opening.plans,
                     start.elapsed()
                 );
