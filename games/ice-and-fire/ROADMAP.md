@@ -39,6 +39,7 @@ Iteration: one experiment per pull request ([journal](journal/README.md)).
 - [x] E014, a middle-game search that climbs again from other first actions until its time is up, with cuts of up to 5 trainings, as `ice-and-fire-v006` through the SPRT against v005: accepted, +74.1 Elo ([E014](journal/E014-search-restarts.md), #204)
 - [x] E015, the cheapest chain to an HQ on bitboards in the evaluation (the same costs, 10 to 20 times faster), after a profile of the middle game, as `ice-and-fire-v007` through the SPRT against v006: accepted, +57.7 Elo ([E015](journal/E015-path-cost.md), #206)
 - [x] E016, longer cuts (to 8 or 10 trainings) when the climbs find nothing new, and 45 ms turns: four variants against v007 (400 pairs each), all level (−8.7 to +4.3 Elo) though they think 2 to 4 times longer, dropped ([E016](journal/E016-deeper-cuts.md))
+- [x] E017, the evaluation's weights fitted to 1,000 v007 self-play games (logistic regression on 26,889 positions): barely better at predicting the winner, and clearly weaker in play (−37.5 to −78.6 Elo against v007, 400 pairs each), dropped ([E017](journal/E017-fitted-weights.md))
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 
