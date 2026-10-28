@@ -28,7 +28,8 @@ turn (our lethal chain, our best cuts, bronze's greedy turn) and keep the
 best evaluation after one of them, or after none; a plan's deeper score is
 the worst of those over the replies, with the same early stop as v007's
 scoring. The plans are scored best first until the turn's 40 ms are up.
-After E015 the median turn took about 7 ms, so there was time: in a trial
+After E015 the median turn took about 7 ms (E015's screening; 5.7 to
+6.5 ms for v007 in the games below), so there was time: in a trial
 game the variant scoring all plans scored 7 a turn on average and took up
 to 37 ms.
 
@@ -53,7 +54,8 @@ timeouts in each run.
 
 - The more plans the deeper score re-ranks, the worse the bot plays: all
   plans lose clearly, and top4's first gain did not hold on a new seed.
-  Over the 1,000 pairs together top4 scored 48.9%, about −7 Elo.
+  Over the 1,000 pairs together top4 scored about 49% (979 points of
+  2,000), about −7 Elo.
 - Our answers are five fixed kinds of turn, not a search of our next turn,
   so the deeper score is a noisy and optimistic judge: among many plans it
   picks the one whose replies happen to suit those answers, and that pick
