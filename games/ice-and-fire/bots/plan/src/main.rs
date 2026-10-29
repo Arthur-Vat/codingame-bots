@@ -20,11 +20,14 @@
 //! raises the score of the plan, until none does or the time is up. The score
 //! of a plan is the worst evaluation of the state after it, our turn ended,
 //! over the replies of the opponent in a memory (its lethal chain, its best
-//! cuts and bronze's greedy turn, each answered by the plan). After a climb
+//! cuts, bronze's greedy turn and its own plan, the same climb from its seat
+//! with up to 300 tries (E019), each answered by the plan). After a climb
 //! the opponent's replies to the plan are added to the memory and the plan is
-//! searched again against them; the plan that scores best against the whole
-//! memory is played. The evaluation counts a side that cannot pay its upkeep
-//! as having lost its units.
+//! searched again against them; when that teaches nothing new, the next climb
+//! may not start with the first action of a plan found so far (E014), until
+//! the time is up. The plan that scores best against the whole memory is
+//! played. Cuts are chains of up to 5 trainings (E014). The evaluation
+//! counts a side that cannot pay its upkeep as having lost its units.
 //!
 //! The input never names the league, so the bot plays with all the rules
 //! (Bronze). Each command sent was accepted by the engine, in order, on a

@@ -317,7 +317,10 @@ jobs:
     name: "Studio: front end"
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    runs-on: ubuntu-latest
+    # Pinned: on 2026-10-24 ubuntu-latest moved to Ubuntu 26.04, where the
+    # locked Playwright (1.56.1) cannot install Chromium for the browser
+    # tests. Move back once a Playwright release supports it.
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: studio/web
