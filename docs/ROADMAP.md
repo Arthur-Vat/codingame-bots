@@ -127,7 +127,7 @@ Background runs stay off until the owner turns them on.
 - [x] Results kept across runs in a file per game, never replayed, with `games/<game>/LEADERBOARD.md` generated from them (ADR 0038)
 - [x] Arena: opponent choice and results file; League workflow on release pull requests with its comment and canary; the archive's new source; then the bootstrap, replaying history, on the owner's go-ahead (ADR 0038): Ultimate Tic-Tac-Toe's bootstrap replayed `greedy` and `uttt-v001` to `uttt-v018` on 2026-10-17 (League runs 39009461382 and 39029150086); canary `v009,v008`
 - [x] Decision record (owner, 2026-10-21, [ADR 0042](adr/0042-official-time-limits-and-800-pairs.md)): every strength evaluation at CodinGame's exact limits in every game, no confirmation at full time, 800 pairs per league pairing, league job limit 300 minutes
-- [ ] Replay the leagues at full time and 800 pairs (ADR 0042): Ultimate Tic-Tac-Toe's history (124 pairings, about 45 runner-hours over many League runs, `stop_after_minutes` about 140) and A Code of Ice and Fire's bootstrap, after the pull request of ADR 0042 merges
+- [x] Replay the leagues at full time and 800 pairs (ADR 0042): Ultimate Tic-Tac-Toe's history (124 pairings over many League runs at `stop_after_minutes` 140, #212) and A Code of Ice and Fire's league, whose 63 pairings all play at full time and 800 pairs
 
 ### E. CI, fixed checks
 
