@@ -246,6 +246,22 @@ jobs:
           for file in "${added[@]}"; do
             scripts/annotate.sh run "Determinism of $file" scripts/check-determinism.sh "$GAME" 500 "$file"
           done
+      - name: New releases play like their readable copies
+        if: github.event_name == 'pull_request'
+        run: |
+          # Written to a file first, as in the step above.
+          if ! git diff --name-only --diff-filter=A --no-renames HEAD^1 HEAD -- "games/$GAME/releases/*.rs" >"$RUNNER_TEMP/added-releases"; then
+            echo "::error title=Minified release::git diff failed; the added releases are unknown"
+            exit 1
+          fi
+          mapfile -t added <"$RUNNER_TEMP/added-releases"
+          if [ "${#added[@]}" -eq 0 ]; then
+            echo "no new release"
+            exit 0
+          fi
+          for file in "${added[@]}"; do
+            scripts/annotate.sh run "Minified $file" scripts/check-minified.sh "$GAME" 500 "$file"
+          done
 
   licenses:
     name: Dependency licenses and sources
@@ -514,6 +530,10 @@ jobs:
         if: ${{ !cancelled() }}
         # rustc and iconv are preinstalled on ubuntu-latest.
         run: scripts/annotate.sh run "Size check test" scripts/tests/cg-check-test.sh
+      - name: Test the comparison of game records
+        if: ${{ !cancelled() }}
+        # jq is preinstalled on ubuntu-latest.
+        run: scripts/annotate.sh run "Records test" scripts/tests/records-test.sh
       - name: Lint the workflows
         if: ${{ !cancelled() }}
         # The image is pinned; it includes shellcheck, which also lints the

@@ -27,8 +27,8 @@ struct Args {
     #[arg(long)]
     no_format: bool,
 
-    /// Keep comments, indentation and blank lines, for a bundle that reads
-    /// like the sources.
+    /// Write the readable bundle, with comments and rustfmt's layout, instead
+    /// of the minified one (ADR 0045).
     #[arg(long)]
     keep_comments: bool,
 }
@@ -37,7 +37,7 @@ fn main() -> ExitCode {
     let args = Args::parse();
     let options = Options {
         format: !args.no_format,
-        strip: !args.keep_comments,
+        minify: !args.keep_comments,
     };
     let bundle = match bundle_package(&args.package, args.manifest_path.as_deref(), options) {
         Ok(bundle) => bundle,

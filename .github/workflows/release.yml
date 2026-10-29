@@ -1,7 +1,8 @@
 name: Release
 
 # Publishes a GitHub release, tagged with the version, for every release
-# file on main that has none yet, with the paste-ready file attached.
+# file on main that has none yet, with the paste-ready file attached, and the
+# readable copy of the release when it has one (ADR 0045).
 on:
   push:
     branches: [main]
@@ -35,9 +36,19 @@ jobs:
             fi
             game="$(cut -d/ -f2 <<<"$file")"
             entry="$(grep -rlx -- "release: $tag" "games/$game/journal/" | head -n 1 || true)"
-            notes="Paste-ready bot $tag: copy the attached file into the CodinGame IDE."
+            notes="Paste-ready bot $tag: copy the attached file $tag.rs into the CodinGame IDE."
+            assets=("$file")
+            # Releases made since ADR 0045 have a readable copy, with the same
+            # name as the release: attached under another name.
+            readable="games/$game/readable/$tag.rs"
+            if [ -f "$readable" ]; then
+              mkdir -p "$RUNNER_TEMP/readable"
+              cp "$readable" "$RUNNER_TEMP/readable/$tag-readable.rs"
+              assets+=("$RUNNER_TEMP/readable/$tag-readable.rs")
+              notes="$notes The same bot with its comments and names, to read, is $tag-readable.rs."
+            fi
             if [ -n "$entry" ]; then
               notes="$notes Journal: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$GITHUB_SHA/$entry"
             fi
-            scripts/annotate.sh run "Release $tag" gh release create "$tag" "$file" --target "$GITHUB_SHA" --title "$tag" --notes "$notes"
+            scripts/annotate.sh run "Release $tag" gh release create "$tag" "${assets[@]}" --target "$GITHUB_SHA" --title "$tag" --notes "$notes"
           done

@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Checks that paste-ready bot files will be accepted by CodinGame.
 #
-# Usage: scripts/cg-check.sh FILE.rs...
+# Usage: scripts/cg-check.sh [--any-size] FILE.rs...
 #
 # For each file: it must be valid UTF-8, its size must fit CodinGame's limit,
 # and it must compile on its own with rustc and the 2021 edition, without
-# Cargo or any crate, the way CodinGame compiles it.
+# Cargo or any crate, the way CodinGame compiles it. With --any-size, the
+# size is reported but not enforced: the readable copy of a release is not
+# pasted into CodinGame and may be over the limit (ADR 0045).
 #
 # CodinGame limits code size in characters, not bytes (docs/CODINGAME.md). The
 # size is counted in UTF-16 units, as a browser counts a string's length: a
@@ -18,8 +20,13 @@ set -euo pipefail
 
 readonly MAX_UNITS=100000
 
+any_size=false
+if [[ ${1:-} == --any-size ]]; then
+  any_size=true
+  shift
+fi
 if [[ $# -eq 0 ]]; then
-  echo "usage: $0 FILE.rs..." >&2
+  echo "usage: $0 [--any-size] FILE.rs..." >&2
   exit 2
 fi
 if ! command -v iconv >/dev/null; then
@@ -50,14 +57,18 @@ for file in "$@"; do
     continue
   fi
   units=$((utf16_bytes / 2))
-  if ((units > MAX_UNITS)); then
+  if ! $any_size && ((units > MAX_UNITS)); then
     echo "FAIL $file: $units characters (UTF-16 units), the limit is $MAX_UNITS" >&2
     status=1
     continue
   fi
   if rustc --edition 2021 -C opt-level=3 --crate-type bin \
     -o "$out_dir/$(basename "$file" .rs)" "$file"; then
-    echo "ok   $file ($units characters, $bytes bytes)"
+    if $any_size && ((units > MAX_UNITS)); then
+      echo "ok   $file ($units characters, over the limit of $MAX_UNITS; not enforced, $bytes bytes)"
+    else
+      echo "ok   $file ($units characters, $bytes bytes)"
+    fi
   else
     echo "FAIL $file: does not compile on its own" >&2
     status=1
