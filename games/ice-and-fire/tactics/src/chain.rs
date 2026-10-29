@@ -33,6 +33,36 @@ pub struct Reach {
 /// cells first reached at each of the next costs, and the search stops at
 /// `target`.
 pub fn cost_to(state: &State, seat: usize, moves: bool, target: usize) -> i64 {
+    let mut cost = UNREACHABLE;
+    flood(state, seat, moves, |step, new| {
+        if new.test(target) {
+            cost = 10 * step as i64;
+        }
+        cost != UNREACHABLE
+    });
+    cost
+}
+
+/// The cells, other than its active cells, that `seat` can take with chains
+/// of trainings costing at most `budget`: those whose
+/// [`Reach::new`]`(state, seat, moves).cost` is at most `budget`, found on
+/// bitboards as [`cost_to`] does.
+pub fn reach_within(state: &State, seat: usize, moves: bool, budget: i64) -> Bits {
+    let mut reached = Bits::EMPTY;
+    flood(state, seat, moves, |step, new| {
+        if 10 * step as i64 > budget {
+            return true;
+        }
+        reached |= new;
+        false
+    });
+    reached.and_not(state.active(seat))
+}
+
+/// The bitboard search of [`cost_to`]: calls `visit(step, cells)` with the
+/// cells first reached at the cost of `step` steps of 10 gold, cheapest
+/// first, until `visit` returns true or no cell is left.
+fn flood(state: &State, seat: usize, moves: bool, mut visit: impl FnMut(usize, Bits) -> bool) {
     let max = state.league().max_level();
     // `entry[l - 1]`: the cells whose cheapest level to enter is `l`.
     let mut entry = [Bits::EMPTY; 3];
@@ -55,8 +85,8 @@ pub fn cost_to(state: &State, seat: usize, moves: bool, target: usize) -> i64 {
     for step in 0.. {
         let new = open[step % 4].and_not(done);
         open[step % 4] = Bits::EMPTY;
-        if new.test(target) {
-            return 10 * step as i64;
+        if visit(step, new) {
+            return;
         }
         done |= new;
         let next = new.neighbours().and_not(done);
@@ -67,7 +97,6 @@ pub fn cost_to(state: &State, seat: usize, moves: bool, target: usize) -> i64 {
             break;
         }
     }
-    UNREACHABLE
 }
 
 impl Reach {

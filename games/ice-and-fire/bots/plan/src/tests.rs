@@ -527,3 +527,39 @@ fn a_cell_that_cuts_others_off_weakens_its_side() {
     let state = position(rows, [20, 20], &[]);
     assert_eq!(crate::eval::shape(&state, 0), 0);
 }
+
+#[test]
+fn cells_the_enemy_can_take_next_turn_count_less() {
+    use crate::eval::{eval, threatened, CUT_OFFS};
+    let cut_off = i64::from(CUT_OFFS);
+    // E023: blue's chains along the corridor cost 10 for (11, 10), then 10
+    // a cell of red's from (11, 9) up. With gold 20 and income 1 blue can
+    // pay 20: it threatens (11, 9), whose loss cuts nothing off.
+    let state = position(CORRIDOR, [0, 20], &[]);
+    assert_eq!(threatened(&state, 0), 1);
+    // With 10 gold more, (11, 8) too, whose loss cuts (11, 9) off.
+    let state = position(CORRIDOR, [0, 30], &[]);
+    assert_eq!(threatened(&state, 0), 2 + cut_off);
+    // Red (income 21) threatens blue's one cell, its HQ, for 20.
+    assert_eq!(threatened(&state, 1), 1);
+    // Each threatened cell costs its side 7/4 (0.25 of a cell's value of 7).
+    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+    assert_eq!(eval(&state, 0), shared + 7 * (1 - (2 + cut_off)) / 4);
+    // Far from each other, nothing is threatened.
+    let rows = [
+        "OOO.........",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "...........X",
+        "...........X",
+    ];
+    let state = position(rows, [30, 20], &[]);
+    assert_eq!((threatened(&state, 0), threatened(&state, 1)), (0, 0));
+}
