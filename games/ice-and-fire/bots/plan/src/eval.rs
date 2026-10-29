@@ -18,39 +18,10 @@
 //!   against 1 for a level-1 one, and in v008's games a side with more of
 //!   them than the score said won less often: each counts [`LEVEL2_DISCOUNT`]
 //!   less than its training cost, 5 in all.
-//! - **Discounted pressure** (E021): the shared evaluation's pressure term
-//!   counted a threat to an HQ almost the same whether its side could pay
-//!   for it next turn or many turns later. [`pressure`] replaces it: minus
-//!   [`PRESSURE`] times `1 − DECAY^t`, `t` the turns of income beyond the
-//!   next one that the side still lacks.
 
-use ice_and_fire_engine::{State, HQ};
+use ice_and_fire_engine::State;
 use ice_and_fire_opening::solo::severed;
-use ice_and_fire_tactics::chain::{cost_to, UNREACHABLE};
-use ice_and_fire_tactics::eval::evaluate_with;
-
-/// The most a side's pressure term takes (E021).
-pub const PRESSURE: f64 = 100.0;
-/// How much a threat's weight falls with each turn it is further away: the
-/// rate at which v009's threats were carried out within 5 turns
-/// (`research/towers-and-threats.md`).
-pub const DECAY: f64 = 0.42;
-
-/// The pressure term of `seat` (E021): `−PRESSURE × (1 − DECAY^t)`, where
-/// `t = max(0, cost − gold − income) / max(income, 1)` is how many turns of
-/// income beyond its next one `seat` lacks to pay for its cheapest chain to
-/// the enemy HQ (fractional, 0 when it can pay at its next turn), rounded to
-/// the nearest integer; `−PRESSURE` when the HQ is unreachable.
-pub fn pressure(state: &State, seat: usize) -> i64 {
-    let cost = cost_to(state, seat, false, HQ[1 - seat]);
-    if cost == UNREACHABLE {
-        return -(PRESSURE as i64);
-    }
-    let income = state.income(seat);
-    let short = (cost - state.gold(seat) - income).max(0);
-    let t = short as f64 / income.max(1) as f64;
-    (-PRESSURE * (1.0 - DECAY.powf(t))).round() as i64
-}
+use ice_and_fire_tactics::eval::evaluate;
 
 /// The weight of a joint and of a cell that one capture cuts off.
 const SHAPE: i64 = 2;
@@ -102,7 +73,7 @@ fn twos(state: &State, seat: usize) -> i64 {
 
 /// The score of `state` for `seat`, higher is better for it.
 pub fn eval(state: &State, seat: usize) -> i64 {
-    let score = evaluate_with(state, seat, pressure);
+    let score = evaluate(state, seat);
     if state.outcome().is_some() {
         return score;
     }

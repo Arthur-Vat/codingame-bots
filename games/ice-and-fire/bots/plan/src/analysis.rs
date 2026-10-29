@@ -33,7 +33,8 @@ use std::fmt::Write as _;
 use std::hint::black_box;
 use std::time::Instant;
 
-use ice_and_fire_engine::{Command, League, State};
+use ice_and_fire_engine::{Command, League, State, HQ};
+use ice_and_fire_tactics::chain::{cost_to, UNREACHABLE};
 use ice_and_fire_tactics::eval::evaluate;
 
 use crate::eval::eval;
@@ -46,8 +47,7 @@ pub enum Variant {
     /// v009's evaluation, unchanged.
     Full,
     /// Without the pressure term: how far each side is from affording the
-    /// chain to the other's HQ (the bot's own since E021,
-    /// `crate::eval::pressure`).
+    /// chain to the other's HQ (`ice_and_fire_tactics::eval`).
     NoPressure,
     /// Without the static value of active towers, 10 each.
     NoTowers,
@@ -62,18 +62,31 @@ pub fn set_variant(variant: Variant) {
     VARIANT.with(|v| v.set(variant));
 }
 
+/// The lowest pressure term of one side, as in the shared evaluation.
+pub const MAX_PRESSURE: i64 = 200;
 /// The static value of an active tower in the shared evaluation.
 pub const TOWER_VALUE: i64 = 10;
+
+/// The shared evaluation's pressure term of `seat`: 0 when its gold and
+/// income pay for its cheapest chain to the enemy HQ, else minus the
+/// shortfall, at least `-MAX_PRESSURE`. A copy of the private
+/// `ice_and_fire_tactics::eval::pressure`, which the tests check.
+pub fn pressure(state: &State, seat: usize) -> i64 {
+    let cost = cost_to(state, seat, false, HQ[1 - seat]);
+    if cost == UNREACHABLE {
+        return -MAX_PRESSURE;
+    }
+    (state.gold(seat) + state.income(seat) - cost).clamp(-MAX_PRESSURE, 0)
+}
 
 /// The active towers of `seat`.
 pub fn towers(state: &State, seat: usize) -> i64 {
     i64::from((state.towers() & state.active(seat)).count())
 }
 
-/// The bot's pressure term of the score of `seat`, which replaces the shared
-/// one (`crate::eval::pressure`, E021).
+/// The pressure term of the score of `seat`.
 pub fn pressure_term(state: &State, seat: usize) -> i64 {
-    crate::eval::pressure(state, seat) - crate::eval::pressure(state, 1 - seat)
+    pressure(state, seat) - pressure(state, 1 - seat)
 }
 
 /// The tower term of the score of `seat`.
