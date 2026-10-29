@@ -11,7 +11,7 @@ Every bot change is judged by CI: unit tests, a check that the bot compiles on C
 | Game | CodinGame league | Current release | Journal |
 | --- | --- | --- | --- |
 | [Ultimate Tic-Tac-Toe](games/uttt/) | Legend since 2026-10-07; 59th with `uttt-v008` (2026-10-08) | [`uttt-v018`](games/uttt/releases/uttt-v018.rs) | [journal](games/uttt/journal/) |
-| [A Code of Ice and Fire](games/ice-and-fire/) | Not on CodinGame yet | [`ice-and-fire-v008`](games/ice-and-fire/releases/ice-and-fire-v008.rs) | [journal](games/ice-and-fire/journal/) |
+| [A Code of Ice and Fire](games/ice-and-fire/) | Not on CodinGame yet | [`ice-and-fire-v009`](games/ice-and-fire/releases/ice-and-fire-v009.rs) | [journal](games/ice-and-fire/journal/) |
 
 ## Where things are
 
