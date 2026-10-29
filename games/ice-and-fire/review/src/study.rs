@@ -418,6 +418,13 @@ pub fn report(games: &[GameStudy]) -> String {
     out
 }
 
+/// What the tower alone adds to its builder's score through the pressure
+/// term: how much it lowers the enemy's pressure.
+pub fn pressure_gain(t: &Tower) -> i64 {
+    pressure(t.enemy_gold, t.enemy_income, t.cost_before)
+        - pressure(t.enemy_gold, t.enemy_income, t.cost_after)
+}
+
 /// A row of the towers' table: its label and which towers it holds.
 type Bucket = (&'static str, fn(&Tower) -> bool);
 
@@ -496,12 +503,7 @@ fn towers_report(out: &mut String, games: &[GameStudy]) {
     );
     row(
         "The tower's gain in the builder's pressure term (the enemy's pressure lowered)",
-        all.iter()
-            .map(|t| {
-                pressure(t.enemy_gold, t.enemy_income, t.cost_before)
-                    - pressure(t.enemy_gold, t.enemy_income, t.cost_after)
-            })
-            .collect(),
+        all.iter().map(|t| pressure_gain(t)).collect(),
     );
     let _ = writeln!(
         out,
@@ -509,7 +511,7 @@ fn towers_report(out: &mut String, games: &[GameStudy]) {
     );
     let _ = writeln!(
         out,
-        "| Enemy's turns to afford | Towers | Raised the chain | Blocked a training | Blocked a unit | Enemy afforded the old chain | Cut off | Gone | Builder won | Builder lost its HQ |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
+        "| Enemy's turns to afford | Towers | Mean pressure gain | Raised the chain | Blocked a training | Blocked a unit | Enemy afforded the old chain | Cut off | Gone | Builder won | Builder lost its HQ |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
     );
     let buckets: [Bucket; 6] = [
         ("1", |t| t.enemy_turns == Some(1)),
@@ -522,9 +524,15 @@ fn towers_report(out: &mut String, games: &[GameStudy]) {
     let mut line = |label: &str, set: Vec<&&Tower>| {
         let k = set.len();
         let count = |f: &dyn Fn(&Tower) -> bool| share(set.iter().filter(|t| f(t)).count(), k);
+        let gain = if k == 0 {
+            "–".to_string()
+        } else {
+            let sum: i64 = set.iter().map(|t| pressure_gain(t)).sum();
+            format!("{:.1}", sum as f64 / k as f64)
+        };
         let _ = writeln!(
             out,
-            "| {label} | {k} | {} | {} | {} | {} | {} | {} | {} | {} |",
+            "| {label} | {k} | {gain} | {} | {} | {} | {} | {} | {} | {} | {} |",
             count(
                 &|t| matches!((t.cost_before, t.cost_after), (Some(b), Some(a)) if a > b)
                     || (t.cost_before.is_some() && t.cost_after.is_none())

@@ -123,6 +123,7 @@ fn the_study_follows_every_tower_threat_and_cut() {
                 assert!(after >= before, "seed {seed}: {t:?}");
             }
             assert_eq!(t.won, game.record.winner == Some(t.builder));
+            assert!(pressure_gain(t) >= 0, "{t:?}");
             assert!(t.enemy_turns.is_none_or(|n| n >= 1));
             for later in [t.block, t.unit_block, t.afforded] {
                 assert!(later.is_none_or(|n| n >= 1), "{t:?}");
