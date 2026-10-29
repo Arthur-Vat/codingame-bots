@@ -108,8 +108,16 @@ grep -q '^  1\. bronze ' target/cg/ice-and-fire-league.txt
 
 echo "== The plan bot's analysis mode"
 # Bots never carry it, so only this step builds and tests it.
+scripts/annotate.sh run "Plan bot analysis mode, lint" \
+  cargo clippy --locked -p ice-and-fire-bot-plan --all-targets --features analysis -- -D warnings
 scripts/annotate.sh run "Plan bot analysis mode" \
-  cargo test --release --locked -p ice-and-fire-bot-plan --features analysis analysis::
+  cargo test --release --locked -p ice-and-fire-bot-plan --features analysis analysis:: \
+  | tee target/ice-and-fire-analysis-tests.txt
+# A filter that matches no test would pass silently.
+if ! grep -Eq '^test result: ok\. [1-9][0-9]* passed' target/ice-and-fire-analysis-tests.txt; then
+  echo "::error title=Plan bot analysis mode::no analysis:: test ran"
+  exit 1
+fi
 
 echo "== Engine speed (a report)"
 scripts/annotate.sh run "Engine speed" \
