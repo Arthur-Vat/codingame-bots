@@ -527,3 +527,39 @@ fn a_cell_that_cuts_others_off_weakens_its_side() {
     let state = position(rows, [20, 20], &[]);
     assert_eq!(crate::eval::shape(&state, 0), 0);
 }
+
+#[test]
+fn a_towers_value_beyond_the_cap_is_taken_off() {
+    use crate::eval::{eval, over_cap, TOWER_CAP};
+    use ice_and_fire_engine::HQ;
+    use ice_and_fire_tactics::chain::cost_to;
+    // E024: red builds a tower at (1, 0), next to its HQ: blue's chain to
+    // red's HQ along the corridor must then enter (2, 0), the tower's cell
+    // and the HQ at level 3, 20 gold more each.
+    let tower = Command::BuildTower { x: 1, y: 0 };
+    let build = |blue_gold: i64| {
+        let mut state = position(CORRIDOR, [50, blue_gold], &[]);
+        assert!(state.apply(tower));
+        state
+    };
+    let open = position(CORRIDOR, [50, 0], &[]);
+    let state = build(0);
+    let before = cost_to(&open, 1, false, HQ[0]);
+    assert_eq!(cost_to(&state, 1, false, HQ[0]), before + 60);
+    assert_eq!(TOWER_CAP, 20);
+    // Blue is too far for the pressure term to change: the tower adds its
+    // static 10 alone, below the cap.
+    assert_eq!(over_cap(&state, 0), 0);
+    // With gold 10 short of the old chain, blue's pressure falls from -10
+    // to -70: the tower adds 10 + 60, 50 beyond the cap.
+    let state = build(before - state.income(1) - 10);
+    assert_eq!(over_cap(&state, 0), 50);
+    assert_eq!(over_cap(&state, 1), 0);
+    // The evaluation takes it off red's score, and gives it to blue's.
+    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+    assert_eq!(eval(&state, 0), shared - 50);
+    let shared = ice_and_fire_tactics::eval::evaluate(&state, 1) + crate::eval::shape(&state, 1);
+    assert_eq!(eval(&state, 1), shared + 50);
+    // No tower, nothing taken.
+    assert_eq!(over_cap(&open, 0), 0);
+}

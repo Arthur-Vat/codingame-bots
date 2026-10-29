@@ -18,10 +18,59 @@
 //!   against 1 for a level-1 one, and in v008's games a side with more of
 //!   them than the score said won less often: each counts [`LEVEL2_DISCOUNT`]
 //!   less than its training cost, 5 in all.
+//! - **Tower cap** (E024): a side's towers add to its score their static
+//!   value (10 each when active) and their gain in the pressure term (how
+//!   much they raise the enemy's cheapest chain to the side's HQ). What
+//!   they add beyond [`TOWER_CAP`] a tower, a level-3 training's extra cost
+//!   over level 1, is taken off ([`over_cap`]).
 
-use ice_and_fire_engine::State;
+use ice_and_fire_engine::{Bits, State, HQ};
 use ice_and_fire_opening::solo::severed;
-use ice_and_fire_tactics::eval::evaluate;
+use ice_and_fire_tactics::chain::{cost_to, cost_to_with};
+use ice_and_fire_tactics::eval::{evaluate, pressure_for};
+
+/// The most a tower may add to its side's score (E024).
+pub const TOWER_CAP: i64 = 20;
+
+/// What the towers of `seat` add to its score beyond [`TOWER_CAP`] each:
+/// their static value (10 an active tower, in the shared evaluation) plus
+/// the enemy's pressure term with the towers' protection less the same
+/// with none of `seat`'s towers (the tower cells then enterable at level 1
+/// like any other cell of `seat` without a unit), over `TOWER_CAP` times
+/// the towers of `seat`, at least 0.
+pub fn over_cap(state: &State, seat: usize) -> i64 {
+    let enemy = 1 - seat;
+    let towers = state.towers() & state.owned(seat);
+    if towers.is_empty() {
+        return 0;
+    }
+    let active = state.active(seat);
+    // The cells the towers protect from levels 1 and 2 (RULES.md,
+    // "Protection"), and on them the units of `seat` by level.
+    let blocked = towers | (active & (active & towers).neighbours());
+    let mut stronger = [Bits::EMPTY; 2];
+    for cell in (blocked & state.units(seat)).iter() {
+        let level = state.unit_level(cell).unwrap_or(0);
+        for l in 1..=2u8 {
+            if level >= l {
+                stronger[usize::from(l) - 1] |= Bits::cell(cell);
+            }
+        }
+    }
+    let open = blocked & state.enterable(enemy, 3);
+    let without = cost_to_with(state, enemy, false, HQ[seat], |level| {
+        let bits = state.enterable(enemy, level);
+        if level < 3 {
+            bits | open.and_not(stronger[usize::from(level) - 1])
+        } else {
+            bits
+        }
+    });
+    let with = cost_to(state, enemy, false, HQ[seat]);
+    let gain = pressure_for(state, enemy, without) - pressure_for(state, enemy, with);
+    let value = 10 * i64::from((towers & active).count()) + gain;
+    (value - TOWER_CAP * i64::from(towers.count())).max(0)
+}
 
 /// The weight of a joint and of a cell that one capture cuts off.
 const SHAPE: i64 = 2;
@@ -83,4 +132,6 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         + 2 * debt(state, 1 - seat)
         + shape(state, seat)
         + LEVEL2_DISCOUNT * (twos(state, 1 - seat) - twos(state, seat))
+        - over_cap(state, seat)
+        + over_cap(state, 1 - seat)
 }
