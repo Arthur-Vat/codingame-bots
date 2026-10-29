@@ -23,14 +23,14 @@ use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
 use std::time::Instant;
 
-use ice_and_fire_engine::{Command, Outcome, State, HQ, SIZE};
+use ice_and_fire_engine::{Command, Outcome, State, HQ};
 use ice_and_fire_opening::planned::Planned;
 use ice_and_fire_policy::greedy_turn;
 use ice_and_fire_tactics::chain::chain_to;
 use ice_and_fire_tactics::cut::cuts;
 use ice_and_fire_tactics::eval::WIN;
 
-use crate::actions::{generate, Action, CUT_LENGTH};
+use crate::actions::{generate, xy, Action, CUT_LENGTH};
 use crate::eval::eval;
 
 /// Replies kept in the memory.
@@ -39,6 +39,8 @@ const MEMORY_CAP: usize = 8;
 const REPLY_CUTS: usize = 3;
 /// Most climbs in one turn.
 const MAX_CLIMBS: usize = 32;
+/// Most plans scored by the opponent's climb in one reply search (E019).
+const REPLY_EVALS: u64 = 300;
 
 /// When the search stops.
 #[derive(Clone, Copy, Debug)]
@@ -54,6 +56,7 @@ pub struct Limit {
 }
 
 /// What the search decided.
+#[derive(Default)]
 pub struct Thought {
     /// The commands to send, each accepted in order on the state searched.
     pub commands: Vec<Command>,
@@ -144,11 +147,8 @@ fn lethal(state: &State) -> Option<Vec<Command>> {
         let Some((id, _)) = state.unit_at(cell) else {
             continue;
         };
-        let command = Command::Move {
-            id,
-            x: (target % SIZE) as u8,
-            y: (target / SIZE) as u8,
-        };
+        let (x, y) = xy(target);
+        let command = Command::Move { id, x, y };
         let mut trial = state.clone();
         if trial.apply(command) && wins(&trial) {
             return Some(vec![command]);
@@ -265,15 +265,17 @@ impl Search {
                     done[index] = banned.contains(&key(action.commands()));
                 }
             }
-            let (mut best, skipped) = self.pass(
-                &cur, cur_score, &actions, &order, &mut done, memory, &mut gains, true,
-            );
-            if best.is_none() && skipped {
-                best = self
-                    .pass(
-                        &cur, cur_score, &actions, &order, &mut done, memory, &mut gains, false,
-                    )
-                    .0;
+            // A lazy pass, then a full one if the lazy one skipped actions
+            // and found no gain.
+            let mut best = None;
+            for lazy in [true, false] {
+                let (found, skipped) = self.pass(
+                    &cur, cur_score, &actions, &order, &mut done, memory, &mut gains, lazy,
+                );
+                best = found;
+                if best.is_some() || !skipped {
+                    break;
+                }
             }
             let Some((index, next, score)) = best else {
                 break;
@@ -297,8 +299,8 @@ impl Search {
     }
 
     /// The replies of the opponent to the plan that ends in `end`: its
-    /// lethal chain, its best cuts and bronze's greedy turn, on the state
-    /// after our turn ends.
+    /// lethal chain, its best cuts, bronze's greedy turn and its own plan
+    /// (one climb), on the state after our turn ends.
     fn replies(&self, end: &State) -> Vec<Vec<Command>> {
         let mut next = end.clone();
         next.end_turn();
@@ -317,6 +319,18 @@ impl Search {
         let mut greedy = Vec::new();
         greedy_turn(&next, &mut greedy);
         out.push(greedy);
+        // The opponent's own plan (E019): a climb from its seat, with moves,
+        // trainings and cuts, scored by the evaluation from its side.
+        let mut theirs = Search {
+            me: opponent,
+            limit: Limit {
+                max_evals: REPLY_EVALS,
+                ..self.limit
+            },
+            evals: 0,
+            hints: Gains::default(),
+        };
+        out.push(theirs.climb(&next, &[], &[]).commands);
         out.retain(|commands| !commands.is_empty());
         out
     }
@@ -344,13 +358,7 @@ impl Search {
 /// `opening` plays until the middle game (`ice_and_fire_opening::middle`).
 pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
     let me = state.to_act();
-    let mut thought = Thought {
-        commands: Vec::new(),
-        climbs: 0,
-        evals: 0,
-        memory: 0,
-        plans: 0,
-    };
+    let mut thought = Thought::default();
     if state.outcome().is_some() {
         return thought;
     }

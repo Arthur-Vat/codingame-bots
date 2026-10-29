@@ -35,7 +35,7 @@ impl Action {
     }
 }
 
-fn xy(cell: usize) -> (u8, u8) {
+pub fn xy(cell: usize) -> (u8, u8) {
     ((cell % SIZE) as u8, (cell / SIZE) as u8)
 }
 
@@ -48,9 +48,9 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
     }
     let me = state.to_act();
     let max = state.league().max_level();
-    let mut enter = [Bits::EMPTY; 3];
+    let mut enter = [Bits::EMPTY; 4];
     for level in 1..=max {
-        enter[usize::from(level) - 1] = state.enterable(me, level);
+        enter[usize::from(level)] = state.enterable(me, level);
     }
 
     // Moves.
@@ -58,7 +58,7 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
         let Some((id, level)) = state.unit_at(from) else {
             continue;
         };
-        let steps = Bits::cell(from).neighbours() & enter[usize::from(level) - 1];
+        let steps = Bits::cell(from).neighbours() & enter[usize::from(level)];
         for to in steps.iter() {
             let (x, y) = xy(to);
             out.push(Action::One(Command::Move { id, x, y }));
@@ -73,9 +73,9 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
         if gold < cost {
             break;
         }
-        let mut cells = near & enter[usize::from(level) - 1];
+        let mut cells = near & enter[usize::from(level)];
         for lower in 1..level {
-            cells = cells.and_not(enter[usize::from(lower) - 1]);
+            cells = cells.and_not(enter[usize::from(lower)]);
         }
         for cell in cells.iter() {
             let (x, y) = xy(cell);

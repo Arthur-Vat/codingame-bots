@@ -41,6 +41,7 @@ Iteration: one experiment per pull request ([journal](journal/README.md)).
 - [x] E016, longer cuts (to 8 or 10 trainings) when the climbs find nothing new, and 45 ms turns: four variants against v007 (400 pairs each), all level (−8.7 to +4.3 Elo) though they think 2 to 4 times longer, dropped ([E016](journal/E016-deeper-cuts.md))
 - [x] E017, the evaluation's weights fitted to 1,000 v007 self-play games (logistic regression on 26,889 positions): barely better at predicting the winner, and clearly weaker in play (−37.5 to −78.6 Elo against v007, 400 pairs each), dropped ([E017](journal/E017-fitted-weights.md))
 - [x] E018, the best plans scored one turn deeper (the opponent's reply, then our best answer): top 2, 4 or 8 plans or all against v007 (400 pairs each, top 4 again on 600), from −43.7 (all) to level, dropped ([E018](journal/E018-two-turn-look.md))
+- [x] E019, the opponent's own climbed plan (moves, trainings, cuts) among the replies the search plans against, after a study of v007's lost games, as `ice-and-fire-v008` through the SPRT against v007: accepted, +78.5 Elo ([E019](journal/E019-opponent-plan.md), #210)
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 

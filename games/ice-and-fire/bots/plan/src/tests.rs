@@ -274,13 +274,16 @@ fn a_search_that_learns_nothing_new_climbs_from_other_first_actions() {
 fn takes_a_cheap_gain_the_hill_climb_must_find() {
     // Room to spread and gold for trainings, the enemy near enough that the
     // middle game has begun and the plan search plays, not the opening: the plan is not empty and
-    // spends gold on territory.
+    // spends gold on territory. Red's cells close a loop when it grows, so
+    // a new cell adds no joint to its shape and is a strict gain with or
+    // without a threat (a thin line's new cell scores 0: +4 for the cell,
+    // -4 for its joint).
     let state = position(
         [
+            "OOO.........",
             "OOOO........",
-            "O...........",
-            "....XXXXXXXX",
-            "...........X",
+            "............",
+            "...XXXXXXXXX",
             "...........X",
             "...........X",
             "...........X",
