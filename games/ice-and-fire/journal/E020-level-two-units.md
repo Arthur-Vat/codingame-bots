@@ -37,7 +37,7 @@ files and metrics, and measured as E019's study of v007 was:
 
 E019 did what it was meant to: fewer cuts by moves, less overextension.
 The evaluation now explains less of who wins, and four metrics add to it
-three times more than any did for v007: a side's level-2 units, beyond
+two to three times more than any did for v007: a side's level-2 units, beyond
 the opponent's, are worth about 23 less than the evaluation counts them
 (`level2`, log loss lowered by 0.012), the cells its towers cover about 5
 more each (`tower_cover`, 0.009), its units near its own HQ about 32 less
@@ -77,7 +77,8 @@ the same runs, are within the SPRT's 1%.
 ## The change
 
 `bots/plan/src/eval.rs` subtracts `LEVEL2_DISCOUNT` (15) times the
-difference of the two sides' level-2 units on active cells. The plan
+difference of the two sides' level-2 units on active cells. A level-2 unit thus counts 5 while its side can pay its
+upkeep (the debt term still takes twice its cost otherwise). The plan
 test of the debt rule asserts the evaluation exactly; its last position
 holds a blue level-2 unit, so its expected value adds the discount for
 red (the owner: "Add the new term (Recommended)"), and a new test checks
