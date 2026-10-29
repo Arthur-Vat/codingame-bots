@@ -27,6 +27,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 # shellcheck source=scripts/lib/evaluation.sh
 source scripts/lib/evaluation.sh
+# shellcheck source=scripts/lib/records.sh
+source scripts/lib/records.sh
 
 if [[ $# -lt 1 ]]; then
   echo "usage: $0 GAME [ITERS] [RELEASE.rs...]" >&2
@@ -60,29 +62,6 @@ build_tools "$game"
 CG_BIN_DIR="$dir/bin" scripts/cg-check.sh "${files[@]}" >&2
 arena="target/release/$game-arena"
 
-# What a record must keep from run to run: the lines of every answer, by
-# turn, the winner and how the game ended.
-# A record without these fields is an error, never "identical".
-readonly canon='
-  if .format != 1 then error("unexpected record format")
-  elif (has("winner") | not) then error("record without winner")
-  else
-    {turns: [.turns[] | [.[] | (.lines // error("record without lines"))]],
-     winner,
-     end: (.end.kind // error("record without end kind"))}
-  end'
-
-# Where records $1 and $2 first differ: "turn N", "the winner" or "the end".
-first_difference() {
-  jq -n -r --slurpfile a <(jq -c "$canon" "$1") --slurpfile b <(jq -c "$canon" "$2") '
-    ($a[0].turns) as $x | ($b[0].turns) as $y
-    | ([range(0; [($x | length), ($y | length)] | max)]
-       | map(select($x[.] != $y[.])) | first) as $turn
-    | if $turn != null then "turn \($turn + 1)"
-      elif $a[0].winner != $b[0].winner then "the winner"
-      else "the end" end'
-}
-
 status=0
 for file in "${files[@]}"; do
   name="$(basename "$file" .rs)"
@@ -98,31 +77,13 @@ for file in "${files[@]}"; do
     fi
   done
 
-  games=0
-  problem=""
-  for first in "$dir/$name/run1"/*.json; do
-    games=$((games + 1))
-    base="$(basename "$first")"
-    second="$dir/$name/run2/$base"
-    if [[ ! -f $second ]]; then
-      problem="run 2 has no $base"
-      break
-    fi
-    canon_first="$(jq -c "$canon" "$first")"
-    canon_second="$(jq -c "$canon" "$second")"
-    if [[ $canon_first != "$canon_second" ]]; then
-      problem="run 2 differs from run 1 in $base at $(first_difference "$first" "$second")"
-      break
-    fi
-  done
-  if [[ -z $problem && $(find "$dir/$name/run2" -name '*.json' | wc -l) -ne $games ]]; then
-    problem="run 2 has other games than run 1"
-  fi
+  problem="$(compare_runs "$dir/$name/run1" "$dir/$name/run2" "run 1" "run 2")" || true
   if [[ -n $problem ]]; then
     echo "FAIL $name: $problem"
     status=1
     continue
   fi
+  games="$(find "$dir/$name/run1" -name '*.json' | wc -l)"
 
   # The median time of the answers but each seat's first, which includes the
   # start of the process.

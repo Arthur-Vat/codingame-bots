@@ -16,7 +16,7 @@ scripts/check-docs.sh
 
 For bot or engine changes, also play the bundled bots against each other with the game's arena (for example `target/release/uttt-arena --help`) and report the summary. For engine changes, also report `cargo +1.90.0 run --release -p uttt-engine --example speed` against the baseline in `games/uttt/README.md`.
 
-For a bot strength experiment, follow "An experiment, step by step" in `docs/WORKFLOW.md`: `scripts/new-release.sh` makes the candidate, `scripts/sprt.sh` runs the test locally, and the SPRT workflow judges it.
+For a bot strength experiment, follow "An experiment, step by step" in `docs/WORKFLOW.md`: `scripts/new-release.sh` makes the candidate (the minified release and its readable copy, which `scripts/check-minified.sh` shows to play the same), `scripts/sprt.sh` runs the test locally, and the SPRT workflow judges it.
 
 Procedures that repeat are project skills in `.claude/skills/`, and the agents they use are in `.claude/agents/`: start with `land-work` for work that needs pull requests or implementers, `review-pr` before asking the owner to approve, `ask-decision` for choices that are his (in the conversation only), `handoff` to pick up and pass on work between sessions, `new-game` for a new game's lifecycle ([docs/NEW_GAME.md](docs/NEW_GAME.md)), `review-games` for reviews of recorded games by Haiku agents ([ADR 0043](docs/adr/0043-game-reviews-by-haiku.md)), and `github-api` before any GitHub operation.
 
@@ -27,7 +27,7 @@ Procedures that repeat are project skills in `.claude/skills/`, and the agents t
 - Ask the owner before starting heavy work: bot experiments, training or league runs, large code changes, or anything else that would use much of his usage.
 - Never weaken a test, the referee, a CI check or a threshold to make a change pass. If a check seems wrong, say so and stop.
 - One topic per pull request. For bot strength work: one experiment per pull request.
-- Released files (`games/*/releases/`) never change; a better bot is a new release.
+- Released files (`games/*/releases/` and `games/*/readable/`) never change; a better bot is a new release.
 - A decision that is costly to reverse goes to the owner first, then into a new ADR in `docs/adr/` (template in `docs/adr/template.md`). Never rewrite an accepted ADR; supersede it.
 - If something needed is missing (access, a network domain, a secret, a fact about CodinGame), say exactly what and stop. Do not mock, guess or invent CodinGame rules.
 - English everywhere: code, comments, docs, commits, pull requests.
@@ -36,7 +36,7 @@ Procedures that repeat are project skills in `.claude/skills/`, and the agents t
 
 - CodinGame compiles Rust 1.90.0 with the 2021 edition (`docs/CODINGAME.md`). The workspace sets `rust-version = "1.90"`; CI uses exactly 1.90.0. Sessions default to a newer Rust; install CodinGame's with `rustup toolchain install 1.90.0` and measure speed with `cargo +1.90.0`, since a newer compiler can run the same code at another speed ([E026](games/uttt/journal/E026-fused-children.md)). Heed clippy's `incompatible_msrv` warnings and avoid syntax newer than 1.90.
 - Any code that ends up inside a bot uses the standard library only: no crates.io dependencies. Tools (arena, bundler) may use dependencies allowed by `deny.toml`.
-- A paste-ready bot is one file of at most 100,000 characters, counted as UTF-16 units ([ADR 0037](docs/adr/0037-size-limit-in-characters.md)), that compiles with `rustc --edition 2021` alone. Data packed into characters outside ASCII ([docs/research/utf16-packing.md](docs/research/utf16-packing.md)) is encoded and decoded in Rust.
+- A paste-ready bot is one file of at most 100,000 characters, counted as UTF-16 units ([ADR 0037](docs/adr/0037-size-limit-in-characters.md)), that compiles with `rustc --edition 2021` alone. The bundler minifies it by default (`--keep-comments` gives the readable bundle); a new release is two frozen files, `games/<game>/releases/` (minified) and `games/<game>/readable/` (with comments), made by `scripts/new-release.sh` ([ADR 0045](docs/adr/0045-minified-releases.md)). Data packed into characters outside ASCII ([docs/research/utf16-packing.md](docs/research/utf16-packing.md)) is encoded and decoded in Rust.
 - No `unsafe` (workspace lint). Proposing an exception needs an ADR.
 - Crates that end up in a bot follow the bundler's conventions (`crates/cg-bundler/src/lib.rs`): modules in files declared with `mod name;` on their own line, tests in separate files (`#[cfg(test)]` then `mod tests;`), other workspace crates referred to by name (`cg_core::`), no `#[path]`, analysis-only code behind `#[cfg(feature = "analysis")]` on the line before the item itself on one line (no attribute or comment between), which the bundler drops and rejects anything else.
 - Bots must flush stdout after every move and print debug output to stderr only.

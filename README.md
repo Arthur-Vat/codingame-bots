@@ -2,7 +2,7 @@
 
 A Rust framework to build, test, rate and improve bots for two-player [CodinGame](https://www.codingame.com) bot programming games, aiming for Legend league in each game over time. The first game is [Ultimate Tic-Tac-Toe](games/uttt/).
 
-Every bot change is judged by CI: unit tests, a check that the bot compiles on CodinGame, and, for a new release, a statistical match (a sequential probability ratio test, SPRT) against the previous release. Every released bot is a single readable file you paste into the CodinGame editor.
+Every bot change is judged by CI: unit tests, a check that the bot compiles on CodinGame, and, for a new release, a statistical match (a sequential probability ratio test, SPRT) against the previous release. Every released bot is a single file you paste into the CodinGame editor (minified, with a readable copy beside it).
 
 **Status:** phases 0 to 4 and phase 6, the studio, are done; phase 5, autonomy and workflow, is in progress. See the [roadmap](docs/ROADMAP.md).
 

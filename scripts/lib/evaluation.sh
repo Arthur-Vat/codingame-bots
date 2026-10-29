@@ -25,11 +25,12 @@ build_tools() {
 }
 
 # Bundles bot $2 of game $1 (a folder of games/$1/bots) into directory $3,
-# as $3/$1-$2.rs.
+# as $3/$1-$2.rs, minified; further arguments go to the bundler (for
+# example --keep-comments for the readable bundle).
 bundle_bot() {
   local manifest="games/$1/bots/$2/Cargo.toml" package
   package="$(sed -n 's/^name = "\(.*\)"$/\1/p' "$manifest" | head -n 1)"
-  target/release/cg-bundler "$package" --output "$3/$1-$2.rs" >&2
+  target/release/cg-bundler "$package" --output "$3/$1-$2.rs" "${@:4}" >&2
 }
 
 # Release files of game $1, oldest first.

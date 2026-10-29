@@ -2,15 +2,21 @@
 # Checks the release files a branch adds or changes, against BASE (default
 # origin/main):
 #
-# - files already released never change and are never deleted;
+# - files already released never change and are never deleted, the readable
+#   copies in games/<game>/readable/ included (ADR 0045);
 # - a game gets at most one new release, numbered right after the last one;
-# - a new release is the bundle of the bot named in its header, as the
-#   branch's sources build it (whitespace aside: rustfmt versions differ),
-#   and passes scripts/cg-check.sh;
+# - a new release is the minified bundle of the bot named in its header, as
+#   the branch's sources build it (whitespace aside: rustfmt versions
+#   differ), and passes scripts/cg-check.sh;
+# - a new release comes with its readable copy, added in the same branch, and
+#   a readable copy comes with its release: the copy is the bundle of the same
+#   bot with its comments (--keep-comments, whitespace aside) and has the
+#   same tokens as the release (cg-tokens). Releases made before ADR 0045 are
+#   untouched and need no copy;
 # - a journal entry of the game has the line `release: <game>-vNNN`.
 #
-# With GAME, only the releases of games/GAME/releases/ are considered; without,
-# those of every game.
+# With GAME, only the releases (and readable copies) of games/GAME/ are
+# considered; without, those of every game.
 #
 # Usage: scripts/check-releases.sh [BASE [GAME]]
 set -euo pipefail
@@ -46,6 +52,24 @@ while IFS=$'\t' read -r change file; do
   added[$game]="$file"
 done < <(git diff --name-status --no-renames "$base" HEAD -- "games/$game_filter/releases/*")
 
+# The readable copies, frozen like the releases; one is added only with the
+# release of the same name.
+declare -A added_readable=()
+while IFS=$'\t' read -r change file; do
+  [[ -z $file ]] && continue
+  if [[ $change != A ]]; then
+    fail "$file: readable copies are frozen, but this branch changes or deletes it ($change)"
+    continue
+  fi
+  game="$(cut -d/ -f2 <<<"$file")"
+  name="$(basename "$file" .rs)"
+  if [[ $file != "games/$game/readable/$name.rs" || ${added[$game]:-} != "games/$game/releases/$name.rs" ]]; then
+    fail "$file: a readable copy needs the release games/$game/releases/$name.rs, added in the same branch"
+    continue
+  fi
+  added_readable[$file]=1
+done < <(git diff --name-status --no-renames "$base" HEAD -- "games/$game_filter/readable/*")
+
 if ((${#added[@]} > 0)); then
   cargo build --quiet --release --locked -p cg-bundler
 fi
@@ -68,7 +92,27 @@ for game in "${!added[@]}"; do
       cat "$tmp_dir/log" >&2
       fail "$file: cannot bundle $package"
     elif [[ "$(tr -d '[:space:]' <"$file")" != "$(tr -d '[:space:]' <"$tmp_dir/fresh.rs")" ]]; then
-      fail "$file: differs from a fresh bundle of $package; run scripts/new-release.sh again"
+      fail "$file: differs from a fresh minified bundle of $package; run scripts/new-release.sh again"
+    fi
+  fi
+
+  readable="games/$game/readable/$name.rs"
+  if [[ -z ${added_readable[$readable]:-} ]]; then
+    fail "$file: the readable copy $readable is not added in this branch (ADR 0045)"
+  elif [[ -n $package ]]; then
+    # shellcheck disable=SC2016 # the backquotes are literal
+    readable_package="$(sed -n '1s/^\/\/ Bundled by cg-bundler from the `\(.*\)` package\..*/\1/p' "$readable")"
+    if [[ $readable_package != "$package" ]]; then
+      fail "$readable: bundled from '$readable_package', but $file is bundled from '$package'"
+    elif ! target/release/cg-bundler "$package" --keep-comments --output "$tmp_dir/fresh-readable.rs" >"$tmp_dir/log" 2>&1; then
+      cat "$tmp_dir/log" >&2
+      fail "$readable: cannot bundle $package with comments"
+    elif [[ "$(tr -d '[:space:]' <"$readable")" != "$(tr -d '[:space:]' <"$tmp_dir/fresh-readable.rs")" ]]; then
+      fail "$readable: differs from a fresh bundle of $package with comments; run scripts/new-release.sh again"
+    fi
+    if ! target/release/cg-tokens "$readable" "$file" >"$tmp_dir/log" 2>&1; then
+      cat "$tmp_dir/log" >&2
+      fail "$file: does not have the tokens of $readable"
     fi
   fi
 
@@ -77,7 +121,7 @@ for game in "${!added[@]}"; do
   if ! grep -rqsx -- "release: $name" "games/$game/journal/"; then
     fail "$file: no entry in games/$game/journal/ has the line 'release: $name'"
   fi
-  [[ $status -eq 0 ]] && echo "ok   $file (bundle of $package)"
+  [[ $status -eq 0 ]] && echo "ok   $file (minified bundle of $package, with its readable copy)"
 done
 if ((${#added[@]} == 0)); then
   echo "no new release"

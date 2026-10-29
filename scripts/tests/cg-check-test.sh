@@ -33,11 +33,15 @@ bot() {
   } >"$file"
 }
 
-# check <expected status> <text the output must contain> <file>
+# check <expected status> <text the output must contain> <file> [option]
 check() {
-  local want="$1" text="$2" file="$3" output status=0
+  local want="$1" text="$2" file="$3" option="${4:-}" output status=0
   checks=$((checks + 1))
-  output="$("$script" "$file" 2>&1)" || status=$?
+  if [[ -n $option ]]; then
+    output="$("$script" "$option" "$file" 2>&1)" || status=$?
+  else
+    output="$("$script" "$file" 2>&1)" || status=$?
+  fi
   if ((status != want)); then
     fail "status $status, wanted $want, for $(basename "$file"): $output"
   elif [[ $output != *"$text"* ]]; then
@@ -70,6 +74,13 @@ check 1 "not valid UTF-8" "$dir/invalid.rs"
 
 printf 'fn main() {\n' >"$dir/broken.rs"
 check 1 "does not compile on its own" "$dir/broken.rs"
+
+# --any-size reports the size of a readable copy but does not enforce it.
+check 0 "100001 characters, over the limit of 100000; not enforced" "$dir/ascii-over.rs" --any-size
+check 0 "100002 characters, over the limit" "$dir/astral-over.rs" --any-size
+check 0 "100000 characters, 100000 bytes" "$dir/ascii-limit.rs" --any-size
+check 1 "does not compile on its own" "$dir/broken.rs" --any-size
+check 1 "not valid UTF-8" "$dir/invalid.rs" --any-size
 
 if ((failures > 0)); then
   echo "cg-check test: $failures of $checks checks failed" >&2

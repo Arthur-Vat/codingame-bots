@@ -1,179 +1,100 @@
-//! Shrinks a bundle by removing what the compiler ignores: comments,
-//! indentation, trailing spaces and blank lines (ADR 0016).
+//! Shrinks a bundle to the tokens Rust needs (ADR 0045, level 1).
 //!
-//! The text is scanned token by token so that string, byte string, raw
-//! string and character literals are copied unchanged, even when they span
-//! several lines or contain `//`. Each remaining line of code keeps its own
-//! line, so compiler errors still point at a readable line.
+//! The text is lexed ([`tokens`]) and written again with only the
+//! whitespace that keeps neighbouring tokens apart. Comments go, doc
+//! comments included. String, byte string, raw string and character
+//! literals are copied byte for byte, so data packed into them (ADR 0037)
+//! passes through unchanged.
+//!
+//! Two tokens are written without whitespace between them when lexing their
+//! texts together gives the same two tokens. Beyond that, whitespace stays
+//! between a name or number and a following `"`, `'` or `#` (the reserved
+//! prefixes of the 2021 edition: `b "x"` is not `b"x"`), between a literal
+//! and a name that would become its suffix, and between `/` and a following
+//! `/` or `*`.
+//!
+//! CodinGame's limits on the length of a line are not known, so no line gets
+//! long: once a line has [`SOFT_LINE`] characters, the next whitespace is a
+//! newline, and when it has [`HARD_LINE`] a newline goes between any two
+//! tokens, though none was needed. Literals that span lines stay as they
+//! are.
+//!
+//! [`minify`] checks its work: the tokens of the result must be those of
+//! the input, or it fails and names the first token that differs.
 
-/// `source` without comments (doc comments included), indentation,
-/// trailing spaces or blank lines. Literals are left as they are.
-pub fn strip(source: &str) -> String {
-    let chars: Vec<char> = source.chars().collect();
-    let mut out = String::with_capacity(source.len());
-    // Where the current output line starts.
-    let mut line_start = 0;
-    let mut i = 0;
-    while i < chars.len() {
-        let c = chars[i];
-        let next = chars.get(i + 1).copied();
-        match c {
-            '/' if next == Some('/') => {
-                while i < chars.len() && chars[i] != '\n' {
-                    i += 1;
-                }
-            }
-            '/' if next == Some('*') => {
-                i = block_comment_end(&chars, i);
-                // Keep the tokens on either side apart.
-                if out.len() > line_start && !out.ends_with([' ', '\t']) {
-                    out.push(' ');
-                }
-            }
-            '\n' => {
-                end_line(&mut out, &mut line_start);
-                i += 1;
-            }
-            ' ' | '\t' | '\r' => {
-                if out.len() > line_start {
-                    out.push(c);
-                }
-                i += 1;
-            }
-            '"' => i = copy(&chars, i, string_end(&chars, i), &mut out),
-            '\'' => match char_literal_end(&chars, i) {
-                Some(end) => i = copy(&chars, i, end, &mut out),
-                // A lifetime or a label.
-                None => {
-                    out.push(c);
-                    i += 1;
-                }
-            },
-            'r' | 'b' | 'c' if starts_token(&chars, i) => match raw_string_end(&chars, i) {
-                Some(end) => i = copy(&chars, i, end, &mut out),
-                None => {
-                    out.push(c);
-                    i += 1;
-                }
-            },
-            _ => {
-                out.push(c);
-                i += 1;
+mod lex;
+
+pub use lex::{first_difference, tokens, Kind, Token};
+
+use lex::is_ident_continue;
+
+/// A line with this many characters ends at the next whitespace.
+pub const SOFT_LINE: usize = 150;
+/// A line with this many characters ends before the next token.
+pub const HARD_LINE: usize = 300;
+
+/// `source` with comments removed and only the whitespace that Rust needs
+/// between tokens, in lines of moderate length. It fails when `source`
+/// cannot be lexed, or when the result would not read back as the same
+/// tokens.
+pub fn minify(source: &str) -> Result<String, String> {
+    let input = tokens(source)?;
+    let mut out = String::with_capacity(source.len() / 2);
+    // The characters on the current line.
+    let mut line_length = 0;
+    for (i, token) in input.iter().enumerate() {
+        if i > 0 {
+            let needed = separated(&input[i - 1], token);
+            if line_length >= if needed { SOFT_LINE } else { HARD_LINE } {
+                out.push('\n');
+                line_length = 0;
+            } else if needed {
+                out.push(' ');
+                line_length += 1;
             }
         }
+        out.push_str(&token.text);
+        line_length = match token.text.rfind('\n') {
+            Some(at) => token.text[at + 1..].chars().count(),
+            None => line_length + token.text.chars().count(),
+        };
     }
-    end_line(&mut out, &mut line_start);
-    out
-}
-
-/// Ends the current output line: drops its trailing spaces, and the line
-/// itself when nothing is left on it.
-fn end_line(out: &mut String, line_start: &mut usize) {
-    let kept = out.trim_end_matches([' ', '\t', '\r']).len();
-    out.truncate(kept.max(*line_start));
-    if out.len() > *line_start {
+    if !out.is_empty() {
         out.push('\n');
-        *line_start = out.len();
     }
+
+    let output = tokens(&out).map_err(|err| format!("the minified text cannot be lexed: {err}"))?;
+    if let Some(at) = first_difference(&input, &output) {
+        let describe = |tokens: &[Token]| {
+            tokens.get(at).map_or("the end".to_string(), |t| {
+                format!("`{}` ({:?}, line {})", t.text, t.kind, t.line)
+            })
+        };
+        return Err(format!(
+            "minifying changed the tokens: token {at} was {} and became {}",
+            describe(&input),
+            describe(&output)
+        ));
+    }
+    Ok(out)
 }
 
-/// Copies `chars[start..end]` to `out` and returns `end`.
-fn copy(chars: &[char], start: usize, end: usize, out: &mut String) -> usize {
-    out.extend(&chars[start..end]);
-    end
-}
-
-/// Whether `chars[i]` cannot continue an identifier or a number.
-fn starts_token(chars: &[char], i: usize) -> bool {
-    i == 0 || !(chars[i - 1].is_alphanumeric() || chars[i - 1] == '_')
-}
-
-/// The index just past the block comment starting at `start`, with nested
-/// comments, or the end of the text.
-fn block_comment_end(chars: &[char], start: usize) -> usize {
-    let mut depth = 0;
-    let mut i = start;
-    while i < chars.len() {
-        match (chars[i], chars.get(i + 1)) {
-            ('/', Some('*')) => {
-                depth += 1;
-                i += 2;
-            }
-            ('*', Some('/')) => {
-                depth -= 1;
-                i += 2;
-                if depth == 0 {
-                    return i;
-                }
-            }
-            _ => i += 1,
-        }
+/// Whether `next` needs whitespace after `prev`.
+fn separated(prev: &Token, next: &Token) -> bool {
+    let first = next.text.chars().next();
+    let reserved_prefix = matches!(prev.kind, Kind::Ident | Kind::Number | Kind::Lifetime)
+        && matches!(first, Some('"' | '\'' | '#'));
+    let suffix =
+        matches!(prev.kind, Kind::Str | Kind::Char) && first.is_some_and(is_ident_continue);
+    let comment = prev.text.ends_with('/') && matches!(first, Some('/' | '*'));
+    if reserved_prefix || suffix || comment {
+        return true;
     }
-    chars.len()
-}
-
-/// The index just past the string literal whose opening quote is at
-/// `start`, or the end of the text.
-fn string_end(chars: &[char], start: usize) -> usize {
-    let mut i = start + 1;
-    while i < chars.len() {
-        match chars[i] {
-            '\\' => i += 2,
-            '"' => return i + 1,
-            _ => i += 1,
-        }
+    let joined = format!("{}{}", prev.text, next.text);
+    match tokens(&joined) {
+        Ok(two) => !(two.len() == 2 && two[0].same(prev) && two[1].same(next)),
+        Err(_) => true,
     }
-    chars.len()
-}
-
-/// The index just past the character literal starting at `start`, or
-/// `None` when the quote starts a lifetime or a label.
-fn char_literal_end(chars: &[char], start: usize) -> Option<usize> {
-    match chars.get(start + 1)? {
-        '\\' => {
-            // An escape: `'\n'`, `'\''`, `'\u{1F600}'`.
-            let mut i = start + 3;
-            while i < chars.len() {
-                if chars[i] == '\'' {
-                    return Some(i + 1);
-                }
-                i += 1;
-            }
-            Some(chars.len())
-        }
-        _ if chars.get(start + 2) == Some(&'\'') => Some(start + 3),
-        _ => None,
-    }
-}
-
-/// The index just past the raw string (`r"…"`, `r#"…"#`, `br"…"`, `cr"…"`)
-/// starting at `start`, or `None` when no raw string starts there, as in
-/// `r#type` or `bytes`.
-fn raw_string_end(chars: &[char], start: usize) -> Option<usize> {
-    let mut i = start;
-    if chars[i] != 'r' {
-        i += 1;
-        if chars.get(i) != Some(&'r') {
-            return None;
-        }
-    }
-    i += 1;
-    let mut hashes = 0;
-    while chars.get(i) == Some(&'#') {
-        hashes += 1;
-        i += 1;
-    }
-    if chars.get(i) != Some(&'"') {
-        return None;
-    }
-    i += 1;
-    while i < chars.len() {
-        if chars[i] == '"' && (1..=hashes).all(|k| chars.get(i + k) == Some(&'#')) {
-            return Some(i + 1 + hashes);
-        }
-        i += 1;
-    }
-    Some(chars.len())
 }
 
 #[cfg(test)]

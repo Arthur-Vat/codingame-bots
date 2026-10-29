@@ -110,7 +110,7 @@ impl Releases {
         // No rustfmt: `rustc` checks the bundle anyway (ADR 0040).
         let options = Options {
             format: false,
-            strip: true,
+            minify: true,
         };
         let bundle =
             cg_bundler::bundle_package(&package, Some(&self.repo.join("Cargo.toml")), options)
