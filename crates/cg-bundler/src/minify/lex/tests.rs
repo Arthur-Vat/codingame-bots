@@ -45,6 +45,8 @@ fn lifetimes_and_labels_are_not_characters() {
     assert_eq!(texts("&'a str"), ["&", "'a", "str"]);
     assert_eq!(texts("<'a,'b>"), ["<", "'a", ",", "'b", ">"]);
     assert_eq!(texts("'outer: loop"), ["'outer", ":", "loop"]);
+    single(Lifetime, "'r#a");
+    assert_eq!(texts("&'r#fn u8"), ["&", "'r#fn", "u8"]);
 }
 
 #[test]

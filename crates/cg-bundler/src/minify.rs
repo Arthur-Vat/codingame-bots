@@ -20,7 +20,10 @@
 //! are.
 //!
 //! [`minify`] checks its work: the tokens of the result must be those of
-//! the input, or it fails and names the first token that differs.
+//! the input, or it fails and names the first token that differs. Same
+//! tokens are not always the same program: `stringify!` and `line!` see
+//! the whitespace and the lines, so bots do not use them (the answers check
+//! of ADR 0045, decision 4, would catch a change in what a bot sends).
 
 mod lex;
 

@@ -261,6 +261,11 @@ impl Lexer {
             }
             Some(c) if is_ident_start(c) => {
                 self.bump();
+                // A raw lifetime: `'r#a`.
+                if c == 'r' && self.peek(1) == Some('#') && self.peek(2).is_some_and(is_ident_start)
+                {
+                    self.bump_n(2);
+                }
                 self.ident_rest();
                 Ok(Kind::Lifetime)
             }
