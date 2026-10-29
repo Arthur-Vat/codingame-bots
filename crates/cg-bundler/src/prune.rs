@@ -24,6 +24,10 @@
 //! result depends on the bundle and on rustc 1.90.0 only: it does not depend
 //! on the threads, and everything else runs in the order of the source.
 //!
+//! An unused named constant goes even when its value is a compile-time
+//! assertion (`const CHECK: () = assert!(...)`): rustc has already checked
+//! it on the full bundle, and removing it changes nothing at run time.
+//!
 //! What may go: `fn`, `const`, `static`, `struct`, `enum`, `union`, `type`
 //! and `trait` items, wherever they are (methods and associated items
 //! included), empty inherent `impl`s and `mod`s, and the names of `use`

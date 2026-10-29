@@ -109,7 +109,7 @@ pub fn bundle(plan: &Plan, options: Options) -> Result<String, String> {
 /// As [`bundle`], with what level 2 did.
 pub fn bundle_report(plan: &Plan, options: Options) -> Result<Bundled, String> {
     let libraries: Vec<String> = plan.libraries.iter().map(|lib| lib.name.clone()).collect();
-    // Before the work, so that a missing compiler fails at once.
+    // Before bundling, so that a missing compiler fails early.
     let rustc = match options.minify {
         Minify::Level2 => Some(prune::Rustc::find()?),
         _ => None,
