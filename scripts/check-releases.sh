@@ -6,13 +6,15 @@
 #   copies in games/<game>/readable/ included (ADR 0045);
 # - a game gets at most one new release, numbered right after the last one;
 # - a new release is the minified bundle of the bot named in its header, as
-#   the branch's sources build it (whitespace aside: rustfmt versions
-#   differ), and passes scripts/cg-check.sh;
+#   the branch's sources build it (the bundler's default, level 2, which
+#   needs rustc 1.90.0; whitespace aside: rustfmt versions differ), and
+#   passes scripts/cg-check.sh;
 # - a new release comes with its readable copy, added in the same branch, and
 #   a readable copy comes with its release: the copy is the bundle of the same
-#   bot with its comments (--keep-comments, whitespace aside) and has the
-#   same tokens as the release (cg-tokens). Releases made before ADR 0045 are
-#   untouched and need no copy;
+#   bot with its comments (--keep-comments, whitespace aside). The two do not
+#   have the same tokens, since level 2 removes the items never used;
+#   scripts/check-minified.sh shows that they play the same. Releases made
+#   before ADR 0045 are untouched and need no copy;
 # - a journal entry of the game has the line `release: <game>-vNNN`.
 #
 # With GAME, only the releases (and readable copies) of games/GAME/ are
@@ -109,10 +111,6 @@ for game in "${!added[@]}"; do
       fail "$readable: cannot bundle $package with comments"
     elif [[ "$(tr -d '[:space:]' <"$readable")" != "$(tr -d '[:space:]' <"$tmp_dir/fresh-readable.rs")" ]]; then
       fail "$readable: differs from a fresh bundle of $package with comments; run scripts/new-release.sh again"
-    fi
-    if ! target/release/cg-tokens "$readable" "$file" >"$tmp_dir/log" 2>&1; then
-      cat "$tmp_dir/log" >&2
-      fail "$file: does not have the tokens of $readable"
     fi
   fi
 
