@@ -6,11 +6,11 @@ parent: ice-and-fire-v008
 hypothesis: In v008's games a side with more level-2 units than the evaluation expects wins less often, and one with more towers wins more often; valuing level-2 units below their training cost (they cost 4 gold of upkeep a turn against 1), and towers higher, makes the search defend better and beats v008.
 change: The plan bot's evaluation counts each level-2 unit on an active cell 15 less than its training cost, 5 instead of 20, for both sides. Towers keep their weight, since valuing them more lost in screening.
 release: ice-and-fire-v009
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +39.8 [+18.6, +61.3] at CodinGame's limits
+pairs: 377
+full_time: +39.8 [+18.6, +61.3] (the SPRT's own, ADR 0042), no timeout in 754 games, slowest answer 632.0 ms (the first turn)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -94,4 +94,26 @@ pairs.
 
 ## SPRT
 
-Pending.
+Accepted on the pull request (run 40888044130, at a2c4b72), at CodinGame's
+limits:
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v009 vs ice-and-fire-v008: 754 games, 377 complete pairs
+  ice-and-fire-v009: 420 wins, 0 draws, 334 losses (score 55.7%)
+  Elo of ice-and-fire-v009 over ice-and-fire-v008: +39.8 [+18.6, +61.3] (95%, from pairs)
+  pairs by ice-and-fire-v009's points (0, 1/2, 1, 3/2, 2): [49, 0, 236, 0, 92]
+  ice-and-fire-v009 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v008 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  answers after the first (median, 99%, 99.9%): ice-and-fire-v009 19.6, 32.0, 34.3 ms; ice-and-fire-v008 24.3, 31.9, 34.3 ms
+  slowest answer: ice-and-fire-v009 632.0 ms, ice-and-fire-v008 619.4 ms
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.00 (bounds -2.94, 2.94) after 377 pairs
+Verdict: ACCEPTED: ice-and-fire-v009 is stronger than ice-and-fire-v008
+```
+
+## League
+
+The league of the release (at a2c4b72, 800 pairs a pairing) scored v009
+60.1% against v008 (962 wins, 638 losses), 65.4% against v007, 72.9%
+against v006 and 76.9% against v005, and rated it +2250.0 ± 182.5,
+against v008's +2211.1 ([LEADERBOARD.md](../LEADERBOARD.md)).
