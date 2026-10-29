@@ -187,7 +187,7 @@ test('the setup menu of a game without human play offers only two bots', async (
   await expect(modes.first()).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('the setup menu offers the releases, then the baseline bots, v008 against v007 first', async ({
+test('the setup menu offers the releases, then the baseline bots, v009 against v008 first', async ({
   page,
 }) => {
   await open(page, '/#/game/ice-and-fire');
@@ -196,10 +196,10 @@ test('the setup menu offers the releases, then the baseline bots, v008 against v
   await expect(dialog.getByText('This game has no bot yet')).toHaveCount(0);
   const red = dialog.getByLabel(/^Red \(moves first\)/);
   const blue = dialog.getByLabel('Blue', { exact: true });
-  await expect(red).toHaveValue('ice-and-fire-v008');
-  await expect(blue).toHaveValue('ice-and-fire-v007');
+  await expect(red).toHaveValue('ice-and-fire-v009');
+  await expect(blue).toHaveValue('ice-and-fire-v008');
   // The releases first, newest first, then the baseline bots in a group, by their folder.
-  await expect(red.locator(':scope > option')).toHaveCount(8);
+  await expect(red.locator(':scope > option')).toHaveCount(9);
   await expect(red.locator('optgroup')).toHaveAttribute('label', 'Baseline bots');
   await expect(red.locator('optgroup option')).toHaveText([
     'cutter',
@@ -226,7 +226,7 @@ test('the release plays random to the end in the browser and wins', async ({ pag
   await expect(page.getByTestId('playback')).toBeVisible({ timeout: 180_000 });
   await expect(page.getByTestId('result').filter({ visible: true })).toContainText('Red');
   await expect(page.getByTestId('player-0').filter({ visible: true })).toContainText(
-    'ice-and-fire-v008',
+    'ice-and-fire-v009',
   );
 });
 

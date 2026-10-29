@@ -10,7 +10,25 @@ const HEADER_LINES: usize = 4 + 12;
 
 /// Plays turns of a game of `league` until the input ends. Prints the time
 /// of each turn to stderr (debug output goes there only).
-pub fn play(league: League, input: impl BufRead, mut output: impl Write) -> Result<(), String> {
+pub fn play(league: League, input: impl BufRead, output: impl Write) -> Result<(), String> {
+    turns(input, output, |initial, text, turn, _| {
+        let start = Instant::now();
+        let answer = crate::answer(initial, text, league, turn);
+        eprintln!("turn {turn} ({league:?}): {:?}", start.elapsed());
+        answer
+    })
+}
+
+/// Reads the game's input until it ends and sends, after each turn, the line
+/// `answer` returns, flushed. `answer` gets the initial input, the turn's
+/// text, the turn's number (1 first) and the instant its first line
+/// arrived. A bad count line, or input that ends in the middle of a turn, is
+/// an error.
+pub fn turns(
+    input: impl BufRead,
+    mut output: impl Write,
+    mut answer: impl FnMut(&str, &str, u32, Instant) -> String,
+) -> Result<(), String> {
     let mut lines = Lines { reader: input };
 
     // The initial input. End of input before it means there is no game.
@@ -26,6 +44,7 @@ pub fn play(league: League, input: impl BufRead, mut output: impl Write) -> Resu
         let Some(first) = lines.line()? else {
             return Ok(());
         };
+        let start = Instant::now();
         turn += 1;
         let mut text = format!("{first}\n");
         lines.take(HEADER_LINES - 1, &mut text)?;
@@ -38,9 +57,7 @@ pub fn play(league: League, input: impl BufRead, mut output: impl Write) -> Resu
             lines.take(n, &mut text)?;
         }
 
-        let start = Instant::now();
-        let answer = crate::answer(&initial, &text, league, turn);
-        eprintln!("turn {turn} ({league:?}): {:?}", start.elapsed());
+        let answer = answer(&initial, &text, turn, start);
         writeln!(output, "{answer}")
             .and_then(|()| output.flush())
             .map_err(|err| format!("turn {turn}: cannot write the answer: {err}"))?;
@@ -77,8 +94,14 @@ impl<R: BufRead> Lines<R> {
     }
 }
 
+/// A count line. A count over one line per cell is refused before the bot
+/// waits for lines that CodinGame will never send.
 fn count(line: &str, what: &str) -> Result<usize, String> {
-    line.trim()
-        .parse()
-        .map_err(|_| format!("bad {what} {line:?}"))
+    match line.trim().parse::<usize>() {
+        Ok(n) if n <= MAX_LINES => Ok(n),
+        _ => Err(format!("bad {what} {line:?}")),
+    }
 }
+
+/// The most lines after a count: one per cell.
+const MAX_LINES: usize = 144;
