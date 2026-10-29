@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use cg_bundler::{bundle_package, cg_size, Options, SIZE_LIMIT};
+use cg_bundler::{bundle_package_report, cg_size, Minify, Options, SIZE_LIMIT};
 use clap::Parser;
 
 /// Bundles a bot package and the workspace crates it uses into one Rust file
@@ -31,21 +31,42 @@ struct Args {
     /// of the minified one (ADR 0045).
     #[arg(long)]
     keep_comments: bool,
+
+    /// How far to minify (ADR 0045): 1 writes only the tokens Rust needs; 2
+    /// also removes the items rustc reports as never used, which needs rustc
+    /// 1.90.0 (found with rustup, or named by CG_RUSTC). Ignored with
+    /// --keep-comments.
+    #[arg(
+        long,
+        value_name = "N",
+        default_value_t = 2,
+        value_parser = clap::value_parser!(u8).range(1..=2)
+    )]
+    minify_level: u8,
 }
 
 fn main() -> ExitCode {
     let args = Args::parse();
     let options = Options {
         format: !args.no_format,
-        minify: !args.keep_comments,
+        minify: match (args.keep_comments, args.minify_level) {
+            (true, _) => Minify::Off,
+            (false, 1) => Minify::Level1,
+            (false, _) => Minify::Level2,
+        },
     };
-    let bundle = match bundle_package(&args.package, args.manifest_path.as_deref(), options) {
-        Ok(bundle) => bundle,
+    let bundled = match bundle_package_report(&args.package, args.manifest_path.as_deref(), options)
+    {
+        Ok(bundled) => bundled,
         Err(err) => {
             eprintln!("error: {err}");
             return ExitCode::FAILURE;
         }
     };
+    if let Some(report) = &bundled.pruned {
+        eprintln!("level 2: {report}");
+    }
+    let bundle = bundled.code;
     if cg_size(&bundle) > SIZE_LIMIT {
         eprintln!(
             "warning: the bundle is {} characters (UTF-16 units), over CodinGame's limit of {SIZE_LIMIT}",
