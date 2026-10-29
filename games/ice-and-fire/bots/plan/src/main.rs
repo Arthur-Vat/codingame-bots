@@ -35,11 +35,11 @@
 //! answered with `WAIT`; a bad count line or input that ends in the middle of
 //! a turn ends the bot with exit code 1. The time budget of a turn is 40 ms
 //! times `CG_TIME_SCALE`, 800 ms on the first turn (of CodinGame's 1,000
-//! ms), of which the opening's plan takes about 610 ms. With `CG_FIXED_ITERS` set
-//! (tests only, never on CodinGame) a turn has no deadline: the opening
-//! searches all its widths and the middle game stops after that many tries,
-//! so that a game replays exactly (ADR 0025). Debug output goes to
-//! stderr only.
+//! ms), of which the opening's plan takes about 610 ms. With `CG_FIXED_ITERS`
+//! set to a positive number (tests only, never on CodinGame) a turn has no
+//! deadline: the opening searches all its widths and the middle game stops
+//! after that many tries, so that a game replays exactly (ADR 0025). Debug
+//! output goes to stderr only.
 
 mod actions;
 mod eval;
@@ -69,10 +69,12 @@ const SOFT_SHARE: f64 = 0.6;
 /// The limits of the turn `turn` (1 first) that started at `start`.
 fn limit(start: Instant, turn: u32) -> Limit {
     // With CG_FIXED_ITERS (set by tests, never by CodinGame), a number of
-    // tries and no deadline, so that a game replays exactly (ADR 0025).
+    // tries and no deadline, so that a game replays exactly (ADR 0025). It
+    // is read as the arena and the other searches read it.
     if let Some(max_evals) = std::env::var("CG_FIXED_ITERS")
         .ok()
-        .and_then(|n| n.parse().ok())
+        .and_then(|n| n.trim().parse().ok())
+        .filter(|&n| n > 0)
     {
         return Limit {
             soft: None,
