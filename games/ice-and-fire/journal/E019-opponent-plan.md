@@ -10,7 +10,7 @@ sprt: accepted
 elo: +78.5 [+47.2, +111.2] at CodinGame's limits
 pairs: 153
 full_time: +78.5 [+47.2, +111.2] (the SPRT's own, ADR 0042), no timeout in 307 games, slowest answer 614.4 ms (the first turn)
-decision: pending
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -113,4 +113,7 @@ Verdict: ACCEPTED: ice-and-fire-v008 is stronger than ice-and-fire-v007
 
 ## League
 
-Pending.
+The league of the release (at 3fcce06, 800 pairs a pairing) scored v008
+62.3% against v007 (997 wins, 603 losses), 69.7% against v006, 73.2%
+against v005 and 77.9% against v004, and rated it +2218.8 ± 182.5,
+against v007's +2133.6 ([LEADERBOARD.md](../LEADERBOARD.md)).
