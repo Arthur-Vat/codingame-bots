@@ -67,9 +67,9 @@ Median enemy turns after the build, among the towers it happened to: first block
 
 What it says:
 
-1. **The owner's case is the common one.** 3,509 towers (48%) were built when the enemy was 5 or more turns from affording its chain, or never at its income. Their mean gain in the pressure term (10.5 to 14.9) is about that of towers against threats 2 to 4 turns away (13.8 to 17.7): the term pays for a far threat as for a near one. Against those far threats the enemy later reached the gold of the chain the tower raised in only 22.6% of the cases (8.0% at 10 turns or more).
+1. **The owner's case is the common one.** 3,509 towers (48%) were built when the enemy was 5 or more turns from affording its chain, or never at its income. Their mean gain in the pressure term (10.5 to 14.9) is about that of towers against threats 2 to 4 turns away (13.8 to 17.7): the term pays for a far threat as for a near one. Against those far threats the enemy later reached the gold of the chain the tower raised in only about 23% of the cases (8.0% at 10 turns or more).
 2. **Towers against far threats are built by the side ahead.** Their builder won 69% (5 to 9 turns) to 88% (10 or more) of the games; towers against threats 1 or 2 turns away were built by sides that went on to lose about 90% of their games. Towers follow the state of the game more than they change it, as E020 found.
-3. **Towers stand on the front whatever the threat.** About 70% block something at the enemy's next turn in every bucket, and 30% never block anything; the distance of the HQ threat does not tell a useful tower from a useless one. 16% of the towers are later cut off from their HQ and 16% lost, a median five or six enemy turns later.
+3. **Towers stand on the front whatever the threat.** At some later enemy turn, 64% to 79% of them block a training in every bucket but "never" (51.5% there); the distance of the HQ threat does not tell a useful tower from a useless one. 16% of the towers are later cut off from their HQ and 16% lost, a median five or six enemy turns later.
 
 ## Threats to the HQ
 
@@ -102,7 +102,7 @@ Maximum-likelihood fits over 1 to 15 turns, P(k) = p × r^(k − 1):
 | Taken within k + 2 turns | 0.360 | 0.780 |
 | Taken within 5 turns | 0.815 | **0.420** |
 
-- **A threat's urgency falls by about 0.42 a turn.** Taken within 5 turns: 81% of threats one turn from affordable, 36% at two, 12% at three, 5% at four, 2% at five, then about 1%. "Within k + 2" falls as fast at first (1, 0.43, 0.18, 0.11) and then stays at 5 to 7%: later, unrelated threats; its fit's 0.78 comes from that floor. "Taken in the game" is mostly who wins.
+- **A threat's urgency falls by about 0.42 a turn.** Taken within 5 turns: 81% of threats one turn from affordable, 36% at two, 12% at three, 5% at four, 2% at five, then about 1%. "Within k + 2" falls as fast at first (1, 0.43, 0.18, 0.11) and then stays at 5 to 7%: later, unrelated threats; its fit's 0.78 comes from that floor, and the fit is poor at k = 1 (0.36 against 66.1% in the table). "Taken in the game" is mostly who wins.
 - **A capture is seen one or two turns ahead, and the attacker waits near there.** One turn before a capture the taker could afford its chain within one turn in 75.0% of the games, two turns before within two in 88.7%; the median turns to afford was 2 at every one of the 2 to 6 turns before the capture: the defender keeps the attacker about two turns away for several turns, until it breaks.
 - **For the evaluation**, which looks at the position after our turn, the enemy's next turn adds one income: the eval's "enemy turns to afford" n is this table's k + 1, and the pressure term is 0 when n = 1.
 
@@ -116,7 +116,7 @@ Maximum-likelihood fits over 1 to 15 turns, P(k) = p × r^(k − 1):
 | 10-19 | 3484 | 70 | 3 | 29.7% | 44.6% |
 | 20+ | 894 | 100 | 7 | 30.6% | 44.6% |
 
-A large cut (6 cells or more) in reach with the gold of now was followed by a loss of 6 or more cells in that turn in 39.6% of 9,908 plies (53.6% by the next turn). One first in reach with one more income: 23.0% within one turn, 35.9% within two (10,138 plies); with two more incomes: 14.4% within two turns (3,586). The best cut the tool finds is made in full only 30% of the time, whatever its size: the side to act often prefers something else, or the cut's cells are not all worth taking.
+A large cut (6 cells or more) in reach with the gold of now was followed by a loss of 6 or more cells in that turn in 39.6% of 9,908 plies (53.6% by the next turn); this counts any loss of 6 or more cells, while the table counts a loss of at least the cut's own cells (about 29%). One first in reach with one more income: 23.0% within one turn, 35.9% within two (10,138 plies); with two more incomes: 14.4% within two turns (3,586). The best cut the tool finds is made in full only 30% of the time, whatever its size: the side to act often prefers something else, or the cut's cells are not all worth taking.
 
 ## The position bank
 
@@ -158,7 +158,7 @@ A tower that pushes the enemy from t = 5 to t = 6 then gains 1.5 at V = 200 (now
 
 **E022, controls.** No static tower value is the cheaper and the more informative one: it halves the towers in plans while changing no more plans than twice the tries does. Screen it right after E021's first variant. No pressure term at all changes 92% of the plans; keep it as a control of how much E021's term matters, not as a candidate.
 
-**E023, safe territory.** A large cut first in reach with one more income is made within one turn 23% of the time, against 40% for one in reach now with the gold of the turn (0.396, 0.230, 0.144 at 0, 1 and 2 more incomes, about 0.6 a turn). So a cell the enemy can take at its next turn is lost about a quarter of the time: a first weight counts such cells at 0.75 of a cell's value, and the cut threat itself decays by r = 0.6 a turn rather than the HQ threat's 0.42.
+**E023, safe territory.** A large cut first in reach with one more income is made within one turn 23% of the time, against 40% for one in reach now with the gold of the turn (0.396, 0.230, 0.144 at 0, 1 and 2 more incomes, over windows of 0, 1 and 2 turns, so only roughly 0.6 a turn). So a cell the enemy can take at its next turn is lost about a quarter of the time: a first weight, proposed rather than measured, counts such cells at 0.75 of a cell's value, and the cut threat itself decays by r = 0.6 a turn rather than the HQ threat's 0.42.
 
 **E024, a tower's value capped by a level-3 unit's extra cost.** A tower raises the enemy's chain by a median 20 (quartile 3: 20), which is a level-3 training's extra cost over level 1 (30 − 10). Cap what a tower adds (the static term plus its pressure gain) at 20.
 
