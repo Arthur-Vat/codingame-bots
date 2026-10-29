@@ -5,8 +5,17 @@
 //! ice-and-fire-review games --out DIR [--text DIR] GAME.json...
 //! ice-and-fire-review summary DIR > DIR/summary-data.md
 //! ice-and-fire-review report DIR [--curves FILE] > report.md
+//! ice-and-fire-review towers [--csv DIR] [--jobs N] GAME.json... > towers.md
+//! ice-and-fire-review bank --out FILE [--count N] [--seed S] [--jobs N] GAME.json...
+//! ice-and-fire-review screening [--jobs N] GAME.json... > screening.md
 //! ```
 
+mod bank;
+mod replay;
+mod screening;
+mod study;
+#[cfg(test)]
+mod test_util;
 mod trace;
 
 use std::fs;
@@ -67,6 +76,61 @@ enum Command {
         #[arg(long)]
         curves: Option<PathBuf>,
     },
+    /// Prints the tower and threat study of the records: every tower built
+    /// and what became of it, every ply's threat to the enemy HQ against
+    /// whether it was carried out, and every ply's cuts against what was
+    /// taken.
+    Towers {
+        /// Also write the study's rows as towers.csv, threats.csv and
+        /// cuts.csv in this directory, created if missing.
+        #[arg(long)]
+        csv: Option<PathBuf>,
+        /// Records replayed at the same time.
+        #[arg(long, default_value_t = 2)]
+        jobs: usize,
+        /// Game records written by the arena (`--records`).
+        #[arg(required = true)]
+        records: Vec<PathBuf>,
+    },
+    /// Writes a bank of middle-game positions drawn from the records, for
+    /// the plan bot's analysis mode (`bank` in `ice-and-fire-bot-plan`,
+    /// built with `--features analysis`).
+    Bank {
+        /// The file to write; it may not exist yet.
+        #[arg(long)]
+        out: PathBuf,
+        /// Positions to draw (all of them if there are fewer).
+        #[arg(long, default_value_t = 5000)]
+        count: usize,
+        /// The seed of the draw.
+        #[arg(long, default_value_t = 22022)]
+        seed: u64,
+        /// Records replayed at the same time.
+        #[arg(long, default_value_t = 2)]
+        jobs: usize,
+        /// Game records written by the arena (`--records`).
+        #[arg(required = true)]
+        records: Vec<PathBuf>,
+    },
+    /// Prints the screening report of a match's records: per bot, its score
+    /// by seat, towers, mines and units by level a game, the gold it kept,
+    /// its faults and its think times.
+    Screening {
+        /// Records replayed at the same time.
+        #[arg(long, default_value_t = 2)]
+        jobs: usize,
+        /// Game records written by the arena (`--records`).
+        #[arg(required = true)]
+        records: Vec<PathBuf>,
+    },
+}
+
+/// The records in file name order, so that a batch gives the same output
+/// whatever order the shell lists them in.
+fn sorted(mut records: Vec<PathBuf>) -> Vec<PathBuf> {
+    records.sort();
+    records.dedup();
+    records
 }
 
 /// The three files of the record `path`: the game file in `text_dir`, the
@@ -160,6 +224,55 @@ fn run(cli: Cli) -> Result<(), String> {
                     .map_err(|e| format!("curves: {e}"))?;
                 fs::write(&file, json).map_err(|e| format!("{}: {e}", file.display()))?;
             }
+            Ok(())
+        }
+        Command::Towers { csv, jobs, records } => {
+            let games = replay::map_records(&sorted(records), jobs, study::study)?;
+            if let Some(dir) = csv {
+                fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+                for (name, text) in study::csv(&games) {
+                    let file = dir.join(name);
+                    fs::write(&file, text).map_err(|e| format!("{}: {e}", file.display()))?;
+                }
+            }
+            print!("{}", study::report(&games));
+            Ok(())
+        }
+        Command::Bank {
+            out,
+            count,
+            seed,
+            jobs,
+            records,
+        } => {
+            if out.exists() {
+                return Err(format!("{} exists: write elsewhere", out.display()));
+            }
+            let blocks = replay::map_records(&sorted(records), jobs, |game| {
+                bank::middle_plies(game)
+                    .map(|ply| bank::block(game, ply))
+                    .collect::<Vec<_>>()
+            })?;
+            let candidates: Vec<(usize, usize)> = blocks
+                .iter()
+                .enumerate()
+                .flat_map(|(g, b)| (0..b.len()).map(move |i| (g, i)))
+                .collect();
+            let total = candidates.len();
+            let drawn = bank::draw(candidates, count, seed);
+            let text: String = drawn.iter().map(|&(g, i)| blocks[g][i].as_str()).collect();
+            fs::write(&out, text).map_err(|e| format!("{}: {e}", out.display()))?;
+            eprintln!(
+                "wrote {} of {total} middle-game positions of {} games to {}",
+                drawn.len(),
+                blocks.len(),
+                out.display()
+            );
+            Ok(())
+        }
+        Command::Screening { jobs, records } => {
+            let games = replay::map_records(&sorted(records), jobs, screening::sides)?;
+            print!("{}", screening::report(&games));
             Ok(())
         }
         Command::Summary { dir } => {

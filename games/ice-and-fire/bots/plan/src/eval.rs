@@ -77,6 +77,8 @@ pub fn eval(state: &State, seat: usize) -> i64 {
     if state.outcome().is_some() {
         return score;
     }
+    #[cfg(feature = "analysis")]
+    let score = score - crate::analysis::removed(state, seat);
     score - 2 * debt(state, seat)
         + 2 * debt(state, 1 - seat)
         + shape(state, seat)

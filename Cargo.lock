@@ -335,6 +335,7 @@ name = "ice-and-fire-review"
 version = "0.0.0"
 dependencies = [
  "cg-arena",
+ "cg-core",
  "cg-review",
  "clap",
  "ice-and-fire-engine",
