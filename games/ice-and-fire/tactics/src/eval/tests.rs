@@ -112,3 +112,26 @@ fn scores_are_deterministic_on_random_positions() {
         }
     }
 }
+
+#[test]
+fn evaluate_with_replaces_only_the_pressure_term() {
+    let mut with_pressure = 0;
+    for seed in 0..20 {
+        for state in crate::test_util::random_positions(seed, League::Bronze, &[0, 5, 15, 30]) {
+            if state.outcome().is_some() {
+                continue;
+            }
+            for seat in 0..2 {
+                let without = evaluate_with(&state, seat, |_, _| 0);
+                assert_eq!(
+                    evaluate(&state, seat) - without,
+                    pressure(&state, seat) - pressure(&state, 1 - seat)
+                );
+                let doubled = evaluate_with(&state, seat, |s, p| 2 * pressure(s, p));
+                assert_eq!(doubled - without, 2 * (evaluate(&state, seat) - without));
+                with_pressure += usize::from(evaluate(&state, seat) != without);
+            }
+        }
+    }
+    assert!(with_pressure > 20, "{with_pressure} with a pressure term");
+}

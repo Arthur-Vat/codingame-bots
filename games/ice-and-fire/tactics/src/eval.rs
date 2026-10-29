@@ -51,6 +51,12 @@ fn pressure(state: &State, seat: usize) -> i64 {
 /// chain to the other's HQ, at most 200). Without the threat term the score
 /// of one seat is the other's negated.
 pub fn evaluate(state: &State, seat: usize) -> i64 {
+    evaluate_with(state, seat, pressure)
+}
+
+/// [`evaluate`] with another pressure term: `pressure(state, s)` replaces
+/// side `s`'s.
+pub fn evaluate_with(state: &State, seat: usize, pressure: fn(&State, usize) -> i64) -> i64 {
     let other = 1 - seat;
     match state.outcome() {
         Some(Outcome::Win(winner)) => return if winner == seat { WIN } else { -WIN },

@@ -434,6 +434,11 @@ fn never_panics_on_garbage_that_has_the_right_shape() {
     assert_eq!(run(&input).unwrap(), "WAIT\nWAIT\n");
 }
 
+/// The shared evaluation of red with the bot's pressure term (E021).
+fn base(state: &State) -> i64 {
+    ice_and_fire_tactics::eval::evaluate_with(state, 0, crate::eval::pressure)
+}
+
 #[test]
 fn a_level_two_unit_counts_less_than_its_cost() {
     // E020: red's level-2 unit counts LEVEL2_DISCOUNT less than the shared
@@ -455,8 +460,7 @@ fn a_level_two_unit_counts_less_than_its_cost() {
     ];
     for (level, discount) in [(1, 0), (2, crate::eval::LEVEL2_DISCOUNT)] {
         let state = position(rows, [30, 20], &[(0, 1, level, 2, 0)]);
-        let shared =
-            ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+        let shared = base(&state) + crate::eval::shape(&state, 0);
         assert_eq!(crate::eval::eval(&state, 0), shared - discount);
     }
 }
@@ -481,18 +485,18 @@ fn a_side_that_cannot_pay_its_upkeep_counts_its_units_as_lost() {
     ];
     let state = position(rows, [5, 20], &[(0, 1, 3, 2, 0)]);
     assert_eq!(state.income(0), -17);
-    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+    let shared = base(&state) + crate::eval::shape(&state, 0);
     assert_eq!(crate::eval::eval(&state, 0), shared - 2 * 30);
     // With the gold to pay it, nothing is taken.
     let state = position(rows, [17, 20], &[(0, 1, 3, 2, 0)]);
-    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+    let shared = base(&state) + crate::eval::shape(&state, 0);
     assert_eq!(crate::eval::eval(&state, 0), shared);
     // Blue's debt counts for red; so does the discount of its level-2 unit
     // (E020).
     rows[0] = "O...........";
     let state = position(rows, [5, 0], &[(1, 1, 2, 11, 10)]);
     assert_eq!(state.income(1), 2 - 4);
-    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+    let shared = base(&state) + crate::eval::shape(&state, 0);
     assert_eq!(
         crate::eval::eval(&state, 0),
         shared + 2 * 20 + crate::eval::LEVEL2_DISCOUNT
@@ -526,4 +530,54 @@ fn a_cell_that_cuts_others_off_weakens_its_side() {
     rows[1] = "OO..........";
     let state = position(rows, [20, 20], &[]);
     assert_eq!(crate::eval::shape(&state, 0), 0);
+}
+
+#[test]
+fn the_pressure_term_falls_with_the_turns_a_threat_is_away() {
+    // E021: red holds 3 cells (income 3) far from blue's HQ. Its pressure
+    // is 0 when it can pay its chain at its next turn, then -PRESSURE ×
+    // (1 - DECAY^t) for t incomes still missing, rounded; the chain's cost
+    // does not depend on the gold.
+    let rows = [
+        "OOO.........",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "...........X",
+        "...........X",
+    ];
+    let cost = ice_and_fire_tactics::chain::cost_to(
+        &position(rows, [0, 0], &[]),
+        0,
+        false,
+        ice_and_fire_engine::HQ[1],
+    );
+    assert!(cost > 30, "{cost}");
+    let pressure = |gold: i64| crate::eval::pressure(&position(rows, [gold, 0], &[]), 0);
+    assert_eq!(crate::eval::PRESSURE, 100.0);
+    assert_eq!(crate::eval::DECAY, 0.42);
+    // Next turn (t = 0), or with gold to spare.
+    assert_eq!(pressure(cost - 3), 0);
+    assert_eq!(pressure(cost + 50), 0);
+    // t = 1, 2 and 3 incomes: 100 × (1 - 0.42^t) is 58, 82.4 and 92.6.
+    assert_eq!(pressure(cost - 6), -58);
+    assert_eq!(pressure(cost - 9), -82);
+    assert_eq!(pressure(cost - 12), -93);
+    // t = 1/3 of an income: 100 × (1 - 0.42^(1/3)) is 25.1.
+    assert_eq!(pressure(cost - 4), -25);
+    // Far away, it tends to -PRESSURE and never passes it.
+    assert_eq!(pressure(0), -100);
+    // An HQ walled off by void cells counts -PRESSURE, whatever the gold.
+    let mut walled = rows;
+    walled[9] = "..........##";
+    walled[10] = "..........#X";
+    walled[11] = "..........#X";
+    let state = position(walled, [1000, 0], &[]);
+    assert_eq!(crate::eval::pressure(&state, 0), -100);
 }

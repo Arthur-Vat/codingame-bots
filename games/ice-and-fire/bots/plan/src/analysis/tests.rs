@@ -2,10 +2,29 @@ use cg_core::rng::Rng;
 use ice_and_fire_engine::{Command, League, Outcome, State, HQ};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::League as RefereeLeague;
-use ice_and_fire_tactics::chain::cost_to;
+use ice_and_fire_tactics::chain::{cost_to, UNREACHABLE};
 use ice_and_fire_tactics::eval::{evaluate, WIN};
 
 use super::*;
+
+/// The lowest pressure term of one side, as in the shared evaluation.
+const MAX_PRESSURE: i64 = 200;
+/// The shared evaluation's pressure term of `seat`: 0 when its gold and
+/// income pay for its cheapest chain to the enemy HQ, else minus the
+/// shortfall, at least `-MAX_PRESSURE`. A copy of the private
+/// `ice_and_fire_tactics::eval::pressure`, which the test below checks.
+fn pressure(state: &State, seat: usize) -> i64 {
+    let cost = cost_to(state, seat, false, HQ[1 - seat]);
+    if cost == UNREACHABLE {
+        return -MAX_PRESSURE;
+    }
+    (state.gold(seat) + state.income(seat) - cost).clamp(-MAX_PRESSURE, 0)
+}
+
+/// The shared evaluation's pressure term of the score of `seat`.
+fn shared_pressure_term(state: &State, seat: usize) -> i64 {
+    pressure(state, seat) - pressure(state, 1 - seat)
+}
 
 /// Positions of random games on the referee's maps, every ply up to 80.
 fn random_states(seeds: std::ops::Range<u64>) -> Vec<State> {
@@ -29,7 +48,7 @@ fn random_states(seeds: std::ops::Range<u64>) -> Vec<State> {
 
 /// The shared evaluation of a game not over, rebuilt from its parts: the
 /// sides' holdings with the towers apart, the threat to the HQ, and the
-/// pressure term of this module.
+/// shared pressure term of this module.
 fn rebuilt(state: &State, seat: usize) -> i64 {
     let side = |s: usize| {
         let active = state.active(s);
@@ -50,7 +69,7 @@ fn rebuilt(state: &State, seat: usize) -> i64 {
             score -= WIN / 2;
         }
     }
-    score + pressure_term(state, seat)
+    score + shared_pressure_term(state, seat)
 }
 
 #[test]
@@ -65,7 +84,7 @@ fn the_terms_removed_are_exactly_those_of_the_shared_evaluation() {
         for seat in 0..2 {
             assert_eq!(evaluate(state, seat), rebuilt(state, seat));
             with_towers += usize::from(tower_term(state, seat) != 0);
-            with_pressure += usize::from(pressure_term(state, seat) != 0);
+            with_pressure += usize::from(shared_pressure_term(state, seat) != 0);
         }
     }
     assert!(states.len() > 500, "{} states", states.len());
