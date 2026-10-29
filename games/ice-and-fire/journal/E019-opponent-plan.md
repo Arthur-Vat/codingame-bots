@@ -6,10 +6,10 @@ parent: ice-and-fire-v007
 hypothesis: The first large cut decides most games, and most large cuts use moves as well as trainings, which v007's replies (trainings-only cuts, the lethal chain, bronze's greedy turn) do not model; with the opponent's own plan among its replies, the search keeps plans that hold against such cuts and beats v007.
 change: The opponent's replies to a plan also hold its own plan, the same climb run from its seat on the state after our turn (moves, trainings, mines, towers, cuts), scored by the evaluation from its side, with an empty memory and up to 300 tries.
 release: ice-and-fire-v008
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
+sprt: accepted
+elo: +78.5 [+47.2, +111.2] at CodinGame's limits
+pairs: 153
+full_time: +78.5 [+47.2, +111.2] (the SPRT's own, ADR 0042), no timeout in 307 games, slowest answer 614.4 ms (the first turn)
 decision: pending
 cg_rank: not reported
 ---
@@ -26,9 +26,10 @@ The review tool's metrics of the 1,000 v007 self-play games of E017 (seed
   26,889 positions a logistic fit of its score and the seat has a held-out
   log loss of 0.292, and none of the tool's 50 metrics, added to it, lowers
   that by more than 0.004. New terms of the evaluation promised little.
-- The first large cut (a side losing 8 or more cells in one turn) decides
-  the game: its maker wins 89% of the games that have one (822 of the 923
-  games with one);
+- The first large cut (the review tool's `large cut` moment: a side loses
+  at least 30% of its active cells, and at least 6 of them, in one turn)
+  decides the game: its maker wins 89% of the games that have one (822 of
+  the 923 games with one);
   blue makes it in 573 of them, red in 350.
 - 87% of those first cuts, and 35% of all the cells taken in the middle
   game, go beyond what the best chains of trainings alone could take with
@@ -51,9 +52,11 @@ evaluation after it, from its side), no banned first action, and at most
 300 tries (`REPLY_EVALS`). It is remembered like the other replies (kept
 if among the 8 most damaging). To keep the bundle within 100,000
 characters, a few compactions change no behaviour (a default `Thought`,
-the entry masks indexed by level, the lazy and full passes in one loop, a
-shorter debug line): on 71 positions of 12 random games the compacted and
-the uncompacted code chose the same commands, climbs, tries and memory.
+the entry masks indexed by level, the HQ step of `lethal` through `xy`,
+the lazy and full passes in one loop, a shorter debug line): on 260
+middle-game positions of 80 random games (plies 16 to 40, each searched
+by the climbs, 400 tries), the compacted and the uncompacted code chose
+the same commands, climbs, tries, memory and plans.
 The bundle is 99,973 characters.
 
 The plan test `takes_a_cheap_gain_the_hill_climb_must_find` had a red line
@@ -81,10 +84,33 @@ with seed 19020. The cap is on the opponent's climb in each reply search.
 
 v007 had 0 to 3 timeouts in each run and answered in 7.2 to 8.1 ms in the
 median. The candidate takes the cap of 300, the steadier over the two seeds
-(+86 over 1,000 pairs, against +83 for 100), as the owner chose
+(+86.5 over 1,000 pairs, against +83.6 for 100), as the owner chose
 ("Candidate v008, cap 300 (Recommended)"). With 30 tries the opponent's
 climb finds nothing the other replies miss.
 
+The release file itself, compiled with rustc 1.90.0, against v007 on 100
+pairs (seed 19021): +81.4 [+37.1, +128.4], 1 timeout of v008 in 200 games,
+median answer 15.2 ms (v007 6.7 ms).
+
 ## SPRT
+
+Accepted on the pull request (run 40843525126, at 3fcce06), at CodinGame's
+limits:
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v008 vs ice-and-fire-v007: 307 games, 153 complete pairs
+  ice-and-fire-v008: 187 wins, 0 draws, 120 losses (score 60.9%)
+  Elo of ice-and-fire-v008 over ice-and-fire-v007: +78.5 [+47.2, +111.2] (95%, from pairs)
+  pairs by ice-and-fire-v008's points (0, 1/2, 1, 3/2, 2): [10, 0, 99, 0, 44]
+  ice-and-fire-v008 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v007 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  answers after the first (median, 99%, 99.9%): ice-and-fire-v008 19.3, 32.0, 34.3 ms; ice-and-fire-v007 7.8, 32.0, 34.2 ms
+  slowest answer: ice-and-fire-v008 614.4 ms, ice-and-fire-v007 617.1 ms
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.01 (bounds -2.94, 2.94) after 153 pairs
+Verdict: ACCEPTED: ice-and-fire-v008 is stronger than ice-and-fire-v007
+```
+
+## League
 
 Pending.
