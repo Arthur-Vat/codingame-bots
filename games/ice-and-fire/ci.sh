@@ -18,6 +18,8 @@
 #     between the referee and the engine's rules over real arena games;
 #   - the evaluation controls and the A/A test (fixed seeds), and a small
 #     league whose first place must be the bronze bot;
+#   - tests the plan bot's analysis mode (`--features analysis`), which the
+#     workspace's tests do not build;
 #   - measures the engine's speed: a report, not a check (ADR 0029, decision 7),
 #     which fails only if the measurement itself crashes; with
 #     GITHUB_STEP_SUMMARY set, the table goes to the job summary.
@@ -103,6 +105,17 @@ expect REJECTED --candidate "bronze=$bin/ice-and-fire-bronze" --baseline "bronze
   --bot "wait=$bin/ice-and-fire-wait" --bot "random=$bin/ice-and-fire-random" \
   --bot "bronze=$bin/ice-and-fire-bronze" --anchor random | tee target/cg/ice-and-fire-league.txt
 grep -q '^  1\. bronze ' target/cg/ice-and-fire-league.txt
+
+echo "== The plan bot's analysis mode"
+# Bots never carry it, so only this step tests it (ci.yml's lint job lints it).
+scripts/annotate.sh run "Plan bot analysis mode" \
+  cargo test --release --locked -p ice-and-fire-bot-plan --features analysis analysis:: \
+  | tee target/ice-and-fire-analysis-tests.txt
+# A filter that matches no test would pass silently.
+if ! grep -Eq '^test result: ok\. [1-9][0-9]* passed' target/ice-and-fire-analysis-tests.txt; then
+  echo "::error title=Plan bot analysis mode::no analysis:: test ran"
+  exit 1
+fi
 
 echo "== Engine speed (a report)"
 scripts/annotate.sh run "Engine speed" \

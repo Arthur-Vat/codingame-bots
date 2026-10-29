@@ -16,6 +16,11 @@ ice-and-fire-opening.workspace = true
 ice-and-fire-policy.workspace = true
 ice-and-fire-tactics.workspace = true
 
+# The analysis mode (`bank`), which bots never carry: the bundler drops the
+# lines that `#[cfg(feature = "analysis")]` marks.
+[features]
+analysis = []
+
 # Used by the tests only: the bot is played in-process against the referee.
 [dev-dependencies]
 cg-arena.workspace = true

@@ -41,8 +41,14 @@
 //! deadline: the opening searches all its widths and the middle game stops
 //! after that many tries, so that a game replays exactly (ADR 0025). Debug
 //! output goes to stderr only.
+//!
+//! Built with `--features analysis`, the binary also measures a bank of
+//! positions (`bank`, see the `analysis` module); bots never carry that
+//! code.
 
 mod actions;
+#[cfg(feature = "analysis")]
+mod analysis;
 mod eval;
 mod search;
 mod session;
@@ -132,6 +138,8 @@ fn opening_of(width: usize) -> Planned {
 }
 
 fn main() {
+    #[cfg(feature = "analysis")]
+    analysis::main_if_asked();
     let stdin = io::stdin();
     let stdout = io::stdout();
     if let Err(err) = session::play(&limit, opening(), stdin.lock(), stdout.lock()) {

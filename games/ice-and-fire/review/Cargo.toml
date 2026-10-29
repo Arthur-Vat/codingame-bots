@@ -11,6 +11,7 @@ rust-version.workspace = true
 
 [dependencies]
 cg-arena.workspace = true
+cg-core.workspace = true
 cg-review.workspace = true
 clap.workspace = true
 ice-and-fire-engine.workspace = true

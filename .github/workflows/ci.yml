@@ -98,6 +98,9 @@ jobs:
       # feature on for the whole workspace. Bots run without it: lint that.
       - name: Lint without analysis
         run: scripts/annotate.sh run "Lint without analysis" cargo clippy -p cg-search --lib --locked -- -D warnings
+      # No crate turns the plan bot's `analysis` feature on: lint it too.
+      - name: Lint the plan bot's analysis mode
+        run: scripts/annotate.sh run "Lint the plan bot's analysis mode" cargo clippy -p ice-and-fire-bot-plan --all-targets --features analysis --locked -- -D warnings
 
   framework-tests:
     name: "Framework: tests"

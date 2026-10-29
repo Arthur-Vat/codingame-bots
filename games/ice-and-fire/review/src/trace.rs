@@ -193,14 +193,21 @@ fn view(state: &State, seat: usize, gold: i64) -> Option<State> {
 
 /// The enemy active cells `seat` could take or cut off with `budget` gold.
 fn cut_cells(state: &State, seat: usize, budget: i64) -> i64 {
+    best_cut(state, seat, budget).0
+}
+
+/// The most enemy active cells `seat` could take or cut off with `budget`
+/// gold, among its 8 best cuts of up to 5 trainings, and that cut's cost:
+/// (0, 0) when there is none.
+pub(crate) fn best_cut(state: &State, seat: usize, budget: i64) -> (i64, i64) {
     let Some(view) = view(state, seat, budget.max(0)) else {
-        return 0;
+        return (0, 0);
     };
     cuts(&view, 5, budget.max(0), 8)
         .iter()
-        .map(|c| c.cells)
+        .map(|c| (c.cells, -c.cost))
         .max()
-        .unwrap_or(0)
+        .map_or((0, 0), |(cells, cost)| (cells, -cost))
 }
 
 /// Gold enough for any chain: the chain finder plays its trainings, which
@@ -208,7 +215,7 @@ fn cut_cells(state: &State, seat: usize, budget: i64) -> i64 {
 const AMPLE: i64 = 10_000;
 
 /// The cost of `seat`'s cheapest chain of trainings to the enemy HQ.
-fn hq_cost(state: &State, seat: usize) -> Option<i64> {
+pub(crate) fn hq_cost(state: &State, seat: usize) -> Option<i64> {
     let view = view(state, seat, AMPLE)?;
     chain_to(&view, HQ[1 - seat], AMPLE).map(|c| c.cost)
 }
