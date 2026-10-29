@@ -14,6 +14,10 @@
 //!   joints (active cells whose loss cuts others off) and the most cells
 //!   one loss cuts off (`ice_and_fire_opening::solo::severed`) is taken from
 //!   its score, as the opening's plans do.
+//! - **Level-2 units** (E020): a level-2 unit costs 4 gold of upkeep a turn
+//!   against 1 for a level-1 one, and in v008's games a side with more of
+//!   them than the score said won less often: each counts [`LEVEL2_DISCOUNT`]
+//!   less than its training cost, 5 in all.
 
 use ice_and_fire_engine::State;
 use ice_and_fire_opening::solo::severed;
@@ -56,11 +60,25 @@ fn debt(state: &State, seat: usize) -> i64 {
         .sum()
 }
 
+/// How much less than its training cost a level-2 unit is worth (E020).
+pub const LEVEL2_DISCOUNT: i64 = 15;
+
+/// The level-2 units of `seat` on active cells.
+fn twos(state: &State, seat: usize) -> i64 {
+    (state.units(seat) & state.active(seat))
+        .iter()
+        .filter(|&cell| state.unit_level(cell) == Some(2))
+        .count() as i64
+}
+
 /// The score of `state` for `seat`, higher is better for it.
 pub fn eval(state: &State, seat: usize) -> i64 {
     let score = evaluate(state, seat);
     if state.outcome().is_some() {
         return score;
     }
-    score - 2 * debt(state, seat) + 2 * debt(state, 1 - seat) + shape(state, seat)
+    score - 2 * debt(state, seat)
+        + 2 * debt(state, 1 - seat)
+        + shape(state, seat)
+        + LEVEL2_DISCOUNT * (twos(state, 1 - seat) - twos(state, seat))
 }

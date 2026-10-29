@@ -435,6 +435,33 @@ fn never_panics_on_garbage_that_has_the_right_shape() {
 }
 
 #[test]
+fn a_level_two_unit_counts_less_than_its_cost() {
+    // E020: red's level-2 unit counts LEVEL2_DISCOUNT less than the shared
+    // evaluation's 20; a level-1 unit counts as it does there. Red can pay
+    // its upkeep, so no debt is counted.
+    let rows = [
+        "OOO.........",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "...........X",
+        "...........X",
+    ];
+    for (level, discount) in [(1, 0), (2, crate::eval::LEVEL2_DISCOUNT)] {
+        let state = position(rows, [30, 20], &[(0, 1, level, 2, 0)]);
+        let shared =
+            ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+        assert_eq!(crate::eval::eval(&state, 0), shared - discount);
+    }
+}
+
+#[test]
 fn a_side_that_cannot_pay_its_upkeep_counts_its_units_as_lost() {
     // Red holds 3 cells and a level 3 unit: income 3 - 20 = -17, and 5 gold
     // cannot pay it, so the unit dies at red's next start of turn.
@@ -460,12 +487,16 @@ fn a_side_that_cannot_pay_its_upkeep_counts_its_units_as_lost() {
     let state = position(rows, [17, 20], &[(0, 1, 3, 2, 0)]);
     let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
     assert_eq!(crate::eval::eval(&state, 0), shared);
-    // Blue's debt counts for red.
+    // Blue's debt counts for red; so does the discount of its level-2 unit
+    // (E020).
     rows[0] = "O...........";
     let state = position(rows, [5, 0], &[(1, 1, 2, 11, 10)]);
     assert_eq!(state.income(1), 2 - 4);
     let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
-    assert_eq!(crate::eval::eval(&state, 0), shared + 2 * 20);
+    assert_eq!(
+        crate::eval::eval(&state, 0),
+        shared + 2 * 20 + crate::eval::LEVEL2_DISCOUNT
+    );
 }
 
 #[test]
