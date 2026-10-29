@@ -2,14 +2,18 @@
 //! CodinGame accepts.
 //!
 //! The bundler works on text. By default it then minifies the result to
-//! save room under CodinGame's size limit (ADR 0016, ADR 0045): it reads
-//! the code token by token and writes back only the whitespace Rust needs,
-//! without comments (module [`minify`]). `--keep-comments` gives the
-//! readable bundle instead, with comments and rustfmt's layout, which a
-//! release keeps beside its minified file (ADR 0045). Both come from the
-//! same expanded and rewritten code, so they have the same tokens. The
-//! bundler relies on these conventions, which keep the text transformations
-//! safe:
+//! save room under CodinGame's size limit (ADR 0016, ADR 0045). Level 2,
+//! the default, first removes the items that rustc 1.90.0 reports as never
+//! used (module [`prune`]); level 1 (`--minify-level 1`) skips that. Then
+//! it reads the code token by token and writes back only the whitespace
+//! Rust needs, without comments (module [`minify`]). `--keep-comments`
+//! gives the readable bundle instead, with comments and rustfmt's layout,
+//! which a release keeps beside its minified file (ADR 0045). All three
+//! come from the same expanded and rewritten code: the readable bundle and
+//! level 1 have the same tokens, level 2 has those left after its removals.
+//! Level 2 runs rustc 1.90.0 whatever the session's compiler, found with
+//! rustup or named by `CG_RUSTC`, and fails without it. The bundler relies
+//! on these conventions, which keep the text transformations safe:
 //!
 //! - Modules live in files declared with `mod name;` on a line of their own
 //!   (optionally `pub` or `pub(...)`). `#[path]` attributes are not allowed.
@@ -39,6 +43,7 @@
 pub mod expand;
 pub mod minify;
 pub mod plan;
+pub mod prune;
 pub mod rewrite;
 
 use std::io::Write;
@@ -57,29 +62,58 @@ pub fn cg_size(code: &str) -> usize {
     code.encode_utf16().count()
 }
 
+/// How much a bundle is minified (ADR 0045).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Minify {
+    /// Not at all: the bundle keeps its comments and layout.
+    Off,
+    /// Level 1: no comments, only the whitespace Rust needs.
+    Level1,
+    /// Level 2: level 1, after removing the items rustc reports as never
+    /// used (module [`prune`]). It needs rustc 1.90.0.
+    Level2,
+}
+
 /// How a bundle is written.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Options {
     /// Formats the code with `rustfmt`, which also checks that it parses.
     pub format: bool,
-    /// Minifies the code: no comments, only the whitespace Rust needs
-    /// (ADR 0045). Off, the bundle keeps its comments and layout.
-    pub minify: bool,
+    /// How far the code is minified (ADR 0045).
+    pub minify: Minify,
 }
 
 impl Default for Options {
     fn default() -> Self {
         Self {
             format: true,
-            minify: true,
+            minify: Minify::Level2,
         }
     }
+}
+
+/// A bundle and what the minifier did to it.
+#[derive(Clone, Debug)]
+pub struct Bundled {
+    pub code: String,
+    /// What level 2 removed, when it ran.
+    pub pruned: Option<prune::Report>,
 }
 
 /// Builds the bundled source of `plan`. Its first line is a comment that
 /// names the package, minified or not (the release checks read it).
 pub fn bundle(plan: &Plan, options: Options) -> Result<String, String> {
+    bundle_report(plan, options).map(|bundled| bundled.code)
+}
+
+/// As [`bundle`], with what level 2 did.
+pub fn bundle_report(plan: &Plan, options: Options) -> Result<Bundled, String> {
     let libraries: Vec<String> = plan.libraries.iter().map(|lib| lib.name.clone()).collect();
+    // Before the work, so that a missing compiler fails at once.
+    let rustc = match options.minify {
+        Minify::Level2 => Some(prune::Rustc::find()?),
+        _ => None,
+    };
 
     let bot = expand::expand_crate(&plan.bot.root)?;
     let mut code = rewrite::rewrite(&bot, None, &libraries);
@@ -96,14 +130,28 @@ pub fn bundle(plan: &Plan, options: Options) -> Result<String, String> {
     if options.format {
         code = rustfmt(&code)?;
     }
-    if options.minify {
+    if options.minify != Minify::Off {
         let header = format!(
             "// Bundled by cg-bundler from the `{}` package. Minified (ADR 0045).\n",
             plan.package
         );
+        let mut pruned = None;
+        if let Some(rustc) = &rustc {
+            let (text, report) = prune::prune(&code, rustc)
+                .map_err(|err| format!("cannot remove unused items (level 2): {err}"))?;
+            code = text;
+            pruned = Some(report);
+        }
         let code =
             minify::minify(&code).map_err(|err| format!("cannot minify the bundle: {err}"))?;
-        return Ok(header + &code);
+        if let Some(rustc) = &rustc {
+            prune::check(&code, rustc)
+                .map_err(|err| format!("the minified bundle (level 2) is wrong: {err}"))?;
+        }
+        return Ok(Bundled {
+            code: header + &code,
+            pruned,
+        });
     }
     let mut header = format!(
         "// Bundled by cg-bundler from the `{}` package. Do not edit this file:\n\
@@ -117,7 +165,10 @@ pub fn bundle(plan: &Plan, options: Options) -> Result<String, String> {
         ));
     }
     header.push('\n');
-    Ok(header + &code)
+    Ok(Bundled {
+        code: header + &code,
+        pruned: None,
+    })
 }
 
 /// Formats Rust source with `rustfmt`, 2021 edition.
@@ -155,6 +206,15 @@ pub fn bundle_package(
     manifest: Option<&Path>,
     options: Options,
 ) -> Result<String, String> {
+    bundle_package_report(package, manifest, options).map(|bundled| bundled.code)
+}
+
+/// As [`bundle_package`], with what level 2 did.
+pub fn bundle_package_report(
+    package: &str,
+    manifest: Option<&Path>,
+    options: Options,
+) -> Result<Bundled, String> {
     let plan = plan::plan(package, manifest)?;
-    bundle(&plan, options)
+    bundle_report(&plan, options)
 }

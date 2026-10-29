@@ -33,6 +33,10 @@ pub struct Token {
     pub text: String,
     /// The line where the token starts, counted from 1.
     pub line: usize,
+    /// The byte offsets of the token in the source: it is
+    /// `source[start..end]`.
+    pub start: usize,
+    pub end: usize,
 }
 
 impl Token {
@@ -59,6 +63,9 @@ pub fn tokens(source: &str) -> Result<Vec<Token>, String> {
         pos: 0,
         line: 1,
     };
+    // The byte offset of each character, and of the end.
+    let mut offsets: Vec<usize> = source.char_indices().map(|(at, _)| at).collect();
+    offsets.push(source.len());
     let mut out = Vec::new();
     while let Some(c) = lexer.peek(0) {
         if is_space(c) {
@@ -76,6 +83,8 @@ pub fn tokens(source: &str) -> Result<Vec<Token>, String> {
                 kind,
                 text: lexer.chars[start..lexer.pos].iter().collect(),
                 line,
+                start: offsets[start],
+                end: offsets[lexer.pos],
             });
         }
     }

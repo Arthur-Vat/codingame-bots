@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Mutex;
 
-use cg_bundler::Options;
+use cg_bundler::{Minify, Options};
 use studio_game::StudioGame;
 
 use crate::state::lock;
@@ -110,7 +110,9 @@ impl Releases {
         // No rustfmt: `rustc` checks the bundle anyway (ADR 0040).
         let options = Options {
             format: false,
-            minify: true,
+            // Level 1 needs no rustc 1.90.0; the bundle is only compiled
+            // here, and dead items do no harm.
+            minify: Minify::Level1,
         };
         let bundle =
             cg_bundler::bundle_package(&package, Some(&self.repo.join("Cargo.toml")), options)

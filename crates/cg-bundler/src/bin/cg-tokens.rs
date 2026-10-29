@@ -1,6 +1,11 @@
 //! `cg-tokens A.rs B.rs`: tells whether two Rust files have the same
 //! tokens, comments and whitespace aside (ADR 0045).
 //!
+//! It applies to level 1: a level 1 bundle has the tokens of the readable
+//! bundle. A level 2 release has fewer, since its unused items are gone, so
+//! the release checks do not use this tool for releases; it stays for
+//! comparing a file with its level 1 form.
+//!
 //! Exit status: 0 when the token sequences are the same (it prints
 //! `same tokens (N tokens)`), 1 when they differ (it prints where they first
 //! differ), 2 on wrong usage or when a file cannot be read or lexed.
