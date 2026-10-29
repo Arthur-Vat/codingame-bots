@@ -33,27 +33,12 @@ pub struct Reach {
 /// cells first reached at each of the next costs, and the search stops at
 /// `target`.
 pub fn cost_to(state: &State, seat: usize, moves: bool, target: usize) -> i64 {
-    cost_to_with(state, seat, moves, target, |level| {
-        state.enterable(seat, level)
-    })
-}
-
-/// [`cost_to`] on other costs: `enterable(level)` replaces
-/// `state.enterable(seat, level)` for the chain's trainings (the steps of
-/// units with `moves` keep the state's).
-pub fn cost_to_with(
-    state: &State,
-    seat: usize,
-    moves: bool,
-    target: usize,
-    enterable: impl Fn(u8) -> Bits,
-) -> i64 {
     let max = state.league().max_level();
     // `entry[l - 1]`: the cells whose cheapest level to enter is `l`.
     let mut entry = [Bits::EMPTY; 3];
     let mut seen = Bits::EMPTY;
     for level in 1..=max {
-        let bits = enterable(level);
+        let bits = state.enterable(seat, level);
         entry[usize::from(level) - 1] = bits.and_not(seen);
         seen |= bits;
     }

@@ -33,12 +33,7 @@ fn side(state: &State, seat: usize) -> i64 {
 /// gold and income pay for it, else minus the shortfall, at least
 /// `-MAX_PRESSURE`.
 fn pressure(state: &State, seat: usize) -> i64 {
-    pressure_for(state, seat, cost_to(state, seat, false, HQ[1 - seat]))
-}
-
-/// The pressure term of `seat` were its cheapest chain to the enemy HQ to
-/// cost `cost` ([`UNREACHABLE`] for none).
-pub fn pressure_for(state: &State, seat: usize, cost: i64) -> i64 {
+    let cost = cost_to(state, seat, false, HQ[1 - seat]);
     if cost == UNREACHABLE {
         return -MAX_PRESSURE;
     }
