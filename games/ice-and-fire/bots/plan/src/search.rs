@@ -43,7 +43,7 @@ const MAX_CLIMBS: usize = 32;
 const REPLY_EVALS: u64 = 300;
 
 /// When the search stops.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct Limit {
     /// No new climb, reply search or plan scoring starts after this, and a
     /// climb stops at its next try.
@@ -161,7 +161,7 @@ fn lethal(state: &State) -> Option<Vec<Command>> {
 
 impl Search {
     /// Whether the climbs must stop.
-    fn out_of_time(&self) -> bool {
+    fn spent(&self) -> bool {
         self.evals >= self.limit.max_evals || self.limit.soft.is_some_and(|t| Instant::now() >= t)
     }
 
@@ -209,7 +209,7 @@ impl Search {
         gains: &mut Gains,
         lazy: bool,
     ) -> (Option<(usize, State, i64)>, bool) {
-        let mut best: Option<(usize, State, i64)> = None;
+        let mut best = None;
         let mut best_score = cur_score;
         for &(old, index) in order {
             if done[index] {
@@ -218,7 +218,7 @@ impl Search {
             if lazy && old != i64::MAX && old <= best_score - cur_score {
                 return (best, true);
             }
-            if self.out_of_time() {
+            if self.spent() {
                 return (best, false);
             }
             done[index] = true;
@@ -247,8 +247,8 @@ impl Search {
         let mut cur_score = self.score(&cur, memory, i64::MIN);
         let mut gains = Gains::default();
         let mut actions = Vec::new();
-        let mut order: Vec<(i64, usize)> = Vec::new();
-        while cur.outcome().is_none() && !self.out_of_time() {
+        let mut order = Vec::new();
+        while cur.outcome().is_none() && !self.spent() {
             generate(&cur, &mut actions);
             order.clear();
             for (index, action) in actions.iter().enumerate() {
@@ -339,7 +339,7 @@ impl Search {
     /// not hold, then keeps the [`MEMORY_CAP`] most damaging. Whether the
     /// memory changed.
     fn remember(&self, end: &State, memory: &mut Vec<Reply>) -> bool {
-        let before: Vec<Vec<Command>> = memory.iter().map(|r| r.commands.clone()).collect();
+        let before: Vec<_> = memory.iter().map(|r| r.commands.clone()).collect();
         for commands in self.replies(end) {
             if memory.iter().any(|r| r.commands == commands) {
                 continue;
@@ -350,7 +350,7 @@ impl Search {
         // Stable: the older reply stays first on a tie.
         memory.sort_by_key(|reply| reply.damage);
         memory.truncate(MEMORY_CAP);
-        memory.len() != before.len() || memory.iter().zip(&before).any(|(r, b)| &r.commands != b)
+        memory.iter().map(|r| &r.commands).ne(&before)
     }
 }
 
@@ -382,24 +382,23 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
         evals: 0,
         hints: Gains::default(),
     };
-    let mut memory: Vec<Reply> = Vec::new();
+    let mut memory = Vec::new();
     let mut plans: Vec<Plan> = Vec::new();
-    let mut banned: Vec<u64> = Vec::new();
-    while thought.climbs < MAX_CLIMBS && (plans.is_empty() || !search.out_of_time()) {
+    let mut banned = Vec::new();
+    while thought.climbs < MAX_CLIMBS && (plans.is_empty() || !search.spent()) {
         let plan = search.climb(state, &memory, &banned);
         thought.climbs += 1;
         // A climb that ends on a plan found before has nothing new to learn.
         let same = plans.iter().any(|p| p.commands == plan.commands);
         let first = plan.first;
-        if search.out_of_time() {
-            if !same {
-                plans.push(plan);
-            }
-            break;
-        }
-        let more = !same && search.remember(&plan.end, &mut memory);
+        // Out of time, the plan is kept and no reply searched.
+        let stop = search.spent();
+        let more = !stop && !same && search.remember(&plan.end, &mut memory);
         if !same {
             plans.push(plan);
+        }
+        if stop {
+            break;
         }
         // A climb against the same memory would find the same plan again:
         // the next one starts elsewhere (E014), unless the plan was empty.
