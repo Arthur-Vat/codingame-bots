@@ -43,6 +43,7 @@ Iteration: one experiment per pull request ([journal](journal/README.md)).
 - [x] E018, the best plans scored one turn deeper (the opponent's reply, then our best answer): top 2, 4 or 8 plans or all against v007 (400 pairs each, top 4 again on 600), from −43.7 (all) to level, dropped ([E018](journal/E018-two-turn-look.md))
 - [x] E019, the opponent's own climbed plan (moves, trainings, cuts) among the replies the search plans against, after a study of v007's lost games, as `ice-and-fire-v008` through the SPRT against v007: accepted, +78.5 Elo ([E019](journal/E019-opponent-plan.md), #210)
 - [x] E020, a level-2 unit counted at 5 rather than 20 in the evaluation, after a study of v008's losses (towers counted more were clearly weaker), as `ice-and-fire-v009` through the SPRT against v008: accepted, +39.8 Elo ([E020](journal/E020-level-two-units.md), #213)
+- [x] A study of towers, HQ threats and cuts in 1,000 v009 self-play games, with tools for the next experiments (the review tool's `towers`, `bank` and `screening`, the plan bot's analysis mode): a threat's urgency falls by about 0.42 a turn, half of the towers answer threats 5 or more turns away, and the parameters proposed for E021 to E025 ([research/towers-and-threats.md](research/towers-and-threats.md), #215)
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 
