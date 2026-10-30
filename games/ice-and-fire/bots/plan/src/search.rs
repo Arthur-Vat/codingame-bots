@@ -18,6 +18,11 @@
 //! climb may not start with the first action of any plan found so far
 //! (E014), so the climbs keep finding other plans until the time is up.
 //!
+//! When no first action left improves the plan, so that a climb ends on an
+//! empty plan, the time left goes to climbs forced to start with each of the
+//! root's other actions in turn, the best gain first (E029): an action that
+//! does not pay alone can open a plan that does.
+//!
 //! Each plan keeps the opponent's replies found for it (E027): the shared
 //! memory holds only the most damaging replies over all plans, so a plan's
 //! own worst reply could leave it. A plan's final score is the worst over the
@@ -82,6 +87,9 @@ pub struct Thought {
     pub plans: usize,
     /// Plans whose replies were searched only for the final choice (E027).
     pub checks: usize,
+    /// Whether the climbs ran out of first actions and were then forced to
+    /// start with each of the others (E029).
+    pub forced: usize,
 }
 
 /// Whether the plan played must have had its own replies searched (E027).
@@ -262,8 +270,9 @@ impl Search {
     }
 
     /// One climb from `root` against `memory`, never starting with an
-    /// action whose key is in `banned`.
-    fn climb(&mut self, root: &State, memory: &[Reply], banned: &[u64]) -> Plan {
+    /// action whose key is in `banned`. With `cached`, `root` is the
+    /// search's root, whose actions are generated once.
+    fn climb(&mut self, root: &State, memory: &[Reply], banned: &[u64], cached: bool) -> Plan {
         let mut first = None;
         let mut cur = root.clone();
         let mut commands = Vec::new();
@@ -272,7 +281,7 @@ impl Search {
         let mut actions = Vec::new();
         let mut order = Vec::new();
         while cur.outcome().is_none() && !self.spent() {
-            if commands.is_empty() {
+            if commands.is_empty() && cached {
                 match &self.root_actions {
                     Some(root_actions) => actions.clone_from(root_actions),
                     None => {
@@ -365,7 +374,7 @@ impl Search {
             hints: Gains::default(),
             root_actions: None,
         };
-        out.push(theirs.climb(&next, &[], &[]).commands);
+        out.push(theirs.climb(&next, &[], &[], true).commands);
         out.retain(|commands| !commands.is_empty());
         out
     }
@@ -379,6 +388,25 @@ impl Search {
                 Reply { commands, damage }
             })
             .collect()
+    }
+
+    /// A climb from `root` forced to start with `action` (E029), or `None`
+    /// when the rules refuse it.
+    fn forced(&mut self, root: &State, action: &Action, memory: &[Reply]) -> Option<Plan> {
+        let mut after = root.clone();
+        if !apply_all(&mut after, action.commands()) {
+            return None;
+        }
+        self.evals += 1;
+        let rest = self.climb(&after, memory, &[], false);
+        let mut commands = action.commands().to_vec();
+        commands.extend_from_slice(&rest.commands);
+        Some(Plan {
+            commands,
+            end: rest.end,
+            first: Some(key(action.commands())),
+            own: None,
+        })
     }
 
     /// The score of `plan` for the final choice: the worst over `memory` and
@@ -444,8 +472,21 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
     let mut memory = Vec::new();
     let mut plans: Vec<Plan> = Vec::new();
     let mut banned = Vec::new();
+    // Set when no first action left improves the plan (E029).
+    let mut exhausted = false;
+    let mut forced: Vec<Action> = Vec::new();
     while thought.climbs < MAX_CLIMBS && (plans.is_empty() || !search.spent()) {
-        let plan = search.climb(state, &memory, &banned);
+        let plan = if exhausted {
+            let Some(action) = forced.pop() else {
+                break;
+            };
+            match search.forced(state, &action, &memory) {
+                Some(plan) => plan,
+                None => continue,
+            }
+        } else {
+            search.climb(state, &memory, &banned, true)
+        };
         thought.climbs += 1;
         // A climb that ends on a plan found before has nothing new to learn.
         let same = plans.iter().any(|p| p.commands == plan.commands);
@@ -466,14 +507,31 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
             break;
         }
         // A climb against the same memory would find the same plan again:
-        // the next one starts elsewhere (E014), unless the plan was empty.
-        if !more {
+        // the next one starts elsewhere (E014). When the plan was empty, no
+        // first action left improves it: the next climbs are forced to start
+        // with each of the others, the best gain so far first (E029).
+        if !more && !exhausted {
             match first {
                 Some(first) => banned.push(first),
-                None => break,
+                None => {
+                    exhausted = true;
+                    forced = search.root_actions.clone().unwrap_or_default();
+                    forced.retain(|a| !banned.contains(&key(a.commands())));
+                    let gain = |a: &Action| {
+                        search
+                            .hints
+                            .get(&key(a.commands()))
+                            .copied()
+                            .unwrap_or(i64::MIN)
+                    };
+                    // Stable, so that ties keep the generator's order; the
+                    // best gain last, since the climbs pop from the end.
+                    forced.sort_by_key(|a| gain(a));
+                }
             }
         }
     }
+    thought.forced = usize::from(exhausted);
     thought.evals = search.evals;
     thought.memory = memory.len();
     thought.plans = plans.len();
