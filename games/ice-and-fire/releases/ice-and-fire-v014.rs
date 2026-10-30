@@ -49,7 +49,7 @@ fn 佟(l:&I,limit:书,亮:&mut 九)->伧{let 一=l.与();let mut 中=伧::defaul
 亮.侹(l){中.丁=亮.turn(l,个(0.4));return 中;}let mut 丽=亚{一,limit:书{乼:个(佪),..limit},乵:0,仅:亻::default(),五:None,};let mut 世=J::new();let mut 丨:J<亙> =J::new();let
 mut 亿=J::new();let mut 仜=false;let mut 乶:J<举> =J::new();while 中.伅<佷&&(丨.is_empty()||!丽.乣()){let 丄=if 仜{let Some(乳)=乶.pop()else{break;};match 丽.乶(l,&乳,&世){Some(丄)=>丄,None=>continue,}}else{丽.伄(l,&世,&亿,true)};中.伅+=1;let
 佗=丨.iter().any(|p|p.丁==丄.丁);let first=丄.first;let 佛=丽.乣();let mut 丄=丄;let mut 佋=false;if!佛&&!佗{let 並=丽.伮(&丄.end);佋=侾(&並,&mut 世);丄.丑=Some(並);}if!佗{丨.push(丄);}if
-佛{break;}if!佋&&!仜{match first{Some(first)=>亿.push(first),None=>{仜=true;乶=丽.五.clone().unwrap_or_default();乶.retain(|a|!亿.contains(&key(a.丁())));let 乪=|a:&举|{丽.仅.get(&key(a.丁())).copied().unwrap_or(F::MIN)};乶.sort_by_key(|a|乪(a));}}}}中.乶=C::from(仜);中.乵=丽.乵;中.世=世.len();中.丨=丨.len();let
+佛{break;}if!佋&&!仜{match first{Some(first)=>亿.push(first),None=>{仜=true;乶=丽.五.clone().unwrap_or_default();乶.retain(|a|!亿.contains(&key(a.丁())));let 乪=|a:&举|{丽.仅.get(&key(a.丁())).copied().unwrap_or(F::MIN)};乶.sort_by_key(乪);}}}}中.乶=C::from(仜);中.乵=丽.乵;中.世=世.len();中.丨=丨.len();let
 佇=||limit.亐.is_some_and(|t|乂::now()>=t);let mut 亲:J<O<F>> =vec![None;丨.len()];for index in(0..丨.len()).rev(){if index+1<丨.len()&&佇(){break;}亲[index]=Some(丽.伾(&丨[index],&世));}let
 亰=|亲:&[O<F>]|{let mut 丈:O<(F,C)> =None;for(index,不)in 亲.iter().enumerate().rev(){if let Some(不)=*不{if 丈.is_none_or(|(乔,_)|不>乔){丈=Some((不,index));}}}丈};let
 mut 丈=亰(&亲);丽.limit.乼=limit.亐;while let Some((_,index))=丈{if!侑||丨[index].丑.is_some()||佇(){break;}let 並=丽.伮(&丨[index].end);丨[index].丑=Some(並);中.伴+=1;亲[index]=Some(丽.伾(&丨[index],&世));丈=亰(&亲);}if

@@ -924,7 +924,7 @@ mod search {
                         };
                         // Stable, so that ties keep the generator's order; the
                         // best gain last, since the climbs pop from the end.
-                        forced.sort_by_key(|a| gain(a));
+                        forced.sort_by_key(gain);
                     }
                 }
             }

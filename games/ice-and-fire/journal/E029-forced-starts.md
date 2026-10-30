@@ -54,4 +54,6 @@ seed 29029, two games at a time on a 4-core machine:
 | E029 | **+24.4 [+4.8, +44.1]** | 1 (v013 3) | 36.2, 39.2, 41.1 ms (v013 14.6, 38.7, 40.7) |
 
 The time v013 left idle in the turns whose climbs ran out of first actions
-is worth climbing in.
+is worth climbing in. The candidate is `ice-and-fire-v014`: its readable
+copy differs from the bundle screened only in `forced.sort_by_key(gain)`,
+written `|a| gain(a)` before (clippy's `redundant_closure`), the same code.
