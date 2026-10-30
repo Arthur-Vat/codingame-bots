@@ -34,7 +34,7 @@ attack is also valued only when it is near.
 
 The code is commit d4ebd07 on branch
 `claude/ice-and-fire-e021-discounted-pressure`, reverted by the next
-commit there; the entries of E021 and E024 were then merged together: the shared evaluation takes its
+commit there. In it, the shared evaluation takes its
 pressure term as a function (`ice_and_fire_tactics::eval::evaluate_with`),
 the plan bot passes its own (`bots/plan/src/eval.rs`, constants `PRESSURE`
 and `DECAY`), the analysis mode's "no pressure" variant removes the bot's
@@ -63,8 +63,8 @@ maximum answer after the first.
 | V = 50 | **−97.1 [−120.2, −74.9]** | 22.5% | 50.2% | 2.67 (3.37) | 2.45 (2.00) | 24.5 / 3.7 / 1.3 (25.8 / 4.3 / 1.3) | 15.2 (19.8) | 1 (1) | 14.7, 102.3 (13.8, 107.7) |
 | V = 200, 600 pairs, seed 23024 | −5.2 [−21.8, +11.4] | 33.0% | 65.5% | 3.01 (3.03) | 2.70 (1.93) | 23.7 / 3.3 / 1.3 (22.7 / 3.7 / 1.5) | 21.7 (20.5) | 8 (4) | 12.3, 126.7 (12.5, 135.0) |
 
-The 99th percentile of every bot's answers was 32.0 ms, and its slowest
-first answer 636 to 677 ms. Timeouts were 20 in the variants' 4,400 games
+The 99th percentile of every bot's answers was 32.0 ms; the slowest
+first answers, of the variants and of v009, were 636 to 677 ms. Timeouts were 20 in the variants' 4,400 games
 against 12 for v009 in the same games, all below the SPRT's 1%.
 
 ## What was learned
@@ -82,7 +82,8 @@ against 12 for v009 in the same games, all below the SPRT's 1%.
   old term's floor of −200. What the old term adds is a steep, large
   reward for bringing our own attack near; with a smaller V it fades, and
   the variants build more mines (2.5 to 2.7 against about 2.0) instead.
-- **The static tower value is worth keeping** (E022's control): without it
+- **The static tower value is worth keeping** (E022's control, screened
+  here as the study proposed, with no entry of its own): without it
   v009 builds a quarter fewer towers, keeps more gold unspent (27.9
   against 22.3) and loses 46 Elo. This and E020 together: towers valued
   much more or much less than +10 both lose.

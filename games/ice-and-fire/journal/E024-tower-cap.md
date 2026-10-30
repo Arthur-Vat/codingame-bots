@@ -39,10 +39,10 @@ more chain search.
 
 The code is commit fb469fc on branch
 `claude/ice-and-fire-e024-tower-cap`, reverted by the next commit there;
-the entries of E021 and E024 were then merged together: the shared tactics gain
+in it, the shared tactics gain
 `chain::cost_to_with` (the cheapest chain on other entry costs) and
 `eval::pressure_for` (the pressure term of a given cost), and the plan
-bot's `eval::over_cap` the term, with a test on a corridor where a tower
+bot gains `eval::over_cap`, the term, with a test on a corridor where a tower
 next to the HQ raises the enemy's chain by 60 (over the cap by 50 when the
 enemy is 10 gold short of the old chain, by 0 when it is far). The minified
 bundle is 88,529 characters with minifier level 1 (#217); minifier
@@ -73,9 +73,9 @@ first answers were 661.4 and 698.9 ms.
   not make one cost anything.
 - **The extra chain search costs time:** the median answer rose from 12.0
   to 15.3 ms, a quarter, fewer plans scored in the same 40 ms.
-- **Changing what a tower is worth keeps losing.** Towers +15 (E020),
-  no static value (E022's control, in E021), a discounted pressure term
-  (E021) and this cap all lost or tied. v009's static +10 and its pressure
+- **Changing what a tower is worth keeps losing.** E020's towers +15
+  variant, no static value (E022's control, in E021), a discounted
+  pressure term (E021) and this cap all lost or tied. v009's static +10 and its pressure
   term look well placed; the study's next items are about cuts and
   territory (E023) rather than towers.
 - Not tried: other caps. A looser one trims fewer towers and would land
