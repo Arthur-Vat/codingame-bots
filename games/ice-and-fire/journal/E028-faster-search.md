@@ -3,9 +3,9 @@ id: E028
 date: 2026-10-30
 pull_request: "#NN"
 parent: ice-and-fire-v012
-hypothesis: v012's search answers alike when it is faster, and since its climbs stop at 36 ms in most middle-game turns, the same search done 1.3 times faster scores more plans in its time and beats v012.
+hypothesis: v012's search answers alike when it is faster, and since its climbs stop at 36 ms in most middle-game turns, the same search done 1.3 times faster scores more plans in its time and beats v012 (candidate `ice-and-fire-v013`).
 change: Three changes that keep every answer at a fixed number of tries: the evaluation's shape term found by its own search with byte arrays and only the two numbers it uses, and kept by territory in a cache; the root's actions generated once a turn rather than once a climb; and a tower offered without copying the state where it cannot protect a cell the enemy can reach (unless the HQ guard may apply).
-release: pending
+release: ice-and-fire-v013
 sprt: pending
 elo: pending
 pairs: pending
@@ -56,4 +56,15 @@ generator offers exactly the towers E026's check on a copy offers.
 
 ## Screening
 
-Pending.
+Against `ice-and-fire-v012` at CodinGame's limits (50 ms a turn, 1,000 ms
+the first, no tolerance), 400 seat-swapped pairs, seed 28028, two games at
+a time on a 4-core machine:
+
+| Bot | Elo against v012 | Timeouts | Answers after the first (median, 99%, 99.9%) |
+| --- | --- | ---: | --- |
+| E028 | **+19.1 [+4.2, +34.1]** | 1 (v012 1) | 15.7, 39.0, 41.0 ms (v012 20.3, 39.5, 42.9) |
+
+The same plans found sooner: the median answer is shorter, since a turn
+whose climbs end on their own ends earlier, and where the soft limit binds
+the faster search scores more plans in it. The candidate is
+`ice-and-fire-v013`, this change alone.
