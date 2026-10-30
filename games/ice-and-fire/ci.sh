@@ -16,6 +16,8 @@
 #   - plays every other bundled bot against random, 100 pairs each; the
 #     rules-check bot runs in strict mode, so it fails on any difference
 #     between the referee and the engine's rules over real arena games;
+#   - checks the timing bot, which times out on purpose: no crash or invalid
+#     answer, and its games end by timeout once it holds an answer to 50 ms;
 #   - the evaluation controls and the A/A test (fixed seeds), and a small
 #     league whose first place must be the bronze bot;
 #   - tests the plan bot's analysis mode (`--features analysis`), which the
@@ -66,6 +68,8 @@ for dir in games/ice-and-fire/bots/*/; do
   name="ice-and-fire-$(basename "$dir")"
   bot="$bin/$name"
   [ "$name" = ice-and-fire-random ] && continue
+  # The timing bot times out on purpose (its own step below).
+  [ "$name" = ice-and-fire-timing ] && continue
   if [[ ! -x $bot ]]; then
     echo "::error title=$name against random::$bot is missing"
     exit 1
@@ -82,6 +86,22 @@ for dir in games/ice-and-fire/bots/*/; do
   fi
   echo "$out"
 done
+
+echo "== The timing bot times out when its hold reaches the limit"
+# It holds its answer to 42 ms on turn 2, one more each turn: at the arena's
+# exact 50 ms it must lose every game it does not win, on time, and never
+# crash or answer invalidly.
+out="$("$arena" match --bot "ice-and-fire-timing=$bin/ice-and-fire-timing" \
+  --bot "random=$bin/ice-and-fire-random" --pairs 5 --jobs 1 2>&1)"
+echo "$out"
+summary="$(grep -E '^  ice-and-fire-timing: [0-9]+ wins' <<<"$out")"
+faults="$(grep -E '^  ice-and-fire-timing faults:' <<<"$out")"
+wins="$(sed -E 's/^  ice-and-fire-timing: ([0-9]+) wins.*/\1/' <<<"$summary")"
+timeouts="$(sed -E 's/.*faults: ([0-9]+) timeouts.*/\1/' <<<"$faults")"
+if ! grep -q ' 0 crashes, 0 invalid answers' <<<"$faults" || ((wins + timeouts != 10)) || ((timeouts == 0)); then
+  echo "::error title=Timing bot::expected every game lost on time or won, no crash or invalid answer: $summary; $faults"
+  exit 1
+fi
 
 echo "== The evaluation tells bots apart (controls and A/A test)"
 # Runs an SPRT with fixed seeds and checks its verdict and faults.
