@@ -64,6 +64,13 @@ impl Bits {
         self.0[0] | self.0[1] | self.0[2] == 0
     }
 
+    /// The set's three words, as stored: a key for caches of what a set
+    /// determines.
+    #[inline]
+    pub fn words(self) -> [u64; 3] {
+        self.0
+    }
+
     /// The number of cells.
     #[inline]
     pub fn count(self) -> u32 {

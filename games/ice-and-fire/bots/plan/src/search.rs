@@ -117,6 +117,9 @@ struct Search {
     /// climb tries the actions first, since the first steps of a climb
     /// resemble those of the one before.
     hints: Gains,
+    /// The actions of the climbs' root, generated once: every climb of a
+    /// search starts from the same state.
+    root_actions: Option<Vec<Action>>,
 }
 
 /// Whether every command of `commands` is accepted in order by `state`.
@@ -269,7 +272,17 @@ impl Search {
         let mut actions = Vec::new();
         let mut order = Vec::new();
         while cur.outcome().is_none() && !self.spent() {
-            generate(&cur, &mut actions);
+            if commands.is_empty() {
+                match &self.root_actions {
+                    Some(root_actions) => actions.clone_from(root_actions),
+                    None => {
+                        generate(&cur, &mut actions);
+                        self.root_actions = Some(actions.clone());
+                    }
+                }
+            } else {
+                generate(&cur, &mut actions);
+            }
             order.clear();
             for (index, action) in actions.iter().enumerate() {
                 let k = key(action.commands());
@@ -350,6 +363,7 @@ impl Search {
             },
             evals: 0,
             hints: Gains::default(),
+            root_actions: None,
         };
         out.push(theirs.climb(&next, &[], &[]).commands);
         out.retain(|commands| !commands.is_empty());
@@ -425,6 +439,7 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
         },
         evals: 0,
         hints: Gains::default(),
+        root_actions: None,
     };
     let mut memory = Vec::new();
     let mut plans: Vec<Plan> = Vec::new();
