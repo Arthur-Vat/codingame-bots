@@ -1,7 +1,7 @@
 ---
 id: E027
 date: 2026-10-30
-pull_request: "#NN"
+pull_request: "#225"
 parent: ice-and-fire-v011
 hypothesis: v011 can play a plan whose own worst reply it no longer remembers (the memory keeps the 8 most damaging replies over all plans) or never searched (a plan found as the time ran out), and leaves 16 ms of its 40 ms idle; scoring each plan also against its own replies, searching them for the plan to play when they are missing, and climbing until 36 ms beats v011 (candidate `ice-and-fire-v012`).
 change: Each plan keeps the opponent's replies found for it; the final choice scores a plan by the worst over the memory and its own replies; while the best plan has none, its replies are searched in the time left before the hard limit (40 ms) and the choice is made again; the middle game's climbs may start until 36 ms rather than 24 ms (the opening's deadline unchanged).
