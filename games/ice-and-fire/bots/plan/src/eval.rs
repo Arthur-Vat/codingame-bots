@@ -29,24 +29,13 @@ use ice_and_fire_opening::solo::severed;
 use ice_and_fire_tactics::chain::reach_within;
 use ice_and_fire_tactics::eval::evaluate;
 
-/// Whether [`threatened`] also counts the cells cut off by taking a
-/// threatened cell (E023's second variant).
-pub const CUT_OFFS: bool = true;
-
 /// The active cells of `seat` that the enemy can take at its next turn:
 /// those its chains of trainings reach for its gold plus its income (moves
-/// left out, as in the pressure term), plus, with [`CUT_OFFS`], the most
-/// cells that taking one of them cuts off from `seat`'s HQ.
+/// left out, as in the pressure term).
 pub fn threatened(state: &State, seat: usize) -> i64 {
     let enemy = 1 - seat;
     let budget = state.gold(enemy) + state.income(enemy);
-    let cells = reach_within(state, enemy, false, budget) & state.active(seat);
-    let mut count = i64::from(cells.count());
-    if CUT_OFFS && count > 0 {
-        let cut = severed(state, seat);
-        count += cells.iter().map(|cell| cut[cell]).max().unwrap_or(0);
-    }
-    count
+    i64::from((reach_within(state, enemy, false, budget) & state.active(seat)).count())
 }
 
 /// The weight of a joint and of a cell that one capture cuts off.

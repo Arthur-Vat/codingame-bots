@@ -258,8 +258,9 @@ fn a_search_that_learns_nothing_new_climbs_from_other_first_actions() {
     // E014: once the memory stops growing, each climb is barred from the
     // first actions of the plans found before, so with room enough the
     // search goes on to its most climbs (it stopped before E014), and the
-    // later climbs find other plans.
-    let state = &positions(3, &[30])[1];
+    // later climbs find other plans. The position is seed 2's (seed 3's
+    // until E023, whose evaluation ends a climb there on an empty plan).
+    let state = &positions(2, &[30])[1];
     let thought = think(state, evals(1_000_000), &mut opening());
     assert_eq!(thought.climbs, 32);
     assert!(thought.plans > 8, "{} plans", thought.plans);
@@ -530,21 +531,20 @@ fn a_cell_that_cuts_others_off_weakens_its_side() {
 
 #[test]
 fn cells_the_enemy_can_take_next_turn_count_less() {
-    use crate::eval::{eval, threatened, CUT_OFFS};
-    let cut_off = i64::from(CUT_OFFS);
+    use crate::eval::{eval, threatened};
     // E023: blue's chains along the corridor cost 10 for (11, 10), then 10
     // a cell of red's from (11, 9) up. With gold 20 and income 1 blue can
-    // pay 20: it threatens (11, 9), whose loss cuts nothing off.
+    // pay 20: it threatens (11, 9).
     let state = position(CORRIDOR, [0, 20], &[]);
     assert_eq!(threatened(&state, 0), 1);
-    // With 10 gold more, (11, 8) too, whose loss cuts (11, 9) off.
+    // With 10 gold more, (11, 8) too.
     let state = position(CORRIDOR, [0, 30], &[]);
-    assert_eq!(threatened(&state, 0), 2 + cut_off);
+    assert_eq!(threatened(&state, 0), 2);
     // Red (income 21) threatens blue's one cell, its HQ, for 20.
     assert_eq!(threatened(&state, 1), 1);
     // Each threatened cell costs its side 7/4 (0.25 of a cell's value of 7).
     let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
-    assert_eq!(eval(&state, 0), shared + 7 * (1 - (2 + cut_off)) / 4);
+    assert_eq!(eval(&state, 0), shared + 7 * (1 - 2) / 4);
     // Far from each other, nothing is threatened.
     let rows = [
         "OOO.........",
