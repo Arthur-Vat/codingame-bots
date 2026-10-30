@@ -718,3 +718,23 @@ fn towers_are_offered_where_a_copy_of_the_state_says_they_guard() {
     }
     assert!(offered > 0, "no tower offered in the positions");
 }
+
+#[test]
+fn climbs_out_of_first_actions_go_on_from_the_others() {
+    // E029: in some middle-game positions the climbs run out of first
+    // actions that improve the plan, and the search then climbs from each of
+    // the others; its answer stays a list of commands the rules accept.
+    let mut forced = 0;
+    for state in many_positions().into_iter().step_by(4) {
+        if state.outcome().is_some() {
+            continue;
+        }
+        let thought = think(&state, evals(400), &mut opening());
+        forced += thought.forced;
+        let mut scratch = state.clone();
+        for &command in &thought.commands {
+            assert!(scratch.apply(command), "{command:?}");
+        }
+    }
+    assert!(forced > 0, "no position reached the forced climbs");
+}
