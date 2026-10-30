@@ -1,9 +1,13 @@
-//! Minifies the bundle of every bot of the workspace at both levels and
+//! Minifies the bundle of every bot of the workspace at each level and
 //! checks them (ADR 0045): level 1 reads back as the same tokens as the
 //! readable bundle and is smaller; level 2 compiles with rustc 1.90.0 and
-//! is no larger than level 1.
+//! is no larger than level 1; level 3 compiles, is no larger than level 2
+//! and has its tokens with only names changed, each old name to one new
+//! name.
 
-use cg_bundler::minify::{first_difference, tokens};
+use std::collections::BTreeMap;
+
+use cg_bundler::minify::{first_difference, tokens, Kind};
 use cg_bundler::{bundle, bundle_package, bundle_report, cg_size, plan, prune, Minify, Options};
 
 /// The package names of the bots in `games/*/bots/*`.
@@ -32,7 +36,7 @@ fn bot_packages() -> Vec<String> {
 }
 
 #[test]
-fn every_bot_minifies_at_both_levels() {
+fn every_bot_minifies_at_each_level() {
     let packages = bot_packages();
     assert!(
         packages.iter().any(|p| p == "uttt-bot-random")
@@ -55,7 +59,7 @@ fn every_bot_minifies_at_both_levels() {
     });
 }
 
-/// The checks of `every_bot_minifies_at_both_levels` for one bot.
+/// The checks of `every_bot_minifies_at_each_level` for one bot.
 fn check_bot(package: &str, rustc: &prune::Rustc) {
     let options = |minify| Options {
         format: true,
@@ -97,6 +101,56 @@ fn check_bot(package: &str, rustc: &prune::Rustc) {
     }
     assert_eq!(
         level2.code.lines().next().unwrap(),
+        level1.lines().next().unwrap(),
+        "{package}"
+    );
+
+    let level3 = bundle_report(&plan, options(Minify::Level3)).unwrap();
+    assert_eq!(
+        level3.pruned,
+        Some(report),
+        "{package}: level 3 prunes as level 2 does"
+    );
+    let renamed = level3.renamed.expect("level 3 reports what it renamed");
+    prune::check(&level3.code, rustc).unwrap_or_else(|err| panic!("{package}: {err}"));
+    assert!(
+        cg_size(&level3.code) <= cg_size(&level2.code),
+        "{package}: level 3 has {} characters, level 2 {}",
+        cg_size(&level3.code),
+        cg_size(&level2.code)
+    );
+    // Only names change, each old name always to the same new one, and no
+    // two old names to the same.
+    let level3_tokens = tokens(&level3.code).unwrap();
+    assert_eq!(level3_tokens.len(), level2_tokens.len(), "{package}");
+    let (mut new_of, mut old_of) = (BTreeMap::new(), BTreeMap::new());
+    for (old, new) in level2_tokens.iter().zip(&level3_tokens) {
+        assert_eq!(
+            old.kind, new.kind,
+            "{package}: `{}` became `{}`",
+            old.text, new.text
+        );
+        if old.kind != Kind::Ident {
+            assert_eq!(old.text, new.text, "{package}");
+            continue;
+        }
+        let new_name = new_of.entry(old.text.as_str()).or_insert(new.text.as_str());
+        assert_eq!(
+            *new_name, new.text,
+            "{package}: `{}` has two new names",
+            old.text
+        );
+        let old_name = old_of.entry(new.text.as_str()).or_insert(old.text.as_str());
+        assert_eq!(
+            *old_name, old.text,
+            "{package}: `{}` is the new name of two",
+            new.text
+        );
+    }
+    let changed = new_of.iter().filter(|(old, new)| old != new).count();
+    assert_eq!(changed, renamed.renamed, "{package}");
+    assert_eq!(
+        level3.code.lines().next().unwrap(),
         level1.lines().next().unwrap(),
         "{package}"
     );

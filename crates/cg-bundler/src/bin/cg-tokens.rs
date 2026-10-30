@@ -2,7 +2,8 @@
 //! tokens, comments and whitespace aside (ADR 0045).
 //!
 //! It applies to level 1: a level 1 bundle has the tokens of the readable
-//! bundle. A level 2 release has fewer, since its unused items are gone, so
+//! bundle. A release of level 2 or 3 has fewer, since its unused items are
+//! gone (and level 3 renames the rest), so
 //! the release checks do not use this tool for releases; it stays for
 //! comparing a file with its level 1 form.
 //!

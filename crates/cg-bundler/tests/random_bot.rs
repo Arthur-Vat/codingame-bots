@@ -1,5 +1,6 @@
 //! Bundles the real random bot, compiles the bundle on its own with rustc,
-//! the way CodinGame does, and plays a turn with it.
+//! the way CodinGame does, and plays a turn with it. The paths are checked
+//! on its level 2 bundle, since level 3 renames them.
 
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -21,14 +22,27 @@ fn the_bundled_random_bot_compiles_alone_and_plays() {
             && line.chars().count() <= cg_bundler::minify::HARD_LINE + 50),
         "comments, indentation and blank lines must be removed, and lines kept short"
     );
-    assert!(bundle.contains("mod cg_core{"));
+    // Level 3, the default, renames the modules: their paths are checked at
+    // level 2, which keeps the names.
+    let level2 = cg_bundler::bundle_package(
+        "uttt-bot-random",
+        None,
+        cg_bundler::Options {
+            minify: cg_bundler::Minify::Level2,
+            ..cg_bundler::Options::default()
+        },
+    )
+    .unwrap();
+    for bundle in [&bundle, &level2] {
+        assert!(
+            !bundle.contains("mod tests"),
+            "test modules must be dropped"
+        );
+    }
+    assert!(level2.contains("mod cg_core{"));
     assert!(
-        bundle.contains("use crate::cg_core::rng::"),
+        level2.contains("use crate::cg_core::rng::"),
         "paths were not rewritten"
-    );
-    assert!(
-        !bundle.contains("mod tests"),
-        "test modules must be dropped"
     );
     assert!(cg_bundler::cg_size(&bundle) < cg_bundler::SIZE_LIMIT);
 

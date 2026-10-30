@@ -73,8 +73,8 @@ fn levels_that_need_no_compiler_do_not_ask_for_one() {
 }
 
 #[test]
-fn the_level_is_one_or_two() {
-    for level in ["0", "3", "x"] {
+fn the_level_is_one_to_three() {
+    for level in ["0", "4", "x"] {
         let output = bundler(&["--minify-level", level], None);
         assert!(!output.status.success(), "{level}");
     }

@@ -223,7 +223,7 @@ Framework work that a game's plan needs but every game can use.
 - [x] Decision record on minified releases (owner, 2026-10-29, [ADR 0045](adr/0045-minified-releases.md)): each new release is a minified paste-ready file and a readable copy with comments, both frozen; three levels of minification, each in its own pull request; a minified release must play exactly like its readable copy
 - [x] Minifier level 1: only the whitespace Rust needs between tokens; the answers check of the two copies; the new release flow (`new-release.sh`, `check-releases.sh`, workflows, docs)
 - [x] Minifier level 2: items rustc reports as never used removed, until none is left
-- [ ] Minifier level 3: names the bundle defines renamed to the shortest names not otherwise used
+- [x] Minifier level 3: names the bundle defines renamed to the shortest names not otherwise used
 
 ## Risks
 

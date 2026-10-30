@@ -43,14 +43,13 @@
 mod items;
 mod rustc;
 
-pub use rustc::{Diagnostic, Outcome, Rustc, ENV, VERSION};
+pub use rustc::{Compiler, Diagnostic, Outcome, Rustc, ENV, VERSION};
 
 use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::minify::{tokens, Kind};
 use items::{Id, Rendered, Source};
-use rustc::Compiler;
 
 /// The most threads that compile at once.
 const MAX_WORKERS: usize = 8;
