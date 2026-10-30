@@ -50,9 +50,9 @@ const MAX_CLIMBS: usize = 32;
 /// Most plans scored by the opponent's climb in one reply search (E019).
 const REPLY_EVALS: u64 = 300;
 /// Where between the soft and the hard limit the middle game's climbs stop
-/// (E027): from 24 to 32 ms of a 40 ms turn; the rest is for the final
-/// choice and its check.
-const CLIMB_SHARE: f64 = 0.5;
+/// (E027): at 36 ms of a 40 ms turn rather than 24; the rest is for the
+/// final choice and its check.
+const CLIMB_SHARE: f64 = 0.75;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
