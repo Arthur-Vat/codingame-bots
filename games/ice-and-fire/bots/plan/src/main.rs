@@ -70,8 +70,10 @@ const BUDGET_MS: f64 = 40.0;
 /// plan stops at 76% of it, about 610 ms.
 const FIRST_BUDGET_MS: f64 = 800.0;
 
-/// The share of the budget after which no new climb or reply search starts;
-/// the rest is for choosing the plan to play.
+/// The share of the budget that the soft limit marks: the opening's choice
+/// stops 40% of the way from it to the hard limit, and the middle game's
+/// climbs halfway (`search::CLIMB_SHARE`, E027; at it before), the rest being
+/// for choosing the plan to play.
 const SOFT_SHARE: f64 = 0.6;
 
 /// The limits of the turn `turn` (1 first) that started at `start`.

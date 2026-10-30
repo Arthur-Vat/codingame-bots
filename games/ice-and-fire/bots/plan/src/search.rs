@@ -49,6 +49,10 @@ const REPLY_CUTS: usize = 3;
 const MAX_CLIMBS: usize = 32;
 /// Most plans scored by the opponent's climb in one reply search (E019).
 const REPLY_EVALS: u64 = 300;
+/// Where between the soft and the hard limit the middle game's climbs stop
+/// (E027): from 24 to 32 ms of a 40 ms turn; the rest is for the final
+/// choice and its check.
+const CLIMB_SHARE: f64 = 0.5;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
@@ -402,19 +406,23 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
         thought.commands = commands;
         return thought;
     }
+    // A time between the soft and the hard limit.
+    let at = |share: f64| match (limit.soft, limit.hard) {
+        (Some(soft), Some(hard)) => Some(soft + (hard - soft).mul_f64(share)),
+        _ => None,
+    };
     if opening.playing(state) {
         // The opening's choice stops at 76% of the turn: the hard limit is
         // the whole budget.
-        let at = |share: f64| match (limit.soft, limit.hard) {
-            (Some(soft), Some(hard)) => Some(soft + (hard - soft).mul_f64(share)),
-            _ => None,
-        };
         thought.commands = opening.turn(state, at(0.4));
         return thought;
     }
     let mut search = Search {
         me,
-        limit,
+        limit: Limit {
+            soft: at(CLIMB_SHARE),
+            ..limit
+        },
         evals: 0,
         hints: Gains::default(),
     };
