@@ -16,7 +16,8 @@
 //! `const`, `type` or `static` (`static mut` included) is a member when it
 //! is declared `pub` or in a trait or a trait impl, as is a field `pub
 //! name:`; a name after `struct`, `enum`, `union`, `trait`, `mod`, `macro`
-//! or `macro_rules!` is an item; a name in a `use` declaration of the
+//! or `macro_rules!` is an item; a name right in an enum's braces is a
+//! variant; a name in a `use` declaration of the
 //! preludes (`prelude/*.rs` of core and std, all editions) is in the
 //! prelude, which code reaches by the bare name. Public names of private
 //! modules and unstable names count too, which only keeps more names than
@@ -46,7 +47,7 @@ fn main() -> ExitCode {
             }
         },
     };
-    // Each name with its kinds, a set of the letters `i`, `m` and `p`.
+    // Each name with its kinds, a set of the letters `i`, `m`, `p` and `v`.
     let mut names: BTreeMap<String, String> = BTreeMap::new();
     let mut files = 0;
     for name in CRATES {
@@ -93,7 +94,7 @@ fn main() -> ExitCode {
     println!("# Each line is the kinds of a name, then the name. Kinds: `m`, a pub fn, const,");
     println!("# type or static, an item of a trait or trait impl, or a pub field, which `.name`");
     println!("# or `T::name` reaches; `i`, a struct, enum, union, trait, mod or macro; `p`, in a");
-    println!("# prelude, reached by the bare name.");
+    println!("# prelude, reached by the bare name; `v`, an enum variant.");
     for (name, kinds) in &names {
         println!("{kinds} {name}");
     }
@@ -176,6 +177,8 @@ enum Block {
     Trait,
     /// An `impl Trait for Type`: its items are those of the trait.
     TraitImpl,
+    /// An `enum`: its variants are names.
+    Enum,
     Other,
 }
 
@@ -191,7 +194,9 @@ fn collect(tokens: &[Token], names: &mut BTreeMap<String, String>) {
             .filter(|t| t.kind == Kind::Ident)
             .map(|t| t.text.as_str())
     };
-    let mut blocks = Vec::new();
+    // Each open block, with the depth of `(` and `[` where it opened.
+    let mut blocks: Vec<(Block, usize)> = Vec::new();
+    let mut nest = 0usize;
     // Where the tokens since the last `;`, `{` or `}` start: the header of
     // the next block.
     let mut header = 0;
@@ -204,13 +209,16 @@ fn collect(tokens: &[Token], names: &mut BTreeMap<String, String>) {
                         .iter()
                         .any(|t| t.kind == Kind::Ident && t.text == word)
                 };
-                blocks.push(if has("trait") {
+                let block = if has("trait") {
                     Block::Trait
                 } else if has("impl") && has("for") {
                     Block::TraitImpl
+                } else if has("enum") {
+                    Block::Enum
                 } else {
                     Block::Other
-                });
+                };
+                blocks.push((block, nest));
                 header = at + 1;
             }
             "}" => {
@@ -218,7 +226,23 @@ fn collect(tokens: &[Token], names: &mut BTreeMap<String, String>) {
                 header = at + 1;
             }
             ";" => header = at + 1,
+            "(" | "[" => nest += 1,
+            ")" | "]" => nest = nest.saturating_sub(1),
             _ => {}
+        }
+        // A variant: a name right in an enum's braces, after `{`, `,` or an
+        // attribute, before what may follow a variant.
+        if let Some(&(Block::Enum, depth)) = blocks.last() {
+            let after = tokens.get(at + 1).map(|t| t.text.as_str());
+            let before = at.checked_sub(1).map(|at| tokens[at].text.as_str());
+            if token.kind == Kind::Ident
+                && nest == depth
+                && matches!(before, Some("{" | "," | "]"))
+                && matches!(after, Some("," | "(" | "{" | "=" | "}"))
+                && !is_keyword(&token.text)
+            {
+                add(names, &token.text, 'v');
+            }
         }
         // `*const T`, `&raw const x` and the const generic in `<const N:
         // usize>` name no member.
@@ -226,8 +250,10 @@ fn collect(tokens: &[Token], names: &mut BTreeMap<String, String>) {
         if token.text == "const" && matches!(before, Some("*" | "raw" | "<" | ",")) {
             continue;
         }
-        let public =
-            || matches!(blocks.last(), Some(Block::Trait | Block::TraitImpl)) || is_pub(tokens, at);
+        let public = || {
+            matches!(blocks.last(), Some((Block::Trait | Block::TraitImpl, _)))
+                || is_pub(tokens, at)
+        };
         let (name, member) = match token.text.as_str() {
             "fn" | "const" | "type" if public() => (ident(at + 1), true),
             "static" if public() => match ident(at + 1) {

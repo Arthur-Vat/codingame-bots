@@ -317,3 +317,51 @@ fn nothing_to_rename_leaves_the_text() {
         }
     );
 }
+
+#[test]
+fn names_a_std_glob_import_may_bring_are_kept() {
+    // Renamed, the variants would become bindings that match anything.
+    let source = "use std::cmp::Ordering::*;
+        fn compare_numbers(a: i32, b: i32) -> i32 {
+            match a.cmp(&b) { Less => -1, Equal => 0, Greater => 1 }
+        }
+        fn main() { println!(\"{}\", compare_numbers(2, 1)); }";
+    assert_kept(source, &["Less", "Equal", "Greater"], &["compare_numbers"]);
+    let (out, _) = rename(source, &rustc()).unwrap();
+    assert!(
+        out.contains("Less => -1, Equal => 0, Greater => 1"),
+        "{out}"
+    );
+
+    // Through a name that leads into std, and in a use tree.
+    let source = "use std::cmp;
+        use cmp::Ordering::*;
+        use std::{io::*, num::FpCategory};
+        fn main() { let _ = (Less, stdin(), FpCategory::Nan); }";
+    assert_kept(source, &["Less", "stdin", "Nan"], &[]);
+    // A glob of the bundle's own enum keeps nothing.
+    let source = "mod shapes { pub enum Shape { Round, Square } }
+        use shapes::Shape::*;
+        fn main() { let _ = (Round, Square); }";
+    assert_kept(source, &[], &["Round", "Square", "Shape", "shapes"]);
+}
+
+#[test]
+fn names_that_a_macro_of_the_bundle_turns_into_text_are_kept() {
+    let source = "macro_rules! show { ($n:ident) => { println!(\"{}\", stringify!($n)) } }
+        macro_rules! again { ($n:ident) => { show!($n) } }
+        fn main() { let player_score = 1; show!(player_score); again!(opponent_score); }";
+    assert_kept(
+        source,
+        &["player_score", "opponent_score"],
+        &["show", "again"],
+    );
+}
+
+#[test]
+fn std_enum_variants_are_listed() {
+    let std = StdNames::get();
+    for name in ["Less", "Equal", "Greater", "Nan", "V4", "Relaxed"] {
+        assert!(std.has(name), "{name}");
+    }
+}

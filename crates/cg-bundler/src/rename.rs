@@ -31,7 +31,11 @@
 //! - in an attribute (`#[derive(Clone)]`, `#[allow(dead_code)]`);
 //! - in braces in a string literal, where formatting macros read names
 //!   (`"{score}"`, `"{:width$}"`), or in the arguments of `stringify!`,
-//!   `concat!` and `module_path!`, which turn names into text.
+//!   `concat!` and `module_path!`, which turn names into text, and of the
+//!   bundle's macros that call them;
+//! - anywhere, when std defines it (an enum variant included) and the bundle
+//!   imports from std with a glob (`use std::cmp::Ordering::*`): a variant
+//!   renamed in a pattern would become a binding that matches anything.
 //!
 //! The std names are in `rename/std-names.txt`, written from the sources of
 //! rustc 1.90.0's standard library by `cargo run -p cg-bundler --example
@@ -41,11 +45,12 @@
 //! compiler). A renaming that does not compile is undone: the names in the
 //! errors' spans are kept, and the rest is tried again; if the errors name
 //! none, the renamings are halved until those that rustc rejects are found.
-//! What compiles is the same program, since only the names changed. Two
-//! things can still see a new name without an error, and neither changes
-//! what a bot plays: the text of `{:?}` for a type that derives `Debug`
-//! (bots write it to stderr only) and of `std::any::type_name` (in error
-//! messages). The answers check of ADR 0045 (decision 4) would catch a bot
+//! What compiles is the same program, since only the names changed. A few
+//! things can still see a new name without an error, and none changes what
+//! a bot plays: the text of `{:?}` for a type that derives `Debug` (bots
+//! write it to stderr only), of `std::any::type_name` (in error messages),
+//! and `column!` (like `line!`, which level 1 already changes; bots do not
+//! use them). The answers check of ADR 0045 (decision 4) would catch a bot
 //! whose answers change.
 //!
 //! The names that occur most get the shortest new names. A new name keeps
@@ -90,8 +95,8 @@ impl std::fmt::Display for Report {
 
 /// The names that the standard library defines, with their kinds.
 pub struct StdNames {
-    /// Each name and its kinds: some of `i` (an item), `m` (a member) and
-    /// `p` (in a prelude).
+    /// Each name and its kinds: some of `i` (an item), `m` (a member), `p`
+    /// (in a prelude) and `v` (an enum variant).
     kinds: BTreeMap<&'static str, &'static str>,
 }
 
@@ -113,7 +118,7 @@ impl StdNames {
                 .split_once(' ')
                 .filter(|(kind, name)| {
                     !kind.is_empty()
-                        && kind.chars().all(|c| matches!(c, 'i' | 'm' | 'p'))
+                        && kind.chars().all(|c| matches!(c, 'i' | 'm' | 'p' | 'v'))
                         && !name.is_empty()
                         && !name.contains(' ')
                 })
@@ -257,8 +262,8 @@ fn settle<'n>(
     )
 }
 
-/// The old names whose new names, or themselves, are in the error spans of
-/// the compile of `text`.
+/// The old names whose new names are in the error spans of the compile of
+/// `text`.
 fn blame(
     text: &str,
     spans: &[(usize, usize)],
@@ -282,8 +287,6 @@ fn blame(
             }
             if let Some(old) = old_of.get(token.text.as_str()) {
                 blamed.insert(old.to_string());
-            } else if mapping.contains_key(&token.text) {
-                blamed.insert(token.text);
             }
         }
     }
@@ -541,6 +544,30 @@ pub fn kept(tokens: &[Token], std: &StdNames) -> BTreeSet<String> {
         .map(|at| tokens[at + 2].text.as_str())
         .collect();
 
+    // The macros that turn names into text: those of std, and those of the
+    // bundle that call one of them, until nothing changes.
+    let mut text_macros: BTreeSet<&str> = TEXT_MACROS.iter().copied().collect();
+    loop {
+        let before = text_macros.len();
+        for at in 0..tokens.len() {
+            if text(at) != Some("macro_rules") || text(at + 1) != Some("!") || !is_ident(at + 2) {
+                continue;
+            }
+            let Some(end) = group_end(tokens, at + 3) else {
+                continue;
+            };
+            let calls_text = (at + 3..end).any(|i| {
+                text(i).is_some_and(|n| text_macros.contains(n)) && text(i + 1) == Some("!")
+            });
+            if calls_text {
+                text_macros.insert(tokens[at + 2].text.as_str());
+            }
+        }
+        if text_macros.len() == before {
+            break;
+        }
+    }
+
     for (at, token) in tokens.iter().enumerate() {
         let name = token.text.as_str();
         match token.kind {
@@ -560,7 +587,7 @@ pub fn kept(tokens: &[Token], std: &StdNames) -> BTreeSet<String> {
                 {
                     kept.insert(name.to_string());
                 }
-                if TEXT_MACROS.contains(&name) && text(at + 1) == Some("!") {
+                if text_macros.contains(name) && text(at + 1) == Some("!") {
                     if let Some(end) = group_end(tokens, at + 2) {
                         keep(&mut kept, at + 2, end);
                     }
@@ -609,6 +636,39 @@ pub fn kept(tokens: &[Token], std: &StdNames) -> BTreeSet<String> {
         }
         if std_paths.len() == before {
             break;
+        }
+    }
+
+    // A glob import from std (`use std::cmp::Ordering::*`, `use io::*`
+    // after `use std::io`) brings names that the bundle then uses bare: a
+    // renamed variant in a pattern would become a binding that matches
+    // anything. With one, every name that std defines is kept.
+    let mut glob_from_std = false;
+    for at in 0..tokens.len() {
+        if text(at) != Some("use") {
+            continue;
+        }
+        let first = if text(at + 1) == Some("::") {
+            at + 2
+        } else {
+            at + 1
+        };
+        let mut end = first;
+        while end < tokens.len() && text(end) != Some(";") {
+            end += 1;
+        }
+        let from_std = text(first).is_some_and(|name| {
+            std_paths.contains(name) || std.prelude(name) || OTHERS.contains(&name)
+        });
+        if from_std && (first..end).any(|i| text(i) == Some("*")) {
+            glob_from_std = true;
+        }
+    }
+    if glob_from_std {
+        for token in tokens {
+            if token.kind == Kind::Ident && std.has(&token.text) {
+                kept.insert(token.text.clone());
+            }
         }
     }
     kept.extend(std_paths);
