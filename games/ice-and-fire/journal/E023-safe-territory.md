@@ -14,7 +14,8 @@ decision: pending
 cg_rank: not reported
 ---
 
-Chosen by the owner on 2026-10-29 after E024 ("E023, safe territory"),
+Chosen by the owner on 2026-10-29 after E024 ("E023, safe territory";
+E021 and E024, both dropped, are on their own branches until merged),
 from the study of towers and threats
 ([research/towers-and-threats.md](../research/towers-and-threats.md)),
 which proposed the weight (0.75 of a cell's value) without measuring it.
@@ -30,9 +31,12 @@ over one or two more incomes waits for this one's result.
 active cells that the enemy can take with chains of trainings costing at
 most the enemy's gold plus its income (the gold it has at its next turn,
 as the pressure term counts it; unit moves left out, as there). The
-evaluation adds `7 × (enemy's threatened − own threatened) / 4`. A cell
-is worth 7 to its side in the shared evaluation (4 as an active cell, 3
-for its income of 1), so a threatened cell counts 0.75 of that.
+evaluation adds `7 × (enemy's threatened − own threatened) / 4`, in
+integers, rounded toward zero (a difference of 1 cell scores 1, of 2
+scores 3). A cell is worth 7 to its side in the shared evaluation (4 as an
+active cell, 3 for its income of 1), so a threatened cell counts about 0.75
+of that. The code's doc comment says "7/4 each"; it stays as frozen in the
+release.
 
 The shared tactics gain `chain::reach_within`, the cells a side's chains
 reach within a budget, on the same bitboard search as `cost_to` (both now
@@ -88,9 +92,9 @@ only candidate"): `ice-and-fire-v010`, frozen by `scripts/new-release.sh`
 
 - **Keeping territory out of the enemy's reach is worth about +50.**
   Over its 1,000 pairs, "reach" scored +52.9 against v009. It keeps more
-  gold unspent (35.5 against 23.7 a turn): a side's gold also costs the
-  enemy reach, so the bot banks rather than spends where spending leaves
-  cells exposed. It builds more towers (4.0 against 3.6) and mines, and a
+  gold unspent (35.5 against 23.7 a turn): a side's gold widens its reach
+  and so threatens more enemy cells, and spending it where that leaves
+  cells exposed scores worse. It builds more towers (4.0 against 3.6) and mines, and a
   few fewer level-2 units.
 - **The cut-offs add nothing.** Counting the cells a threatened joint cuts
   off scored 22 less and was 2 ms slower: the shape term (E010) already
