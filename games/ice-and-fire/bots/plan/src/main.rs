@@ -25,8 +25,9 @@
 //! the opponent's replies to the plan are added to the memory and the plan is
 //! searched again against them; when that teaches nothing new, the next climb
 //! may not start with the first action of a plan found so far (E014), until
-//! the time is up. The plan that scores best against the whole memory is
-//! played. Cuts are chains of up to 5 trainings (E014). The evaluation
+//! the time is up. The plan that scores best against the whole memory and
+//! its own replies (E027) is played; a plan whose replies the time cut is
+//! checked against them first, before the hard limit. Cuts are chains of up to 5 trainings (E014). The evaluation
 //! counts a side that cannot pay its upkeep as having lost its units, and a
 //! level-2 unit as worth 5 rather than its training cost of 20 (E020).
 //!
