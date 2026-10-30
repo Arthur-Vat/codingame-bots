@@ -44,8 +44,9 @@ the branch carries the entry alone): the shared tactics gain
 `eval::pressure_for` (the pressure term of a given cost), and the plan
 bot's `eval::over_cap` the term, with a test on a corridor where a tower
 next to the HQ raises the enemy's chain by 60 (over the cap by 50 when the
-enemy is 10 gold short of the old chain, by 0 when it is far). The
-minified bundle is 88,529 characters.
+enemy is 10 gold short of the old chain, by 0 when it is far). The minified
+bundle is 88,529 characters with minifier level 1 (#217); minifier
+level 2 (#218), merged later, makes it smaller.
 
 ## Screening
 
