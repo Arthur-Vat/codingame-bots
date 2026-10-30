@@ -32,10 +32,12 @@ evaluation likes. Now a border tower is offered only if, built, it
   threats the study of v009 found real: taken within 5 turns 81% of the
   time one turn away, 36% two turns away).
 
-Each candidate cell costs one clone, one tower and one flood; the median
+Each candidate cell costs one clone, one tower and one or two floods; the median
 answer did not change. A test checks the rule through the generator: on a
 corridor where blue can take red's last cell, the tower there is the one
-offered; with the sides far apart, none is.
+offered; with the sides far apart, none is; and where blue cannot take
+a red cell next turn but can pay its chain to red's HQ within two turns,
+only the tower next to the HQ is offered (the HQ guard).
 
 ## Screening
 

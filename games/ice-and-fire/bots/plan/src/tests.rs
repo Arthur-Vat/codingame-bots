@@ -600,5 +600,31 @@ fn towers_are_offered_only_where_they_guard_something() {
         "...........X",
         "...........X",
     ];
-    assert!(towers_offered(&position(rows, [50, 20], &[])).is_empty());
+    let state = position(rows, [50, 20], &[]);
+    assert_eq!(crate::eval::threatened(&state, 0), 0);
+    assert!(towers_offered(&state).is_empty());
+}
+
+#[test]
+fn a_tower_guards_the_hq_against_a_chain_affordable_within_two_turns() {
+    // E026's HQ guard: blue holds rows 8 to 11 (income 48, no gold). Its
+    // chain to red's HQ crosses 7 neutral cells: 80 gold, more than its 48
+    // at its next turn, so no red cell is threatened, but within the 96 of
+    // two turns. A tower at (1, 0) protects the HQ, which then costs 30:
+    // the chain rises to 100 and the tower is offered. One at (2, 0)
+    // protects (1, 0) only and leaves the chain as it was.
+    let red = "OOO.........";
+    let free = "............";
+    let blue = "XXXXXXXXXXXX";
+    let rows = [
+        red, free, free, free, free, free, free, free, blue, blue, blue, blue,
+    ];
+    let state = position(rows, [50, 0], &[]);
+    assert_eq!(state.income(1), 48);
+    assert_eq!(crate::eval::threatened(&state, 0), 0);
+    assert_eq!(
+        ice_and_fire_tactics::chain::cost_to(&state, 1, false, ice_and_fire_engine::HQ[0]),
+        80
+    );
+    assert_eq!(towers_offered(&state), vec![(1, 0)]);
 }
