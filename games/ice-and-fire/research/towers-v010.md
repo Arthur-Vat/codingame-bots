@@ -37,10 +37,10 @@ ice-and-fire-review screening --jobs 4 records/*.json > screening.md
 What it says:
 
 1. **E023 did what it was meant to.** A large cut in reach is made less often (35% against 40%), towers are cut off or lost less often, and both sides bank more gold, which also widens their own reach.
-2. **The towers are not better placed.** v010 builds about 9% more towers, as many of them against far threats, and more that never block a training or a unit (35%). Their raise of the enemy's chain and their gain in the pressure term are the same as v009's (median 20 and 20).
+2. **The towers are not better placed.** v010 builds about 9% more towers, as large a share of them against far threats, and more that never block a training or a unit (35%). Their raise of the enemy's chain is the same as v009's (median 20); their gain in the pressure term has a median of 20 against 10, with close means (14.5 against 14.1).
 3. **The threats to the HQ decay as before** (0.395 a turn against 0.420): E021's reading still holds.
 4. **The timeouts are this machine's:** the SPRT of v010 on pull request #219, on GitHub's runners, had none in 696 games, and the screenings had 6 in 2,000.
 
 ## For the next tower experiment
 
-Changing what a tower is worth lost four times (E020's towers +15, E021, E022's control, E024). The owner chose next to change where towers go: offer towers on the cells where they most shrink the enemy's reach into our territory, the measure v010's evaluation already scores, aiming at the third of the towers that block nothing.
+Changing what a tower is worth lost or tied four times: E020's towers +15, and E021, E022's control and E024, whose entries are on the branches `claude/ice-and-fire-e021-discounted-pressure` and `claude/ice-and-fire-e024-tower-cap` until merged. The owner chose next to change where towers go: offer towers on the cells where they most shrink the enemy's reach into our territory, the measure v010's evaluation already scores, aiming at the third of the towers that block nothing.
