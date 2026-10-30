@@ -1,14 +1,19 @@
-//! Minifies the bundle of every bot of the workspace at each level and
-//! checks them (ADR 0045): level 1 reads back as the same tokens as the
-//! readable bundle and is smaller; level 2 compiles with rustc 1.90.0 and
-//! is no larger than level 1; level 3 compiles, is no larger than level 2
-//! and has its tokens with only names changed, each old name to one new
-//! name.
+//! Minifies the bundle of every bot of the workspace and checks each stage
+//! of the minifier (ADR 0045, ADR 0046): the pruned code compiles with rustc
+//! 1.90.0 and has no more tokens than the joined code; the renamed code
+//! compiles and has the pruned code's tokens with only names, `self`, the
+//! aliased types and the digit separators of numbers changed, each old name
+//! to one new name (except at the places kept), plus the declarations of
+//! `self`'s name and of the aliases; the minified code reads back as the
+//! renamed code's tokens, is what the bundler writes, and is smaller than
+//! the readable bundle.
 
 use std::collections::BTreeMap;
 
-use cg_bundler::minify::{first_difference, tokens, Kind};
-use cg_bundler::{bundle, bundle_package, bundle_report, cg_size, plan, prune, Minify, Options};
+use cg_bundler::minify::{first_difference, tokens, Kind, Token};
+use cg_bundler::rename::{self, StdNames, ALIASED};
+use cg_bundler::{bundle, bundle_package, bundle_report, cg_size, joined, minify, plan, prune};
+use cg_bundler::{Options, SIZE_LIMIT};
 
 /// The package names of the bots in `games/*/bots/*`.
 fn bot_packages() -> Vec<String> {
@@ -36,7 +41,7 @@ fn bot_packages() -> Vec<String> {
 }
 
 #[test]
-fn every_bot_minifies_at_each_level() {
+fn every_bot_minifies_and_each_stage_checks() {
     let packages = bot_packages();
     assert!(
         packages.iter().any(|p| p == "uttt-bot-random")
@@ -59,101 +64,154 @@ fn every_bot_minifies_at_each_level() {
     });
 }
 
-/// The checks of `every_bot_minifies_at_each_level` for one bot.
+/// The checks of `every_bot_minifies_and_each_stage_checks` for one bot.
 fn check_bot(package: &str, rustc: &prune::Rustc) {
-    let options = |minify| Options {
-        format: true,
-        minify,
-    };
     let plan = plan::plan(package, None).unwrap();
-    let readable = bundle(&plan, options(Minify::Off)).unwrap();
-    let level1 = bundle(&plan, options(Minify::Level1)).unwrap();
-    let (readable_tokens, level1_tokens) = (
-        tokens(&readable).unwrap_or_else(|err| panic!("{package}: {err}")),
-        tokens(&level1).unwrap_or_else(|err| panic!("{package}: {err}")),
+    let readable = bundle(
+        &plan,
+        Options {
+            format: true,
+            minify: false,
+        },
+    )
+    .unwrap();
+    let bundled = bundle_report(&plan, Options::default()).unwrap();
+    let joined = joined(&plan, Options::default()).unwrap();
+    assert!(
+        !joined.contains("allow(dead_code"),
+        "{package}: the minifier starts without the readable bundle's `allow`"
     );
+
+    // Unused items removed.
+    let (pruned, report) = prune::prune(&joined, rustc).unwrap();
+    assert_eq!(Some(&report), bundled.pruned.as_ref(), "{package}");
+    prune::check(&pruned, rustc).unwrap_or_else(|err| panic!("{package}: {err}"));
+    assert!(
+        tokens(&pruned).unwrap().len() <= tokens(&joined).unwrap().len(),
+        "{package}"
+    );
+
+    // Names, `self`, types and numbers shortened.
+    let (renamed, report) = rename::rename(&pruned, rustc).unwrap();
+    assert_eq!(Some(&report), bundled.renamed.as_ref(), "{package}");
+    prune::check(&renamed, rustc).unwrap_or_else(|err| panic!("{package}: {err}"));
+    check_renaming(package, &pruned, &renamed, &report);
+
+    // Only the whitespace Rust needs.
+    let minified = minify::minify(&renamed).unwrap();
     assert_eq!(
-        first_difference(&readable_tokens, &level1_tokens),
+        first_difference(&tokens(&renamed).unwrap(), &tokens(&minified).unwrap()),
         None,
         "{package}"
     );
+    let (header, code) = bundled.code.split_once('\n').unwrap();
+    assert_eq!(
+        header,
+        format!("// Bundled by cg-bundler from the `{package}` package. Minified (ADR 0045).")
+    );
+    assert_eq!(code, minified, "{package}");
     assert!(
-        cg_size(&level1) < cg_size(&readable),
+        cg_size(&bundled.code) < cg_size(&readable),
         "{package}: {} is not smaller than {}",
-        cg_size(&level1),
+        cg_size(&bundled.code),
         cg_size(&readable)
     );
+    assert!(cg_size(&bundled.code) < SIZE_LIMIT, "{package}");
+}
 
-    let level2 = bundle_report(&plan, options(Minify::Level2)).unwrap();
-    let report = level2.pruned.expect("level 2 reports what it removed");
-    prune::check(&level2.code, rustc).unwrap_or_else(|err| panic!("{package}: {err}"));
-    assert!(
-        cg_size(&level2.code) <= cg_size(&level1),
-        "{package}: level 2 has {} characters, level 1 {}",
-        cg_size(&level2.code),
-        cg_size(&level1)
-    );
-    // Level 2 only removes tokens, and the result is minified.
-    let level2_tokens = tokens(&level2.code).unwrap();
-    assert!(level2_tokens.len() <= level1_tokens.len(), "{package}");
-    if report.items + report.imports == 0 {
-        assert_eq!(level2.code, level1, "{package}");
-    }
-    assert_eq!(
-        level2.code.lines().next().unwrap(),
-        level1.lines().next().unwrap(),
-        "{package}"
-    );
-
-    let level3 = bundle_report(&plan, options(Minify::Level3)).unwrap();
-    assert_eq!(
-        level3.pruned,
-        Some(report),
-        "{package}: level 3 prunes as level 2 does"
-    );
-    let renamed = level3.renamed.expect("level 3 reports what it renamed");
-    prune::check(&level3.code, rustc).unwrap_or_else(|err| panic!("{package}: {err}"));
-    assert!(
-        cg_size(&level3.code) <= cg_size(&level2.code),
-        "{package}: level 3 has {} characters, level 2 {}",
-        cg_size(&level3.code),
-        cg_size(&level2.code)
-    );
-    // Only names change, each old name always to the same new one, and no
-    // two old names to the same.
-    let level3_tokens = tokens(&level3.code).unwrap();
-    assert_eq!(level3_tokens.len(), level2_tokens.len(), "{package}");
+/// Checks that `renamed` is `pruned` with only the changes that `report`
+/// names: each old name to one new name and no two old names to one, except
+/// at the places [`rename::kept`] keeps; `self` to `report.self_name`, after
+/// a declaration of that name in each method that uses it; each aliased type
+/// to its alias, after the alias's declarations; numbers without their digit
+/// separators.
+fn check_renaming(package: &str, pruned: &str, renamed: &str, report: &rename::Report) {
+    let (old, new) = (tokens(pruned).unwrap(), tokens(renamed).unwrap());
+    let kept = rename::kept(&old, StdNames::get());
+    let self_name = report.self_name.as_deref();
+    let aliases: BTreeMap<&str, &str> = report
+        .aliases
+        .iter()
+        .map(|(ty, alias, _)| (alias.as_str(), ty.as_str()))
+        .collect();
+    let text = |tokens: &[Token], at: usize| tokens.get(at).map(|t| t.text.clone());
+    let starts_with = |at: usize, expected: &str| {
+        let expected = tokens(expected).unwrap();
+        (0..expected.len())
+            .all(|k| new.get(at + k).is_some_and(|t| t.same(&expected[k])))
+            .then_some(expected.len())
+    };
+    let (mut i, mut j) = (0, 0);
+    let (mut declared_selves, mut declared_aliases) = (0, 0);
     let (mut new_of, mut old_of) = (BTreeMap::new(), BTreeMap::new());
-    for (old, new) in level2_tokens.iter().zip(&level3_tokens) {
-        assert_eq!(
-            old.kind, new.kind,
-            "{package}: `{}` became `{}`",
-            old.text, new.text
-        );
-        if old.kind != Kind::Ident {
-            assert_eq!(old.text, new.text, "{package}");
-            continue;
+    while j < new.len() {
+        if let Some(name) = self_name {
+            if let Some(length) = [false, true]
+                .into_iter()
+                .find_map(|mutable| starts_with(j, &rename::self_declaration(name, mutable)))
+            {
+                declared_selves += 1;
+                j += length;
+                continue;
+            }
         }
-        let new_name = new_of.entry(old.text.as_str()).or_insert(new.text.as_str());
+        if text(&new, j).as_deref() == Some("type") {
+            let alias = text(&new, j + 1).unwrap_or_default();
+            if let Some(ty) = aliases.get(alias.as_str()) {
+                let generic = ALIASED.iter().any(|&(t, generic)| t == *ty && generic);
+                let length = starts_with(j, &rename::alias_declaration(&alias, ty, generic))
+                    .unwrap_or_else(|| panic!("{package}: a wrong declaration of {alias}"));
+                declared_aliases += 1;
+                j += length;
+                continue;
+            }
+        }
+        let (o, n) = (&old[i], &new[j]);
         assert_eq!(
-            *new_name, new.text,
-            "{package}: `{}` has two new names",
-            old.text
+            o.kind, n.kind,
+            "{package}: `{}` became `{}`",
+            o.text, n.text
         );
-        let old_name = old_of.entry(new.text.as_str()).or_insert(old.text.as_str());
-        assert_eq!(
-            *old_name, old.text,
-            "{package}: `{}` is the new name of two",
-            new.text
-        );
+        match o.kind {
+            Kind::Number => assert_eq!(o.text.replace('_', ""), n.text, "{package}"),
+            Kind::Ident if Some(n.text.as_str()) == self_name => {
+                assert_eq!(
+                    o.text, "self",
+                    "{package}: `{}` became `{}`",
+                    o.text, n.text
+                )
+            }
+            Kind::Ident if aliases.contains_key(n.text.as_str()) => {
+                assert_eq!(o.text, aliases[n.text.as_str()], "{package}")
+            }
+            Kind::Ident if kept.positions.contains(&i) => {
+                assert_eq!(o.text, n.text, "{package}: a kept place changed")
+            }
+            Kind::Ident => {
+                let new_name = new_of.entry(o.text.clone()).or_insert(n.text.clone());
+                assert_eq!(
+                    *new_name, n.text,
+                    "{package}: `{}` has two new names",
+                    o.text
+                );
+                let old_name = old_of.entry(n.text.clone()).or_insert(o.text.clone());
+                assert_eq!(
+                    *old_name, o.text,
+                    "{package}: `{}` is the new name of two",
+                    n.text
+                );
+            }
+            _ => assert_eq!(o.text, n.text, "{package}"),
+        }
+        i += 1;
+        j += 1;
     }
+    assert_eq!(i, old.len(), "{package}: tokens are missing");
+    assert_eq!(declared_selves, report.methods, "{package}");
+    let declarations: usize = report.aliases.iter().map(|(_, _, n)| n).sum();
+    assert_eq!(declared_aliases, declarations, "{package}");
     let changed = new_of.iter().filter(|(old, new)| old != new).count();
-    assert_eq!(changed, renamed.renamed, "{package}");
-    assert_eq!(
-        level3.code.lines().next().unwrap(),
-        level1.lines().next().unwrap(),
-        "{package}"
-    );
+    assert_eq!(changed, report.renamed, "{package}");
 }
 
 #[test]

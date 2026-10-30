@@ -1,5 +1,5 @@
 # The names that the standard library of Rust 1.90.0 (core, alloc, std) defines, for
-# minifier level 3 (ADR 0045). Written by
+# the minifier's renaming (ADR 0046). Written by
 # `cargo run -p cg-bundler --example std-names`; do not edit.
 # Each line is the kinds of a name, then the name. Kinds: `m`, a pub fn, const,
 # type or static, an item of a trait or trait impl, or a pub field, which `.name`

@@ -2,21 +2,21 @@
 //! CodinGame accepts.
 //!
 //! The bundler works on text. By default it then minifies the result to
-//! save room under CodinGame's size limit (ADR 0016, ADR 0045). Level 3,
-//! the default, first removes the items that rustc 1.90.0 reports as never
-//! used (module [`prune`], level 2), then gives the names the bundle
-//! defines the shortest names not otherwise used (module [`rename`]);
-//! `--minify-level 2` stops after the removals and `--minify-level 1`
-//! skips both. Then it reads the code token by token and writes back only
-//! the whitespace Rust needs, without comments (module [`minify`]).
-//! `--keep-comments` gives the readable bundle instead, with comments and
-//! rustfmt's layout, which a release keeps beside its minified file (ADR
-//! 0045). All of them come from the same expanded and rewritten code: the
-//! readable bundle and level 1 have the same tokens, level 2 has those left
-//! after its removals, and level 3 has those with other names. Levels 2
-//! and 3 run rustc 1.90.0 whatever the session's compiler, found with
-//! rustup or named by `CG_RUSTC`, and fail without it. The bundler relies
-//! on these conventions, which keep the text transformations safe:
+//! save room under CodinGame's size limit (ADR 0016, ADR 0045, ADR 0046),
+//! in stages that are each checked: it removes the items that rustc 1.90.0
+//! reports as never used (module [`prune`]), gives the names the bundle
+//! defines the shortest names not otherwise used and writes `self` and some
+//! types shorter (module [`rename`]), then reads the code token by token
+//! and writes back only the whitespace Rust needs, without comments (module
+//! [`minify`]); the result is compiled once more. The minifier runs rustc
+//! 1.90.0 whatever the session's compiler, found with rustup or named by
+//! `CG_RUSTC`, and fails without it. `--keep-comments` gives the readable
+//! bundle instead, with comments and rustfmt's layout, which a release keeps
+//! beside its minified file (ADR 0045); it needs no rustc 1.90.0. Both come
+//! from the same expanded and rewritten code, but only the readable bundle
+//! puts `#[allow(dead_code, unused_imports)]` on the library modules. The
+//! bundler relies on these conventions, which keep the text transformations
+//! safe:
 //!
 //! - Modules live in files declared with `mod name;` on a line of their own
 //!   (optionally `pub` or `pub(...)`). `#[path]` attributes are not allowed.
@@ -66,35 +66,21 @@ pub fn cg_size(code: &str) -> usize {
     code.encode_utf16().count()
 }
 
-/// How much a bundle is minified (ADR 0045).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Minify {
-    /// Not at all: the bundle keeps its comments and layout.
-    Off,
-    /// Level 1: no comments, only the whitespace Rust needs.
-    Level1,
-    /// Level 2: level 1, after removing the items rustc reports as never
-    /// used (module [`prune`]). It needs rustc 1.90.0.
-    Level2,
-    /// Level 3: level 2, with the names the bundle defines made as short as
-    /// can be (module [`rename`]). It needs rustc 1.90.0.
-    Level3,
-}
-
 /// How a bundle is written.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Options {
     /// Formats the code with `rustfmt`, which also checks that it parses.
     pub format: bool,
-    /// How far the code is minified (ADR 0045).
-    pub minify: Minify,
+    /// Minifies the bundle, which needs rustc 1.90.0; `false` gives the
+    /// readable bundle, with its comments and layout (ADR 0045, ADR 0046).
+    pub minify: bool,
 }
 
 impl Default for Options {
     fn default() -> Self {
         Self {
             format: true,
-            minify: Minify::Level3,
+            minify: true,
         }
     }
 }
@@ -103,9 +89,9 @@ impl Default for Options {
 #[derive(Clone, Debug)]
 pub struct Bundled {
     pub code: String,
-    /// What level 2 removed, when it ran.
+    /// What the minifier removed, when it ran.
     pub pruned: Option<prune::Report>,
-    /// What level 3 renamed, when it ran.
+    /// What the minifier renamed and shortened, when it ran.
     pub renamed: Option<rename::Report>,
 }
 
@@ -115,59 +101,56 @@ pub fn bundle(plan: &Plan, options: Options) -> Result<String, String> {
     bundle_report(plan, options).map(|bundled| bundled.code)
 }
 
-/// As [`bundle`], with what levels 2 and 3 did.
-pub fn bundle_report(plan: &Plan, options: Options) -> Result<Bundled, String> {
+/// The code of `plan` joined into one file, before the minifier and without
+/// the header: what the readable bundle holds after its header, and, without
+/// the `allow` on library modules, what the minifier starts from.
+pub fn joined(plan: &Plan, options: Options) -> Result<String, String> {
     let libraries: Vec<String> = plan.libraries.iter().map(|lib| lib.name.clone()).collect();
-    // Before bundling, so that a missing compiler fails early.
-    let rustc = match options.minify {
-        Minify::Level2 | Minify::Level3 => Some(prune::Rustc::find()?),
-        _ => None,
-    };
-
     let bot = expand::expand_crate(&plan.bot.root)?;
     let mut code = rewrite::rewrite(&bot, None, &libraries);
-
     for library in &plan.libraries {
         let source = expand::expand_crate(&library.root)?;
-        // A bot rarely uses all of a library.
-        code.push_str("\n#[allow(dead_code, unused_imports)]\n");
+        // A bot rarely uses all of a library. The minifier removes what it
+        // does not use, so its output needs no `allow`.
+        code.push('\n');
+        if !options.minify {
+            code.push_str("#[allow(dead_code, unused_imports)]\n");
+        }
         code.push_str(&format!("mod {} {{\n", library.name));
         code.push_str(&rewrite::rewrite(&source, Some(&library.name), &libraries));
         code.push_str("}\n");
     }
-
     if options.format {
         code = rustfmt(&code)?;
     }
-    if options.minify != Minify::Off {
+    Ok(code)
+}
+
+/// As [`bundle`], with what the minifier did.
+pub fn bundle_report(plan: &Plan, options: Options) -> Result<Bundled, String> {
+    // Before bundling, so that a missing compiler fails early.
+    let rustc = match options.minify {
+        true => Some(prune::Rustc::find()?),
+        false => None,
+    };
+    let code = joined(plan, options)?;
+
+    if let Some(rustc) = &rustc {
         let header = format!(
             "// Bundled by cg-bundler from the `{}` package. Minified (ADR 0045).\n",
             plan.package
         );
-        let mut pruned = None;
-        if let Some(rustc) = &rustc {
-            let (text, report) = prune::prune(&code, rustc)
-                .map_err(|err| format!("cannot remove unused items (level 2): {err}"))?;
-            code = text;
-            pruned = Some(report);
-        }
-        let mut renamed = None;
-        if let (Some(rustc), Minify::Level3) = (&rustc, options.minify) {
-            let (text, report) = rename::rename(&code, rustc)
-                .map_err(|err| format!("cannot rename (level 3): {err}"))?;
-            code = text;
-            renamed = Some(report);
-        }
+        let (code, pruned) = prune::prune(&code, rustc)
+            .map_err(|err| format!("cannot remove unused items: {err}"))?;
+        let (code, renamed) =
+            rename::rename(&code, rustc).map_err(|err| format!("cannot rename: {err}"))?;
         let code =
             minify::minify(&code).map_err(|err| format!("cannot minify the bundle: {err}"))?;
-        if let Some(rustc) = &rustc {
-            prune::check(&code, rustc)
-                .map_err(|err| format!("the minified bundle (levels 2 and 3) is wrong: {err}"))?;
-        }
+        prune::check(&code, rustc).map_err(|err| format!("the minified bundle is wrong: {err}"))?;
         return Ok(Bundled {
             code: header + &code,
-            pruned,
-            renamed,
+            pruned: Some(pruned),
+            renamed: Some(renamed),
         });
     }
     let mut header = format!(
@@ -175,10 +158,11 @@ pub fn bundle_report(plan: &Plan, options: Options) -> Result<Bundled, String> {
          // change the sources in the repository and bundle again.\n",
         plan.package
     );
-    if !libraries.is_empty() {
+    if !plan.libraries.is_empty() {
+        let names: Vec<&str> = plan.libraries.iter().map(|lib| lib.name.as_str()).collect();
         header.push_str(&format!(
             "// Workspace crates included below: {}.\n",
-            libraries.join(", ")
+            names.join(", ")
         ));
     }
     header.push('\n');
@@ -227,7 +211,7 @@ pub fn bundle_package(
     bundle_package_report(package, manifest, options).map(|bundled| bundled.code)
 }
 
-/// As [`bundle_package`], with what levels 2 and 3 did.
+/// As [`bundle_package`], with what the minifier did.
 pub fn bundle_package_report(
     package: &str,
     manifest: Option<&Path>,

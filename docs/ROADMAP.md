@@ -224,6 +224,7 @@ Framework work that a game's plan needs but every game can use.
 - [x] Minifier level 1: only the whitespace Rust needs between tokens; the answers check of the two copies; the new release flow (`new-release.sh`, `check-releases.sh`, workflows, docs)
 - [x] Minifier level 2: items rustc reports as never used removed, until none is left
 - [x] Minifier level 3: names the bundle defines renamed to the shortest names not otherwise used
+- [x] One minifier with no levels ([ADR 0046](adr/0046-one-minifier.md)): CJK names after the single letters, a short name for `self`, per-module type aliases, std paths' middle segments kept only there, no digit separators, no `allow` in the minified output; the studio uses the readable bundle; `cg-tokens` removed
 
 ## Risks
 
