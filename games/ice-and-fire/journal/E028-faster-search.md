@@ -1,7 +1,7 @@
 ---
 id: E028
 date: 2026-10-30
-pull_request: "#NN"
+pull_request: "#228"
 parent: ice-and-fire-v012
 hypothesis: v012's search answers alike when it is faster, and since its climbs stop at 36 ms in most middle-game turns, the same search done 1.3 times faster scores more plans in its time and beats v012 (candidate `ice-and-fire-v013`).
 change: Three changes that keep every answer at a fixed number of tries: the evaluation's shape term found by its own search with byte arrays and only the two numbers it uses, and kept by territory in a cache; the root's actions generated once a turn rather than once a climb; and a tower offered without copying the state where it cannot protect a cell the enemy can reach (unless the HQ guard may apply).
