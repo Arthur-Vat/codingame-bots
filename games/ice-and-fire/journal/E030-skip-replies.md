@@ -1,7 +1,7 @@
 ---
 id: E030
 date: 2026-10-30
-pull_request: "#NN"
+pull_request: "#230"
 parent: ice-and-fire-v014
 hypothesis: A plan whose score against the memory is already below the best score of a plan whose replies are known cannot become the best, since its own replies can only lower it; skipping its reply search (about a third of a turn goes to reply searches) leaves more time for climbs and beats v014.
 change: None released. Local screening only: the climbs return their plan's exact score against the memory; a plan below the best known (a plan's score with its own replies) gets no reply search (skip1), or only the cheap replies, its kill chain, cuts and bronze's greedy turn without the opponent's own climb (skip2).
