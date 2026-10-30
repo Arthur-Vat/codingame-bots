@@ -5,7 +5,7 @@ pull_request: "none yet"
 parent: ice-and-fire-v009
 hypothesis: In v009's games a cut the enemy could first afford with one more income was made within one turn about a quarter of the time; counting a cell the enemy can take at its next turn at 0.75 of a cell's value makes the search keep its territory out of reach and beats v009.
 change: The plan bot's evaluation takes 7/4 (a quarter of a cell's value of 7, 4 as a cell and 3 as its income) off a side's score for each of its active cells that the enemy's chains of trainings reach for the enemy's gold plus its income.
-release: not made yet (the owner chooses the candidate)
+release: ice-and-fire-v010
 sprt: pending
 elo: pending
 pairs: pending
@@ -77,6 +77,12 @@ in parentheses.
 Every bot's answers were at most 31.9 ms in 99% of turns; the slowest
 first answers were 636 to 690 ms. The candidate's timeouts, 6 in its
 2,000 games of "reach", are within the SPRT's 1%.
+
+## The candidate
+
+The owner chose it as the candidate on 2026-10-30 ("Go on with the reach
+only candidate"): `ice-and-fire-v010`, frozen by `scripts/new-release.sh`
+(76,652 characters, the same answers as its readable copy in 4 games).
 
 ## What was learned
 
