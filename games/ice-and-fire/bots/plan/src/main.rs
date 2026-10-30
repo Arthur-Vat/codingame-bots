@@ -44,8 +44,8 @@
 //! output goes to stderr only.
 //!
 //! Built with `--features analysis`, the binary also measures a bank of
-//! positions (`bank`, see the `analysis` module); bots never carry that
-//! code.
+//! positions (`bank`) and times the search on one (`speed`), see the
+//! `analysis` module; bots never carry that code.
 
 mod actions;
 #[cfg(feature = "analysis")]

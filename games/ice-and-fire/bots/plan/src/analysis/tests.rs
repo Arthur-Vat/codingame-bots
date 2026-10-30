@@ -177,3 +177,132 @@ fn the_bank_measures_every_variant_and_reports_them() {
     assert!(text.contains("| no pressure |"), "{text}");
     assert!(text.contains("## The evaluation's cost"), "{text}");
 }
+
+/// Middle-game positions of random games, as a bank.
+fn speed_bank() -> Vec<Position> {
+    let states: Vec<State> = random_states(40..42)
+        .into_iter()
+        .filter(|s| s.game_turn() >= 12 && s.outcome().is_none())
+        .step_by(7)
+        .take(3)
+        .collect();
+    read_bank(&bank_text(&states)).expect("a bank")
+}
+
+#[test]
+fn speed_times_the_search_and_answers_alike_on_every_run() {
+    for position in &speed_bank() {
+        let a = speed::time(position, 40, 2).expect("timed");
+        let b = speed::time(position, 40, 1).expect("timed");
+        assert_eq!(a.answer, b.answer, "{}", position.name);
+        assert!(a.evals <= 40 + 1, "{} tries", a.evals);
+        assert!(a.micros > 0.0);
+        // The answer is the plan the bank's own search chooses.
+        let planned = plan(position, Variant::Full, 40).expect("a plan");
+        assert_eq!(a.answer, ice_and_fire_engine::answer_line(&planned));
+    }
+}
+
+#[test]
+fn speed_compares_answers_line_by_line() {
+    let got = vec!["a\t1\tWAIT".to_string(), "b\t2\tMOVE 1 2 3".to_string()];
+    assert!(speed::compare(&got, "a\t1\tWAIT\nb\t2\tMOVE 1 2 3\n").is_empty());
+    let differ = speed::compare(&got, "a\t1\tWAIT\nb\t2\tWAIT\nc\t3\tWAIT\n");
+    assert_eq!(differ.len(), 2, "{differ:?}");
+    assert!(differ[0].starts_with("line 2:"));
+    assert!(differ[1].contains("missing"));
+    assert_eq!(speed::compare(&got, "a\t1\tWAIT\n").len(), 1);
+}
+
+#[test]
+fn speed_writes_answers_that_it_then_expects() {
+    let dir = std::env::temp_dir().join(format!("plan-speed-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("a directory");
+    let states: Vec<State> = random_states(40..41)
+        .into_iter()
+        .filter(|s| s.game_turn() >= 12 && s.outcome().is_none())
+        .take(2)
+        .collect();
+    let bank = dir.join("bank.txt");
+    std::fs::write(&bank, bank_text(&states)).expect("written");
+    let answers = dir.join("answers.txt");
+    let arg = |s: &str| s.to_string();
+    let path = |p: &std::path::Path| p.display().to_string();
+    let (report, same) = speed::run(&[
+        arg("--positions"),
+        path(&bank),
+        arg("--tries"),
+        arg("30"),
+        arg("--reps"),
+        arg("1"),
+        arg("--answers"),
+        path(&answers),
+    ])
+    .expect("a run");
+    assert!(same);
+    assert!(report.contains("Tries a ms"), "{report}");
+    let (report, same) = speed::run(&[
+        arg("--positions"),
+        path(&bank),
+        arg("--tries"),
+        arg("30"),
+        arg("--reps"),
+        arg("1"),
+        arg("--expect"),
+        path(&answers),
+    ])
+    .expect("a run");
+    assert!(same, "{report}");
+    assert!(report.contains("as expected"), "{report}");
+    // The file names the tries: other tries never pass, even with the same
+    // answers.
+    assert!(std::fs::read_to_string(&answers)
+        .expect("read")
+        .starts_with("# tries 30\n"));
+    let (_, same) = speed::run(&[
+        arg("--positions"),
+        path(&bank),
+        arg("--tries"),
+        arg("31"),
+        arg("--reps"),
+        arg("1"),
+        arg("--expect"),
+        path(&answers),
+    ])
+    .expect("a run");
+    assert!(!same);
+    // A changed file never passes.
+    std::fs::write(&answers, "# tries 30\nx\t0\tWAIT\n").expect("written");
+    let (_, same) = speed::run(&[
+        arg("--positions"),
+        path(&bank),
+        arg("--tries"),
+        arg("30"),
+        arg("--expect"),
+        path(&answers),
+    ])
+    .expect("a run");
+    assert!(!same);
+    assert!(speed::run(&[arg("--tries"), arg("0"), arg("--positions"), path(&bank)]).is_err());
+    // An empty bank reads back as expected.
+    let empty = dir.join("empty.txt");
+    std::fs::write(&empty, "").expect("written");
+    let (report, same) = speed::run(&[
+        arg("--positions"),
+        path(&empty),
+        arg("--answers"),
+        path(&answers),
+    ])
+    .expect("a run");
+    assert!(same);
+    assert!(!report.contains("-0.0"), "{report}");
+    let (_, same) = speed::run(&[
+        arg("--positions"),
+        path(&empty),
+        arg("--expect"),
+        path(&answers),
+    ])
+    .expect("a run");
+    assert!(same);
+    let _ = std::fs::remove_dir_all(&dir);
+}

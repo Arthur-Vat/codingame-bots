@@ -5,7 +5,11 @@
 //! ```sh
 //! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
 //!   bank --positions FILE [--tries 400] [--reps 200] [--out FILE.tsv]
+//! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
+//!   speed --positions FILE [--tries 600] [--reps 3] [--answers OUT] [--expect FILE]
 //! ```
+//!
+//! `speed` (the [`speed`] module) times the search alone on a bank.
 //!
 //! `bank` reads a bank of positions (`ice-and-fire-review bank` writes one)
 //! and measures, on each, the evaluation's cost in microseconds and the plan
@@ -24,6 +28,8 @@
 //! end
 //! ```
 
+pub mod speed;
+
 #[cfg(test)]
 mod tests;
 
@@ -34,6 +40,7 @@ use std::hint::black_box;
 use std::time::Instant;
 
 use ice_and_fire_engine::{Command, League, State, HQ};
+use ice_and_fire_opening::planned::Planned;
 use ice_and_fire_tactics::chain::{cost_to, UNREACHABLE};
 use ice_and_fire_tactics::eval::evaluate;
 
@@ -179,10 +186,9 @@ fn towers_built(commands: &[Command]) -> usize {
         .count()
 }
 
-/// The plan the search chooses for the player to act in `position`, with
-/// `variant` and `tries` tries, the opening being over (as it is by the
-/// middle game).
-pub fn plan(position: &Position, variant: Variant, tries: u64) -> Result<Vec<Command>, String> {
+/// The state of `position` and an opening that is over for it, as it is
+/// by the middle game, so that the search plays.
+pub fn ready(position: &Position) -> Result<(State, Planned), String> {
     let state = position.state()?;
     // The opening ends for good once the player can pay a chain to an enemy
     // cell: shown a copy of the position with ample gold, it is over.
@@ -200,6 +206,14 @@ pub fn plan(position: &Position, variant: Variant, tries: u64) -> Result<Vec<Com
     if opening.playing(&rich) {
         return Err(format!("{}: the opening does not end", position.name));
     }
+    Ok((state, opening))
+}
+
+/// The plan the search chooses for the player to act in `position`, with
+/// `variant` and `tries` tries, the opening being over (as it is by the
+/// middle game).
+pub fn plan(position: &Position, variant: Variant, tries: u64) -> Result<Vec<Command>, String> {
+    let (state, mut opening) = ready(position)?;
     set_variant(variant);
     let limit = Limit {
         soft: None,
@@ -464,9 +478,21 @@ pub fn bank(args: &[String]) -> Result<String, String> {
 }
 
 /// Runs the analysis mode and exits if the first argument names it
-/// (`bank`); returns otherwise, and the bot plays.
+/// (`bank` or `speed`); returns otherwise, and the bot plays.
 pub fn main_if_asked() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("speed") {
+        match speed::run(&args[1..]) {
+            Ok((text, same)) => {
+                print!("{text}");
+                std::process::exit(if same { 0 } else { 1 });
+            }
+            Err(err) => {
+                eprintln!("plan speed: {err}");
+                std::process::exit(2);
+            }
+        }
+    }
     if args.first().map(String::as_str) != Some("bank") {
         return;
     }
