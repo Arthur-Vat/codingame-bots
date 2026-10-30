@@ -40,7 +40,8 @@ and `DECAY`), the analysis mode's "no pressure" variant removes the bot's
 term, and tests check the term's values (0, −58, −82, −93 at t = 0 to 3
 with V = 100, −100 for an unreachable HQ) and that `evaluate_with` changes
 only the pressure term. Each variant changes one constant. The minified
-bundle is 87,824 characters.
+bundle is 87,824 characters with minifier level 1 (#217); minifier
+level 2 (#218), merged later, makes it smaller.
 
 ## Screening
 
