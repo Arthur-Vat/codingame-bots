@@ -1,0 +1,23 @@
+[package]
+name = "ice-and-fire-bot-timing"
+description = "Timing probe for CodinGame: plays the greedy policy, holds each answer back a millisecond longer every turn until CodinGame's limit is found, and times a fixed workload."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ice-and-fire-engine.workspace = true
+ice-and-fire-policy.workspace = true
+ice-and-fire-tactics.workspace = true
+
+# Used by the tests only: games on the referee's maps.
+[dev-dependencies]
+cg-core.workspace = true
+ice-and-fire-referee.workspace = true
+
+[lints]
+workspace = true
