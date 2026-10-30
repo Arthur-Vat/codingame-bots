@@ -1,4 +1,7 @@
-//! Shrinks a bundle to the tokens Rust needs (ADR 0045, level 1).
+//! Shrinks a bundle to the tokens Rust needs (ADR 0045, level 1). Level 2
+//! ([`crate::prune`]) removes unused items first and hands its text to this
+//! module, which checks its own step as ever: the output has the tokens of
+//! what it was given.
 //!
 //! The text is lexed ([`tokens`]) and written again with only the
 //! whitespace that keeps neighbouring tokens apart. Comments go, doc

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Bundles every bot into one paste-ready file: target/cg/<game>-<bot>.rs.
 # With GAME, bundles only the bots of games/GAME/bots/; an unknown GAME exits 2.
+# The bundler removes unused items with rustc 1.90.0 (ADR 0045, level 2): it
+# needs `rustup toolchain install 1.90.0`, or CG_RUSTC naming that rustc.
 #
 # Usage: scripts/bundle-bots.sh [GAME]
 set -euo pipefail

@@ -11,6 +11,9 @@
 # It checks both with scripts/cg-check.sh and plays them against each other
 # (scripts/check-minified.sh): the same answers in every game.
 #
+# The minified file has the unused items removed (level 2), which needs rustc
+# 1.90.0: `rustup toolchain install 1.90.0`, or CG_RUSTC naming that rustc.
+#
 # Usage: scripts/new-release.sh GAME BOT
 #
 # BOT is a folder of games/<game>/bots. Release files and their readable
