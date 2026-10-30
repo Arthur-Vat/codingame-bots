@@ -81,7 +81,6 @@ pub fn weakness_of(active: Bits, root: usize) -> i64 {
         active: Bits,
         disc: [u8; CELLS],
         low: [u8; CELLS],
-        size: [u8; CELLS],
         time: u8,
         joints: i64,
         most: i64,
@@ -106,7 +105,6 @@ pub fn weakness_of(active: Bits, root: usize) -> i64 {
             }
         }
         d.low[v] = low;
-        d.size[v] = size;
         if cut > 0 && d.disc[v] > 1 {
             d.joints += 1;
             d.most = d.most.max(i64::from(cut));
@@ -120,7 +118,6 @@ pub fn weakness_of(active: Bits, root: usize) -> i64 {
         active,
         disc: [0; CELLS],
         low: [0; CELLS],
-        size: [0; CELLS],
         time: 0,
         joints: 0,
         most: 0,

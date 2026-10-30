@@ -23,6 +23,10 @@
 //! root's other actions in turn, the best gain first (E029): an action that
 //! does not pay alone can open a plan that does.
 //!
+//! A plan whose score against the memory is already below the best score
+//! of a plan whose replies are known gets no reply search (E030), since
+//! its own replies could only lower it further: the time goes to climbs.
+//!
 //! Each plan keeps the opponent's replies found for it (E027): the shared
 //! memory holds only the most damaging replies over all plans, so a plan's
 //! own worst reply could leave it. A plan's final score is the worst over the
@@ -90,7 +94,13 @@ pub struct Thought {
     /// Whether the climbs ran out of first actions and were then forced to
     /// start with each of the others (E029).
     pub forced: usize,
+    /// Plans that got no reply search, being below the best (E030).
+    pub skipped: usize,
 }
+
+/// How plans that cannot become the best get their replies (E030): 0 as
+/// any other, 1 none, 2 the cheap ones only (no climb of the opponent).
+const SKIP: u8 = 1;
 
 /// Whether the plan played must have had its own replies searched (E027).
 const VERIFY: bool = true;
@@ -112,6 +122,8 @@ struct Plan {
     first: Option<u64>,
     /// The opponent's replies to this plan, once searched (E027).
     own: Option<Vec<Reply>>,
+    /// Its score against the memory as the climb ended (exact).
+    score: i64,
 }
 
 /// The gain an action had when last tried, by [`key`].
@@ -338,13 +350,14 @@ impl Search {
             end: cur,
             first,
             own: None,
+            score: cur_score,
         }
     }
 
     /// The replies of the opponent to the plan that ends in `end`: its
     /// lethal chain, its best cuts, bronze's greedy turn and its own plan
     /// (one climb), on the state after our turn ends.
-    fn replies(&self, end: &State) -> Vec<Vec<Command>> {
+    fn replies(&self, end: &State, climb: bool) -> Vec<Vec<Command>> {
         let mut next = end.clone();
         next.end_turn();
         let mut out = Vec::new();
@@ -362,6 +375,10 @@ impl Search {
         let mut greedy = Vec::new();
         greedy_turn(&next, &mut greedy);
         out.push(greedy);
+        if !climb {
+            out.retain(|commands| !commands.is_empty());
+            return out;
+        }
         // The opponent's own plan (E019): a climb from its seat, with moves,
         // trainings and cuts, scored by the evaluation from its side.
         let mut theirs = Search {
@@ -374,14 +391,19 @@ impl Search {
             hints: Gains::default(),
             root_actions: None,
         };
-        out.push(theirs.climb(&next, &[], &[], true).commands);
+        out.push(theirs.climb(&next, &[], &[], false).commands);
         out.retain(|commands| !commands.is_empty());
         out
     }
 
     /// The replies to the plan that ends in `end`, each with its damage.
     fn answers(&self, end: &State) -> Vec<Reply> {
-        self.replies(end)
+        self.answers_with(end, true)
+    }
+
+    /// [`Search::answers`], with or without the opponent's own climb.
+    fn answers_with(&self, end: &State, climb: bool) -> Vec<Reply> {
+        self.replies(end, climb)
             .into_iter()
             .map(|commands| {
                 let damage = eval(&after_reply(end, &commands), self.me);
@@ -406,6 +428,7 @@ impl Search {
             end: rest.end,
             first: Some(key(action.commands())),
             own: None,
+            score: rest.score,
         })
     }
 
@@ -475,6 +498,8 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
     // Set when no first action left improves the plan (E029).
     let mut exhausted = false;
     let mut forced: Vec<Action> = Vec::new();
+    // The best score of a plan whose replies are known (E030).
+    let mut best_known = i64::MIN;
     while thought.climbs < MAX_CLIMBS && (plans.is_empty() || !search.spent()) {
         let plan = if exhausted {
             let Some(action) = forced.pop() else {
@@ -495,10 +520,20 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
         let stop = search.spent();
         let mut plan = plan;
         let mut more = false;
-        if !stop && !same {
-            let found = search.answers(&plan.end);
+        // E030: a plan already below the best known score cannot become
+        // the best, so it gets no reply search (or only the cheap replies).
+        let behind = SKIP > 0 && plan.score < best_known;
+        if !stop && !same && !(behind && SKIP == 1) {
+            let found = search.answers_with(&plan.end, !behind);
             more = remember(&found, &mut memory);
+            if !behind {
+                let own = search.rate(&plan.end, &found, i64::MIN);
+                best_known = best_known.max(plan.score.min(own));
+            }
             plan.own = Some(found);
+        }
+        if behind {
+            thought.skipped += 1;
         }
         if !same {
             plans.push(plan);
@@ -526,7 +561,7 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
                     };
                     // Stable, so that ties keep the generator's order; the
                     // best gain last, since the climbs pop from the end.
-                    forced.sort_by_key(|a| gain(a));
+                    forced.sort_by_key(gain);
                 }
             }
         }
