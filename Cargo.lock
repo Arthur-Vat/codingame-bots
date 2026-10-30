@@ -259,8 +259,10 @@ dependencies = [
 name = "ice-and-fire-bot-timing"
 version = "0.0.0"
 dependencies = [
+ "cg-core",
  "ice-and-fire-engine",
  "ice-and-fire-policy",
+ "ice-and-fire-referee",
  "ice-and-fire-tactics",
 ]
 
