@@ -2,17 +2,20 @@
 //! CodinGame accepts.
 //!
 //! The bundler works on text. By default it then minifies the result to
-//! save room under CodinGame's size limit (ADR 0016, ADR 0045). Level 2,
+//! save room under CodinGame's size limit (ADR 0016, ADR 0045). Level 3,
 //! the default, first removes the items that rustc 1.90.0 reports as never
-//! used (module [`prune`]); level 1 (`--minify-level 1`) skips that. Then
-//! it reads the code token by token and writes back only the whitespace
-//! Rust needs, without comments (module [`minify`]). `--keep-comments`
-//! gives the readable bundle instead, with comments and rustfmt's layout,
-//! which a release keeps beside its minified file (ADR 0045). All three
-//! come from the same expanded and rewritten code: the readable bundle and
-//! level 1 have the same tokens, level 2 has those left after its removals.
-//! Level 2 runs rustc 1.90.0 whatever the session's compiler, found with
-//! rustup or named by `CG_RUSTC`, and fails without it. The bundler relies
+//! used (module [`prune`], level 2), then gives the names the bundle
+//! defines the shortest names not otherwise used (module [`rename`]);
+//! `--minify-level 2` stops after the removals and `--minify-level 1`
+//! skips both. Then it reads the code token by token and writes back only
+//! the whitespace Rust needs, without comments (module [`minify`]).
+//! `--keep-comments` gives the readable bundle instead, with comments and
+//! rustfmt's layout, which a release keeps beside its minified file (ADR
+//! 0045). All of them come from the same expanded and rewritten code: the
+//! readable bundle and level 1 have the same tokens, level 2 has those left
+//! after its removals, and level 3 has those with other names. Levels 2
+//! and 3 run rustc 1.90.0 whatever the session's compiler, found with
+//! rustup or named by `CG_RUSTC`, and fail without it. The bundler relies
 //! on these conventions, which keep the text transformations safe:
 //!
 //! - Modules live in files declared with `mod name;` on a line of their own
@@ -44,6 +47,7 @@ pub mod expand;
 pub mod minify;
 pub mod plan;
 pub mod prune;
+pub mod rename;
 pub mod rewrite;
 
 use std::io::Write;
@@ -72,6 +76,9 @@ pub enum Minify {
     /// Level 2: level 1, after removing the items rustc reports as never
     /// used (module [`prune`]). It needs rustc 1.90.0.
     Level2,
+    /// Level 3: level 2, with the names the bundle defines made as short as
+    /// can be (module [`rename`]). It needs rustc 1.90.0.
+    Level3,
 }
 
 /// How a bundle is written.
@@ -87,7 +94,7 @@ impl Default for Options {
     fn default() -> Self {
         Self {
             format: true,
-            minify: Minify::Level2,
+            minify: Minify::Level3,
         }
     }
 }
@@ -98,6 +105,8 @@ pub struct Bundled {
     pub code: String,
     /// What level 2 removed, when it ran.
     pub pruned: Option<prune::Report>,
+    /// What level 3 renamed, when it ran.
+    pub renamed: Option<rename::Report>,
 }
 
 /// Builds the bundled source of `plan`. Its first line is a comment that
@@ -106,12 +115,12 @@ pub fn bundle(plan: &Plan, options: Options) -> Result<String, String> {
     bundle_report(plan, options).map(|bundled| bundled.code)
 }
 
-/// As [`bundle`], with what level 2 did.
+/// As [`bundle`], with what levels 2 and 3 did.
 pub fn bundle_report(plan: &Plan, options: Options) -> Result<Bundled, String> {
     let libraries: Vec<String> = plan.libraries.iter().map(|lib| lib.name.clone()).collect();
     // Before bundling, so that a missing compiler fails early.
     let rustc = match options.minify {
-        Minify::Level2 => Some(prune::Rustc::find()?),
+        Minify::Level2 | Minify::Level3 => Some(prune::Rustc::find()?),
         _ => None,
     };
 
@@ -142,15 +151,23 @@ pub fn bundle_report(plan: &Plan, options: Options) -> Result<Bundled, String> {
             code = text;
             pruned = Some(report);
         }
+        let mut renamed = None;
+        if let (Some(rustc), Minify::Level3) = (&rustc, options.minify) {
+            let (text, report) = rename::rename(&code, rustc)
+                .map_err(|err| format!("cannot rename (level 3): {err}"))?;
+            code = text;
+            renamed = Some(report);
+        }
         let code =
             minify::minify(&code).map_err(|err| format!("cannot minify the bundle: {err}"))?;
         if let Some(rustc) = &rustc {
             prune::check(&code, rustc)
-                .map_err(|err| format!("the minified bundle (level 2) is wrong: {err}"))?;
+                .map_err(|err| format!("the minified bundle (levels 2 and 3) is wrong: {err}"))?;
         }
         return Ok(Bundled {
             code: header + &code,
             pruned,
+            renamed,
         });
     }
     let mut header = format!(
@@ -168,6 +185,7 @@ pub fn bundle_report(plan: &Plan, options: Options) -> Result<Bundled, String> {
     Ok(Bundled {
         code: header + &code,
         pruned: None,
+        renamed: None,
     })
 }
 
@@ -209,7 +227,7 @@ pub fn bundle_package(
     bundle_package_report(package, manifest, options).map(|bundled| bundled.code)
 }
 
-/// As [`bundle_package`], with what level 2 did.
+/// As [`bundle_package`], with what levels 2 and 3 did.
 pub fn bundle_package_report(
     package: &str,
     manifest: Option<&Path>,

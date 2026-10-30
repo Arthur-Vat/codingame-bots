@@ -33,14 +33,15 @@ struct Args {
     keep_comments: bool,
 
     /// How far to minify (ADR 0045): 1 writes only the tokens Rust needs; 2
-    /// also removes the items rustc reports as never used, which needs rustc
-    /// 1.90.0 (found with rustup, or named by CG_RUSTC). Ignored with
-    /// --keep-comments.
+    /// also removes the items rustc reports as never used; 3 also gives the
+    /// names the bundle defines the shortest names not otherwise used. 2 and
+    /// 3 need rustc 1.90.0 (found with rustup, or named by CG_RUSTC).
+    /// Ignored with --keep-comments.
     #[arg(
         long,
         value_name = "N",
-        default_value_t = 2,
-        value_parser = clap::value_parser!(u8).range(1..=2)
+        default_value_t = 3,
+        value_parser = clap::value_parser!(u8).range(1..=3)
     )]
     minify_level: u8,
 }
@@ -52,7 +53,8 @@ fn main() -> ExitCode {
         minify: match (args.keep_comments, args.minify_level) {
             (true, _) => Minify::Off,
             (false, 1) => Minify::Level1,
-            (false, _) => Minify::Level2,
+            (false, 2) => Minify::Level2,
+            (false, _) => Minify::Level3,
         },
     };
     let bundled = match bundle_package_report(&args.package, args.manifest_path.as_deref(), options)
@@ -65,6 +67,9 @@ fn main() -> ExitCode {
     };
     if let Some(report) = &bundled.pruned {
         eprintln!("level 2: {report}");
+    }
+    if let Some(report) = &bundled.renamed {
+        eprintln!("level 3: {report}");
     }
     let bundle = bundled.code;
     if cg_size(&bundle) > SIZE_LIMIT {
