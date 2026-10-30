@@ -256,7 +256,7 @@ For each turn, by the bot's clock in ms: the target it holds to, when the rest o
 - **The overhead.** Against itself, a side's gap is the other side's hold (its answer time on the same turn number, or the turn before for red) plus what CodinGame spends between the two: the referee and the input and output.
 - **The speed.** The workload's units a millisecond, against ours with the same file.
 
-In our arena, which counts exactly 50 ms from when it sends the input, the probe against itself was accepted at 49.00 ms and cut off at its 50 ms target, its gaps were the other side's hold plus about 1.4 ms, and its workload ran 17 to 22 units a millisecond (two games, Intel Xeon at 2.8 GHz, Rust 1.90.0, 2026-10-30). A line is about 50 characters a turn after the map's 180.
+In our arena, which counts exactly 50 ms from when it sends the input, the probe against itself was always accepted at 49 ms; at 50 ms it was cut off in some games and accepted in others, so the limit by a bot's clock moves by about a millisecond from game to game: read several games. Its gaps were the other side's hold plus 0.5 to 1.6 ms, and its workload ran 14 to 22 units a millisecond (Intel Xeon at 2.8 GHz, Rust 1.90.0, 2026-10-30). A line is about 240 characters for its start and the map, then about 30 a turn.
 
 ## Engine speed
 

@@ -92,6 +92,10 @@ echo "== The timing bot times out when its hold reaches the limit"
 # It holds its answer to 42 ms on turn 2, one more each turn, and never takes
 # the enemy HQ: at the arena's exact 50 ms it must lose every game on time,
 # and never crash or answer invalidly.
+if [[ ! -x $bin/ice-and-fire-timing ]]; then
+  echo "::error title=Timing bot::$bin/ice-and-fire-timing is missing"
+  exit 1
+fi
 out="$("$arena" match --bot "ice-and-fire-timing=$bin/ice-and-fire-timing" \
   --bot "random=$bin/ice-and-fire-random" --pairs 5 --jobs 1 2>&1)"
 echo "$out"

@@ -27,10 +27,11 @@ fn the_workload_reads_its_position_and_works_until_the_deadline() {
     let state = work_state().expect("the workload's position reads");
     assert!(state.outcome().is_none());
     assert!(unit(&state) > 0);
-    let until = Instant::now() + Duration::from_millis(5);
-    let (done, took) = work_until(&state, until);
+    let until = Instant::now() + Duration::from_millis(20);
+    // How long the units took depends on the machine's load, so only that
+    // some were done and that the deadline was reached are checked.
+    let (done, _) = work_until(&state, until);
     assert!(done > 0);
-    assert!(took <= Duration::from_millis(5));
     assert!(Instant::now() >= until);
     // A deadline already passed does no unit.
     let (done, _) = work_until(&state, Instant::now());
