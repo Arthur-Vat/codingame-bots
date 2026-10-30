@@ -5,7 +5,7 @@ pull_request: "none yet"
 parent: ice-and-fire-v010
 hypothesis: A third of v010's towers never block a training or a unit; offering towers only where they guard something (cells the enemy can take at its next turn, or the HQ against a chain the enemy can pay within two turns) stops the wasted ones and beats v010.
 change: The plan bot's action generator offers a tower on a border cell only if it lowers the cells of ours the enemy can take at its next turn, or raises the enemy's chain to our HQ while the enemy can pay for that chain within two of its turns.
-release: not made yet (the owner chooses the candidate)
+release: ice-and-fire-v011
 sprt: pending
 elo: pending
 pairs: pending
@@ -15,11 +15,9 @@ cg_rank: not reported
 ---
 
 Chosen by the owner on 2026-10-30 after the study of v010's towers
-(`research/towers-v010.md`, pull request
-#220): "Towers where reach drops (Recommended)", the two rules screened as
+([research/towers-v010.md](../research/towers-v010.md)): "Towers where reach drops (Recommended)", the two rules screened as
 variants ("Both as variants"), on border cells only ("Border only first
-(Recommended)"). Stacked on E023 (pull request #219), whose v010 it is
-screened against.
+(Recommended)"). Screened against E023's v010 (pull request #219, merged on 2026-10-30).
 
 ## The change
 
@@ -58,6 +56,12 @@ Every bot's answers were at most 32.1 ms in 99% of turns; the slowest
 first answers were 640 to 681 ms. Both bots timed out alike, 6 to 10 in
 800 to 1,200 games: this machine's, as in the study of v010, whose SPRT on
 GitHub's runners had none in 696 games.
+
+## The candidate
+
+The owner chose it as the candidate on 2026-10-30 ("Candidate v011
+(Recommended)"): `ice-and-fire-v011`, frozen by `scripts/new-release.sh`
+(77,196 characters, the same answers as its readable copy in 4 games).
 
 ## What was learned
 
