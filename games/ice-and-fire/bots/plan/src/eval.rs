@@ -18,10 +18,25 @@
 //!   against 1 for a level-1 one, and in v008's games a side with more of
 //!   them than the score said won less often: each counts [`LEVEL2_DISCOUNT`]
 //!   less than its training cost, 5 in all.
+//! - **Threatened cells** (E023): in v009's games a cut the enemy could
+//!   first afford with one more income was made within one turn about a
+//!   quarter of the time, so a cell it can take at its next turn counts 0.75
+//!   of a cell's value (4 as a cell, 3 as its income): [`threatened`] cells
+//!   cost a side `7 / 4` each.
 
 use ice_and_fire_engine::State;
 use ice_and_fire_opening::solo::severed;
+use ice_and_fire_tactics::chain::reach_within;
 use ice_and_fire_tactics::eval::evaluate;
+
+/// The active cells of `seat` that the enemy can take at its next turn:
+/// those its chains of trainings reach for its gold plus its income (moves
+/// left out, as in the pressure term).
+pub fn threatened(state: &State, seat: usize) -> i64 {
+    let enemy = 1 - seat;
+    let budget = state.gold(enemy) + state.income(enemy);
+    i64::from((reach_within(state, enemy, false, budget) & state.active(seat)).count())
+}
 
 /// The weight of a joint and of a cell that one capture cuts off.
 const SHAPE: i64 = 2;
@@ -83,4 +98,5 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         + 2 * debt(state, 1 - seat)
         + shape(state, seat)
         + LEVEL2_DISCOUNT * (twos(state, 1 - seat) - twos(state, seat))
+        + 7 * (threatened(state, 1 - seat) - threatened(state, seat)) / 4
 }

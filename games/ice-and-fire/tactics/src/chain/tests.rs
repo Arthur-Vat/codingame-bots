@@ -468,3 +468,28 @@ fn cost_to_is_the_cost_of_reach_on_every_cell() {
     }
     assert!(checked > 100_000, "{checked} cells checked");
 }
+
+#[test]
+fn reach_within_holds_the_cells_reach_prices_within_the_budget() {
+    let mut checked = 0;
+    for seed in 0..20 {
+        for state in crate::test_util::random_positions(seed, League::Bronze, &[0, 5, 15, 30]) {
+            for seat in 0..2 {
+                for moves in [false, true] {
+                    let reach = Reach::new(&state, seat, moves);
+                    for budget in [0, 10, 25, 40, 100, 1_000] {
+                        let mut expected = Bits::EMPTY;
+                        for cell in 0..CELLS {
+                            if reach.cost[cell] <= budget && !state.active(seat).test(cell) {
+                                expected.set(cell);
+                            }
+                        }
+                        assert_eq!(reach_within(&state, seat, moves, budget), expected);
+                        checked += usize::from(!expected.is_empty());
+                    }
+                }
+            }
+        }
+    }
+    assert!(checked > 500, "{checked} non-empty reaches");
+}
