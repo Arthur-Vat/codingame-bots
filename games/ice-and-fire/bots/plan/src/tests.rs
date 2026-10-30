@@ -563,3 +563,42 @@ fn cells_the_enemy_can_take_next_turn_count_less() {
     let state = position(rows, [30, 20], &[]);
     assert_eq!((threatened(&state, 0), threatened(&state, 1)), (0, 0));
 }
+
+/// The towers among the actions of the player to act.
+fn towers_offered(state: &State) -> Vec<(u8, u8)> {
+    let mut actions = Vec::new();
+    actions_of(state, &mut actions);
+    actions
+        .iter()
+        .filter_map(|action| match action.commands() {
+            [Command::BuildTower { x, y }] => Some((*x, *y)),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn towers_are_offered_only_where_they_guard_something() {
+    // E026: blue (gold 20, income 1) can take (11, 9), the end of red's
+    // corridor and its one border cell; a tower there keeps it out.
+    let state = position(CORRIDOR, [50, 20], &[]);
+    assert_eq!(crate::eval::threatened(&state, 0), 1);
+    assert_eq!(towers_offered(&state), vec![(11, 9)]);
+    // Far from blue, with nothing threatened and blue's chain to red's HQ
+    // far beyond two incomes, no border cell gets a tower.
+    let rows = [
+        "OOO.........",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "...........X",
+        "...........X",
+    ];
+    assert!(towers_offered(&position(rows, [50, 20], &[])).is_empty());
+}
