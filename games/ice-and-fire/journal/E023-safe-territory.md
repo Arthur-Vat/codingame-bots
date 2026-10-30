@@ -6,11 +6,11 @@ parent: ice-and-fire-v009
 hypothesis: In v009's games a cut the enemy could first afford with one more income was made within one turn about a quarter of the time; counting a cell the enemy can take at its next turn at 0.75 of a cell's value makes the search keep its territory out of reach and beats v009.
 change: The plan bot's evaluation takes 7/4 (a quarter of a cell's value of 7, 4 as a cell and 3 as its income) off a side's score for each of its active cells that the enemy's chains of trainings reach for the enemy's gold plus its income.
 release: ice-and-fire-v010
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +43.2 [+20.8, +65.8] at CodinGame's limits
+pairs: 348
+full_time: +43.2 [+20.8, +65.8] (the SPRT's own, ADR 0042), no timeout in 696 games, slowest answer 612.8 ms (the first turn)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -103,3 +103,31 @@ only candidate"): `ice-and-fire-v010`, frozen by `scripts/new-release.sh`
 - Next, from the study: the decay of the threat over one and two more
   incomes (0.6 a turn), and the weight itself (0.75 was proposed, not
   measured).
+
+## SPRT
+
+Accepted on the pull request (run 41018447625, at 33563b6, the same code
+as the head), at CodinGame's limits:
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v010 vs ice-and-fire-v009: 696 games, 348 complete pairs
+  ice-and-fire-v010: 391 wins, 0 draws, 305 losses (score 56.2%)
+  Elo of ice-and-fire-v010 over ice-and-fire-v009: +43.2 [+20.8, +65.8] (95%, from pairs)
+  pairs by ice-and-fire-v010's points (0, 1/2, 1, 3/2, 2): [45, 0, 215, 0, 88]
+  ice-and-fire-v010 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v009 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  answers after the first (median, 99%, 99.9%): ice-and-fire-v010 18.8, 31.7, 32.3 ms; ice-and-fire-v009 19.6, 31.7, 32.2 ms
+  slowest answer: ice-and-fire-v010 612.8 ms, ice-and-fire-v009 613.7 ms
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 2.98 (bounds -2.94, 2.94) after 348 pairs
+Verdict: ACCEPTED: ice-and-fire-v010 is stronger than ice-and-fire-v009
+```
+
+## League
+
+The league of the release (run 41019647778, at 96d9bcb, 800 pairs a
+pairing) scored v010 56.9% against v009 (911 wins, 689 losses), 61.9%
+against v008, 69.4% against v007, 73.3% against v006, 81.2% against v005,
+83.1% against v004 and 99.8% against bronze, and rated it +2286.0 ± 182.5,
+against v009's +2248.0 ([LEADERBOARD.md](../LEADERBOARD.md)). v010 lost 2
+of its 11,200 games by a fault.
