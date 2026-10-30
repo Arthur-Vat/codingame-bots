@@ -6,11 +6,11 @@ parent: ice-and-fire-v010
 hypothesis: A third of v010's towers never block a training or a unit; offering towers only where they guard something (cells the enemy can take at its next turn, or the HQ against a chain the enemy can pay within two turns) stops the wasted ones and beats v010.
 change: The plan bot's action generator offers a tower on a border cell only if it lowers the cells of ours the enemy can take at its next turn, or raises the enemy's chain to our HQ while the enemy can pay for that chain within two of its turns.
 release: ice-and-fire-v011
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +24.9 [+8.8, +41.2] at CodinGame's limits
+pairs: 433
+full_time: +24.9 [+8.8, +41.2] (the SPRT's own, ADR 0042), no timeout in 867 games, slowest answer 615.5 ms (the first turn)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -76,3 +76,31 @@ The owner chose it as the candidate on 2026-10-30 ("Candidate v011
   the enemy can pay within two turns.
 - The gain is small for an SPRT at elo1 = 10; the candidate is the
   owner's to choose.
+
+## SPRT
+
+Accepted on the pull request (run 41033188671, at c9c5780), at
+CodinGame's limits:
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v011 vs ice-and-fire-v010: 867 games, 433 complete pairs
+  ice-and-fire-v011: 465 wins, 0 draws, 402 losses (score 53.6%)
+  Elo of ice-and-fire-v011 over ice-and-fire-v010: +24.9 [+8.8, +41.2] (95%, from pairs)
+  pairs by ice-and-fire-v011's points (0, 1/2, 1, 3/2, 2): [38, 0, 326, 0, 69]
+  ice-and-fire-v011 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v010 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  answers after the first (median, 99%, 99.9%): ice-and-fire-v011 20.0, 31.8, 32.3 ms; ice-and-fire-v010 20.5, 31.7, 32.3 ms
+  slowest answer: ice-and-fire-v011 615.5 ms, ice-and-fire-v010 612.7 ms
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 2.95 (bounds -2.94, 2.94) after 433 pairs
+Verdict: ACCEPTED: ice-and-fire-v011 is stronger than ice-and-fire-v010
+```
+
+## League
+
+The league of the release (run 41033188671, at c9c5780, 800 pairs a
+pairing) scored v011 52.4% against v010 (839 wins, 761 losses), 59.9%
+against v009, 64.3% against v008, 69.4% against v007, 76.5% against v006,
+81.4% against v005 and 99.9% against bronze, and rated it +2301.0 ± 182.5,
+against v010's +2285.6 ([LEADERBOARD.md](../LEADERBOARD.md)). v011 lost 1
+of its 11,200 games by a fault.
