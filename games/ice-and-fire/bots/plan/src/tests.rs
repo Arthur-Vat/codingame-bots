@@ -251,6 +251,9 @@ fn a_search_with_more_room_climbs_again_with_a_memory() {
     let short = think(state, evals(5), &mut opening());
     assert_eq!(short.climbs, 1);
     assert_eq!(short.memory, 0);
+    // E027: that plan, found as the tries ran out, gets its own replies
+    // searched before it is played, without changing the memory.
+    assert_eq!(short.checks, 1);
 }
 
 #[test]

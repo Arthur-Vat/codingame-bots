@@ -25,8 +25,9 @@
 //! the opponent's replies to the plan are added to the memory and the plan is
 //! searched again against them; when that teaches nothing new, the next climb
 //! may not start with the first action of a plan found so far (E014), until
-//! the time is up. The plan that scores best against the whole memory is
-//! played. Cuts are chains of up to 5 trainings (E014). The evaluation
+//! the time is up. The plan that scores best against the whole memory and
+//! its own replies (E027) is played; a plan whose replies the time cut is
+//! checked against them first, before the hard limit. Cuts are chains of up to 5 trainings (E014). The evaluation
 //! counts a side that cannot pay its upkeep as having lost its units, and a
 //! level-2 unit as worth 5 rather than its training cost of 20 (E020).
 //!
@@ -69,8 +70,10 @@ const BUDGET_MS: f64 = 40.0;
 /// plan stops at 76% of it, about 610 ms.
 const FIRST_BUDGET_MS: f64 = 800.0;
 
-/// The share of the budget after which no new climb or reply search starts;
-/// the rest is for choosing the plan to play.
+/// The share of the budget that the soft limit marks: the opening's choice
+/// stops 40% of the way from it to the hard limit, and the middle game's
+/// climbs 75% of the way (`search::CLIMB_SHARE`, E027; at it before), the
+/// rest being for choosing the plan to play.
 const SOFT_SHARE: f64 = 0.6;
 
 /// The limits of the turn `turn` (1 first) that started at `start`.

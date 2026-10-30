@@ -17,6 +17,14 @@
 //! the opponent's replies to its plan are in the memory already), the next
 //! climb may not start with the first action of any plan found so far
 //! (E014), so the climbs keep finding other plans until the time is up.
+//!
+//! Each plan keeps the opponent's replies found for it (E027): the shared
+//! memory holds only the most damaging replies over all plans, so a plan's
+//! own worst reply could leave it. A plan's final score is the worst over the
+//! memory and its own replies, and the plan played must have had its replies
+//! searched: a plan found as the time ran out gets them in the time left
+//! before the hard limit, and if it then scores lower, the next best is
+//! checked in turn.
 
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
@@ -41,6 +49,10 @@ const REPLY_CUTS: usize = 3;
 const MAX_CLIMBS: usize = 32;
 /// Most plans scored by the opponent's climb in one reply search (E019).
 const REPLY_EVALS: u64 = 300;
+/// Where between the soft and the hard limit the middle game's climbs stop
+/// (E027): at 36 ms of a 40 ms turn rather than 24; the rest is for the
+/// final choice and its check.
+const CLIMB_SHARE: f64 = 0.75;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
@@ -68,11 +80,17 @@ pub struct Thought {
     pub memory: usize,
     /// Different plans found by the climbs.
     pub plans: usize,
+    /// Plans whose replies were searched only for the final choice (E027).
+    pub checks: usize,
 }
+
+/// Whether the plan played must have had its own replies searched (E027).
+const VERIFY: bool = true;
 
 /// One opponent reply: commands, each kept only if the rules accept it, and
 /// how much it hurt the plan it was found for (the evaluation after it, from
 /// our seat), lower being worse for us.
+#[derive(Clone)]
 struct Reply {
     commands: Vec<Command>,
     damage: i64,
@@ -84,6 +102,8 @@ struct Plan {
     end: State,
     /// The key of its first action, if any.
     first: Option<u64>,
+    /// The opponent's replies to this plan, once searched (E027).
+    own: Option<Vec<Reply>>,
 }
 
 /// The gain an action had when last tried, by [`key`].
@@ -295,6 +315,7 @@ impl Search {
             commands,
             end: cur,
             first,
+            own: None,
         }
     }
 
@@ -335,23 +356,42 @@ impl Search {
         out
     }
 
-    /// Adds the replies to the plan that ends in `end` that the memory does
-    /// not hold, then keeps the [`MEMORY_CAP`] most damaging. Whether the
-    /// memory changed.
-    fn remember(&self, end: &State, memory: &mut Vec<Reply>) -> bool {
-        let before: Vec<_> = memory.iter().map(|r| r.commands.clone()).collect();
-        for commands in self.replies(end) {
-            if memory.iter().any(|r| r.commands == commands) {
-                continue;
-            }
-            let damage = eval(&after_reply(end, &commands), self.me);
-            memory.push(Reply { commands, damage });
-        }
-        // Stable: the older reply stays first on a tie.
-        memory.sort_by_key(|reply| reply.damage);
-        memory.truncate(MEMORY_CAP);
-        memory.iter().map(|r| &r.commands).ne(&before)
+    /// The replies to the plan that ends in `end`, each with its damage.
+    fn answers(&self, end: &State) -> Vec<Reply> {
+        self.replies(end)
+            .into_iter()
+            .map(|commands| {
+                let damage = eval(&after_reply(end, &commands), self.me);
+                Reply { commands, damage }
+            })
+            .collect()
     }
+
+    /// The score of `plan` for the final choice: the worst over `memory` and
+    /// the plan's own replies (E027).
+    fn final_score(&self, plan: &Plan, memory: &[Reply]) -> i64 {
+        let score = self.rate(&plan.end, memory, i64::MIN);
+        match &plan.own {
+            Some(own) if !own.is_empty() => score.min(self.rate(&plan.end, own, i64::MIN)),
+            _ => score,
+        }
+    }
+}
+
+/// Adds the replies `found` that the memory does not hold, then keeps the
+/// [`MEMORY_CAP`] most damaging. Whether the memory changed.
+fn remember(found: &[Reply], memory: &mut Vec<Reply>) -> bool {
+    let before: Vec<_> = memory.iter().map(|r| r.commands.clone()).collect();
+    for reply in found {
+        if memory.iter().any(|r| r.commands == reply.commands) {
+            continue;
+        }
+        memory.push(reply.clone());
+    }
+    // Stable: the older reply stays first on a tie.
+    memory.sort_by_key(|reply| reply.damage);
+    memory.truncate(MEMORY_CAP);
+    memory.iter().map(|r| &r.commands).ne(&before)
 }
 
 /// The commands to play in `state` for the player to act, within `limit`;
@@ -366,19 +406,23 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
         thought.commands = commands;
         return thought;
     }
+    // A time between the soft and the hard limit.
+    let at = |share: f64| match (limit.soft, limit.hard) {
+        (Some(soft), Some(hard)) => Some(soft + (hard - soft).mul_f64(share)),
+        _ => None,
+    };
     if opening.playing(state) {
         // The opening's choice stops at 76% of the turn: the hard limit is
         // the whole budget.
-        let at = |share: f64| match (limit.soft, limit.hard) {
-            (Some(soft), Some(hard)) => Some(soft + (hard - soft).mul_f64(share)),
-            _ => None,
-        };
         thought.commands = opening.turn(state, at(0.4));
         return thought;
     }
     let mut search = Search {
         me,
-        limit,
+        limit: Limit {
+            soft: at(CLIMB_SHARE),
+            ..limit
+        },
         evals: 0,
         hints: Gains::default(),
     };
@@ -391,9 +435,15 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
         // A climb that ends on a plan found before has nothing new to learn.
         let same = plans.iter().any(|p| p.commands == plan.commands);
         let first = plan.first;
-        // Out of time, the plan is kept and no reply searched.
+        // Out of time, the plan is kept and no reply searched yet.
         let stop = search.spent();
-        let more = !stop && !same && search.remember(&plan.end, &mut memory);
+        let mut plan = plan;
+        let mut more = false;
+        if !stop && !same {
+            let found = search.answers(&plan.end);
+            more = remember(&found, &mut memory);
+            plan.own = Some(found);
+        }
         if !same {
             plans.push(plan);
         }
@@ -413,17 +463,42 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
     thought.memory = memory.len();
     thought.plans = plans.len();
 
-    // The plan that scores best against the whole memory, the latest on a
-    // tie. The latest is always scored; earlier ones while time remains.
-    let mut best: Option<(i64, usize)> = None;
-    for (index, plan) in plans.iter().enumerate().rev() {
-        if best.is_some() && limit.hard.is_some_and(|t| Instant::now() >= t) {
+    // The plan that scores best against the whole memory and its own
+    // replies, the latest on a tie. The latest is always scored; earlier ones
+    // while time remains.
+    let late = || limit.hard.is_some_and(|t| Instant::now() >= t);
+    let mut scores: Vec<Option<i64>> = vec![None; plans.len()];
+    for index in (0..plans.len()).rev() {
+        if index + 1 < plans.len() && late() {
             break;
         }
-        let score = search.rate(&plan.end, &memory, i64::MIN);
-        if best.is_none_or(|(top, _)| score > top) {
-            best = Some((score, index));
+        scores[index] = Some(search.final_score(&plans[index], &memory));
+    }
+    let pick = |scores: &[Option<i64>]| {
+        let mut best: Option<(i64, usize)> = None;
+        for (index, score) in scores.iter().enumerate().rev() {
+            if let Some(score) = *score {
+                if best.is_none_or(|(top, _)| score > top) {
+                    best = Some((score, index));
+                }
+            }
         }
+        best
+    };
+    let mut best = pick(&scores);
+    // The plan played must have had its replies searched (E027): until the
+    // best has, its replies are searched in the time left, the opponent's
+    // climb stopping at the hard limit, and the choice made again.
+    search.limit.soft = limit.hard;
+    while let Some((_, index)) = best {
+        if !VERIFY || plans[index].own.is_some() || late() {
+            break;
+        }
+        let found = search.answers(&plans[index].end);
+        plans[index].own = Some(found);
+        thought.checks += 1;
+        scores[index] = Some(search.final_score(&plans[index], &memory));
+        best = pick(&scores);
     }
     if let Some((_, index)) = best {
         // Each command is checked once more, in order, on a scratch copy.
