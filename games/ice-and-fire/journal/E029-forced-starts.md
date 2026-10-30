@@ -1,7 +1,7 @@
 ---
 id: E029
 date: 2026-10-30
-pull_request: "#NN"
+pull_request: "#229"
 parent: ice-and-fire-v013
 hypothesis: In many middle-game turns v013's climbs run out of first actions that improve the plan and stop well before the time is up, though an action that does not pay alone can open a plan that does; climbing from each remaining first action in turn until the time is up beats v013 (candidate `ice-and-fire-v014`).
 change: When a climb ends on an empty plan (no first action left improves it), the next climbs, while time remains, are forced to start with each of the root's actions not yet tried as a first action, the best gain so far first, and their plans are scored, given replies and chosen among like any other.
