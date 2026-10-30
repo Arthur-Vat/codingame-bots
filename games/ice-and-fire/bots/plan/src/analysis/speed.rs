@@ -5,8 +5,10 @@
 //! Each position's search runs `--reps` times with the same tries and no
 //! deadline; the fastest run counts, since a busy machine only slows runs
 //! down. The answers do not depend on the machine (ADR 0025): `--answers`
-//! writes them, one line a position, and `--expect` compares them with a
-//! file written so before, the run failing if any differs.
+//! writes them, a first line with the tries then one line a position (a
+//! position left out keeps its line, saying why), and `--expect` compares
+//! them with a file written so before, the run failing if any line differs,
+//! the tries included.
 
 use std::fmt::Write as _;
 use std::time::Instant;
@@ -70,7 +72,7 @@ pub fn report(
 ) -> String {
     let mut out = String::new();
     let n = timed.len();
-    let total_us: f64 = timed.iter().map(|(_, t)| t.micros).sum();
+    let total_us: f64 = timed.iter().fold(0.0, |sum, (_, t)| sum + t.micros);
     let evals: u64 = timed.iter().map(|(_, t)| t.evals).sum();
     let climbs: usize = timed.iter().map(|(_, t)| t.climbs).sum();
     let mut each: Vec<f64> = timed.iter().map(|(_, t)| t.micros / 1000.0).collect();
@@ -175,7 +177,7 @@ pub fn run(args: &[String]) -> Result<(String, bool), String> {
     };
     let bank = read_bank(&text)?;
     let mut timed = Vec::new();
-    let mut lines = Vec::new();
+    let mut lines = vec![format!("# tries {tries}")];
     let mut skipped = 0;
     for position in &bank {
         match time(position, tries, reps) {
@@ -185,6 +187,7 @@ pub fn run(args: &[String]) -> Result<(String, bool), String> {
             }
             Err(err) => {
                 eprintln!("left out: {err}");
+                lines.push(format!("{}\t{}\tleft out", position.name, position.ply));
                 skipped += 1;
             }
         }

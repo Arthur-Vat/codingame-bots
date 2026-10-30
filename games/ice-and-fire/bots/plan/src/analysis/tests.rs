@@ -254,9 +254,25 @@ fn speed_writes_answers_that_it_then_expects() {
     .expect("a run");
     assert!(same, "{report}");
     assert!(report.contains("as expected"), "{report}");
-    // Other tries give other answers or the same; a changed file never
-    // passes.
-    std::fs::write(&answers, "x\t0\tWAIT\n").expect("written");
+    // The file names the tries: other tries never pass, even with the same
+    // answers.
+    assert!(std::fs::read_to_string(&answers)
+        .expect("read")
+        .starts_with("# tries 30\n"));
+    let (_, same) = speed::run(&[
+        arg("--positions"),
+        path(&bank),
+        arg("--tries"),
+        arg("31"),
+        arg("--reps"),
+        arg("1"),
+        arg("--expect"),
+        path(&answers),
+    ])
+    .expect("a run");
+    assert!(!same);
+    // A changed file never passes.
+    std::fs::write(&answers, "# tries 30\nx\t0\tWAIT\n").expect("written");
     let (_, same) = speed::run(&[
         arg("--positions"),
         path(&bank),
@@ -268,5 +284,25 @@ fn speed_writes_answers_that_it_then_expects() {
     .expect("a run");
     assert!(!same);
     assert!(speed::run(&[arg("--tries"), arg("0"), arg("--positions"), path(&bank)]).is_err());
+    // An empty bank reads back as expected.
+    let empty = dir.join("empty.txt");
+    std::fs::write(&empty, "").expect("written");
+    let (report, same) = speed::run(&[
+        arg("--positions"),
+        path(&empty),
+        arg("--answers"),
+        path(&answers),
+    ])
+    .expect("a run");
+    assert!(same);
+    assert!(!report.contains("-0.0"), "{report}");
+    let (_, same) = speed::run(&[
+        arg("--positions"),
+        path(&empty),
+        arg("--expect"),
+        path(&answers),
+    ])
+    .expect("a run");
+    assert!(same);
     let _ = std::fs::remove_dir_all(&dir);
 }
