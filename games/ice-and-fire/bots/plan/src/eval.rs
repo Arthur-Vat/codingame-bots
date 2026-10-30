@@ -24,8 +24,7 @@
 //!   of a cell's value (4 as a cell, 3 as its income): [`threatened`] cells
 //!   cost a side `7 / 4` each.
 
-use ice_and_fire_engine::State;
-use ice_and_fire_opening::solo::severed;
+use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::reach_within;
 use ice_and_fire_tactics::eval::evaluate;
 
@@ -42,18 +41,92 @@ pub fn threatened(state: &State, seat: usize) -> i64 {
 const SHAPE: i64 = 2;
 
 /// The weakness of `seat`'s shape: its joints plus the most cells that one
-/// capture cuts off.
+/// capture cuts off, as `ice_and_fire_opening::solo::severed` counts them.
+/// The same depth-first search, with arrays of bytes and only these two
+/// numbers kept, since it runs twice in every evaluation: the cells one
+/// capture cuts off do not depend on the order of the search.
 fn weakness(state: &State, seat: usize) -> i64 {
-    let cut = severed(state, seat);
-    let mut joints = 0;
-    let mut most = 0;
-    for cell in state.active(seat).iter() {
-        if cut[cell] > 0 {
-            joints += 1;
-            most = most.max(cut[cell]);
+    let active = state.active(seat);
+    let [a, b, c] = active.words();
+    let mut hash = (a ^ b.rotate_left(21) ^ c.rotate_left(42) ^ seat as u64)
+        .wrapping_mul(0x9e37_79b9_7f4a_7c15);
+    hash ^= hash >> 29;
+    let index = (hash as usize) & (WEAKNESS_SLOTS - 1);
+    WEAKNESS.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        let slot = &mut cache[index];
+        if slot.0 == active && slot.1 == seat as u8 + 1 {
+            return slot.2;
         }
+        let value = weakness_of(active, HQ[seat]);
+        *slot = (active, seat as u8 + 1, value);
+        value
+    })
+}
+
+/// Slots of the cache of [`weakness`], a power of two.
+const WEAKNESS_SLOTS: usize = 1 << 12;
+
+thread_local! {
+    /// [`weakness`] by territory and seat (the seat plus one, 0 for an empty
+    /// slot), so that a territory a search meets again is not searched again:
+    /// most actions leave one side's territory as it was.
+    static WEAKNESS: std::cell::RefCell<Vec<(Bits, u8, i64)>> =
+        std::cell::RefCell::new(vec![(Bits::EMPTY, 0, 0); WEAKNESS_SLOTS]);
+}
+
+/// [`weakness`] of the territory `active` whose HQ is `root`.
+pub fn weakness_of(active: Bits, root: usize) -> i64 {
+    struct Dfs {
+        active: Bits,
+        disc: [u8; CELLS],
+        low: [u8; CELLS],
+        size: [u8; CELLS],
+        time: u8,
+        joints: i64,
+        most: i64,
     }
-    joints + most
+    fn visit(d: &mut Dfs, v: usize) -> u8 {
+        d.time += 1;
+        let disc = d.time;
+        d.disc[v] = disc;
+        let mut low = disc;
+        let mut size = 1u8;
+        let mut cut = 0u8;
+        for w in (Bits::cell(v).neighbours() & d.active).iter() {
+            if d.disc[w] == 0 {
+                let sub = visit(d, w);
+                size += sub;
+                low = low.min(d.low[w]);
+                if d.low[w] >= disc {
+                    cut += sub;
+                }
+            } else {
+                low = low.min(d.disc[w]);
+            }
+        }
+        d.low[v] = low;
+        d.size[v] = size;
+        if cut > 0 && d.disc[v] > 1 {
+            d.joints += 1;
+            d.most = d.most.max(i64::from(cut));
+        }
+        size
+    }
+    if !active.test(root) {
+        return 0;
+    }
+    let mut d = Dfs {
+        active,
+        disc: [0; CELLS],
+        low: [0; CELLS],
+        size: [0; CELLS],
+        time: 0,
+        joints: 0,
+        most: 0,
+    };
+    visit(&mut d, root);
+    d.joints + d.most
 }
 
 /// The shape term of `seat`'s score: [`SHAPE`] times the other side's

@@ -11,7 +11,7 @@
 
 use ice_and_fire_engine::state::BUILD_COST;
 use ice_and_fire_engine::{Bits, Command, State, HQ, SIZE};
-use ice_and_fire_tactics::chain::{chain_to, cost_to};
+use ice_and_fire_tactics::chain::{chain_to, cost_to, reach_within};
 use ice_and_fire_tactics::cut::cuts;
 
 use crate::eval::threatened;
@@ -25,11 +25,22 @@ pub const HQ_GUARD: bool = true;
 /// it lowers the cells of ours the enemy can take at its next turn
 /// ([`threatened`]), or, with [`HQ_GUARD`], it raises the enemy's chain to
 /// our HQ while that chain costs at most the enemy's gold plus two of its
-/// incomes. `threats` is `threatened(state, me)` and `chain` the enemy's
-/// chain to our HQ, before the tower.
-fn guards(state: &State, cell: usize, threats: i64, chain: i64) -> bool {
+/// incomes. `threats` is `threatened(state, me)`, `reach` the cells the
+/// enemy's chains reach behind it, and `chain` the enemy's chain to our HQ,
+/// before the tower.
+///
+/// A tower only makes harder to enter its own cell and the cells next to
+/// it (RULES.md, protection), so where none of them is in `reach` it cannot
+/// lower `threats`, and the state is not copied unless the HQ guard may
+/// apply: the same answer, cheaper.
+fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64) -> bool {
     let me = state.to_act();
     let enemy = 1 - me;
+    let hq_guard = HQ_GUARD && chain <= state.gold(enemy) + 2 * state.income(enemy).max(0);
+    let zone = Bits::cell(cell) | Bits::cell(cell).neighbours();
+    if !hq_guard && (zone & reach).is_empty() {
+        return false;
+    }
     let (x, y) = xy(cell);
     let mut after = state.clone();
     if !after.apply(Command::BuildTower { x, y }) {
@@ -38,9 +49,7 @@ fn guards(state: &State, cell: usize, threats: i64, chain: i64) -> bool {
     if threatened(&after, me) < threats {
         return true;
     }
-    HQ_GUARD
-        && chain <= state.gold(enemy) + 2 * state.income(enemy).max(0)
-        && cost_to(&after, enemy, false, HQ[me]) > chain
+    hq_guard && cost_to(&after, enemy, false, HQ[me]) > chain
 }
 
 /// Cuts offered as macro actions.
@@ -50,6 +59,7 @@ pub const CUT_LENGTH: usize = 5;
 
 /// One step of a plan: a command, or a short chain of commands that go
 /// together.
+#[derive(Clone)]
 pub enum Action {
     One(Command),
     Many(Vec<Command>),
@@ -126,11 +136,14 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
             // Towers only on cells next to a cell that is not ours.
             let border = state.map().valid.and_not(state.owned(me)).neighbours();
             let cells = (free & border).and_not(state.map().spots);
-            let threats = threatened(state, me);
+            // `threatened(state, me)`, keeping the enemy's reach.
+            let budget = state.gold(1 - me) + state.income(1 - me);
+            let reach = reach_within(state, 1 - me, false, budget);
+            let threats = i64::from((reach & state.active(me)).count());
             let chain = cost_to(state, 1 - me, false, HQ[me]);
             for cell in cells
                 .iter()
-                .filter(|&cell| guards(state, cell, threats, chain))
+                .filter(|&cell| guards(state, cell, threats, reach, chain))
             {
                 let (x, y) = xy(cell);
                 out.push(Action::One(Command::BuildTower { x, y }));

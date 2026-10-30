@@ -631,3 +631,90 @@ fn a_tower_guards_the_hq_against_a_chain_affordable_within_two_turns() {
     );
     assert_eq!(towers_offered(&state), vec![(1, 0)]);
 }
+
+/// Positions of random games, every third ply up to 90, on several maps.
+fn many_positions() -> Vec<State> {
+    let plies: Vec<u32> = (1..30).map(|n| 3 * n).collect();
+    (0..16).flat_map(|seed| positions(seed, &plies)).collect()
+}
+
+#[test]
+fn the_weakness_counts_the_joints_and_cuts_of_severed() {
+    // E028: the evaluation's own search, and its cache, give the joints plus
+    // the most cells one capture cuts off, as `severed` counts them.
+    let mut checked = 0;
+    for state in many_positions() {
+        for seat in 0..2 {
+            let cut = ice_and_fire_opening::solo::severed(&state, seat);
+            let (mut joints, mut most) = (0, 0);
+            for cell in state.active(seat).iter() {
+                if cut[cell] > 0 {
+                    joints += 1;
+                    most = most.max(cut[cell]);
+                }
+            }
+            let active = state.active(seat);
+            let hq = ice_and_fire_engine::HQ[seat];
+            assert_eq!(crate::eval::weakness_of(active, hq), joints + most);
+            // Through the cache, twice.
+            let other = 1 - seat;
+            let want = 2
+                * (crate::eval::weakness_of(state.active(other), ice_and_fire_engine::HQ[other])
+                    - (joints + most));
+            assert_eq!(crate::eval::shape(&state, seat), want);
+            assert_eq!(crate::eval::shape(&state, seat), want);
+            checked += 1;
+        }
+    }
+    assert!(checked > 500, "{checked} sides checked");
+}
+
+#[test]
+fn towers_are_offered_where_a_copy_of_the_state_says_they_guard() {
+    // E028: the generator skips the copy where a tower cannot lower the
+    // cells the enemy can take; it offers the same towers as E026's check
+    // on a copy of the state.
+    use ice_and_fire_engine::state::BUILD_COST;
+    use ice_and_fire_engine::HQ;
+    use ice_and_fire_tactics::chain::cost_to;
+    let mut offered = 0;
+    for state in many_positions() {
+        let me = state.to_act();
+        let enemy = 1 - me;
+        // Only where towers are affordable, as the generator offers them.
+        if state.outcome().is_some() || state.gold(me) < BUILD_COST {
+            continue;
+        }
+        let threats = crate::eval::threatened(&state, me);
+        let chain = cost_to(&state, enemy, false, HQ[me]);
+        let free = state.owned(me) & state.near_active(me) & state.empty_cells();
+        let border = state.map().valid.and_not(state.owned(me)).neighbours();
+        let mut want = Vec::new();
+        for cell in ((free & border).and_not(state.map().spots)).iter() {
+            let (x, y) = crate::actions::xy(cell);
+            let mut after = state.clone();
+            if !after.apply(Command::BuildTower { x, y }) {
+                continue;
+            }
+            let guards = crate::eval::threatened(&after, me) < threats
+                || (crate::actions::HQ_GUARD
+                    && chain <= state.gold(enemy) + 2 * state.income(enemy).max(0)
+                    && cost_to(&after, enemy, false, HQ[me]) > chain);
+            if guards {
+                want.push(Command::BuildTower { x, y });
+            }
+        }
+        let mut actions = Vec::new();
+        actions_of(&state, &mut actions);
+        let got: Vec<Command> = actions
+            .iter()
+            .filter_map(|a| match a {
+                Action::One(c @ Command::BuildTower { .. }) => Some(*c),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(got, want);
+        offered += got.len();
+    }
+    assert!(offered > 0, "no tower offered in the positions");
+}
