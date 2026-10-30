@@ -6,11 +6,11 @@ parent: ice-and-fire-v011
 hypothesis: v011 can play a plan whose own worst reply it no longer remembers (the memory keeps the 8 most damaging replies over all plans) or never searched (a plan found as the time ran out), and leaves 16 ms of its 40 ms idle; scoring each plan also against its own replies, searching them for the plan to play when they are missing, and climbing until 36 ms beats v011 (candidate `ice-and-fire-v012`).
 change: Each plan keeps the opponent's replies found for it; the final choice scores a plan by the worst over the memory and its own replies; while the best plan has none, its replies are searched in the time left before the hard limit (40 ms) and the choice is made again; the middle game's climbs may start until 36 ms rather than 24 ms (the opening's deadline unchanged).
 release: ice-and-fire-v012
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +33.3 [+14.0, +52.8] at CodinGame's limits
+pairs: 335
+full_time: +33.3 [+14.0, +52.8] (the SPRT's own, ADR 0042), no timeout in 671 games, slowest answer 612.9 ms (the first turn)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -46,7 +46,7 @@ final choice scores it by the worst over the memory and its own replies
 (`final_score`). While the best plan has no replies (`VERIFY`), they are
 searched with the opponent's climb allowed up to the hard limit, the plan
 rescored, and the best chosen again. The memory, the climbs and the time
-limits are v011's. The debug line counts these checks per turn. A test
+limits are v011's in this first variant (the climbs' time changes below). The debug line counts these checks per turn. A test
 checks that a plan cut short by the tries gets its replies searched without
 changing the memory.
 
@@ -94,3 +94,31 @@ the soft limit binds. c36 leans higher, with its 99.9% answer at 41.3 ms,
 The owner chose c36 as the candidate ("36 ms (Recommended)"):
 `ice-and-fire-v012`, `CLIMB_SHARE` 0.75 (its readable copy differs from
 the bundle screened only in two comments).
+
+## SPRT
+
+Accepted on the pull request (run 41078000463, at fc5e5f5), at
+CodinGame's limits:
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v012 vs ice-and-fire-v011: 671 games, 335 complete pairs
+  ice-and-fire-v012: 367 wins, 0 draws, 304 losses (score 54.7%)
+  Elo of ice-and-fire-v012 over ice-and-fire-v011: +33.3 [+14.0, +52.8] (95%, from pairs)
+  pairs by ice-and-fire-v012's points (0, 1/2, 1, 3/2, 2): [30, 0, 243, 0, 62]
+  ice-and-fire-v012 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v011 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  answers after the first (median, 99%, 99.9%): ice-and-fire-v012 24.5, 39.1, 40.5 ms; ice-and-fire-v011 23.2, 31.9, 33.5 ms
+  slowest answer: ice-and-fire-v012 612.9 ms, ice-and-fire-v011 613.4 ms
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 2.95 (bounds -2.94, 2.94) after 335 pairs
+Verdict: ACCEPTED: ice-and-fire-v012 is stronger than ice-and-fire-v011
+```
+
+## League
+
+The league of the release (run 41078000463, at fc5e5f5, 800 pairs a
+pairing) scored v012 55.2% against v011 (884 wins, 716 losses), 59.0%
+against v010, 65.1% against v009, 69.3% against v008, 76.8% against v007,
+79.6% against v006 and 99.8% against bronze, and rated it +2344.6 ± 182.5,
+against v011's +2301.9 ([LEADERBOARD.md](../LEADERBOARD.md)). v012 lost 1
+of its 11,200 games by a fault.
