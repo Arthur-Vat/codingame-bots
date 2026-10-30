@@ -3,8 +3,8 @@ id: E027
 date: 2026-10-30
 pull_request: "#NN"
 parent: ice-and-fire-v011
-hypothesis: v011 can play a plan whose own worst reply it no longer remembers (the memory keeps the 8 most damaging replies over all plans) or never searched (a plan found as the time ran out); scoring each plan also against its own replies, and searching them for the plan to play when they are missing, beats v011.
-change: Each plan keeps the opponent's replies found for it; the final choice scores a plan by the worst over the memory and its own replies; while the best plan has none, its replies are searched in the time left before the hard limit (40 ms) and the choice is made again.
+hypothesis: v011 can play a plan whose own worst reply it no longer remembers (the memory keeps the 8 most damaging replies over all plans) or never searched (a plan found as the time ran out), and leaves 16 ms of its 40 ms idle; scoring each plan also against its own replies, searching them for the plan to play when they are missing, and climbing until 32 ms beats v011.
+change: Each plan keeps the opponent's replies found for it; the final choice scores a plan by the worst over the memory and its own replies; while the best plan has none, its replies are searched in the time left before the hard limit (40 ms) and the choice is made again; the middle game's climbs may start until 32 ms rather than 24 ms (the opening's deadline unchanged).
 release: pending
 sprt: pending
 elo: pending
@@ -15,7 +15,9 @@ cg_rank: not reported
 ---
 
 Asked by the owner on 2026-10-30 ("Start fix 1 first"), after a reading of
-the plan bot's thinking loop and a measure of v011's time per turn.
+the plan bot's thinking loop and a measure of v011's time per turn. After
+the first screening (below) the owner chose to add the second fix, more
+time for the climbs, to the same experiment ("Stack with fix 2").
 
 ## Why
 
@@ -65,3 +67,22 @@ at a time on a 4-core machine.
 Both lean ahead of v011 without a clear result, and alike: the check of
 the plan to play, which runs in about 3% of the middle-game turns, adds
 nothing seen; any gain comes from each plan keeping its own replies.
+
+## With the climbs until 32 ms
+
+`search.rs`, `CLIMB_SHARE`: the middle game's soft limit, after which no
+climb or reply search starts, moves from 24 ms to halfway between it and
+the hard limit, 32 ms; the final choice and its check use the rest. The
+opening's deadline (40% of the way from 24 to 40 ms, about 30 ms; about 610
+ms on the first turn) is unchanged. E014's soft30 and E016's t45 found no
+gain in more time, but then the search ended on its own in most turns
+(median answers of 6 to 7 ms); since E019's opponent climbs, v011 reaches
+the soft limit in 57% of its middle-game turns.
+
+Against `ice-and-fire-v011`, as above, 400 pairs each, seed 27028; c36
+climbs until 36 ms (`CLIMB_SHARE` 0.75) to see whether more helps.
+
+| Variant | Elo against v011 | Variant's timeouts | Answers after the first (median, 99%, 99.9%) |
+| --- | --- | ---: | --- |
+| c32 | pending | | |
+| c36 | pending | | |
