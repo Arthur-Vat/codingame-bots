@@ -1,7 +1,7 @@
 ---
 id: E023
 date: 2026-10-29
-pull_request: "none yet"
+pull_request: "#219"
 parent: ice-and-fire-v009
 hypothesis: In v009's games a cut the enemy could first afford with one more income was made within one turn about a quarter of the time; counting a cell the enemy can take at its next turn at 0.75 of a cell's value makes the search keep its territory out of reach and beats v009.
 change: The plan bot's evaluation takes 7/4 (a quarter of a cell's value of 7, 4 as a cell and 3 as its income) off a side's score for each of its active cells that the enemy's chains of trainings reach for the enemy's gold plus its income.
