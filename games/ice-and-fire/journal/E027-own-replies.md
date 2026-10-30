@@ -59,5 +59,9 @@ at a time on a 4-core machine.
 
 | Variant | Elo against v011 | Variant's timeouts | Answers after the first (median, 99%, 99.9%) |
 | --- | --- | ---: | --- |
-| full: own replies and the check | pending | | |
-| own: own replies only (`VERIFY` off) | pending | | |
+| full: own replies and the check | +10.4 [−9.1, +30.0] | 1 (v011 2) | 19.8, 32.0, 33.9 ms (v011 19.0, 32.0, 34.3) |
+| own: own replies only (`VERIFY` off) | +11.3 [−7.9, +30.5] | 3 (v011 0) | 20.1, 32.1, 34.7 ms (v011 19.8, 32.1, 34.1) |
+
+Both lean ahead of v011 without a clear result, and alike: the check of
+the plan to play, which runs in about 3% of the middle-game turns, adds
+nothing seen; any gain comes from each plan keeping its own replies.
