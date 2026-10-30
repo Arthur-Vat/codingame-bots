@@ -84,5 +84,9 @@ climbs until 36 ms (`CLIMB_SHARE` 0.75) to see whether more helps.
 
 | Variant | Elo against v011 | Variant's timeouts | Answers after the first (median, 99%, 99.9%) |
 | --- | --- | ---: | --- |
-| c32 | pending | | |
-| c36 | pending | | |
+| c32 | **+37.5 [+16.9, +58.3]** | 1 (v011 2) | 20.0, 35.6, 39.1 ms (v011 19.3, 32.1, 34.3) |
+| c36 | **+43.7 [+24.7, +62.9]** | 0 (v011 2) | 19.6, 39.1, 41.3 ms (v011 18.6, 32.0, 34.1) |
+
+Both gain clearly: the time v011 left idle is worth playing for now that
+the soft limit binds. c36 leans higher, with its 99.9% answer at 41.3 ms,
+8.7 ms under CodinGame's 50.
