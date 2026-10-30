@@ -529,3 +529,41 @@ fn an_alias_that_does_not_compile_is_undone() {
     assert!(!out.contains("type "), "{out}");
     crate::prune::check(&out, &rustc()).unwrap();
 }
+
+#[test]
+fn self_read_by_a_format_string_keeps_its_name() {
+    // Renamed, `self.x += 1` would change a copy that the string does not
+    // read: the program would print the old value without an error.
+    let source = "#[derive(Clone, Copy, Debug)]
+        struct Pos { x: i32, y: i32 }
+        impl Pos {
+            fn shifted(mut self) -> String { self.x += 1; self.y += 1; self.x += 3; self.y += 5; self.x *= 2; self.y *= 2; self.x -= 1; self.y -= 1; format!(\"{self:?}\") }
+        }
+        fn main() { println!(\"{}\", Pos { x: 1, y: 2 }.shifted()); }";
+    let (out, report) = rename(source, &rustc()).unwrap();
+    assert_eq!(report.methods, 0, "{out}");
+    assert!(!out.contains("=self;"), "{out}");
+    crate::prune::check(&out, &rustc()).unwrap();
+}
+
+#[test]
+fn the_arguments_of_the_bundles_macros_keep_types_and_self() {
+    // A rule of the macro matches the word itself: `width!(C)` would take
+    // the other rule without an error.
+    let source = "macro_rules! width { (usize) => { 8 }; ($t:ty) => { 64 }; }
+        macro_rules! who { (self) => { 1 }; ($e:expr) => { 2 }; }
+        struct Unit;
+        impl Unit {
+            fn pick(&self) -> u32 { let _ = (self, self, self, self, self); who!(self) }
+        }
+        fn main() {
+            let sizes: [usize; 4] = [width!(usize), 1usize, 2usize, 3usize];
+            let more: (usize, usize, usize, usize) = (1, 2, 3, 4);
+            println!(\"{:?} {:?} {}\", sizes, more, Unit.pick());
+        }";
+    let (out, report) = rename(source, &rustc()).unwrap();
+    assert!(out.contains("!(usize)"), "{out}");
+    assert!(out.contains("!(self)"), "{out}");
+    assert_eq!(report.methods, 0, "{out}");
+    crate::prune::check(&out, &rustc()).unwrap();
+}

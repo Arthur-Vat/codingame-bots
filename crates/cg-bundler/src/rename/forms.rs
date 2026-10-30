@@ -2,10 +2,10 @@
 //! documentation of [`super`]): the methods whose `self` may get a one-letter
 //! name, and the uses of the types that may get an alias, by module.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
-use super::group_end;
 use super::kept::text_macros;
+use super::{braced_words, group_end};
 use crate::minify::{Kind, Token};
 
 /// The types that may get an alias, and whether they take a type parameter.
@@ -149,11 +149,21 @@ pub fn forms(tokens: &[Token]) -> Forms {
 }
 
 /// The tokens where no alias goes and whose `self` keeps its name:
-/// attributes, `macro_rules!` definitions, `use` declarations, and the
-/// arguments of macros that turn their tokens into text.
+/// attributes, `macro_rules!` definitions, `use` declarations, the
+/// arguments of macros that turn their tokens into text, and those of the
+/// bundle's own macros, whose rules may match the very words (`(usize) =>`,
+/// `(self) =>`) that an alias or the new name of `self` would change.
 fn blocked(tokens: &[Token]) -> Vec<bool> {
     let text = |at: usize| tokens.get(at).map(|t| t.text.as_str());
     let text_macros = text_macros(tokens);
+    let own_macros: BTreeSet<&str> = (0..tokens.len())
+        .filter(|&at| {
+            text(at) == Some("macro_rules")
+                && text(at + 1) == Some("!")
+                && tokens.get(at + 2).map(|t| t.kind) == Some(Kind::Ident)
+        })
+        .map(|at| tokens[at + 2].text.as_str())
+        .collect();
     let mut blocked = vec![false; tokens.len()];
     let mut block = |from: usize, to: usize| {
         for flag in &mut blocked[from..to.min(tokens.len())] {
@@ -181,7 +191,9 @@ fn blocked(tokens: &[Token]) -> Vec<bool> {
                     .unwrap_or(tokens.len());
                 block(at, end);
             }
-            name if text_macros.contains(name) && text(at + 1) == Some("!") => {
+            name if (text_macros.contains(name) || own_macros.contains(name))
+                && text(at + 1) == Some("!") =>
+            {
                 block(at, group_end(tokens, at + 2).unwrap_or(tokens.len()));
             }
             _ => {}
@@ -191,8 +203,10 @@ fn blocked(tokens: &[Token]) -> Vec<bool> {
 }
 
 /// The methods that take `self` and have a body with no item that could
-/// have a `self` of its own (`fn`, `impl`, `macro_rules!`), and no `self`
-/// in a blocked place.
+/// have a `self` of its own (`fn`, `impl`, `macro_rules!`), no `self` in a
+/// blocked place, and no string that a formatting macro may read `self`
+/// from (`"{self:?}"`): that `self` would stay, and in a `mut self` method
+/// of a `Copy` type it would be a stale copy, without an error.
 fn methods(tokens: &[Token], blocked: &[bool]) -> Vec<Method> {
     let text = |at: usize| tokens.get(at).map(|t| t.text.as_str());
     let mut methods = Vec::new();
@@ -251,6 +265,11 @@ fn methods(tokens: &[Token], blocked: &[bool]) -> Vec<Method> {
         for (i, &blocked) in blocked.iter().enumerate().take(end - 1).skip(body + 1) {
             match text(i) {
                 Some("fn" | "impl" | "macro_rules") => continue 'items,
+                _ if tokens[i].kind == Kind::Str
+                    && braced_words(&tokens[i].text).contains(&"self") =>
+                {
+                    continue 'items
+                }
                 Some("self") if text(i + 1) != Some("::") && text(i - 1) != Some("::") => {
                     if blocked {
                         continue 'items;

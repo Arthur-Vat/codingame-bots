@@ -9,17 +9,21 @@
 //! - **`self`.** In a method that takes `self` and uses it often enough, the
 //!   body starts with `let s=self;` (`let mut s=self;` for `mut self`) and
 //!   its other `self` tokens become `s`, one name for every method, used
-//!   nowhere else. `self::` paths keep `self`, and a body that holds a `fn`,
-//!   an `impl` or a `macro_rules!` is left as it is, since those can have a
-//!   `self` of their own.
+//!   nowhere else. `self::` paths keep `self`, and a body is left as it is
+//!   when it holds a `fn`, an `impl` or a `macro_rules!` (they can have a
+//!   `self` of their own), a string that formats `{self}` (it would read a
+//!   stale `self` in a `mut self` method of a `Copy` type), or a `self` in
+//!   an attribute, a text macro or the arguments of a macro of the bundle
+//!   (a rule may match the word `self`).
 //! - **Type aliases.** Each of the types of [`ALIASED`] (`usize`, `u8`,
 //!   `String`, `Instant`, `Vec<T>`, `Option<T>`...) gets one alias name, and
 //!   a module where its uses save more than the declaration costs declares
 //!   it (`type U=usize;`, `type V<T>=Vec<T>;`) and uses it. A use that is a
 //!   path's later segment (`std::time::Instant`), a member, a field, the
 //!   name of an item, or in an attribute, a `use` declaration, a
-//!   `macro_rules!` definition or the arguments of a macro that turns its
-//!   tokens into text keeps the type's name.
+//!   `macro_rules!` definition, the arguments of a macro that turns its
+//!   tokens into text or those of a macro of the bundle (a rule may match
+//!   the word `usize`) keeps the type's name.
 //! - **Numbers** lose their digit separators: `100_000` becomes `100000`.
 //!
 //! A name is kept as it is, everywhere, when it is:
