@@ -256,6 +256,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ice-and-fire-bot-timing"
+version = "0.0.0"
+dependencies = [
+ "ice-and-fire-engine",
+ "ice-and-fire-policy",
+ "ice-and-fire-tactics",
+]
+
+[[package]]
 name = "ice-and-fire-bot-wait"
 version = "0.0.0"
 
