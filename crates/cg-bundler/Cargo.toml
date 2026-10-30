@@ -6,8 +6,6 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 publish.workspace = true
-# The crate has two programs: the bundler and cg-tokens.
-default-run = "cg-bundler"
 edition.workspace = true
 rust-version.workspace = true
 

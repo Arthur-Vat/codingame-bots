@@ -1,9 +1,11 @@
-//! Tests of the renaming. Those of [`rename`] run rustc 1.90.0, as level 3
-//! does; the others need no compiler.
+//! Tests of the renaming. Those of [`rename`] run rustc 1.90.0, as the
+//! minifier does; the others need no compiler.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
-use super::{apply, assign, braced_words, candidates, kept, rename, Case, Report, StdNames};
+use super::{
+    apply, assign, braced_words, kept, rename, Analysis, Case, Report, StdNames, CJK_FIRST,
+};
 use crate::minify::tokens;
 use crate::prune::Rustc;
 
@@ -11,17 +13,26 @@ fn rustc() -> Rustc {
     Rustc::find().expect("these tests need rustc 1.90.0: `rustup toolchain install 1.90.0`")
 }
 
-/// The names `source` keeps.
+/// The names `source` keeps everywhere.
 fn kept_in(source: &str) -> BTreeSet<String> {
-    kept(&tokens(source).unwrap(), StdNames::get())
+    kept(&tokens(source).unwrap(), StdNames::get()).names
+}
+
+/// The new name of each name of `source`, with no compiler.
+fn mapping(source: &str) -> BTreeMap<String, String> {
+    let tokens = tokens(source).unwrap();
+    let std = StdNames::get();
+    let analysis = Analysis::of(&tokens, std);
+    assign(&analysis, &analysis.units(), std).names
 }
 
 /// `source` renamed, with no compiler.
 fn renamed(source: &str) -> String {
     let tokens = tokens(source).unwrap();
     let std = StdNames::get();
-    let mapping = assign(&tokens, &candidates(&tokens, std), std);
-    apply(source, &tokens, &mapping)
+    let analysis = Analysis::of(&tokens, std);
+    let edits = assign(&analysis, &analysis.units(), std);
+    apply(source, &analysis, &edits).text
 }
 
 /// Asserts that `source` keeps each of `names` and renames each of
@@ -130,7 +141,6 @@ fn std_paths_use_trees_and_the_prelude_are_kept() {
         source,
         &[
             "std",
-            "collections",
             "HashMap",
             "io",
             "BufRead",
@@ -223,10 +233,9 @@ fn the_most_frequent_names_get_the_shortest_new_names() {
         struct BoardState;
         fn i() {}";
     let tokens = tokens(source).unwrap();
-    let std = StdNames::get();
-    let names = candidates(&tokens, std);
-    assert_eq!(names[0], "often_used");
-    let mapping = assign(&tokens, &names, std);
+    let analysis = Analysis::of(&tokens, StdNames::get());
+    assert_eq!(analysis.candidates[0], ("often_used".to_string(), 3));
+    let mapping = mapping(source);
     assert_eq!(mapping["often_used"], "a");
     assert_eq!(mapping["rarely_used"], "b");
     // Upper-case names get upper-case letters (some, like `A`, are std
@@ -249,9 +258,8 @@ fn the_most_frequent_names_get_the_shortest_new_names() {
 fn new_names_are_not_used_in_the_bundle_or_by_std() {
     // `a` and `b` are taken by the bundle; `c` and `e` are std names.
     let source = "fn a() {} fn b() {} fn long_name() { long_name(); }";
-    let tokens = tokens(source).unwrap();
     let std = StdNames::get();
-    let mapping = assign(&tokens, &candidates(&tokens, std), std);
+    let mapping = mapping(source);
     let new = &mapping["long_name"];
     assert!(new != "a" && new != "b" && !std.has(new), "{new}");
     assert_eq!(new.len(), 1);
@@ -308,14 +316,7 @@ fn nothing_to_rename_leaves_the_text() {
     let source = "fn main() { let x = 1; println!(\"{x}\"); }\n";
     let (out, report) = rename(source, &rustc()).unwrap();
     assert_eq!(out, source);
-    assert_eq!(
-        report,
-        Report {
-            renamed: 0,
-            refused: 0,
-            compiles: 0
-        }
-    );
+    assert_eq!(report, Report::default());
 }
 
 #[test]
@@ -364,4 +365,167 @@ fn std_enum_variants_are_listed() {
     for name in ["Less", "Equal", "Greater", "Nan", "V4", "Relaxed"] {
         assert!(std.has(name), "{name}");
     }
+}
+
+#[test]
+fn after_the_letters_come_cjk_ideographs_for_every_case() {
+    // Forty long names of each case: the letters run out.
+    let mut source = String::new();
+    for i in 0..40 {
+        source.push_str(&format!(
+            "fn long_function_{i}() {{}} struct LongStruct{i}; const LONG_CONST_{i}: u8 = 0;\n"
+        ));
+    }
+    let mapping = mapping(&source);
+    assert_eq!(mapping.len(), 120);
+    // One UTF-16 unit each, all different.
+    let news: BTreeSet<&String> = mapping.values().collect();
+    assert_eq!(news.len(), 120);
+    assert!(news.iter().all(|new| crate::cg_size(new) == 1), "{news:?}");
+    let first = char::from_u32(CJK_FIRST).unwrap().to_string();
+    assert!(news.contains(&first), "{news:?}");
+    // Upper-case and CamelCase names share the capital letters that std
+    // does not use.
+    let capitals = news
+        .iter()
+        .filter(|new| new.chars().all(|c| c.is_ascii_uppercase()))
+        .count();
+    assert!((10..=26).contains(&capitals), "{capitals}");
+}
+
+#[test]
+fn cjk_names_compile_without_warnings() {
+    let mut source = String::from("fn main() { let mut total = 0u64;\n");
+    for i in 0..30 {
+        source.push_str(&format!("let value_{i} = {i}u64; total += value_{i};\n"));
+    }
+    source.push_str("println!(\"{total}\"); }\n");
+    let (out, report) = rename(&source, &rustc()).unwrap();
+    assert_eq!(report.refused, 0, "{out}");
+    assert!(out.contains('\u{4E00}'), "{out}");
+    crate::prune::check(&out, &rustc()).unwrap();
+}
+
+#[test]
+fn the_middle_of_a_std_path_is_kept_only_there() {
+    let source = "use std::cell::RefCell;
+        use std::collections::{HashMap, BTreeMap};
+        fn main() {
+            let cell = RefCell::new(1);
+            let collections: HashMap<u8, BTreeMap<u8, u8>> = HashMap::new();
+            let max = std::cmp::max(*cell.borrow(), 2);
+            println!(\"{} {}\", collections.len(), max);
+        }";
+    let tokens = tokens(source).unwrap();
+    let kept = kept(&tokens, StdNames::get());
+    assert!(!kept.names.contains("cell") && !kept.names.contains("collections"));
+    let positions: Vec<&str> = kept
+        .positions
+        .iter()
+        .map(|&at| tokens[at].text.as_str())
+        .collect();
+    assert_eq!(positions, ["cell", "collections"]);
+    let (out, report) = rename(source, &rustc()).unwrap();
+    assert_eq!(report.refused, 0);
+    assert!(out.contains("use std::cell::RefCell;"), "{out}");
+    assert!(
+        out.contains("use std::collections::{HashMap, BTreeMap};"),
+        "{out}"
+    );
+    assert!(
+        !out.contains("let cell") && !out.contains("let collections"),
+        "{out}"
+    );
+    crate::prune::check(&out, &rustc()).unwrap();
+
+    // A use tree that imports its segment with `self` keeps it everywhere.
+    assert_kept("use std::io::{self, Read};", &["io", "Read"], &[]);
+}
+
+#[test]
+fn only_a_paths_first_name_leads_into_std() {
+    // `crate::board::Ordering` is the bundle's own path: its `LESSER` is
+    // renamed, though `Ordering` leads into std where it comes first.
+    let source = "use std::cmp::Ordering;
+        mod board { pub mod Ordering { pub const LESSER: i32 = 1; } }
+        fn main() { let _ = (Ordering::Less, crate::board::Ordering::LESSER); }";
+    assert_kept(source, &["Ordering", "Less"], &["LESSER", "board"]);
+}
+
+#[test]
+fn self_gets_a_short_name_in_methods_that_use_it_often() {
+    let source = "struct Counter { hits: u64, misses: u64 }
+        impl Counter {
+            fn total(&self) -> u64 { self.hits + self.misses + self.hits * self.misses }
+            fn bump(&mut self) { self.hits += 1; self.misses += 1; self.hits += self.misses; }
+            fn into_total(mut self) -> u64 { self.hits += 1; self.misses += 1; self.hits += 1; self.misses += 1; self.hits + self.misses }
+            fn once(&self) -> u64 { self.hits }
+            fn nested(&self) -> u64 { fn inner() -> u64 { 1 } self.hits + self.hits + self.hits + self.hits + inner() }
+            fn path(&self) -> u64 { self::helper() + self.hits + self.hits + self.hits + self.hits }
+        }
+        fn helper() -> u64 { 2 }
+        fn main() {
+            let mut counter = Counter { hits: 1, misses: 2 };
+            counter.bump();
+            println!(\"{} {} {} {}\", counter.total(), counter.once(), counter.nested(), counter.path());
+            println!(\"{}\", counter.into_total());
+        }";
+    let (out, report) = rename(source, &rustc()).unwrap();
+    assert_eq!(report.refused, 0, "{out}");
+    let name = report.self_name.clone().expect("a name for self");
+    assert_eq!(report.methods, 4, "{out}");
+    assert!(out.contains(&format!("{{ let {name}=self;")), "{out}");
+    assert!(out.contains(&format!("{{ let mut {name}=self;")), "{out}");
+    // Too few uses, or a nested `fn`, keep `self`; so does a `self::` path.
+    assert!(out.contains("{ self."), "{out}");
+    assert!(out.contains("self::"), "{out}");
+    crate::prune::check(&out, &rustc()).unwrap();
+}
+
+#[test]
+fn types_get_aliases_where_they_save_room() {
+    let source = "#[derive(Clone, Debug)]
+        struct Grid { cells: Vec<usize>, rows: Vec<usize>, width: usize, height: usize }
+        mod small { pub fn one(x: usize) -> usize { x } }
+        fn area(grid: &Grid) -> usize { grid.width as usize * grid.height as usize + usize::MAX % 7 }
+        fn biggest(values: &[usize]) -> Option<usize> { values.iter().copied().max() }
+        fn main() {
+            let grid = Grid { cells: Vec::new(), rows: Vec::<usize>::with_capacity(2), width: 3, height: 1_000 };
+            let start = std::time::Instant::now();
+            println!(\"{} {:?} {} {} {}\", area(&grid), biggest(&[1, 2]), small::one(2), grid.cells.len() + grid.rows.len(), start.elapsed().as_nanos() > 0);
+        }";
+    let (out, report) = rename(source, &rustc()).unwrap();
+    assert_eq!(report.refused, 0, "{out}");
+    let usize_alias = report
+        .aliases
+        .iter()
+        .find(|(ty, _, _)| ty == "usize")
+        .unwrap_or_else(|| panic!("{report:?}"));
+    // Declared at the root only: `small` uses `usize` too rarely.
+    assert_eq!(usize_alias.2, 1);
+    assert!(
+        out.contains(&format!("type {}=usize;", usize_alias.1)),
+        "{out}"
+    );
+    assert!(out.contains("(x: usize) -> usize { x }"), "{out}");
+    // Paths and attributes keep their names; numbers lose their separators.
+    assert!(out.contains("std::time::Instant::now()"), "{out}");
+    assert!(out.contains("#[derive(Clone, Debug)]"), "{out}");
+    assert!(out.contains("1000") && !out.contains("1_000"), "{out}");
+    crate::prune::check(&out, &rustc()).unwrap();
+}
+
+#[test]
+fn an_alias_that_does_not_compile_is_undone() {
+    // `Instant` is imported in `main` only: the root's alias cannot see it.
+    let source = "fn main() {
+            use std::time::Instant;
+            let (a, b, c, d) = (Instant::now(), Instant::now(), Instant::now(), Instant::now());
+            println!(\"{:?}\", (d - a) + (c - b));
+        }";
+    let (out, report) = rename(source, &rustc()).unwrap();
+    assert!(report.refused >= 1, "{report:?}");
+    assert!(report.aliases.is_empty(), "{report:?}");
+    assert!(!out.contains("type "), "{out}");
+    crate::prune::check(&out, &rustc()).unwrap();
 }

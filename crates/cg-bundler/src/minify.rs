@@ -1,7 +1,7 @@
-//! Shrinks a bundle to the tokens Rust needs (ADR 0045, level 1). Level 2
-//! ([`crate::prune`]) removes unused items first and hands its text to this
-//! module, which checks its own step as ever: the output has the tokens of
-//! what it was given.
+//! Shrinks a bundle to the tokens Rust needs, the minifier's last stage
+//! (ADR 0045, ADR 0046). [`crate::prune`] and [`crate::rename`] change the
+//! tokens first and hand their text to this module, which checks its own
+//! step: the output has the tokens of what it was given.
 //!
 //! The text is lexed ([`tokens`]) and written again with only the
 //! whitespace that keeps neighbouring tokens apart. Comments go, doc

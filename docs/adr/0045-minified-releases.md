@@ -1,6 +1,6 @@
 # 0045. Minified releases, each with a readable copy
 
-- Status: accepted (owner, 2026-10-29)
+- Status: accepted (owner, 2026-10-29); decision 2's three levels and decision 3 superseded by [0046](0046-one-minifier.md)
 - Date: 2026-10-29
 - Completes: [0012](0012-evaluation.md), decision 9 (what a release file is and how CI checks it); [0016](0016-self-play-training.md), decision 4 (saving room by stripping comments and indentation)
 - Scope: framework

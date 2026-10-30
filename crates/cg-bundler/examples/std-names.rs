@@ -1,6 +1,6 @@
 //! Writes the list of names that Rust's std, core and alloc define, which
-//! minifier level 3 neither renames where std could be meant nor gives as a
-//! new name (ADR 0045, module `cg_bundler::rename`).
+//! the minifier neither renames where std could be meant nor gives as a new
+//! name (ADR 0045, ADR 0046, module `cg_bundler::rename`).
 //!
 //! It reads the sources of the standard library of rustc 1.90.0, CodinGame's
 //! version (the `rust-src` component), and prints the list:
@@ -89,7 +89,7 @@ fn main() -> ExitCode {
     println!(
         "# The names that the standard library of Rust 1.90.0 (core, alloc, std) defines, for"
     );
-    println!("# minifier level 3 (ADR 0045). Written by");
+    println!("# the minifier's renaming (ADR 0046). Written by");
     println!("# `cargo run -p cg-bundler --example std-names`; do not edit.");
     println!("# Each line is the kinds of a name, then the name. Kinds: `m`, a pub fn, const,");
     println!("# type or static, an item of a trait or trait impl, or a pub field, which `.name`");

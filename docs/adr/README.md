@@ -47,7 +47,8 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0042](0042-official-time-limits-and-800-pairs.md) | Every strength evaluation at CodinGame's time limits, and 800 pairs per league pairing | Accepted |
 | [0043](0043-game-reviews-by-haiku.md) | Game reviews written by Haiku agents from game files | Accepted; decision 5 completed by 0044 |
 | [0044](0044-metrics-reports.md) | Metrics reports: large batches measured by code, interpreted by Haiku | Accepted |
-| [0045](0045-minified-releases.md) | Minified releases, each with a readable copy | Accepted |
+| [0045](0045-minified-releases.md) | Minified releases, each with a readable copy | Accepted; decision 2's three levels and decision 3 superseded by 0046 |
+| [0046](0046-one-minifier.md) | One minifier, with names outside ASCII and aliases | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 

@@ -12,7 +12,7 @@
 # (scripts/check-minified.sh): the same answers in every game.
 #
 # The minified file has the unused items removed and its names shortened
-# (levels 2 and 3), which needs rustc 1.90.0: `rustup toolchain install
+# (ADR 0046), which needs rustc 1.90.0: `rustup toolchain install
 # 1.90.0`, or CG_RUSTC naming that rustc.
 #
 # Usage: scripts/new-release.sh GAME BOT

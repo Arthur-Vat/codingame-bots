@@ -1,5 +1,5 @@
-//! The bundler at level 2 needs rustc 1.90.0 and says so when it has none
-//! (ADR 0045, decision 2): `CG_RUSTC` names the compiler, and a wrong
+//! The minifier needs rustc 1.90.0 and says so when it has none (ADR 0045,
+//! decision 2; ADR 0046): `CG_RUSTC` names the compiler, and a wrong
 //! one fails the bundling, never falls back. The compilers here are
 //! scripts, so that nothing needs to be uninstalled.
 
@@ -32,22 +32,20 @@ fn bundler(args: &[&str], rustc: Option<&PathBuf>) -> std::process::Output {
 }
 
 #[test]
-fn a_wrong_version_fails_the_bundling_at_level_2() {
+fn a_wrong_version_fails_the_minified_bundling() {
     let old = fake_rustc("old", "echo 'rustc 1.80.0 (fake 2024-07-01)'");
-    for args in [&[][..], &["--minify-level", "2"]] {
-        let output = bundler(args, Some(&old));
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        assert!(!output.status.success(), "{args:?}");
-        assert!(
-            stderr.contains("needs rustc 1.90.0") && stderr.contains("1.80.0"),
-            "{stderr}"
-        );
-        assert!(output.stdout.is_empty());
-    }
+    let output = bundler(&[], Some(&old));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(!output.status.success());
+    assert!(
+        stderr.contains("needs rustc 1.90.0") && stderr.contains("1.80.0"),
+        "{stderr}"
+    );
+    assert!(output.stdout.is_empty());
 }
 
 #[test]
-fn a_missing_compiler_fails_the_bundling_at_level_2() {
+fn a_missing_compiler_fails_the_minified_bundling() {
     let output = bundler(&[], Some(&PathBuf::from("/nonexistent/rustc")));
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(!output.status.success());
@@ -58,26 +56,23 @@ fn a_missing_compiler_fails_the_bundling_at_level_2() {
 }
 
 #[test]
-fn levels_that_need_no_compiler_do_not_ask_for_one() {
+fn the_readable_bundle_does_not_ask_for_a_compiler() {
     let old = fake_rustc("unused", "echo 'rustc 1.80.0 (fake 2024-07-01)'; exit 9");
-    for args in [&["--minify-level", "1"][..], &["--keep-comments"]] {
-        let output = bundler(args, Some(&old));
-        assert!(
-            output.status.success(),
-            "{args:?}: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        let bundle = String::from_utf8(output.stdout).unwrap();
-        assert!(bundle.starts_with("// Bundled by cg-bundler from the `uttt-bot-random` package."));
-    }
+    let output = bundler(&["--keep-comments"], Some(&old));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let bundle = String::from_utf8(output.stdout).unwrap();
+    assert!(bundle.starts_with("// Bundled by cg-bundler from the `uttt-bot-random` package."));
 }
 
 #[test]
-fn the_level_is_one_to_three() {
-    for level in ["0", "4", "x"] {
-        let output = bundler(&["--minify-level", level], None);
-        assert!(!output.status.success(), "{level}");
-    }
+fn there_are_no_levels_to_choose() {
+    // One minifier (ADR 0046): the option of the three levels is gone.
+    let output = bundler(&["--minify-level", "1"], None);
+    assert!(!output.status.success());
 }
 
 #[test]

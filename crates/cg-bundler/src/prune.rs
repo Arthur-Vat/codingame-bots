@@ -1,8 +1,9 @@
-//! Removes the items that rustc reports as never used (ADR 0045, level 2).
+//! Removes the items that rustc reports as never used (ADR 0045, ADR 0046),
+//! the minifier's first stage.
 //!
 //! The bundle is compiled with rustc 1.90.0, CodinGame's version, with the
-//! lints `dead_code` and `unused_imports` forced on, so that the `allow`
-//! the bundler puts on library modules hides nothing. Every item they report
+//! lints `dead_code` and `unused_imports` forced on, so that no `allow` in
+//! the code hides anything. Every item they report
 //! is removed, whole: its attributes and doc comments with it, and an
 //! inherent `impl` or a `mod` that has nothing left. The text is compiled
 //! again, and the new reports are removed in turn, since removing items

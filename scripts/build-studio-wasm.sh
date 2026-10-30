@@ -8,7 +8,8 @@
 #   stripped);
 # - OUT/<game>/<game>-<folder>.wasm: every baseline bot of the game
 #   (ADR 0040), games/<game>/bots/<folder>, bundled from the current code by
-#   cg-bundler (no rustfmt, minify level 1: no need for rustc 1.90.0 here) and
+#   cg-bundler (no rustfmt, the readable bundle: no need for rustc 1.90.0
+#   here) and
 #   compiled like a release. The adapters name
 #   the baseline bots: the script asks the rules program (run natively), so
 #   that no second list exists;
@@ -171,7 +172,7 @@ for game_dir in games/*/; do
     package=
     [[ -f $manifest_file ]] && package="$(tr -d '\r' <"$manifest_file" | sed -n 's/^name = "\(.*\)"$/\1/p' | head -n 1)"
     if [[ -n $package ]] &&
-      "$bundler" "$package" --no-format --minify-level 1 --output "$work/$name.rs" &&
+      "$bundler" "$package" --no-format --keep-comments --output "$work/$name.rs" &&
       rustc --edition 2021 -C opt-level=3 -C strip=symbols --target "$target" \
         --crate-name baseline_bot -o "$wasm" "$work/$name.rs"; then
       compiled+=("$name")
