@@ -6,7 +6,7 @@ parent: ice-and-fire-v014
 hypothesis: A plan whose score against the memory is already below the best score of a plan whose replies are known cannot become the best, since its own replies can only lower it; skipping its reply search (about a third of a turn goes to reply searches) leaves more time for climbs and beats v014.
 change: None released. Local screening only: the climbs return their plan's exact score against the memory; a plan below the best known (a plan's score with its own replies) gets no reply search (skip1), or only the cheap replies, its kill chain, cuts and bronze's greedy turn without the opponent's own climb (skip2).
 release: none
-sprt: not run
+sprt: not run: no gain in local screening
 elo: none
 pairs: none
 full_time: none
@@ -15,15 +15,16 @@ cg_rank: none
 ---
 
 Asked by the owner on 2026-10-30 ("Indeed skip it!"), step 5 of the time
-roadmap (phase 3: use time better).
+roadmap (phase 3: use idle time).
 
 ## Why
 
 In v011's searches the opponent's replies took 35 to 40% of a turn (its own
 climb most of it). A plan scored below the best plan whose replies are known
-seemed unable to become the one played. Not exactly: the memory grows during
-the turn and can lower the best plan too, so a skipped plan could rarely
-end up best; E027's final check would still search its replies then.
+was taken to be unable to become the one played. That holds only nearly:
+the memory grows during the turn and can lower the best plan too, so a
+skipped plan could rarely end up best, and E027's final check then searched
+its replies.
 
 ## Screening
 
@@ -48,6 +49,4 @@ machine:
   cases; what fills the time matters more than freeing it.
 
 The variants' code is in commit 734a45e of this pull request (`SKIP` in
-`search.rs`, 1 and 2), removed by the next commit, with #228's review
-tidy-ups (they change no answer: the speed bank's 200 answers stayed v014's
-with `SKIP` 0).
+`search.rs`, 1 and 2), removed by the next commit.
