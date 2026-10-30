@@ -45,4 +45,13 @@ the first: median 36.9 ms against v013's 21.9, 99.9% 39.8 ms, no timeout.
 
 ## Screening
 
-Pending.
+Against `ice-and-fire-v013` (#228's candidate) at CodinGame's limits
+(50 ms a turn, 1,000 ms the first, no tolerance), 400 seat-swapped pairs,
+seed 29029, two games at a time on a 4-core machine:
+
+| Bot | Elo against v013 | Timeouts | Answers after the first (median, 99%, 99.9%) |
+| --- | --- | ---: | --- |
+| E029 | **+24.4 [+4.8, +44.1]** | 1 (v013 3) | 36.2, 39.2, 41.1 ms (v013 14.6, 38.7, 40.7) |
+
+The time v013 left idle in the turns whose climbs ran out of first actions
+is worth climbing in.
