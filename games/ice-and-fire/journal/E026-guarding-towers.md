@@ -1,7 +1,7 @@
 ---
 id: E026
 date: 2026-10-30
-pull_request: "none yet"
+pull_request: "#222"
 parent: ice-and-fire-v010
 hypothesis: A third of v010's towers never block a training or a unit; offering towers only where they guard something (cells the enemy can take at its next turn, or the HQ against a chain the enemy can pay within two turns) stops the wasted ones and beats v010.
 change: The plan bot's action generator offers a tower on a border cell only if it lowers the cells of ours the enemy can take at its next turn, or raises the enemy's chain to our HQ while the enemy can pay for that chain within two of its turns.
