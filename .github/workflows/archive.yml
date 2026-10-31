@@ -2,8 +2,12 @@ name: Arena archive
 
 # Keeps each game's arena games in one workflow artifact, arena-games-<game>
 # (ADR 0031, scripts/arena-archive.sh): the archive's records, checked by
-# replaying them, plus the league and SPRT samples of a release's pull request
-# when a push to main adds the release (ADR 0038, decision 9). A weekly run uploads the archive again before it expires,
+# replaying them, plus the samples of a release when a push to main adds it:
+# the SPRT sample of its pull request and, for a game whose league runs on the
+# release's pull request, the league sample too (ADR 0038, decision 9). For a
+# game with a nightly league, the league sample comes with the night that
+# first plays the release: league-night.yml starts this workflow with the
+# game and the number of its run (ADR 0049, decision 7). A weekly run uploads the archive again before it expires,
 # 90 days after its upload. Every upload deletes the older copies, then asks
 # the Pages workflow to rebuild. A run by hand uploads a dry-run copy only
 # (dry-run-arena-games-<game>, kept a day) unless dry_run is unchecked: it
@@ -26,6 +30,14 @@ on:
         description: "Upload a dry-run copy only: delete nothing, start no Pages build"
         type: boolean
         default: true
+      game:
+        description: "Archive just this game (a folder of games/); empty: every game"
+        required: false
+        default: ""
+      league_run:
+        description: "With a game: the number of the league-nightly run whose league-game-records-<game> sample is added"
+        required: false
+        default: ""
 
 permissions: {}
 
@@ -59,6 +71,9 @@ jobs:
         id: plan
         env:
           EVENT_NAME: ${{ github.event_name }}
+          # Text from whoever starts the run: the script checks both.
+          GAME_INPUT: ${{ inputs.game }}
+          LEAGUE_RUN: ${{ inputs.league_run }}
         run: scripts/annotate.sh run "Arena archive plan" scripts/arena-archive.sh plan
 
   archive:
@@ -103,6 +118,9 @@ jobs:
           # Only used when a push adds a release: the merge commit of its
           # pull request.
           HEAD_SHA: ${{ github.sha }}
+          # A nightly league's run, when started by it: its league sample is
+          # the one added.
+          LEAGUE_RUN: ${{ inputs.league_run }}
         run: scripts/annotate.sh run "Gather the games of $GAME" scripts/arena-archive.sh gather "$GAME" "$RUNNER_TEMP/arena"
       - name: Upload the archive
         id: upload

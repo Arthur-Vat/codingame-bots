@@ -11,7 +11,7 @@ cd "$(dirname "$0")/../.."
 repo_root="$PWD"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
-unset GITHUB_ACTIONS GITHUB_OUTPUT GITHUB_STEP_SUMMARY RUNNER_TEMP EVENT_NAME ADDING HEAD_SHA DRY_RUN
+unset GITHUB_ACTIONS GITHUB_OUTPUT GITHUB_STEP_SUMMARY RUNNER_TEMP EVENT_NAME ADDING HEAD_SHA DRY_RUN GAME_INPUT LEAGUE_RUN LEAGUE_NIGHTLY
 
 checks=0
 failures=0
@@ -189,10 +189,12 @@ g init -q
 g add -A
 g commit -qm base
 
-plan() { # plan <event>: runs the plan mode; sets status, fills $tmp_dir/out
+plan() { # plan <event> [VAR=value...]: runs the plan mode; sets status, fills $tmp_dir/out
+  local event="$1"
+  shift
   status=0
   : >"$tmp_dir/out"
-  (cd "$plan_repo" && EVENT_NAME="$1" GITHUB_OUTPUT="$tmp_dir/out" scripts/arena-archive.sh plan >"$tmp_dir/stdout" 2>"$tmp_dir/stderr") || status=$?
+  (cd "$plan_repo" && env "$@" EVENT_NAME="$event" GITHUB_OUTPUT="$tmp_dir/out" scripts/arena-archive.sh plan >"$tmp_dir/stdout" 2>"$tmp_dir/stderr") || status=$?
 }
 
 # A release is added.
@@ -229,6 +231,31 @@ for event in schedule workflow_dispatch; do
   output_is "plan: $event" games '["other","uttt"]'
   output_is "plan: $event" adding false
 done
+
+# A run by hand for one game: just that game; with the run of a nightly
+# league, adding its sample. The inputs are checked.
+plan workflow_dispatch GAME_INPUT=uttt
+status_is "plan: one game" false
+output_is "plan: one game" games '["uttt"]'
+output_is "plan: one game" adding false
+plan workflow_dispatch GAME_INPUT=uttt LEAGUE_RUN=123456
+status_is "plan: one game and a league run" false
+output_is "plan: one game and a league run" games '["uttt"]'
+output_is "plan: one game and a league run" adding true
+plan workflow_dispatch GAME_INPUT= LEAGUE_RUN=
+status_is "plan: empty inputs" false
+output_is "plan: empty inputs" games '["other","uttt"]'
+output_is "plan: empty inputs" adding false
+plan workflow_dispatch LEAGUE_RUN=123456
+status_is "plan: a league run without a game" true
+for bad in '../x' 'nope' 'ut tt'; do
+  plan workflow_dispatch "GAME_INPUT=$bad"
+  status_is "plan: the game '$bad'" true
+done
+plan workflow_dispatch GAME_INPUT=uttt LEAGUE_RUN=12x
+status_is "plan: a league run that is not a number" true
+plan schedule GAME_INPUT=uttt
+status_is "plan: a game input outside a run by hand" true
 
 # Another event does nothing (a League run no longer starts the archive).
 plan workflow_run
@@ -314,6 +341,64 @@ canned "$sprt_runs" "$(jq -nc '{workflow_runs: [{id: 75, created_at: "2026-10-01
 rm -rf "$tmp_dir/work" "$stub/tool.log"
 gather uttt ADDING=true HEAD_SHA="$sha_a"
 status_is "gather: the run's artifacts cannot be listed" true
+
+# The league sample of a nightly league's run (LEAGUE_RUN), for a release that
+# game's night first played: the current archive and that run's sample, no
+# pull request looked up, no SPRT sample, and no HEAD_SHA needed.
+begin
+canned 'repos/owner/repo/actions/artifacts?name=arena-games-uttt&per_page=100' \
+  "$(listing "$(artifact 100 false 2026-08-01T00:00:00Z "$in_50" 1 main 7 7)")"
+archive_zip 100 r1 r2
+canned "repos/owner/repo/actions/runs/900/artifacts?name=league-game-records-uttt&per_page=100" \
+  "$(listing "$(artifact 910 false 2026-10-11T00:00:00Z 2026-11-11T00:00:00Z 900 main 7 7)")"
+zip_of 910 records/n1.json records/n2.json
+gather uttt ADDING=true LEAGUE_RUN=900
+status_is "gather: the sample of a nightly league's run" false
+output_is "gather: the sample of a nightly league's run" upload true
+output_is "gather: the sample of a nightly league's run" added 2
+output_is "gather: the sample of a nightly league's run" total 4
+expect "gather: league run: the archive and the run's sample are the inputs" \
+  "$(grep -q "inputs/0-archive .*inputs/league-900\$" "$stub/tool.log" && lacks "$stub/tool.log" 'inputs/sprt-' && echo 0 || echo 1)"
+expect "gather: league run: no pull request or SPRT run is looked up" \
+  "$(lacks "$stub/gh.log" '/commits/' && lacks "$stub/gh.log" 'sprt.yml' && lacks "$stub/gh.log" 'name=game-records-uttt' && echo 0 || echo 1)"
+# The run kept no sample: a notice, nothing added, no failure.
+canned "repos/owner/repo/actions/runs/900/artifacts?name=league-game-records-uttt&per_page=100" "$(listing)"
+rm -rf "$tmp_dir/work" "$stub/tool.log"
+gather uttt ADDING=true LEAGUE_RUN=900
+status_is "gather: a league run without a sample" false
+output_is "gather: a league run without a sample" added 0
+expect "gather: a league run without a sample: the notice" \
+  "$(has "$tmp_dir/stdout" 'no league sample added: run 900 has no unexpired league-game-records-uttt artifact' && echo 0 || echo 1)"
+gather uttt ADDING=true LEAGUE_RUN=9x
+status_is "gather: a league run that is not a number" true
+
+# A push that adds a release of a game with a nightly league: the SPRT sample
+# only, no league sample looked up (the night adds it later), no failure. The
+# setting comes from the environment, or from the game's evaluation.env.
+nightly_release() { # nightly_release <game> [VAR=value...]
+  local game="$1"
+  shift
+  begin
+  canned "repos/owner/repo/actions/artifacts?name=arena-games-$game&per_page=100" "$(listing)"
+  canned "repos/owner/repo/commits/$sha_a/pulls?per_page=100" "$(jq -nc --arg a "$sha_a" --arg b "$sha_b" \
+    '[{number: 2, merge_commit_sha: $a, head: {sha: $b, ref: "claude/feature", repo: {full_name: "owner/repo"}}}]')"
+  canned "$sprt_runs" "$(jq -nc '{workflow_runs: [{id: 71, created_at: "2026-10-01T00:00:00Z", head_repository: {full_name: "owner/repo"}}]}')"
+  canned "repos/owner/repo/actions/runs/71/artifacts?name=game-records-$game&per_page=100" \
+    "$(listing "$(artifact 800 false 2026-10-01T00:00:00Z 2026-11-01T00:00:00Z 71 main 7 7)")"
+  zip_of 800 records/s1.json
+  gather "$game" ADDING=true HEAD_SHA="$sha_a" "$@"
+  status_is "gather: a nightly game's release ($game)" false
+  output_is "gather: a nightly game's release ($game)" upload true
+  output_is "gather: a nightly game's release ($game)" total 1
+  expect "gather: a nightly game's release ($game): the SPRT sample alone is the input" \
+    "$(grep -q "inputs/sprt-71\$" "$stub/tool.log" && lacks "$stub/tool.log" 'inputs/league-' && echo 0 || echo 1)"
+  expect "gather: a nightly game's release ($game): no league sample is looked up" \
+    "$(lacks "$stub/gh.log" 'league-game-records' && echo 0 || echo 1)"
+  expect "gather: a nightly game's release ($game): the notice" \
+    "$(has "$tmp_dir/stdout" 'no league sample added: its league plays at night' && echo 0 || echo 1)"
+}
+nightly_release uttt LEAGUE_NIGHTLY=true
+nightly_release ice-and-fire
 
 # The current archive expires in 10 days and nothing is new: refresh. In 60 days: not.
 for case in "$in_10 true" "$in_60 false"; do

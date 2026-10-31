@@ -1,0 +1,489 @@
+name: League night
+
+# One game's night of the nightly league (ADR 0049, 0050), called by
+# league-nightly.yml for each game (it can also be called by another workflow;
+# it has no trigger of its own). The steps are scripts/league-night.sh:
+#   plan1   takes the current results (the branch league-results, else main's
+#           games/<game>/league.jsonl) and plans wave 1 over the game's
+#           LEAGUE_NIGHTLY_RUNNERS shards;
+#   play1   one job per shard plays its lines, calibrated on its own runner,
+#           and starts no line after its deadline;
+#   merge1  adds the finished lines to the results (drift is annotated) and
+#           plans wave 2: the nearest opponents of the releases that had
+#           their first games in wave 1;
+#   play2   plays wave 2 the same way;
+#   publish adds wave 2, generates the leaderboard, writes the summary and,
+#           when `publish` is true, commits the results and the leaderboard
+#           to the branch league-results (never merged: league-weekly.yml
+#           makes a branch from it). The night that played new lines also
+#           keeps a sample of their games and starts the archive.
+# With `publish` false it is a dry run: it plays and merges and writes the
+# summary, but pushes nothing and starts nothing. A job killed at its timeout
+# leaves the lines it finished: each is flushed as it ends, and the uploads
+# run after a failure.
+on:
+  workflow_call:
+    inputs:
+      game:
+        description: "Game folder"
+        type: string
+        required: true
+      publish:
+        description: "Push the results to league-results and start the archive"
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Unlike GitHub's default, fails a step when any command of a pipeline
+    # fails, not only the last one.
+    shell: bash
+
+env:
+  # CodinGame's Rust compiler (docs/CODINGAME.md, ADR 0010).
+  CG_RUST: "1.90.0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  plan1:
+    name: Plan, wave 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      night: ${{ steps.settings.outputs.night }}
+      play1_timeout: ${{ steps.settings.outputs.play1_timeout }}
+      play1_deadline: ${{ steps.settings.outputs.play1_deadline }}
+      has_results: ${{ steps.results.outputs.has_results }}
+      lines: ${{ steps.plan.outputs.lines }}
+      new: ${{ steps.plan.outputs.new }}
+      shards: ${{ steps.shards.outputs.shards }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the game and read the night's settings
+        id: settings
+        env:
+          GAME: ${{ inputs.game }}
+        run: |
+          # The input is text from whoever started the run: it is checked
+          # before it reaches a path or a command.
+          if [[ ! $GAME =~ ^[A-Za-z0-9_-]+$ || ! -f games/$GAME/evaluation.env ]]; then
+            echo "::error title=League night::'$GAME' is not a game with an evaluation.env"
+            exit 1
+          fi
+          setting() { sed -n "s/^$1=//p" "games/$GAME/evaluation.env" | head -n 1; }
+          minutes="$(setting LEAGUE_NIGHTLY_MINUTES)"
+          if [[ ! $minutes =~ ^[1-9][0-9]*$ ]] || ((minutes < 100)); then
+            echo "::error title=League night::LEAGUE_NIGHTLY_MINUTES of $GAME must be a number of minutes, 100 or more (now '$minutes')"
+            exit 1
+          fi
+          # Wave 1 gets the night's time but an hour for the merge, wave 2
+          # and the publication; its lines start 25 minutes before its job's
+          # limit (an 800-pair line takes about 20 minutes on a runner, and
+          # the job must still build and calibrate).
+          timeout=$((minutes - 60))
+          {
+            echo "night=$(date -u +%F)"
+            echo "play1_timeout=$timeout"
+            echo "play1_deadline=$((timeout - 25))"
+          } >>"$GITHUB_OUTPUT"
+      - name: Take the current results
+        id: results
+        env:
+          GAME: ${{ inputs.game }}
+        run: |
+          mkdir -p target/night
+          file="games/$GAME/league.jsonl"
+          # The branch league-results holds the newest results; main's file
+          # serves until the branch has one.
+          if git ls-remote --exit-code --heads origin league-results >/dev/null 2>&1 &&
+            git fetch --quiet origin +refs/heads/league-results:refs/remotes/origin/league-results &&
+            git cat-file -e "origin/league-results:$file" 2>/dev/null; then
+            git show "origin/league-results:$file" >target/night/results.jsonl
+            echo "Results: $file on the branch league-results."
+          elif [[ -f $file ]]; then
+            cp "$file" target/night/results.jsonl
+            echo "Results: $file on this branch (the branch league-results has none yet)."
+          else
+            echo "::notice title=League night::$GAME has no $file yet, on league-results or here: no night"
+            echo "has_results=false" >>"$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "has_results=true" >>"$GITHUB_OUTPUT"
+          echo "$(grep -c . target/night/results.jsonl || true) lines."
+      - uses: dtolnay/rust-toolchain@master
+        if: steps.results.outputs.has_results == 'true'
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        if: steps.results.outputs.has_results == 'true'
+        with:
+          key: ${{ inputs.game }}
+          save-if: false
+      - name: Plan wave 1
+        id: plan
+        if: steps.results.outputs.has_results == 'true'
+        env:
+          GAME: ${{ inputs.game }}
+          LEAGUE_NIGHT: ${{ steps.settings.outputs.night }}
+        run: |
+          scripts/annotate.sh run "Plan of the night, wave 1" \
+            scripts/league-night.sh plan "$GAME" 1 target/night/results.jsonl target/night/plan1.jsonl | tee target/night/plan1.txt
+      - name: List the shards that have lines
+        id: shards
+        if: steps.results.outputs.has_results == 'true'
+        run: |
+          list="$(grep -o '"shard":[0-9]*' target/night/plan1.jsonl | cut -d: -f2 | sort -nu | paste -sd, - || true)"
+          echo "shards=[$list]" >>"$GITHUB_OUTPUT"
+      - name: Keep the results and the plan
+        if: steps.results.outputs.has_results == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: league-night-${{ inputs.game }}-plan1
+          path: |
+            target/night/results.jsonl
+            target/night/plan1.jsonl
+            target/night/plan1.txt
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
+  play1:
+    name: "Wave 1, shard ${{ matrix.shard }}"
+    needs: plan1
+    # No line: no runner. A run with no results has no lines either.
+    if: needs.plan1.outputs.lines != '' && needs.plan1.outputs.lines != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(needs.plan1.outputs.play1_timeout) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.plan1.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: league-night-${{ inputs.game }}-plan1
+          path: target/night
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.game }}
+          save-if: ${{ matrix.shard == 0 }}
+      - name: Play the shard's lines
+        env:
+          GAME: ${{ inputs.game }}
+          SHARD: ${{ matrix.shard }}
+          DEADLINE: ${{ needs.plan1.outputs.play1_deadline }}
+          LEAGUE_COMMIT: ${{ github.sha }}
+        run: |
+          scripts/annotate.sh run "Night shard $SHARD, wave 1" \
+            scripts/league-night.sh play "$GAME" target/night/plan1.jsonl "$SHARD" "$DEADLINE"
+      - name: Keep the shard's lines
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: league-night-${{ inputs.game }}-1-shard-${{ matrix.shard }}
+          path: |
+            target/league/${{ inputs.game }}-night-${{ matrix.shard }}.jsonl
+            target/league/${{ inputs.game }}-night-${{ matrix.shard }}-new.jsonl
+          if-no-files-found: ignore
+          retention-days: 7
+          # A re-run of a failed shard uploads it again.
+          overwrite: true
+      - name: Keep the sample of the new bots' games
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: league-records-${{ inputs.game }}-1-${{ matrix.shard }}
+          path: target/league-records
+          if-no-files-found: ignore
+          retention-days: 7
+          overwrite: true
+
+  merge1:
+    name: Merge, plan wave 2
+    needs: [plan1, play1]
+    # After a failed shard too: its finished lines count. Not when there are
+    # no results, or the inputs were refused.
+    if: ${{ !cancelled() && needs.plan1.result == 'success' && needs.plan1.outputs.has_results == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      lines: ${{ steps.plan.outputs.lines }}
+      new: ${{ steps.plan.outputs.new }}
+      shards: ${{ steps.shards.outputs.shards }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: league-night-${{ inputs.game }}-plan1
+          path: target/night
+      - uses: actions/download-artifact@v8
+        if: needs.play1.result != 'skipped'
+        # No shard may have kept a file (all killed at once).
+        continue-on-error: true
+        with:
+          pattern: league-night-${{ inputs.game }}-1-shard-*
+          path: target/night/shards1
+          merge-multiple: true
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.game }}
+          save-if: false
+      - name: Add the finished lines to the results
+        env:
+          GAME: ${{ inputs.game }}
+        run: |
+          shopt -s nullglob
+          files=(target/night/shards1/*.jsonl)
+          echo "${#files[@]} files of lines from wave 1."
+          scripts/annotate.sh run "Merge of wave 1" \
+            scripts/league-night.sh merge "$GAME" target/night/results.jsonl target/night/results1.jsonl ${files[@]+"${files[@]}"} | tee target/night/merge1.txt
+      - name: Plan wave 2
+        id: plan
+        env:
+          GAME: ${{ inputs.game }}
+          LEAGUE_NIGHT: ${{ needs.plan1.outputs.night }}
+        run: |
+          scripts/annotate.sh run "Plan of the night, wave 2" \
+            scripts/league-night.sh plan "$GAME" 2 target/night/results1.jsonl target/night/plan2.jsonl | tee target/night/plan2.txt
+      - name: List the shards that have lines
+        id: shards
+        run: |
+          list="$(grep -o '"shard":[0-9]*' target/night/plan2.jsonl | cut -d: -f2 | sort -nu | paste -sd, - || true)"
+          echo "shards=[$list]" >>"$GITHUB_OUTPUT"
+      - name: Keep the merged results and the plan
+        uses: actions/upload-artifact@v7
+        with:
+          name: league-night-${{ inputs.game }}-merge1
+          path: |
+            target/night/results1.jsonl
+            target/night/plan2.jsonl
+            target/night/merge1.txt
+            target/night/plan2.txt
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
+  play2:
+    name: "Wave 2, shard ${{ matrix.shard }}"
+    needs: [plan1, merge1]
+    if: ${{ !cancelled() && needs.merge1.result == 'success' && needs.merge1.outputs.lines != '' && needs.merge1.outputs.lines != '0' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.merge1.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: league-night-${{ inputs.game }}-merge1
+          path: target/night
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.game }}
+          save-if: ${{ matrix.shard == 0 }}
+      - name: Play the shard's lines
+        env:
+          GAME: ${{ inputs.game }}
+          SHARD: ${{ matrix.shard }}
+          LEAGUE_COMMIT: ${{ github.sha }}
+        run: |
+          # The job's 45 minutes minus the build, the calibration and a line
+          # that starts at the deadline (about 20 minutes).
+          scripts/annotate.sh run "Night shard $SHARD, wave 2" \
+            scripts/league-night.sh play "$GAME" target/night/plan2.jsonl "$SHARD" 20
+      - name: Keep the shard's lines
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: league-night-${{ inputs.game }}-2-shard-${{ matrix.shard }}
+          path: |
+            target/league/${{ inputs.game }}-night-${{ matrix.shard }}.jsonl
+            target/league/${{ inputs.game }}-night-${{ matrix.shard }}-new.jsonl
+          if-no-files-found: ignore
+          retention-days: 7
+          overwrite: true
+      - name: Keep the sample of the new bots' games
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: league-records-${{ inputs.game }}-2-${{ matrix.shard }}
+          path: target/league-records
+          if-no-files-found: ignore
+          retention-days: 7
+          overwrite: true
+
+  publish:
+    name: Publish
+    needs: [plan1, play1, merge1, play2]
+    if: ${{ !cancelled() && needs.merge1.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write # to push the branch league-results
+      actions: write # to start the archive workflow
+    env:
+      GAME: ${{ inputs.game }}
+      NIGHT: ${{ needs.plan1.outputs.night }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: league-night-${{ inputs.game }}-plan1
+          path: target/night
+      - uses: actions/download-artifact@v8
+        with:
+          name: league-night-${{ inputs.game }}-merge1
+          path: target/night
+      - uses: actions/download-artifact@v8
+        if: needs.play2.result != 'skipped'
+        continue-on-error: true
+        with:
+          pattern: league-night-${{ inputs.game }}-2-shard-*
+          path: target/night/shards2
+          merge-multiple: true
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          pattern: league-records-${{ inputs.game }}-*
+          path: target/night/records
+          merge-multiple: true
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.game }}
+          save-if: false
+      - name: Add wave 2 and generate the leaderboard
+        run: |
+          shopt -s nullglob
+          files=(target/night/shards2/*.jsonl)
+          echo "${#files[@]} files of lines from wave 2."
+          scripts/annotate.sh run "Merge of wave 2" \
+            scripts/league-night.sh merge "$GAME" target/night/results1.jsonl target/night/league.jsonl ${files[@]+"${files[@]}"} | tee target/night/merge2.txt
+          # The journal is main's: the leaderboard names each release's experiment.
+          scripts/annotate.sh run "Leaderboard of the night" \
+            scripts/league-night.sh publish "$GAME" target/night/league.jsonl target/night/LEADERBOARD.md
+      - name: Write the summary
+        env:
+          PUBLISH: ${{ inputs.publish }}
+        run: |
+          show() { # show <title> <file>
+            echo "### $1"
+            echo '```text'
+            cat "$2" 2>/dev/null || echo "(none)"
+            echo '```'
+          }
+          {
+            echo "## League night $NIGHT: $GAME"
+            echo
+            if [ "$PUBLISH" = true ]; then
+              echo "Results pushed to the branch \`league-results\`."
+            else
+              echo "Dry run: nothing is pushed and no archive is started."
+            fi
+            echo
+            show "Plan, wave 1" target/night/plan1.txt
+            show "Plan, wave 2" target/night/plan2.txt
+            echo "### Drift"
+            echo '```text'
+            { grep -h '^::warning title=League drift::' target/night/merge1.txt target/night/merge2.txt || true; } | sed 's/^::warning title=League drift:://'
+            echo '```'
+            echo "### Leaderboard (first 12 rows)"
+            echo
+            grep '^|' target/night/LEADERBOARD.md | head -n 14
+            echo
+            echo "$(grep -c . target/night/league.jsonl || true) lines in the results, $(grep -c . target/night/results.jsonl || true) before the night."
+          } >>"$GITHUB_STEP_SUMMARY"
+      - name: Push the results to league-results
+        if: ${{ inputs.publish }}
+        run: |
+          # The branch holds only each game's league.jsonl and LEADERBOARD.md.
+          # Another game's night may push at the same time, to other files:
+          # a rejected push is fetched, applied on the new tip, and pushed
+          # again. Never forced. The work is done in a worktree of its own.
+          mkdir -p "$RUNNER_TEMP/league-results"
+          cp target/night/league.jsonl target/night/LEADERBOARD.md "$RUNNER_TEMP/league-results/"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          tree="$RUNNER_TEMP/league-results-tree"
+          git worktree add --quiet --detach "$tree"
+          cd "$tree"
+          for attempt in 1 2 3 4 5; do
+            git checkout --quiet --detach
+            git branch -D league-results-work >/dev/null 2>&1 || true
+            if git ls-remote --exit-code --heads origin league-results >/dev/null 2>&1; then
+              git fetch --quiet origin +refs/heads/league-results:refs/remotes/origin/league-results
+              git checkout --quiet -f -B league-results-work origin/league-results
+              existed=true
+            else
+              # The first night: a branch of its own, with no history of main.
+              git checkout --quiet --orphan league-results-work
+              git rm -rf --quiet --ignore-unmatch .
+              existed=false
+            fi
+            mkdir -p "games/$GAME"
+            cp "$RUNNER_TEMP/league-results/league.jsonl" "$RUNNER_TEMP/league-results/LEADERBOARD.md" "games/$GAME/"
+            git add "games/$GAME/league.jsonl" "games/$GAME/LEADERBOARD.md"
+            if [ "$existed" = true ] && git diff --cached --quiet; then
+              echo "::notice title=League night::league-results already holds these results: nothing to push"
+              exit 0
+            fi
+            git commit --quiet -m "chore(league): $GAME night $NIGHT"
+            if git push --quiet origin HEAD:refs/heads/league-results; then
+              echo "Pushed $(git rev-parse --short HEAD) to league-results (attempt $attempt)."
+              exit 0
+            fi
+            echo "::warning title=League night::the push to league-results was rejected (attempt $attempt of 5)"
+            sleep $((5 + RANDOM % 10))
+          done
+          echo "::error title=League night::the results of $GAME could not be pushed to league-results in 5 attempts"
+          exit 1
+      - name: Keep the sample of the new bots' games
+        id: records
+        # Wave 1 or 2 played new lines: this is the night that first plays a
+        # release, and its sample of games joins the archive (ADR 0049,
+        # decision 7). The archive workflow looks for this name.
+        if: ${{ inputs.publish && (needs.plan1.outputs.new != '0' || needs.merge1.outputs.new != '0') }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: league-game-records-${{ inputs.game }}
+          path: target/night/records
+          if-no-files-found: ignore
+          retention-days: 30
+          overwrite: true
+      - name: Start the archive
+        if: ${{ inputs.publish && steps.records.outputs.artifact-id != '' }}
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          # dry_run is off: the archive must be kept, not a copy for a day.
+          gh workflow run archive.yml -f game="$GAME" -f league_run="$RUN_ID" -f dry_run=false
+          echo "::notice title=League night::the archive is asked to add the sample of run $RUN_ID"

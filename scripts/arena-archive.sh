@@ -13,9 +13,12 @@
 # plan: decides the games to archive and writes `games=<JSON array>` and
 # `adding=<true|false>` to $GITHUB_OUTPUT (and stdout). For EVENT_NAME push
 # (to main), the games whose release files the commit HEAD adds, with
-# adding=true; none, and a notice, when no release was added. Otherwise
-# (schedule, by hand) every game, adding=false. Run in a checkout of two
-# commits.
+# adding=true; none, and a notice, when no release was added. For a run by
+# hand (workflow_dispatch) with GAME_INPUT, just that game (a folder of
+# games/); with LEAGUE_RUN too, the run of a nightly league whose sample is
+# added (below), adding=true; LEAGUE_RUN without GAME_INPUT is an error.
+# Otherwise (schedule, by hand) every game, adding=false. Run in a checkout of
+# two commits.
 #
 # gather: builds the next archive of GAME in WORK_DIR/archive from the inputs
 # it downloads to WORK_DIR/inputs/<kind>-<id>, each unzipped into a folder of
@@ -24,10 +27,17 @@
 #                 failing to download it fails the step
 #   league-<id>   when adding (ADDING=true): the latest unexpired league
 #                 sample league-game-records-GAME of the merged pull request
-#                 of HEAD_SHA (ADR 0038, decision 9)
-#   sprt-<id>     when adding: the latest unexpired SPRT sample
-#                 game-records-GAME of the same pull request
-# (<id> is the id of the workflow run that kept the sample.) Without a
+#                 of HEAD_SHA (ADR 0038, decision 9); or, when LEAGUE_RUN is
+#                 set, the one of that run, which is the nightly league that
+#                 first played the release (ADR 0049, decision 7). A game
+#                 with a nightly league (LEAGUE_NIGHTLY=true in its
+#                 evaluation.env) plays no league on the pull request, so
+#                 none is looked for there
+#   sprt-<id>     when adding, and LEAGUE_RUN is not set: the latest
+#                 unexpired SPRT sample game-records-GAME of the same pull
+#                 request
+# (<id> is the id of the workflow run that kept the sample.) A sample that is
+# missing is a notice, never a failure. Without a
 # current archive, the archive is built from the release's samples only.
 # then runs ARCHIVE_TOOL (studio-archive) over them. It writes upload, added
 # and total to $GITHUB_OUTPUT and a line to $GITHUB_STEP_SUMMARY. upload is
@@ -52,7 +62,9 @@
 #
 # Environment: REPO (owner/name) and GH_TOKEN for the gh CLI; DRY_RUN
 # (default true, prune only); ARCHIVE_TOOL (gather, site); ADDING and HEAD_SHA
-# (gather, when adding); EVENT_NAME (plan); NOW (unix seconds,
+# (gather, when adding; HEAD_SHA is not needed with LEAGUE_RUN); LEAGUE_RUN
+# (the id of a workflow run; gather, plan); EVENT_NAME, GAME_INPUT (plan);
+# LEAGUE_NIGHTLY (gather; read from the game's evaluation.env when not set); NOW (unix seconds,
 # default: now; for tests); GITHUB_OUTPUT and GITHUB_STEP_SUMMARY, written
 # only when set. Needs gh, jq and unzip.
 set -euo pipefail
@@ -146,11 +158,27 @@ mode_plan() {
       echo "adding=true"
       ;;
     schedule | workflow_dispatch)
-      scopes="$(all_games)"
+      local game="${GAME_INPUT:-}" run="${LEAGUE_RUN:-}" adding=false
+      if [[ -n $run && -z $game ]]; then
+        die "league_run needs a game"
+      fi
+      if [[ -n $game ]]; then
+        [[ ${EVENT_NAME:-} == workflow_dispatch ]] || die "a game input only comes with a run by hand"
+        if ! valid_game "$game" || [[ ! -d games/$game ]]; then
+          die "'$game' is not a game of this repository"
+        fi
+        if [[ -n $run ]]; then
+          [[ $run =~ ^[0-9]+$ ]] || die "league_run must be the number of a workflow run, not '$run'"
+          adding=true
+        fi
+        scopes="games=[\"$game\"]"
+      else
+        scopes="$(all_games)"
+      fi
       emit GITHUB_OUTPUT "$scopes"
-      emit GITHUB_OUTPUT "adding=false"
+      emit GITHUB_OUTPUT "adding=$adding"
       echo "$scopes"
-      echo "adding=false"
+      echo "adding=$adding"
       ;;
     *)
       die "unexpected event '${EVENT_NAME:-}'"
@@ -222,10 +250,17 @@ mode_gather() {
   [[ -n $work ]] || usage
   : "${REPO:?set REPO to owner/name}"
   : "${ARCHIVE_TOOL:?set ARCHIVE_TOOL to the studio-archive binary}"
-  local adding="${ADDING:-false}"
-  if [[ $adding == true ]]; then
+  local adding="${ADDING:-false}" league_run="${LEAGUE_RUN:-}"
+  if [[ -n $league_run ]]; then
+    [[ $league_run =~ ^[0-9]+$ ]] || die "LEAGUE_RUN is not the number of a workflow run"
+  elif [[ $adding == true ]]; then
     : "${HEAD_SHA:?set HEAD_SHA to the commit that added the release}"
     [[ $HEAD_SHA =~ ^[0-9a-f]{40}$ ]] || die "HEAD_SHA is not a commit"
+  fi
+  # A game with a nightly league has no league on its release's pull request.
+  local nightly="${LEAGUE_NIGHTLY:-}"
+  if [[ -z $nightly && -f games/$game/evaluation.env ]]; then
+    nightly="$(sed -n 's/^LEAGUE_NIGHTLY=//p' "games/$game/evaluation.env" | head -n 1)"
   fi
   local now="${NOW:-$(date +%s)}"
   if [[ -e $work/inputs || -e $work/archive ]]; then
@@ -248,10 +283,24 @@ mode_gather() {
     [[ -f $work/inputs/0-archive/index.json ]] || die "the current archive $cur_id has no index.json"
   fi
 
-  # 3. The samples of the release: the league's and the SPRT's.
-  if [[ $adding == true ]]; then
+  # 3. The samples of the release: the league's and the SPRT's. The nightly
+  # league's run gives the league's sample alone; a release of a game with a
+  # nightly league has its SPRT sample alone when it is published.
+  if [[ -n $league_run ]]; then
+    local lid
+    lid="$(run_artifact "$league_run" "league-game-records-$game")" || die "$game: the league sample lookup failed"
+    if [[ -n $lid ]]; then
+      download "$work" "$lid" "$work/inputs/league-$league_run"
+    else
+      notice "$game: no league sample added: run $league_run has no unexpired league-game-records-$game artifact"
+    fi
+  elif [[ $adding == true ]]; then
     local kind label name sample id run
     for kind in league sprt; do
+      if [[ $kind == league && $nightly == true ]]; then
+        notice "$game: no league sample added: its league plays at night, and the night that first plays the release adds the sample"
+        continue
+      fi
       if [[ $kind == league ]]; then
         name="league-game-records-$game"
         label=league
