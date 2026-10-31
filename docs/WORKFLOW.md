@@ -7,7 +7,7 @@ How the owner and Claude work together. The owner spends a few hours a week deci
 - **Conversation:** the owner and Claude work in a claude.ai conversation, the hub, until Claude Code Projects is available on the owner's account, then in a project named "CodinGame Bot Lab" ([ADR 0008](adr/0008-claude-hub.md)). The owner asks for work, reads results and decides there.
 - **Repository:** the durable record. Decisions go into ADRs, plans into `docs/`, experiment results into the journal, reports of training runs into `games/<game>/training/`. Nothing important lives only in a conversation.
 - **GitHub:** Claude opens a pull request from a `claude/` branch for every change. CI and the SPRT workflow judge it; the owner approves the merge in the conversation and Claude carries it out ([ADR 0023](adr/0023-chat-approved-merges.md)). The owner rarely needs to open GitHub for anything else; notifications for this repository are set to "Participating" to avoid duplicates.
-- **CodinGame:** the owner pastes released bots ([ADR 0009](adr/0009-manual-submission.md)). Reporting a rank is optional and never asked for; Claude records one the owner reports in the release's journal entry ([ADR 0036](adr/0036-ranks-optional.md)).
+- **CodinGame:** Claude submits a release through CodinGame's API only on the owner's approval of that release in the conversation, and records its rank in the release's journal entry when the ranking games end ([ADR 0047](adr/0047-codingame-api.md)). The owner may still paste a release himself; a rank he reports is recorded the same way, and Claude never asks him for one ([ADR 0036](adr/0036-ranks-optional.md)).
 
 ## A round of work
 

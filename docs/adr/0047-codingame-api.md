@@ -11,7 +11,7 @@
 
 CodinGame now has a public REST API for coding agents ([llms.txt](https://www.codingame.com/api/v1/docs/llms.txt), read 2026-10-31) and an Agent Skill that drives it. An agent gets a token through the OAuth device flow, which the user approves in the browser, then acts as that user: it reads a puzzle's rules, runs test games and reads their text logs (with the agent's stderr), submits, and reads progress, battles and the leaderboard. Test games and submissions are rate-limited per user. The API does not play arcade games.
 
-On 2026-10-31 the owner asked to work on A Code of Ice and Fire through this API and approved the device flow in a session. Asked how sessions should use it, he chose: test games freely within CodinGame's limits, submissions only on his approval in the conversation, recorded in the docs and this record.
+On 2026-10-31 the owner asked to work on A Code of Ice and Fire through this API, to install the Agent Skill and follow it, and approved the device flow in a session. Asked how sessions should use it, he chose: test games freely within CodinGame's limits, submissions only on his approval in the conversation, recorded in the docs and this record. The token's handling and leaving his IDE alone (decisions 2 and 3) are the skill's own rules, which he asked to follow; reading ranks through the API (decision 5) follows from his rule that Claude never asks him for a rank (2026-10-13). He approved the record as a whole with its pull request.
 
 ## Decision
 
