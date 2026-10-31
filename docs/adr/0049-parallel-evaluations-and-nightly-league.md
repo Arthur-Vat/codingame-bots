@@ -1,6 +1,6 @@
 # 0049. Evaluations spread over runners, and a nightly league for every game
 
-- Status: accepted (owner, 2026-10-31)
+- Status: accepted (owner, 2026-10-31); decision 4's shared budget and decision 4.4's ±15 Elo superseded by [0050](0050-league-anchor-target-and-budget.md)
 - Date: 2026-10-31
 - Supersedes: [0038](0038-incremental-league.md), decision 1's rule that a pairing is played once, decision 6's league on the release's pull request, decision 7 (the canary) and decision 9's source of the archive's league sample; [0042](0042-official-time-limits-and-800-pairs.md), decision 4 (the league job's time limit), and decision 1 for Ultimate Tic-Tac-Toe once its calibration is merged (decision 8 below); [0031](0031-arena-games-archive.md), decision 2's league sample added when a release is published
 - Scope: framework

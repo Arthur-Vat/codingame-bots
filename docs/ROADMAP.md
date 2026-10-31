@@ -12,7 +12,7 @@ Phases 0 to 3 built the framework and phase 4 the first real bot; phase 5 makes 
 | 5. Autonomy and workflow | Conventions, CI checks, project agents and skills, merge policy, arena and ratings | Every item below done (the owner dropped the one-week trial on 2026-10-09) | In progress (2026-10-09) |
 | 6. Studio | A Lichess-style app, local and on GitHub Pages: play a friend or any release, bot against bot, review with analysis, game history | The first version works on the owner's Windows computer; every item below done | Done (2026-10-13) |
 | 7. Second game | The new-game lifecycle ([ADR 0035](adr/0035-new-game-lifecycle.md)): playbook, stage skills, Ultimate Tic-Tac-Toe as the worked example; then a game the owner names, stage by stage | The owner passes each stage of that game; changes mostly inside the game folder | In progress (2026-10-13) |
-| Ongoing | Iterate every game toward Legend, then up the Legend ranking | | Ultimate Tic-Tac-Toe: Legend since 2026-10-07 (`uttt-v001`, 182 of 443); 59th with `uttt-v008` (2026-10-08); current release `uttt-v018` (2026-10-16), from the NNUE plan of [games/uttt/ROADMAP.md](../games/uttt/ROADMAP.md) |
+| Ongoing | Iterate every game toward Legend, then up the Legend ranking | | Ultimate Tic-Tac-Toe: Legend since 2026-10-07 (`uttt-v001`, 182 of 443); 59th with `uttt-v008` (2026-10-08); current release `uttt-v018` (2026-10-16), from the NNUE plan of [games/uttt/ROADMAP.md](../games/uttt/ROADMAP.md). A Code of Ice and Fire: Legend since 2026-10-31 (`ice-and-fire-v014`, 19th of 83) |
 
 ## Phase 0: foundations
 
@@ -227,7 +227,8 @@ Framework work that a game's plan needs but every game can use.
 - [x] One minifier with no levels ([ADR 0046](adr/0046-one-minifier.md)): CJK names after the single letters, a short name for `self`, per-module type aliases, std paths' middle segments kept only there, no digit separators, no `allow` in the minified output; the studio uses the readable bundle; `cg-tokens` removed
 - [x] Decision record on faster evaluations (owner, 2026-10-31, [ADR 0049](adr/0049-parallel-evaluations-and-nightly-league.md)): the SPRT in blocks over 8 runners, screening on GitHub with one runner per variant, release pull requests without the league, a nightly league for every game with its results on the `league-results` branch, Ultimate Tic-Tac-Toe calibrated first
 - [x] Arena: repeated pairings in the results file and the leaderboard, drift reported against a stored pairing; the night's planner (new bots, top neighbours, 20% for the others, the stop rule)
-- [ ] Nightly League workflow on the `league-results` branch, its weekly pull request and the archive's league sample; release pull requests without the league
+- [x] Decision record on the league's anchor and the nightly budget (owner, 2026-10-31, [ADR 0050](adr/0050-league-anchor-target-and-budget.md)): every league rated from its `v001`, a nightly target of ±10 Elo, 6 runners for 3 hours per game
+- [ ] Nightly League workflow on the `league-results` branch (6 runners for 3 hours per game, target ±10 Elo, the planner's default target set to 10), its weekly pull request and the archive's league sample; release pull requests without the league
 - [ ] Arena: per-shard seeds and a command that adds up shards and checks the SPRT's bounds; the SPRT in blocks over 8 runners in `sprt.yml`, with a simulation of its error rates and pairs played
 - [ ] Screening workflow, one runner per variant, dispatched by the session; skill `run-experiment` updated
 - [ ] Ultimate Tic-Tac-Toe calibrated: its timing bot, the probe on CodinGame through the API, its `evaluation.env`, then its league replayed on the owner's go-ahead
