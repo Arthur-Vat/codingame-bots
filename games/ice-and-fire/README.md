@@ -243,7 +243,7 @@ What the bot cannot check from its input: the opponent's commands, gold and upke
 
 ## Measuring the time on CodinGame
 
-A bot times a turn from the moment the turn's first line arrives; CodinGame times it from when it sends the input, and the gap between the two is not known. The plan bot answers by 40 ms of the 50 ms (the rest a margin), and its next steps would use more of it only if the gap allows. The `timing` bot measures it, CodinGame's overhead between turns, and CodinGame's speed against ours. To run it, in the IDE only (it loses its games on purpose; never submit it):
+A bot times a turn from the moment the turn's first line arrives; CodinGame times it from when it sends the input. The `timing` bot measures how long CodinGame lets a bot think by its own clock, CodinGame's overhead between turns, and CodinGame's speed against ours. Its three games on 2026-10-31 found a cut at about 63 ms by the bot's clock and a machine 1.6 to 1.8 times slower than a session's ([docs/CODINGAME.md](../../docs/CODINGAME.md#measured-in-a-code-of-ice-and-fire)); the evaluations are calibrated to both ([below](#evaluation-at-codingames-speed)). To run it, in the IDE only (it loses its games on purpose; never submit it):
 
 1. Paste `target/cg/ice-and-fire-timing.rs` (`scripts/bundle-bots.sh ice-and-fire`; CI also publishes it in the `paste-ready-bots-ice-and-fire` artifact) into the IDE, set it to play against itself, and click **Play my code** a few times. Neither side ever takes the other's HQ, so a game lasts until CodinGame cuts one off.
 2. For each game, copy the last line the console shows for red and for blue: each line holds the whole game so far.
@@ -260,7 +260,16 @@ For each turn, by the bot's clock in ms: the target it holds to, when the rest o
 - **The overhead.** Against itself, a side's gap is the other side's hold (its answer time on the same turn number, or the turn before for red) plus what CodinGame spends between the two: the referee and the input and output.
 - **The speed.** The workload's units a millisecond, against ours with the same file.
 
-In our arena, which counts exactly 50 ms from when it sends the input, the probe against itself was always accepted at 49 ms; at 50 ms it was cut off in some games and accepted in others, so the limit by a bot's clock moves by about a millisecond from game to game: read several games. Its gaps were the other side's hold plus 0.5 to 1.6 ms, and its workload ran 14 to 22 units a millisecond (Intel Xeon at 2.8 GHz, Rust 1.90.0, 2026-10-30). A line is about 240 characters for its start and the map, then about 30 a turn.
+In our arena, which counts exactly 50 ms from when it sends the input (at time scale 1), the probe against itself was always accepted at 49 ms; at 50 ms it was cut off in some games and accepted in others, so the limit by a bot's clock moves by about a millisecond from game to game: read several games. Its gaps were the other side's hold plus 0.5 to 1.6 ms, and its workload ran 14 to 22 units a millisecond (Intel Xeon at 2.8 GHz, Rust 1.90.0, 2026-10-30). A line is about 240 characters for its start and the map, then about 30 a turn.
+
+## Evaluation at CodinGame's speed
+
+Every strength evaluation of this game, the smoke test, the SPRT, the league and local screening, plays at CodinGame's speed and real limit, calibrated on each machine ([ADR 0048](../../docs/adr/0048-ice-and-fire-codingame-speed.md)). [`evaluation.env`](evaluation.env) sets `TIME_SCALE=auto` and `TIME_TOLERANCE_MS=auto`. `scripts/sprt.sh`, `scripts/league.sh` and `scripts/league-replay.sh` then first run the timing bot with `CG_WORKLOAD_MS` set: it plays no game and prints its workload's speed in 10 stretches. They run as many copies at once as the games they will play, take the median, and set:
+
+- the time scale to CodinGame's speed, `CG_SPEED` (11 units a millisecond), over the machine's;
+- the tolerance to `CG_EXTRA_MS` (the 13 ms CodinGame allows beyond its 50) times the scale, rounded.
+
+The settings and the machine's speed appear in each report, and in each league line (`time_scale`, `time_tolerance_ms`, `speed`). On GitHub's usual runners, four games at a time, the scale is about 0.82 and the tolerance 11 ms. For a local screening, `scripts/calibrate.sh ice-and-fire [JOBS]` prints the values to pass to the arena as `--time-scale` and `--time-tolerance-ms`, for JOBS games at a time (the number of CPUs by default, the arena's default). The League replay workflow plays the league's stored pairings again at these settings, in parallel jobs ([docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md)).
 
 ## Engine speed
 

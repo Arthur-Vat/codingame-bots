@@ -1,5 +1,5 @@
-//! The command line shared by every game's arena binary, with four
-//! commands: `match`, `sprt`, `league` and `leaderboard`.
+//! The command line shared by every game's arena binary, with five
+//! commands: `match`, `sprt`, `league`, `replay` and `leaderboard`.
 
 use std::collections::{BTreeSet, HashMap};
 use std::fs::{self, File, OpenOptions};
@@ -40,6 +40,9 @@ pub enum Command {
     /// Plays every pair of bots and computes Elo ratings; with `--results`,
     /// plays only a new release's pairings not yet stored.
     League(LeagueArgs),
+    /// Plays stored pairings of a league results file again, each with its
+    /// stored seed, and writes each as a new line of the file's format.
+    Replay(ReplayArgs),
     /// Writes the game's LEADERBOARD.md from a league results file, or
     /// checks that a committed one matches it.
     Leaderboard(LeaderboardArgs),
@@ -246,10 +249,56 @@ pub struct LeagueArgs {
     #[arg(long, value_name = "SHA", requires = "results")]
     pub commit: Option<String>,
 
+    /// The machine's speed in units a millisecond of the calibration
+    /// workload, when the time scale was calibrated to CodinGame's (ADR
+    /// 0048), written to each new pairing's line as `speed`.
+    #[arg(long, value_name = "UNITS", requires = "results")]
+    pub speed: Option<f64>,
+
     /// Prints the opponents chosen (estimated from the previous release's
     /// rating) and the canary, and exits without playing.
     #[arg(long, requires = "results")]
     pub plan: bool,
+
+    #[command(flatten)]
+    pub common: CommonArgs,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct ReplayArgs {
+    /// A bot as NAME=COMMAND: every bot of the pairings replayed.
+    #[arg(long = "bot", value_name = "NAME=COMMAND", required = true)]
+    pub bots: Vec<String>,
+
+    /// The league results file that stores the pairings (see
+    /// docs/adr/0038-incremental-league.md).
+    #[arg(long, value_name = "FILE")]
+    pub results: PathBuf,
+
+    /// A stored pairing to replay, as A,B in either order. Give it once per
+    /// pairing; they are played in the order given, each with its stored
+    /// seed, and written with its stored order of A and B.
+    #[arg(long = "pairing", value_name = "A,B", required = true)]
+    pub pairings: Vec<String>,
+
+    /// Creates (truncates) this file and appends each replayed pairing to it
+    /// as one line of the results file's format, flushed at once.
+    #[arg(long, value_name = "FILE")]
+    pub new_results: PathBuf,
+
+    /// Seat-swapped pairs played by each pairing [default: the stored
+    /// pairing's].
+    #[arg(long)]
+    pub pairs: Option<u32>,
+
+    /// Written to each line as `commit`.
+    #[arg(long, value_name = "SHA")]
+    pub commit: Option<String>,
+
+    /// The machine's speed in units a millisecond of the calibration
+    /// workload (ADR 0048), written to each line as `speed`.
+    #[arg(long, value_name = "UNITS")]
+    pub speed: Option<f64>,
 
     #[command(flatten)]
     pub common: CommonArgs,
@@ -302,6 +351,7 @@ pub fn main<F: RefereeFactory>(name: &'static str, new_referee: F) -> ExitCode {
         Command::Match(args) => run_match(args, game, &new_referee),
         Command::Sprt(args) => run_sprt(args, game, &new_referee),
         Command::League(args) => run_league(args, game, &new_referee),
+        Command::Replay(args) => incremental::run_replay(&args, game, &new_referee),
         Command::Leaderboard(args) => run_leaderboard(&args, game, name),
     };
     match result {

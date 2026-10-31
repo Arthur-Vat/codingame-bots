@@ -2,8 +2,10 @@
 # Tests whether a candidate bot is stronger than a baseline, with the game's
 # evaluation settings (games/<game>/evaluation.env, ADR 0012 to 0015, 0020).
 # The smoke test and the SPRT play at SPRT_TIME_SCALE and
-# SPRT_TIME_TOLERANCE_MS when set, else at TIME_SCALE and TIME_TOLERANCE_MS,
-# which are CodinGame's exact limits in every game (ADR 0042).
+# SPRT_TIME_TOLERANCE_MS when set, else at TIME_SCALE and TIME_TOLERANCE_MS:
+# CodinGame's exact limits (ADR 0042), or, when they are `auto`, the scale and
+# tolerance measured on this machine at the start (ADR 0048,
+# calibrate_settings in scripts/lib/evaluation.sh).
 #
 # Usage: scripts/sprt.sh GAME CANDIDATE.rs [BASELINE.rs]
 #
@@ -52,6 +54,7 @@ build_tools "$game"
 
 dir=target/sprt
 mkdir -p "$dir/bin"
+calibrate_settings "$game" "$dir/calibration"
 if [[ -z $baseline ]]; then
   candidate_name="$(basename "$candidate" .rs)"
   baseline="$(releases "$game" | awk -v c="$candidate_name" '

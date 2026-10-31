@@ -42,6 +42,7 @@ fn pairing(a: &str, b: &str, wins: u32, draws: u32, losses: u32) -> PairingResul
         date: "2026-10-16".to_string(),
         commit: "unknown".to_string(),
         cpu: "unknown".to_string(),
+        speed: None,
     }
 }
 
@@ -220,6 +221,35 @@ fn time_limits_are_shown_or_reported_as_mixed() {
             "{text}"
         );
     }
+}
+
+#[test]
+fn calibrated_time_limits_are_shown_as_a_range() {
+    let ratings = [rating("random", 0.0, 0.0, 400)];
+    let calibrated = |a: &str, scale: f64, tolerance: u64| {
+        let mut pairing = pairing(a, "random", 100, 0, 100);
+        pairing.time_scale = scale;
+        pairing.time_tolerance_ms = tolerance;
+        pairing.speed = Some(11.0 / scale);
+        pairing
+    };
+    let pairings = [calibrated("v017", 0.455, 6), calibrated("v018", 0.821, 11)];
+    let text = render("uttt", &pairings, &ratings, "random", "", &releases(&[]))
+        .unwrap()
+        .text;
+    assert!(
+        text.contains(
+            "Time limits: calibrated to CodinGame's speed on each machine, time scale 0.455 to \
+             0.821, tolerance 6 to 11 ms, 4 opening plies."
+        ),
+        "{text}"
+    );
+    // One pairing at a fixed scale among them: mixed.
+    let mixed = [pairings[0].clone(), pairing("v019", "random", 100, 0, 100)];
+    let text = render("uttt", &mixed, &ratings, "random", "", &releases(&[]))
+        .unwrap()
+        .text;
+    assert!(text.contains("Time limits: mixed"), "{text}");
 }
 
 #[test]

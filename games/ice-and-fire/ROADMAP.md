@@ -44,6 +44,9 @@ Iteration: one experiment per pull request ([journal](journal/README.md)).
 - [x] E019, the opponent's own climbed plan (moves, trainings, cuts) among the replies the search plans against, after a study of v007's lost games, as `ice-and-fire-v008` through the SPRT against v007: accepted, +78.5 Elo ([E019](journal/E019-opponent-plan.md), #210)
 - [x] E020, a level-2 unit counted at 5 rather than 20 in the evaluation, after a study of v008's losses (towers counted more were clearly weaker), as `ice-and-fire-v009` through the SPRT against v008: accepted, +39.8 Elo ([E020](journal/E020-level-two-units.md), #213)
 - [x] A study of towers, HQ threats and cuts in 1,000 v009 self-play games, with tools for the next experiments (the review tool's `towers`, `bank` and `screening`, the plan bot's analysis mode): a threat's urgency falls by about 0.42 a turn, half of the towers answer threats 5 or more turns away, and the parameters proposed for E021 to E025 ([research/towers-and-threats.md](research/towers-and-threats.md), #215)
+- [x] Evaluations at CodinGame's speed and real limit, calibrated on each machine with the timing bot's workload ([ADR 0048](../../docs/adr/0048-ice-and-fire-codingame-speed.md), #233): the calibration in the SPRT and league scripts, `scripts/calibrate.sh` for screenings, and the League replay workflow
+- [ ] The league's 105 stored pairings replayed at those settings (League replay workflow, on the owner's go-ahead), then the new `league.jsonl` and `LEADERBOARD.md` in a pull request
+- [ ] E032: the plan bot's hard limit at 56 ms by its clock, every phase bounded, screened and tested at the calibrated settings against v014
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 

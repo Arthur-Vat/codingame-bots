@@ -44,6 +44,11 @@ pub struct PairingResult {
     pub commit: String,
     /// The runner's processor, or `"unknown"`.
     pub cpu: String,
+    /// The machine's speed when the time scale was calibrated to
+    /// CodinGame's (ADR 0048), in units a millisecond of the calibration
+    /// workload; absent for pairings played at a fixed scale.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speed: Option<f64>,
 }
 
 impl PairingResult {

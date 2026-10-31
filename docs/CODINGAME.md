@@ -67,3 +67,13 @@ A bot can therefore use AVX2 only through a function compiled for it (`#[target_
 CodinGame measures a turn from when it starts sending the turn's input until it reads the bot's output. Extra time before the first input exists in practice but is not guaranteed ([CodinGame staff on the forum](https://forum.codingame.com/t/timeouts-how-do-they-work/24504/4)). Most multiplayer games give 1 s on the first turn and 50 ms afterwards, but older games differ, so each game's `RULES.md` records its own limits.
 
 A bot must not think during the opponent's turn ("pondering"): it is strictly forbidden (the owner, 2026-10-15, in the conversation). A bot searches only between reading its turn's input and printing its answer.
+
+### Measured in A Code of Ice and Fire
+
+The timing bot (`games/ice-and-fire/bots/timing`, [its README section](../games/ice-and-fire/README.md#measuring-the-time-on-codingame)) played three self-play games in the IDE on 2026-10-31, run by the owner:
+
+- **The limit by a bot's clock is about 63 ms, not 50.** Answers held to 62, 64 and 64 ms after the turn's first line were accepted, and the games were cut at 63, 65 and 64 ms. The lowest cut, 63 ms, is what the evaluations allow for ([ADR 0048](adr/0048-ice-and-fire-codingame-speed.md)).
+- **The machine is slower than ours.** Its workload ran 10.6 to 11.6 units a millisecond, with dips to 5.0 and 8.2. The same file runs at 18.9 to 22 on a session's machine and, on GitHub's runners with four games at a time, at 13.4 (AMD EPYC 7763, Intel Xeon Platinum 8573C) or 24.2 (AMD EPYC 9V45).
+- **CodinGame's overhead between turns** was 15 to 30 ms late in a game and up to 370 ms early, beyond the opponent's own time.
+
+These figures are this game's; another game's limit and speed are measured with a probe of its own.

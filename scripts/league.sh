@@ -10,7 +10,9 @@
 # from games/GAME/bots/greedy). They are played in order, each as a new
 # release would be: against the opponents the arena chooses among the bots of
 # the results file and of its pool, at the SPRT's time limits (SPRT_TIME_SCALE
-# and SPRT_TIME_TOLERANCE_MS when set; CodinGame's exact limits, ADR 0042). The pool of a NEW is the
+# and SPRT_TIME_TOLERANCE_MS when set; CodinGame's exact limits, ADR 0042, or
+# calibrated on this machine when they are `auto`, ADR 0048, with the
+# machine's speed written to each new line). The pool of a NEW is the
 # baseline bots of LEAGUE_BOTS (only those up to and including NEW when NEW is
 # a baseline) and, when NEW is a release, every release up to and including
 # NEW: a release after NEW is never passed to the arena, so that a replay of
@@ -87,6 +89,7 @@ build_tools "$game"
 
 dir=target/league
 mkdir -p "$dir/bin"
+calibrate_settings "$game" "$dir/calibration"
 
 IFS=',' read -r -a baselines <<<"$LEAGUE_BOTS"
 # The number of a release name (v019 gives 19), or nothing.
@@ -202,6 +205,10 @@ if [[ -n ${RECORDS_DIR:-} ]]; then
   records=(--records "$RECORDS_DIR/$game-league" --records-sample "${RECORDS_SAMPLE:-10}")
 fi
 canary="${LEAGUE_CANARY:-}"
+speed=()
+if [[ -n $MACHINE_SPEED ]]; then
+  speed=(--speed "$MACHINE_SPEED")
+fi
 
 echo "Settings: $(describe_settings), $LEAGUE_PAIRS pairs per matchup."
 echo "Results file: $results"
@@ -272,6 +279,7 @@ for new in "${news[@]}"; do
     --fixed-opponents "$fixed" --nearest "$LEAGUE_NEAREST" \
     --pairs "$LEAGUE_PAIRS" --anchor "$LEAGUE_ANCHOR" \
     --commit "$commit" --new-results "$new_results" --expect-no-faults-from "$new" \
+    ${speed[@]+"${speed[@]}"} \
     "${options[@]}" "${args[@]}" ${records[@]+"${records[@]}"} | tee "$log" || status=$?
 
   while IFS= read -r line; do
