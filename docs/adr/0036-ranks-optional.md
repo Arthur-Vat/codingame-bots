@@ -1,6 +1,6 @@
 # 0036. CodinGame ranks are reported only when the owner wishes
 
-- Status: accepted (owner, 2026-10-13)
+- Status: accepted (owner, 2026-10-13); decision 1 superseded by [0047](0047-codingame-api.md)
 - Date: 2026-10-13
 - Supersedes: [0009](0009-manual-submission.md) (the rank reported after each submission)
 - Scope: framework

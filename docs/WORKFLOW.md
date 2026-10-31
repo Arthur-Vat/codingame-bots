@@ -16,7 +16,7 @@ The owner starts each round in the conversation; no scheduled session runs ([ADR
 1. Claude reports the results since the last round and proposes two or three experiments, or the owner describes an idea.
 2. Claude implements each experiment in its own pull request; CI runs the tests and the SPRT workflow runs the smoke test and the SPRT.
 3. The owner approves merging accepted candidates. A rejected one comes back reduced to its journal entry, which is merged too, so the failure stays on record.
-4. When a release is published, the owner pastes its file (attached to its GitHub release) into CodinGame, and reports its rank only if he wishes.
+4. When a release is published, Claude submits it to CodinGame through the API once the owner approves that release in the conversation, then reads and records its rank when the ranking games end ([ADR 0047](adr/0047-codingame-api.md)). The owner may still paste the file (attached to its GitHub release) himself.
 
 Other work, such as tooling, documentation or training runs, takes the same path: a pull request from a `claude/` branch, CI as judge, the owner approving the merge. Bot strength work is paused from 2026-10-09 while phase 5 is built.
 

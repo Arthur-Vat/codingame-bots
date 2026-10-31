@@ -16,7 +16,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0006](0006-human-approves-merges.md) | A human approves every merge | Accepted; completed by 0023 |
 | [0007](0007-english.md) | English for all artifacts | Accepted |
 | [0008](0008-claude-hub.md) | A Claude conversation is the hub | Accepted |
-| [0009](0009-manual-submission.md) | Manual submission to CodinGame | Accepted; the rank reported after each submission superseded by 0036 |
+| [0009](0009-manual-submission.md) | Manual submission to CodinGame | Superseded by 0047; the rank reported after each submission superseded earlier by 0036 |
 | [0010](0010-codingame-rust-toolchain.md) | Target CodinGame's Rust: 1.90.0, edition 2021 | Accepted |
 | [0011](0011-framework-structure.md) | Framework structure: text-protocol referees, reference rules, textual bundler | Accepted; the bundle's comments superseded by 0016 |
 | [0012](0012-evaluation.md) | Evaluation: SPRT on game pairs, seeded openings, frozen releases | Accepted; decision 7 superseded by 0013, part of decision 5 by 0015; decisions 10 and 12 completed by 0029; the league of decision 12 superseded by 0038; decision 9 completed by 0045 |
@@ -40,7 +40,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0033](0033-no-daily-scheduled-session.md) | No daily scheduled session | Accepted; the usage line of decision 3 superseded by 0034 |
 | [0034](0034-no-usage-monitoring.md) | No usage monitoring | Accepted |
 | [0035](0035-new-game-lifecycle.md) | A lifecycle for each new game | Accepted |
-| [0036](0036-ranks-optional.md) | CodinGame ranks are reported only when the owner wishes | Accepted |
+| [0036](0036-ranks-optional.md) | CodinGame ranks are reported only when the owner wishes | Accepted; decision 1 superseded by 0047 |
 | [0037](0037-size-limit-in-characters.md) | Count a bot's size in characters, and pack its data with Rust tools | Accepted |
 | [0038](0038-incremental-league.md) | An incremental league at full time, with a leaderboard kept in the repository | Accepted; the 100 pairs of decision 2 and the cost estimate in its consequences superseded by 0042 |
 | [0040](0040-baseline-bots-in-the-studio.md) | The studio also plays each game's baseline bots | Accepted |
@@ -49,6 +49,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0044](0044-metrics-reports.md) | Metrics reports: large batches measured by code, interpreted by Haiku | Accepted |
 | [0045](0045-minified-releases.md) | Minified releases, each with a readable copy | Accepted; decision 2's three levels and decision 3 superseded by 0046 |
 | [0046](0046-one-minifier.md) | One minifier, with names outside ASCII and aliases | Accepted |
+| [0047](0047-codingame-api.md) | CodinGame's public API for test games, submissions and ranks | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 

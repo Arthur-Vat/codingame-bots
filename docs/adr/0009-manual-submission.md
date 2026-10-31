@@ -1,6 +1,6 @@
 # 0009. Manual submission to CodinGame
 
-- Status: accepted; the rank reported after each submission superseded by [0036](0036-ranks-optional.md)
+- Status: superseded by [0047](0047-codingame-api.md); the rank reported after each submission superseded earlier by [0036](0036-ranks-optional.md)
 - Date: 2026-10-06
 - Scope: framework
 

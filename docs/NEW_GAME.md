@@ -108,7 +108,7 @@ Each gap is a decision for the owner (skill `ask-decision`) before the game's co
 ### 9. Approach and first bot
 
 - Two or three quick prototypes of the top approaches, played against each other and the baseline bots in the arena.
-- The owner chooses; the first real bot becomes `<game>-v001` (`scripts/new-release.sh`) and the owner pastes it.
+- The owner chooses; the first real bot becomes `<game>-v001` (`scripts/new-release.sh`), and Claude submits it on the owner's approval ([ADR 0047](adr/0047-codingame-api.md)).
 
 ### 10. Iteration
 
