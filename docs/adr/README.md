@@ -42,9 +42,9 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0035](0035-new-game-lifecycle.md) | A lifecycle for each new game | Accepted |
 | [0036](0036-ranks-optional.md) | CodinGame ranks are reported only when the owner wishes | Accepted; decision 1 superseded by 0047 |
 | [0037](0037-size-limit-in-characters.md) | Count a bot's size in characters, and pack its data with Rust tools | Accepted |
-| [0038](0038-incremental-league.md) | An incremental league at full time, with a leaderboard kept in the repository | Accepted; the 100 pairs of decision 2 and the cost estimate in its consequences superseded by 0042 |
+| [0038](0038-incremental-league.md) | An incremental league at full time, with a leaderboard kept in the repository | Accepted; the 100 pairs of decision 2 and the cost estimate in its consequences superseded by 0042; decision 8 superseded for A Code of Ice and Fire's replay by 0048 |
 | [0040](0040-baseline-bots-in-the-studio.md) | The studio also plays each game's baseline bots | Accepted |
-| [0042](0042-official-time-limits-and-800-pairs.md) | Every strength evaluation at CodinGame's time limits, and 800 pairs per league pairing | Accepted |
+| [0042](0042-official-time-limits-and-800-pairs.md) | Every strength evaluation at CodinGame's time limits, and 800 pairs per league pairing | Accepted; decision 1, and the order of A Code of Ice and Fire's replay in decision 6, superseded for that game by 0048 |
 | [0043](0043-game-reviews-by-haiku.md) | Game reviews written by Haiku agents from game files | Accepted; decision 5 completed by 0044 |
 | [0044](0044-metrics-reports.md) | Metrics reports: large batches measured by code, interpreted by Haiku | Accepted |
 | [0045](0045-minified-releases.md) | Minified releases, each with a readable copy | Accepted; decision 2's three levels and decision 3 superseded by 0046 |
@@ -65,3 +65,4 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | --- | --- | --- |
 | [0039](0039-ice-and-fire-maps-and-studio.md) | A Code of Ice and Fire: our own map generator, and replay before human play in the studio | Accepted; decisions 1 and 3 superseded by 0041 |
 | [0041](0041-ice-and-fire-source-maps-from-a-spec.md) | A Code of Ice and Fire: the source's maps, rebuilt from a written spec | Accepted |
+| [0048](0048-ice-and-fire-codingame-speed.md) | A Code of Ice and Fire: evaluations at CodinGame's speed and real limit, calibrated on each machine | Accepted |

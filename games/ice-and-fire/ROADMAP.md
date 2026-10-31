@@ -91,6 +91,7 @@ Studio: the list in the [playbook](../../docs/NEW_GAME.md).
 
 ## Decisions
 
+- 2026-10-31: evaluations at CodinGame's speed and real limit: "I want to make sure we are closer to codingame limits obviously!"; forms "CG's real limit and speed (Recommended)", "56 ms (Recommended)" (the plan bot's hard limit by its clock), "Calibrate each run (Recommended)" (the time scale measured on each machine with the timing bot's workload); the league's history replayed in parallel: "Replay the whole history with many runners in parallel, it should not take such a long time. Recall you have lets say 15 runners available (5 others for regular CI jobs)" ([ADR 0048](../../docs/adr/0048-ice-and-fire-codingame-speed.md)).
 - 2026-10-22: the early game before anything else: "Before implementing anything, I would like you to think about strategies for the early game ... The goal is to maximize the expansion to generate the most income, while also being safe when the middle game begins. You should consider several approaches from a theoretical point of view, then benchmark them. Once best candidates are selected you can use them as part of a full bot, and then you can pick the best" (E003).
 - 2026-10-22: stage 9 passed: #182 merged ("Merge #182 (Recommended)", form); `plan`, as `ice-and-fire-v002`, is the approach.
 
