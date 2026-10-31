@@ -32,6 +32,17 @@ No crates are available: a bot is one file using the standard library only.
 
 If the Rust version changes, update `CG_RUST` in every workflow of `.github/workflows/` that sets it (`grep -rn CG_RUST .github`) and `rust-version` in `Cargo.toml` together, and record it in a new ADR that supersedes [ADR 0010](adr/0010-codingame-rust-toolchain.md).
 
+## API
+
+CodinGame has a public REST API for coding agents at `https://www.codingame.com/api/v1/` ([llms.txt](https://www.codingame.com/api/v1/docs/llms.txt), read 2026-10-31). How sessions use it is [ADR 0047](adr/0047-codingame-api.md): test games freely within the limits, submissions of a release only on the owner's approval in the conversation.
+
+- **Agent Skill:** install it in each session as llms.txt says (into `~/.claude/skills/codingame/`, outside the repository), then use skill `codingame`. It holds the endpoints, the game loop and the limits.
+- **Token:** OAuth device flow; the owner opens the link the session gives him, checks the code and accepts. The token lives in `~/.config/codingame/token`, dies with the sandbox, and is never printed or committed. The owner lists and revokes tokens at <https://www.codingame.com/settings/tokens>.
+- **Bot programming puzzles** are under `/puzzles/<pretty_id>` (A Code of Ice and Fire: `a-code-of-ice-and-fire`): rules (`statement`, the owner's `league`), `stub-generator`, `test-games`, `submissions`, `progress`, `battles`, `leaderboard`, `opponents`. Rust's language id is `Rust`.
+- **Test games** return a text log with every frame, our bot's stderr, each agent's stdout and the scores. Opponents: `boss`, `default`, `me`, or an `agent_id` from `opponents` (the owner's league and the lower ones). With `"opponents": ["boss"]`, our bot was agent 0 in all 7 games of 2026-10-31. Battle (ranking game) logs have no stderr.
+- **Limits** for A Code of Ice and Fire on 2026-10-31 (`GET /limits?puzzle=<pretty_id>`): 120 requests a minute; test games 10 a minute, 20 per 5 minutes, 30 per 15 minutes, 80 an hour, 150 per 3 hours, 200 per 6 hours, 600 a day; submits 5 per 5 minutes, 20 per 30 minutes, 40 an hour, 100 per 5 hours. Every response carries the tightest window of each in `limits`.
+- **Names outside ASCII compile:** `ice-and-fire-v014`, minified with CJK names and carrying rustc's dead-code warnings ([ADR 0046](adr/0046-one-minifier.md), decisions 3 and 6), compiled and played 7 test games without a timeout and was accepted at submission on 2026-10-31.
+
 ## Compilation mode
 
 In the past, CodinGame compiled Rust in debug mode in the IDE and in release mode only for arena submissions ([forum](https://forum.codingame.com/t/rust-release-mode-compilation/33552?page=2)). A later announcement planned release mode everywhere ([forum](https://forum.codingame.com/t/languages-update/1574/223)). On 2026-10-14 the owner's probe built under **Play my code** had `debug_assertions` off, so the IDE no longer compiles a debug build. Its optimization level is not known. Do not tune time management from IDE runs.
