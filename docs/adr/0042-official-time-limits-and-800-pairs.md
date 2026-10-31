@@ -1,6 +1,6 @@
 # 0042. Every strength evaluation at CodinGame's time limits, and 800 pairs per league pairing
 
-- Status: accepted (owner, 2026-10-21); decision 1, and the order of A Code of Ice and Fire's replay in decision 6, superseded for that game by [0048](0048-ice-and-fire-codingame-speed.md)
+- Status: accepted (owner, 2026-10-21); decision 1, and the order of A Code of Ice and Fire's replay in decision 6, superseded for that game by [0048](0048-ice-and-fire-codingame-speed.md); decision 4, and decision 1 for Ultimate Tic-Tac-Toe once its calibration is merged, superseded by [0049](0049-parallel-evaluations-and-nightly-league.md)
 - Date: 2026-10-21
 - Supersedes: [0013](0013-evaluation-time-limits.md), decision 1 (the time scale of 0.2 and the 5 ms of tolerance) and the calibration of decision 3; [0014](0014-full-time-confirmation.md), the confirmation at full time; [0020](0020-full-time-sprt-in-legend.md), decisions 2, 3 and 5 (full time only for a game in Legend, and screening at 20 ms); [0038](0038-incremental-league.md), the league's 100 pairs in decision 2 and the cost estimate in its consequences
 - Scope: framework
