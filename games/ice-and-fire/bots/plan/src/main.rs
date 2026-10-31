@@ -63,19 +63,17 @@ use ice_and_fire_opening::solo::{self, Objective};
 
 use crate::search::Limit;
 
-/// The time of a turn at CodinGame's limits, milliseconds: the answer
-/// leaves by it, a hard limit by the bot's clock, CodinGame's 50 ms less 2 ms
-/// for the input and the output (E031; 40 ms before). No work starts that
-/// could not end before it (`search::think`).
-const BUDGET_MS: f64 = 48.0;
+/// The time of a turn at CodinGame's limits, milliseconds: 50 ms, less a
+/// margin for the input, the output and a busy machine.
+const BUDGET_MS: f64 = 40.0;
 /// The first turn's time, of CodinGame's 1,000 ms (E010); the opening's
 /// plan stops at 76% of it, about 610 ms.
 const FIRST_BUDGET_MS: f64 = 800.0;
 
 /// The share of the budget that the soft limit marks: the opening's choice
 /// stops 40% of the way from it to the hard limit, and the middle game's
-/// climbs 79% of the way, about 44 ms (`search::CLIMB_SHARE`, E027, E031),
-/// the rest being for choosing the plan to play.
+/// climbs 75% of the way (`search::CLIMB_SHARE`, E027; at it before), the
+/// rest being for choosing the plan to play.
 const SOFT_SHARE: f64 = 0.6;
 
 /// The limits of the turn `turn` (1 first) that started at `start`.

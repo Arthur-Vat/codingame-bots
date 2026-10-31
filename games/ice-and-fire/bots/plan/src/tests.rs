@@ -263,11 +263,9 @@ fn a_search_that_learns_nothing_new_climbs_from_other_first_actions() {
     // search goes on to its most climbs (it stopped before E014), and the
     // later climbs find other plans. The position is seed 2's (seed 3's
     // until E023, whose evaluation ends a climb there on an empty plan).
-    // Since E031 the clock, not a cap of 32 climbs, ends the search: with
-    // room enough it climbs past 32, until no first action is left to try.
     let state = &positions(2, &[30])[1];
     let thought = think(state, evals(1_000_000), &mut opening());
-    assert!(thought.climbs > 32, "{} climbs", thought.climbs);
+    assert_eq!(thought.climbs, 32);
     assert!(thought.plans > 8, "{} plans", thought.plans);
     assert!(thought.memory <= 8);
     let mut scratch = state.clone();
@@ -314,8 +312,8 @@ fn takes_a_cheap_gain_the_hill_climb_must_find() {
 #[test]
 fn the_limit_of_a_turn_follows_the_time_scale() {
     let scale = cg_core::time::time_scale().min(100.0);
-    // 800 ms on the first turn, 48 ms on the others (E031).
-    for (turn, ms) in [(1, 0.800), (2, 0.048), (30, 0.048)] {
+    // 800 ms on the first turn, 40 ms on the others.
+    for (turn, ms) in [(1, 0.800), (2, 0.040), (30, 0.040)] {
         let start = Instant::now();
         let limit = crate::limit(start, turn);
         let (soft, hard) = (limit.soft.unwrap(), limit.hard.unwrap());

@@ -5,13 +5,13 @@ pull_request: "#232"
 parent: ice-and-fire-v014
 hypothesis: v014 stops a third of its middle-game turns at its cap of 32 climbs and answers by 40 ms of a turn that CodinGame, on a machine about 1.7 times slower than ours, cuts at about 63 ms by the bot's clock; climbing until the clock ends the search and answering by a hard 48 ms beats v014 (candidate `ice-and-fire-v015`).
 change: The answer leaves by 48 ms by the bot's clock (40 before); climbs and reply searches may start until about 44 ms (36), the check of the plan to play only until about 45 ms, its opponent climb stopping at about 47 ms; the cap of 32 climbs becomes 1,000, so the clock ends the search.
-release: ice-and-fire-v015
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
-cg_rank: not reported
+release: none
+sprt: rejected
+elo: "-0.4 [-8.8, +8.0] at CodinGame's exact limits (scale 1, no tolerance)"
+pairs: 1789
+full_time: "-0.4 [-8.8, +8.0] (the SPRT's own, ADR 0042), 4 timeouts in 3,579 games (v014 1)"
+decision: dropped
+cg_rank: none
 ---
 
 Asked by the owner on 2026-10-30 and 2026-10-31 ("Can you make sure the
@@ -76,6 +76,44 @@ At CodinGame's speed (both bots' time scaled to 0.6, `--time-scale 0.6`,
 | **both, 800 pairs** | | **+17.4 [+3.6, +31.2]** | 14 (15) |
 
 More time is worth more on CodinGame's slower machine: at our speed v014
-searches enough already, at CodinGame's it does not. The candidate is the
-48 ms version, `ice-and-fire-v015`; the SPRT on CI judges it at our speed,
+searches enough already, at CodinGame's it does not. The candidate was the
+48 ms version, `ice-and-fire-v015`; the SPRT on CI judged it at our speed,
 where the gain is smaller.
+
+## SPRT
+
+Rejected on the pull request (run 41193963252, at 0bcac63), at the
+settings of the time (ADR 0042: scale 1, no tolerance):
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v015 vs ice-and-fire-v014: 3579 games, 1789 complete pairs
+  ice-and-fire-v015: 1787 wins, 0 draws, 1792 losses (score 49.9%)
+  Elo of ice-and-fire-v015 over ice-and-fire-v014: -0.4 [-8.8, +8.0] (95%, from pairs)
+  pairs by ice-and-fire-v015's points (0, 1/2, 1, 3/2, 2): [243, 0, 1305, 0, 241]
+  ice-and-fire-v015 faults: 4 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v014 faults: 1 timeouts, 0 crashes, 0 invalid answers
+  answers after the first (median, 99%, 99.9%): ice-and-fire-v015 45.0, 46.9, 47.8 ms; ice-and-fire-v014 36.7, 38.8, 40.3 ms
+  slowest answer: ice-and-fire-v015 615.2 ms, ice-and-fire-v014 614.0 ms
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR -2.95 (bounds -2.94, 2.94) after 1789 pairs
+Verdict: REJECTED: ice-and-fire-v015 is not stronger than ice-and-fire-v014
+```
+
+## What was learned
+
+- At the runners' speed, the 8 ms more give nothing measurable. GitHub's
+  runners played the SPRT's four games at a time on 2 physical cores, at
+  about 13.4 units a millisecond of the timing bot's workload a game
+  (scratch run 41196876937). That is about 1.2 times CodinGame's 11, and
+  the arena cut at 50 ms where CodinGame cuts at about 63. Screened at
+  CodinGame's speed, the same change gave +17.4 [+3.6, +31.2]: the worth
+  of more time depends on the speed it is played at.
+- The SPRT therefore did not test the hypothesis at CodinGame's
+  conditions. ADR 0048 ([#233](https://github.com/Arthur-Vat/codingame-bots/pull/233))
+  moves this game's evaluations there, calibrated on each machine.
+
+The owner chose on 2026-10-31 to drop E031 and to test the whole budget
+in the next experiment instead, at 56 ms and the new settings ("Drop E031,
+test in E032 (Recommended)"). The code stays reachable in this pull
+request's commits (f67309c, `BUDGET_MS` 48, `MAX_CLIMBS` 1,000, the
+shares 0.79, 0.84 and 0.95).

@@ -50,22 +50,14 @@ use crate::eval::eval;
 const MEMORY_CAP: usize = 8;
 /// The opponent's best cuts added to the memory after a climb.
 const REPLY_CUTS: usize = 3;
-/// Most climbs in one turn: enough that the clock, not this cap, ends the
-/// search (E031; 32 before, which ended a third of the middle-game turns
-/// before their time).
-const MAX_CLIMBS: usize = 1_000;
+/// Most climbs in one turn.
+const MAX_CLIMBS: usize = 32;
 /// Most plans scored by the opponent's climb in one reply search (E019).
 const REPLY_EVALS: u64 = 300;
 /// Where between the soft and the hard limit the middle game's climbs stop
-/// (E027, E031): at about 44 ms of a 48 ms turn; the rest is for the final
-/// choice and its check.
-const CLIMB_SHARE: f64 = 0.79;
-/// The latest point, between the soft and the hard limit, at which the
-/// check of the plan to play may start (about 45 ms of 48), so that its reply
-/// search, which cannot stop halfway through a cut, ends in time (E031).
-const CHECK_SHARE: f64 = 0.84;
-/// Where the check's own climb of the opponent stops (about 47 ms of 48).
-const CHECK_CLIMB_SHARE: f64 = 0.95;
+/// (E027): at 36 ms of a 40 ms turn rather than 24; the rest is for the
+/// final choice and its check.
+const CLIMB_SHARE: f64 = 0.75;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
@@ -568,15 +560,11 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
     };
     let mut best = pick(&scores);
     // The plan played must have had its replies searched (E027): until the
-    // best has, its replies are searched in the time left, and the choice
-    // made again. A check starts only while it can end before the hard limit
-    // (E031): its cuts cannot stop halfway, and its opponent's climb stops
-    // short of the limit.
-    let check_by = at(CHECK_SHARE);
-    let too_late_to_check = || check_by.is_some_and(|t| Instant::now() >= t);
-    search.limit.soft = at(CHECK_CLIMB_SHARE);
+    // best has, its replies are searched in the time left, the opponent's
+    // climb stopping at the hard limit, and the choice made again.
+    search.limit.soft = limit.hard;
     while let Some((_, index)) = best {
-        if !VERIFY || plans[index].own.is_some() || too_late_to_check() {
+        if !VERIFY || plans[index].own.is_some() || late() {
             break;
         }
         let found = search.answers(&plans[index].end);
