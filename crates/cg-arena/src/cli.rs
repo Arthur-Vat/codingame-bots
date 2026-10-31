@@ -8,7 +8,7 @@ use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 
@@ -365,14 +365,15 @@ pub struct PlanArgs {
     pub top: usize,
 
     /// The half-width in Elo of the 95% interval each of them should reach.
-    #[arg(long, value_name = "ELO", default_value_t = 15.0)]
+    #[arg(long, value_name = "ELO", default_value_t = 10.0)]
     pub target_margin: f64,
 
     /// The share of what the new bots leave that goes to the other bots.
     #[arg(long, value_name = "SHARE", default_value_t = 0.2)]
     pub low_share: f64,
 
-    /// The night, YYYY-MM-DD: it varies the seeds from one night to the next.
+    /// The night, YYYY-MM-DD, or YYYY-MM-DD-N for a second plan of the same
+    /// night: it varies the seeds from one night to the next.
     #[arg(long, value_name = "DATE")]
     pub night: String,
 
@@ -402,6 +403,12 @@ pub struct PlayArgs {
     /// Plays only the lines of this shard [default: all].
     #[arg(long, value_name = "K")]
     pub shard: Option<usize>,
+
+    /// Starts no new line of the plan once this many minutes have passed
+    /// since `play` started; a line already started finishes, and its result
+    /// is written as usual. 0 plays nothing.
+    #[arg(long, value_name = "M")]
+    pub deadline_minutes: Option<u64>,
 
     /// Creates (truncates) this file and appends each finished pairing to it
     /// as one line of the results file's format, flushed at once.

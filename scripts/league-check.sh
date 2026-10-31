@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # The merge gate of the incremental league (ADR 0038): checks that a game's
 # results file holds the pairings of the releases a pull request adds, and that
-# its LEADERBOARD.md is the one generated from the results.
+# its LEADERBOARD.md is the one generated from the results. A game with a
+# nightly league (LEAGUE_NIGHTLY=true in its evaluation.env, ADR 0049) plays
+# no league on a release's pull request: its releases get their pairings
+# overnight, so only the leaderboard is checked.
 #
 # Usage: scripts/league-check.sh GAME [RELEASE_FILE...]
 #
@@ -11,7 +14,8 @@
 # game has no league yet: prints a notice and exits with 0, unless the
 # environment variable LEAGUE_BASE (a git revision, HEAD^1 in a pull request)
 # is set and has the file: then the pull request deleted it, an error. Otherwise:
-# 1. the results file must hold a pairing with each release;
+# 1. the results file must hold a pairing with each release (skipped, with a
+#    notice, when LEAGUE_NIGHTLY=true);
 # 2. `GAME-arena leaderboard --check` must find games/GAME/LEADERBOARD.md equal
 #    to the leaderboard generated from the results file (the ratings come from
 #    Linux's math library, so generate it on Linux: docs/WORKFLOW.md).
@@ -53,6 +57,10 @@ if [[ ! -f $results ]]; then
 fi
 
 for file in "$@"; do
+  if [[ ${LEAGUE_NIGHTLY:-false} == true ]]; then
+    echo "::notice title=League results::$game has a nightly league (ADR 0049): $(basename "$file" .rs) needs no pairing in $results yet"
+    continue
+  fi
   name="$(basename "$file" .rs)"
   bot="${name#"$game-"}"
   if [[ $file != "games/$game/releases/$game-"*.rs || ! $bot =~ ^v[0-9]+$ ]]; then

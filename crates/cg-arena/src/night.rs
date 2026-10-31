@@ -167,7 +167,7 @@ impl Settings {
         }
         if !is_date(&self.night) {
             return Err(format!(
-                "--night {:?} must look like YYYY-MM-DD",
+                "--night {:?} must look like YYYY-MM-DD, or YYYY-MM-DD-N for a second plan of a night",
                 self.night
             ));
         }
@@ -175,8 +175,20 @@ impl Settings {
     }
 }
 
-/// Whether `text` is a calendar-shaped date, `YYYY-MM-DD`.
+/// Whether `text` is a calendar-shaped date, `YYYY-MM-DD`, optionally followed
+/// by `-N` (1 to 3 digits): the workflow's second plan of a night varies the
+/// seeds with it.
 fn is_date(text: &str) -> bool {
+    let (text, suffix) = match text.get(10..) {
+        Some(rest) if !rest.is_empty() => (&text[..10], Some(rest)),
+        _ => (text, None),
+    };
+    if let Some(rest) = suffix {
+        let digits = rest.strip_prefix('-').unwrap_or("");
+        if digits.is_empty() || digits.len() > 3 || !digits.bytes().all(|b| b.is_ascii_digit()) {
+            return false;
+        }
+    }
     let bytes = text.as_bytes();
     if bytes.len() != 10
         || !bytes.iter().enumerate().all(|(at, byte)| {

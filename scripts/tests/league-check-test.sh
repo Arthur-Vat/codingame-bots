@@ -10,7 +10,7 @@ cd "$(dirname "$0")/../.."
 repo_root="$PWD"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
-unset GITHUB_ACTIONS LEAGUE_ANCHOR
+unset GITHUB_ACTIONS LEAGUE_ANCHOR LEAGUE_NIGHTLY
 
 checks=0
 failures=0
@@ -96,6 +96,15 @@ expect_unused "no pairing"
 # A bot whose name only starts like the release's does not count.
 pairing v0020 random >>"$repo/games/toy/league.jsonl"
 check 1 'v002 has no pairing' toy games/toy/releases/toy-v002.rs
+
+# A game with a nightly league: a release needs no pairing, the leaderboard
+# is still checked.
+echo stale >"$repo/games/toy/LEADERBOARD.md"
+LEAGUE_NIGHTLY=true check 1 'does not match' toy games/toy/releases/toy-v002.rs
+LEAGUE_NIGHTLY=true check 1 'v002 needs no pairing in games/toy/league.jsonl yet' toy games/toy/releases/toy-v002.rs
+echo ok >"$repo/games/toy/LEADERBOARD.md"
+LEAGUE_NIGHTLY=true check 0 'matches games/toy/league.jsonl' toy games/toy/releases/toy-v002.rs
+LEAGUE_NIGHTLY=false check 1 'v002 has no pairing' toy games/toy/releases/toy-v002.rs
 
 # The pairing is there (as the second bot too), the leaderboard is stale.
 pairing greedy v002 >>"$repo/games/toy/league.jsonl"

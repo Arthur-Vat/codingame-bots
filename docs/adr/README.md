@@ -37,7 +37,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0030](0030-studio-on-github-pages.md) | The studio also runs in the browser, published on GitHub Pages | Accepted; decision 6 completed by 0031, decision 2 by 0032, decision 4 by 0040 |
 | [0031](0031-arena-games-archive.md) | Arena games: one archive per game on GitHub, shown read-only in the studio | Accepted; the league sample's source in decision 2 superseded by 0038; decision 2's league sample at publication superseded by 0049 |
 | [0032](0032-analysis-engine.md) | Analysis: one program per game, run as WebAssembly in the page or natively by the local server | Accepted |
-| [0033](0033-no-daily-scheduled-session.md) | No daily scheduled session | Accepted; the usage line of decision 3 superseded by 0034 |
+| [0033](0033-no-daily-scheduled-session.md) | No daily scheduled session | Accepted; the usage line of decision 3 superseded by 0034; decision 1 superseded for the weekly league results pull request by 0051 |
 | [0034](0034-no-usage-monitoring.md) | No usage monitoring | Accepted |
 | [0035](0035-new-game-lifecycle.md) | A lifecycle for each new game | Accepted |
 | [0036](0036-ranks-optional.md) | CodinGame ranks are reported only when the owner wishes | Accepted; decision 1 superseded by 0047 |
@@ -52,6 +52,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0047](0047-codingame-api.md) | CodinGame's public API for test games, submissions and ranks | Accepted |
 | [0049](0049-parallel-evaluations-and-nightly-league.md) | Evaluations spread over runners, and a nightly league for every game | Accepted; decision 4's shared budget and decision 4.4's ±15 Elo superseded by 0050 |
 | [0050](0050-league-anchor-target-and-budget.md) | Every league rated from the game's first release, a nightly target of ±10 Elo, and a nightly budget per game | Accepted |
+| [0051](0051-weekly-league-pull-request.md) | A weekly scheduled task opens the league results pull request | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 
