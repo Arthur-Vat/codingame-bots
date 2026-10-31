@@ -1,0 +1,169 @@
+name: League replay
+
+# Replays a game's whole league at its current evaluation settings (ADR 0048,
+# decision 5), started by hand only: every stored pairing of
+# games/<game>/league.jsonl is played again by the same two bots with its
+# stored seed (scripts/league-replay.sh), the pairings split into shards that
+# run in parallel jobs, each calibrated on its own runner when the game's
+# TIME_SCALE is auto. A last job merges the shards in the stored order and
+# prints the new results file and its leaderboard. It changes nothing in the
+# repository and posts nothing: Claude reads the merged lines in the job log
+# (skill github-api) and replaces games/<game>/league.jsonl and
+# LEADERBOARD.md with them in a pull request. A failed shard leaves the merge
+# failing: re-run the failed jobs.
+on:
+  workflow_dispatch:
+    inputs:
+      game:
+        description: "Game folder"
+        required: true
+        default: ice-and-fire
+      shards:
+        # About 15 runners for this, 5 left for the other jobs (ADR 0048).
+        description: "Parallel jobs (1 to 20)"
+        required: false
+        default: "15"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: league-replay-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    # Unlike GitHub's default, fails a step when any command of a pipeline
+    # fails, not only the last one.
+    shell: bash
+
+env:
+  # CodinGame's Rust compiler (docs/CODINGAME.md, ADR 0010).
+  CG_RUST: "1.90.0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.plan.outputs.shards }}
+      count: ${{ steps.plan.outputs.count }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the inputs and list the shards
+        id: plan
+        env:
+          GAME: ${{ inputs.game }}
+          SHARDS: ${{ inputs.shards }}
+        run: |
+          # The inputs are text from whoever starts the run: they are checked
+          # before they reach a path or a command.
+          if [[ ! $GAME =~ ^[A-Za-z0-9_-]+$ || ! -f games/$GAME/league.jsonl ]]; then
+            echo "::error title=League replay::'$GAME' is not a game with a league.jsonl"
+            exit 1
+          fi
+          # No leading zero: bash would read the number as octal.
+          if [[ ! $SHARDS =~ ^[1-9][0-9]*$ ]] || ((SHARDS > 20)); then
+            echo "::error title=League replay::shards must be a number from 1 to 20"
+            exit 1
+          fi
+          list="$(seq -s, 0 $((SHARDS - 1)))"
+          echo "shards=[$list]" >>"$GITHUB_OUTPUT"
+          echo "count=$SHARDS" >>"$GITHUB_OUTPUT"
+
+  replay:
+    name: Shard ${{ matrix.shard }}
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.game }}
+          save-if: ${{ matrix.shard == 0 }}
+      - name: Replay the shard's pairings
+        env:
+          GAME: ${{ inputs.game }}
+          SHARD: ${{ matrix.shard }}
+          SHARDS: ${{ needs.plan.outputs.count }}
+          LEAGUE_COMMIT: ${{ github.sha }}
+        run: |
+          mkdir -p target
+          scripts/annotate.sh run "Replay of shard $SHARD" \
+            scripts/league-replay.sh "$GAME" "$SHARD" "$SHARDS" | tee "target/replay-$SHARD.txt"
+      - name: Keep the shard's lines
+        uses: actions/upload-artifact@v7
+        with:
+          name: league-replay-${{ inputs.game }}-${{ matrix.shard }}
+          path: target/league/${{ inputs.game }}-replay-${{ matrix.shard }}.jsonl
+          if-no-files-found: error
+          # A re-run of a failed shard uploads it again.
+          overwrite: true
+
+  merge:
+    name: Merge
+    needs: [plan, replay]
+    # After a failed shard too, so that the merge says which pairings are
+    # missing; never when the inputs were refused.
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: league-replay-${{ inputs.game }}-*
+          path: target/replay
+          merge-multiple: true
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.game }}
+          save-if: false
+      - name: Merge the shards and generate the leaderboard
+        env:
+          GAME: ${{ inputs.game }}
+        run: |
+          shopt -s nullglob
+          files=(target/replay/"$GAME"-replay-*.jsonl)
+          if ((${#files[@]} == 0)); then
+            echo "::error title=League replay::no shard finished"
+            exit 1
+          fi
+          scripts/league-replay.sh --merge "$GAME" "${files[@]}" >target/replay/league.jsonl
+          anchor="$(sed -n 's/^LEAGUE_ANCHOR=//p' "games/$GAME/evaluation.env")"
+          cargo run --quiet --release --locked -p "$GAME-arena" -- leaderboard \
+            --results target/replay/league.jsonl --anchor "$anchor" \
+            --journal "games/$GAME/journal/README.md" --out target/replay/LEADERBOARD.md
+          echo "---- replayed league.jsonl ----"
+          cat target/replay/league.jsonl
+          echo "---- end ----"
+          {
+            echo "## League replay: $GAME"
+            echo
+            echo "$(grep -c . target/replay/league.jsonl) pairings, in the stored order. Replace \`games/$GAME/league.jsonl\` with the lines between the markers of this job's log, then regenerate \`LEADERBOARD.md\` on Linux:"
+            echo
+            echo "\`cargo run --release -p $GAME-arena -- leaderboard --results games/$GAME/league.jsonl --anchor $anchor --journal games/$GAME/journal/README.md --out games/$GAME/LEADERBOARD.md\`"
+            echo
+            cat target/replay/LEADERBOARD.md
+          } >>"$GITHUB_STEP_SUMMARY"
+      - name: Publish the merged files
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: league-replay-${{ inputs.game }}
+          path: target/replay/
+          if-no-files-found: ignore
+          # Re-running the failed jobs runs the merge again.
+          overwrite: true

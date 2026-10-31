@@ -27,6 +27,11 @@
 //! the last line of each side is enough to read afterwards. Debug output
 //! goes to stderr only. A bad count line or input that ends in the middle of
 //! a turn ends the bot with exit code 1.
+//!
+//! Off CodinGame, the same workload measures a machine: with
+//! [`WORKLOAD_ENV`] set, the bot plays no game and prints its speed
+//! ([`calibrate`]). `scripts/calibrate.sh` runs it to set the evaluations'
+//! time scale to CodinGame's speed (ADR 0048).
 
 use std::fmt::Write as _;
 use std::hint::{black_box, spin_loop};
@@ -151,6 +156,46 @@ pub fn work_until(state: &State, until: Instant) -> (u64, Duration) {
     (done, took)
 }
 
+/// When this variable holds a number of milliseconds `N`, the bot plays no
+/// game: it runs the workload in [`CALIBRATION_STRETCHES`] stretches of `N`
+/// ms and prints each stretch's units a millisecond on its own line of
+/// stdout, then exits.
+pub const WORKLOAD_ENV: &str = "CG_WORKLOAD_MS";
+/// How many stretches [`WORKLOAD_ENV`] runs.
+pub const CALIBRATION_STRETCHES: usize = 10;
+
+/// The units a millisecond of the workload in each of `stretches` stretches
+/// of `ms` ms, as the turns of a game measure them.
+pub fn calibrate(ms: u64, stretches: usize) -> Result<Vec<f64>, String> {
+    let work = work_state()?;
+    Ok((0..stretches)
+        .filter_map(|_| {
+            let (done, took) = work_until(&work, Instant::now() + Duration::from_millis(ms));
+            per_ms(done, took)
+        })
+        .collect())
+}
+
+/// Runs [`WORKLOAD_ENV`]'s measure for `text` ms and returns the exit code.
+fn measure(text: &str) -> i32 {
+    let Some(ms) = text.trim().parse::<u64>().ok().filter(|&ms| ms > 0) else {
+        eprintln!("timing: {WORKLOAD_ENV} must be a positive number of milliseconds, not {text:?}");
+        return 2;
+    };
+    match calibrate(ms, CALIBRATION_STRETCHES) {
+        Ok(speeds) => {
+            for speed in speeds {
+                println!("{speed:.2}");
+            }
+            0
+        }
+        Err(err) => {
+            eprintln!("timing: cannot read the workload's position: {err}");
+            1
+        }
+    }
+}
+
 /// Units a millisecond, if any time passed.
 fn per_ms(done: u64, took: Duration) -> Option<f64> {
     let ms = took.as_secs_f64() * 1e3;
@@ -258,6 +303,9 @@ pub fn answer(state: &State) -> String {
 }
 
 fn main() {
+    if let Ok(text) = std::env::var(WORKLOAD_ENV) {
+        std::process::exit(measure(&text));
+    }
     let stdin = io::stdin();
     let stdout = io::stdout();
     let mut game = Game::default();

@@ -20,6 +20,7 @@ fn pairing(a: &str, b: &str, wins: u32, draws: u32, losses: u32) -> PairingResul
         date: "2026-10-16".to_string(),
         commit: "unknown".to_string(),
         cpu: "unknown".to_string(),
+        speed: None,
     }
 }
 
@@ -41,6 +42,19 @@ fn a_line_round_trips_in_the_documented_key_order() {
     assert_eq!(parsed[0].seed, 1_234_567_890_123);
     assert_eq!(parsed[0].to_line(), LINE);
     assert_eq!(parse_results(&parsed[0].to_line(), "f").unwrap(), parsed);
+}
+
+#[test]
+fn a_calibrated_line_keeps_its_speed_last_and_old_lines_have_none() {
+    let calibrated = LINE.replace(
+        "\"time_scale\":1.0,\"time_tolerance_ms\":0",
+        "\"time_scale\":0.821,\"time_tolerance_ms\":11",
+    );
+    let calibrated = format!("{},\"speed\":13.4}}", calibrated.trim_end_matches('}'));
+    let parsed = parse_results(&calibrated, "f").unwrap();
+    assert_eq!(parsed[0].speed, Some(13.4));
+    assert_eq!(parsed[0].to_line(), calibrated);
+    assert_eq!(parse_results(LINE, "f").unwrap()[0].speed, None);
 }
 
 #[test]

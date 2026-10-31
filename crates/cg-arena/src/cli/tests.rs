@@ -545,6 +545,128 @@ mod end_to_end {
     }
 
     #[test]
+    fn writes_the_calibrated_speed_on_new_lines() {
+        let dir = directory("speed");
+        fs::write(
+            dir.join("results.jsonl"),
+            format!("{}\n", stored_line("greedy", "random")),
+        )
+        .unwrap();
+        let bots = ["random", "greedy", "v001"];
+        let options = [
+            "--new",
+            "v001",
+            "--speed",
+            "13.4",
+            "--time-scale",
+            "0.821",
+            "--time-tolerance-ms",
+            "11",
+        ];
+        assert_eq!(run(&dir, &bots, &options), Ok(true));
+        for line in new_lines(&dir) {
+            assert_eq!(line.speed, Some(13.4));
+            assert_eq!((line.time_scale, line.time_tolerance_ms), (0.821, 11));
+        }
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    fn replay_args(extra: &[&str]) -> ReplayArgs {
+        let cli = Cli::try_parse_from(["arena", "replay"].into_iter().chain(extra.iter().copied()))
+            .unwrap();
+        match cli.command {
+            Command::Replay(args) => args,
+            other => panic!("{other:?}"),
+        }
+    }
+
+    /// Replays `pairings` of the results file with `cat` bots named `bots`.
+    fn replay(
+        dir: &Path,
+        bots: &[&str],
+        pairings: &[&str],
+        extra: &[&str],
+    ) -> Result<bool, String> {
+        let results = dir.join("results.jsonl");
+        let new_results = dir.join("new.jsonl");
+        let mut line = vec![
+            "--results",
+            results.to_str().unwrap(),
+            "--new-results",
+            new_results.to_str().unwrap(),
+            "--jobs",
+            "2",
+            "--commit",
+            "def456",
+        ];
+        let bot_specs: Vec<String> = bots.iter().map(|name| format!("{name}=cat")).collect();
+        for spec in &bot_specs {
+            line.extend(["--bot", spec]);
+        }
+        for pairing in pairings {
+            line.extend(["--pairing", pairing]);
+        }
+        line.extend(extra.iter().copied());
+        incremental::run_replay(&replay_args(&line), "uttt", &new_referee)
+    }
+
+    #[test]
+    fn replays_stored_pairings_with_their_seeds_in_the_order_given() {
+        let dir = directory("replay");
+        let stored = [("greedy", "random"), ("v001", "greedy"), ("v001", "random")];
+        let text: Vec<String> = stored.iter().map(|(a, b)| stored_line(a, b)).collect();
+        fs::write(dir.join("results.jsonl"), text.join("\n")).unwrap();
+        // Only the bots of the pairings replayed need a command.
+        let bots = ["random", "v001"];
+        let options = ["--speed", "24.2", "--time-scale", "0.455", "--pairs", "3"];
+        assert_eq!(replay(&dir, &bots, &["random,v001"], &options), Ok(true));
+        let lines = new_lines(&dir);
+        assert_eq!(lines.len(), 1);
+        let line = &lines[0];
+        assert_eq!((line.a.as_str(), line.b.as_str()), ("v001", "random"));
+        assert_eq!((line.seed, line.pairs), (7, 3), "the stored seed, --pairs");
+        assert_eq!((line.wins, line.losses), (3, 3));
+        assert_eq!((line.speed, line.time_scale), (Some(24.2), 0.455));
+        assert_eq!(line.commit, "def456");
+
+        let bots = ["random", "greedy", "v001"];
+        assert_eq!(
+            replay(&dir, &bots, &["random,greedy", "v001,greedy"], &[]),
+            Ok(true)
+        );
+        let lines = new_lines(&dir);
+        let pairs: Vec<(&str, &str, u32)> = lines
+            .iter()
+            .map(|line| (line.a.as_str(), line.b.as_str(), line.pairs))
+            .collect();
+        assert_eq!(
+            pairs,
+            [("greedy", "random", 2), ("v001", "greedy", 2)],
+            "the stored pairs by default"
+        );
+        assert!(lines.iter().all(|line| line.speed.is_none()));
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_replay_reports_mistakes_before_playing() {
+        let dir = directory("replay-errors");
+        let results = dir.join("results.jsonl");
+        fs::write(&results, format!("{}\n", stored_line("greedy", "random"))).unwrap();
+        let bots = ["random", "greedy"];
+        let error = replay(&dir, &bots, &["greedy,v001"], &[]).unwrap_err();
+        assert!(error.contains("no pairing"), "{error}");
+        let error = replay(&dir, &["random"], &["greedy,random"], &[]).unwrap_err();
+        assert!(error.contains("no --bot"), "{error}");
+        let error = replay(&dir, &bots, &["greedy,random", "random,greedy"], &[]).unwrap_err();
+        assert!(error.contains("twice"), "{error}");
+        let error = replay(&dir, &bots, &["greedy,random"], &["--pairs", "0"]).unwrap_err();
+        assert!(error.contains("--pairs"), "{error}");
+        assert!(!dir.join("new.jsonl").exists(), "no game was played");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
     fn reports_mistakes_before_playing() {
         let dir = directory("errors");
         let results = dir.join("results.jsonl");

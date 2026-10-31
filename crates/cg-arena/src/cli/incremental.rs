@@ -1,6 +1,8 @@
 //! `league --results`: the incremental league of ADR 0038. It reads the
 //! stored pairings, plays a new release against opponents it chooses, and
-//! appends each new pairing to a file in the results file's format.
+//! appends each new pairing to a file in the results file's format. Also
+//! `replay`, which plays stored pairings again with their stored seeds
+//! (ADR 0048).
 
 use super::*;
 
@@ -79,7 +81,10 @@ pub(super) fn run_incremental_league<F: RefereeFactory>(
         .map_err(|err| format!("cannot create {}: {err}", new_results_path.display()))?;
 
     let mut run = Run {
-        args,
+        common: &args.common,
+        pairs: args.pairs,
+        commit: args.commit.clone(),
+        speed: args.speed,
         bots,
         new_referee,
         output: Output::create(args.common.out.as_deref())?,
@@ -158,6 +163,82 @@ pub(super) fn run_incremental_league<F: RefereeFactory>(
     records_result.map(|()| passed)
 }
 
+/// Runs `replay`: plays each `--pairing` of the results file again, with
+/// its stored seed, and appends it to `--new-results`.
+pub(super) fn run_replay<F: RefereeFactory>(
+    args: &ReplayArgs,
+    game: &str,
+    new_referee: &F,
+) -> Result<bool, String> {
+    let bots = args
+        .bots
+        .iter()
+        .map(|spec| BotSpec::parse(spec))
+        .collect::<Result<Vec<_>, _>>()?;
+    let names: Vec<String> = bots.iter().map(|bot| bot.name.clone()).collect();
+    check_unique(&names)?;
+    check_fault_name(&args.common, &names)?;
+    if args.pairs == Some(0) {
+        return Err("--pairs must be at least 1".to_string());
+    }
+    let stored = league::read_results(&args.results)?;
+    let mut chosen: Vec<PairingResult> = Vec::new();
+    for spec in &args.pairings {
+        let pairing = find_pairing("--pairing", spec, &stored, &bots)?;
+        if chosen
+            .iter()
+            .any(|other| other.a == pairing.a && other.b == pairing.b)
+        {
+            return Err(format!("--pairing {spec:?} is given twice"));
+        }
+        chosen.push(pairing);
+    }
+    check_common(&args.common)?;
+    if same_file(&args.results, &args.new_results) {
+        return Err("--new-results must not be the --results file".to_string());
+    }
+    let sink = File::create(&args.new_results)
+        .map_err(|err| format!("cannot create {}: {err}", args.new_results.display()))?;
+    let mut run = Run {
+        common: &args.common,
+        pairs: 0,
+        commit: args.commit.clone(),
+        speed: args.speed,
+        bots: &bots,
+        new_referee,
+        output: Output::create(args.common.out.as_deref())?,
+        records: Records::create(&args.common, game, "arena replay")?,
+        sink,
+        sink_path: &args.new_results,
+        cpu: league::cpu_model(),
+        played: Vec::new(),
+        faults: HashMap::new(),
+        games: HashMap::new(),
+    };
+    for pairing in &chosen {
+        run.replay_pairing(pairing, args.pairs.unwrap_or(pairing.pairs))?;
+    }
+    let Run {
+        output,
+        records,
+        faults,
+        games,
+        ..
+    } = run;
+    output.finish()?;
+    let records_result = records.finish();
+    let faults: Vec<Faults> = names
+        .iter()
+        .map(|name| faults.get(name).copied().unwrap_or_default())
+        .collect();
+    let games: Vec<u32> = names
+        .iter()
+        .map(|name| games.get(name).copied().unwrap_or(0))
+        .collect();
+    let passed = faults_pass(&args.common, &names, &faults, &games);
+    records_result.map(|()| passed)
+}
+
 /// The rating of `name`, when it is linked to the anchor.
 fn rating_of(ratings: &[Rating], name: &str) -> Option<f64> {
     ratings
@@ -186,16 +267,27 @@ pub(super) fn find_canary(
     stored: &[PairingResult],
     bots: &[BotSpec],
 ) -> Result<PairingResult, String> {
+    find_pairing("--canary", spec, stored, bots)
+}
+
+/// The stored pairing that `spec`, `A,B` in either order, names for
+/// `option`; both bots need a `--bot`.
+fn find_pairing(
+    option: &str,
+    spec: &str,
+    stored: &[PairingResult],
+    bots: &[BotSpec],
+) -> Result<PairingResult, String> {
     let (x, y) = spec
         .split_once(',')
         .filter(|(x, y)| !x.is_empty() && !y.is_empty() && !y.contains(','))
-        .ok_or_else(|| format!("--canary {spec:?} must look like A,B"))?;
+        .ok_or_else(|| format!("{option} {spec:?} must look like A,B"))?;
     let pairing = stored
         .iter()
         .find(|pairing| (pairing.a == x && pairing.b == y) || (pairing.a == y && pairing.b == x))
-        .ok_or_else(|| format!("--canary: the results file has no pairing of {x} and {y}"))?;
+        .ok_or_else(|| format!("{option}: the results file has no pairing of {x} and {y}"))?;
     if pairing.pairs == 0 {
-        return Err(format!("--canary: the pairing of {x} and {y} has no pairs"));
+        return Err(format!("{option}: the pairing of {x} and {y} has no pairs"));
     }
     check_playable(bots, &[pairing.a.clone(), pairing.b.clone()])?;
     Ok(pairing.clone())
@@ -260,9 +352,14 @@ fn plan(
     Ok(())
 }
 
-/// The games of an incremental league run.
+/// The games of an incremental league run or a replay.
 struct Run<'a, F> {
-    args: &'a LeagueArgs,
+    common: &'a CommonArgs,
+    /// Pairs of each new pairing.
+    pairs: u32,
+    /// Written to each new line.
+    commit: Option<String>,
+    speed: Option<f64>,
     bots: &'a [BotSpec],
     new_referee: &'a F,
     output: Output,
@@ -297,7 +394,7 @@ impl<F: RefereeFactory> Run<'_, F> {
         seed: u64,
         tag: &str,
     ) -> Result<(Summary, Tournament), String> {
-        let mut tournament = tournament([self.bot(a)?, self.bot(b)?], pairs, &self.args.common)?;
+        let mut tournament = tournament([self.bot(a)?, self.bot(b)?], pairs, self.common)?;
         tournament.seed = seed;
         let mut summary = Summary::new([a.to_string(), b.to_string()]);
         self.records.start_matchup(tag);
@@ -325,18 +422,24 @@ impl<F: RefereeFactory> Run<'_, F> {
     /// Plays the new release `new` against `opponent` and appends the
     /// pairing to the new results file.
     fn play_pairing(&mut self, new: &str, opponent: &str) -> Result<(), String> {
-        let seed = league::pairing_seed(self.args.common.seed, new, opponent);
-        let (summary, tournament) = self.play_summary(
-            new,
-            opponent,
-            self.args.pairs,
-            seed,
-            &format!("{new}-vs-{opponent}"),
-        )?;
-        let common = &self.args.common;
+        let seed = league::pairing_seed(self.common.seed, new, opponent);
+        self.write_pairing(new, opponent, self.pairs, seed)
+    }
+
+    /// Plays the stored pairing `stored` again with its seed, `pairs` pairs,
+    /// and appends it to the new results file.
+    fn replay_pairing(&mut self, stored: &PairingResult, pairs: u32) -> Result<(), String> {
+        self.write_pairing(&stored.a, &stored.b, pairs, stored.seed)
+    }
+
+    /// Plays `pairs` pairs of `a` against `b` with `seed` and appends the
+    /// pairing to the new results file.
+    fn write_pairing(&mut self, a: &str, b: &str, pairs: u32, seed: u64) -> Result<(), String> {
+        let (summary, tournament) = self.play_summary(a, b, pairs, seed, &format!("{a}-vs-{b}"))?;
+        let common = self.common;
         let pairing = PairingResult {
-            a: new.to_string(),
-            b: opponent.to_string(),
+            a: a.to_string(),
+            b: b.to_string(),
             pairs: summary.pairs.iter().sum(),
             wins: summary.wins,
             draws: summary.draws,
@@ -348,12 +451,9 @@ impl<F: RefereeFactory> Run<'_, F> {
             opening_plies: tournament.opening_plies,
             seed: tournament.seed,
             date: league::today(),
-            commit: self
-                .args
-                .commit
-                .clone()
-                .unwrap_or_else(|| "unknown".to_string()),
+            commit: self.commit.clone().unwrap_or_else(|| "unknown".to_string()),
             cpu: self.cpu.clone(),
+            speed: self.speed,
         };
         pairing.validate()?;
         writeln!(self.sink, "{}", pairing.to_line())
@@ -368,7 +468,7 @@ impl<F: RefereeFactory> Run<'_, F> {
     /// never written to the new results file.
     fn play_canary(&mut self, stored: &PairingResult, new: &str) -> Result<(), String> {
         let (a, b) = (stored.a.as_str(), stored.b.as_str());
-        let seed = league::canary_seed(self.args.common.seed, a, b, new);
+        let seed = league::canary_seed(self.common.seed, a, b, new);
         let (summary, _) =
             self.play_summary(a, b, stored.pairs, seed, &format!("canary-{a}-vs-{b}"))?;
         let report = league::compare_canary(stored, &summary.pairs)

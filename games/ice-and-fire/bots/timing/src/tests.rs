@@ -39,6 +39,15 @@ fn the_workload_reads_its_position_and_works_until_the_deadline() {
 }
 
 #[test]
+fn the_calibration_measures_each_stretch() {
+    let speeds = calibrate(5, 3).unwrap();
+    assert_eq!(speeds.len(), 3);
+    assert!(speeds.iter().all(|&speed| speed > 0.0), "{speeds:?}");
+    assert_eq!(measure("0"), 2);
+    assert_eq!(measure("soon"), 2);
+}
+
+#[test]
 fn the_map_reads_as_the_rules_check_bot_writes_it() {
     let map = generate(3, RefereeLeague::Bronze);
     let state = State::new(&map.void, &map.mine_spots, League::Bronze);
