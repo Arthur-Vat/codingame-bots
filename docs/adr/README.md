@@ -35,14 +35,14 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0028](0028-job-logs-from-sessions.md) | Job logs readable from Claude's sessions | Accepted |
 | [0029](0029-ci-scoped-by-area-and-game.md) | CI scoped by area and game | Accepted; the league's part of decision 6 superseded by 0038 |
 | [0030](0030-studio-on-github-pages.md) | The studio also runs in the browser, published on GitHub Pages | Accepted; decision 6 completed by 0031, decision 2 by 0032, decision 4 by 0040 |
-| [0031](0031-arena-games-archive.md) | Arena games: one archive per game on GitHub, shown read-only in the studio | Accepted; the league sample's source in decision 2 superseded by 0038; decision 2 superseded by 0049 |
+| [0031](0031-arena-games-archive.md) | Arena games: one archive per game on GitHub, shown read-only in the studio | Accepted; the league sample's source in decision 2 superseded by 0038; decision 2's league sample at publication superseded by 0049 |
 | [0032](0032-analysis-engine.md) | Analysis: one program per game, run as WebAssembly in the page or natively by the local server | Accepted |
 | [0033](0033-no-daily-scheduled-session.md) | No daily scheduled session | Accepted; the usage line of decision 3 superseded by 0034 |
 | [0034](0034-no-usage-monitoring.md) | No usage monitoring | Accepted |
 | [0035](0035-new-game-lifecycle.md) | A lifecycle for each new game | Accepted |
 | [0036](0036-ranks-optional.md) | CodinGame ranks are reported only when the owner wishes | Accepted; decision 1 superseded by 0047 |
 | [0037](0037-size-limit-in-characters.md) | Count a bot's size in characters, and pack its data with Rust tools | Accepted |
-| [0038](0038-incremental-league.md) | An incremental league at full time, with a leaderboard kept in the repository | Accepted; the 100 pairs of decision 2 and the cost estimate in its consequences superseded by 0042; decision 8 superseded for A Code of Ice and Fire's replay by 0048; decisions 1, 6, 7 and decision 9's archive source superseded by 0049 |
+| [0038](0038-incremental-league.md) | An incremental league at full time, with a leaderboard kept in the repository | Accepted; the 100 pairs of decision 2 and the cost estimate in its consequences superseded by 0042; decision 8 superseded for A Code of Ice and Fire's replay by 0048; decision 1's played-once rule, decision 6's league on the release PR, decision 7 and decision 9's archive source superseded by 0049 |
 | [0040](0040-baseline-bots-in-the-studio.md) | The studio also plays each game's baseline bots | Accepted |
 | [0042](0042-official-time-limits-and-800-pairs.md) | Every strength evaluation at CodinGame's time limits, and 800 pairs per league pairing | Accepted; decision 1, and the order of A Code of Ice and Fire's replay in decision 6, superseded for that game by 0048; decision 4, and decision 1 for Ultimate Tic-Tac-Toe once calibrated, superseded by 0049 |
 | [0043](0043-game-reviews-by-haiku.md) | Game reviews written by Haiku agents from game files | Accepted; decision 5 completed by 0044 |
