@@ -29,6 +29,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
       - name: Machine
         run: |
           lscpu | grep -E "^(Model name|CPU\(s\)|Thread|CPU max MHz)"
