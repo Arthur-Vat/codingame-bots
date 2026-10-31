@@ -1,6 +1,6 @@
 name: League weekly
 
-# Every Monday at 05:30 UTC, before the owner's 06:00 pull request (ADR 0049,
+# Every Thursday at 05:30 UTC, before the owner's 06:00 pull request (ADR 0049,
 # decision 6; ADR 0051): for each game whose results on the branch
 # league-results are ahead of main's, makes the branch
 # claude/league-results-YYYY-MM-DD from main with the game's league.jsonl from
@@ -16,7 +16,7 @@ name: League weekly
 # that needs a decision, not a weekly copy.
 on:
   schedule:
-    - cron: "30 5 * * 1"
+    - cron: "30 5 * * 4"
   workflow_dispatch:
 
 permissions:
