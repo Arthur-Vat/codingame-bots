@@ -77,6 +77,8 @@ calibrate_settings() {
   bundle_bot "$1" "$CALIBRATION_BOT" "$dir"
   CG_BIN_DIR="$dir/bin" scripts/cg-check.sh --any-size "$dir/$1-$CALIBRATION_BOT.rs" >&2
   bin="$dir/bin/$1-$CALIBRATION_BOT"
+  # Files of an earlier run cut short would join the median.
+  rm -f "$dir"/calibration-*.txt
   for ((i = 0; i < CALIBRATION_JOBS; i++)); do
     CG_WORKLOAD_MS="$stretch" "$bin" >"$dir/calibration-$i.txt" &
     pids+=("$!")

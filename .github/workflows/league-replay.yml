@@ -48,6 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       shards: ${{ steps.plan.outputs.shards }}
+      count: ${{ steps.plan.outputs.count }}
     steps:
       - uses: actions/checkout@v7
       - name: Check the inputs and list the shards
@@ -62,12 +63,14 @@ jobs:
             echo "::error title=League replay::'$GAME' is not a game with a league.jsonl"
             exit 1
           fi
-          if [[ ! $SHARDS =~ ^[0-9]+$ ]] || ((SHARDS < 1 || SHARDS > 20)); then
+          # No leading zero: bash would read the number as octal.
+          if [[ ! $SHARDS =~ ^[1-9][0-9]*$ ]] || ((SHARDS > 20)); then
             echo "::error title=League replay::shards must be a number from 1 to 20"
             exit 1
           fi
           list="$(seq -s, 0 $((SHARDS - 1)))"
           echo "shards=[$list]" >>"$GITHUB_OUTPUT"
+          echo "count=$SHARDS" >>"$GITHUB_OUTPUT"
 
   replay:
     name: Shard ${{ matrix.shard }}
@@ -92,7 +95,7 @@ jobs:
         env:
           GAME: ${{ inputs.game }}
           SHARD: ${{ matrix.shard }}
-          SHARDS: ${{ inputs.shards }}
+          SHARDS: ${{ needs.plan.outputs.count }}
           LEAGUE_COMMIT: ${{ github.sha }}
         run: |
           mkdir -p target
@@ -104,11 +107,15 @@ jobs:
           name: league-replay-${{ inputs.game }}-${{ matrix.shard }}
           path: target/league/${{ inputs.game }}-replay-${{ matrix.shard }}.jsonl
           if-no-files-found: error
+          # A re-run of a failed shard uploads it again.
+          overwrite: true
 
   merge:
     name: Merge
-    needs: replay
-    if: ${{ !cancelled() }}
+    needs: [plan, replay]
+    # After a failed shard too, so that the merge says which pairings are
+    # missing; never when the inputs were refused.
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -158,3 +165,5 @@ jobs:
           name: league-replay-${{ inputs.game }}
           path: target/replay/
           if-no-files-found: ignore
+          # Re-running the failed jobs runs the merge again.
+          overwrite: true

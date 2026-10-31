@@ -232,12 +232,7 @@ fn summary_sentences(pairings: &[PairingResult], anchor: &str) -> String {
     let calibrated = pairings
         .iter()
         .all(|pairing| pairing.speed.is_some() && pairing.opening_plies == first.opening_plies);
-    let limits = if same {
-        format!(
-            "Time limits: time scale {}, tolerance {} ms, {} opening plies.",
-            first.time_scale, first.time_tolerance_ms, first.opening_plies
-        )
-    } else if calibrated {
+    let limits = if calibrated {
         let range = |values: Vec<f64>, unit: &str| {
             let low = values.iter().copied().fold(f64::INFINITY, f64::min);
             let high = values.iter().copied().fold(f64::NEG_INFINITY, f64::max);
@@ -258,6 +253,11 @@ fn summary_sentences(pairings: &[PairingResult], anchor: &str) -> String {
             range(scales, ""),
             range(tolerances, " ms"),
             first.opening_plies
+        )
+    } else if same {
+        format!(
+            "Time limits: time scale {}, tolerance {} ms, {} opening plies.",
+            first.time_scale, first.time_tolerance_ms, first.opening_plies
         )
     } else {
         "Time limits: mixed (see league.jsonl).".to_string()

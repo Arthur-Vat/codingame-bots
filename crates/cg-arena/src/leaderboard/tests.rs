@@ -244,6 +244,24 @@ fn calibrated_time_limits_are_shown_as_a_range() {
         ),
         "{text}"
     );
+    // Calibrated pairings that happen to agree still say so.
+    let text = render(
+        "uttt",
+        &[pairings[1].clone()],
+        &ratings,
+        "random",
+        "",
+        &releases(&[]),
+    )
+    .unwrap()
+    .text;
+    assert!(
+        text.contains(
+            "Time limits: calibrated to CodinGame's speed on each machine, time scale 0.821, \
+             tolerance 11 ms, 4 opening plies."
+        ),
+        "{text}"
+    );
     // One pairing at a fixed scale among them: mixed.
     let mixed = [pairings[0].clone(), pairing("v019", "random", 100, 0, 100)];
     let text = render("uttt", &mixed, &ratings, "random", "", &releases(&[]))
