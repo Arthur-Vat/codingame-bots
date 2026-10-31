@@ -24,5 +24,5 @@ The owner chose in the conversation the same day, in forms: "First release v001 
 - Every rating on the leaderboards changes by a constant: each game's numbers drop by `v001`'s former rating. The order and the gaps do not change.
 - The random bot's own interval becomes the wide one, which is true: its rating is the poorly known one.
 - A new game switches its `LEAGUE_ANCHOR` to `v001` in the first pull request that brings `v001`'s league results to `main`, and regenerates its leaderboard there: a release's pull request no longer plays the league ([ADR 0049](0049-parallel-evaluations-and-nightly-league.md), decision 3), so `v001` has no pairings before.
-- Ice and Fire's top bots, at about ±13 to ±14, get precision games for a few nights; Ultimate Tic-Tac-Toe's are at about ±10.
-- Two games take 12 of the 20 jobs a free account runs at once at night, leaving 8 for CI and an SPRT.
+- A game whose top bots are just over ±10 gets precision games for a few nights, then mostly its new bots and the share for the other bots.
+- Each game takes 6 of the 20 jobs a free account runs at once at night; the rest is left for CI and an SPRT.
