@@ -263,6 +263,14 @@ pub(super) fn run_play<F: RefereeFactory>(
     let text = fs::read_to_string(&args.plan)
         .map_err(|err| format!("cannot read {}: {err}", args.plan.display()))?;
     let lines = night::parse_plan(&text, &args.plan.display().to_string())?;
+    if let Some(shard) = args.shard {
+        if !lines.iter().any(|line| line.shard == shard) {
+            return Err(format!(
+                "--shard {shard} matches no line of {}",
+                args.plan.display()
+            ));
+        }
+    }
     let chosen: Vec<&night::PlanLine> = lines
         .iter()
         .filter(|line| args.shard.is_none_or(|shard| line.shard == shard))

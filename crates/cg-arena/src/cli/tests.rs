@@ -1048,7 +1048,7 @@ mod end_to_end {
     }
 
     #[test]
-    fn a_canary_compares_with_all_the_lines_of_its_pair() {
+    fn a_canary_on_a_pair_with_several_lines_runs_and_is_not_stored() {
         let dir = directory("canary-combined");
         let results = dir.join("results.jsonl");
         let stored = [
@@ -1163,6 +1163,12 @@ mod end_to_end {
         let bots = ["a", "b"];
         fs::write(&plan, plan_line("a", "b", 1, 1, "new", 0)).unwrap();
         fs::remove_file(dir.join("new.jsonl")).ok();
+        let error = play_plan(&dir, &bots, &["--shard", "3"]).unwrap_err();
+        assert_eq!(
+            error,
+            format!("--shard 3 matches no line of {}", plan.display())
+        );
+        assert!(!dir.join("new.jsonl").exists());
         let error = play_plan(&dir, &["a"], &[]).unwrap_err();
         assert!(
             error.contains("\"b\" is in the plan but has no --bot"),

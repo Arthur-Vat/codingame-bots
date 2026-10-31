@@ -516,3 +516,37 @@ fn the_same_inputs_give_the_same_plan() {
     assert_eq!(first, second);
     assert!(!first.lines.is_empty());
 }
+
+#[test]
+fn an_opponent_with_a_wide_margin_adds_less_information() {
+    let information = |margin: f64| (1.96_f64 / margin).powi(2);
+    let base = 0.01;
+    let narrow = added_information(base, information(5.0));
+    let wide = added_information(base, information(50.0));
+    assert!(wide < narrow && narrow < base, "{wide} {narrow} {base}");
+    assert_eq!(added_information(base, f64::INFINITY), base, "the anchor");
+    assert_eq!(added_information(base, 0.0), 0.0);
+    assert_eq!(added_information(0.0, 1.0), 0.0);
+    // So the margin of the bot that plays shrinks less against the wide one.
+    let margin_after = |added: f64| 1.96 / (information(30.0) + added).sqrt();
+    assert!(margin_after(wide) > margin_after(narrow));
+}
+
+#[test]
+fn the_other_bots_play_among_themselves_not_against_the_top() {
+    let bots = ["a", "b", "c", "d", "e", "f", "g", "h"];
+    let stored = full(&bots, 3000);
+    let mut s = settings(&bots, &[], "a");
+    s.top = 6;
+    s.budget_pairs = 5000;
+    s.low_share = 1.0;
+    let plan = plan(&stored, &s).unwrap();
+    let low = of_kind(&plan, Kind::Low);
+    assert_eq!(low.iter().map(|line| line.pairs).sum::<u32>(), 5000);
+    for line in low {
+        assert!(
+            ["g", "h"].contains(&line.a.as_str()) && ["g", "h"].contains(&line.b.as_str()),
+            "{line:?}"
+        );
+    }
+}

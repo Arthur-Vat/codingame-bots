@@ -304,6 +304,18 @@ fn opponents(stored: &[PairingResult]) -> HashMap<&str, HashSet<&str>> {
     found
 }
 
+/// What a block adds to the information of one bot's rating, given the
+/// block's own information `base` (as if the opponent's rating were exact) and
+/// the information of the opponent's rating: the opponent's variance reduces
+/// it. An opponent with no information adds nothing; the anchor's infinite
+/// information leaves `base`.
+fn added_information(base: f64, opponent_information: f64) -> f64 {
+    if base <= 0.0 || !base.is_finite() || opponent_information <= 0.0 {
+        return 0.0;
+    }
+    1.0 / (1.0 / base + 1.0 / opponent_information)
+}
+
 /// The expected score of a bot rated `x` against one rated `y`.
 fn expected(x: f64, y: f64) -> f64 {
     1.0 / (1.0 + 10f64.powf((y - x) / 400.0))
@@ -431,7 +443,8 @@ pub fn plan(stored: &[PairingResult], settings: &Settings) -> Result<Plan, Strin
 
     // Step T: precision near the top.
     let met = incomplete.is_empty() && linked[..top_len].iter().all(|r| r.margin <= target);
-    let mut information: Vec<f64> = linked[..top_len]
+    // The information of every linked bot's rating, the anchor's infinite.
+    let mut information: Vec<f64> = linked
         .iter()
         .map(|rating| {
             if rating.margin > 0.0 {
@@ -470,11 +483,13 @@ pub fn plan(stored: &[PairingResult], settings: &Settings) -> Result<Plan, Strin
             let mut best: Option<(usize, f64)> = None;
             for (at, &(x, y, delta)) in candidates.iter().enumerate() {
                 let mut gain = 0.0;
-                for k in [x, y] {
+                for (k, o) in [(x, y), (y, x)] {
                     if k < top_len && information[k].is_finite() {
                         let now = margin_of(information[k]);
                         if now > target {
-                            let after = margin_of(information[k] + delta);
+                            let after = margin_of(
+                                information[k] + added_information(delta, information[o]),
+                            );
                             gain += (now * now - after * after) / (1.0 + k as f64);
                         }
                     }
@@ -501,11 +516,12 @@ pub fn plan(stored: &[PairingResult], settings: &Settings) -> Result<Plan, Strin
             }
             let Some((at, _)) = best else { break };
             let (x, y, delta) = candidates[at];
-            for k in [x, y] {
-                if k < top_len {
-                    information[k] += delta;
-                }
-            }
+            let (for_x, for_y) = (
+                added_information(delta, information[y]),
+                added_information(delta, information[x]),
+            );
+            information[x] += for_x;
+            information[y] += for_y;
             chosen[at] += 1;
             top_planned += block;
         }
@@ -549,7 +565,7 @@ pub fn plan(stored: &[PairingResult], settings: &Settings) -> Result<Plan, Strin
         while left > 0 && idle < others.len() {
             let bot = others[at % others.len()];
             at += 1;
-            let partner = linked
+            let partner = linked[top_len..]
                 .iter()
                 .filter(|other| other.name != bot.name)
                 .filter(|other| !top_pairs.contains(&key(&bot.name, &other.name)))
@@ -635,7 +651,7 @@ pub fn plan(stored: &[PairingResult], settings: &Settings) -> Result<Plan, Strin
     for (rank, rating) in linked[..top_len].iter().enumerate() {
         let projected = margin_of(information[rank]);
         report.push(format!(
-            "top {}: {} margin ±{:.1} now, ±{:.1} projected",
+            "top {}: {} margin ±{:.1} now, ±{:.1} estimated after tonight",
             rank + 1,
             rating.name,
             rating.margin,
