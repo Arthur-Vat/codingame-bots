@@ -1,7 +1,7 @@
 ---
 id: E031
 date: 2026-10-31
-pull_request: "#NN"
+pull_request: "#232"
 parent: ice-and-fire-v014
 hypothesis: v014 stops a third of its middle-game turns at its cap of 32 climbs and answers by 40 ms of a turn that CodinGame, on a machine about 1.7 times slower than ours, cuts at about 63 ms by the bot's clock; climbing until the clock ends the search and answering by a hard 48 ms beats v014 (candidate `ice-and-fire-v015`).
 change: The answer leaves by 48 ms by the bot's clock (40 before); climbs and reply searches may start until about 44 ms (36), the check of the plan to play only until about 45 ms, its opponent climb stopping at about 47 ms; the cap of 32 climbs becomes 1,000, so the clock ends the search.
