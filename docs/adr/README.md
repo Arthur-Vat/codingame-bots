@@ -42,7 +42,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0035](0035-new-game-lifecycle.md) | A lifecycle for each new game | Accepted |
 | [0036](0036-ranks-optional.md) | CodinGame ranks are reported only when the owner wishes | Accepted; decision 1 superseded by 0047 |
 | [0037](0037-size-limit-in-characters.md) | Count a bot's size in characters, and pack its data with Rust tools | Accepted |
-| [0038](0038-incremental-league.md) | An incremental league at full time, with a leaderboard kept in the repository | Accepted; the 100 pairs of decision 2 and the cost estimate in its consequences superseded by 0042; decision 8 superseded for A Code of Ice and Fire's replay by 0048; decision 1's played-once rule, decision 6's league on the release PR, decision 7 and decision 9's archive source superseded by 0049 |
+| [0038](0038-incremental-league.md) | An incremental league at full time, with a leaderboard kept in the repository | Accepted; the 100 pairs of decision 2 and the cost estimate in its consequences superseded by 0042; decision 8 superseded for A Code of Ice and Fire's replay by 0048; decision 1's played-once rule, decision 6's league on the release PR, decision 7 and decision 9's archive source superseded by 0049; decision 4's anchor superseded by 0050 |
 | [0040](0040-baseline-bots-in-the-studio.md) | The studio also plays each game's baseline bots | Accepted |
 | [0042](0042-official-time-limits-and-800-pairs.md) | Every strength evaluation at CodinGame's time limits, and 800 pairs per league pairing | Accepted; decision 1, and the order of A Code of Ice and Fire's replay in decision 6, superseded for that game by 0048; decision 4, and decision 1 for Ultimate Tic-Tac-Toe once calibrated, superseded by 0049 |
 | [0043](0043-game-reviews-by-haiku.md) | Game reviews written by Haiku agents from game files | Accepted; decision 5 completed by 0044 |
@@ -50,7 +50,8 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0045](0045-minified-releases.md) | Minified releases, each with a readable copy | Accepted; decision 2's three levels and decision 3 superseded by 0046 |
 | [0046](0046-one-minifier.md) | One minifier, with names outside ASCII and aliases | Accepted |
 | [0047](0047-codingame-api.md) | CodinGame's public API for test games, submissions and ranks | Accepted |
-| [0049](0049-parallel-evaluations-and-nightly-league.md) | Evaluations spread over runners, and a nightly league for every game | Accepted |
+| [0049](0049-parallel-evaluations-and-nightly-league.md) | Evaluations spread over runners, and a nightly league for every game | Accepted; decision 4's shared budget and decision 4.4's ±15 Elo superseded by 0050 |
+| [0050](0050-league-anchor-target-and-budget.md) | Every league rated from the game's first release, a nightly target of ±10 Elo, and a nightly budget per game | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 
