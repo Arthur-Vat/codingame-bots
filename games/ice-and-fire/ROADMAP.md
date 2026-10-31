@@ -89,7 +89,7 @@ Studio: the list in the [playbook](../../docs/NEW_GAME.md).
 
 ## Open questions
 
-- Leagues above Bronze today, and how many players the leaderboard and Legend hold (asked 2026-10-17). They inform the stopping rule; the owner may leave them unknown.
+- Leagues above Bronze today, and how many players the leaderboard and Legend hold (asked 2026-10-17): answered through the API on 2026-10-31: Wood 3 to Gold, then Legend; 917 ranked players, 83 in Legend, 250 in Gold.
 - Whether equal military power after 100 turns is a draw on CodinGame (asked 2026-10-17): not seen in the `rules-check` games. The seats (either) and CodinGame's referee (no difference from the source's) were settled on 2026-10-19 ([RULES.md](RULES.md#platform-facts-to-check)).
 
 ## Decisions
