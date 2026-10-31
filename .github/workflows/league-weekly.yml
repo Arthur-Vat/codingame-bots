@@ -97,7 +97,8 @@ jobs:
               scripts/league-night.sh publish "$game" "games/$game/league.jsonl" "games/$game/LEADERBOARD.md"
             git add "games/$game/league.jsonl" "games/$game/LEADERBOARD.md"
           done
-          git commit --quiet -m "chore(league): results to $date"
+          scopes="$(IFS=,; echo "${changed[*]}")"
+          git commit --quiet -m "chore($scopes): league results to $date"
           git push --quiet origin "$branch"
           {
             echo "## League weekly"

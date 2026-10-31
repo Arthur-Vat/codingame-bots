@@ -27,9 +27,8 @@ on:
         type: boolean
         default: true
 
-permissions:
-  contents: write # to push the branch league-results
-  actions: write # to start the archive workflow
+# Each job declares the permissions it needs.
+permissions: {}
 
 defaults:
   run:
@@ -87,9 +86,11 @@ jobs:
       fail-fast: false
       matrix:
         game: ${{ fromJSON(needs.games.outputs.games) }}
-    # One night per game at a time; a night never cancels another.
+    # One night per game at a time: a running night is never cancelled, but a
+    # run that queues behind it cancels an older one that is still pending. A
+    # dry run has a group of its own and never waits for a real night.
     concurrency:
-      group: league-nightly-${{ matrix.game }}
+      group: league-nightly-${{ matrix.game }}${{ (github.event_name == 'workflow_dispatch' && !inputs.publish) && '-dry-run' || '' }}
       cancel-in-progress: false
     permissions:
       contents: write

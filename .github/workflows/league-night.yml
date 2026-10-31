@@ -17,6 +17,16 @@ name: League night
 #           to the branch league-results (never merged: league-weekly.yml
 #           makes a branch from it). The night that played new lines also
 #           keeps a sample of their games and starts the archive.
+# The night has one budget of time, LEAGUE_NIGHTLY_MINUTES (180) from the start
+# of plan1, which records it. Job limits on the critical path: plan1 15, wave 1
+# minutes - 65 (115), merge1 10, wave 2 what remains of the budget less the
+# publication (at most 105, at least 25, else wave 2 is skipped and waits for
+# the next night), publish 15: they never add up to more than the budget.
+# Each play job starts no line after the budget less what follows: 50 minutes
+# after wave 1 (merge, wave 2, publication), 15 after wave 2, and less 20
+# minutes for the last line to end (scripts/league-night.sh deadline). The play
+# step has a limit of its own, 5 minutes below the job's, so that the uploads
+# after it run inside the job.
 # With `publish` false it is a dry run: it plays and merges and writes the
 # summary, but pushes nothing and starts nothing. A job killed at its timeout
 # leaves the lines it finished: each is flushed as it ends, and the uploads
@@ -52,13 +62,15 @@ jobs:
   plan1:
     name: Plan, wave 1
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     permissions:
       contents: read
     outputs:
       night: ${{ steps.settings.outputs.night }}
+      start: ${{ steps.settings.outputs.start }}
+      minutes: ${{ steps.settings.outputs.minutes }}
       play1_timeout: ${{ steps.settings.outputs.play1_timeout }}
-      play1_deadline: ${{ steps.settings.outputs.play1_deadline }}
+      play1_step_timeout: ${{ steps.settings.outputs.play1_step_timeout }}
       has_results: ${{ steps.results.outputs.has_results }}
       lines: ${{ steps.plan.outputs.lines }}
       new: ${{ steps.plan.outputs.new }}
@@ -82,15 +94,17 @@ jobs:
             echo "::error title=League night::LEAGUE_NIGHTLY_MINUTES of $GAME must be a number of minutes, 100 or more (now '$minutes')"
             exit 1
           fi
-          # Wave 1 gets the night's time but an hour for the merge, wave 2
-          # and the publication; its lines start 25 minutes before its job's
-          # limit (an 800-pair line takes about 20 minutes on a runner, and
-          # the job must still build and calibrate).
-          timeout=$((minutes - 60))
+          # The night's budget runs from now. Wave 1's job gets what is left
+          # of it after plan1 (15), merge1 (10), publish (15) and the least
+          # wave 2 can use (25: a build, a calibration and one line); its play
+          # step ends 5 minutes before the job, for the uploads.
+          timeout=$((minutes - 65))
           {
             echo "night=$(date -u +%F)"
+            echo "start=$(date +%s)"
+            echo "minutes=$minutes"
             echo "play1_timeout=$timeout"
-            echo "play1_deadline=$((timeout - 25))"
+            echo "play1_step_timeout=$((timeout - 5))"
           } >>"$GITHUB_OUTPUT"
       - name: Take the current results
         id: results
@@ -180,14 +194,24 @@ jobs:
           key: ${{ inputs.game }}
           save-if: ${{ matrix.shard == 0 }}
       - name: Play the shard's lines
+        timeout-minutes: ${{ fromJSON(needs.plan1.outputs.play1_step_timeout) }}
         env:
           GAME: ${{ inputs.game }}
           SHARD: ${{ matrix.shard }}
-          DEADLINE: ${{ needs.plan1.outputs.play1_deadline }}
+          START: ${{ needs.plan1.outputs.start }}
+          MINUTES: ${{ needs.plan1.outputs.minutes }}
+          STEP_TIMEOUT: ${{ needs.plan1.outputs.play1_step_timeout }}
           LEAGUE_COMMIT: ${{ github.sha }}
         run: |
+          # 50 minutes must remain after the last line: the merge, wave 2
+          # and the publication.
+          deadline="$(scripts/league-night.sh deadline "$START" "$MINUTES" 50 "$STEP_TIMEOUT")"
+          if [ "$deadline" -le 0 ]; then
+            echo "::warning title=League night::no time left for wave 1 on shard $SHARD: nothing played"
+            exit 0
+          fi
           scripts/annotate.sh run "Night shard $SHARD, wave 1" \
-            scripts/league-night.sh play "$GAME" target/night/plan1.jsonl "$SHARD" "$DEADLINE"
+            scripts/league-night.sh play "$GAME" target/night/plan1.jsonl "$SHARD" "$deadline"
       - name: Keep the shard's lines
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
@@ -217,13 +241,17 @@ jobs:
     # no results, or the inputs were refused.
     if: ${{ !cancelled() && needs.plan1.result == 'success' && needs.plan1.outputs.has_results == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     permissions:
       contents: read
     outputs:
       lines: ${{ steps.plan.outputs.lines }}
       new: ${{ steps.plan.outputs.new }}
       shards: ${{ steps.shards.outputs.shards }}
+      play2_run: ${{ steps.time.outputs.play2_run }}
+      play2_timeout: ${{ steps.time.outputs.play2_timeout }}
+      play2_step_timeout: ${{ steps.time.outputs.play2_step_timeout }}
+      play2_note: ${{ steps.time.outputs.play2_note }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
@@ -268,6 +296,35 @@ jobs:
         run: |
           list="$(grep -o '"shard":[0-9]*' target/night/plan2.jsonl | cut -d: -f2 | sort -nu | paste -sd, - || true)"
           echo "shards=[$list]" >>"$GITHUB_OUTPUT"
+      - name: Decide the time of wave 2
+        id: time
+        env:
+          START: ${{ needs.plan1.outputs.start }}
+          MINUTES: ${{ needs.plan1.outputs.minutes }}
+          LINES: ${{ steps.plan.outputs.lines }}
+        run: |
+          # Wave 2's job must be over 15 minutes before the budget ends (the
+          # publication), and its step 5 minutes before the job.
+          left="$(scripts/league-night.sh left "$START" "$MINUTES" 15)"
+          step=$((left - 5))
+          if [ "$step" -lt 0 ]; then step=0; fi
+          window="$(scripts/league-night.sh deadline "$START" "$MINUTES" 15 "$step")"
+          note=""
+          run=false
+          if [ "$LINES" = 0 ]; then
+            echo "Wave 2 has no line."
+          elif [ "$window" -le 0 ]; then
+            note="Wave 2 skipped: $LINES lines planned, but only $left minutes of the night's budget remain. Its lines wait for the next night."
+            echo "::warning title=League night::$note"
+          else
+            run=true
+          fi
+          {
+            echo "play2_run=$run"
+            echo "play2_timeout=$left"
+            echo "play2_step_timeout=$step"
+            echo "play2_note=$note"
+          } >>"$GITHUB_OUTPUT"
       - name: Keep the merged results and the plan
         uses: actions/upload-artifact@v7
         with:
@@ -284,9 +341,9 @@ jobs:
   play2:
     name: "Wave 2, shard ${{ matrix.shard }}"
     needs: [plan1, merge1]
-    if: ${{ !cancelled() && needs.merge1.result == 'success' && needs.merge1.outputs.lines != '' && needs.merge1.outputs.lines != '0' }}
+    if: ${{ !cancelled() && needs.merge1.result == 'success' && needs.merge1.outputs.play2_run == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: ${{ fromJSON(needs.merge1.outputs.play2_timeout) }}
     strategy:
       fail-fast: false
       matrix:
@@ -306,15 +363,23 @@ jobs:
           key: ${{ inputs.game }}
           save-if: ${{ matrix.shard == 0 }}
       - name: Play the shard's lines
+        timeout-minutes: ${{ fromJSON(needs.merge1.outputs.play2_step_timeout) }}
         env:
           GAME: ${{ inputs.game }}
           SHARD: ${{ matrix.shard }}
+          START: ${{ needs.plan1.outputs.start }}
+          MINUTES: ${{ needs.plan1.outputs.minutes }}
+          STEP_TIMEOUT: ${{ needs.merge1.outputs.play2_step_timeout }}
           LEAGUE_COMMIT: ${{ github.sha }}
         run: |
-          # The job's 45 minutes minus the build, the calibration and a line
-          # that starts at the deadline (about 20 minutes).
+          # 15 minutes must remain after the last line: the publication.
+          deadline="$(scripts/league-night.sh deadline "$START" "$MINUTES" 15 "$STEP_TIMEOUT")"
+          if [ "$deadline" -le 0 ]; then
+            echo "::warning title=League night::no time left for wave 2 on shard $SHARD: nothing played"
+            exit 0
+          fi
           scripts/annotate.sh run "Night shard $SHARD, wave 2" \
-            scripts/league-night.sh play "$GAME" target/night/plan2.jsonl "$SHARD" 20
+            scripts/league-night.sh play "$GAME" target/night/plan2.jsonl "$SHARD" "$deadline"
       - name: Keep the shard's lines
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
@@ -341,7 +406,7 @@ jobs:
     needs: [plan1, play1, merge1, play2]
     if: ${{ !cancelled() && needs.merge1.result == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     permissions:
       contents: write # to push the branch league-results
       actions: write # to start the archive workflow
@@ -370,7 +435,7 @@ jobs:
       - uses: actions/download-artifact@v8
         continue-on-error: true
         with:
-          pattern: league-records-${{ inputs.game }}-*
+          pattern: league-records-${{ inputs.game }}-[12]-*
           path: target/night/records
           merge-multiple: true
       - uses: dtolnay/rust-toolchain@master
@@ -394,6 +459,7 @@ jobs:
       - name: Write the summary
         env:
           PUBLISH: ${{ inputs.publish }}
+          WAVE2_NOTE: ${{ needs.merge1.outputs.play2_note }}
         run: |
           show() { # show <title> <file>
             echo "### $1"
@@ -412,6 +478,10 @@ jobs:
             echo
             show "Plan, wave 1" target/night/plan1.txt
             show "Plan, wave 2" target/night/plan2.txt
+            if [ -n "$WAVE2_NOTE" ]; then
+              echo "**$WAVE2_NOTE**"
+              echo
+            fi
             echo "### Drift"
             echo '```text'
             { grep -h '^::warning title=League drift::' target/night/merge1.txt target/night/merge2.txt || true; } | sed 's/^::warning title=League drift:://'
@@ -456,7 +526,7 @@ jobs:
               echo "::notice title=League night::league-results already holds these results: nothing to push"
               exit 0
             fi
-            git commit --quiet -m "chore(league): $GAME night $NIGHT"
+            git commit --quiet -m "chore($GAME): league night $NIGHT"
             if git push --quiet origin HEAD:refs/heads/league-results; then
               echo "Pushed $(git rev-parse --short HEAD) to league-results (attempt $attempt)."
               exit 0

@@ -8,6 +8,8 @@
 #   scripts/league-night.sh play GAME PLAN SHARD DEADLINE_MINUTES
 #   scripts/league-night.sh merge GAME RESULTS OUT FILE...
 #   scripts/league-night.sh publish GAME RESULTS LEADERBOARD_OUT
+#   scripts/league-night.sh deadline START MINUTES MARGIN STEP_TIMEOUT
+#   scripts/league-night.sh left START MINUTES MARGIN
 #
 # plan: chooses the night's pairings from the results file RESULTS with the
 # arena's `plan`, and writes them to OUT. The pool is the baseline bots of
@@ -43,8 +45,21 @@
 # publish: writes the leaderboard of RESULTS to LEADERBOARD_OUT, rated from
 # LEAGUE_ANCHOR, with the game's journal.
 #
+# deadline: the night's budget of time is MINUTES from START (epoch seconds,
+# when the night's first job started). Prints the minutes during which a play
+# job may still start lines, for DEADLINE_MINUTES of `play`: the time left
+# before START + MINUTES - MARGIN, less LINE_MINUTES (20) for the last line to
+# finish, and at most STEP_TIMEOUT - LINE_MINUTES - 1 (the play step's own
+# limit, which includes its build and calibration). 0 means no time: the job
+# plays nothing. MARGIN is what must remain after the last line has ended: 50
+# minutes after wave 1 (the merge, wave 2, the publication), 15 after wave 2.
+#
+# left: prints the whole minutes left before START + MINUTES - MARGIN (0 if
+# none): the job limit of a job that must be over by then.
+#
 # Environment: LEAGUE_COMMIT, the commit written to each line (HEAD by
-# default); LEAGUE_NIGHT; RECORDS_SAMPLE.
+# default); LEAGUE_NIGHT; RECORDS_SAMPLE; LEAGUE_NOW, the time as epoch
+# seconds (now by default, for tests); LINE_MINUTES (20).
 #
 # Exit status: 0 on success; 2 on errors.
 set -euo pipefail
@@ -317,6 +332,39 @@ mode_publish() {
     --journal "games/$game/journal/README.md" --out "$out"
 }
 
+# ---- deadline, left ----------------------------------------------------
+
+now_seconds() { echo "${LEAGUE_NOW:-$(date +%s)}"; }
+
+# Checks that the arguments are whole numbers.
+need_whole() {
+  local value
+  for value in "$@"; do
+    [[ $value =~ ^[0-9]+$ ]] || usage
+  done
+}
+
+mode_left() {
+  [[ $# -eq 3 ]] || usage
+  need_whole "$@"
+  local seconds=$(($1 + ($2 - $3) * 60 - $(now_seconds)))
+  if ((seconds < 0)); then seconds=0; fi
+  echo $((seconds / 60))
+}
+
+mode_deadline() {
+  [[ $# -eq 4 ]] || usage
+  need_whole "$@"
+  local line="${LINE_MINUTES:-20}"
+  need_whole "$line"
+  local seconds=$(($1 + ($2 - $3 - line) * 60 - $(now_seconds)))
+  local window=$((seconds / 60)) own=$(($4 - line - 1))
+  if ((seconds < 0)); then window=0; fi
+  if ((own < window)); then window=$own; fi
+  if ((window < 0)); then window=0; fi
+  echo "$window"
+}
+
 # ---- main --------------------------------------------------------------
 
 (($# >= 1)) || usage
@@ -327,5 +375,7 @@ case $mode in
   play) mode_play "$@" ;;
   merge) mode_merge "$@" ;;
   publish) mode_publish "$@" ;;
+  deadline) mode_deadline "$@" ;;
+  left) mode_left "$@" ;;
   *) usage ;;
 esac
