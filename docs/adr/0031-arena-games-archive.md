@@ -1,6 +1,6 @@
 # 0031. Arena games: one archive per game on GitHub, shown read-only in the studio
 
-- Status: accepted (owner, 2026-10-12); the league sample's source in decision 2 superseded by [0038](0038-incremental-league.md)
+- Status: accepted (owner, 2026-10-12); the league sample's source in decision 2 superseded by [0038](0038-incremental-league.md); decision 2's league sample added when a release is published superseded by [0049](0049-parallel-evaluations-and-nightly-league.md)
 - Date: 2026-10-12
 - Completes: [0027](0027-game-records.md), decisions 2 and 3; [0030](0030-studio-on-github-pages.md), decision 6
 - Scope: framework

@@ -225,6 +225,12 @@ Framework work that a game's plan needs but every game can use.
 - [x] Minifier level 2: items rustc reports as never used removed, until none is left
 - [x] Minifier level 3: names the bundle defines renamed to the shortest names not otherwise used
 - [x] One minifier with no levels ([ADR 0046](adr/0046-one-minifier.md)): CJK names after the single letters, a short name for `self`, per-module type aliases, std paths' middle segments kept only there, no digit separators, no `allow` in the minified output; the studio uses the readable bundle; `cg-tokens` removed
+- [x] Decision record on faster evaluations (owner, 2026-10-31, [ADR 0049](adr/0049-parallel-evaluations-and-nightly-league.md)): the SPRT in blocks over 8 runners, screening on GitHub with one runner per variant, release pull requests without the league, a nightly league for every game with its results on the `league-results` branch, Ultimate Tic-Tac-Toe calibrated first
+- [ ] Arena: repeated pairings in the results file and the leaderboard, drift reported against a stored pairing; the night's planner (new bots, top neighbours, 20% for the others, the stop rule)
+- [ ] Nightly League workflow on the `league-results` branch, its weekly pull request and the archive's league sample; release pull requests without the league
+- [ ] Arena: per-shard seeds and a command that adds up shards and checks the SPRT's bounds; the SPRT in blocks over 8 runners in `sprt.yml`, with a simulation of its error rates and pairs played
+- [ ] Screening workflow, one runner per variant, dispatched by the session; skill `run-experiment` updated
+- [ ] Ultimate Tic-Tac-Toe calibrated: its timing bot, the probe on CodinGame through the API, its `evaluation.env`, then its league replayed on the owner's go-ahead
 
 ## Risks
 
