@@ -342,6 +342,382 @@ fn a_canary_names_two_bots() {
     assert!(error.contains("no --bot"), "{error}");
 }
 
+/// A stored line with a chosen seed and pair points.
+fn result_line(a: &str, b: &str, seed: u64, points: [u32; 5]) -> String {
+    let [c0, c1, c2, c3, c4] = points;
+    let result = PairingResult {
+        a: a.to_string(),
+        b: b.to_string(),
+        pairs: points.iter().sum(),
+        wins: 2 * c4 + c3 + c2,
+        draws: c3 + c1,
+        losses: c2 + c1 + 2 * c0,
+        pair_points: points,
+        faults: [0, 0],
+        time_scale: 1.0,
+        time_tolerance_ms: 0,
+        opening_plies: 0,
+        seed,
+        date: "2026-10-16".to_string(),
+        commit: "abc".to_string(),
+        cpu: "unknown".to_string(),
+        speed: None,
+    };
+    result.to_line()
+}
+
+mod nightly_commands {
+    use super::*;
+
+    fn directory(name: &str) -> PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("cg-arena-nightly-{}-{name}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn parse(extra: &[&str]) -> Result<Command, clap::Error> {
+        Cli::try_parse_from(["arena"].into_iter().chain(extra.iter().copied()))
+            .map(|cli| cli.command)
+    }
+
+    fn merge_args(extra: &[&str]) -> MergeArgs {
+        match parse(&[&["merge"], extra].concat()).unwrap() {
+            Command::Merge(args) => args,
+            other => panic!("{other:?}"),
+        }
+    }
+
+    fn write(dir: &Path, name: &str, lines: &[String]) -> String {
+        let path = dir.join(name);
+        fs::write(
+            &path,
+            lines
+                .iter()
+                .map(|line| format!("{line}\n"))
+                .collect::<String>(),
+        )
+        .unwrap();
+        path.to_str().unwrap().to_string()
+    }
+
+    #[test]
+    fn the_new_commands_are_parsed() {
+        assert!(parse(&["merge", "--results", "r", "--out", "o"]).is_err());
+        let args = merge_args(&["--results", "r", "--add", "x", "--add", "y", "--out", "o"]);
+        assert_eq!(args.add, [PathBuf::from("x"), PathBuf::from("y")]);
+        let plan = [
+            "plan",
+            "--results",
+            "r",
+            "--pool",
+            "a,b",
+            "--releases",
+            "b",
+            "--anchor",
+            "a",
+            "--budget-pairs",
+            "5",
+            "--night",
+            "2026-11-01",
+            "--out",
+            "o",
+        ];
+        let Command::Plan(args) = parse(&plan).unwrap() else {
+            panic!("not a plan")
+        };
+        assert_eq!(args.pool, ["a", "b"]);
+        assert_eq!(
+            (args.nearest, args.new_pairs, args.block_pairs, args.top),
+            (5, 800, 200, 10)
+        );
+        assert_eq!((args.target_margin, args.low_share), (15.0, 0.2));
+        assert_eq!((args.seed, args.shards), (1, 1));
+        assert!(args.fixed_opponents.is_empty());
+        let play = ["play", "--plan", "p", "--bot", "a=x", "--new-results", "n"];
+        let Command::Play(args) = parse(&play).unwrap() else {
+            panic!("not a play")
+        };
+        assert_eq!(args.shard, None);
+    }
+
+    #[test]
+    fn merge_keeps_the_order_and_reports_drift() {
+        let dir = directory("merge");
+        let results = write(
+            &dir,
+            "results.jsonl",
+            &[
+                result_line("v002", "v001", 1, [0, 0, 100, 0, 0]),
+                result_line("v003", "v001", 2, [0, 0, 100, 0, 0]),
+            ],
+        );
+        // v001 vs v002 again, stored as (v001, v002): within; v003 vs v001
+        // again: far outside; v004 is new, and its repeat in the next file
+        // is compared with nothing, since only --results counts.
+        let first = write(
+            &dir,
+            "first.jsonl",
+            &[
+                result_line("v001", "v002", 3, [0, 5, 90, 5, 0]),
+                result_line("v003", "v001", 4, [0, 0, 0, 0, 100]),
+                result_line("v004", "v001", 5, [0, 0, 100, 0, 0]),
+            ],
+        );
+        let second = write(
+            &dir,
+            "second.jsonl",
+            &[result_line("v004", "v001", 6, [0, 0, 50, 0, 0])],
+        );
+        let out = dir.join("merged.jsonl");
+        let args = merge_args(&[
+            "--results",
+            &results,
+            "--add",
+            &first,
+            "--add",
+            &second,
+            "--out",
+            out.to_str().unwrap(),
+        ]);
+        let report = nightly::merge(&args).unwrap();
+        assert_eq!(report.len(), 4, "{report:?}");
+        assert!(
+            report[0].starts_with("drift v001 vs v002: 50.0% of 200 games now"),
+            "{report:?}"
+        );
+        assert!(report[0].ends_with(": within"), "{report:?}");
+        assert!(
+            report[1].starts_with("drift v003 vs v001: 100.0% of 200 games now"),
+            "{report:?}"
+        );
+        assert!(report[1].ends_with(": OUTSIDE"), "{report:?}");
+        assert!(
+            report[2].starts_with("warning: drift v003 vs v001 scored outside"),
+            "{report:?}"
+        );
+        assert_eq!(
+            report[3],
+            format!("merged 4 new lines into {} (6 lines in all)", out.display())
+        );
+
+        let merged = league::read_results(&out).unwrap();
+        let seeds: Vec<u64> = merged.iter().map(|line| line.seed).collect();
+        assert_eq!(seeds, [1, 2, 3, 4, 5, 6]);
+        let text = fs::read_to_string(&out).unwrap();
+        assert!(text.starts_with(&fs::read_to_string(&results).unwrap()));
+        assert!(text.ends_with(&format!(
+            "{}\n",
+            fs::read_to_string(&second).unwrap().trim_end()
+        )));
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn merge_may_write_over_the_results_file() {
+        let dir = directory("merge-in-place");
+        let results = write(
+            &dir,
+            "results.jsonl",
+            &[result_line("b", "a", 1, [0, 0, 4, 0, 0])],
+        );
+        let add = write(
+            &dir,
+            "add.jsonl",
+            &[result_line("b", "a", 2, [0, 0, 4, 0, 0])],
+        );
+        let args = merge_args(&["--results", &results, "--add", &add, "--out", &results]);
+        let report = nightly::merge(&args).unwrap();
+        assert!(
+            report.last().unwrap().contains("(2 lines in all)"),
+            "{report:?}"
+        );
+        assert_eq!(league::read_results(Path::new(&results)).unwrap().len(), 2);
+        let leftovers: Vec<_> = fs::read_dir(&dir).unwrap().collect();
+        assert_eq!(leftovers.len(), 2, "no temporary file stays: {leftovers:?}");
+
+        // An empty results file is fine.
+        let empty = write(&dir, "empty.jsonl", &[]);
+        let out = dir.join("out.jsonl");
+        let args = merge_args(&[
+            "--results",
+            &empty,
+            "--add",
+            &add,
+            "--out",
+            out.to_str().unwrap(),
+        ]);
+        let report = nightly::merge(&args).unwrap();
+        assert_eq!(report.len(), 1, "no drift without stored lines: {report:?}");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn merge_writes_nothing_on_an_error() {
+        let dir = directory("merge-errors");
+        let results = write(
+            &dir,
+            "results.jsonl",
+            &[result_line("b", "a", 1, [0, 0, 4, 0, 0])],
+        );
+        let first = write(
+            &dir,
+            "first.jsonl",
+            &[result_line("a", "b", 2, [0, 0, 4, 0, 0])],
+        );
+        let repeat = write(
+            &dir,
+            "repeat.jsonl",
+            &[result_line("b", "a", 2, [0, 0, 4, 0, 0])],
+        );
+        let out = dir.join("out.jsonl");
+        let out_arg = out.to_str().unwrap();
+        let args = merge_args(&[
+            "--results",
+            &results,
+            "--add",
+            &first,
+            "--add",
+            &repeat,
+            "--out",
+            out_arg,
+        ]);
+        let error = nightly::merge(&args).unwrap_err();
+        assert!(error.starts_with(&format!("{repeat}:1: ")), "{error}");
+        assert!(
+            error.contains(&format!("repeat the seed of {first}:1")),
+            "{error}"
+        );
+        assert!(!out.exists());
+
+        // The stored file's own seed counts as well.
+        let again = write(
+            &dir,
+            "again.jsonl",
+            &[result_line("a", "b", 1, [0, 0, 4, 0, 0])],
+        );
+        let args = merge_args(&["--results", &results, "--add", &again, "--out", &results]);
+        assert!(nightly::merge(&args).is_err());
+        assert_eq!(league::read_results(Path::new(&results)).unwrap().len(), 1);
+
+        let missing = dir.join("missing.jsonl");
+        let args = merge_args(&[
+            "--results",
+            missing.to_str().unwrap(),
+            "--add",
+            &first,
+            "--out",
+            out_arg,
+        ]);
+        assert!(nightly::merge(&args).unwrap_err().contains("cannot read"));
+        let args = merge_args(&[
+            "--results",
+            &results,
+            "--add",
+            missing.to_str().unwrap(),
+            "--out",
+            out_arg,
+        ]);
+        assert!(nightly::merge(&args).unwrap_err().contains("cannot read"));
+        fs::write(&first, "{oops\n").unwrap();
+        let args = merge_args(&["--results", &results, "--add", &first, "--out", out_arg]);
+        assert!(nightly::merge(&args)
+            .unwrap_err()
+            .contains("first.jsonl:1:"));
+        assert!(!out.exists());
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn plan_writes_the_lines_and_reports_mistakes() {
+        let dir = directory("plan");
+        let results = write(&dir, "results.jsonl", &[]);
+        let out = dir.join("plan.jsonl");
+        let plan_args = |extra: &[&str]| {
+            let mut line = vec![
+                "plan",
+                "--results",
+                results.as_str(),
+                "--pool",
+                "greedy,v001,v002",
+                "--releases",
+                "v001,v002",
+                "--anchor",
+                "greedy",
+                "--fixed-opponents",
+                "greedy",
+                "--budget-pairs",
+                "5000",
+                "--night",
+                "2026-11-01",
+                "--shards",
+                "2",
+                "--seed",
+                "3",
+                "--out",
+                out.to_str().unwrap(),
+            ];
+            line.extend(extra.iter().copied());
+            match parse(&line).unwrap() {
+                Command::Plan(args) => args,
+                other => panic!("{other:?}"),
+            }
+        };
+        assert_eq!(nightly::run_plan(&plan_args(&[])), Ok(true));
+        let lines = crate::night::parse_plan(&fs::read_to_string(&out).unwrap(), "plan").unwrap();
+        let pairs: Vec<(&str, &str)> = lines.iter().map(|l| (l.a.as_str(), l.b.as_str())).collect();
+        assert_eq!(
+            pairs,
+            [("v001", "greedy"), ("v001", "v002"), ("v002", "greedy")]
+        );
+        assert_eq!(lines[0].seed, league::pairing_seed(3, "v001", "greedy"));
+        assert_eq!(lines.iter().map(|l| l.shard).collect::<Vec<_>>(), [0, 1, 0]);
+
+        let before = fs::read_to_string(&out).unwrap();
+        for extra in [
+            &["--top", "0"][..],
+            &["--night", "tomorrow"],
+            &["--low-share", "2"],
+        ] {
+            // clap rejects an option given twice: change its value in place.
+            let mut line = vec![
+                "plan",
+                "--results",
+                results.as_str(),
+                "--pool",
+                "greedy,v001",
+                "--releases",
+                "v001",
+                "--anchor",
+                "greedy",
+                "--budget-pairs",
+                "5",
+                "--night",
+                "2026-11-01",
+                "--out",
+                out.to_str().unwrap(),
+            ];
+            let option = extra[0];
+            let at = line.iter().position(|word| *word == option);
+            match at {
+                Some(at) => line[at + 1] = extra[1],
+                None => line.extend(extra.iter().copied()),
+            }
+            let Command::Plan(args) = parse(&line).unwrap() else {
+                panic!("not a plan")
+            };
+            assert!(nightly::run_plan(&args).is_err(), "{extra:?}");
+        }
+        assert_eq!(
+            fs::read_to_string(&out).unwrap(),
+            before,
+            "a failed plan writes nothing"
+        );
+        fs::remove_dir_all(&dir).unwrap();
+    }
+}
+
 #[cfg(unix)]
 mod end_to_end {
     use std::time::Duration;
@@ -649,6 +1025,46 @@ mod end_to_end {
     }
 
     #[test]
+    fn replays_every_stored_line_of_a_pair_in_file_order() {
+        let dir = directory("replay-repeated");
+        let stored = [
+            result_line("v001", "random", 21, [0, 0, 2, 0, 0]),
+            result_line("greedy", "random", 22, [0, 0, 2, 0, 0]),
+            result_line("random", "v001", 23, [0, 0, 3, 0, 0]),
+        ];
+        fs::write(dir.join("results.jsonl"), stored.join("\n")).unwrap();
+        let bots = ["random", "v001"];
+        assert_eq!(replay(&dir, &bots, &["v001,random"], &[]), Ok(true));
+        let lines = new_lines(&dir);
+        let seen: Vec<(&str, &str, u32, u64)> = lines
+            .iter()
+            .map(|line| (line.a.as_str(), line.b.as_str(), line.pairs, line.seed))
+            .collect();
+        assert_eq!(seen, [("v001", "random", 2, 21), ("random", "v001", 3, 23)]);
+        // A pair is named once, whatever the order of its bots.
+        let error = replay(&dir, &bots, &["v001,random", "random,v001"], &[]).unwrap_err();
+        assert!(error.contains("twice"), "{error}");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_canary_on_a_pair_with_several_lines_runs_and_is_not_stored() {
+        let dir = directory("canary-combined");
+        let results = dir.join("results.jsonl");
+        let stored = [
+            result_line("greedy", "random", 31, [0, 0, 2, 0, 0]),
+            result_line("random", "greedy", 32, [0, 0, 2, 0, 0]),
+        ];
+        fs::write(&results, stored.join("\n")).unwrap();
+        let bots = ["random", "greedy", "v001"];
+        let options = ["--new", "v001", "--canary", "random,greedy"];
+        assert_eq!(run(&dir, &bots, &options), Ok(true));
+        let opponents: Vec<String> = new_lines(&dir).into_iter().map(|line| line.b).collect();
+        assert_eq!(opponents, ["greedy", "random"], "the canary is not stored");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
     fn a_replay_reports_mistakes_before_playing() {
         let dir = directory("replay-errors");
         let results = dir.join("results.jsonl");
@@ -662,6 +1078,120 @@ mod end_to_end {
         assert!(error.contains("twice"), "{error}");
         let error = replay(&dir, &bots, &["greedy,random"], &["--pairs", "0"]).unwrap_err();
         assert!(error.contains("--pairs"), "{error}");
+        assert!(!dir.join("new.jsonl").exists(), "no game was played");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    fn play_args(extra: &[&str]) -> PlayArgs {
+        let cli = Cli::try_parse_from(["arena", "play"].into_iter().chain(extra.iter().copied()))
+            .unwrap();
+        match cli.command {
+            Command::Play(args) => args,
+            other => panic!("{other:?}"),
+        }
+    }
+
+    fn plan_line(a: &str, b: &str, pairs: u32, seed: u64, kind: &str, shard: usize) -> String {
+        format!(
+            r#"{{"a":"{a}","b":"{b}","pairs":{pairs},"seed":{seed},"kind":"{kind}","shard":{shard}}}"#
+        )
+    }
+
+    fn play_plan(dir: &Path, bots: &[&str], extra: &[&str]) -> Result<bool, String> {
+        let plan = dir.join("plan.jsonl");
+        let new_results = dir.join("new.jsonl");
+        let mut line = vec![
+            "--plan",
+            plan.to_str().unwrap(),
+            "--new-results",
+            new_results.to_str().unwrap(),
+            "--jobs",
+            "2",
+            "--commit",
+            "def456",
+        ];
+        let bot_specs: Vec<String> = bots.iter().map(|name| format!("{name}=cat")).collect();
+        for spec in &bot_specs {
+            line.extend(["--bot", spec]);
+        }
+        line.extend(extra.iter().copied());
+        incremental::run_play(&play_args(&line), "uttt", &new_referee)
+    }
+
+    #[test]
+    fn plays_the_lines_of_the_chosen_shard_with_the_plans_seeds() {
+        let dir = directory("play");
+        let lines = [
+            plan_line("v002", "v001", 3, 11, "new", 0),
+            plan_line("v003", "v001", 2, 12, "top", 1),
+            plan_line("v001", "random", 2, 13, "low", 0),
+            plan_line("v003", "random", 1, 14, "low", 1),
+        ];
+        fs::write(dir.join("plan.jsonl"), lines.join("\n")).unwrap();
+        let bots = ["random", "v001", "v002", "v003"];
+        assert_eq!(
+            play_plan(&dir, &bots, &["--shard", "1", "--speed", "13.4"]),
+            Ok(true)
+        );
+        let played = new_lines(&dir);
+        let seen: Vec<(&str, &str, u32, u64)> = played
+            .iter()
+            .map(|line| (line.a.as_str(), line.b.as_str(), line.pairs, line.seed))
+            .collect();
+        assert_eq!(seen, [("v003", "v001", 2, 12), ("v003", "random", 1, 14)]);
+        assert!(played
+            .iter()
+            .all(|line| line.commit == "def456" && line.speed == Some(13.4)));
+        assert_eq!(played[0].wins + played[0].losses, 4);
+
+        // Every line, in file order, when no shard is given; only the bots of
+        // the lines played need a command.
+        assert_eq!(play_plan(&dir, &bots, &[]), Ok(true));
+        let seeds: Vec<u64> = new_lines(&dir).iter().map(|line| line.seed).collect();
+        assert_eq!(seeds, [11, 12, 13, 14]);
+        assert_eq!(
+            play_plan(&dir, &["v001", "v003"], &["--shard", "1"]),
+            Err("\"random\" is in the plan but has no --bot, so it cannot be played".to_string())
+        );
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_play_reports_mistakes_before_playing() {
+        let dir = directory("play-errors");
+        let plan = dir.join("plan.jsonl");
+        let bots = ["a", "b"];
+        fs::write(&plan, plan_line("a", "b", 1, 1, "new", 0)).unwrap();
+        fs::remove_file(dir.join("new.jsonl")).ok();
+        let error = play_plan(&dir, &bots, &["--shard", "3"]).unwrap_err();
+        assert_eq!(
+            error,
+            format!("--shard 3 matches no line of {}", plan.display())
+        );
+        assert!(!dir.join("new.jsonl").exists());
+        let error = play_plan(&dir, &["a"], &[]).unwrap_err();
+        assert!(
+            error.contains("\"b\" is in the plan but has no --bot"),
+            "{error}"
+        );
+        for (bad, expected) in [
+            (plan_line("a", "b", 0, 1, "new", 0), "0 pairs"),
+            (plan_line("a", "a", 1, 1, "new", 0), "with itself"),
+            (plan_line("a", "b", 1, 1, "mid", 0), "mid"),
+            ("{\"a\":\"a\"}".to_string(), "missing"),
+        ] {
+            fs::write(
+                &plan,
+                format!("{}\n{bad}\n", plan_line("a", "b", 1, 1, "new", 0)),
+            )
+            .unwrap();
+            let error = play_plan(&dir, &bots, &[]).unwrap_err();
+            assert!(
+                error.starts_with(&format!("{}:2: ", plan.display())),
+                "{error}"
+            );
+            assert!(error.contains(expected), "{error}");
+        }
         assert!(!dir.join("new.jsonl").exists(), "no game was played");
         fs::remove_dir_all(&dir).unwrap();
     }

@@ -262,15 +262,23 @@ fn summary_sentences(pairings: &[PairingResult], anchor: &str) -> String {
     } else {
         "Time limits: mixed (see league.jsonl).".to_string()
     };
+    // A pairing played several times is one pairing.
+    let distinct = pairings
+        .iter()
+        .map(|pairing| {
+            if pairing.a <= pairing.b {
+                (&pairing.a, &pairing.b)
+            } else {
+                (&pairing.b, &pairing.a)
+            }
+        })
+        .collect::<BTreeSet<_>>()
+        .len();
     format!(
         "Bradley-Terry ratings over {} {} and {} games, with `{anchor}` at 0 and 95% intervals. \
          {limits}",
-        thousands(pairings.len() as u64),
-        if pairings.len() == 1 {
-            "pairing"
-        } else {
-            "pairings"
-        },
+        thousands(distinct as u64),
+        if distinct == 1 { "pairing" } else { "pairings" },
         thousands(games)
     )
 }

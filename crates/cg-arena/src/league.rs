@@ -2,9 +2,13 @@
 //! the results file of stored pairings, the choice of a new release's
 //! opponents, the seeds of its pairings and the canary comparison.
 //!
-//! A pairing is played once and kept as one line of a JSON-lines file, so the
-//! ratings are recomputed from the whole file whenever they are needed. The
-//! functions here do no playing; `league --results` in [`crate::cli`] does.
+//! A pairing is kept as one line of a JSON-lines file, so the ratings are
+//! recomputed from the whole file whenever they are needed. A pairing may be
+//! played again, each time with a fresh seed and as another line
+//! ([ADR 0049](../../../docs/adr/0049-parallel-evaluations-and-nightly-league.md),
+//! decision 5); a new result is compared with the stored ones by [`drift`].
+//! The functions here do no playing; `league --results` and `play` in
+//! [`crate::cli`] do.
 
 use std::collections::{BTreeSet, HashMap};
 use std::fs;
@@ -100,11 +104,54 @@ impl PairingResult {
     }
 }
 
+/// The seeds already used by each unordered pair of bots, with the place of
+/// the line that used them, so that no two lines of a pair repeat a seed.
+#[derive(Debug, Default)]
+pub struct Seeds {
+    seen: HashMap<(String, String, u64), (String, usize)>,
+}
+
+impl Seeds {
+    /// Records the seed of `result`, found on `line` of `source`. Errors
+    /// when a line of the same two bots, in either order, used it before.
+    pub fn add(&mut self, source: &str, line: usize, result: &PairingResult) -> Result<(), String> {
+        let (low, high) = if result.a <= result.b {
+            (&result.a, &result.b)
+        } else {
+            (&result.b, &result.a)
+        };
+        let key = (low.clone(), high.clone(), result.seed);
+        if let Some((first_source, first_line)) = self.seen.get(&key) {
+            let place = if first_source == source {
+                format!("line {first_line}")
+            } else {
+                format!("{first_source}:{first_line}")
+            };
+            return Err(format!(
+                "{source}:{line}: {} and {} repeat the seed of {place}",
+                result.a, result.b
+            ));
+        }
+        self.seen.insert(key, (source.to_string(), line));
+        Ok(())
+    }
+}
+
 /// Parses the text of a results file. Blank lines are ignored; any other line
-/// must be a valid pairing, and no two lines may pair the same two bots, in
-/// either order. Errors name `source` and the line.
+/// must be a valid pairing. Several lines may pair the same two bots, in
+/// either order, but not with the same seed. Errors name `source` and the line.
 pub fn parse_results(text: &str, source: &str) -> Result<Vec<PairingResult>, String> {
-    let mut results: Vec<(usize, PairingResult)> = Vec::new();
+    parse_results_with(text, source, &mut Seeds::default())
+}
+
+/// [`parse_results`] that also checks the seeds against those `seeds` already
+/// holds, so that several files can be checked as one.
+pub fn parse_results_with(
+    text: &str,
+    source: &str,
+    seeds: &mut Seeds,
+) -> Result<Vec<PairingResult>, String> {
+    let mut results = Vec::new();
     for (index, line) in text.lines().enumerate() {
         if line.trim().is_empty() {
             continue;
@@ -114,18 +161,10 @@ pub fn parse_results(text: &str, source: &str) -> Result<Vec<PairingResult>, Str
         let result: PairingResult =
             serde_json::from_str(line).map_err(|err| at(err.to_string()))?;
         result.validate().map_err(at)?;
-        if let Some((first, _)) = results.iter().find(|(_, other)| {
-            (other.a == result.a && other.b == result.b)
-                || (other.a == result.b && other.b == result.a)
-        }) {
-            return Err(at(format!(
-                "{} and {} are already paired on line {first}",
-                result.a, result.b
-            )));
-        }
-        results.push((number, result));
+        seeds.add(source, number, &result)?;
+        results.push(result);
     }
-    Ok(results.into_iter().map(|(_, result)| result).collect())
+    Ok(results)
 }
 
 /// Reads a results file. A missing file is an error; an empty one is fine.
@@ -353,7 +392,7 @@ pub fn choose_opponents(
     order
 }
 
-/// A canary replay compared with the stored pairing it repeats.
+/// A canary replay or a new pairing compared with the stored ones.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CanaryReport {
     /// The first bot's score now and as stored, in percent.
@@ -374,8 +413,25 @@ impl CanaryReport {
 
     /// The report line for the canary of `a` against `b`.
     pub fn line(&self, a: &str, b: &str) -> String {
+        self.labelled("canary", a, b)
+    }
+
+    /// The report lines for the drift of `a` against `b`: the report, then a
+    /// warning when it is outside the stored interval.
+    pub fn drift_lines(&self, a: &str, b: &str) -> Vec<String> {
+        let mut lines = vec![self.labelled("drift", a, b)];
+        if !self.within() {
+            lines.push(format!(
+                "warning: drift {a} vs {b} scored outside its stored interval: the runners' \
+                 speed may have changed (ADR 0049)"
+            ));
+        }
+        lines
+    }
+
+    fn labelled(&self, word: &str, a: &str, b: &str) -> String {
         format!(
-            "canary {a} vs {b}: {:.1}% of {} games now, {:.1}% stored, difference {:+.1} points, \
+            "{word} {a} vs {b}: {:.1}% of {} games now, {:.1}% stored, difference {:+.1} points, \
              95% interval ±{:.1}: {}",
             self.now,
             self.games_now,
@@ -413,7 +469,15 @@ fn pair_score_moments(pair_points: &[u32; 5]) -> Option<(f64, f64)> {
 /// the difference, from the pairs' points of both. `None` when either has no
 /// pair.
 pub fn compare_canary(stored: &PairingResult, now_pair_points: &[u32; 5]) -> Option<CanaryReport> {
-    let (stored_mean, stored_variance) = pair_score_moments(&stored.pair_points)?;
+    compare_pair_points(&stored.pair_points, now_pair_points)
+}
+
+/// [`compare_canary`] for stored pair points given as an array.
+pub fn compare_pair_points(
+    stored_pair_points: &[u32; 5],
+    now_pair_points: &[u32; 5],
+) -> Option<CanaryReport> {
+    let (stored_mean, stored_variance) = pair_score_moments(stored_pair_points)?;
     let (now_mean, now_variance) = pair_score_moments(now_pair_points)?;
     let games_now = 2 * now_pair_points.iter().sum::<u32>();
     Some(CanaryReport {
@@ -423,6 +487,37 @@ pub fn compare_canary(stored: &PairingResult, now_pair_points: &[u32; 5]) -> Opt
         interval: 100.0 * 1.96 * (stored_variance + now_variance).sqrt(),
         games_now,
     })
+}
+
+/// The pair points of every line of the unordered pair `a`, `b`, added up and
+/// seen from `a`: a line stored as (`b`, `a`) counts with its array
+/// reversed. `None` when no line pairs them.
+pub fn combined_pair_points(stored: &[PairingResult], a: &str, b: &str) -> Option<[u32; 5]> {
+    let mut total = [0u32; 5];
+    let mut found = false;
+    for line in stored {
+        let reversed = if line.a == a && line.b == b {
+            false
+        } else if line.a == b && line.b == a {
+            true
+        } else {
+            continue;
+        };
+        found = true;
+        for (k, slot) in total.iter_mut().enumerate() {
+            *slot += line.pair_points[if reversed { 4 - k } else { k }];
+        }
+    }
+    found.then_some(total)
+}
+
+/// Compares the new pairing with every stored line of the same two bots
+/// combined ([`combined_pair_points`], seen from `new.a`), as a sign that the
+/// runners' speed has changed (ADR 0049, decision 5). `None` when the pair has
+/// no stored line or either side has no pair.
+pub fn drift(stored: &[PairingResult], new: &PairingResult) -> Option<CanaryReport> {
+    let combined = combined_pair_points(stored, &new.a, &new.b)?;
+    compare_pair_points(&combined, &new.pair_points)
 }
 
 /// Every bot named in `pairings` or in `extra`, sorted, without repeats.

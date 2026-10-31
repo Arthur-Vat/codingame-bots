@@ -325,3 +325,17 @@ fn the_real_journal_promotes_every_uttt_release() {
     assert_eq!(entries["v018"].experiment, "E032");
     assert_eq!(entries["v018"].target, "E032-puct-tuning.md");
 }
+
+#[test]
+fn a_pair_played_several_times_counts_as_one_pairing() {
+    let pairings = [
+        pairing("v002", "v001", 100, 0, 100),
+        pairing("v001", "v002", 100, 0, 100),
+        pairing("v002", "v001", 100, 0, 100),
+    ];
+    let sentence = summary_sentences(&pairings, "v001");
+    assert!(
+        sentence.contains("over 1 pairing and 600 games"),
+        "{sentence}"
+    );
+}
