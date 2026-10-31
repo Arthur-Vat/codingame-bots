@@ -142,8 +142,17 @@ fn settings_are_checked() {
         "2026-13-01",
         "2026-11-32",
         "x026-11-01",
+        "2026-11-01-",
+        "2026-11-01x",
+        "2026-11-01-a",
+        "2026-11-01-1234",
     ] {
         check(&|s| s.night = night.to_string(), "--night");
+    }
+    for night in ["2026-11-01", "2026-11-01-2"] {
+        let mut s = settings(&["a", "b"], &["b"], "a");
+        s.night = night.to_string();
+        assert_eq!(s.validate(), Ok(()), "{night}");
     }
 }
 

@@ -432,7 +432,7 @@ mod nightly_commands {
             (args.nearest, args.new_pairs, args.block_pairs, args.top),
             (5, 800, 200, 10)
         );
-        assert_eq!((args.target_margin, args.low_share), (15.0, 0.2));
+        assert_eq!((args.target_margin, args.low_share), (10.0, 0.2));
         assert_eq!((args.seed, args.shards), (1, 1));
         assert!(args.fixed_opponents.is_empty());
         let play = ["play", "--plan", "p", "--bot", "a=x", "--new-results", "n"];
@@ -1153,6 +1153,30 @@ mod end_to_end {
             play_plan(&dir, &["v001", "v003"], &["--shard", "1"]),
             Err("\"random\" is in the plan but has no --bot, so it cannot be played".to_string())
         );
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_deadline_of_zero_plays_nothing() {
+        let dir = directory("play-deadline");
+        let lines = [
+            plan_line("v002", "v001", 1, 11, "new", 0),
+            plan_line("v003", "v001", 1, 12, "top", 0),
+        ];
+        fs::write(dir.join("plan.jsonl"), lines.join("\n")).unwrap();
+        let bots = ["v001", "v002", "v003"];
+        assert_eq!(
+            play_plan(&dir, &bots, &["--deadline-minutes", "0"]),
+            Ok(true)
+        );
+        assert!(new_lines(&dir).is_empty(), "no line was started");
+        // A deadline far away does not cut anything.
+        assert_eq!(
+            play_plan(&dir, &bots, &["--deadline-minutes", "600"]),
+            Ok(true)
+        );
+        let seeds: Vec<u64> = new_lines(&dir).iter().map(|line| line.seed).collect();
+        assert_eq!(seeds, [11, 12]);
         fs::remove_dir_all(&dir).unwrap();
     }
 

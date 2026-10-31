@@ -529,6 +529,9 @@ jobs:
       - name: Test the league replay and the calibration
         if: ${{ !cancelled() }}
         run: scripts/annotate.sh run "League replay test" scripts/tests/league-replay-test.sh
+      - name: Test the nightly league script
+        if: ${{ !cancelled() }}
+        run: scripts/annotate.sh run "League night test" scripts/tests/league-night-test.sh
       - name: Test the size check
         if: ${{ !cancelled() }}
         # rustc and iconv are preinstalled on ubuntu-latest.

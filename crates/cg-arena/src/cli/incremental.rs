@@ -252,6 +252,7 @@ pub(super) fn run_play<F: RefereeFactory>(
     game: &str,
     new_referee: &F,
 ) -> Result<bool, String> {
+    let started = Instant::now();
     let bots = args
         .bots
         .iter()
@@ -307,9 +308,25 @@ pub(super) fn run_play<F: RefereeFactory>(
         games: HashMap::new(),
     };
     println!("Playing {} of {} plan lines", chosen.len(), lines.len());
+    // A deadline too far away to represent never comes.
+    let deadline = args
+        .deadline_minutes
+        .and_then(|minutes| started.checked_add(Duration::from_secs(minutes.saturating_mul(60))));
+    let total = chosen.len();
+    let mut played = 0;
     for line in chosen {
+        if deadline.is_some_and(|deadline| Instant::now() >= deadline) {
+            break;
+        }
         run.write_pairing(&line.a, &line.b, line.pairs, line.seed)?;
+        played += 1;
     }
+    println!(
+        "Played {played} lines, skipped {} (deadline: {})",
+        total - played,
+        args.deadline_minutes
+            .map_or("none".to_string(), |minutes| format!("{minutes} minutes"))
+    );
     let Run {
         output,
         records,

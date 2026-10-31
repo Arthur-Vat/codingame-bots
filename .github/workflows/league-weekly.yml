@@ -1,0 +1,109 @@
+name: League weekly
+
+# Every Thursday at 05:30 UTC, before the owner's 06:00 pull request (ADR 0049,
+# decision 6; ADR 0051): for each game whose results on the branch
+# league-results are ahead of main's, makes the branch
+# claude/league-results-YYYY-MM-DD from main with the game's league.jsonl from
+# league-results and a LEADERBOARD.md generated from it with main's journal
+# (so that the League results check passes), and pushes it. It opens no pull
+# request: GitHub runs no CI on a pull request that a workflow opens with its
+# token, so a weekly Claude task opens it at 06:00. The branch name is in the
+# run's summary. Nothing differs, nothing is pushed.
+#
+# A game is left out, with a warning, when main's league.jsonl is not the
+# beginning of the one on league-results (main's results were replaced, for
+# example by a replay at new settings, after the night's lines were added):
+# that needs a decision, not a weekly copy.
+on:
+  schedule:
+    - cron: "30 5 * * 4"
+  workflow_dispatch:
+
+permissions:
+  contents: write # to push the branch
+
+concurrency:
+  group: league-weekly
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # CodinGame's Rust compiler (docs/CODINGAME.md, ADR 0010).
+  CG_RUST: "1.90.0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  branch:
+    name: Branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: false
+      - name: Make the branch from main with the night's results
+        run: |
+          if ! git ls-remote --exit-code --heads origin league-results >/dev/null 2>&1; then
+            echo "::notice title=League weekly::no branch league-results yet: nothing to do"
+            echo "No branch \`league-results\` yet: nothing to do." >>"$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git fetch --quiet origin +refs/heads/league-results:refs/remotes/origin/league-results
+          changed=()
+          for env in games/*/evaluation.env; do
+            game="$(basename "$(dirname "$env")")"
+            [[ $game =~ ^[A-Za-z0-9_-]+$ ]] || continue
+            file="games/$game/league.jsonl"
+            git cat-file -e "origin/league-results:$file" 2>/dev/null || continue
+            git show "origin/league-results:$file" >"$RUNNER_TEMP/$game.jsonl"
+            if [ -f "$file" ] && cmp -s "$file" "$RUNNER_TEMP/$game.jsonl"; then
+              continue
+            fi
+            # Main's lines must be the beginning of the branch's.
+            size=0
+            if [ -f "$file" ]; then size="$(stat -c %s "$file")"; fi
+            if [ "$size" -gt 0 ] && ! head -c "$size" "$RUNNER_TEMP/$game.jsonl" | cmp -s - "$file"; then
+              echo "::warning title=League weekly::$file on main is not the beginning of the one on league-results: $game is left out"
+              continue
+            fi
+            changed+=("$game")
+          done
+          if [ "${#changed[@]}" -eq 0 ]; then
+            echo "::notice title=League weekly::the results on league-results are main's: nothing to push"
+            echo "The results on \`league-results\` are main's: no branch." >>"$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          date="$(date -u +%F)"
+          branch="claude/league-results-$date"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "::warning title=League weekly::the branch $branch exists already: nothing pushed"
+            echo "The branch \`$branch\` exists already: nothing pushed." >>"$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --quiet -b "$branch"
+          for game in "${changed[@]}"; do
+            cp "$RUNNER_TEMP/$game.jsonl" "games/$game/league.jsonl"
+            scripts/annotate.sh run "Leaderboard of $game" \
+              scripts/league-night.sh publish "$game" "games/$game/league.jsonl" "games/$game/LEADERBOARD.md"
+            git add "games/$game/league.jsonl" "games/$game/LEADERBOARD.md"
+          done
+          scopes="$(IFS=,; echo "${changed[*]}")"
+          git commit --quiet -m "chore($scopes): league results to $date"
+          git push --quiet origin "$branch"
+          {
+            echo "## League weekly"
+            echo
+            echo "Pushed the branch \`$branch\` with the results of: ${changed[*]}."
+            echo "A weekly Claude task opens the pull request at 06:00."
+          } >>"$GITHUB_STEP_SUMMARY"
+          echo "Pushed $branch."

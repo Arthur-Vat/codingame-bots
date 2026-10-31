@@ -1,0 +1,101 @@
+name: League nightly
+
+# Every night at 02:00 UTC, each game with a nightly league
+# (LEAGUE_NIGHTLY=true in games/<game>/evaluation.env) plays its night
+# (ADR 0049, 0050): the planner chooses the pairings, 6 runners play them
+# (LEAGUE_NIGHTLY_RUNNERS), calibrated to CodinGame's speed, and the results
+# and the leaderboard go to the branch league-results, which is never merged.
+# league-weekly.yml makes a branch from it for the weekly pull request. Each
+# game's night is league-night.yml, called here once per game, so that each
+# game has its own runners and budget (ADR 0050, decision 3).
+#
+# By hand: `gh workflow run league-nightly.yml -f game=ice-and-fire`.
+# `publish` unchecked is a dry run: the night is played and summarised, but
+# nothing is pushed and no archive is started. A game that does not have a
+# nightly league can be run by hand only as a dry run.
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      game:
+        description: "Game folder; empty: every game with a nightly league"
+        required: false
+        default: ""
+      publish:
+        description: "Push the results to league-results and start the archive (uncheck for a dry run)"
+        type: boolean
+        default: true
+
+# Each job declares the permissions it needs.
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  games:
+    name: Games
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      games: ${{ steps.list.outputs.games }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: List the games with a nightly league
+        id: list
+        env:
+          GAME_INPUT: ${{ inputs.game }}
+          PUBLISH: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
+        run: |
+          nightly() { sed -n 's/^LEAGUE_NIGHTLY=//p' "games/$1/evaluation.env" | head -n 1; }
+          list=()
+          if [ -n "$GAME_INPUT" ]; then
+            # Text from whoever started the run: checked before it reaches a path.
+            if [[ ! $GAME_INPUT =~ ^[A-Za-z0-9_-]+$ || ! -f games/$GAME_INPUT/evaluation.env ]]; then
+              echo "::error title=League nightly::'$GAME_INPUT' is not a game with an evaluation.env"
+              exit 1
+            fi
+            if [ "$(nightly "$GAME_INPUT")" != true ] && [ "$PUBLISH" = true ]; then
+              echo "::error title=League nightly::$GAME_INPUT has no nightly league (LEAGUE_NIGHTLY=true in its evaluation.env): run it with publish unchecked, or change the setting"
+              exit 1
+            fi
+            list+=("$GAME_INPUT")
+          else
+            for env in games/*/evaluation.env; do
+              game="$(basename "$(dirname "$env")")"
+              if [[ $game =~ ^[A-Za-z0-9_-]+$ && "$(nightly "$game")" == true ]]; then
+                list+=("$game")
+              fi
+            done
+          fi
+          json="$(printf '%s\n' "${list[@]}" | jq -R . | jq -sc 'map(select(. != ""))')"
+          echo "games=$json" | tee -a "$GITHUB_OUTPUT"
+          if [ "$json" = '[]' ]; then
+            echo "::notice title=League nightly::no game has a nightly league"
+          fi
+
+  night:
+    name: "${{ matrix.game }}"
+    needs: games
+    # An empty matrix is an error: skip the job instead.
+    if: needs.games.outputs.games != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        game: ${{ fromJSON(needs.games.outputs.games) }}
+    # One night per game at a time: a running night is never cancelled, but a
+    # run that queues behind it cancels an older one that is still pending. A
+    # dry run has a group of its own and never waits for a real night.
+    concurrency:
+      group: league-nightly-${{ matrix.game }}${{ (github.event_name == 'workflow_dispatch' && !inputs.publish) && '-dry-run' || '' }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: write
+    uses: ./.github/workflows/league-night.yml
+    with:
+      game: ${{ matrix.game }}
+      publish: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}

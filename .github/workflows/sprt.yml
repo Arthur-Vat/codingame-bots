@@ -10,7 +10,10 @@ name: SPRT
 # accepts, the league job plays the release's league (ADR 0038,
 # scripts/league.sh) and posts the new result lines as a comment; the job
 # `League results` holds the merge until they are in games/<game>/league.jsonl
-# and LEADERBOARD.md matches them (scripts/league-check.sh). The check
+# and LEADERBOARD.md matches them (scripts/league-check.sh). A game with a
+# nightly league (LEAGUE_NIGHTLY=true in its evaluation.env, ADR 0049) has
+# no league job: its release merges on the SPRT, and the ratings arrive
+# overnight (league-nightly.yml). The check
 # `SPRT passed` fails unless every step of every game passes, the new
 # release's faults in the league included, and the league results are in; it
 # passes when the pull request adds no release and changes no league file.
@@ -43,6 +46,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       games: ${{ steps.scopes.outputs.games }}
+      # The same games without those that have a nightly league.
+      league_games: ${{ steps.scopes.outputs.league_games }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -65,6 +70,19 @@ jobs:
             exit 1
           }
           echo "$scopes" | tee -a "$GITHUB_OUTPUT"
+          # A game with a nightly league plays no league on the pull request
+          # (ADR 0049, decision 3). The game names are plain: ci-scopes.sh
+          # checked them.
+          league_games=()
+          while IFS= read -r game; do
+            [ -n "$game" ] || continue
+            nightly="$(sed -n 's/^LEAGUE_NIGHTLY=//p' "games/$game/evaluation.env" | head -n 1)"
+            if [ "$nightly" != true ]; then
+              league_games+=("$game")
+            fi
+          done < <(jq -r '.[]' <<<"${scopes#games=}")
+          league_json="$(printf '%s\n' "${league_games[@]}" | jq -R . | jq -sc 'map(select(. != ""))')"
+          echo "league_games=$league_json" | tee -a "$GITHUB_OUTPUT"
           if [ "$scopes" = 'games=[]' ]; then
             echo "No new release in this pull request: nothing to test." | tee -a "$GITHUB_STEP_SUMMARY"
           else
@@ -271,8 +289,8 @@ jobs:
       - releases
       - sprt
     # An empty matrix is an error: skip the job instead. A rejected SPRT
-    # needs no league.
-    if: needs.releases.outputs.games != '[]' && needs.sprt.result == 'success'
+    # needs no league, nor does a game with a nightly league.
+    if: needs.releases.outputs.league_games != '[]' && needs.sprt.result == 'success'
     runs-on: ubuntu-latest
     # 800 pairs per pairing at full time (ADR 0042): about 3.5 hours for
     # Ultimate Tic-Tac-Toe, which fits 300 minutes; GitHub's limit is 360.
@@ -280,7 +298,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        game: ${{ fromJSON(needs.releases.outputs.games) }}
+        game: ${{ fromJSON(needs.releases.outputs.league_games) }}
     env:
       GAME: ${{ matrix.game }}
     steps:
@@ -624,6 +642,7 @@ jobs:
         env:
           NEEDS: ${{ toJSON(needs) }}
           GAMES: ${{ needs.releases.outputs.games }}
+          LEAGUE_GAMES: ${{ needs.releases.outputs.league_games }}
           RESULTS_TITLE: SPRT passed
         run: |
           # Empty when the releases job failed: the verdict then fails.
@@ -632,4 +651,9 @@ jobs:
             '[]') HAS_GAMES=false ;;
             *) HAS_GAMES=true ;;
           esac
-          scripts/ci-scopes.sh results releases=true sprt="$HAS_GAMES" league="$HAS_GAMES" league-results=true
+          case "$LEAGUE_GAMES" in
+            '') HAS_LEAGUE='' ;;
+            '[]') HAS_LEAGUE=false ;;
+            *) HAS_LEAGUE=true ;;
+          esac
+          scripts/ci-scopes.sh results releases=true sprt="$HAS_GAMES" league="$HAS_LEAGUE" league-results=true
