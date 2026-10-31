@@ -1,5 +1,6 @@
-//! The command line shared by every game's arena binary, with five
-//! commands: `match`, `sprt`, `league`, `replay` and `leaderboard`.
+//! The command line shared by every game's arena binary, with eight
+//! commands: `match`, `sprt`, `league`, `replay`, `leaderboard`, and the
+//! nightly league's `plan`, `play` and `merge` (ADR 0049).
 
 use std::collections::{BTreeSet, HashMap};
 use std::fs::{self, File, OpenOptions};
@@ -43,6 +44,15 @@ pub enum Command {
     /// Plays stored pairings of a league results file again, each with its
     /// stored seed, and writes each as a new line of the file's format.
     Replay(ReplayArgs),
+    /// Chooses tonight's pairings of the nightly league (ADR 0049) from the
+    /// results file and writes them as a plan, without playing.
+    Plan(PlanArgs),
+    /// Plays the lines of a plan and writes each finished pairing as a new
+    /// line of the results file's format.
+    Play(PlayArgs),
+    /// Adds the new lines of the nightly league to a results file, reporting
+    /// drift against the pairings already stored.
+    Merge(MergeArgs),
     /// Writes the game's LEADERBOARD.md from a league results file, or
     /// checks that a committed one matches it.
     Leaderboard(LeaderboardArgs),
@@ -239,7 +249,9 @@ pub struct LeagueArgs {
 
     /// Replays one stored pairing, as A,B in either order, after the new
     /// pairings, and reports whether its score is within the interval of the
-    /// stored one: a sign that the machine's speed has changed. It is never
+    /// stored ones, all the lines of the pair combined: a sign that the
+    /// machine's speed has changed. It plays the pairs of the pair's first
+    /// line, with a seed of its own. It is never
     /// written to --new-results, and a result outside the interval prints a
     /// line starting `warning: canary` without changing the exit status.
     #[arg(long, value_name = "A,B", requires = "results")]
@@ -276,8 +288,9 @@ pub struct ReplayArgs {
     pub results: PathBuf,
 
     /// A stored pairing to replay, as A,B in either order. Give it once per
-    /// pairing; they are played in the order given, each with its stored
-    /// seed, and written with its stored order of A and B.
+    /// pairing; they are played in the order given. Every stored line of the
+    /// pair is replayed, in file order, each with its own seed, number of
+    /// pairs and order of A and B.
     #[arg(long = "pairing", value_name = "A,B", required = true)]
     pub pairings: Vec<String>,
 
@@ -302,6 +315,127 @@ pub struct ReplayArgs {
 
     #[command(flatten)]
     pub common: CommonArgs,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct PlanArgs {
+    /// The league results file (see docs/adr/0038-incremental-league.md).
+    /// Bots in it but not in --pool are rated, never planned.
+    #[arg(long, value_name = "FILE")]
+    pub results: PathBuf,
+
+    /// The bots the night may play: the game's releases and baselines.
+    #[arg(long, value_name = "NAME,NAME", value_delimiter = ',', required = true)]
+    pub pool: Vec<String>,
+
+    /// The releases in release order, a subset of the pool: the previous
+    /// release of a release is the one before it.
+    #[arg(long, value_name = "NAME,NAME", value_delimiter = ',', required = true)]
+    pub releases: Vec<String>,
+
+    /// The bot rated 0 Elo; in the pool.
+    #[arg(long, value_name = "NAME")]
+    pub anchor: String,
+
+    /// Opponents every bot plays, whatever its rating; in the pool.
+    #[arg(long, value_name = "NAME,NAME", value_delimiter = ',')]
+    pub fixed_opponents: Vec<String>,
+
+    /// How many opponents beyond the previous release and the fixed ones a
+    /// bot should have played.
+    #[arg(long, value_name = "N", default_value_t = 5)]
+    pub nearest: usize,
+
+    /// Seat-swapped pairs of each pairing of a bot that lacks games.
+    #[arg(long, value_name = "N", default_value_t = 800)]
+    pub new_pairs: u32,
+
+    /// Pairs for the night. The pairings of bots that lack games are planned
+    /// whatever the budget; what remains is split between the top and the
+    /// other bots.
+    #[arg(long, value_name = "N")]
+    pub budget_pairs: u64,
+
+    /// Pairs in one step of the top's or the others' share.
+    #[arg(long, value_name = "N", default_value_t = 200)]
+    pub block_pairs: u32,
+
+    /// How many of the best bots the target covers.
+    #[arg(long, value_name = "N", default_value_t = 10)]
+    pub top: usize,
+
+    /// The half-width in Elo of the 95% interval each of them should reach.
+    #[arg(long, value_name = "ELO", default_value_t = 15.0)]
+    pub target_margin: f64,
+
+    /// The share of what the new bots leave that goes to the other bots.
+    #[arg(long, value_name = "SHARE", default_value_t = 0.2)]
+    pub low_share: f64,
+
+    /// The night, YYYY-MM-DD: it varies the seeds from one night to the next.
+    #[arg(long, value_name = "DATE")]
+    pub night: String,
+
+    /// The seed the pairings' seeds derive from.
+    #[arg(long, default_value_t = 1)]
+    pub seed: u64,
+
+    /// Runners to share the lines between.
+    #[arg(long, value_name = "N", default_value_t = 1)]
+    pub shards: usize,
+
+    /// Write the plan, a JSON line per pairing, to this file.
+    #[arg(long, value_name = "FILE")]
+    pub out: PathBuf,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct PlayArgs {
+    /// A bot as NAME=COMMAND: every bot of the lines played.
+    #[arg(long = "bot", value_name = "NAME=COMMAND", required = true)]
+    pub bots: Vec<String>,
+
+    /// The plan, as `plan` wrote it.
+    #[arg(long, value_name = "FILE")]
+    pub plan: PathBuf,
+
+    /// Plays only the lines of this shard [default: all].
+    #[arg(long, value_name = "K")]
+    pub shard: Option<usize>,
+
+    /// Creates (truncates) this file and appends each finished pairing to it
+    /// as one line of the results file's format, flushed at once.
+    #[arg(long, value_name = "FILE")]
+    pub new_results: PathBuf,
+
+    /// Written to each line as `commit`.
+    #[arg(long, value_name = "SHA")]
+    pub commit: Option<String>,
+
+    /// The machine's speed in units a millisecond of the calibration
+    /// workload (ADR 0048), written to each line as `speed`.
+    #[arg(long, value_name = "UNITS")]
+    pub speed: Option<f64>,
+
+    #[command(flatten)]
+    pub common: CommonArgs,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct MergeArgs {
+    /// The league results file; it must exist, an empty one is fine.
+    #[arg(long, value_name = "FILE")]
+    pub results: PathBuf,
+
+    /// A file of new lines, in the results file's format. Give it once per
+    /// file; they are added in the order given.
+    #[arg(long = "add", value_name = "FILE", required = true)]
+    pub add: Vec<PathBuf>,
+
+    /// Write the stored lines, then the added ones, to this file. It may be
+    /// the --results file.
+    #[arg(long, value_name = "FILE")]
+    pub out: PathBuf,
 }
 
 #[derive(Debug, clap::Args)]
@@ -352,6 +486,9 @@ pub fn main<F: RefereeFactory>(name: &'static str, new_referee: F) -> ExitCode {
         Command::Sprt(args) => run_sprt(args, game, &new_referee),
         Command::League(args) => run_league(args, game, &new_referee),
         Command::Replay(args) => incremental::run_replay(&args, game, &new_referee),
+        Command::Plan(args) => nightly::run_plan(&args),
+        Command::Play(args) => incremental::run_play(&args, game, &new_referee),
+        Command::Merge(args) => nightly::run_merge(&args),
         Command::Leaderboard(args) => run_leaderboard(&args, game, name),
     };
     match result {
@@ -954,6 +1091,7 @@ fn record_file_name(stem: &str, game: &GameRecord) -> String {
 }
 
 mod incremental;
+mod nightly;
 
 #[cfg(test)]
 mod tests;

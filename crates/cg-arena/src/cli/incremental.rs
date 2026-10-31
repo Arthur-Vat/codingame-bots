@@ -2,9 +2,11 @@
 //! stored pairings, plays a new release against opponents it chooses, and
 //! appends each new pairing to a file in the results file's format. Also
 //! `replay`, which plays stored pairings again with their stored seeds
-//! (ADR 0048).
+//! (ADR 0048), and `play`, which plays the lines of a night's plan
+//! (ADR 0049).
 
 use super::*;
+use crate::night;
 
 /// Runs `league` with `--results`. `bots` are the parsed `--bot` options.
 pub(super) fn run_incremental_league<F: RefereeFactory>(
@@ -57,6 +59,10 @@ pub(super) fn run_incremental_league<F: RefereeFactory>(
         Some(spec) => Some(find_canary(spec, &stored, bots)?),
         None => None,
     };
+    // The canary is compared with every stored line of its pair, combined.
+    let combined = canary
+        .as_ref()
+        .and_then(|first| league::combined_pair_points(&stored, &first.a, &first.b));
     // Every opponent that may be chosen needs a command, whatever the choice.
     check_playable(bots, &candidates)?;
     let already = stored.iter().any(|pairing| pairing.involves(new));
@@ -131,8 +137,8 @@ pub(super) fn run_incremental_league<F: RefereeFactory>(
             }
         }
     }
-    if let Some(stored_canary) = &canary {
-        run.play_canary(stored_canary, new)?;
+    if let (Some(first), Some(combined)) = (&canary, &combined) {
+        run.play_canary(first, combined, new)?;
     }
     let Run {
         output,
@@ -183,15 +189,15 @@ pub(super) fn run_replay<F: RefereeFactory>(
     }
     let stored = league::read_results(&args.results)?;
     let mut chosen: Vec<PairingResult> = Vec::new();
+    let mut given: Vec<(String, String)> = Vec::new();
     for spec in &args.pairings {
-        let pairing = find_pairing("--pairing", spec, &stored, &bots)?;
-        if chosen
-            .iter()
-            .any(|other| other.a == pairing.a && other.b == pairing.b)
-        {
+        let lines = find_pairings("--pairing", spec, &stored, &bots)?;
+        let key = unordered(&lines[0].a, &lines[0].b);
+        if given.contains(&key) {
             return Err(format!("--pairing {spec:?} is given twice"));
         }
-        chosen.push(pairing);
+        given.push(key);
+        chosen.extend(lines);
     }
     check_common(&args.common)?;
     if same_file(&args.results, &args.new_results) {
@@ -239,6 +245,84 @@ pub(super) fn run_replay<F: RefereeFactory>(
     records_result.map(|()| passed)
 }
 
+/// Runs `play`: plays the lines of a plan (those of `--shard` when given),
+/// in file order, and appends each finished pairing to `--new-results`.
+pub(super) fn run_play<F: RefereeFactory>(
+    args: &PlayArgs,
+    game: &str,
+    new_referee: &F,
+) -> Result<bool, String> {
+    let bots = args
+        .bots
+        .iter()
+        .map(|spec| BotSpec::parse(spec))
+        .collect::<Result<Vec<_>, _>>()?;
+    let names: Vec<String> = bots.iter().map(|bot| bot.name.clone()).collect();
+    check_unique(&names)?;
+    check_fault_name(&args.common, &names)?;
+    let text = fs::read_to_string(&args.plan)
+        .map_err(|err| format!("cannot read {}: {err}", args.plan.display()))?;
+    let lines = night::parse_plan(&text, &args.plan.display().to_string())?;
+    let chosen: Vec<&night::PlanLine> = lines
+        .iter()
+        .filter(|line| args.shard.is_none_or(|shard| line.shard == shard))
+        .collect();
+    for line in &chosen {
+        for name in [&line.a, &line.b] {
+            if !names.contains(name) {
+                return Err(format!(
+                    "{name:?} is in the plan but has no --bot, so it cannot be played"
+                ));
+            }
+        }
+    }
+    check_common(&args.common)?;
+    if same_file(&args.plan, &args.new_results) {
+        return Err("--new-results must not be the --plan file".to_string());
+    }
+    let sink = File::create(&args.new_results)
+        .map_err(|err| format!("cannot create {}: {err}", args.new_results.display()))?;
+    let mut run = Run {
+        common: &args.common,
+        pairs: 0,
+        commit: args.commit.clone(),
+        speed: args.speed,
+        bots: &bots,
+        new_referee,
+        output: Output::create(args.common.out.as_deref())?,
+        records: Records::create(&args.common, game, "arena play")?,
+        sink,
+        sink_path: &args.new_results,
+        cpu: league::cpu_model(),
+        played: Vec::new(),
+        faults: HashMap::new(),
+        games: HashMap::new(),
+    };
+    println!("Playing {} of {} plan lines", chosen.len(), lines.len());
+    for line in chosen {
+        run.write_pairing(&line.a, &line.b, line.pairs, line.seed)?;
+    }
+    let Run {
+        output,
+        records,
+        faults,
+        games,
+        ..
+    } = run;
+    output.finish()?;
+    let records_result = records.finish();
+    let faults: Vec<Faults> = names
+        .iter()
+        .map(|name| faults.get(name).copied().unwrap_or_default())
+        .collect();
+    let games: Vec<u32> = names
+        .iter()
+        .map(|name| games.get(name).copied().unwrap_or(0))
+        .collect();
+    let passed = faults_pass(&args.common, &names, &faults, &games);
+    records_result.map(|()| passed)
+}
+
 /// The rating of `name`, when it is linked to the anchor.
 fn rating_of(ratings: &[Rating], name: &str) -> Option<f64> {
     ratings
@@ -260,37 +344,51 @@ fn check_playable(bots: &[BotSpec], names: &[String]) -> Result<(), String> {
     Ok(())
 }
 
-/// The stored pairing `A,B` names, in either order, which both need a
+/// The first stored pairing `A,B` names, in either order, which both need a
 /// `--bot`.
 pub(super) fn find_canary(
     spec: &str,
     stored: &[PairingResult],
     bots: &[BotSpec],
 ) -> Result<PairingResult, String> {
-    find_pairing("--canary", spec, stored, bots)
+    let mut lines = find_pairings("--canary", spec, stored, bots)?;
+    Ok(lines.swap_remove(0))
 }
 
-/// The stored pairing that `spec`, `A,B` in either order, names for
-/// `option`; both bots need a `--bot`.
-fn find_pairing(
+/// The two names in order, so that a pair is the same in either order.
+fn unordered(x: &str, y: &str) -> (String, String) {
+    if x <= y {
+        (x.to_string(), y.to_string())
+    } else {
+        (y.to_string(), x.to_string())
+    }
+}
+
+/// Every stored line of the pairing that `spec`, `A,B` in either order,
+/// names for `option`, in file order; both bots need a `--bot`. At least one.
+fn find_pairings(
     option: &str,
     spec: &str,
     stored: &[PairingResult],
     bots: &[BotSpec],
-) -> Result<PairingResult, String> {
+) -> Result<Vec<PairingResult>, String> {
     let (x, y) = spec
         .split_once(',')
         .filter(|(x, y)| !x.is_empty() && !y.is_empty() && !y.contains(','))
         .ok_or_else(|| format!("{option} {spec:?} must look like A,B"))?;
-    let pairing = stored
+    let lines: Vec<PairingResult> = stored
         .iter()
-        .find(|pairing| (pairing.a == x && pairing.b == y) || (pairing.a == y && pairing.b == x))
+        .filter(|pairing| (pairing.a == x && pairing.b == y) || (pairing.a == y && pairing.b == x))
+        .cloned()
+        .collect();
+    let first = lines
+        .first()
         .ok_or_else(|| format!("{option}: the results file has no pairing of {x} and {y}"))?;
-    if pairing.pairs == 0 {
-        return Err(format!("{option}: the pairing of {x} and {y} has no pairs"));
+    if lines.iter().any(|pairing| pairing.pairs == 0) {
+        return Err(format!("{option}: a pairing of {x} and {y} has no pairs"));
     }
-    check_playable(bots, &[pairing.a.clone(), pairing.b.clone()])?;
-    Ok(pairing.clone())
+    check_playable(bots, &[first.a.clone(), first.b.clone()])?;
+    Ok(lines)
 }
 
 /// Whether two paths are the same existing file.
@@ -463,15 +561,21 @@ impl<F: RefereeFactory> Run<'_, F> {
         Ok(())
     }
 
-    /// Replays the stored pairing `stored` with the canary seed of the
-    /// release `new` and compares it with the stored result. The replay is
-    /// never written to the new results file.
-    fn play_canary(&mut self, stored: &PairingResult, new: &str) -> Result<(), String> {
-        let (a, b) = (stored.a.as_str(), stored.b.as_str());
+    /// Replays the stored pairing `first` (the first line of its pair) with
+    /// the canary seed of the release `new` and compares it with the pair
+    /// points of all the pair's stored lines, `combined`, seen from the
+    /// first line's `a`. The replay is never written to the new results file.
+    fn play_canary(
+        &mut self,
+        first: &PairingResult,
+        combined: &[u32; 5],
+        new: &str,
+    ) -> Result<(), String> {
+        let (a, b) = (first.a.as_str(), first.b.as_str());
         let seed = league::canary_seed(self.common.seed, a, b, new);
         let (summary, _) =
-            self.play_summary(a, b, stored.pairs, seed, &format!("canary-{a}-vs-{b}"))?;
-        let report = league::compare_canary(stored, &summary.pairs)
+            self.play_summary(a, b, first.pairs, seed, &format!("canary-{a}-vs-{b}"))?;
+        let report = league::compare_pair_points(combined, &summary.pairs)
             .ok_or_else(|| format!("the canary of {a} and {b} has no complete pair"))?;
         println!("{}", report.line(a, b));
         if !report.within() {

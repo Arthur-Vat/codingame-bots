@@ -12,6 +12,7 @@
 //! - [`sprt`]: the sequential test deciding whether a candidate is stronger.
 //! - [`leaderboard`]: the generated `LEADERBOARD.md` of a game.
 //! - [`league`]: the results file and opponent choice of the incremental league.
+//! - [`night`]: the nightly league's plan of pairings.
 //! - [`ratings`]: Elo ratings from many matchups.
 //! - [`cli`]: the command line every game's arena binary shares.
 
@@ -19,6 +20,7 @@ pub mod cli;
 pub mod leaderboard;
 pub mod league;
 pub mod live;
+pub mod night;
 pub mod ratings;
 pub mod record;
 pub mod referee;

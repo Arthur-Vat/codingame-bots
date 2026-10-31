@@ -103,16 +103,107 @@ fn counts_that_do_not_add_up_are_rejected() {
 }
 
 #[test]
-fn two_lines_for_the_same_pair_are_rejected_in_either_order() {
+fn a_pair_may_be_played_again_in_either_order_with_another_seed() {
+    let reversed = LINE.replace(
+        "\"a\":\"v019\",\"b\":\"v018\"",
+        "\"a\":\"v018\",\"b\":\"v019\"",
+    );
+    let other = |text: &str, seed: u64| text.replace("1234567890123", &seed.to_string());
+    let text = format!("{LINE}\n\n{}\n{}\n", other(&reversed, 5), other(LINE, 6));
+    let parsed = parse_results(&text, "results.jsonl").unwrap();
+    assert_eq!(parsed.len(), 3);
+    assert_eq!((parsed[1].a.as_str(), parsed[1].seed), ("v018", 5));
+}
+
+#[test]
+fn the_same_seed_for_one_pair_is_rejected_in_either_order() {
     let reversed = LINE.replace(
         "\"a\":\"v019\",\"b\":\"v018\"",
         "\"a\":\"v018\",\"b\":\"v019\"",
     );
     let error = error_of(&format!("{LINE}\n\n{reversed}\n"));
-    assert!(error.starts_with("results.jsonl:3: "), "{error}");
-    assert!(error.contains("line 1"), "{error}");
+    assert_eq!(
+        error,
+        "results.jsonl:3: v018 and v019 repeat the seed of line 1"
+    );
     let error = error_of(&format!("{LINE}\n{LINE}\n"));
-    assert!(error.starts_with("results.jsonl:2: "), "{error}");
+    assert_eq!(
+        error,
+        "results.jsonl:2: v019 and v018 repeat the seed of line 1"
+    );
+}
+
+#[test]
+fn seeds_are_checked_across_files_naming_the_file_and_line() {
+    let mut seeds = Seeds::default();
+    parse_results_with(LINE, "a.jsonl", &mut seeds).unwrap();
+    let error = parse_results_with(&format!("\n{LINE}\n"), "b.jsonl", &mut seeds).unwrap_err();
+    assert_eq!(
+        error,
+        "b.jsonl:2: v019 and v018 repeat the seed of a.jsonl:1"
+    );
+}
+
+fn with_points(a: &str, b: &str, pair_points: [u32; 5]) -> PairingResult {
+    let pairs = pair_points.iter().sum();
+    let mut line = pairing(a, b, 0, 2 * pairs, 0);
+    line.pairs = pairs;
+    line.pair_points = pair_points;
+    line
+}
+
+#[test]
+fn combined_pair_points_are_seen_from_the_first_bot() {
+    let stored = [
+        with_points("a", "b", [1, 2, 3, 4, 5]),
+        with_points("c", "a", [9, 9, 9, 9, 9]),
+        with_points("b", "a", [10, 0, 0, 0, 1]),
+    ];
+    assert_eq!(
+        combined_pair_points(&stored, "a", "b"),
+        Some([2, 2, 3, 4, 15])
+    );
+    assert_eq!(
+        combined_pair_points(&stored, "b", "a"),
+        Some([15, 4, 3, 2, 2])
+    );
+    assert_eq!(combined_pair_points(&stored, "a", "d"), None);
+}
+
+#[test]
+fn drift_compares_with_every_stored_line_of_the_pair() {
+    let stored = [
+        with_points("a", "b", [0, 0, 100, 0, 0]),
+        with_points("b", "a", [0, 0, 100, 0, 0]),
+    ];
+    let within = with_points("b", "a", [0, 5, 90, 5, 0]);
+    let report = drift(&stored, &within).unwrap();
+    assert!(report.within());
+    assert_eq!(report.games_now, 200);
+    let lines = report.drift_lines("b", "a");
+    assert_eq!(lines.len(), 1);
+    assert!(
+        lines[0].starts_with("drift b vs a: 50.0% of 200 games now, 50.0% stored"),
+        "{lines:?}"
+    );
+    assert!(lines[0].ends_with(": within"), "{lines:?}");
+
+    // Seen from b, a stored line (a, b) with a's wins counts against b.
+    let stored = [with_points("a", "b", [0, 0, 0, 0, 100])];
+    let now = with_points("b", "a", [100, 0, 0, 0, 0]);
+    assert!(drift(&stored, &now).unwrap().within());
+    let outside = with_points("b", "a", [0, 0, 100, 0, 0]);
+    let report = drift(&stored, &outside).unwrap();
+    assert!(!report.within());
+    let lines = report.drift_lines("b", "a");
+    assert_eq!(lines.len(), 2);
+    assert!(lines[0].ends_with(": OUTSIDE"), "{lines:?}");
+    assert_eq!(
+        lines[1],
+        "warning: drift b vs a scored outside its stored interval: the runners' speed may \
+         have changed (ADR 0049)"
+    );
+    assert!(drift(&stored, &with_points("a", "c", [0, 0, 1, 0, 0])).is_none());
 }
 
 #[test]
