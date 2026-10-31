@@ -134,7 +134,7 @@ Every experiment gets a journal entry, including failures; only experiments that
 - **Entry:** one file per experiment in `games/<game>/journal/`, written in the experiment's pull request: the hypothesis and the change before the test, the SPRT result (posted as a comment on the pull request) after it.
 - **Accepted:** the pull request is merged; a workflow tags the version (`uttt-v001`, `uttt-v002`, ...) and publishes a GitHub release with the paste-ready file and the readable copy.
 - **Rejected or inconclusive:** the bot change and the release file are removed from the pull request and the entry is merged alone, so failed ideas stay on record.
-- **CodinGame rank:** optional; a rank the owner reports after pasting a version is recorded in that version's entry ([ADR 0036](adr/0036-ranks-optional.md)).
+- **CodinGame rank:** a version Claude submits through CodinGame's API on the owner's approval has its rank read and recorded in its entry when the ranking games end ([ADR 0047](adr/0047-codingame-api.md)); a rank the owner reports after pasting a version himself is recorded the same way ([ADR 0036](adr/0036-ranks-optional.md)).
 
 The entry format is in each game's `journal/template.md`.
 
