@@ -102,7 +102,7 @@ jobs:
             test -s "dist/$file" || { echo "::error title=Check the site::dist/$file is missing or empty"; exit 1; }
           done
           ls -l dist dist/wasm
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: studio/web/dist
 
