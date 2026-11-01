@@ -559,3 +559,31 @@ fn the_other_bots_play_among_themselves_not_against_the_top() {
         );
     }
 }
+
+#[test]
+fn the_whole_top_share_is_spent_while_the_real_target_is_not_met() {
+    // b is just over the target; one block would bring its estimate under
+    // it, but the estimate is optimistic, so the whole share is planned.
+    let stored = [
+        even("a", "b", 300),
+        even("a", "c", 4000),
+        even("a", "d", 4000),
+        even("c", "d", 4000),
+        even("b", "c", 300),
+    ];
+    let mut s = settings(&["a", "b", "c", "d"], &[], "a");
+    s.top = 3;
+    s.nearest = 1;
+    s.budget_pairs = 10_000; // 8,000 for the top: 40 blocks
+    let planned = plan(&stored, &s).unwrap();
+    assert!(
+        planned
+            .report
+            .last()
+            .unwrap()
+            .starts_with("target not met: "),
+        "b is over the target now: {:?}",
+        planned.report
+    );
+    assert_eq!(pairs_of(&planned, Kind::Top), 8000);
+}

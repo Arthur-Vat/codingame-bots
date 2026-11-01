@@ -491,14 +491,21 @@ pub fn plan(stored: &[PairingResult], settings: &Settings) -> Result<Plan, Strin
             })
             .collect();
         let mut chosen: Vec<u64> = vec![0; candidates.len()];
-        for _ in 0..top_blocks {
+        // The estimate of a block's information is optimistic: a night
+        // whose estimate reaches the target can leave the real margins over
+        // it. So while the real target is not met, the whole share is
+        // spent: first on bots estimated over the target, then, once none
+        // is, on every top bot.
+        let mut capped = true;
+        let mut blocks_left = top_blocks;
+        while blocks_left > 0 {
             let mut best: Option<(usize, f64)> = None;
             for (at, &(x, y, delta)) in candidates.iter().enumerate() {
                 let mut gain = 0.0;
                 for (k, o) in [(x, y), (y, x)] {
                     if k < top_len && information[k].is_finite() {
                         let now = margin_of(information[k]);
-                        if now > target {
+                        if !capped || now > target {
                             let after = margin_of(
                                 information[k] + added_information(delta, information[o]),
                             );
@@ -526,7 +533,14 @@ pub fn plan(stored: &[PairingResult], settings: &Settings) -> Result<Plan, Strin
                     best = Some((at, gain));
                 }
             }
-            let Some((at, _)) = best else { break };
+            let Some((at, _)) = best else {
+                if capped {
+                    capped = false;
+                    continue;
+                }
+                break;
+            };
+            blocks_left -= 1;
             let (x, y, delta) = candidates[at];
             let (for_x, for_y) = (
                 added_information(delta, information[y]),
