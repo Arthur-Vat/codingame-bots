@@ -655,6 +655,8 @@ mod nightly_commands {
                 "2",
                 "--seed",
                 "3",
+                "--max-line-pairs",
+                "1000",
                 "--out",
                 out.to_str().unwrap(),
             ];

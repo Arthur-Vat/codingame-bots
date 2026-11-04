@@ -119,6 +119,10 @@ pub struct Settings {
     /// The seed the pairings' seeds derive from.
     pub seed: u64,
     pub shards: usize,
+    /// The most pairs one plan line holds: a pair's pairs beyond it are
+    /// split into lines of their own, each with its own seed, so that the
+    /// shards share the work evenly and no line outlasts a runner's time.
+    pub max_line_pairs: u32,
 }
 
 impl Settings {
@@ -154,6 +158,7 @@ impl Settings {
             ("--top", self.top as u64),
             ("--shards", self.shards as u64),
             ("--new-pairs", u64::from(self.new_pairs)),
+            ("--max-line-pairs", u64::from(self.max_line_pairs)),
         ] {
             if value == 0 {
                 return Err(format!("{option} must be at least 1"));
@@ -634,11 +639,37 @@ pub fn plan(stored: &[PairingResult], settings: &Settings) -> Result<Plan, Strin
                 .cloned(),
         );
     }
+    // Each pair's pairs, split into lines of at most `max_line_pairs`: the
+    // first keeps the pair's seed, the others take seeds of their own.
     let mut result: Vec<PlanLine> = Vec::with_capacity(lines.len());
-    for (mut line, pairs) in lines {
-        line.pairs = u32::try_from(pairs)
-            .map_err(|_| format!("{} against {} would play too many pairs", line.a, line.b))?;
-        result.push(line);
+    let mut used: HashSet<(String, String, u64)> = HashSet::new();
+    for (line, pairs) in lines {
+        let most = u64::from(settings.max_line_pairs);
+        let mut left = pairs;
+        let mut chunk = 0u64;
+        while left > 0 {
+            let take = left.min(most);
+            let mut piece = line.clone();
+            piece.pairs = u32::try_from(take)
+                .map_err(|_| format!("{} against {} would play too many pairs", line.a, line.b))?;
+            if chunk > 0 {
+                let mut rng = Rng::new(line.seed ^ fnv1a(format!("chunk {chunk}").as_bytes()));
+                piece.seed = loop {
+                    let seed = rng.next_u64();
+                    let (low, high) = key(&line.a, &line.b);
+                    if !builder.is_stored(&line.a, &line.b, seed)
+                        && !used.contains(&(low, high, seed))
+                    {
+                        break seed;
+                    }
+                };
+            }
+            let (low, high) = key(&piece.a, &piece.b);
+            used.insert((low, high, piece.seed));
+            result.push(piece);
+            left -= take;
+            chunk += 1;
+        }
     }
     let sizes: Vec<u64> = result.iter().map(|line| u64::from(line.pairs)).collect();
     for (line, shard) in result

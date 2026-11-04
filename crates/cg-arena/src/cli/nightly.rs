@@ -31,6 +31,7 @@ pub(super) fn run_plan(args: &PlanArgs) -> Result<bool, String> {
         night: args.night.clone(),
         seed: args.seed,
         shards: args.shards,
+        max_line_pairs: args.max_line_pairs,
     };
     let plan = night::plan(&stored, &settings)?;
     let mut text = String::new();

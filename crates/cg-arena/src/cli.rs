@@ -469,6 +469,12 @@ pub struct PlanArgs {
     #[arg(long, value_name = "N", default_value_t = 1)]
     pub shards: usize,
 
+    /// The most pairs one plan line holds; a pair's pairs beyond it are split
+    /// into lines with seeds of their own, so the shards share the work
+    /// evenly (about 9 minutes a line on a runner at 400).
+    #[arg(long, value_name = "PAIRS", default_value_t = 400)]
+    pub max_line_pairs: u32,
+
     /// Write the plan, a JSON line per pairing, to this file.
     #[arg(long, value_name = "FILE")]
     pub out: PathBuf,
