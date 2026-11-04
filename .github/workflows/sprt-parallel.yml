@@ -14,15 +14,14 @@ name: SPRT in blocks
 #              random bot, calibrated on its own runner.
 # shard 0..N:  each runner builds, calibrates itself (ADR 0048) and plays a
 #              tournament of its own seed, cut into blocks of SPRT_BLOCK_PAIRS
-#              pairs. Every 2 minutes at most it uploads, as one artifact of
-#              this run, the blocks finished since its last upload, and looks
-#              for the artifact sprt-verdict-<game>-<attempt>, at which it
-#              stops. The coordinator downloads the batches while the run goes
-#              on (upload-artifact v4: an artifact is listable and
-#              downloadable as soon as its upload ends). An action cannot run
-#              in a loop, so a shard has 170 pairs of steps, a wait and an
-#              upload, repeated with a YAML anchor: one every 2 minutes over
-#              the job's 340 minutes.
+#              pairs. Every 2 minutes at most (scripts/sprt-upload-loop.cjs,
+#              one step) it uploads, as one artifact of this run, the blocks
+#              finished since its last upload, and looks for the artifact
+#              sprt-verdict-<game>-<attempt>, at which it stops. The
+#              coordinator downloads the batches while the run goes on
+#              (upload-artifact v4: an artifact is listable and downloadable
+#              as soon as its upload ends). A tournament that finishes no
+#              block for 15 minutes is killed and the shard fails.
 # coordinator: every 60 seconds it downloads the new batches, takes the
 #              complete rounds (round n is block n of every shard) and runs
 #              the arena's sprt-check over them; on a verdict (accepted,
@@ -39,7 +38,9 @@ name: SPRT in blocks
 # listings of the jobs). Most tests end in a fraction of an hour.
 #
 # Artifacts of a run are named after the game and the run's attempt, so that
-# two games of one run, or a re-run, do not collide.
+# two games of one run, or a re-run, do not collide. Re-run ALL jobs, never
+# only the failed ones: prepare would not run again and its attempt would no
+# longer match the others' (the shards and the coordinator say so and fail).
 on:
   workflow_call:
     inputs:
@@ -114,6 +115,8 @@ jobs:
       baseline_name: ${{ steps.plan.outputs.baseline_name }}
       shards: ${{ steps.plan.outputs.shards }}
       key: ${{ steps.plan.outputs.key }}
+      # A partial re-run cannot work: see the header.
+      attempt: ${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v7
       - name: Check the inputs and plan the test
@@ -178,7 +181,7 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.proceed == 'true'
     runs-on: ubuntu-latest
-    # GitHub's limit is 360 minutes; the steps below end 5 minutes sooner.
+    # GitHub's limit is 360 minutes.
     timeout-minutes: 340
     permissions:
       contents: read
@@ -196,6 +199,7 @@ jobs:
       REPO: ${{ github.repository }}
       RUN_ID: ${{ github.run_id }}
       RUN_ATTEMPT: ${{ github.run_attempt }}
+      PREPARE_ATTEMPT: ${{ needs.prepare.outputs.attempt }}
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
@@ -216,362 +220,26 @@ jobs:
           path: target/sprt-parallel/calibration-${{ matrix.shard }}.txt
           if-no-files-found: error
           retention-days: 1
-      # One wait and one upload for each batch of blocks: the pair below is
-      # repeated (MAX_UPLOADS in scripts/sprt-blocks.sh, 170, one every 2
-      # minutes over the job's 340 minutes). The wait always runs: once the
-      # shard is over it only clears SPRT_UPLOAD.
-      - &wait
-        name: Wait for the next batch of blocks
-        # A batch is due every 2 minutes; far above that is a hung tournament.
-        timeout-minutes: 10
-        run: scripts/sprt-blocks.sh shard-wait "$GAME" "$SHARD"
-      - &upload
-        name: Upload the batch
-        if: env.SPRT_UPLOAD == 'true'
-        uses: actions/upload-artifact@v7
+      # The uploads are one loop in a JavaScript action: the artifact client
+      # reads ACTIONS_RUNTIME_TOKEN and ACTIONS_RESULTS_URL, which the runner
+      # gives to actions only, not to `run` steps, and an action cannot run
+      # in a loop of steps. The client is installed here at an exact version
+      # (2.3.2, March 2025), without install scripts, because no action of
+      # ours bundles it and upload-artifact is not callable from a script.
+      - name: Install the artifact client
+        run: |
+          mkdir -p "$RUNNER_TEMP/artifact-client"
+          cd "$RUNNER_TEMP/artifact-client"
+          npm install --no-save --ignore-scripts --no-audit --no-fund @actions/artifact@2.3.2
+      - name: Upload the blocks as they are finished
+        # Ends 5 minutes before the job, so that the steps after it run.
+        timeout-minutes: 335
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          SPRT_ARTIFACT_LIB: ${{ runner.temp }}/artifact-client/node_modules/@actions/artifact
         with:
-          name: ${{ env.SPRT_BLOCK }}
-          path: ${{ env.SPRT_BLOCK_FILE }}
-          if-no-files-found: error
-          retention-days: 1
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
-      - *wait
-      - *upload
+          script: |
+            await require('./scripts/sprt-upload-loop.cjs')(process.env)
       - name: Stop the tournament
         if: ${{ always() }}
         run: scripts/sprt-blocks.sh shard-finish
@@ -612,6 +280,7 @@ jobs:
       REPO: ${{ github.repository }}
       RUN_ID: ${{ github.run_id }}
       RUN_ATTEMPT: ${{ github.run_attempt }}
+      PREPARE_ATTEMPT: ${{ needs.prepare.outputs.attempt }}
       REUSED: ${{ needs.prepare.outputs.reused }}
     steps:
       - uses: actions/checkout@v7

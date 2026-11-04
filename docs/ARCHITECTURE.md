@@ -33,7 +33,7 @@ codingame-bots/
 │  ├─ check-minified.sh     a minified release sends the same answers as its readable copy (ADR 0045)
 │  ├─ build-studio-wasm.sh  the studio's rules program, the games' analysis programs, every release and every baseline bot -> WebAssembly (ADR 0030, 0032, 0040)
 │  ├─ sprt.sh               smoke test and SPRT of a candidate file, on one machine
-│  ├─ sprt-blocks.sh        the steps of the SPRT in blocks over runners (`sprt-parallel.yml`): classify, plan, smoke test, shard and coordinator
+│  ├─ sprt-blocks.sh        the steps of the SPRT in blocks over runners (`sprt-parallel.yml`): classify, plan, smoke test, shard and coordinator; with sprt-upload-loop.cjs, a shard's upload loop
 │  ├─ league.sh             the league of each new release: opponents chosen by the arena, new result lines printed (ADR 0038)
 │  ├─ league-replay.sh      the stored pairings of a league played again in shards, then merged in order (ADR 0048)
 │  ├─ league-night.sh       the steps of a game's nightly league: plan, play a shard, merge, leaderboard (ADR 0049, 0050)

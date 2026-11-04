@@ -26,7 +26,6 @@ on:
 permissions:
   contents: read
   pull-requests: write # to post the result as a comment
-  actions: read # for sprt-parallel.yml, which lists the run's artifacts
 
 concurrency:
   group: sprt-${{ github.ref }}

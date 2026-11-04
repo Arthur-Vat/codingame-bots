@@ -105,9 +105,8 @@ run plan toy games/toy/releases/toy-v002.rs games/toy/releases/toy-v002.rs
 expect "same bot" "$status" 2
 
 # ---- the workflow ----
-uploads="$(grep -c '^      - \*upload$' "$repo_root/.github/workflows/sprt-parallel.yml")"
-max="$(sed -n 's/^readonly MAX_UPLOADS=//p' "$repo_root/scripts/sprt-blocks.sh")"
-expect "upload steps (anchor included)" "$((uploads + 1))" "$max"
+# One upload loop, not a repeated pair of steps.
+expect "wait steps in the workflow" "$(grep -c 'shard-wait\|^      - \*' "$repo_root/.github/workflows/sprt-parallel.yml" || true)" 0
 
 # ---- the shard uploads its blocks in batches ----
 cat >"$repo/bin/gh" <<'GH'
@@ -115,7 +114,6 @@ cat >"$repo/bin/gh" <<'GH'
 # Stand-in gh api: serves the folder $FAKE.
 url="$2"
 case $url in
-  *"name=sprt-verdict-"*) cat "$FAKE/verdict-count" ;;
   *"name=sprt-calibration-"*)
     shard="${url##*-}"; shard="${shard%%&*}"
     echo "$((100 + shard))" ;;
@@ -128,67 +126,97 @@ GH
 chmod +x "$repo/bin/gh"
 export PATH="$repo/bin:$PATH" FAKE="$tmp_dir/fake"
 mkdir -p "$FAKE/zips"
-echo 0 >"$FAKE/verdict-count"
+loop="$repo_root/scripts/sprt-upload-loop.cjs"
+node --check "$loop"
 work="$tmp_dir/work"
-mkdir -p "$work/blocks" "$work/upload"
-echo 0 >"$work/next"
-echo 0 >"$work/uploads"
-echo 0 >"$work/last-upload"
-echo old0 >"$work/blocks/block-0.jsonl"
-echo old1 >"$work/blocks/block-1.jsonl"
-sleep 300 &
-sleeper=$!
-echo "$sleeper" >"$work/player.pid"
-envfile="$tmp_dir/env"
-: >"$envfile"
-last_env() { grep "^$1=" "$envfile" | tail -n 1; }
-export SPRT_WORK="$work" GITHUB_ENV="$envfile" REPO=o/r RUN_ID=5 RUN_ATTEMPT=1 WAIT_SECONDS=0 UPLOAD_SECONDS=0
-run shard-wait toy 1
-expect "wait status" "$status" 0
-expect "batch name" "$(last_env SPRT_BLOCK)" "SPRT_BLOCK=sprt-blocks-toy-1-1-0"
-expect "batch folder" "$(last_env SPRT_BLOCK_FILE)" "SPRT_BLOCK_FILE=$work/upload/batch-0"
-expect "batch holds both blocks" "$(find "$work/upload/batch-0" -type f -printf '%f ' | tr ' ' '\n' | sort | paste -sd' ' -)" "1-0.jsonl 1-1.jsonl"
-expect "block copied" "$(cat "$work/upload/batch-0/1-1.jsonl")" old1
-# Nothing new: no upload, not over.
-run shard-wait toy 1
-expect "nothing new" "$(last_env SPRT_UPLOAD)" "SPRT_UPLOAD=false"
-checks=$((checks + 1))
-if grep -q SPRT_DONE "$envfile"; then fail "the shard is not over"; fi
-# A block more: the next batch holds only it.
-echo old2 >"$work/blocks/block-2.jsonl"
-run shard-wait toy 1
-expect "second batch" "$(find "$work/upload/batch-1" -type f -printf '%f')" "1-2.jsonl"
-# Before the interval is up the step waits (a long interval, a dead tournament ends it).
-kill "$sleeper"
-wait "$sleeper" 2>/dev/null || true
-: >"$work/player.log"
-run shard-wait toy 1
-expect "dead tournament still exits 0" "$status" 0
-contains "dead tournament" "$(cat "$envfile")" "SPRT_DONE=true"
-run shard-finish
-expect "finish fails after a death" "$status" 1
-# The last blocks end the shard; later steps do nothing.
-rm -f "$work/died" "$work/finished"
-for n in $(seq 3 19); do echo "b$n" >"$work/blocks/block-$n.jsonl"; done
-sleep 300 &
-sleeper=$!
-echo "$sleeper" >"$work/player.pid"
-run shard-wait toy 1
-contains "all blocks" "$output" "played its 20 blocks"
-expect "last batch" "$(find "$work/upload/batch-2" -type f | wc -l | tr -d ' ')" 17
-run shard-wait toy 1
-expect "after the end" "$(last_env SPRT_UPLOAD)" "SPRT_UPLOAD=false"
-# A verdict stops it, and the tournament with it.
-rm -f "$work/finished"
-echo 1 >"$FAKE/verdict-count"
-run shard-wait toy 1
+dry="$tmp_dir/dry"
+loop_env() { # loop_env <command>...: the loop in dry-run mode; sets status
+  status=0
+  env SPRT_WORK="$work" SPRT_DRY_RUN_DIR="$dry" SPRT_DRY_VERDICT_FILE="$tmp_dir/verdict" \
+    GAME=toy RUN_ATTEMPT=1 SHARD=1 UPLOAD_SECONDS=0 POLL_MS=10 "$@" >"$tmp_dir/loop.out" 2>&1 || status=$?
+  output="$(cat "$tmp_dir/loop.out")"
+}
+new_shard() { # new_shard <blocks total>
+  rm -rf "$work" "$dry" "$tmp_dir/verdict"
+  mkdir -p "$work/blocks"
+  echo "$1" >"$work/blocks-total"
+  # Started from a subshell that ends: the arena of a shard is nobody's child
+  # either, and a killed child would stay a zombie that still looks alive.
+  (sleep 300 >/dev/null 2>&1 & echo $! >"$work/player.pid")
+  sleeper="$(cat "$work/player.pid")"
+}
+running() { [[ -d /proc/$1 && $(awk '{print $3}' "/proc/$1/stat") != Z ]]; }
+files_of() { find "$dry/$1" -type f -printf '%f\n' 2>/dev/null | sort | paste -sd' ' -; }
+
+# All blocks are there: one batch, then the end.
+new_shard 3
+for n in 0 1 2; do echo "b$n" >"$work/blocks/block-$n.jsonl"; done
+loop_env node "$loop"
+expect "loop status" "$status" 0
+expect "batch files" "$(files_of sprt-blocks-toy-1-1-0)" "1-0.jsonl 1-1.jsonl 1-2.jsonl"
+contains "loop line" "$output" "uploaded sprt-blocks-toy-1-1-0, 3 blocks, 3 of 3 in all"
+kill "$sleeper" 2>/dev/null || true
+# Blocks come in two moments: two batches with the blocks since the last.
+new_shard 3
+echo b0 >"$work/blocks/block-0.jsonl"
+(sleep 1; echo b1 >"$work/blocks/block-1.jsonl"; echo b2 >"$work/blocks/block-2.jsonl") &
+later=$!
+loop_env node "$loop"
+expect "two batches status" "$status" 0
+expect "first batch" "$(files_of sprt-blocks-toy-1-1-0)" "1-0.jsonl"
+expect "second batch" "$(files_of sprt-blocks-toy-1-1-1)" "1-1.jsonl 1-2.jsonl"
+wait "$later"
+kill "$sleeper" 2>/dev/null || true
+# A block missing in the middle waits for it: batches hold consecutive blocks.
+new_shard 3
+echo b0 >"$work/blocks/block-0.jsonl"
+echo b2 >"$work/blocks/block-2.jsonl"
+(sleep 1; echo b1 >"$work/blocks/block-1.jsonl") &
+later=$!
+loop_env node "$loop"
+expect "gap first batch" "$(files_of sprt-blocks-toy-1-1-0)" "1-0.jsonl"
+expect "gap second batch" "$(files_of sprt-blocks-toy-1-1-1)" "1-1.jsonl 1-2.jsonl"
+wait "$later"
+kill "$sleeper" 2>/dev/null || true
+# A verdict stops the arena and uploads nothing.
+new_shard 3
+touch "$tmp_dir/verdict"
+echo b0 >"$work/blocks/block-0.jsonl"
+loop_env node "$loop"
+expect "verdict status" "$status" 0
 contains "verdict" "$output" "The verdict is in"
+expect "nothing uploaded after the verdict" "$(files_of sprt-blocks-toy-1-1-0)" ""
+sleep 0.3
 checks=$((checks + 1))
-if kill -0 "$sleeper" 2>/dev/null; then
+if running "$sleeper"; then
   fail "the tournament still runs after the verdict"
   kill "$sleeper"
 fi
-unset SPRT_WORK UPLOAD_SECONDS
+# An arena that died: what exists is uploaded, and the loop fails.
+new_shard 3
+echo b0 >"$work/blocks/block-0.jsonl"
+kill "$sleeper"
+sleep 0.3
+loop_env node "$loop"
+expect "died status" "$status" 1
+contains "died" "$output" "ended before block 1"
+expect "died batch" "$(files_of sprt-blocks-toy-1-1-0)" "1-0.jsonl"
+# An arena that hangs is killed and fails the loop.
+new_shard 3
+loop_env env HUNG_SECONDS=1 node "$loop"
+expect "hung status" "$status" 1
+contains "hung" "$output" "finished no block"
+sleep 0.3
+checks=$((checks + 1))
+if running "$sleeper"; then
+  fail "the hung tournament still runs"
+  kill "$sleeper"
+fi
+# A partial re-run is refused.
+run_attempt() { status=0; output="$(PREPARE_ATTEMPT=1 RUN_ATTEMPT=2 "$script" shard-start toy games/toy/releases/toy-v002.rs games/toy/releases/toy-v001.rs 0 2>&1)" || status=$?; }
+run_attempt
+expect "partial re-run" "$status" 2
+contains "partial re-run" "$output" "re-run all jobs"
 
 # ---- the coordinator ----
 cwork="$tmp_dir/cwork"
@@ -232,7 +260,7 @@ for shard in (0, 1):
         z.writestr("c.txt", f"shard {shard}\n  shard {shard}: calibration line {shard}\n")
 PY
 printf 'ice / Shard 0 (toy)\tin_progress\nice / Shard 1 (toy)\tin_progress\n' >"$FAKE/jobs.tsv"
-export SPRT_WORK="$cwork" SPRT_RESULT="$cres" POLL_SECONDS=0
+export SPRT_WORK="$cwork" SPRT_RESULT="$cres" POLL_SECONDS=0 REPO=o/r RUN_ID=5 RUN_ATTEMPT=1
 run coordinate toy games/toy/releases/toy-v002.rs games/toy/releases/toy-v001.rs
 expect "coordinate status" "$status" 0
 expect "accepted" "$(cat "$cres/status")" 0

@@ -1,7 +1,7 @@
 //! The SPRT over blocks played apart (ADR 0049, decision 1).
 //!
 //! An SPRT split over runners plays blocks of seat-swapped pairs, each
-//! runner with seeds of its own ([`crate::tournament::block_seed`]), and
+//! runner with seeds of its own ([`crate::tournament::shard_seed`]), and
 //! writes each block's games to a file. This module adds the blocks up and
 //! checks the test's bounds.
 //!
@@ -29,7 +29,7 @@ pub enum Outcome {
     /// Still undecided at the cap on pairs.
     Capped,
     /// The candidate lost too many games by a fault (a crash, an invalid
-    /// answer, or timeouts beyond the allowed rate).
+    /// answer, or timeouts beyond the allowed rate over the games counted).
     Fault,
     /// No bound is passed yet and the cap is not reached.
     Continue,
@@ -111,21 +111,31 @@ impl BlockTest {
         })
     }
 
-    /// The outcome after a round: a fault first, then the bounds, then the cap.
+    /// The outcome after a round. Crashes and invalid answers of the checked
+    /// bot stop the test at once. Its timeouts are checked once, as `sprt`
+    /// does, over every game counted, when the round decides (a bound or the
+    /// cap): a few early timeouts say nothing about the rate.
     fn decide(&self, summary: &Summary) -> Outcome {
+        let rate_ok = |check: &FaultCheck| {
+            summary.faults[check.bot].within(summary.games(), check.max_timeout_rate)
+        };
         if let Some(check) = &self.faults {
             let found = &summary.faults[check.bot];
-            if !found.within(summary.games(), check.max_timeout_rate) {
+            if found.crashes > 0 || found.invalid > 0 {
                 return Outcome::Fault;
             }
         }
-        match self.settings.verdict(&summary.pairs) {
+        let outcome = match self.settings.verdict(&summary.pairs) {
             Verdict::Accepted => Outcome::Accepted,
             Verdict::Rejected => Outcome::Rejected,
             Verdict::Continue if summary.pairs.iter().sum::<u32>() >= self.max_pairs => {
                 Outcome::Capped
             }
-            Verdict::Continue => Outcome::Continue,
+            Verdict::Continue => return Outcome::Continue,
+        };
+        match &self.faults {
+            Some(check) if !rate_ok(check) => Outcome::Fault,
+            _ => outcome,
         }
     }
 }

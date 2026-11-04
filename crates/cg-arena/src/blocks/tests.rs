@@ -200,8 +200,10 @@ fn a_candidate_fault_stops_the_test_at_once() {
 }
 
 #[test]
-fn timeouts_are_tolerated_up_to_the_rate_of_the_games_counted() {
-    let mut checked_test = test(1, 8000);
+fn timeouts_are_checked_once_over_all_the_games_when_a_round_decides() {
+    // The cap decides after two blocks of 100 games: 200 games allow 2
+    // timeouts at 1%.
+    let mut checked_test = test(1, 100);
     checked_test.faults = Some(FaultCheck {
         bot: 0,
         max_timeout_rate: 0.01,
@@ -217,33 +219,37 @@ fn timeouts_are_tolerated_up_to_the_rate_of_the_games_counted() {
             },
         )
     };
-    // 100 games allow 1 timeout; 2 are too many.
-    let mut one = even_block(2);
-    one[0] = timeout(0);
+    let with_timeouts = |pairs: &[u32]| {
+        let mut games = even_block(2);
+        for pair in pairs {
+            games[2 * *pair as usize] = timeout(*pair);
+        }
+        games
+    };
+    // Two timeouts in the first 100 games would be over 1% there, but no
+    // round has decided: the test goes on.
+    let early = checked_test
+        .check(&[with_timeouts(&[0, 1]), even_block(2)])
+        .unwrap()
+        .outcome;
     assert_eq!(
-        checked_test.check(&[one.clone()]).unwrap().outcome,
-        Outcome::Continue
+        early,
+        Outcome::Capped,
+        "2 timeouts in 200 games are within 1%"
     );
-    let mut two = one;
-    two[2] = timeout(1);
-    assert_eq!(
-        checked_test.check(&[two.clone()]).unwrap().outcome,
-        Outcome::Fault
-    );
-    // The rate is checked after each round, so more games later do not
-    // excuse the first round.
-    let more = vec![two, even_block(2)];
-    let late = checked_test.check(&more).unwrap();
-    assert_eq!((late.outcome, late.counted_blocks), (Outcome::Fault, 1));
-    // One timeout in each of two blocks stays within 1% of the games.
-    let mut spread = even_block(2);
-    spread[0] = timeout(0);
-    let mut later = even_block(2);
-    later[2] = timeout(1);
-    assert_eq!(
-        checked_test.check(&[spread, later]).unwrap().outcome,
-        Outcome::Continue
-    );
+    let first = checked_test.check(&[with_timeouts(&[0, 1])]).unwrap();
+    assert_eq!(first.outcome, Outcome::Continue);
+    // One timeout in round 1 and none after: no fault at the decision.
+    let one = checked_test
+        .check(&[with_timeouts(&[0]), even_block(2)])
+        .unwrap();
+    assert_eq!(one.outcome, Outcome::Capped);
+    // Three in 200 games are over the rate: the decision becomes a fault.
+    let three = checked_test
+        .check(&[with_timeouts(&[0, 1]), with_timeouts(&[5])])
+        .unwrap();
+    assert_eq!(three.outcome, Outcome::Fault);
+    assert_eq!(three.counted_blocks, 2);
 }
 
 #[test]
