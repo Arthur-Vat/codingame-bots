@@ -9,7 +9,7 @@ use std::sync::mpsc;
 use std::thread;
 
 use cg_core::rng::Rng;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::referee::{GameSetup, RefereeFactory};
 use crate::runner::{run_match, ArenaError, BotSpec, MatchOptions, MatchRecord};
@@ -31,8 +31,8 @@ pub struct Tournament {
     pub options: MatchOptions,
 }
 
-/// One game of a tournament.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+/// One game of a tournament; also the line of a `--out` file read back.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct GameRecord {
     pub pair: u32,
     /// False when the first bot sits in seat 0, true in the other game of the pair.
@@ -44,6 +44,14 @@ pub struct GameRecord {
 /// The seed of every game in pair `pair`.
 pub fn pair_seed(tournament_seed: u64, pair: u32) -> u64 {
     Rng::new(tournament_seed ^ (u64::from(pair) << 32 | 0x5EED)).next_u64()
+}
+
+/// The seed of the tournament that shard `shard` plays in an SPRT split over
+/// several runners (ADR 0049, decision 1): a function of the SPRT's seed and
+/// the shard, so that no two runners play the same games. The pairs of the
+/// shard's tournament then differ from every other shard's.
+pub fn shard_seed(seed: u64, shard: u16) -> u64 {
+    Rng::new(seed ^ (u64::from(shard) << 48 | 0xB10C)).next_u64()
 }
 
 /// Whether to keep playing, as decided after each game.

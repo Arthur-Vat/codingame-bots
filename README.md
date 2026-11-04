@@ -23,6 +23,7 @@ Every bot change is judged by CI: unit tests, a check that the bot compiles on C
 - [`.claude/`](.claude/): Claude's project agents (implementer, reviewers) and skills (the procedures that repeat).
 - [`.github/workflows/`](.github/workflows/):
   - `ci.yml`: format, lint, tests, bot checks, dependency licenses, docs and scripts, the studio; each runs only for the areas and games a pull request changes ([ADR 0029](docs/adr/0029-ci-scoped-by-area-and-game.md)).
+  - `sprt-parallel.yml`: the SPRT of one release played in blocks over the game's calibrated runners (8 for A Code of Ice and Fire), called by `sprt.yml` ([ADR 0049](docs/adr/0049-parallel-evaluations-and-nightly-league.md), decision 1); it can also be started by hand between two releases.
   - `sprt.yml`: smoke test and SPRT of each new release, then, for a game without a nightly league, its league, with a check that the results and the leaderboard are in the pull request ([ADR 0038](docs/adr/0038-incremental-league.md), [ADR 0049](docs/adr/0049-parallel-evaluations-and-nightly-league.md)).
   - `league.yml`: the league's bootstrap and replays, started by hand.
   - `league-replay.yml`: the whole league played again at new settings, in parallel jobs, started by hand ([ADR 0048](docs/adr/0048-ice-and-fire-codingame-speed.md)).

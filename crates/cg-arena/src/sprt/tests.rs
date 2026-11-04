@@ -200,3 +200,155 @@ fn simulated_error_rates_stay_near_alpha_and_beta() {
     let false_negatives = 1.0 - acceptance_rate(10.0, 1000, &mut rng);
     assert!(false_negatives < 0.08, "rejected {false_negatives} at elo1");
 }
+
+/// How many tests ended each way under one rule for when to look at the
+/// evidence, and the pairs they played.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct Outcomes {
+    tests: u32,
+    accepted: u32,
+    rejected: u32,
+    undecided: u32,
+    pairs: u64,
+}
+
+impl Outcomes {
+    fn share(&self, count: u32) -> f64 {
+        f64::from(count) / f64::from(self.tests)
+    }
+
+    fn mean_pairs(&self) -> f64 {
+        self.pairs as f64 / f64::from(self.tests)
+    }
+}
+
+/// Simulates `tests` SPRTs on one candidate `elo` stronger. Every test draws
+/// one stream of pair results and gives it to each rule in `look_every`:
+/// the rule looks at the bounds after every `look_every[i]` pairs (1 is the
+/// arena's own test, checking after every pair; `8 * B` is a test over 8
+/// runners playing blocks of B pairs), and stops at `cap` pairs. Rules share
+/// the streams, so their pairs played compare closely.
+fn simulate_rules(
+    elo: f64,
+    tests: u32,
+    look_every: &[u32],
+    cap: u32,
+    rng: &mut cg_core::rng::Rng,
+) -> Vec<Outcomes> {
+    let cumulative = pair_distribution(elo);
+    let mut outcomes = vec![Outcomes::default(); look_every.len()];
+    for _ in 0..tests {
+        let mut pairs = [0u32; 5];
+        let mut active = look_every.len();
+        let mut decided = vec![false; look_every.len()];
+        for played in 1..=cap {
+            let draw = rng.unit();
+            pairs[cumulative.iter().position(|&c| draw < c).unwrap_or(4)] += 1;
+            for (rule, &every) in look_every.iter().enumerate() {
+                if decided[rule] || played % every != 0 {
+                    continue;
+                }
+                let verdict = settings().verdict(&pairs);
+                if verdict != Verdict::Continue || played == cap {
+                    decided[rule] = true;
+                    active -= 1;
+                    let found = &mut outcomes[rule];
+                    found.pairs += u64::from(played);
+                    match verdict {
+                        Verdict::Accepted => found.accepted += 1,
+                        Verdict::Rejected => found.rejected += 1,
+                        Verdict::Continue => found.undecided += 1,
+                    }
+                }
+            }
+            if active == 0 {
+                break;
+            }
+        }
+        for found in &mut outcomes {
+            found.tests += 1;
+        }
+    }
+    outcomes
+}
+
+/// The block sizes compared: pairs a runner plays between two looks, with 8
+/// runners (ADR 0049, decision 1).
+const BLOCK_SIZES: [u32; 3] = [10, 25, 50];
+const RUNNERS: u32 = 8;
+const CAP: u32 = 8_000;
+
+/// Runs the comparison of the arena's SPRT, looking after every pair, with
+/// the same test looking once per round of 8 blocks of each size, at true
+/// Elo 0, 5 and 10; returns the outcomes by Elo, the arena's own rule first.
+fn compare_block_sizes(tests: u32, seed: u64) -> Vec<(f64, Vec<Outcomes>)> {
+    let mut looks = vec![1];
+    looks.extend(BLOCK_SIZES.map(|block| RUNNERS * block));
+    let mut rng = cg_core::rng::Rng::new(seed);
+    [0.0, 5.0, 10.0]
+        .into_iter()
+        .map(|elo| (elo, simulate_rules(elo, tests, &looks, CAP, &mut rng)))
+        .collect()
+}
+
+fn print_comparison(results: &[(f64, Vec<Outcomes>)]) {
+    println!("rule              elo  accepted rejected undecided  mean pairs");
+    for (elo, rules) in results {
+        for (rule, found) in rules.iter().enumerate() {
+            let name = match rule {
+                0 => "every pair".to_string(),
+                n => format!("blocks of {}", BLOCK_SIZES[n - 1]),
+            };
+            println!(
+                "{name:<16} {elo:>4}  {:>7.2}% {:>7.2}% {:>8.2}%  {:>10.0} ({:+.1}%)",
+                100.0 * found.share(found.accepted),
+                100.0 * found.share(found.rejected),
+                100.0 * found.share(found.undecided),
+                found.mean_pairs(),
+                100.0 * (found.mean_pairs() / rules[0].mean_pairs() - 1.0)
+            );
+        }
+    }
+}
+
+#[test]
+fn checking_between_blocks_keeps_the_error_rates_and_the_pairs() {
+    // 400 tests at each of three strengths: the standard error of a 5% rate
+    // is 1.1%, so the bounds below tell a real loss from noise. The pairs are
+    // compared test by test (shared streams), which is much tighter.
+    let results = compare_block_sizes(400, 2026);
+    print_comparison(&results);
+    for (elo, rules) in &results {
+        for (rule, found) in rules.iter().enumerate() {
+            if *elo == 0.0 {
+                assert!(
+                    found.share(found.accepted) < 0.09,
+                    "false accepts, rule {rule}"
+                );
+            }
+            if *elo == 10.0 {
+                assert!(
+                    found.share(found.rejected) < 0.09,
+                    "false rejects, rule {rule}"
+                );
+            }
+            if rule > 0 {
+                let extra = found.mean_pairs() / rules[0].mean_pairs() - 1.0;
+                assert!(
+                    (0.0..0.25).contains(&extra),
+                    "blocks of {} play {extra:+.3} more pairs at elo {elo}",
+                    BLOCK_SIZES[rule - 1]
+                );
+            }
+        }
+    }
+}
+
+/// The full comparison that chose the block size in `evaluation.env`:
+/// `cargo test --release -p cg-arena -- --ignored --nocapture choose_the_block_size`.
+#[test]
+#[ignore = "takes a minute in release mode; its numbers are in games/ice-and-fire/evaluation.env"]
+fn choose_the_block_size() {
+    let results = compare_block_sizes(40_000, 49);
+    print_comparison(&results);
+}

@@ -1,6 +1,7 @@
-//! The command line shared by every game's arena binary, with eight
-//! commands: `match`, `sprt`, `league`, `replay`, `leaderboard`, and the
-//! nightly league's `plan`, `play` and `merge` (ADR 0049).
+//! The command line shared by every game's arena binary, with nine
+//! commands: `match`, `sprt`, `sprt-check`, `league`, `replay`,
+//! `leaderboard`, and the nightly league's `plan`, `play` and `merge`
+//! (ADR 0049).
 
 use std::collections::{BTreeSet, HashMap};
 use std::fs::{self, File, OpenOptions};
@@ -12,6 +13,7 @@ use std::time::{Duration, Instant};
 
 use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 
+use crate::blocks::{self, BlockTest, FaultCheck, Outcome};
 use crate::leaderboard;
 use crate::league::{self, PairingResult, Rating};
 
@@ -21,7 +23,7 @@ use crate::referee::RefereeFactory;
 use crate::runner::{BotSpec, MatchOptions};
 use crate::sprt::{SequentialTest, SprtSettings, Verdict};
 use crate::summary::{allowed_timeouts, Faults, Summary};
-use crate::tournament::{self, Flow, GameRecord, Tournament};
+use crate::tournament::{self, shard_seed, Flow, GameRecord, Tournament};
 
 /// Plays bots against each other as separate processes, the way CodinGame
 /// does, in seat-swapped pairs.
@@ -38,6 +40,9 @@ pub enum Command {
     /// Plays a candidate against a baseline until a sequential probability
     /// ratio test decides whether the candidate is stronger.
     Sprt(SprtArgs),
+    /// Adds up the blocks of games an SPRT played on several runners (ADR
+    /// 0049) and checks the test's bounds after each whole round of blocks.
+    SprtCheck(SprtCheckArgs),
     /// Plays every pair of bots and computes Elo ratings; with `--results`,
     /// plays only a new release's pairings not yet stored.
     League(LeagueArgs),
@@ -150,6 +155,25 @@ pub struct MatchArgs {
     #[arg(long)]
     pub expect_not_worse: bool,
 
+    /// This match is the share of an SPRT split over several runners (ADR
+    /// 0049) played by this shard (runner): the games' seeds derive from
+    /// --seed and the shard, so that no two shards play the same games.
+    #[arg(long, value_name = "K")]
+    pub shard: Option<u16>,
+
+    /// With --block-dir: cut the games into blocks of this many pairs, the
+    /// pairs 0 to N-1 being block 0, and so on. --pairs must be a whole
+    /// number of blocks.
+    #[arg(long, value_name = "N", requires = "block_dir")]
+    pub block_pairs: Option<u32>,
+
+    /// Write each block to this directory, created if missing, as
+    /// block-N.jsonl (the lines `--out` writes), as soon as all its games
+    /// are played. A file is never partly written: the match writes it under
+    /// another name and renames it.
+    #[arg(long, value_name = "DIR", requires = "block_pairs")]
+    pub block_dir: Option<PathBuf>,
+
     #[command(flatten)]
     pub common: CommonArgs,
 }
@@ -186,6 +210,66 @@ pub struct SprtArgs {
 
     #[command(flatten)]
     pub common: CommonArgs,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct SprtCheckArgs {
+    /// The games of one block, the file `match --out` wrote. Give it once
+    /// per block, in the order the blocks are counted: the blocks of a round
+    /// together (one per shard), round after round.
+    #[arg(long = "block", value_name = "FILE", required = true)]
+    pub blocks: Vec<PathBuf>,
+
+    /// Blocks in a round (the number of shards). The bounds are checked
+    /// after each whole round; a last group of fewer blocks is left out.
+    #[arg(long, value_name = "N", default_value_t = 1)]
+    pub round_blocks: usize,
+
+    /// The name of the bot under test, as in the games.
+    #[arg(long, value_name = "NAME")]
+    pub candidate: String,
+
+    /// The name of the bot to beat, as in the games.
+    #[arg(long, value_name = "NAME")]
+    pub baseline: String,
+
+    /// H0: the candidate is at most this many Elo stronger.
+    #[arg(long, default_value_t = 0.0, allow_negative_numbers = true)]
+    pub elo0: f64,
+
+    /// H1: the candidate is at least this many Elo stronger.
+    #[arg(long, default_value_t = 10.0, allow_negative_numbers = true)]
+    pub elo1: f64,
+
+    /// Probability of accepting a candidate that is not stronger.
+    #[arg(long, default_value_t = 0.05)]
+    pub alpha: f64,
+
+    /// Probability of rejecting a candidate that is stronger.
+    #[arg(long, default_value_t = 0.05)]
+    pub beta: f64,
+
+    /// Pairs at which a test still undecided after a round stops, as
+    /// inconclusive.
+    #[arg(long, default_value_t = 10_000)]
+    pub max_pairs: u32,
+
+    /// Stop with a fault, at the first round after which this bot (the
+    /// candidate or the baseline) has lost a game by a crash or an invalid
+    /// answer, or lost more games on time than --max-timeout-rate allows in
+    /// the games counted so far.
+    #[arg(long, value_name = "NAME")]
+    pub expect_no_faults_from: Option<String>,
+
+    /// Timeouts tolerated, as a fraction of the games counted so far,
+    /// rounded down: 0.01 allows 10 in 1,000 games.
+    #[arg(
+        long,
+        value_name = "RATE",
+        default_value_t = 0.0,
+        allow_negative_numbers = true
+    )]
+    pub max_timeout_rate: f64,
 }
 
 #[derive(Debug, clap::Args)]
@@ -480,7 +564,8 @@ pub struct LeaderboardArgs {
 /// Exit status: 0 on success (for `sprt`: the candidate is accepted), 1 when
 /// a check failed (a fault with `--expect-no-faults`, a score below
 /// `--min-score`, a candidate rejected or undecided), 2 when the arena could
-/// not run.
+/// not run. `sprt-check` also exits with 3 for a fault of the bot it checks
+/// and 4 when the blocks given reach no verdict yet.
 pub fn main<F: RefereeFactory>(name: &'static str, new_referee: F) -> ExitCode {
     let matches = Cli::command().name(name).get_matches();
     let cli = match Cli::from_arg_matches(&matches) {
@@ -488,7 +573,17 @@ pub fn main<F: RefereeFactory>(name: &'static str, new_referee: F) -> ExitCode {
         Err(err) => err.exit(),
     };
     let game = game_id(name);
+    if let Command::SprtCheck(args) = &cli.command {
+        return match run_sprt_check(args) {
+            Ok(code) => ExitCode::from(code),
+            Err(message) => {
+                eprintln!("error: {message}");
+                ExitCode::from(2)
+            }
+        };
+    }
     let result = match cli.command {
+        Command::SprtCheck(_) => unreachable!("handled above"),
         Command::Match(args) => run_match(args, game, &new_referee),
         Command::Sprt(args) => run_sprt(args, game, &new_referee),
         Command::League(args) => run_league(args, game, &new_referee),
@@ -518,6 +613,11 @@ fn run_match<F: RefereeFactory>(
     game: &str,
     new_referee: &F,
 ) -> Result<bool, String> {
+    let mut args = args;
+    if let Some(shard) = args.shard {
+        args.common.seed = shard_seed(args.common.seed, shard);
+    }
+    let mut blocks = Blocks::create(args.block_dir.as_deref(), args.block_pairs, args.pairs)?;
     let [first, second] = two_bots(&args.bots)?;
     check_fault_name(&args.common, &[first.name.clone(), second.name.clone()])?;
     let tournament = tournament([first, second], args.pairs, &args.common)?;
@@ -531,11 +631,13 @@ fn run_match<F: RefereeFactory>(
         &mut records,
         |game| {
             summary.add(game);
+            blocks.add(game);
             Flow::Continue
         },
     )?;
     output.finish()?;
     let records_result = records.finish();
+    blocks.finish()?;
 
     println!("{summary}");
     let mut passed = faults_ok(&args.common, &summary);
@@ -596,18 +698,7 @@ fn run_sprt<F: RefereeFactory>(
     let records_result = records.finish();
 
     println!("{summary}");
-    let (lower, upper) = settings.bounds();
-    println!(
-        "SPRT elo0={} elo1={} alpha={} beta={}: LLR {:.2} (bounds {:.2}, {:.2}) after {} pairs",
-        settings.elo0,
-        settings.elo1,
-        settings.alpha,
-        settings.beta,
-        test.llr(),
-        lower,
-        upper,
-        test.counted_pairs()
-    );
+    print_sprt_line(&settings, test.llr(), test.counted_pairs());
     let verdict = test.verdict();
     let [candidate, baseline] = &summary.names;
     println!(
@@ -620,6 +711,106 @@ fn run_sprt<F: RefereeFactory>(
     );
     let passed = faults_ok(&args.common, &summary) && verdict == Verdict::Accepted;
     records_result.map(|()| passed)
+}
+
+/// The SPRT's line: its settings, the LLR with its bounds, the pairs counted.
+fn print_sprt_line(settings: &SprtSettings, llr: f64, pairs: u32) {
+    let (lower, upper) = settings.bounds();
+    println!(
+        "SPRT elo0={} elo1={} alpha={} beta={}: LLR {:.2} (bounds {:.2}, {:.2}) after {} pairs",
+        settings.elo0, settings.elo1, settings.alpha, settings.beta, llr, lower, upper, pairs
+    );
+}
+
+/// The `sprt-check` command: adds up the blocks of an SPRT played on several
+/// runners and prints what `sprt` prints. Exit status: 0 when the candidate is
+/// accepted, 1 when it is rejected or the test is undecided at the cap, 3 when
+/// the bot checked for faults has lost too many games by one, 4 when the
+/// blocks reach no verdict yet. Errors are status 2, as everywhere.
+fn run_sprt_check(args: &SprtCheckArgs) -> Result<u8, String> {
+    let settings = SprtSettings {
+        elo0: args.elo0,
+        elo1: args.elo1,
+        alpha: args.alpha,
+        beta: args.beta,
+    };
+    settings.validate()?;
+    if args.candidate == args.baseline {
+        return Err("the candidate and the baseline need different names".to_string());
+    }
+    if !(0.0..1.0).contains(&args.max_timeout_rate) {
+        return Err("--max-timeout-rate must be at least 0 and below 1".to_string());
+    }
+    let names = [args.candidate.clone(), args.baseline.clone()];
+    let faults = match &args.expect_no_faults_from {
+        Some(name) => Some(FaultCheck {
+            bot: names
+                .iter()
+                .position(|other| other == name)
+                .ok_or_else(|| {
+                    format!("--expect-no-faults-from {name:?} is not one of the bots")
+                })?,
+            max_timeout_rate: args.max_timeout_rate,
+        }),
+        None => None,
+    };
+    let games = args
+        .blocks
+        .iter()
+        .map(|path| blocks::read_block(path))
+        .collect::<Result<Vec<_>, _>>()?;
+    let test = BlockTest {
+        settings,
+        round_blocks: args.round_blocks,
+        max_pairs: args.max_pairs,
+        names,
+        faults,
+    };
+    let checked = test.check(&games)?;
+
+    println!("{}", checked.summary);
+    let rounds = checked.counted_blocks / args.round_blocks;
+    println!(
+        "Checked {rounds} rounds of {} blocks ({} blocks counted{})",
+        args.round_blocks,
+        checked.counted_blocks,
+        match checked.left_out_blocks {
+            0 => String::new(),
+            left => format!(", {left} left out"),
+        }
+    );
+    print_sprt_line(&settings, checked.llr, checked.counted_pairs());
+    let [candidate, baseline] = &checked.summary.names;
+    let (code, text) = match checked.outcome {
+        Outcome::Accepted => (
+            0,
+            format!("ACCEPTED: {candidate} is stronger than {baseline}"),
+        ),
+        Outcome::Rejected => (
+            1,
+            format!("REJECTED: {candidate} is not stronger than {baseline}"),
+        ),
+        Outcome::Capped => (
+            1,
+            format!("INCONCLUSIVE after {} pairs", checked.counted_pairs()),
+        ),
+        Outcome::Fault => {
+            // The same report as `sprt` makes of a bot's faults.
+            report_faults(&checked.summary, args.max_timeout_rate, |name| {
+                args.expect_no_faults_from.as_deref() == Some(name)
+            });
+            (
+                3,
+                "REJECTED: a bot lost too many games by a fault".to_string(),
+            )
+        }
+        Outcome::Continue => (
+            4,
+            format!("NO VERDICT YET after {} pairs", checked.counted_pairs()),
+        ),
+    };
+    println!("Verdict: {text}");
+    Ok(code)
 }
 
 fn run_league<F: RefereeFactory>(
@@ -934,13 +1125,19 @@ fn play<F: RefereeFactory>(
 /// Whether the checked bots' faults are acceptable: none, except timeouts
 /// within `--max-timeout-rate`. Reports them otherwise.
 fn faults_ok(common: &CommonArgs, summary: &Summary) -> bool {
+    report_faults(summary, common.max_timeout_rate, |name| {
+        common.expect_no_faults || common.expect_no_faults_from.as_deref() == Some(name)
+    })
+}
+
+/// Whether the faults of the bots `checked` names are acceptable in the
+/// games of `summary`; reports the others on standard error.
+fn report_faults(summary: &Summary, max_timeout_rate: f64, checked: impl Fn(&str) -> bool) -> bool {
     let games = summary.games();
-    let allowed = allowed_timeouts(games, common.max_timeout_rate);
+    let allowed = allowed_timeouts(games, max_timeout_rate);
     let mut ok = true;
     for (name, faults) in summary.names.iter().zip(&summary.faults) {
-        let checked =
-            common.expect_no_faults || common.expect_no_faults_from.as_ref() == Some(name);
-        if checked && !faults.within(games, common.max_timeout_rate) {
+        if checked(name) && !faults.within(games, max_timeout_rate) {
             eprintln!(
                 "error: {name} lost {} games by a fault ({} timeouts, {} crashes, {} invalid \
                  answers; {allowed} timeouts allowed in {games} games)",
@@ -994,6 +1191,84 @@ impl Output {
             None => Ok(()),
         }
     }
+}
+
+/// The optional directory of blocks: the games of a match cut into blocks of
+/// pairs, each written when it is whole (ADR 0049).
+struct Blocks {
+    dir: Option<PathBuf>,
+    block_pairs: u32,
+    /// The games of the blocks not whole yet, by block.
+    open: HashMap<u32, Vec<GameRecord>>,
+    error: Option<String>,
+}
+
+impl Blocks {
+    /// Prepares the directory `--block-dir` names, if any; `pairs` must be a
+    /// whole number of blocks of `block_pairs`.
+    fn create(dir: Option<&Path>, block_pairs: Option<u32>, pairs: u32) -> Result<Blocks, String> {
+        let block_pairs = block_pairs.unwrap_or(0);
+        if let Some(dir) = dir {
+            if block_pairs == 0 || !pairs.is_multiple_of(block_pairs) {
+                return Err(format!(
+                    "--pairs {pairs} must be a whole number of blocks of --block-pairs {block_pairs}"
+                ));
+            }
+            fs::create_dir_all(dir)
+                .map_err(|err| format!("cannot create {}: {err}", dir.display()))?;
+        }
+        Ok(Blocks {
+            dir: dir.map(Path::to_path_buf),
+            block_pairs,
+            open: HashMap::new(),
+            error: None,
+        })
+    }
+
+    fn add(&mut self, game: &GameRecord) {
+        let Some(dir) = &self.dir else { return };
+        let block = game.pair / self.block_pairs;
+        let games = self.open.entry(block).or_default();
+        games.push(game.clone());
+        if games.len() < 2 * self.block_pairs as usize {
+            return;
+        }
+        let games = self.open.remove(&block).unwrap_or_default();
+        let written = write_block(dir, block, &games);
+        if let Err(err) = written {
+            self.error.get_or_insert(format!(
+                "{}: {err}",
+                dir.join(block_file_name(block)).display()
+            ));
+        }
+    }
+
+    fn finish(self) -> Result<(), String> {
+        match self.error {
+            Some(err) => Err(format!("cannot write a block: {err}")),
+            None => Ok(()),
+        }
+    }
+}
+
+fn block_file_name(block: u32) -> String {
+    format!("block-{block}.jsonl")
+}
+
+/// Writes a block's games as JSON lines, in pair order, under a temporary
+/// name first.
+fn write_block(dir: &Path, block: u32, games: &[GameRecord]) -> Result<(), String> {
+    let mut games: Vec<&GameRecord> = games.iter().collect();
+    games.sort_by_key(|game| (game.pair, game.swapped));
+    let mut text = Vec::new();
+    for game in games {
+        serde_json::to_writer(&mut text, game).map_err(|err| err.to_string())?;
+        text.push(b'\n');
+    }
+    let name = block_file_name(block);
+    let temporary = dir.join(format!(".{name}.tmp"));
+    fs::write(&temporary, &text).map_err(|err| err.to_string())?;
+    fs::rename(&temporary, dir.join(name)).map_err(|err| err.to_string())
 }
 
 /// The optional directory of game records: one JSON file per kept game.
