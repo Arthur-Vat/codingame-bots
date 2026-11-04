@@ -325,7 +325,7 @@ fn the_budget_is_split_in_whole_blocks() {
 }
 
 #[test]
-fn the_top_pairs_go_to_neighbours_of_bots_over_the_target() {
+fn the_top_pairs_go_to_bots_over_the_target() {
     // a is the anchor; b has few games and a wide interval, the others many.
     let stored = [
         even("a", "b", 20),
@@ -527,19 +527,96 @@ fn the_same_inputs_give_the_same_plan() {
     assert!(!first.lines.is_empty());
 }
 
+/// A chain from the anchor a: x a little stronger than a, few games between
+/// them; the top bots b and c far above, with many games among themselves
+/// and with x.
+fn long_chain() -> Vec<PairingResult> {
+    vec![
+        line("x", "a", 1, "2026-10-01", [10, 0, 30, 0, 60]),
+        line("b", "x", 2, "2026-10-01", [0, 0, 600, 0, 3400]),
+        line("c", "x", 3, "2026-10-01", [0, 0, 700, 0, 3300]),
+        line("b", "c", 4, "2026-10-01", [800, 0, 2400, 0, 800]),
+        line("y", "x", 5, "2026-10-01", [1000, 0, 2000, 0, 1000]),
+    ]
+}
+
 #[test]
-fn an_opponent_with_a_wide_margin_adds_less_information() {
-    let information = |margin: f64| (1.96_f64 / margin).powi(2);
-    let base = 0.01;
-    let narrow = added_information(base, information(5.0));
-    let wide = added_information(base, information(50.0));
-    assert!(wide < narrow && narrow < base, "{wide} {narrow} {base}");
-    assert_eq!(added_information(base, f64::INFINITY), base, "the anchor");
-    assert_eq!(added_information(base, 0.0), 0.0);
-    assert_eq!(added_information(0.0, 1.0), 0.0);
-    // So the margin of the bot that plays shrinks less against the wide one.
-    let margin_after = |added: f64| 1.96 / (information(30.0) + added).sqrt();
-    assert!(margin_after(wide) > margin_after(narrow));
+fn the_top_plays_the_links_that_shrink_its_intervals_most() {
+    let stored = long_chain();
+    let mut s = settings(&["a", "b", "c", "x", "y"], &[], "a");
+    s.nearest = 1;
+    s.budget_pairs = 5000;
+    s.low_share = 0.0;
+    let plan = plan(&stored, &s).unwrap();
+    // b and c share the uncertainty of the link from x to a: games between
+    // them, or with x, cannot shrink it, so most of the share goes below
+    // the top, to a.
+    let below: u32 = of_kind(&plan, Kind::Top)
+        .iter()
+        .filter(|line| line.a == "a" || line.b == "a")
+        .map(|line| line.pairs)
+        .sum();
+    assert!(below * 2 > pairs_of(&plan, Kind::Top), "{:?}", plan.lines);
+}
+
+#[test]
+fn the_projection_is_the_margins_after_games_scored_as_expected() {
+    let stored = long_chain();
+    let mut s = settings(&["a", "b", "c", "x", "y"], &["v"], "a");
+    s.pool.push("v".to_string());
+    s.releases = vec!["v".to_string()];
+    s.nearest = 1;
+    s.budget_pairs = 6000;
+    let planned = plan(&stored, &s).unwrap();
+    assert!(!of_kind(&planned, Kind::Low).is_empty());
+    // Play every line between rated bots as expected, then rate again.
+    let names = league::known_bots(&stored, s.pool.iter().map(String::as_str));
+    let before = league::rate(&names, &stored, "a").unwrap();
+    let rating = |name: &str| before.iter().find(|r| r.name == name).unwrap().rating;
+    let mut after = stored.clone();
+    for (at, planned_line) in planned.lines.iter().enumerate() {
+        if planned_line.kind == Kind::New {
+            continue; // v has no rating yet
+        }
+        let p =
+            1.0 / (1.0 + 10f64.powf((rating(&planned_line.b) - rating(&planned_line.a)) / 400.0));
+        let pairs = planned_line.pairs;
+        let won = (2.0 * f64::from(pairs) * p).round() as u32;
+        let mut played = line(
+            &planned_line.a,
+            &planned_line.b,
+            1000 + at as u64,
+            "2026-11-01",
+            [0, 0, 0, 0, 0],
+        );
+        played.pairs = pairs;
+        played.wins = won;
+        played.losses = 2 * pairs - won;
+        after.push(played);
+    }
+    let rated = league::rate(&names, &after, "a").unwrap();
+    for name in ["b", "c"] {
+        let real = rated.iter().find(|r| r.name == name).unwrap().margin;
+        let wanted = format!(" {name} margin ");
+        let report = planned
+            .report
+            .iter()
+            .find(|row| row.contains(&wanted))
+            .unwrap();
+        let projected: f64 = report
+            .rsplit(", ±")
+            .next()
+            .unwrap()
+            .split(' ')
+            .next()
+            .unwrap()
+            .parse()
+            .unwrap();
+        assert!(
+            (projected - real).abs() < 0.15,
+            "{name}: {report}, real ±{real:.2}"
+        );
+    }
 }
 
 #[test]
@@ -563,8 +640,8 @@ fn the_other_bots_play_among_themselves_not_against_the_top() {
 
 #[test]
 fn the_whole_top_share_is_spent_while_the_real_target_is_not_met() {
-    // b is just over the target; one block would bring its estimate under
-    // it, but the estimate is optimistic, so the whole share is planned.
+    // b is just over the target; one block would bring its projection under
+    // it, but real results can land over it, so the whole share is planned.
     let stored = [
         even("a", "b", 300),
         even("a", "c", 4000),

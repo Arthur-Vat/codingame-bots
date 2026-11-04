@@ -76,58 +76,164 @@ pub fn elo_margins(
     anchor: usize,
     ratings: &[f64],
 ) -> Vec<f64> {
-    let per_elo = std::f64::consts::LN_10 / 400.0;
-    // Bots linked to the anchor by a chain of matchups; the others have no
-    // rating relative to it.
-    let mut linked = vec![false; count];
-    linked[anchor] = true;
-    let mut grew = true;
-    while grew {
-        grew = false;
-        for result in results {
-            if linked[result.a] != linked[result.b] {
-                linked[result.a] = true;
-                linked[result.b] = true;
-                grew = true;
+    let covariance = Covariance::new(count, results, anchor, ratings);
+    (0..count).map(|bot| covariance.margin(bot)).collect()
+}
+
+/// Natural strength `ln γ` per Elo.
+const PER_ELO: f64 = std::f64::consts::LN_10 / 400.0;
+
+/// The Fisher information of `games` games between bots rated `a` and `b`
+/// (Elo), in natural strengths: `games · p · (1 − p)`, with `p` the expected
+/// score.
+pub(crate) fn games_information(games: f64, a: f64, b: f64) -> f64 {
+    let p = 1.0 / (1.0 + ((b - a) * PER_ELO).exp());
+    games * p * (1.0 - p)
+}
+
+/// The covariance of the natural strengths `ln γ` of the bots linked to the
+/// anchor by a chain of matchups, other than the anchor itself, which is
+/// fixed: the inverse of their Fisher information, every bot's rating held
+/// at its estimate. Bots that share a link to the anchor share its
+/// uncertainty, so their margins are read from the whole matrix.
+#[derive(Clone, Debug)]
+pub(crate) struct Covariance {
+    /// The row of each bot in `matrix`: `None` for the anchor and for bots
+    /// without a path of games to it.
+    rows: Vec<Option<usize>>,
+    anchor: usize,
+    /// `None` when the information is singular.
+    matrix: Option<Vec<Vec<f64>>>,
+}
+
+impl Covariance {
+    /// The covariance after `results`, at `ratings` (Elo).
+    pub(crate) fn new(
+        count: usize,
+        results: &[MatchupResult],
+        anchor: usize,
+        ratings: &[f64],
+    ) -> Self {
+        let mut linked = vec![false; count];
+        linked[anchor] = true;
+        let mut grew = true;
+        while grew {
+            grew = false;
+            for result in results {
+                if linked[result.a] != linked[result.b] {
+                    linked[result.a] = true;
+                    linked[result.b] = true;
+                    grew = true;
+                }
             }
+        }
+        let mut rows = vec![None; count];
+        let mut size = 0;
+        for bot in (0..count).filter(|&bot| bot != anchor && linked[bot]) {
+            rows[bot] = Some(size);
+            size += 1;
+        }
+        let mut information = vec![vec![0.0; size]; size];
+        for result in results.iter().filter(|result| linked[result.a]) {
+            // Every matchup has one extra virtual draw, as in `elo_ratings`.
+            let weight = games_information(
+                f64::from(result.games) + 1.0,
+                ratings[result.a],
+                ratings[result.b],
+            );
+            let (a, b) = (rows[result.a], rows[result.b]);
+            for (i, j) in [(a, b), (b, a)] {
+                if let Some(i) = i {
+                    information[i][i] += weight;
+                    if let Some(j) = j {
+                        information[i][j] -= weight;
+                    }
+                }
+            }
+        }
+        Covariance {
+            rows,
+            anchor,
+            matrix: invert(information),
         }
     }
 
-    // Fisher information of the natural strengths ln γ of the linked bots
-    // other than the anchor, which is fixed.
-    let others: Vec<usize> = (0..count)
-        .filter(|&bot| bot != anchor && linked[bot])
-        .collect();
-    let index = |bot: usize| others.iter().position(|&other| other == bot);
-    let mut information = vec![vec![0.0; others.len()]; others.len()];
-    for result in results.iter().filter(|result| linked[result.a]) {
-        let n = f64::from(result.games) + 1.0;
-        let p = 1.0 / (1.0 + ((ratings[result.b] - ratings[result.a]) * per_elo).exp());
-        let weight = n * p * (1.0 - p);
-        let (a, b) = (index(result.a), index(result.b));
-        for (i, j) in [(a, b), (b, a)] {
-            if let Some(i) = i {
-                information[i][i] += weight;
-                if let Some(j) = j {
-                    information[i][j] -= weight;
+    /// Whether `bot` has a rating relative to the anchor.
+    pub(crate) fn is_linked(&self, bot: usize) -> bool {
+        bot == self.anchor || (self.rows[bot].is_some() && self.matrix.is_some())
+    }
+
+    /// The half-width of `bot`'s 95% interval, in Elo: 0 for the anchor,
+    /// infinite for a bot without a rating.
+    pub(crate) fn margin(&self, bot: usize) -> f64 {
+        if bot == self.anchor {
+            return 0.0;
+        }
+        match (self.rows[bot], &self.matrix) {
+            (Some(i), Some(matrix)) if matrix[i][i] > 0.0 => 1.96 * matrix[i][i].sqrt() / PER_ELO,
+            _ => f64::INFINITY,
+        }
+    }
+
+    /// The column `C·u` and the number `uᵀ·C·u` for a game between `a` and
+    /// `b`, with `u` the difference of their unit vectors, or `None` when the
+    /// game would tell nothing about the linked bots.
+    fn direction(&self, a: usize, b: usize) -> Option<(Vec<f64>, f64)> {
+        let matrix = self.matrix.as_ref()?;
+        if a == b || !self.is_linked(a) || !self.is_linked(b) {
+            return None;
+        }
+        let (ra, rb) = (self.rows[a], self.rows[b]);
+        let column: Vec<f64> = matrix
+            .iter()
+            .map(|row| ra.map_or(0.0, |i| row[i]) - rb.map_or(0.0, |i| row[i]))
+            .collect();
+        let spread = ra.map_or(0.0, |i| column[i]) - rb.map_or(0.0, |i| column[i]);
+        (spread > 0.0).then_some((column, spread))
+    }
+
+    /// How much games between `a` and `b` worth `information` (from
+    /// [`games_information`]) would shrink the square of each margin of
+    /// `bots`, in Elo², summed with the weights given.
+    pub(crate) fn squared_margin_drop(
+        &self,
+        a: usize,
+        b: usize,
+        information: f64,
+        bots: &[(usize, f64)],
+    ) -> f64 {
+        if information <= 0.0 || !information.is_finite() {
+            return 0.0;
+        }
+        let Some((column, spread)) = self.direction(a, b) else {
+            return 0.0;
+        };
+        let scale = (1.96 / PER_ELO).powi(2) / (1.0 / information + spread);
+        bots.iter()
+            .filter_map(|&(bot, weight)| self.rows[bot].map(|i| weight * column[i] * column[i]))
+            .sum::<f64>()
+            * scale
+    }
+
+    /// Adds games between `a` and `b` worth `information`: the covariance
+    /// as if they had been played and scored as expected (Sherman-Morrison).
+    /// Games with a bot without a rating change nothing.
+    pub(crate) fn add(&mut self, a: usize, b: usize, information: f64) {
+        if information <= 0.0 || !information.is_finite() {
+            return;
+        }
+        let Some((column, spread)) = self.direction(a, b) else {
+            return;
+        };
+        let scale = 1.0 / (1.0 / information + spread);
+        if let Some(matrix) = self.matrix.as_mut() {
+            for (i, row) in matrix.iter_mut().enumerate() {
+                for (j, cell) in row.iter_mut().enumerate() {
+                    *cell -= scale * column[i] * column[j];
                 }
             }
         }
     }
-    let covariance = invert(information);
-    (0..count)
-        .map(|bot| {
-            if bot == anchor {
-                return 0.0;
-            }
-            match (index(bot), &covariance) {
-                (Some(i), Some(covariance)) if covariance[i][i] > 0.0 => {
-                    1.96 * covariance[i][i].sqrt() / per_elo
-                }
-                _ => f64::INFINITY,
-            }
-        })
-        .collect()
 }
 
 /// The inverse of a square matrix by Gauss-Jordan elimination, or `None`
