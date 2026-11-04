@@ -18,7 +18,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use cg_core::rng::Rng;
 use serde::{Deserialize, Serialize};
 
-use crate::ratings::{elo_margins, elo_ratings, MatchupResult};
+use crate::ratings::{elo_margins, elo_ratings, Covariance, MatchupResult};
 
 /// The result of one stored pairing, from the side of `a`, the newer release.
 /// One line of the results file; the keys are in this order.
@@ -262,14 +262,12 @@ impl Rating {
     }
 }
 
-/// Bradley-Terry ratings of `names` over `pairings`, with `anchor` at 0, in
-/// the order of `names`. Every bot of a pairing and the anchor must be in
-/// `names`.
-pub fn rate(
+/// The matchups of `pairings` between the bots of `names` (by position),
+/// with each bot's games.
+fn matchups(
     names: &[String],
     pairings: &[PairingResult],
-    anchor: &str,
-) -> Result<Vec<Rating>, String> {
+) -> Result<(Vec<MatchupResult>, Vec<u32>), String> {
     let index: HashMap<&str, usize> = names
         .iter()
         .enumerate()
@@ -281,7 +279,6 @@ pub fn rate(
             .copied()
             .ok_or_else(|| format!("{name:?} is not a known bot"))
     };
-    let anchor = find(anchor)?;
     let mut matchups = Vec::with_capacity(pairings.len());
     let mut games = vec![0u32; names.len()];
     for pairing in pairings {
@@ -295,6 +292,27 @@ pub fn rate(
         games[a] += pairing.games();
         games[b] += pairing.games();
     }
+    Ok((matchups, games))
+}
+
+/// The position of `anchor` in `names`.
+fn anchor_of(names: &[String], anchor: &str) -> Result<usize, String> {
+    names
+        .iter()
+        .position(|name| name == anchor)
+        .ok_or_else(|| format!("{anchor:?} is not a known bot"))
+}
+
+/// Bradley-Terry ratings of `names` over `pairings`, with `anchor` at 0, in
+/// the order of `names`. Every bot of a pairing and the anchor must be in
+/// `names`.
+pub fn rate(
+    names: &[String],
+    pairings: &[PairingResult],
+    anchor: &str,
+) -> Result<Vec<Rating>, String> {
+    let anchor = anchor_of(names, anchor)?;
+    let (matchups, games) = matchups(names, pairings)?;
     let ratings = elo_ratings(names.len(), &matchups, anchor);
     let margins = elo_margins(names.len(), &matchups, anchor, &ratings);
     Ok(names
@@ -307,6 +325,20 @@ pub fn rate(
             games: games[bot],
         })
         .collect())
+}
+
+/// The covariance of the ratings `ratings` (from [`rate`] with the same
+/// arguments), bots in the order of `names`.
+pub(crate) fn covariance(
+    names: &[String],
+    pairings: &[PairingResult],
+    anchor: &str,
+    ratings: &[Rating],
+) -> Result<Covariance, String> {
+    let anchor = anchor_of(names, anchor)?;
+    let (matchups, _) = matchups(names, pairings)?;
+    let elo: Vec<f64> = ratings.iter().map(|rating| rating.rating).collect();
+    Ok(Covariance::new(names.len(), &matchups, anchor, &elo))
 }
 
 /// The opponents a new release plays when the pool is small enough to play
