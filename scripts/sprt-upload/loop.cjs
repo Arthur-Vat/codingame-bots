@@ -7,7 +7,7 @@
 // upload as one artifact, sprt-blocks-GAME-ATTEMPT-SHARD-K (1 day), a folder
 // of files SHARD-N.jsonl. It ends after the upload that holds the last block
 // (BLOCKS blocks, from $SPRT_WORK/blocks-total). A failed upload is retried
-// 3 times, then the loop fails. An arena that died before its last block
+// 3 times, each under a new number K, then the loop fails. An arena that died before its last block
 // fails it too, after uploading what exists, and so does one that is still
 // running but has finished no block for HUNG_SECONDS (900): it is killed, so
 // that the coordinator sees the shard end instead of waiting for the limits.
@@ -21,7 +21,7 @@
 //
 // For tests, SPRT_DRY_RUN_DIR copies each batch to a folder of that name
 // instead of uploading, and the existence of the file SPRT_DRY_VERDICT_FILE
-// stands for the verdict artifact. `node scripts/sprt-upload-loop.cjs` runs
+// stands for the verdict artifact. `node scripts/sprt-upload/loop.cjs` runs
 // the loop from the environment: GAME, RUN_ATTEMPT, SHARD, SPRT_WORK, and
 // optionally UPLOAD_SECONDS, POLL_MS (1000, how often it looks at the clock
 // and the arena).
@@ -78,27 +78,42 @@ function verdictExists(env) {
   }
 }
 
+// Uploads the files as artifact `name`. In a dry run, copies them instead;
+// SPRT_DRY_FAIL (a number) makes that many uploads fail first, to test retries.
+let dryFailures = 0;
 async function upload(env, name, dir, files) {
   if (env.SPRT_DRY_RUN_DIR) {
+    if (dryFailures < Number(env.SPRT_DRY_FAIL ?? 0)) {
+      dryFailures++;
+      throw new Error('a failure for the test');
+    }
     const target = path.join(env.SPRT_DRY_RUN_DIR, name);
     fs.mkdirSync(target, { recursive: true });
     for (const file of files) fs.copyFileSync(file, path.join(target, path.basename(file)));
     return;
   }
   const { DefaultArtifactClient } = require(env.SPRT_ARTIFACT_LIB);
-  const client = new DefaultArtifactClient();
+  await new DefaultArtifactClient().uploadArtifact(name, files, dir, { retentionDays: 1 });
+}
+
+// Uploads a batch, trying 3 times. Each try has a name of its own (the next
+// batch number): an artifact that was created but not finished may refuse the
+// same name again. The coordinator names blocks by their files, so a block in
+// two batches counts once. Returns the number of the batch that went through.
+async function uploadBatch(env, batch, dir, files) {
   let last;
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 3; attempt++, batch++) {
+    const name = `sprt-blocks-${env.GAME}-${env.RUN_ATTEMPT}-${env.SHARD}-${batch}`;
     try {
-      await client.uploadArtifact(name, files, dir, { retentionDays: 1 });
-      return;
+      await upload(env, name, dir, files);
+      return batch;
     } catch (error) {
       last = error;
       console.log(`Upload of ${name} failed (try ${attempt} of 3): ${error.message}`);
-      await sleep(attempt * 5000);
+      await sleep(Number(env.RETRY_MS ?? 5000) * attempt);
     }
   }
-  throw new Error(`the upload of ${name} failed 3 times: ${last.message}`);
+  throw new Error(`the upload failed 3 times: ${last.message}`);
 }
 
 async function run(env = process.env) {
@@ -133,10 +148,9 @@ async function run(env = process.env) {
     }
     if (files.length > 0) {
       progress = Date.now();
-      const name = `sprt-blocks-${env.GAME}-${env.RUN_ATTEMPT}-${shard}-${batches}`;
-      await upload(env, name, dir, files);
-      console.log(`Shard ${shard}: uploaded ${name}, ${files.length} blocks, ${next} of ${total} in all.`);
-      batches++;
+      const sent = await uploadBatch(env, batches, dir, files);
+      console.log(`Shard ${shard}: uploaded sprt-blocks-${env.GAME}-${env.RUN_ATTEMPT}-${shard}-${sent}, ${files.length} blocks, ${next} of ${total} in all.`);
+      batches = sent + 1;
     }
     if (next >= total) {
       console.log(`Shard ${shard} played its ${total} blocks.`);

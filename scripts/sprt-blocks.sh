@@ -19,7 +19,7 @@
 # blocks of SPRT_BLOCK_PAIRS seat-swapped pairs. Block n of shard k is a file
 # K-N.jsonl. To stay within the API's limit (1,000 requests an hour for the
 # workflow's token) the shard uploads on a timer, not per block: scripts/
-# sprt-upload-loop.cjs, every UPLOAD_SECONDS (120), uploads one artifact
+# sprt-upload/loop.cjs, every UPLOAD_SECONDS (120), uploads one artifact
 # sprt-blocks-GAME-ATTEMPT-K-J, a folder of every block finished since the last
 # upload, and looks for the verdict at the same moments. The coordinator polls every 60 seconds, downloads the new
 # artifacts, takes the complete rounds
@@ -60,7 +60,7 @@
 # records in target/records.
 #
 # shard-finish: stops the tournament and prints the end of its log. The
-# uploads are scripts/sprt-upload-loop.cjs, run by the workflow in the step
+# uploads are scripts/sprt-upload/loop.cjs, run by the workflow in the step
 # after shard-start.
 #
 # coordinate: polls the run's artifacts, adds up the complete rounds with the

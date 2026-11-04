@@ -126,7 +126,7 @@ GH
 chmod +x "$repo/bin/gh"
 export PATH="$repo/bin:$PATH" FAKE="$tmp_dir/fake"
 mkdir -p "$FAKE/zips"
-loop="$repo_root/scripts/sprt-upload-loop.cjs"
+loop="$repo_root/scripts/sprt-upload/loop.cjs"
 node --check "$loop"
 work="$tmp_dir/work"
 dry="$tmp_dir/dry"
@@ -177,6 +177,20 @@ loop_env node "$loop"
 expect "gap first batch" "$(files_of sprt-blocks-toy-1-1-0)" "1-0.jsonl"
 expect "gap second batch" "$(files_of sprt-blocks-toy-1-1-1)" "1-1.jsonl 1-2.jsonl"
 wait "$later"
+kill "$sleeper" 2>/dev/null || true
+# A failed upload is retried under the next number; 3 failures fail the loop.
+new_shard 2
+for n in 0 1; do echo "b$n" >"$work/blocks/block-$n.jsonl"; done
+loop_env env SPRT_DRY_FAIL=1 RETRY_MS=1 node "$loop"
+expect "retry status" "$status" 0
+expect "retried batch" "$(files_of sprt-blocks-toy-1-1-1)" "1-0.jsonl 1-1.jsonl"
+expect "failed batch" "$(files_of sprt-blocks-toy-1-1-0)" ""
+contains "retry line" "$output" "try 1 of 3"
+new_shard 2
+echo b0 >"$work/blocks/block-0.jsonl"
+loop_env env SPRT_DRY_FAIL=3 RETRY_MS=1 node "$loop"
+expect "three failures" "$status" 1
+contains "three failures" "$output" "failed 3 times"
 kill "$sleeper" 2>/dev/null || true
 # A verdict stops the arena and uploads nothing.
 new_shard 3

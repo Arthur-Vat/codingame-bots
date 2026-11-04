@@ -1,0 +1,9 @@
+{
+  "name": "sprt-upload",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The artifact client of the SPRT's upload loop (loop.cjs): installed by sprt-parallel.yml with npm ci --ignore-scripts; every dependency is locked in package-lock.json.",
+  "dependencies": {
+    "@actions/artifact": "2.3.2"
+  }
+}
