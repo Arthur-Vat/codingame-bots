@@ -1,0 +1,574 @@
+name: SPRT in blocks
+
+# The SPRT of one release played in blocks over the game's SPRT_RUNNERS
+# calibrated runners (ADR 0049, decision 1; scripts/sprt-blocks.sh holds the
+# logic). Called by sprt.yml for each game that has a new release and more than
+# one runner; started by hand, it tests any two releases, for example
+#   gh workflow run sprt-parallel.yml -f game=ice-and-fire \
+#     -f candidate=games/ice-and-fire/releases/ice-and-fire-v014.rs \
+#     -f baseline=games/ice-and-fire/releases/ice-and-fire-v013.rs
+# and then never posts a comment.
+#
+# prepare:     the kept-result check (a result of the same code, settings and
+#              bots is reused), the build, and the smoke test against the
+#              random bot, calibrated on its own runner.
+# shard 0..N:  each runner builds, calibrates itself (ADR 0048) and plays a
+#              tournament of its own seed, cut into blocks of SPRT_BLOCK_PAIRS
+#              pairs. Each whole block is uploaded as an artifact of this run,
+#              which the coordinator downloads while the run goes on
+#              (upload-artifact v4: an artifact is listable and downloadable
+#              as soon as its upload ends). An action cannot run in a loop,
+#              so a shard has MAX_BLOCKS (100) pairs of steps, a wait and an
+#              upload, repeated with a YAML anchor; the script counts the
+#              blocks and skips the steps left over. A shard stops when the
+#              artifact sprt-verdict-<game>-<attempt> exists.
+# coordinator: every 30 seconds it downloads the new blocks, takes the
+#              complete rounds (round n is block n of every shard) and runs
+#              the arena's sprt-check over them; on a verdict (accepted,
+#              rejected, a candidate fault, the cap), or when every shard has
+#              ended, it uploads sprt-verdict-<game>-<attempt>, keeps the
+#              result as sprt.yml does, posts it when `post` is true, and
+#              fails the job unless the candidate is accepted.
+# Artifacts of a run are named after the game and the run's attempt, so that
+# two games of one run, or a re-run, do not collide.
+on:
+  workflow_call:
+    inputs:
+      game:
+        description: "Game folder"
+        type: string
+        required: true
+      candidate:
+        description: "The release under test, games/<game>/releases/<name>.rs"
+        type: string
+        required: true
+      baseline:
+        description: "The release to beat; empty: the newest release older than the candidate"
+        type: string
+        required: false
+        default: ""
+      post:
+        description: "Post the result as a comment on the pull request"
+        type: boolean
+        required: false
+        default: false
+  workflow_dispatch:
+    inputs:
+      game:
+        description: "Game folder"
+        type: string
+        required: true
+      candidate:
+        description: "The release under test, games/<game>/releases/<name>.rs"
+        type: string
+        required: true
+      baseline:
+        description: "The release to beat; empty: the newest release older than the candidate"
+        type: string
+        required: false
+        default: ""
+      post:
+        description: "Post the result as a comment on the pull request (only in a pull request's run)"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Unlike GitHub's default, fails a step when any command of a pipeline
+    # fails, not only the last one.
+    shell: bash
+
+env:
+  # CodinGame's Rust compiler (docs/CODINGAME.md, ADR 0010).
+  CG_RUST: "1.90.0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  prepare:
+    name: "Prepare (${{ inputs.game }})"
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    outputs:
+      reused: ${{ steps.cache.outputs.cache-matched-key != '' }}
+      matched_key: ${{ steps.cache.outputs.cache-matched-key }}
+      # The shards play when there is no kept result and the smoke test passed.
+      proceed: ${{ steps.cache.outputs.cache-matched-key == '' && steps.smoke.outputs.smoke_status == '0' }}
+      candidate: ${{ steps.plan.outputs.candidate }}
+      candidate_name: ${{ steps.plan.outputs.candidate_name }}
+      baseline: ${{ steps.plan.outputs.baseline }}
+      baseline_name: ${{ steps.plan.outputs.baseline_name }}
+      shards: ${{ steps.plan.outputs.shards }}
+      key: ${{ steps.plan.outputs.key }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the inputs and plan the test
+        id: plan
+        env:
+          # Text from whoever started the run: checked by the script before it
+          # reaches a path or a command.
+          GAME: ${{ inputs.game }}
+          CANDIDATE: ${{ inputs.candidate }}
+          BASELINE: ${{ inputs.baseline }}
+        run: scripts/sprt-blocks.sh plan "$GAME" "$CANDIDATE" ${BASELINE:+"$BASELINE"}
+      - name: Reuse the latest result on the same code
+        id: cache
+        # A re-run (attempt 2 or more) always tests again, for example after a
+        # timeout caused by the machine.
+        if: github.run_attempt == '1'
+        uses: actions/cache/restore@v6
+        with:
+          path: target/sprt-result
+          key: ${{ steps.plan.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ${{ steps.plan.outputs.key }}-
+      - uses: dtolnay/rust-toolchain@master
+        if: steps.cache.outputs.cache-matched-key == ''
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        if: steps.cache.outputs.cache-matched-key == ''
+        with:
+          key: ${{ inputs.game }}
+      - name: Smoke test
+        id: smoke
+        if: steps.cache.outputs.cache-matched-key == ''
+        env:
+          GAME: ${{ inputs.game }}
+          CANDIDATE: ${{ steps.plan.outputs.candidate }}
+          BASELINE: ${{ steps.plan.outputs.baseline }}
+          # A sample of the games, uploaded with the SPRT's (ADR 0027).
+          RECORDS_DIR: target/records
+        run: scripts/annotate.sh run "Smoke test of $CANDIDATE" scripts/sprt-blocks.sh smoke "$GAME" "$CANDIDATE" "$BASELINE"
+      - name: Keep the smoke test's report
+        if: steps.cache.outputs.cache-matched-key == ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: sprt-prepare-${{ inputs.game }}-${{ github.run_attempt }}
+          path: |
+            target/sprt-parallel/head.txt
+            target/sprt-parallel/smoke-status
+          if-no-files-found: error
+          retention-days: 1
+      - name: Keep the smoke test's games
+        if: steps.cache.outputs.cache-matched-key == ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: sprt-smoke-records-${{ inputs.game }}-${{ github.run_attempt }}
+          path: target/records
+          if-no-files-found: ignore
+          retention-days: 1
+
+  shard:
+    name: "Shard ${{ matrix.shard }} (${{ inputs.game }})"
+    needs: prepare
+    if: needs.prepare.outputs.proceed == 'true'
+    runs-on: ubuntu-latest
+    # GitHub's limit is 360 minutes; the steps below end 5 minutes sooner.
+    timeout-minutes: 340
+    permissions:
+      contents: read
+      actions: read # to list the run's artifacts
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.prepare.outputs.shards) }}
+    env:
+      GAME: ${{ inputs.game }}
+      CANDIDATE: ${{ needs.prepare.outputs.candidate }}
+      BASELINE: ${{ needs.prepare.outputs.baseline }}
+      SHARD: ${{ matrix.shard }}
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      RUN_ID: ${{ github.run_id }}
+      RUN_ATTEMPT: ${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.game }}
+          save-if: ${{ matrix.shard == 0 }}
+      - name: Build, calibrate and start the tournament
+        timeout-minutes: 30
+        run: scripts/annotate.sh run "SPRT shard $SHARD" scripts/sprt-blocks.sh shard-start "$GAME" "$CANDIDATE" "$BASELINE" "$SHARD"
+      - name: Keep the calibration
+        uses: actions/upload-artifact@v7
+        with:
+          name: sprt-calibration-${{ inputs.game }}-${{ github.run_attempt }}-${{ matrix.shard }}
+          path: target/sprt-parallel/calibration-${{ matrix.shard }}.txt
+          if-no-files-found: error
+          retention-days: 1
+      # One wait and one upload for each block; the pair below is repeated
+      # (scripts/sprt-blocks.sh MAX_BLOCKS times in all).
+      - &wait
+        name: Wait for the next block
+        if: env.SPRT_DONE != 'true'
+        # Far above a block's time (half a minute): a tournament that hangs.
+        timeout-minutes: 20
+        run: scripts/sprt-blocks.sh shard-wait "$GAME" "$SHARD"
+      - &upload
+        name: Upload the block
+        if: env.SPRT_DONE != 'true' && env.SPRT_UPLOAD == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.SPRT_BLOCK }}
+          path: ${{ env.SPRT_BLOCK_FILE }}
+          if-no-files-found: error
+          retention-days: 1
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - name: Stop the tournament
+        if: ${{ always() }}
+        run: scripts/sprt-blocks.sh shard-finish
+      - name: Add the smoke test's games to shard 0's sample
+        if: ${{ always() && matrix.shard == 0 }}
+        # There may be none: the smoke test keeps a sample, but not always.
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: sprt-smoke-records-${{ inputs.game }}-${{ github.run_attempt }}
+          path: target/records
+      - name: Upload a sample of the games
+        # The artifact the archive looks for (scripts/arena-archive.sh). Shard
+        # 0 only; a re-run replaces it.
+        if: ${{ always() && matrix.shard == 0 }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: game-records-${{ inputs.game }}
+          path: target/records
+          if-no-files-found: ignore
+          retention-days: 30
+          overwrite: true
+
+  coordinator:
+    name: "Coordinator (${{ inputs.game }})"
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    permissions:
+      contents: read
+      actions: read # to list and download the run's artifacts, and its jobs
+      pull-requests: write # to post the result as a comment
+    env:
+      GAME: ${{ inputs.game }}
+      CANDIDATE: ${{ needs.prepare.outputs.candidate }}
+      BASELINE: ${{ needs.prepare.outputs.baseline }}
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      RUN_ID: ${{ github.run_id }}
+      RUN_ATTEMPT: ${{ github.run_attempt }}
+      REUSED: ${{ needs.prepare.outputs.reused }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Restore the kept result
+        if: needs.prepare.outputs.reused == 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: target/sprt-result
+          key: ${{ needs.prepare.outputs.matched_key }}
+          fail-on-cache-miss: true
+      - name: Take the smoke test's report
+        if: needs.prepare.outputs.reused != 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: sprt-prepare-${{ inputs.game }}-${{ github.run_attempt }}
+          path: target/sprt-parallel
+      - uses: dtolnay/rust-toolchain@master
+        if: needs.prepare.outputs.proceed == 'true'
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        if: needs.prepare.outputs.proceed == 'true'
+        with:
+          key: ${{ inputs.game }}
+          save-if: false
+      - name: Build the arena
+        if: needs.prepare.outputs.proceed == 'true'
+        run: cargo build --quiet --release --locked -p "$GAME-arena"
+      - name: Add up the blocks as they come
+        id: run
+        if: needs.prepare.outputs.reused != 'true'
+        # Ends 5 minutes before the job, so that the steps after it run.
+        timeout-minutes: 345
+        run: scripts/annotate.sh run "SPRT of $CANDIDATE" scripts/sprt-blocks.sh coordinate "$GAME" "$CANDIDATE" "$BASELINE"
+      - name: Read the result
+        id: result
+        if: ${{ !cancelled() }}
+        run: |
+          if [ -f target/sprt-result/status ]; then
+            echo "status=$(cat target/sprt-result/status)" >>"$GITHUB_OUTPUT"
+          fi
+      - name: Tell the shards
+        # They stop at this artifact; an error result stops them too.
+        if: ${{ !cancelled() && needs.prepare.outputs.reused != 'true' && steps.result.outputs.status != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: sprt-verdict-${{ inputs.game }}-${{ github.run_attempt }}
+          path: target/sprt-result
+          if-no-files-found: error
+          retention-days: 5
+      - name: Keep the result
+        # Status 2 is an error, not a verdict: keep no result.
+        if: ${{ !cancelled() && needs.prepare.outputs.reused != 'true' && (steps.result.outputs.status == '0' || steps.result.outputs.status == '1') }}
+        uses: actions/cache/save@v6
+        with:
+          path: target/sprt-result
+          key: ${{ needs.prepare.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Report
+        if: ${{ !cancelled() && steps.result.outputs.status != '' }}
+        run: |
+          {
+            echo "## SPRT: $GAME"
+            if [ "$REUSED" = true ]; then
+              echo "Result of an earlier run on the same code, settings and bots."
+            fi
+            echo '```'
+            cat target/sprt-result/report.txt
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+      - name: Post the result on the pull request
+        # Posted once per result, also when an earlier run produced it. A
+        # failure to post does not change the verdict: the result is in the
+        # job summary too. An error (status 2) is not posted.
+        if: >-
+          ${{ !cancelled() && inputs.post && github.event.pull_request.number != ''
+          && (steps.result.outputs.status == '0' || steps.result.outputs.status == '1')
+          && github.event.pull_request.head.repo.full_name == github.repository }}
+        continue-on-error: true
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REUSED_KEY: ${{ needs.prepare.outputs.matched_key }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          origin="$(cat target/sprt-result/origin 2>/dev/null || echo "$REUSED_KEY")"
+          marker="<!-- sprt-result $GAME $origin -->"
+          comments="$(gh api --paginate "repos/$REPO/issues/$PR/comments" --jq '.[].body')"
+          if grep -qF "$marker" <<<"$comments"; then
+            echo "This result is already on the pull request."
+            exit 0
+          fi
+          {
+            echo "$marker"
+            echo "### SPRT result for $GAME at ${HEAD_SHA:0:7}"
+            if [ -n "$REUSED_KEY" ]; then
+              echo "From an earlier run on the same code, settings and bots."
+            fi
+            echo '```'
+            cat target/sprt-result/report.txt
+            echo '```'
+            echo "[Run]($RUN_URL)"
+          } >target/sprt-comment.md
+          if ! gh pr comment "$PR" --body-file target/sprt-comment.md; then
+            echo "::warning title=SPRT comment::the result could not be posted; it is in the job summary"
+            exit 1
+          fi
+      - name: Verdict
+        if: ${{ !cancelled() && steps.result.outputs.status != '' }}
+        run: exit "$(cat target/sprt-result/status)"

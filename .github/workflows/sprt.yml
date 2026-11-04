@@ -13,7 +13,10 @@ name: SPRT
 # and LEADERBOARD.md matches them (scripts/league-check.sh). A game with a
 # nightly league (LEAGUE_NIGHTLY=true in its evaluation.env, ADR 0049) has
 # no league job: its release merges on the SPRT, and the ratings arrive
-# overnight (league-nightly.yml). The check
+# overnight (league-nightly.yml). A game with more than one runner for its
+# SPRT (SPRT_RUNNERS in its evaluation.env, ADR 0049) plays it in
+# sprt-parallel.yml, in blocks over calibrated runners, instead of the `sprt`
+# job; its pull request adds one release. The check
 # `SPRT passed` fails unless every step of every game passes, the new
 # release's faults in the league included, and the league results are in; it
 # passes when the pull request adds no release and changes no league file.
@@ -23,6 +26,7 @@ on:
 permissions:
   contents: read
   pull-requests: write # to post the result as a comment
+  actions: read # for sprt-parallel.yml, which lists the run's artifacts
 
 concurrency:
   group: sprt-${{ github.ref }}
@@ -46,6 +50,12 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       games: ${{ steps.scopes.outputs.games }}
+      # The games whose SPRT is played by the job `sprt`, on one machine, and
+      # those played in blocks over runners (sprt-parallel.yml) with the
+      # candidate of each.
+      serial_games: ${{ steps.scopes.outputs.serial_games }}
+      parallel_games: ${{ steps.scopes.outputs.parallel_games }}
+      parallel_matrix: ${{ steps.scopes.outputs.parallel_matrix }}
       # The same games without those that have a nightly league.
       league_games: ${{ steps.scopes.outputs.league_games }}
     steps:
@@ -83,6 +93,12 @@ jobs:
           done < <(jq -r '.[]' <<<"${scopes#games=}")
           league_json="$(printf '%s\n' "${league_games[@]}" | jq -R . | jq -sc 'map(select(. != ""))')"
           echo "league_games=$league_json" | tee -a "$GITHUB_OUTPUT"
+          # Which games play their SPRT over runners, and their one candidate
+          # (it also writes the three lines to $GITHUB_OUTPUT).
+          scripts/sprt-blocks.sh classify "${scopes#games=}" "${files[@]}" || {
+            echo "::error title=New releases::scripts/sprt-blocks.sh classify failed"
+            exit 1
+          }
           if [ "$scopes" = 'games=[]' ]; then
             echo "No new release in this pull request: nothing to test." | tee -a "$GITHUB_STEP_SUMMARY"
           else
@@ -93,17 +109,18 @@ jobs:
             } >>"$GITHUB_STEP_SUMMARY"
           fi
 
+  # The SPRT of the games with one runner, on one machine.
   sprt:
     name: "${{ matrix.game }}: SPRT"
     needs: releases
     # An empty matrix is an error: skip the job instead.
-    if: needs.releases.outputs.games != '[]'
+    if: needs.releases.outputs.serial_games != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
-        game: ${{ fromJSON(needs.releases.outputs.games) }}
+        game: ${{ fromJSON(needs.releases.outputs.serial_games) }}
     env:
       GAME: ${{ matrix.game }}
     steps:
@@ -274,6 +291,29 @@ jobs:
           && (steps.run.outcome == 'success' || steps.cache.outputs.cache-matched-key != '')
         run: exit "$(cat target/sprt-result/status)"
 
+  # The SPRT of the games with several runners (ADR 0049): their one new
+  # release, played in blocks over calibrated runners. The called workflow
+  # posts the result and fails unless the release is accepted. Its jobs need
+  # what they use, and no more: actions to list the run's artifacts, pull
+  # requests to post the comment.
+  sprt-parallel:
+    name: "${{ matrix.game }}: SPRT in blocks"
+    needs: releases
+    # An empty matrix is an error: skip the job instead.
+    if: needs.releases.outputs.parallel_games != '[]'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.releases.outputs.parallel_matrix) }}
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    uses: ./.github/workflows/sprt-parallel.yml
+    with:
+      game: ${{ matrix.game }}
+      candidate: ${{ matrix.candidate }}
+      post: true
+
   # The league of each new release (ADR 0038), after the game's SPRT accepts
   # it: the release plays its previous release, the fixed opponents and the
   # nearest bots in rating (scripts/league.sh). The new pairings are posted as
@@ -288,9 +328,15 @@ jobs:
     needs:
       - releases
       - sprt
+      - sprt-parallel
     # An empty matrix is an error: skip the job instead. A rejected SPRT
-    # needs no league, nor does a game with a nightly league.
-    if: needs.releases.outputs.league_games != '[]' && needs.sprt.result == 'success'
+    # needs no league, nor does a game with a nightly league. An SPRT job
+    # that had no game to test is skipped, which is no failure.
+    if: >-
+      ${{ !cancelled() && needs.releases.result == 'success'
+      && needs.releases.outputs.league_games != '[]'
+      && contains(fromJSON('["success", "skipped"]'), needs.sprt.result)
+      && contains(fromJSON('["success", "skipped"]'), needs.sprt-parallel.result) }}
     runs-on: ubuntu-latest
     # 800 pairs per pairing at full time (ADR 0042): about 3.5 hours for
     # Ultimate Tic-Tac-Toe, which fits 300 minutes; GitHub's limit is 360.
@@ -628,6 +674,7 @@ jobs:
     needs:
       - releases
       - sprt
+      - sprt-parallel
       - league
       - league-results
     # Never `!cancelled()`: GitHub counts a skipped required check as passed,
@@ -641,7 +688,8 @@ jobs:
       - name: Every SPRT that had to run succeeded
         env:
           NEEDS: ${{ toJSON(needs) }}
-          GAMES: ${{ needs.releases.outputs.games }}
+          GAMES: ${{ needs.releases.outputs.serial_games }}
+          PARALLEL_GAMES: ${{ needs.releases.outputs.parallel_games }}
           LEAGUE_GAMES: ${{ needs.releases.outputs.league_games }}
           RESULTS_TITLE: SPRT passed
         run: |
@@ -651,9 +699,14 @@ jobs:
             '[]') HAS_GAMES=false ;;
             *) HAS_GAMES=true ;;
           esac
+          case "$PARALLEL_GAMES" in
+            '') HAS_PARALLEL='' ;;
+            '[]') HAS_PARALLEL=false ;;
+            *) HAS_PARALLEL=true ;;
+          esac
           case "$LEAGUE_GAMES" in
             '') HAS_LEAGUE='' ;;
             '[]') HAS_LEAGUE=false ;;
             *) HAS_LEAGUE=true ;;
           esac
-          scripts/ci-scopes.sh results releases=true sprt="$HAS_GAMES" league="$HAS_LEAGUE" league-results=true
+          scripts/ci-scopes.sh results releases=true sprt="$HAS_GAMES" sprt-parallel="$HAS_PARALLEL" league="$HAS_LEAGUE" league-results=true

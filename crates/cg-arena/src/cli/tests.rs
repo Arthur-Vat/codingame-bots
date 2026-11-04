@@ -1434,3 +1434,108 @@ mod leaderboard_command {
         fs::remove_dir_all(&dir).unwrap();
     }
 }
+
+mod blocks_of_an_sprt {
+    use super::*;
+
+    fn parse(extra: &[&str]) -> Result<Command, clap::Error> {
+        Cli::try_parse_from(["arena"].into_iter().chain(extra.iter().copied()))
+            .map(|cli| cli.command)
+    }
+
+    fn directory(name: &str) -> PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("cg-arena-blocks-{}-{name}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        dir
+    }
+
+    #[test]
+    fn the_block_options_go_together() {
+        let base = ["match", "--bot", "a=x", "--bot", "b=y"];
+        let ok = |extra: &[&str]| parse(&[&base[..], extra].concat()).is_ok();
+        assert!(ok(&["--shard", "3"]));
+        assert!(ok(&[
+            "--shard",
+            "3",
+            "--block-pairs",
+            "10",
+            "--block-dir",
+            "d"
+        ]));
+        assert!(
+            !ok(&["--block-pairs", "10"]),
+            "--block-pairs needs --block-dir"
+        );
+        assert!(
+            !ok(&["--block-dir", "d"]),
+            "--block-dir needs --block-pairs"
+        );
+        assert!(!ok(&["--shard", "70000"]), "a shard is a 16-bit number");
+    }
+
+    #[test]
+    fn parses_sprt_check() {
+        let command = parse(&[
+            "sprt-check",
+            "--block",
+            "a.jsonl",
+            "--block",
+            "b.jsonl",
+            "--round-blocks",
+            "2",
+            "--candidate",
+            "v2",
+            "--baseline",
+            "v1",
+            "--max-pairs",
+            "8000",
+            "--expect-no-faults-from",
+            "v2",
+            "--max-timeout-rate",
+            "0.01",
+        ])
+        .unwrap();
+        let Command::SprtCheck(args) = command else {
+            panic!("not sprt-check")
+        };
+        assert_eq!(args.blocks.len(), 2);
+        assert_eq!((args.round_blocks, args.max_pairs), (2, 8000));
+        assert_eq!(
+            (args.elo0, args.elo1, args.alpha, args.beta),
+            (0.0, 10.0, 0.05, 0.05)
+        );
+        assert!(parse(&["sprt-check", "--candidate", "a", "--baseline", "b"]).is_err());
+    }
+
+    #[test]
+    fn a_block_is_written_when_its_games_are_whole() {
+        let dir = directory("write");
+        let mut blocks = Blocks::create(Some(&dir.join("nested")), Some(2), 4).unwrap();
+        // Block 0 has pairs 0 and 1: four games, finishing out of order.
+        for (pair, swapped) in [(1, true), (0, false), (0, true)] {
+            blocks.add(&game(pair, swapped));
+        }
+        assert!(!dir.join("nested/block-0.jsonl").exists());
+        blocks.add(&game(1, false));
+        // Block 1 is one game short.
+        blocks.add(&game(2, false));
+        blocks.finish().unwrap();
+        let games = crate::blocks::read_block(&dir.join("nested/block-0.jsonl")).unwrap();
+        let order: Vec<_> = games.iter().map(|g| (g.pair, g.swapped)).collect();
+        assert_eq!(order, [(0, false), (0, true), (1, false), (1, true)]);
+        assert!(!dir.join("nested/block-1.jsonl").exists());
+        let names: Vec<_> = fs::read_dir(dir.join("nested")).unwrap().collect();
+        assert_eq!(names.len(), 1, "no temporary file is left");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn the_pairs_must_fill_whole_blocks() {
+        let dir = directory("whole");
+        assert!(Blocks::create(Some(&dir), Some(10), 25).is_err());
+        assert!(Blocks::create(Some(&dir), Some(10), 30).is_ok());
+        assert!(Blocks::create(None, None, 25).is_ok());
+        let _ = fs::remove_dir_all(&dir);
+    }
+}
