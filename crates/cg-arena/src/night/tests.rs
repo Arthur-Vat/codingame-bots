@@ -49,6 +49,7 @@ fn settings(pool: &[&str], releases: &[&str], anchor: &str) -> Settings {
         night: "2026-11-01".to_string(),
         seed: 1,
         shards: 1,
+        max_line_pairs: 100_000,
     }
 }
 
@@ -586,4 +587,52 @@ fn the_whole_top_share_is_spent_while_the_real_target_is_not_met() {
         planned.report
     );
     assert_eq!(pairs_of(&planned, Kind::Top), 8000);
+}
+
+#[test]
+fn big_pairs_are_split_into_lines_with_seeds_of_their_own() {
+    // The same night as the test above, whose top share is 8,000 pairs.
+    let stored = [
+        even("a", "b", 300),
+        even("a", "c", 4000),
+        even("a", "d", 4000),
+        even("c", "d", 4000),
+        even("b", "c", 300),
+    ];
+    let mut s = settings(&["a", "b", "c", "d"], &[], "a");
+    s.top = 3;
+    s.nearest = 1;
+    s.budget_pairs = 10_000;
+    s.shards = 4;
+    let whole = plan(&stored, &s).unwrap();
+    s.max_line_pairs = 400;
+    let split = plan(&stored, &s).unwrap();
+    // The same pairs in all, per kind, none in a line over 400.
+    for kind in [Kind::Top, Kind::Low] {
+        assert_eq!(pairs_of(&whole, kind), pairs_of(&split, kind));
+    }
+    assert!(split.lines.iter().all(|line| line.pairs <= 400));
+    assert!(split.lines.len() > whole.lines.len());
+    // Each pair's first line keeps the whole plan's seed; no seed repeats
+    // for a pair, nor any stored one.
+    let mut seen = std::collections::HashSet::new();
+    for line in &split.lines {
+        let mut pair = [line.a.clone(), line.b.clone()];
+        pair.sort();
+        assert!(seen.insert((pair.clone(), line.seed)), "{line:?}");
+        assert_ne!(line.seed, 7, "a stored seed: {line:?}");
+    }
+    for line in &whole.lines {
+        assert!(split
+            .lines
+            .iter()
+            .any(|other| other.a == line.a && other.b == line.b && other.seed == line.seed));
+    }
+    // The shards end up within one line of each other.
+    let mut load = [0u32; 4];
+    for line in &split.lines {
+        load[line.shard] += line.pairs;
+    }
+    let (most, least) = (load.iter().max().unwrap(), load.iter().min().unwrap());
+    assert!(most - least <= 400, "{load:?}");
 }

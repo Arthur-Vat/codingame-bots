@@ -1,6 +1,6 @@
 name: League nightly
 
-# Every night at 02:00 UTC, each game with a nightly league
+# Every night, each game with a nightly league
 # (LEAGUE_NIGHTLY=true in games/<game>/evaluation.env) plays its night
 # (ADR 0049, 0050): the planner chooses the pairings, 6 runners play them
 # (LEAGUE_NIGHTLY_RUNNERS), calibrated to CodinGame's speed, and the results
@@ -9,13 +9,19 @@ name: League nightly
 # game's night is league-night.yml, called here once per game, so that each
 # game has its own runners and budget (ADR 0050, decision 3).
 #
+# The schedule says 19:17 UTC because GitHub has started this repository's
+# scheduled runs 5 to 8 hours late (2026-11-01 to 11-04: 02:00 started at
+# 08:36 to 09:40), so the night lands around 00:30 to 03:30 UTC (owner's
+# choice, 2026-11-04). A scheduled run skips a game whose night of the same
+# UTC date is already on league-results, so a night never runs twice in a day.
+#
 # By hand: `gh workflow run league-nightly.yml -f game=ice-and-fire`.
 # `publish` unchecked is a dry run: the night is played and summarised, but
 # nothing is pushed and no archive is started. A game that does not have a
 # nightly league can be run by hand only as a dry run.
 on:
   schedule:
-    - cron: "0 2 * * *"
+    - cron: "17 19 * * *"
   workflow_dispatch:
     inputs:
       game:
@@ -49,7 +55,15 @@ jobs:
         env:
           GAME_INPUT: ${{ inputs.game }}
           PUBLISH: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
+          EVENT: ${{ github.event_name }}
         run: |
+          # A scheduled night that GitHub starts late must not play a game a
+          # second time on the same UTC date.
+          today="$(date -u +%F)"
+          git fetch --quiet --depth=50 origin league-results 2>/dev/null || true
+          played_today() {
+            git log --format=%s FETCH_HEAD -n 50 2>/dev/null | grep -qx "chore($1): league night $today"
+          }
           nightly() { sed -n 's/^LEAGUE_NIGHTLY=//p' "games/$1/evaluation.env" | head -n 1; }
           list=()
           if [ -n "$GAME_INPUT" ]; then
@@ -67,6 +81,10 @@ jobs:
             for env in games/*/evaluation.env; do
               game="$(basename "$(dirname "$env")")"
               if [[ $game =~ ^[A-Za-z0-9_-]+$ && "$(nightly "$game")" == true ]]; then
+                if [ "$EVENT" = schedule ] && played_today "$game"; then
+                  echo "::notice title=League nightly::$game already played its night of $today: skipped"
+                  continue
+                fi
                 list+=("$game")
               fi
             done
