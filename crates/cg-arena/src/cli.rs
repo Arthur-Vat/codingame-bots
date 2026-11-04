@@ -931,6 +931,9 @@ fn run_leaderboard(args: &LeaderboardArgs, game: &str, binary: &str) -> Result<b
         league::rate(&names, &pairings, &args.anchor)?
     };
     let folder = match &args.releases {
+        Some(folder) if !folder.is_dir() => {
+            return Err(format!("--releases {} is not a folder", folder.display()));
+        }
         Some(folder) => folder.clone(),
         None => args
             .results
@@ -953,9 +956,14 @@ fn run_leaderboard(args: &LeaderboardArgs, game: &str, binary: &str) -> Result<b
         if fs::read(path).is_ok_and(|bytes| bytes == board.text.as_bytes()) {
             return Ok(true);
         }
+        let releases = args
+            .releases
+            .as_ref()
+            .map(|folder| format!(" --releases {}", folder.display()))
+            .unwrap_or_default();
         eprintln!(
             "error: {} is not the leaderboard of {}; regenerate it with: {binary} leaderboard \
-             --results {} --anchor {} --journal {} --out {}",
+             --results {} --anchor {} --journal {}{releases} --out {}",
             path.display(),
             args.results.display(),
             args.results.display(),

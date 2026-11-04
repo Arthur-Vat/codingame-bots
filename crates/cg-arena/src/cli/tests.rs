@@ -1378,6 +1378,18 @@ mod leaderboard_command {
             "{found}"
         );
         assert!(found.contains("| [E001](journal/E001-mcts.md) | 2026-10-07 |"));
+        // A folder that does not exist is an error, not a board without releases.
+        let missing = dir.join("nowhere");
+        let error = run(
+            &elsewhere,
+            "random",
+            &["--releases", missing.to_str().unwrap()],
+        )
+        .unwrap_err();
+        assert!(
+            error.contains("--releases") && error.contains("not a folder"),
+            "{error}"
+        );
         // The same as the leaderboard of the results file in the game's folder.
         let beside = dir.join("BESIDE.md");
         assert_eq!(
