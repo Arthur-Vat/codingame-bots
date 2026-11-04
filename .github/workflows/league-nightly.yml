@@ -62,7 +62,9 @@ jobs:
           today="$(date -u +%F)"
           git fetch --quiet --depth=50 origin league-results 2>/dev/null || true
           played_today() {
-            git log --format=%s FETCH_HEAD -n 50 2>/dev/null | grep -qx "chore($1): league night $today"
+            # grep reads all of git log's output: `grep -q` would stop at the
+            # first match and, under pipefail, git log's SIGPIPE would fail it.
+            git log --format=%s FETCH_HEAD -n 50 2>/dev/null | grep -Fx "chore($1): league night $today" >/dev/null
           }
           nightly() { sed -n 's/^LEAGUE_NIGHTLY=//p' "games/$1/evaluation.env" | head -n 1; }
           list=()
