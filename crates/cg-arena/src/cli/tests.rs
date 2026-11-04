@@ -1350,6 +1350,45 @@ mod leaderboard_command {
     }
 
     #[test]
+    fn finds_the_releases_in_the_folder_given() {
+        // A results file away from the game's folder, as the nightly league's.
+        let dir = setup("folder");
+        let elsewhere = dir.join("night");
+        fs::create_dir_all(&elsewhere).unwrap();
+        fs::copy(dir.join("league.jsonl"), elsewhere.join("league.jsonl")).unwrap();
+        fs::copy(dir.join("journal.md"), elsewhere.join("journal.md")).unwrap();
+        let out = dir.join("LEADERBOARD.md");
+        let out_arg = out.to_str().unwrap();
+        assert_eq!(run(&elsewhere, "random", &["--out", out_arg]), Ok(true));
+        let text = fs::read_to_string(&out).unwrap();
+        assert!(text.contains("| v001 | +"), "no release found: {text}");
+        let releases = dir.join("releases");
+        let releases_arg = releases.to_str().unwrap();
+        assert_eq!(
+            run(
+                &elsewhere,
+                "random",
+                &["--releases", releases_arg, "--out", out_arg]
+            ),
+            Ok(true)
+        );
+        let found = fs::read_to_string(&out).unwrap();
+        assert!(
+            found.contains("| [v001](releases/uttt-v001.rs) | +"),
+            "{found}"
+        );
+        assert!(found.contains("| [E001](journal/E001-mcts.md) | 2026-10-07 |"));
+        // The same as the leaderboard of the results file in the game's folder.
+        let beside = dir.join("BESIDE.md");
+        assert_eq!(
+            run(&dir, "random", &["--out", beside.to_str().unwrap()]),
+            Ok(true)
+        );
+        assert_eq!(fs::read_to_string(&beside).unwrap(), found);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
     fn check_fails_on_a_different_or_missing_file() {
         let dir = setup("check");
         let out = dir.join("LEADERBOARD.md");

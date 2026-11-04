@@ -538,10 +538,16 @@ pub struct MergeArgs {
 #[derive(Debug, clap::Args)]
 pub struct LeaderboardArgs {
     /// The league results file (see docs/adr/0038-incremental-league.md),
-    /// read with the checks `league --results` makes. Bots with a file
-    /// `releases/GAME-NAME.rs` next to it are releases.
+    /// read with the checks `league --results` makes.
     #[arg(long, value_name = "FILE")]
     pub results: PathBuf,
+
+    /// The folder of the game's release files: bots with a file
+    /// `GAME-NAME.rs` in it are releases. By default the folder `releases`
+    /// next to the results file. The links keep the path `releases/`, as
+    /// seen from `games/GAME/`, wherever the folder is.
+    #[arg(long, value_name = "DIR")]
+    pub releases: Option<PathBuf>,
 
     /// The bot rated 0 Elo. It must appear in the results file unless the
     /// file is empty.
@@ -924,17 +930,19 @@ fn run_leaderboard(args: &LeaderboardArgs, game: &str, binary: &str) -> Result<b
         let names = league::known_bots(&pairings, [args.anchor.as_str()]);
         league::rate(&names, &pairings, &args.anchor)?
     };
-    let folder = args.results.parent().unwrap_or(Path::new(""));
+    let folder = match &args.releases {
+        Some(folder) => folder.clone(),
+        None => args
+            .results
+            .parent()
+            .unwrap_or(Path::new(""))
+            .join("releases"),
+    };
     let releases: BTreeSet<String> = ratings
         .iter()
         .map(|rating| &rating.name)
         .filter(|name| !name.contains(['/', '\\']))
-        .filter(|name| {
-            folder
-                .join("releases")
-                .join(format!("{game}-{name}.rs"))
-                .is_file()
-        })
+        .filter(|name| folder.join(format!("{game}-{name}.rs")).is_file())
         .cloned()
         .collect();
     let board = leaderboard::render(game, &pairings, &ratings, &args.anchor, &journal, &releases)?;
