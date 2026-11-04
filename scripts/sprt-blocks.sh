@@ -59,6 +59,9 @@
 # target/sprt-parallel/player.log). Shard 0 keeps a sample of its games as
 # records in target/records.
 #
+# launch-detached LOG PIDFILE COMMAND...: starts COMMAND as shard-start starts
+# the tournament (for the tests).
+#
 # shard-finish: stops the tournament and prints the end of its log. The
 # uploads are scripts/sprt-upload/loop.cjs, run by the workflow in the step
 # after shard-start.
@@ -333,6 +336,27 @@ stop_player() {
   fi
 }
 
+# Starts "$@" in a session of its own, in the background, with its output in
+# $1 and its process id in $2. It keeps no file descriptor of the caller beyond
+# its own three: a wrapper such as `scripts/annotate.sh run` copies stderr
+# through a pipe on a higher descriptor and waits for that pipe's end, so an
+# inherited copy would keep the caller's step running until the command ends
+# (2026-11-04: the SPRT's upload loop started only after every block was played).
+launch_detached() {
+  local log="$1" pidfile="$2"
+  shift 2
+  (
+    for fd in /proc/"$BASHPID"/fd/*; do
+      fd="${fd##*/}"
+      if [[ $fd =~ ^[0-9]+$ ]] && ((fd > 2)); then
+        eval "exec $fd>&-" 2>/dev/null || true
+      fi
+    done
+    exec setsid nohup "$@" >"$log" 2>&1 </dev/null
+  ) &
+  echo "$!" >"$pidfile"
+}
+
 mode_shard_start() {
   (($# == 4)) || usage
   game="$1"
@@ -360,12 +384,11 @@ mode_shard_start() {
   local pairs=$((BLOCKS_PER_SHARD * SPRT_BLOCK_PAIRS))
   echo "Settings: $(describe_parallel). This shard plays up to $BLOCKS_PER_SHARD blocks ($pairs pairs)."
   # No --expect-no-faults: the coordinator decides on faults.
-  setsid nohup "target/release/$game-arena" match "${options[@]}" ${records[@]+"${records[@]}"} \
+  launch_detached "$work/player.log" "$work/player.pid" \
+    "target/release/$game-arena" match "${options[@]}" ${records[@]+"${records[@]}"} \
     --shard "$shard" --block-pairs "$SPRT_BLOCK_PAIRS" --block-dir "$work/blocks" --pairs "$pairs" \
-    --bot "$cand=$work/bin/$cand" --bot "$base=$work/bin/$base" \
-    >"$work/player.log" 2>&1 </dev/null &
-  echo "$!" >"$work/player.pid"
-  echo "Tournament started (process $!)."
+    --bot "$cand=$work/bin/$cand" --bot "$base=$work/bin/$base"
+  echo "Tournament started (process $(cat "$work/player.pid"))."
 }
 
 mode_shard_finish() {
@@ -603,6 +626,7 @@ case $mode in
   plan) mode_plan "$@" ;;
   smoke) mode_smoke "$@" ;;
   shard-start) mode_shard_start "$@" ;;
+  launch-detached) launch_detached "$@" ;;
   shard-finish) mode_shard_finish "$@" ;;
   coordinate) mode_coordinate "$@" ;;
   *)

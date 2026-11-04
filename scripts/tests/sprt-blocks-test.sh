@@ -302,6 +302,19 @@ echo 1 >"$cwork/smoke-status"
 run coordinate toy games/toy/releases/toy-v002.rs games/toy/releases/toy-v001.rs
 expect "smoke failed" "$(cat "$cres/status")" 1
 
+# The tournament is started detached: through `annotate.sh run`, which copies
+# stderr through a pipe on a higher descriptor and waits for it, the call must
+# return at once while the command runs on (2026-11-04: it waited until the
+# tournament ended, so the uploads came only at the end).
+started="$(date +%s)"
+"$repo_root/scripts/annotate.sh" run "launch" "$script" launch-detached "$tmp_dir/launch.log" "$tmp_dir/launch.pid" sleep 8 >/dev/null 2>&1
+took=$(($(date +%s) - started))
+expect "launch-detached returns at once through annotate.sh" "$((took < 4))" 1
+pid="$(cat "$tmp_dir/launch.pid")"
+if kill -0 "$pid" 2>/dev/null; then alive=1; else alive=0; fi
+expect "launch-detached leaves the command running" "$alive" 1
+kill -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+
 if ((failures > 0)); then
   echo "FAIL sprt-blocks: $failures of $checks checks failed" >&2
   exit 1
