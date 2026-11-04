@@ -18,14 +18,18 @@
 # own runner at its own parallelism (ADR 0048, decision 2) and plays, with the
 # arena's `match`, one long tournament of its own seed (--shard), cut into
 # blocks of SPRT_BLOCK_PAIRS seat-swapped pairs. Block n of shard k is a file
-# the workflow uploads as the artifact sprt-block-GAME-ATTEMPT-K-N as soon as
-# it is whole. The coordinator downloads the blocks, takes the complete rounds
+# K-N.jsonl. To stay within the API's limit (1,000 requests an hour for the
+# workflow's token) the shard uploads on a timer, not per block: at most every
+# UPLOAD_SECONDS (120) one artifact sprt-blocks-GAME-ATTEMPT-K-J, a folder
+# of every block finished since the last upload, and looks for the verdict at
+# the same moments. The coordinator polls every 60 seconds, downloads the new
+# artifacts, takes the complete rounds
 # (round n is block n of every shard), and runs the arena's `sprt-check` over
 # them in a fixed order; a verdict is uploaded as the artifact
 # sprt-verdict-GAME-ATTEMPT, which stops the shards. A shard plays at most
-# ceil(SPRT_MAX_PAIRS / (SPRT_RUNNERS x SPRT_BLOCK_PAIRS)) blocks. A game has
-# at most MAX_BLOCKS blocks a shard, the number of upload steps of the
-# workflow.
+# ceil(SPRT_MAX_PAIRS / (SPRT_RUNNERS x SPRT_BLOCK_PAIRS)) blocks, and has
+# MAX_UPLOADS upload steps in the workflow, one every UPLOAD_SECONDS over its
+# job's 340 minutes.
 #
 # classify: for the games of the JSON array GAMES_JSON and the added release
 # FILEs of the pull request, prints (and appends to $GITHUB_OUTPUT) three lines:
@@ -55,14 +59,16 @@
 # target/sprt-parallel/player.log). Shard 0 keeps a sample of its games as
 # records in target/records.
 #
-# shard-wait: waits for the next block of the shard (a counter in the work
-# folder says which), and appends to $GITHUB_ENV: SPRT_UPLOAD=true with
-# SPRT_BLOCK (the artifact's name) and SPRT_BLOCK_FILE for the upload step;
-# or SPRT_UPLOAD=false and SPRT_DONE=true when the shard is over: the verdict
-# artifact exists, or the tournament ended. It stops the tournament then. A
-# tournament that died before its last block is an error (status 1).
+# shard-wait: waits until UPLOAD_SECONDS have passed since the shard's last
+# upload (or its start), looks for the verdict artifact, gathers the blocks
+# finished since, and appends to $GITHUB_ENV SPRT_UPLOAD=true with SPRT_BLOCK
+# (the artifact's name) and SPRT_BLOCK_FILE (a folder) for the upload step, or
+# SPRT_UPLOAD=false when there is nothing new. SPRT_DONE=true means the shard
+# is over: the verdict artifact exists (the tournament is stopped, nothing is
+# uploaded), or all its blocks are gathered (the last upload follows).
 #
-# shard-finish: stops the tournament and prints the end of its log.
+# shard-finish: stops the tournament, prints the end of its log, and fails
+# (status 1) if the tournament died before its last block.
 #
 # coordinate: polls the run's artifacts, adds up the complete rounds with the
 # arena's `sprt-check`, and writes the result to target/sprt-result:
@@ -72,16 +78,17 @@
 #
 # Environment: for shard-wait and coordinate, GH_TOKEN, REPO (owner/name),
 # RUN_ID and RUN_ATTEMPT; SPRT_WORK (target/sprt-parallel), SPRT_RESULT
-# (target/sprt-result), POLL_SECONDS (30, the coordinator's polling),
-# VERDICT_POLL_SECONDS (120, the shards'), RECORDS_SAMPLE (10).
+# (target/sprt-result), POLL_SECONDS (60, the coordinator's polling),
+# UPLOAD_SECONDS (120, the shards'), RECORDS_SAMPLE (10).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 # shellcheck source=scripts/lib/evaluation.sh
 source scripts/lib/evaluation.sh
 
-# The upload steps of the workflow's shard job: blocks a shard can upload.
-readonly MAX_BLOCKS=100
+# The upload steps of the workflow's shard job: one every UPLOAD_SECONDS (2
+# minutes) over the job's 340 minutes.
+readonly MAX_UPLOADS=170
 
 work="${SPRT_WORK:-target/sprt-parallel}"
 result_dir="${SPRT_RESULT:-target/sprt-result}"
@@ -130,9 +137,6 @@ parallel_settings() {
     die "$1 plays its SPRT over $SPRT_RUNNERS runners, which differ in speed: it needs TIME_SCALE=auto and TIME_TOLERANCE_MS=auto (calibrated, ADR 0048, ADR 0049 decision 8)"
   fi
   BLOCKS_PER_SHARD=$(((SPRT_MAX_PAIRS + SPRT_RUNNERS * SPRT_BLOCK_PAIRS - 1) / (SPRT_RUNNERS * SPRT_BLOCK_PAIRS)))
-  if ((BLOCKS_PER_SHARD > MAX_BLOCKS)); then
-    die "the cap of $SPRT_MAX_PAIRS pairs in blocks of $SPRT_BLOCK_PAIRS over $SPRT_RUNNERS runners is $BLOCKS_PER_SHARD blocks a runner, but the workflow uploads at most $MAX_BLOCKS: raise SPRT_BLOCK_PAIRS"
-  fi
 }
 
 # ---- classify ----------------------------------------------------------
@@ -359,13 +363,15 @@ mode_shard_start() {
   } >"$work/calibration-$shard.txt"
   echo "$game: shard $shard of $SPRT_RUNNERS. $(calibration_line "this runner")"
   echo 0 >"$work/next"
-  : >"$work/last-poll"
+  echo 0 >"$work/uploads"
+  date +%s >"$work/last-upload"
+  rm -f "$work/died" "$work/finished"
   local -a records=()
   if ((shard == 0)); then
     records=(--records "target/records/$cand-sprt" --records-sample "${RECORDS_SAMPLE:-10}")
   fi
   local pairs=$((BLOCKS_PER_SHARD * SPRT_BLOCK_PAIRS))
-  echo "Settings: $(describe_parallel). This shard plays up to $BLOCKS_PER_SHARD blocks ($pairs pairs)."
+  echo "Settings: $(describe_parallel). This shard plays up to $BLOCKS_PER_SHARD blocks ($pairs pairs), uploaded in at most $MAX_UPLOADS batches."
   # No --expect-no-faults: the coordinator decides on faults.
   setsid nohup "target/release/$game-arena" match "${options[@]}" ${records[@]+"${records[@]}"} \
     --shard "$shard" --block-pairs "$SPRT_BLOCK_PAIRS" --block-dir "$work/blocks" --pairs "$pairs" \
@@ -394,42 +400,63 @@ mode_shard_wait() {
   [[ $shard =~ ^[0-9]+$ ]] || die "SHARD must be a number"
   : "${REPO:?set REPO to owner/name}" "${RUN_ID:?set RUN_ID}" "${RUN_ATTEMPT:?set RUN_ATTEMPT}"
   parallel_settings "$game"
-  local n file pid interval="${VERDICT_POLL_SECONDS:-120}" last now
-  n="$(cat "$work/next")"
-  echo $((n + 1)) >"$work/next"
-  file="$work/blocks/block-$n.jsonl"
+  # An upload step left over after the shard is over does nothing.
+  if [[ -f $work/finished ]]; then
+    set_env SPRT_UPLOAD=false SPRT_DONE=true
+    return 0
+  fi
+  local interval="${UPLOAD_SECONDS:-120}" last now pid next uploads batch gathered=0
+  last="$(cat "$work/last-upload")"
   pid="$(cat "$work/player.pid")"
+  # Sleeps until the interval since the last upload is up, unless the
+  # tournament has ended.
   while true; do
-    if [[ -f $file ]]; then
-      cp "$file" "$work/upload/sprt-block-$game-$RUN_ATTEMPT-$shard-$n.jsonl"
-      set_env SPRT_UPLOAD=true "SPRT_BLOCK=sprt-block-$game-$RUN_ATTEMPT-$shard-$n" \
-        "SPRT_BLOCK_FILE=$work/upload/sprt-block-$game-$RUN_ATTEMPT-$shard-$n.jsonl"
-      return 0
-    fi
-    if ((n >= BLOCKS_PER_SHARD)); then
-      echo "Shard $shard played its $BLOCKS_PER_SHARD blocks."
-      set_env SPRT_UPLOAD=false SPRT_DONE=true
-      return 0
-    fi
-    if ! kill -0 "$pid" 2>/dev/null; then
-      echo "error: the tournament of shard $shard ended before block $n; the end of its log:" >&2
-      tail -n 20 "$work/player.log" >&2 || true
-      set_env SPRT_UPLOAD=false SPRT_DONE=true
-      return 1
-    fi
     now="$(date +%s)"
-    last="$(cat "$work/last-poll" 2>/dev/null || true)"
-    if [[ -z $last ]] || ((now - last >= interval)); then
-      echo "$now" >"$work/last-poll"
-      if verdict_exists "$game"; then
-        echo "The verdict is in: shard $shard stops."
-        stop_player
-        set_env SPRT_UPLOAD=false SPRT_DONE=true
-        return 0
-      fi
+    if ((now - last >= interval)) || ! kill -0 "$pid" 2>/dev/null; then
+      break
     fi
     sleep "${WAIT_SECONDS:-3}"
   done
+  date +%s >"$work/last-upload"
+  if verdict_exists "$game"; then
+    echo "The verdict is in: shard $shard stops."
+    stop_player
+    touch "$work/finished"
+    set_env SPRT_UPLOAD=false SPRT_DONE=true
+    return 0
+  fi
+  next="$(cat "$work/next")"
+  uploads="$(cat "$work/uploads")"
+  batch="$work/upload/batch-$uploads"
+  rm -rf "$batch"
+  mkdir -p "$batch"
+  while ((next < BLOCKS_PER_SHARD)) && [[ -f $work/blocks/block-$next.jsonl ]]; do
+    cp "$work/blocks/block-$next.jsonl" "$batch/$shard-$next.jsonl"
+    next=$((next + 1))
+    gathered=$((gathered + 1))
+  done
+  echo "$next" >"$work/next"
+  local over=false
+  if ((next >= BLOCKS_PER_SHARD)); then
+    echo "Shard $shard played its $BLOCKS_PER_SHARD blocks."
+    over=true
+  elif ! kill -0 "$pid" 2>/dev/null; then
+    echo "error: the tournament of shard $shard ended before block $next; the end of its log:" >&2
+    tail -n 20 "$work/player.log" >&2 || true
+    touch "$work/died"
+    over=true
+  fi
+  if [[ $over == true ]]; then
+    touch "$work/finished"
+    set_env SPRT_DONE=true
+  fi
+  if ((gathered > 0)); then
+    echo $((uploads + 1)) >"$work/uploads"
+    echo "Shard $shard: $gathered new blocks, $next in all."
+    set_env SPRT_UPLOAD=true "SPRT_BLOCK=sprt-blocks-$game-$RUN_ATTEMPT-$shard-$uploads" "SPRT_BLOCK_FILE=$batch"
+  else
+    set_env SPRT_UPLOAD=false
+  fi
 }
 
 mode_shard_finish() {
@@ -438,16 +465,21 @@ mode_shard_finish() {
     echo "---- the end of the tournament's log ----"
     tail -n 5 "$work/player.log"
   fi
+  if [[ -f $work/died ]]; then
+    echo "error: the tournament died before its last block" >&2
+    return 1
+  fi
 }
 
 # ---- coordinate --------------------------------------------------------
 
-# Downloads the block artifacts not seen yet into $work/coordinator/blocks,
-# as SHARD-N.jsonl. $1 is `full` to list every page, else the newest page
-# and the next ones only while they hold nothing known.
+# Downloads the batch artifacts (sprt-blocks-...) not seen yet and puts their
+# blocks into $work/coordinator/blocks, as SHARD-N.jsonl. $1 is `full` to list
+# every page, else the newest page and the next ones only while they hold
+# nothing known.
 fetch_blocks() {
-  local mode="$1" page=1 place prefix="sprt-block-$game-$RUN_ATTEMPT-" listing id name rest unseen
-  local dir="$work/coordinator/blocks"
+  local mode="$1" page=1 prefix="sprt-blocks-$game-$RUN_ATTEMPT-" listing id name rest unseen file
+  local dir="$work/coordinator/blocks" tmp="$work/coordinator/unzipped"
   mkdir -p "$dir"
   while true; do
     listing="$(gh_get "repos/$REPO/actions/runs/$RUN_ID/artifacts?per_page=100&page=$page" \
@@ -460,15 +492,20 @@ fetch_blocks() {
       [[ -n $id ]] || continue
       [[ $name == "$prefix"* ]] || continue
       rest="${name#"$prefix"}"
-      [[ $rest =~ ^([0-9]+)-([0-9]+)$ ]] || continue
-      place="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
+      [[ $rest =~ ^[0-9]+-[0-9]+$ ]] || continue
       if [[ -n ${seen[$id]:-} ]]; then
         continue
       fi
       unseen=$((unseen + 1))
+      rm -rf "$tmp"
+      mkdir -p "$tmp"
       if gh_get "repos/$REPO/actions/artifacts/$id/zip" >"$work/coordinator/artifact.zip" &&
-        unzip -p "$work/coordinator/artifact.zip" >"$dir/$place.jsonl.part"; then
-        mv "$dir/$place.jsonl.part" "$dir/$place.jsonl"
+        unzip -q -j -d "$tmp" "$work/coordinator/artifact.zip"; then
+        # Only files named SHARD-N.jsonl count; a partial copy never shows.
+        for file in "$tmp"/*.jsonl; do
+          [[ $(basename "$file") =~ ^[0-9]+-[0-9]+\.jsonl$ ]] || continue
+          mv "$file" "$dir/$(basename "$file")"
+        done
         seen[$id]=1
       else
         echo "::warning title=SPRT::artifact $name could not be downloaded; trying again at the next poll"
@@ -585,7 +622,7 @@ mode_coordinate() {
   fi
   declare -gA seen=()
   local poll=0 checked=0 rounds
-  local poll_seconds="${POLL_SECONDS:-30}"
+  local poll_seconds="${POLL_SECONDS:-60}"
   echo "Waiting for the blocks of $SPRT_RUNNERS shards: up to $BLOCKS_PER_SHARD rounds of $((SPRT_RUNNERS * SPRT_BLOCK_PAIRS)) pairs."
   while true; do
     poll=$((poll + 1))

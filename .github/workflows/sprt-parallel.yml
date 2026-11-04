@@ -14,21 +14,30 @@ name: SPRT in blocks
 #              random bot, calibrated on its own runner.
 # shard 0..N:  each runner builds, calibrates itself (ADR 0048) and plays a
 #              tournament of its own seed, cut into blocks of SPRT_BLOCK_PAIRS
-#              pairs. Each whole block is uploaded as an artifact of this run,
-#              which the coordinator downloads while the run goes on
-#              (upload-artifact v4: an artifact is listable and downloadable
-#              as soon as its upload ends). An action cannot run in a loop,
-#              so a shard has MAX_BLOCKS (100) pairs of steps, a wait and an
-#              upload, repeated with a YAML anchor; the script counts the
-#              blocks and skips the steps left over. A shard stops when the
-#              artifact sprt-verdict-<game>-<attempt> exists.
-# coordinator: every 30 seconds it downloads the new blocks, takes the
+#              pairs. Every 2 minutes at most it uploads, as one artifact of
+#              this run, the blocks finished since its last upload, and looks
+#              for the artifact sprt-verdict-<game>-<attempt>, at which it
+#              stops. The coordinator downloads the batches while the run goes
+#              on (upload-artifact v4: an artifact is listable and
+#              downloadable as soon as its upload ends). An action cannot run
+#              in a loop, so a shard has 170 pairs of steps, a wait and an
+#              upload, repeated with a YAML anchor: one every 2 minutes over
+#              the job's 340 minutes.
+# coordinator: every 60 seconds it downloads the new batches, takes the
 #              complete rounds (round n is block n of every shard) and runs
 #              the arena's sprt-check over them; on a verdict (accepted,
 #              rejected, a candidate fault, the cap), or when every shard has
 #              ended, it uploads sprt-verdict-<game>-<attempt>, keeps the
 #              result as sprt.yml does, posts it when `post` is true, and
 #              fails the job unless the candidate is accepted.
+# Request budget. The token allows about 1,000 REST requests an hour for the
+# repository, and 8 shards of blocks of 10 pairs make about 36 blocks a minute,
+# so blocks are transferred in batches, not one by one. In an hour of a running
+# test: 8 x 30 uploads, 8 x 30 verdict checks, 60 listings and 8 x 30
+# downloads, about 800 requests, counting the uploads although the artifact
+# service they use is not the REST API (the real count is about 560, with 15
+# listings of the jobs). Most tests end in a fraction of an hour.
+#
 # Artifacts of a run are named after the game and the run's attempt, so that
 # two games of one run, or a re-run, do not collide.
 on:
@@ -207,23 +216,164 @@ jobs:
           path: target/sprt-parallel/calibration-${{ matrix.shard }}.txt
           if-no-files-found: error
           retention-days: 1
-      # One wait and one upload for each block; the pair below is repeated
-      # (scripts/sprt-blocks.sh MAX_BLOCKS times in all).
+      # One wait and one upload for each batch of blocks: the pair below is
+      # repeated (MAX_UPLOADS in scripts/sprt-blocks.sh, 170, one every 2
+      # minutes over the job's 340 minutes). The wait always runs: once the
+      # shard is over it only clears SPRT_UPLOAD.
       - &wait
-        name: Wait for the next block
-        if: env.SPRT_DONE != 'true'
-        # Far above a block's time (half a minute): a tournament that hangs.
-        timeout-minutes: 20
+        name: Wait for the next batch of blocks
+        # A batch is due every 2 minutes; far above that is a hung tournament.
+        timeout-minutes: 10
         run: scripts/sprt-blocks.sh shard-wait "$GAME" "$SHARD"
       - &upload
-        name: Upload the block
-        if: env.SPRT_DONE != 'true' && env.SPRT_UPLOAD == 'true'
+        name: Upload the batch
+        if: env.SPRT_UPLOAD == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: ${{ env.SPRT_BLOCK }}
           path: ${{ env.SPRT_BLOCK_FILE }}
           if-no-files-found: error
           retention-days: 1
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
+      - *wait
+      - *upload
       - *wait
       - *upload
       - *wait

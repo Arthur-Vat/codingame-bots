@@ -103,47 +103,13 @@ run plan toy 'games/toy/releases/../../../etc/passwd'
 expect "bad candidate" "$status" 2
 run plan toy games/toy/releases/toy-v002.rs games/toy/releases/toy-v002.rs
 expect "same bot" "$status" 2
-SPRT_BLOCK_PAIRS=1 run plan toy games/toy/releases/toy-v002.rs
-expect "too many blocks" "$status" 2
-contains "too many blocks" "$output" "raise SPRT_BLOCK_PAIRS"
 
 # ---- the workflow ----
 uploads="$(grep -c '^      - \*upload$' "$repo_root/.github/workflows/sprt-parallel.yml")"
-max="$(sed -n 's/^readonly MAX_BLOCKS=//p' "$repo_root/scripts/sprt-blocks.sh")"
+max="$(sed -n 's/^readonly MAX_UPLOADS=//p' "$repo_root/scripts/sprt-blocks.sh")"
 expect "upload steps (anchor included)" "$((uploads + 1))" "$max"
 
-# ---- the shard waits for its blocks ----
-work="$tmp_dir/work"
-mkdir -p "$work/blocks" "$work/upload"
-echo 0 >"$work/next"
-echo 'old' >"$work/blocks/block-0.jsonl"
-sleep 300 &
-sleeper=$!
-echo "$sleeper" >"$work/player.pid"
-envfile="$tmp_dir/env"
-: >"$envfile"
-export SPRT_WORK="$work" GITHUB_ENV="$envfile" REPO=o/r RUN_ID=5 RUN_ATTEMPT=1 WAIT_SECONDS=0
-run shard-wait toy 1
-expect "wait status" "$status" 0
-contains "wait uploads" "$(cat "$envfile")" "SPRT_BLOCK=sprt-block-toy-1-1-0"
-expect "block copied" "$(cat "$work/upload/sprt-block-toy-1-1-0.jsonl")" old
-# Block 1 is not there and the tournament is gone: an error.
-kill "$sleeper"
-wait "$sleeper" 2>/dev/null || true
-: >"$work/player.log"
-run shard-wait toy 1
-expect "dead tournament" "$status" 1
-# After its last block the shard is done.
-echo 20 >"$work/next"
-run shard-wait toy 1
-expect "last block" "$status" 0
-contains "done" "$(cat "$envfile")" "SPRT_DONE=true"
-# A verdict stops it, and the tournament with it.
-sleep 300 &
-sleeper=$!
-echo "$sleeper" >"$work/player.pid"
-echo 3 >"$work/next"
-echo 0 >"$work/last-poll"
+# ---- the shard uploads its blocks in batches ----
 cat >"$repo/bin/gh" <<'GH'
 #!/usr/bin/env bash
 # Stand-in gh api: serves the folder $FAKE.
@@ -162,16 +128,67 @@ GH
 chmod +x "$repo/bin/gh"
 export PATH="$repo/bin:$PATH" FAKE="$tmp_dir/fake"
 mkdir -p "$FAKE/zips"
+echo 0 >"$FAKE/verdict-count"
+work="$tmp_dir/work"
+mkdir -p "$work/blocks" "$work/upload"
+echo 0 >"$work/next"
+echo 0 >"$work/uploads"
+echo 0 >"$work/last-upload"
+echo old0 >"$work/blocks/block-0.jsonl"
+echo old1 >"$work/blocks/block-1.jsonl"
+sleep 300 &
+sleeper=$!
+echo "$sleeper" >"$work/player.pid"
+envfile="$tmp_dir/env"
+: >"$envfile"
+last_env() { grep "^$1=" "$envfile" | tail -n 1; }
+export SPRT_WORK="$work" GITHUB_ENV="$envfile" REPO=o/r RUN_ID=5 RUN_ATTEMPT=1 WAIT_SECONDS=0 UPLOAD_SECONDS=0
+run shard-wait toy 1
+expect "wait status" "$status" 0
+expect "batch name" "$(last_env SPRT_BLOCK)" "SPRT_BLOCK=sprt-blocks-toy-1-1-0"
+expect "batch folder" "$(last_env SPRT_BLOCK_FILE)" "SPRT_BLOCK_FILE=$work/upload/batch-0"
+expect "batch holds both blocks" "$(find "$work/upload/batch-0" -type f -printf '%f ' | tr ' ' '\n' | sort | paste -sd' ' -)" "1-0.jsonl 1-1.jsonl"
+expect "block copied" "$(cat "$work/upload/batch-0/1-1.jsonl")" old1
+# Nothing new: no upload, not over.
+run shard-wait toy 1
+expect "nothing new" "$(last_env SPRT_UPLOAD)" "SPRT_UPLOAD=false"
+checks=$((checks + 1))
+if grep -q SPRT_DONE "$envfile"; then fail "the shard is not over"; fi
+# A block more: the next batch holds only it.
+echo old2 >"$work/blocks/block-2.jsonl"
+run shard-wait toy 1
+expect "second batch" "$(find "$work/upload/batch-1" -type f -printf '%f')" "1-2.jsonl"
+# Before the interval is up the step waits (a long interval, a dead tournament ends it).
+kill "$sleeper"
+wait "$sleeper" 2>/dev/null || true
+: >"$work/player.log"
+run shard-wait toy 1
+expect "dead tournament still exits 0" "$status" 0
+contains "dead tournament" "$(cat "$envfile")" "SPRT_DONE=true"
+run shard-finish
+expect "finish fails after a death" "$status" 1
+# The last blocks end the shard; later steps do nothing.
+rm -f "$work/died" "$work/finished"
+for n in $(seq 3 19); do echo "b$n" >"$work/blocks/block-$n.jsonl"; done
+sleep 300 &
+sleeper=$!
+echo "$sleeper" >"$work/player.pid"
+run shard-wait toy 1
+contains "all blocks" "$output" "played its 20 blocks"
+expect "last batch" "$(find "$work/upload/batch-2" -type f | wc -l | tr -d ' ')" 17
+run shard-wait toy 1
+expect "after the end" "$(last_env SPRT_UPLOAD)" "SPRT_UPLOAD=false"
+# A verdict stops it, and the tournament with it.
+rm -f "$work/finished"
 echo 1 >"$FAKE/verdict-count"
 run shard-wait toy 1
-expect "verdict status" "$status" 0
-contains "verdict" "$(cat "$envfile")" "SPRT_DONE=true"
+contains "verdict" "$output" "The verdict is in"
 checks=$((checks + 1))
 if kill -0 "$sleeper" 2>/dev/null; then
   fail "the tournament still runs after the verdict"
   kill "$sleeper"
 fi
-unset SPRT_WORK
+unset SPRT_WORK UPLOAD_SECONDS
 
 # ---- the coordinator ----
 cwork="$tmp_dir/cwork"
@@ -193,24 +210,22 @@ echo "Verdict: NO VERDICT YET"
 exit 4
 ARENA
 chmod +x "$repo/target/release/toy-arena"
-# Artifacts: calibrations, and blocks of rounds 0 and 1 (round 2 is partial).
+# Artifacts: calibrations, and batches with the blocks of rounds 0 and 1
+# (round 2 is partial: only shard 0's block).
 python3 -I - "$FAKE" <<'PY'
 import sys, zipfile
 fake = sys.argv[1]
 rows = []
-def add(id, name, content):
+def add(id, name, files):
     rows.append(f"{id}\t{name}")
     with zipfile.ZipFile(f"{fake}/zips/{id}.zip", "w") as z:
-        z.writestr(name + ".txt", content)
-n = 1000
-for rnd in (2, 1, 0):
-    for shard in (1, 0):
-        if rnd == 2 and shard == 1:
-            continue
-        n += 1
-        add(n, f"sprt-block-toy-1-{shard}-{rnd}", f'{{"block":{rnd},"shard":{shard}}}\n')
-add(1, "sprt-block-toy-2-0-0", "stale\n")
-add(2, "game-records-toy", "x\n")
+        for f in files:
+            z.writestr(f, "{}\n")
+add(1004, "sprt-blocks-toy-1-0-1", ["0-2.jsonl"])
+add(1003, "sprt-blocks-toy-1-1-0", ["1-0.jsonl", "1-1.jsonl", "../evil.txt"])
+add(1002, "sprt-blocks-toy-1-0-0", ["0-0.jsonl", "0-1.jsonl"])
+add(1, "sprt-blocks-toy-2-0-0", ["0-0.jsonl"])
+add(2, "game-records-toy", ["x.json"])
 open(f"{fake}/artifacts.tsv", "w").write("\n".join(rows) + "\n")
 for shard in (0, 1):
     with zipfile.ZipFile(f"{fake}/zips/{100 + shard}.zip", "w") as z:
@@ -232,7 +247,7 @@ fi
 expect "origin" "$(cat "$cres/origin")" "5-1"
 # Shards that ended with no verdict: an error, after one more look.
 rm -rf "$cwork/coordinator" "$cres"
-grep -v -e 'sprt-block-toy-1-1-1' "$FAKE/artifacts.tsv" >"$FAKE/a.tsv"
+grep -v -e 'sprt-blocks-toy-1-1-0' "$FAKE/artifacts.tsv" >"$FAKE/a.tsv"
 mv "$FAKE/a.tsv" "$FAKE/artifacts.tsv"
 printf 'ice / Shard 0 (toy)\tcompleted\nice / Shard 1 (toy)\tcompleted\n' >"$FAKE/jobs.tsv"
 run coordinate toy games/toy/releases/toy-v002.rs games/toy/releases/toy-v001.rs
