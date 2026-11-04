@@ -145,7 +145,8 @@ jobs:
           anchor="$(sed -n 's/^LEAGUE_ANCHOR=//p' "games/$GAME/evaluation.env")"
           cargo run --quiet --release --locked -p "$GAME-arena" -- leaderboard \
             --results target/replay/league.jsonl --anchor "$anchor" \
-            --journal "games/$GAME/journal/README.md" --out target/replay/LEADERBOARD.md
+            --journal "games/$GAME/journal/README.md" --releases "games/$GAME/releases" \
+            --out target/replay/LEADERBOARD.md
           echo "---- replayed league.jsonl ----"
           cat target/replay/league.jsonl
           echo "---- end ----"
