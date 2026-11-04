@@ -11,7 +11,7 @@
 
 A Code of Ice and Fire's first four nights (2026-11-01 to 2026-11-04, about 30,000 pairs each, branch `league-results`) barely moved the top intervals: `v014`'s went from ±11.4 to ±11.1 on the last night. The planner had estimated ±4.2 for it after that night. It treated each bot's precision as its own number, so it counted a game between two top bots as if it made both ratings more certain against `v001`. The top bots are hundreds of Elo above `v001`, reached through a few links of the chain of releases. They share the uncertainty of those links, and a game between two of them does not reduce it. A projection from the whole inverse of the Fisher information, the matrix whose diagonal gives the leaderboard's own intervals, predicted the real margins of that night within 0.1 Elo.
 
-On a copy of the results before the last night, a planner that chooses each block from the whole matrix, among any pair of rated bots, projects every top-10 interval at ±8.3 Elo or less after one night; among top neighbours only, ±11.0. The owner chose in the conversation on 2026-11-04, in a form: "Full matrix, any pair (Recommended)".
+On a copy of the results before the last night, a planner that chooses each block from the whole matrix, among any pair of rated bots, projects every top-10 interval at ±8.2 Elo or less after one night, at the nightly settings of `evaluation.env`; among top neighbours only, ±11.0. The owner chose in the conversation on 2026-11-04, in a form: "Full matrix, any pair (Recommended)".
 
 ## Decision
 
@@ -24,4 +24,4 @@ On a copy of the results before the last night, a planner that chooses each bloc
 - Most of a night's precision share can go to pairs that are not near the top, such as `v003` against `v001`. Those games are not about the top bots' order: they make every top rating more certain against the anchor.
 - A night's report says how far the night should move the top intervals, so a target that one night cannot reach shows in the plan.
 - Games between bots far apart in rating teach little each, and the planner weighs that: it chooses them only where nothing else shrinks the top intervals more.
-- The planner's choice costs more arithmetic, a few seconds a night at most: one row of the covariance for each candidate pair, and one update of the matrix for each block.
+- The planner's choice costs more arithmetic, well under a second a night: one row of the covariance for each candidate pair, and one update of the matrix for each block.
