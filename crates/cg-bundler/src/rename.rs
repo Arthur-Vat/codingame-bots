@@ -29,10 +29,12 @@
 //!   `format!("{score:>5} at {}", turn)` becomes `format!("{:>5} at {}",a,
 //!   turn)`. Each new argument goes where the `{}` before it leave it, so
 //!   every `{}` reads the same value, and the macro's own arguments keep
-//!   their order. Only a plain string literal (no raw string) whose
-//!   placeholders are `{}` or `{name}`, with a format spec of neither `$`
-//!   nor `*`, followed by one positional argument for each `{}`, is
-//!   changed, outside `macro_rules!` definitions, when the bundle does not
+//!   their order. Only a plain string literal (no raw string, no `\x` or
+//!   `\u` escape, which may stand for a brace) whose placeholders are `{}`
+//!   or `{name}`, with a format spec of neither `$` nor `*`, followed by one
+//!   positional argument for each `{}`, is changed, outside `macro_rules!`
+//!   definitions and the arguments of the bundle's macros and of those that
+//!   turn their tokens into text, when the bundle does not
 //!   define a macro of that name and no `$`, `|` or `<` in the arguments
 //!   could hide where one ends ([`captures`]). A new argument is never
 //!   longer than the name it replaces in the string (`{ab}` becomes `{}`
