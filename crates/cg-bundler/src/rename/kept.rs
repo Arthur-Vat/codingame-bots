@@ -1,9 +1,9 @@
 //! The names that the renaming keeps, everywhere or at some places (see the
 //! documentation of [`super`]).
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
-use super::{group_end, is_fixed, StdNames, OTHERS, TEXT_MACROS};
+use super::{captures, group_end, is_fixed, StdNames, OTHERS, TEXT_MACROS};
 use crate::minify::{Kind, Token};
 
 /// What the renaming leaves as it is.
@@ -43,12 +43,22 @@ pub fn kept(tokens: &[Token], std: &StdNames) -> Kept {
         .map(|at| tokens[at + 2].text.as_str())
         .collect();
     let text_macros = text_macros(tokens);
+    // The format strings whose captured names may become arguments: their
+    // other braced words are kept.
+    let calls: BTreeMap<usize, captures::Call> = captures::calls(tokens)
+        .into_iter()
+        .map(|call| (call.string, call))
+        .collect();
 
     for (at, token) in tokens.iter().enumerate() {
         let name = token.text.as_str();
         match token.kind {
             Kind::Str => {
-                for word in super::braced_words(name) {
+                let text = match calls.get(&at) {
+                    Some(call) => call.string_text(name, |_| true),
+                    None => name.to_string(),
+                };
+                for word in super::braced_words(&text) {
                     kept.names.insert(word.to_string());
                 }
             }
