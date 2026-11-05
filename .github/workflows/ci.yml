@@ -540,6 +540,10 @@ jobs:
         if: ${{ !cancelled() }}
         # jq is preinstalled on ubuntu-latest.
         run: scripts/annotate.sh run "Records test" scripts/tests/records-test.sh
+      - name: Test the screening script
+        if: ${{ !cancelled() }}
+        # jq is preinstalled on ubuntu-latest.
+        run: scripts/annotate.sh run "Screening test" scripts/tests/screen-test.sh
       - name: Lint the workflows
         if: ${{ !cancelled() }}
         # The image is pinned; it includes shellcheck, which also lints the

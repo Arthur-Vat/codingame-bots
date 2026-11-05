@@ -1,5 +1,5 @@
-//! The command line shared by every game's arena binary, with nine
-//! commands: `match`, `sprt`, `sprt-check`, `league`, `replay`,
+//! The command line shared by every game's arena binary, with ten
+//! commands: `match`, `sum`, `sprt`, `sprt-check`, `league`, `replay`,
 //! `leaderboard`, and the nightly league's `plan`, `play` and `merge`
 //! (ADR 0049).
 
@@ -37,6 +37,10 @@ pub struct Cli {
 pub enum Command {
     /// Plays two bots and summarizes the results from the first one's side.
     Match(MatchArgs),
+    /// Adds up the games of several match outputs between the same two bots
+    /// (a screening split over runners, ADR 0049) and prints their summary
+    /// as `match` does.
+    Sum(SumArgs),
     /// Plays a candidate against a baseline until a sequential probability
     /// ratio test decides whether the candidate is stronger.
     Sprt(SprtArgs),
@@ -176,6 +180,20 @@ pub struct MatchArgs {
 
     #[command(flatten)]
     pub common: CommonArgs,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct SumArgs {
+    /// Match outputs (the files `match --out` wrote), all between the same
+    /// two bots; the first bot of the first file is the first bot.
+    #[arg(value_name = "FILE", required = true)]
+    pub files: Vec<PathBuf>,
+
+    /// Exit with status 1 if a bot lost more games on time than this
+    /// fraction of all the games allows (rounded down), or any by a crash
+    /// or an invalid answer. Without it, faults are only reported.
+    #[arg(long, value_name = "R", allow_negative_numbers = true)]
+    pub max_timeout_rate: Option<f64>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -596,6 +614,7 @@ pub fn main<F: RefereeFactory>(name: &'static str, new_referee: F) -> ExitCode {
     }
     let result = match cli.command {
         Command::SprtCheck(_) => unreachable!("handled above"),
+        Command::Sum(args) => run_sum(&args),
         Command::Match(args) => run_match(args, game, &new_referee),
         Command::Sprt(args) => run_sprt(args, game, &new_referee),
         Command::League(args) => run_league(args, game, &new_referee),
@@ -651,7 +670,7 @@ fn run_match<F: RefereeFactory>(
     let records_result = records.finish();
     blocks.finish()?;
 
-    println!("{summary}");
+    print_match_summary(&summary);
     let mut passed = faults_ok(&args.common, &summary);
     if let (Some(minimum), Some(score)) = (args.min_score, summary.score()) {
         if score < minimum {
@@ -665,6 +684,66 @@ fn run_match<F: RefereeFactory>(
         passed = false;
     }
     records_result.map(|()| passed)
+}
+
+/// The summary `match` and `sum` print.
+fn print_match_summary(summary: &Summary) {
+    println!("{summary}");
+}
+
+/// The `sum` command: reads the match outputs, checks that they hold
+/// different games of the same two bots, and prints their summary. Exit
+/// status 1 only with `--max-timeout-rate` and faults beyond it.
+fn run_sum(args: &SumArgs) -> Result<bool, String> {
+    if let Some(rate) = args.max_timeout_rate {
+        if !(0.0..1.0).contains(&rate) {
+            return Err("--max-timeout-rate must be at least 0 and below 1".to_string());
+        }
+    }
+    let files = args
+        .files
+        .iter()
+        .map(|path| blocks::read_block(path).map(|games| (path, games)))
+        .collect::<Result<Vec<_>, _>>()?;
+    let summary = sum_files(&files)?;
+    print_match_summary(&summary);
+    Ok(match args.max_timeout_rate {
+        Some(rate) => report_faults(&summary, rate, |_| true),
+        None => true,
+    })
+}
+
+/// Adds up the games of several files, each made of complete pairs of the
+/// same two bots, none played twice.
+fn sum_files(files: &[(&PathBuf, Vec<GameRecord>)]) -> Result<Summary, String> {
+    let first = files
+        .iter()
+        .find_map(|(_, games)| games.first())
+        .ok_or("the files hold no game")?;
+    let seat = usize::from(first.swapped);
+    let names = [
+        first.game.seats[seat].clone(),
+        first.game.seats[1 - seat].clone(),
+    ];
+    let mut total = Summary::new(names.clone());
+    let mut seen = BTreeSet::new();
+    for (path, games) in files {
+        for game in games {
+            if !seen.insert((game.game.seed, game.swapped)) {
+                return Err(format!(
+                    "{}: the game of seed {} with {} in seat 0 appears twice (shards played without --shard?)",
+                    path.display(),
+                    game.game.seed,
+                    game.game.seats[0]
+                ));
+            }
+        }
+        let mut part = Summary::new(names.clone());
+        blocks::add_block(&mut part, games, &names)
+            .map_err(|err| format!("{}: {err}", path.display()))?;
+        total.merge(&part);
+    }
+    Ok(total)
 }
 
 fn run_sprt<F: RefereeFactory>(
