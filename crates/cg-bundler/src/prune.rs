@@ -2,14 +2,14 @@
 //! the minifier's first stage.
 //!
 //! The bundle is compiled with rustc 1.90.0, CodinGame's version, with the
-//! lints `dead_code` and `unused_imports` forced on, so that no `allow` in
-//! the code hides anything. Every item they report
+//! lints `dead_code`, `unused_imports` and `unreachable_patterns` forced on,
+//! so that no `allow` in the code hides anything. Every item they report
 //! is removed, whole: its attributes and doc comments with it, and an
 //! inherent `impl` or a `mod` that has nothing left. The text is compiled
 //! again, and the new reports are removed in turn, since removing items
 //! makes others unused.
 //!
-//! Some removals do not compile: a struct that a trait impl still names, a
+//! Some removals do not compile: a trait method that an impl still defines, a
 //! method that another unused method, itself kept, still calls. When a
 //! round fails, the errors point at the names that are missing (in their
 //! spans and their notes); the items with those names are left out of the
@@ -31,12 +31,17 @@
 //!
 //! What may go: `fn`, `const`, `static`, `struct`, `enum`, `union`, `type`
 //! and `trait` items, wherever they are (methods and associated items
-//! included), empty inherent `impl`s and `mod`s, and the names of `use`
-//! declarations. What stays whatever rustc reports: enum variants (removing
-//! one renumbers the next, which changes an `as` cast without an error),
-//! struct fields, trait impls, `main`, and macros. An item is found from
-//! rustc's span of its name, read in the tokens of [`crate::minify`] to its
-//! extent; if the extent is not clear, the item stays.
+//! included), empty inherent `impl`s and `mod`s, the names of `use`
+//! declarations, enum variants that are never constructed, and `match` arms
+//! that rustc reports unreachable (lint `unreachable_patterns`). A type or a
+//! trait goes with its `impl`s, trait impls included, and with the names of
+//! `use` declarations that import it; a variant goes with the alternatives
+//! of the patterns that name it, and the variants after it keep their
+//! numbers (see `items/shapes.rs` for when each is offered). What stays
+//! whatever rustc reports: struct fields, a trait impl whose type and trait
+//! both stay, `main`, and macros. An item is found from rustc's span of its
+//! name, read in the tokens of [`crate::minify`] to its extent; if the
+//! extent is not clear, the item stays.
 //!
 //! The compiler is found by [`Rustc::find`]. There is no fallback to another
 //! version, since the output must be reproducible.
@@ -193,6 +198,7 @@ impl<'a> Pruner<'a> {
                 };
                 match diagnostic.lint.as_str() {
                     "dead_code" => found.extend(self.source.item_at(span)),
+                    "unreachable_patterns" => found.extend(self.source.arm_at(span)),
                     _ => found.extend(self.source.leaves_at(span)),
                 }
             }

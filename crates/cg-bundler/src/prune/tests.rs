@@ -86,7 +86,8 @@ fn the_extent_of_each_kind_of_item_is_found() {
 
 #[test]
 fn what_is_not_an_item_with_a_clear_extent_is_not_offered() {
-    let text = "enum E { A, B }\nstruct S { field: u8 }\nfn main() { let x = 1; }\n";
+    // An enum with a `repr` does not offer its variants.
+    let text = "#[repr(u8)]\nenum E { A, B }\nstruct S { field: u8 }\nfn main() { let x = 1; }\n";
     let source = Source::new(text).unwrap();
     for name in ["A", "B", "field", "x", "main"] {
         let start = word(text, name);
@@ -262,20 +263,14 @@ fn an_unformatted_bundle_is_pruned_too() {
 }
 
 #[test]
-fn enum_variants_and_struct_fields_stay() {
-    let source = r#"#[derive(Clone, Copy)]
-enum Kind {
-    A,
-    B,
-    C,
-}
-struct Pair {
+fn struct_fields_stay() {
+    let source = r#"struct Pair {
     read: u8,
     unread: u8,
 }
 fn main() {
     let pair = Pair { read: 1, unread: 2 };
-    println!("{} {}", Kind::C as u8, pair.read);
+    println!("{}", pair.read);
 }
 "#;
     let (out, report) = pruned(source);
@@ -284,15 +279,121 @@ fn main() {
 }
 
 #[test]
+fn never_built_variants_go_and_the_others_keep_their_numbers() {
+    let source = r#"#[derive(Clone, Copy, Debug, PartialEq)]
+enum Kind {
+    A,
+    B,
+    #[allow(unused)]
+    C,
+    D,
+    E,
+}
+fn main() {
+    let kinds = [Kind::A, Kind::C, Kind::E];
+    for kind in kinds {
+        let name = match kind {
+            Kind::A => "a",
+            Kind::B | Kind::C => "b or c",
+            Kind::D => {
+                "d"
+            }
+            Kind::E => "e",
+        };
+        println!("{} {} {:?}", kind as u8, name, matches!(kind, Kind::D | Kind::E));
+    }
+}
+"#;
+    let (out, report) = pruned(source);
+    let squashed = squashed(&out);
+    assert!(
+        squashed.contains("enumKind{A,#[allow(unused)]C=2,E=4,}"),
+        "{out}"
+    );
+    assert!(
+        squashed.contains("Kind::C=>\"borc\",") && !squashed.contains("Kind::D=>"),
+        "{out}"
+    );
+    assert!(squashed.contains("matches!(kind,Kind::E)"), "{out}");
+    assert_eq!(report.items, 2, "{report}");
+    check(&out, &rustc()).unwrap();
+}
+
+#[test]
+fn a_variant_with_fields_goes_from_arms_and_matches() {
+    let source = r#"enum Budget {
+    Until(u64),
+    Iterations(u32),
+}
+impl Budget {
+    fn spent(&self, done: u32) -> bool {
+        match *self {
+            Self::Until(limit) if limit > 3 => true,
+            Self::Until(_) => false,
+            Budget::Iterations(n) => done >= n,
+        }
+    }
+    fn timed(&self) -> bool {
+        matches!(self, Budget::Until(_))
+    }
+}
+fn main() {
+    let budget = Budget::Iterations(3);
+    println!("{} {}", budget.spent(4), budget.timed());
+}
+"#;
+    let (out, report) = pruned(source);
+    assert!(!out.contains("Until"), "{out}");
+    assert!(squashed(&out).contains("false"), "{out}");
+    assert_eq!(report.items, 1, "{report}");
+    check(&out, &rustc()).unwrap();
+}
+
+#[test]
+fn variants_that_a_use_imports_or_a_hash_numbers_stay() {
+    // A removed `B` would make the pattern `B` a binding that matches all.
+    let source = r#"#[derive(Clone, Copy)]
+enum Imported {
+    A,
+    B,
+}
+use Imported::*;
+#[derive(Hash)]
+enum Hashed {
+    X(u8),
+    Y,
+}
+fn main() {
+    let x = A;
+    let n = match x {
+        A => 1,
+        B => 2,
+    };
+    let h = Hashed::X(1);
+    println!("{} {}", n, matches!(h, Hashed::Y));
+}
+"#;
+    let (out, _) = pruned(source);
+    assert!(
+        squashed(&out).contains("enumImported{A,B,}") && out.contains("Y,"),
+        "{out}"
+    );
+}
+
+#[test]
 fn a_removal_that_rustc_rejects_is_undone() {
-    // `S` is never constructed, but a trait impl still names it.
+    // Nothing calls `f`, but an impl of the trait still defines it.
     let source = r#"trait Tr {
+    fn f(&self) -> u8;
     fn id(&self) -> u8 {
         1
     }
 }
-struct S;
-impl Tr for S {}
+impl Tr for u8 {
+    fn f(&self) -> u8 {
+        2
+    }
+}
 fn dead() {}
 fn main() {
     println!("{}", std::mem::size_of::<&dyn Tr>());
@@ -300,10 +401,7 @@ fn main() {
 "#;
     let (out, report) = pruned(source);
     assert!(!out.contains("dead"), "{out}");
-    assert!(
-        out.contains("struct S;") && out.contains("impl Tr for S {}"),
-        "{out}"
-    );
+    assert!(out.contains("fn f(&self) -> u8;"), "{out}");
     // `dead` and the default method `id`, which nothing calls.
     assert_eq!(report.items, 2, "{report}");
     assert_eq!(report.refused, 1, "{report}");
@@ -312,10 +410,15 @@ fn main() {
 
 #[test]
 fn a_chain_of_unused_items_goes_even_when_one_removal_is_rejected() {
-    // `helper` is used by `dead` only; `S` stays for its impl.
-    let source = r#"trait Tr {}
-struct S;
-impl Tr for S {}
+    // `below` and `next` are used by `dead` only; `f` stays for its impl.
+    let source = r#"trait Tr {
+    fn f(&self) -> u8;
+}
+impl Tr for u8 {
+    fn f(&self) -> u8 {
+        2
+    }
+}
 struct Rng(u64);
 impl Rng {
     fn next(&mut self) -> u64 {
@@ -337,7 +440,7 @@ fn main() {
     for gone in ["Rng", "below", "next", "dead"] {
         assert!(!out.contains(gone), "{gone} is still in\n{out}");
     }
-    assert!(out.contains("impl Tr for S"), "{out}");
+    assert!(out.contains("fn f(&self) -> u8;"), "{out}");
     assert_eq!(report.refused, 1, "{report}");
 }
 
@@ -470,8 +573,8 @@ fn a_compiler_that_fails_stops_the_pruning() {
 
 #[test]
 fn an_item_that_shares_a_name_with_a_blocked_one_still_goes() {
-    // `A::get` stays for the impl of a trait nobody uses; `B::get` has the
-    // same name and nothing keeps it.
+    // `A::get` stays for a trait impl that is not offered with `A`; `B::get`
+    // has the same name and nothing keeps it.
     let source = r#"trait Tr {
     fn t(&self) -> u8;
 }
@@ -481,9 +584,9 @@ impl A {
         1
     }
 }
-impl Tr for A {
+impl Tr for Option<A> {
     fn t(&self) -> u8 {
-        self.get()
+        self.as_ref().map_or(0, A::get)
     }
 }
 struct B;
@@ -500,9 +603,121 @@ fn main() {}
         "{out}"
     );
     assert!(
-        out.contains("impl Tr for A") && out.contains("struct A;"),
+        out.contains("impl Tr for Option<A>") && out.contains("struct A;"),
         "{out}"
     );
     assert!(report.refused >= 1, "{report}");
     check(&out, &rustc()).unwrap();
+}
+
+#[test]
+fn a_dead_type_or_trait_goes_with_its_impls() {
+    let source = r#"use std::fmt;
+mod shapes {
+    pub trait Area {
+        fn area(&self) -> u32;
+    }
+    pub struct Square(pub u32);
+    impl Area for Square {
+        fn area(&self) -> u32 {
+            self.0 * self.0
+        }
+    }
+    pub struct Error;
+    impl Error {
+        pub fn code(&self) -> u8 {
+            helper()
+        }
+    }
+    fn helper() -> u8 {
+        7
+    }
+    impl super::fmt::Display for Error {
+        fn fmt(&self, f: &mut super::fmt::Formatter) -> super::fmt::Result {
+            write!(f, "{}", self.code())
+        }
+    }
+    impl Drop for Error {
+        fn drop(&mut self) {}
+    }
+}
+mod user {
+    // An import and an impl of the dead trait, in another module.
+    use crate::shapes::Area;
+    impl Area for u8 {
+        fn area(&self) -> u32 {
+            0
+        }
+    }
+}
+mod other {
+    // Another `Error`, in use: its impls stay.
+    pub struct Error;
+    impl Drop for Error {
+        fn drop(&mut self) {
+            println!("dropped");
+        }
+    }
+}
+fn main() {
+    let side = shapes::Square(3);
+    let _guard = other::Error;
+    println!("{}", side.0);
+    let _ = fmt::Error;
+}
+"#;
+    let (out, _) = pruned(source);
+    for gone in [
+        "Area",
+        "area",
+        "helper",
+        "code",
+        "Display",
+        "fn drop(&mut self) {}",
+    ] {
+        assert!(!out.contains(gone), "{gone} is still in\n{out}");
+    }
+    assert!(out.contains("println!(\"dropped\")"), "{out}");
+    check(&out, &rustc()).unwrap();
+}
+
+#[test]
+fn an_arm_left_unreachable_goes() {
+    let source = r#"enum Mode {
+    Fast(u8),
+    Slow(u8),
+}
+fn speed(mode: &Mode) -> u8 {
+    match mode {
+        Mode::Fast(n) => *n,
+        _ => 0,
+    }
+}
+fn main() {
+    println!("{}", speed(&Mode::Fast(2)));
+}
+"#;
+    let (out, report) = pruned(source);
+    assert!(!out.contains("Slow") && !out.contains("_ =>"), "{out}");
+    assert!(out.contains("Mode::Fast(n) => *n,"), "{out}");
+    assert_eq!(report.items, 2, "{report}");
+    check(&out, &rustc()).unwrap();
+}
+
+#[test]
+fn an_unreachable_alternative_alone_keeps_its_arm() {
+    let source = r#"fn kind(n: u8) -> u8 {
+    match n {
+        0 | 1 => 1,
+        2 | 1 => 2,
+        _ => 3,
+    }
+}
+fn main() {
+    println!("{}", kind(2));
+}
+"#;
+    let (out, report) = pruned(source);
+    assert_eq!(out, source);
+    assert_eq!(report.items, 0, "{report}");
 }

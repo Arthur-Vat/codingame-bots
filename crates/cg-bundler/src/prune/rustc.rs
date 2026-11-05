@@ -28,7 +28,7 @@ pub struct Rustc {
 /// What one run of rustc reported about a bundle.
 #[derive(Debug)]
 pub enum Outcome {
-    /// It compiled; these are the diagnostics of the two lints.
+    /// It compiled; these are the diagnostics of the `LINTS`.
     Compiled(Vec<Diagnostic>),
     /// It did not.
     Failed {
@@ -39,7 +39,7 @@ pub enum Outcome {
     },
 }
 
-/// A diagnostic of the lints `dead_code` or `unused_imports`: its lint and
+/// A diagnostic of one of the `LINTS`: its lint and
 /// the byte ranges of its primary spans in the file, without those that
 /// come from a macro.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -201,7 +201,7 @@ impl<'a> Compiler<'a> {
     }
 
     /// Type-checks `source` as a program with `main`, with the options
-    /// CodinGame compiles with (`scripts/cg-check.sh`), and the two lints
+    /// CodinGame compiles with (`scripts/cg-check.sh`), and the `LINTS`
     /// forced on, so that the `allow` the bundler puts on library modules
     /// does not hide anything. It fails only when rustc cannot be run.
     pub fn compile(&mut self, source: &str) -> Result<Outcome, String> {
@@ -220,6 +220,8 @@ impl<'a> Compiler<'a> {
                 "dead_code",
                 "--force-warn",
                 "unused_imports",
+                "--force-warn",
+                "unreachable_patterns",
             ])
             .arg("--out-dir")
             .arg(&self.dir)
@@ -271,11 +273,14 @@ impl Drop for Compiler<'_> {
     }
 }
 
-/// The diagnostic `value` if it is one of the two lints, with its primary
+/// The lints that the pruner acts on.
+const LINTS: [&str; 3] = ["dead_code", "unused_imports", "unreachable_patterns"];
+
+/// The diagnostic `value` if it is one of the `LINTS`, with its primary
 /// spans in the file `name` that come from the text itself.
 fn lint_diagnostic(value: &Value, name: &str) -> Option<Diagnostic> {
     let lint = value["code"]["code"].as_str()?;
-    if lint != "dead_code" && lint != "unused_imports" {
+    if !LINTS.contains(&lint) {
         return None;
     }
     Some(Diagnostic {
