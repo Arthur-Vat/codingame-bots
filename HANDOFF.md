@@ -9,6 +9,8 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 - **UTTT, proposed 2026-10-16, not decided** (each one experiment): trainer fits on several Train runs' data at once (E028: v016's data hurt, -81); D3 accumulator checkpoints at nodes with many visits; a hyperparameter sweep of the fit in Train; later a second, larger network for nodes with many visits, D4 symmetry in the first layer.
 - Retrospective proposals in games/uttt/RETROSPECTIVE.md wait for his choice; the first two only when a game needs them.
 
+- **Dependabot #241, #242, #243 (owner 2026-11-05: "Prepare them that way and tell me when they are ready"):** after the UTTT replay frees the runners, update their branches to main, wait for green, tell him; recommend #241+#242 (Pages actions v5) merged together then watch the first Pages deploy, #243 (studio npm patch/minor) alone. Merge only on his approval naming the numbers. Scheduled check trig_01Ur6644PSj51kH7TrXi5ubB at 17:36 UTC covers this and the replay.
+
 ## Open questions
 
 - Ice and Fire: equal military power at turn 100 is still unseen on CodinGame (draw?).
