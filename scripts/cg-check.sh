@@ -5,9 +5,12 @@
 #
 # For each file: it must be valid UTF-8, its size must fit CodinGame's limit,
 # and it must compile on its own with rustc and the 2021 edition, without
-# Cargo or any crate, the way CodinGame compiles it. With --any-size, the
-# size is reported but not enforced: the readable copy of a release is not
-# pasted into CodinGame and may be over the limit (ADR 0045).
+# Cargo or any crate, the way CodinGame compiles it. Warnings about unused
+# code are not printed (-A dead_code): the minifier keeps some unused items on
+# purpose and frozen releases carry them (ADR 0046, decision 3); the lint
+# changes no compiled code, and every other warning still shows. With
+# --any-size, the size is reported but not enforced: the readable copy of a
+# release is not pasted into CodinGame and may be over the limit (ADR 0045).
 #
 # CodinGame limits code size in characters, not bytes (docs/CODINGAME.md). The
 # size is counted in UTF-16 units, as a browser counts a string's length: a
@@ -62,7 +65,7 @@ for file in "$@"; do
     status=1
     continue
   fi
-  if rustc --edition 2021 -C opt-level=3 --crate-type bin \
+  if rustc --edition 2021 -C opt-level=3 --crate-type bin -A dead_code \
     -o "$out_dir/$(basename "$file" .rs)" "$file"; then
     if $any_size && ((units > MAX_UNITS)); then
       echo "ok   $file ($units characters, over the limit of $MAX_UNITS; not enforced, $bytes bytes)"

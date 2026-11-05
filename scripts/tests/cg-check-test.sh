@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tests scripts/cg-check.sh's size check: CodinGame counts characters, as
-# UTF-16 units (ADR 0037), so the limit is 100,000 units, whatever the bytes.
+# UTF-16 units (ADR 0037), so the limit is 100,000 units, whatever the bytes;
+# and that it prints no warning about unused code but every other warning.
 # Needs rustc and iconv.
 # Usage: scripts/tests/cg-check-test.sh
 set -euo pipefail
@@ -81,6 +82,25 @@ check 0 "100002 characters, over the limit" "$dir/astral-over.rs" --any-size
 check 0 "100000 characters, 100000 bytes" "$dir/ascii-limit.rs" --any-size
 check 1 "does not compile on its own" "$dir/broken.rs" --any-size
 check 1 "not valid UTF-8" "$dir/invalid.rs" --any-size
+
+# Unused code (an unused function, a variant never constructed) gives no
+# warning; an unused variable still does.
+cat >"$dir/dead.rs" <<'RUST'
+enum Budget { Until(u64), Iterations(u64) }
+fn unused() {}
+fn main() {
+    let b = Budget::Iterations(3);
+    if let Budget::Iterations(n) = b { println!("{n}"); }
+}
+RUST
+check 0 "ok   $dir/dead.rs" "$dir/dead.rs"
+checks=$((checks + 1))
+output="$("$script" "$dir/dead.rs" 2>&1)" || true
+if [[ $output == *warning* ]]; then
+  fail "unused code gave a warning: $output"
+fi
+printf 'fn main() {\n    let x = 1;\n}\n' >"$dir/unused-variable.rs"
+check 0 "warning: unused variable" "$dir/unused-variable.rs"
 
 if ((failures > 0)); then
   echo "cg-check test: $failures of $checks checks failed" >&2
