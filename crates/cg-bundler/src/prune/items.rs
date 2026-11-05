@@ -5,11 +5,15 @@
 //! the whole item from that name: back to its attributes and visibility,
 //! forward to its closing `}` or `;`. An item whose extent is not clear is
 //! not offered. The text between the previous token and the item (its doc
-//! comments and the whitespace before it) goes with the item.
+//! comments and the whitespace before it) goes with the item, and so do
+//! the `impl`s and patterns of [`shapes`].
+
+mod shapes;
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::minify::{tokens, Kind, Token};
+use shapes::{Enum, Impl, Pattern, PatternKind};
 
 /// A removal that can be tried. The numbers are token indexes in the
 /// original text, so that an id means the same in every round.
@@ -24,14 +28,20 @@ pub enum Id {
     /// One name of a `use` declaration, or a `*`; the index is that of
     /// the first token of the name's tree.
     Leaf(usize),
+    /// An enum's variant that is never constructed, with the alternatives
+    /// of patterns that name it; the index is that of its name.
+    Variant(usize),
+    /// A `match` arm that rustc reports unreachable; the index is that of
+    /// its first token.
+    Arm(usize),
 }
 
 /// A part of the text of a rendering.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 enum Piece {
     /// The original text in these bytes.
     Copy(usize, usize),
-    Lit(&'static str),
+    Lit(String),
 }
 
 /// A change to the original text: the bytes `start..end` become `pieces`.
@@ -109,6 +119,21 @@ pub struct Source {
     tokens: Vec<Token>,
     uses: Vec<UseItem>,
     containers: Vec<Container>,
+    impls: Vec<Impl>,
+    /// The `impl`s (indexes in `impls`) that go with the type or trait
+    /// whose name is at the key.
+    attached: BTreeMap<usize, Vec<usize>>,
+    /// The names of `use` declarations (as [`Id::Leaf`]) that go with the
+    /// type or trait whose name is at the key: those that import it.
+    imports: BTreeMap<usize, Vec<usize>>,
+    /// The enums whose variants are offered, by the token of their name.
+    enums: BTreeMap<usize, Enum>,
+    /// The enum (the token of its name) of each offered variant.
+    variant_of: BTreeMap<usize, usize>,
+    patterns: Vec<Pattern>,
+    /// Every `match` arm read clearly: the bytes of its whole pattern, and
+    /// its first and last tokens.
+    arms: BTreeMap<(usize, usize), (usize, usize)>,
 }
 
 /// A text made from the original by some removals, and the way back from
@@ -284,6 +309,7 @@ impl Source {
         let tokens = tokens(text)?;
         let mut uses = Vec::new();
         let mut containers = Vec::new();
+        let mut impls = Vec::new();
         for (i, token) in tokens.iter().enumerate() {
             if token.kind != Kind::Ident {
                 continue;
@@ -320,30 +346,255 @@ impl Source {
                     let Some(open) = scan(&tokens, i + 1, &["{"]) else {
                         continue;
                     };
-                    // A trait impl is never removed: it can matter without
-                    // any use (`Drop`, a marker trait, a blanket impl).
+                    let Some(close) = match_forward(&tokens, open) else {
+                        continue;
+                    };
+                    // A trait impl is not removed on its own: it can matter
+                    // without any use (`Drop`, a marker trait, a blanket
+                    // impl). It goes with its type or its trait.
                     let inherent = !tokens[i + 1..open]
                         .iter()
                         .any(|t| t.kind == Kind::Ident && t.text == "for");
                     if inherent {
-                        if let Some(close) = match_forward(&tokens, open) {
-                            containers.push(Container {
-                                keyword: i,
-                                open,
-                                close,
-                            });
-                        }
+                        containers.push(Container {
+                            keyword: i,
+                            open,
+                            close,
+                        });
                     }
+                    let (trait_path, self_path) = shapes::impl_paths(&tokens, i, open);
+                    impls.push(Impl {
+                        first: start_of_item(&tokens, i),
+                        open,
+                        close,
+                        trait_path,
+                        self_path,
+                    });
                 }
                 _ => {}
             }
         }
-        Ok(Source {
+        let mut source = Source {
             text: text.to_string(),
             tokens,
             uses,
             containers,
-        })
+            impls,
+            attached: BTreeMap::new(),
+            imports: BTreeMap::new(),
+            enums: BTreeMap::new(),
+            variant_of: BTreeMap::new(),
+            patterns: Vec::new(),
+            arms: BTreeMap::new(),
+        };
+        source.find_shapes();
+        Ok(source)
+    }
+
+    /// The innermost `mod` that holds token `at`, by its keyword, or `None`
+    /// for the crate's root.
+    fn module_of(&self, at: usize) -> Option<usize> {
+        self.containers
+            .iter()
+            .filter(|c| c.open < at && at < c.close && self.tokens[c.keyword].text == "mod")
+            .max_by_key(|c| c.open)
+            .map(|c| c.keyword)
+    }
+
+    /// Fills what goes with types, traits and variants (see [`shapes`]).
+    fn find_shapes(&mut self) {
+        let tokens = &self.tokens;
+        // The items that define each name, as (keyword, name) tokens.
+        let mut defined: BTreeMap<&str, Vec<(usize, usize)>> = BTreeMap::new();
+        for (i, token) in tokens.iter().enumerate() {
+            let kinds = ["struct", "enum", "union", "trait", "type"];
+            if token.kind == Kind::Ident && kinds.contains(&token.text.as_str()) {
+                if let Some(name) = tokens.get(i + 1).filter(|t| t.kind == Kind::Ident) {
+                    defined
+                        .entry(name.text.as_str())
+                        .or_default()
+                        .push((i, i + 1));
+                }
+            }
+        }
+        // The bundle's modules, which a `use` path may start with.
+        let modules: BTreeSet<&str> = self
+            .containers
+            .iter()
+            .filter(|c| tokens[c.keyword].text == "mod")
+            .map(|c| tokens[c.keyword + 1].text.as_str())
+            .collect();
+        // The imports of a name that the bundle defines once, along paths
+        // of the bundle, without renaming; and the names that each module
+        // imports from elsewhere (std).
+        let mut imports: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+        let mut std_imports: BTreeSet<(Option<usize>, &str)> = BTreeSet::new();
+        for u in &self.uses {
+            let root = tokens[u.keyword + 1..u.semicolon]
+                .iter()
+                .find(|t| t.kind == Kind::Ident)
+                .map_or("", |t| t.text.as_str());
+            let ours = matches!(root, "crate" | "self" | "super") || modules.contains(root);
+            let mut leaves = Vec::new();
+            u.root.leaves(&mut leaves);
+            for lo in leaves {
+                let Some((lo, hi)) = find_leaf(&u.root, lo).map(Node::range) else {
+                    continue;
+                };
+                let last = &tokens[hi];
+                if last.kind != Kind::Ident || tokens[lo..=hi].iter().any(|t| t.text == "as") {
+                    continue;
+                }
+                if !ours {
+                    // From std, or along a path not read here.
+                    std_imports.insert((self.module_of(lo), last.text.as_str()));
+                    continue;
+                }
+                if let Some(&[(keyword, at)]) = defined.get(last.text.as_str()).map(Vec::as_slice) {
+                    if keyword > 0 && tokens[keyword].text != "type" {
+                        imports.entry(at).or_default().push(lo);
+                    }
+                }
+            }
+        }
+        // Whether the path that starts at token `start`, whose last name is
+        // at token `name`, used at token `at`, names the item whose name is
+        // at token `item`: a bare name in the item's module or in a module
+        // that imports it from the bundle (and nothing of that name from
+        // elsewhere), or a path from `crate`, `self` or `super` when the
+        // bundle defines the name once.
+        let names = |item: usize, at: usize, start: usize, name: usize| -> bool {
+            let text = tokens[item].text.as_str();
+            let once = defined.get(text).is_some_and(|items| items.len() == 1);
+            if is_punct(&tokens[start], "::") {
+                return false;
+            }
+            let here = self.module_of(at);
+            if start != name {
+                return once && matches!(tokens[start].text.as_str(), "crate" | "self" | "super");
+            }
+            if std_imports.contains(&(here, text)) {
+                return false;
+            }
+            here == self.module_of(item)
+                || imports
+                    .get(&item)
+                    .is_some_and(|leaves| leaves.iter().any(|&lo| self.module_of(lo) == here))
+        };
+        let mut attached = BTreeMap::new();
+        for (name, items) in &defined {
+            for &(keyword, at) in items {
+                if keyword == 0 || tokens[keyword].text == "type" || self.item_tokens(at).is_none()
+                {
+                    continue;
+                }
+                let is_trait = tokens[keyword].text == "trait";
+                let found: Vec<usize> = (0..self.impls.len())
+                    .filter(|&b| {
+                        let block = &self.impls[b];
+                        let path = if is_trait {
+                            &block.trait_path
+                        } else {
+                            &block.self_path
+                        };
+                        path.as_ref().is_some_and(|path| {
+                            path.name == *name && names(at, block.first, path.start, path.at)
+                        })
+                    })
+                    .collect();
+                if !found.is_empty() {
+                    attached.insert(at, found);
+                }
+            }
+        }
+
+        // Whether a `use` names an enum's variants (`E::V`, `E::*`) or
+        // renames it.
+        let imported = |name: &str| {
+            self.uses.iter().any(|u| {
+                (u.keyword..u.semicolon).any(|i| {
+                    let next = &tokens[i + 1];
+                    tokens[i].kind == Kind::Ident
+                        && tokens[i].text == name
+                        && (is_punct(next, "::") || next.text == "as")
+                })
+            })
+        };
+        let hashes_discriminants = tokens
+            .iter()
+            .any(|t| t.kind == Kind::Ident && t.text == "discriminant");
+        // Removing a variant can make an enum smaller.
+        let sizes = tokens
+            .iter()
+            .any(|t| t.kind == Kind::Ident && matches!(t.text.as_str(), "size_of" | "size_of_val"));
+        let mut enums = BTreeMap::new();
+        let mut variant_of = BTreeMap::new();
+        for (name, items) in &defined {
+            // Another item may share the enum's name if it is not an enum:
+            // then `Name::Variant` can only be the variant when no item can
+            // be named `Variant` in a pattern (a `const`, a `static`, a unit
+            // or tuple `struct`).
+            let mut found = items.iter().filter(|&&(k, _)| tokens[k].text == "enum");
+            let (Some(&(keyword, at)), None) = (found.next(), found.next()) else {
+                continue;
+            };
+            let shared = items.len() > 1;
+            if tokens[keyword].text != "enum"
+                || !item_position(tokens, start_of_item(tokens, keyword))
+                || imported(name)
+            {
+                continue;
+            }
+            let Some((parsed, refused)) = shapes::parse_enum(tokens, keyword) else {
+                continue;
+            };
+            let hash_impl = self
+                .impls
+                .iter()
+                .any(|b| b.trait_name() == Some("Hash") && b.self_name() == Some(*name));
+            let pattern_item = |v: &shapes::Variant| {
+                tokens.windows(2).any(|w| {
+                    matches!(w[0].text.as_str(), "const" | "static" | "struct")
+                        && w[0].kind == Kind::Ident
+                        && w[1].text == tokens[v.name].text
+                })
+            };
+            if refused
+                || sizes
+                || parsed.variants.len() < 2
+                || shared && parsed.variants.iter().any(pattern_item)
+                || !parsed.fieldless && (hash_impl || hashes_discriminants)
+            {
+                continue;
+            }
+            for v in &parsed.variants {
+                variant_of.insert(v.name, at);
+            }
+            enums.insert(at, parsed);
+        }
+        let mut patterns = shapes::patterns(tokens);
+        let mut arms = BTreeMap::new();
+        for p in &patterns {
+            if let PatternKind::Arm { first, last } = p.kind {
+                let (lo, hi) = (p.alts[0].0, p.alts[p.alts.len() - 1].1);
+                arms.insert((tokens[lo].start, tokens[hi].end), (first, last));
+            }
+        }
+        shapes::resolve(tokens, &mut patterns, &enums, &self.impls, names);
+        patterns.retain(|p| p.refs.iter().any(|r| !r.is_empty()));
+
+        self.attached = attached;
+        self.imports = imports;
+        self.enums = enums;
+        self.variant_of = variant_of;
+        self.patterns = patterns;
+        self.arms = arms;
+    }
+
+    /// The removal of the arm whose whole pattern rustc reports unreachable
+    /// at the bytes `span`; not when it reports one alternative only.
+    pub fn arm_at(&self, span: (usize, usize)) -> Option<Id> {
+        self.arms.get(&span).map(|&(first, _)| Id::Arm(first))
     }
 
     /// The index of the token that spans exactly the bytes `range`.
@@ -400,7 +651,19 @@ impl Source {
     /// they are the name of an item whose extent is clear.
     pub fn item_at(&self, span: (usize, usize)) -> Option<Id> {
         let name = self.token_at(span)?;
+        if self.variant_of.contains_key(&name) {
+            return Some(Id::Variant(name));
+        }
         self.item_tokens(name).map(|_| Id::Item(name))
+    }
+
+    /// The variant whose name is at token `name`.
+    fn variant(&self, name: usize) -> &shapes::Variant {
+        self.enums[&self.variant_of[&name]]
+            .variants
+            .iter()
+            .find(|v| v.name == name)
+            .expect("an offered variant is in its enum")
     }
 
     /// The removals of the names that rustc reports unused at the bytes
@@ -447,6 +710,18 @@ impl Source {
                 let node = find_leaf(&item.root, lo).expect("a name is in its tree");
                 let (lo, hi) = node.range();
                 (self.tokens[lo].start, self.tokens[hi].end)
+            }
+            Id::Variant(name) => {
+                let variant = self.variant(name);
+                self.cut(variant.first, variant.last)
+            }
+            Id::Arm(first) => {
+                let &(_, last) = self
+                    .arms
+                    .values()
+                    .find(|(f, _)| *f == first)
+                    .expect("an arm is known");
+                self.cut(first, last)
             }
         }
     }
@@ -497,9 +772,10 @@ impl Source {
     pub fn render(&self, selected: &BTreeSet<Id>) -> Rendered {
         let mut edits = Vec::new();
         let mut leaves: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new();
+        let mut variants: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new();
         for &id in selected {
             match id {
-                Id::Item(_) | Id::Container(_) => {
+                Id::Item(_) | Id::Container(_) | Id::Arm(_) => {
                     let (start, end) = self.bytes_of(id);
                     edits.push(Edit {
                         start,
@@ -507,6 +783,31 @@ impl Source {
                         pieces: Vec::new(),
                         removal: true,
                     });
+                    if let Id::Item(name) = id {
+                        for &lo in self.imports.get(&name).into_iter().flatten() {
+                            let at = self
+                                .uses
+                                .partition_point(|u| u.keyword < lo)
+                                .saturating_sub(1);
+                            leaves.entry(at).or_default().insert(lo);
+                        }
+                        for &b in self.attached.get(&name).into_iter().flatten() {
+                            let block = &self.impls[b];
+                            let (start, end) = self.cut(block.first, block.close);
+                            edits.push(Edit {
+                                start,
+                                end,
+                                pieces: Vec::new(),
+                                removal: true,
+                            });
+                        }
+                    }
+                }
+                Id::Variant(name) => {
+                    variants
+                        .entry(self.variant_of[&name])
+                        .or_default()
+                        .insert(name);
                 }
                 Id::Leaf(lo) => {
                     let at = self
@@ -541,6 +842,7 @@ impl Source {
                 }
             }
         }
+        self.render_variants(variants, &mut edits);
         // In order; an edit inside another one is dropped.
         edits.sort_by_key(|e| (e.start, std::cmp::Reverse(e.end)));
         let mut rendered = Rendered {
@@ -555,8 +857,8 @@ impl Source {
             }
             rendered.copy(&self.text, cursor, edit.start);
             for piece in &edit.pieces {
-                match *piece {
-                    Piece::Copy(start, end) => rendered.copy(&self.text, start, end),
+                match piece {
+                    Piece::Copy(start, end) => rendered.copy(&self.text, *start, *end),
                     Piece::Lit(text) => rendered.text.push_str(text),
                 }
             }
@@ -600,13 +902,140 @@ impl Source {
                 let mut pieces = vec![Piece::Copy(self.tokens[*lo].start, self.tokens[*open].end)];
                 for (i, child) in kept.into_iter().enumerate() {
                     if i > 0 {
-                        pieces.push(Piece::Lit(","));
+                        pieces.push(Piece::Lit(",".into()));
                     }
                     pieces.extend(child);
                 }
-                pieces.push(Piece::Lit("}"));
+                pieces.push(Piece::Lit("}".into()));
                 Some(pieces)
             }
+        }
+    }
+
+    /// The variants of `chosen` (by enum) that a rendering removes. An enum
+    /// keeps at least one variant: when all are chosen, none goes. An enum
+    /// without fields can be cast with `as`, so it loses only variants that
+    /// no kept variant follows: no number changes.
+    fn removed_variants(
+        &self,
+        mut chosen: BTreeMap<usize, BTreeSet<usize>>,
+    ) -> BTreeMap<usize, BTreeSet<usize>> {
+        chosen.retain(|e, names| names.len() < self.enums[e].variants.len());
+        for (e, names) in chosen.iter_mut() {
+            let parsed = &self.enums[e];
+            if parsed.fieldless {
+                let kept = parsed
+                    .variants
+                    .iter()
+                    .rposition(|v| !names.contains(&v.name));
+                let after: BTreeSet<usize> = parsed.variants[kept.map_or(0, |k| k + 1)..]
+                    .iter()
+                    .map(|v| v.name)
+                    .collect();
+                names.retain(|n| after.contains(n));
+            }
+        }
+        chosen.retain(|_, names| !names.is_empty());
+        chosen
+    }
+
+    /// Whether the variant removal `id` can change the text, given that
+    /// `removed` says which variants of its enum go with it: a variant of an
+    /// enum without fields only when every variant after it goes too.
+    pub fn trailing(&self, id: Id, removed: impl Fn(usize) -> bool) -> bool {
+        let Id::Variant(name) = id else {
+            return true;
+        };
+        let parsed = &self.enums[&self.variant_of[&name]];
+        let at = parsed.variants.iter().position(|v| v.name == name);
+        !parsed.fieldless
+            || at.is_some_and(|at| parsed.variants[at + 1..].iter().all(|v| removed(v.name)))
+    }
+
+    /// Takes out of `selected` the variants that its rendering keeps, so
+    /// that they are offered again once the variants after them go.
+    pub fn drop_kept_variants(&self, selected: &mut BTreeSet<Id>) {
+        let mut chosen: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new();
+        for &id in selected.iter() {
+            if let Id::Variant(name) = id {
+                chosen
+                    .entry(self.variant_of[&name])
+                    .or_default()
+                    .insert(name);
+            }
+        }
+        let removed: BTreeSet<usize> = self
+            .removed_variants(chosen)
+            .into_values()
+            .flatten()
+            .collect();
+        selected.retain(|id| !matches!(id, Id::Variant(name) if !removed.contains(name)));
+    }
+
+    /// The edits that remove the variants `chosen` (by enum) from their
+    /// enums and from the patterns that name them (see
+    /// [`Source::removed_variants`]).
+    fn render_variants(&self, chosen: BTreeMap<usize, BTreeSet<usize>>, edits: &mut Vec<Edit>) {
+        let chosen = self.removed_variants(chosen);
+        let tokens = &self.tokens;
+        for (e, names) in &chosen {
+            let parsed = &self.enums[e];
+            let mut pieces = Vec::new();
+            for v in &parsed.variants {
+                if names.contains(&v.name) {
+                    continue;
+                }
+                if !pieces.is_empty() {
+                    pieces.push(Piece::Lit(",".into()));
+                }
+                pieces.push(Piece::Copy(tokens[v.first].start, tokens[v.last].end));
+            }
+            let (first, last) = (
+                &parsed.variants[0],
+                &parsed.variants[parsed.variants.len() - 1],
+            );
+            edits.push(Edit {
+                start: tokens[first.first].start,
+                end: tokens[last.last].end,
+                pieces,
+                removal: false,
+            });
+        }
+        let dead: BTreeSet<usize> = chosen.into_values().flatten().collect();
+        for pattern in &self.patterns {
+            let gone: Vec<bool> = pattern.refs.iter().map(|r| !r.is_disjoint(&dead)).collect();
+            if !gone.contains(&true) {
+                continue;
+            }
+            if !gone.contains(&false) {
+                match pattern.kind {
+                    PatternKind::Arm { first, last } => {
+                        let (start, end) = self.cut(first, last);
+                        edits.push(Edit {
+                            start,
+                            end,
+                            pieces: Vec::new(),
+                            removal: true,
+                        });
+                    }
+                    // The removal does not compile, and the variant stays.
+                    PatternKind::Matches => {}
+                }
+                continue;
+            }
+            let mut pieces = Vec::new();
+            for (&(lo, hi), _) in pattern.alts.iter().zip(&gone).filter(|(_, &g)| !g) {
+                if !pieces.is_empty() {
+                    pieces.push(Piece::Lit("|".into()));
+                }
+                pieces.push(Piece::Copy(tokens[lo].start, tokens[hi].end));
+            }
+            edits.push(Edit {
+                start: tokens[pattern.alts[0].0].start,
+                end: tokens[pattern.alts[pattern.alts.len() - 1].1].end,
+                pieces,
+                removal: false,
+            });
         }
     }
 }
@@ -616,8 +1045,8 @@ impl Source {
     /// has one: an item's name, the last name of an import.
     pub fn name_of(&self, id: Id) -> Option<&str> {
         match id {
-            Id::Item(name) => Some(&self.tokens[name].text),
-            Id::Container(_) => None,
+            Id::Item(name) | Id::Variant(name) => Some(&self.tokens[name].text),
+            Id::Container(_) | Id::Arm(_) => None,
             Id::Leaf(lo) => {
                 let item = self.use_of(lo)?;
                 let (lo, hi) = find_leaf(&item.root, lo)?.range();
