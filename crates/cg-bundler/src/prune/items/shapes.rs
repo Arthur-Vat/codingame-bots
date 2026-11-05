@@ -273,8 +273,7 @@ fn alternatives(tokens: &[Token], lo: usize, hi: usize) -> Option<Vec<(usize, us
     let mut alts = Vec::new();
     let mut depth = 0usize;
     let mut from = start;
-    for i in start..hi {
-        let t = &tokens[i];
+    for (i, t) in tokens.iter().enumerate().take(hi).skip(start) {
         if t.kind != Kind::Punct {
             continue;
         }
@@ -303,8 +302,7 @@ fn alternatives(tokens: &[Token], lo: usize, hi: usize) -> Option<Vec<(usize, us
 /// The first `if` at the first level in tokens `lo..hi`, or `hi`.
 fn before_guard(tokens: &[Token], lo: usize, hi: usize) -> usize {
     let mut depth = 0usize;
-    for i in lo..hi {
-        let t = &tokens[i];
+    for (i, t) in tokens.iter().enumerate().take(hi).skip(lo) {
         if t.kind == Kind::Punct {
             match t.text.as_str() {
                 "(" | "[" | "{" => depth += 1,
