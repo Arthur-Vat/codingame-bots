@@ -50,7 +50,8 @@ codingame-bots/
 │  ├─ session-setup.sh      hook of Claude's cloud sessions: installs shellcheck, as in CI
 │  ├─ tests/                tests of the scripts
 │  ├─ lib/evaluation.sh     settings and helpers of sprt.sh, league.sh, league-replay.sh, league-night.sh, calibrate.sh, league-check.sh and new-release.sh; the calibration (ADR 0048)
-│  └─ lib/records.sh        the comparison of game records of check-determinism.sh and check-minified.sh
+│  ├─ lib/records.sh        the comparison of game records of check-determinism.sh and check-minified.sh
+│  └─ lib/rustc-cache.sh    the cache of build-studio-wasm.sh: a file compiled once per source, arguments and rustc version
 ├─ crates/
 │  ├─ cg-core/              bot side: CodinGame input reading, seeded RNG, time scale
 │  ├─ cg-arena/             Referee trait, match runner, tournaments, summary, SPRT, ratings, CLI
