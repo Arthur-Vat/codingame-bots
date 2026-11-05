@@ -51,6 +51,9 @@ fn main() -> ExitCode {
     if let Some(report) = &bundled.pruned {
         eprintln!("pruned: {report}");
     }
+    if let Some(report) = &bundled.flattened {
+        eprintln!("flattened: {report}");
+    }
     if let Some(report) = &bundled.renamed {
         eprintln!("renamed: {report}");
     }

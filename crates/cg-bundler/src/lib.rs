@@ -5,7 +5,9 @@
 //! save room under CodinGame's size limit (ADR 0016, ADR 0045, ADR 0046),
 //! in stages that are each checked: it removes the items that rustc 1.90.0
 //! reports as never used, and the derived traits and std trait impls that
-//! the code compiles without (module [`prune`]), gives the names the bundle
+//! the code compiles without (module [`prune`]), puts every item at the root
+//! without modules, `use` declarations of its own items, module paths and
+//! `pub` (module [`flatten`]), gives the names the bundle
 //! defines the shortest names not otherwise used and writes `self` and some
 //! types shorter (module [`rename`]), then reads the code token by token
 //! and writes back only the whitespace Rust needs, without comments (module
@@ -45,6 +47,7 @@
 //! `crate::cg_core::x`.
 
 pub mod expand;
+pub mod flatten;
 pub mod minify;
 pub mod plan;
 pub mod prune;
@@ -92,6 +95,8 @@ pub struct Bundled {
     pub code: String,
     /// What the minifier removed, when it ran.
     pub pruned: Option<prune::Report>,
+    /// What the minifier did to the modules, when it ran.
+    pub flattened: Option<flatten::Report>,
     /// What the minifier renamed and shortened, when it ran.
     pub renamed: Option<rename::Report>,
     /// The code after each stage of the minifier, when it ran, so that the
@@ -104,7 +109,9 @@ pub struct Bundled {
 pub struct Stages {
     /// The joined code without its unused items.
     pub pruned: String,
-    /// The pruned code with names, `self`, types and numbers shortened.
+    /// The pruned code with every item at the root.
+    pub flattened: String,
+    /// The flattened code with names, `self`, types and numbers shortened.
     pub renamed: String,
 }
 
@@ -155,17 +162,21 @@ pub fn bundle_report(plan: &Plan, options: Options) -> Result<Bundled, String> {
         );
         let (pruned_code, pruned) = prune::prune(&code, rustc)
             .map_err(|err| format!("cannot remove unused items: {err}"))?;
-        let (renamed_code, renamed) =
-            rename::rename(&pruned_code, rustc).map_err(|err| format!("cannot rename: {err}"))?;
+        let (flattened_code, flattened) = flatten::flatten(&pruned_code, rustc)
+            .map_err(|err| format!("cannot flatten the modules: {err}"))?;
+        let (renamed_code, renamed) = rename::rename(&flattened_code, rustc)
+            .map_err(|err| format!("cannot rename: {err}"))?;
         let code = minify::minify(&renamed_code)
             .map_err(|err| format!("cannot minify the bundle: {err}"))?;
         prune::check(&code, rustc).map_err(|err| format!("the minified bundle is wrong: {err}"))?;
         return Ok(Bundled {
             code: header + &code,
             pruned: Some(pruned),
+            flattened: Some(flattened),
             renamed: Some(renamed),
             stages: Some(Stages {
                 pruned: pruned_code,
+                flattened: flattened_code,
                 renamed: renamed_code,
             }),
         });
@@ -186,6 +197,7 @@ pub fn bundle_report(plan: &Plan, options: Options) -> Result<Bundled, String> {
     Ok(Bundled {
         code: header + &code,
         pruned: None,
+        flattened: None,
         renamed: None,
         stages: None,
     })
