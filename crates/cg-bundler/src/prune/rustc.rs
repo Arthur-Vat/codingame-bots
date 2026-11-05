@@ -3,6 +3,7 @@
 //! The output of the pruner must not depend on the session's compiler, so
 //! only rustc 1.90.0 is accepted ([`VERSION`]); there is no fallback.
 
+use std::collections::BTreeSet;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -36,7 +37,21 @@ pub enum Outcome {
         errors: String,
         /// The byte ranges of the spans of the errors and their notes.
         spans: Vec<(usize, usize)>,
+        /// For each error, the names it quotes and those of its spans.
+        names: Vec<ErrorNames>,
     },
+}
+
+/// The names that an error gives.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ErrorNames {
+    /// Those quoted in its messages (see [`Diagnostic::names`]).
+    pub quoted: BTreeSet<String>,
+    /// Those in its spans and its notes' that are no longer than
+    /// [`NAME_SPAN`](super::NAME_SPAN).
+    pub spanned: BTreeSet<String>,
+    /// The byte ranges of its primary spans: where it is.
+    pub at: Vec<(usize, usize)>,
 }
 
 /// A diagnostic of one of the `LINTS`: its lint and
@@ -46,6 +61,9 @@ pub enum Outcome {
 pub struct Diagnostic {
     pub lint: String,
     pub spans: Vec<(usize, usize)>,
+    /// The names that its messages, its labels and its notes quote between
+    /// backquotes (`Bits: Clone` gives `Bits` and `Clone`).
+    pub names: BTreeSet<String>,
 }
 
 impl Rustc {
@@ -222,6 +240,8 @@ impl<'a> Compiler<'a> {
                 "unused_imports",
                 "--force-warn",
                 "unreachable_patterns",
+                "--force-warn",
+                "noop_method_call",
             ])
             .arg("--out-dir")
             .arg(&self.dir)
@@ -234,6 +254,7 @@ impl<'a> Compiler<'a> {
         let mut diagnostics = Vec::new();
         let mut errors = String::new();
         let mut error_spans = Vec::new();
+        let mut error_names = Vec::new();
         for line in stderr.lines().filter(|line| !line.trim().is_empty()) {
             let Ok(value) = serde_json::from_str::<Value>(line) else {
                 // Not a diagnostic: keep it, it may say why rustc failed.
@@ -244,7 +265,20 @@ impl<'a> Compiler<'a> {
             match value["level"].as_str() {
                 Some("error" | "error: internal compiler error") => {
                     errors.push_str(value["rendered"].as_str().unwrap_or(line));
-                    error_spans.extend(spans_of(&value, &name, false));
+                    let spans = spans_of(&value, &name, false);
+                    let mut names = ErrorNames {
+                        quoted: quoted_names(&value),
+                        spanned: BTreeSet::new(),
+                        at: spans_of(&value, &name, true),
+                    };
+                    for &(start, end) in &spans {
+                        if end - start <= super::NAME_SPAN {
+                            let snippet = source.get(start..end).unwrap_or("");
+                            names.spanned.extend(identifiers(snippet));
+                        }
+                    }
+                    error_spans.extend(spans);
+                    error_names.push(names);
                 }
                 _ => {
                     if let Some(diagnostic) = lint_diagnostic(&value, &name) {
@@ -262,6 +296,7 @@ impl<'a> Compiler<'a> {
             Ok(Outcome::Failed {
                 errors,
                 spans: error_spans,
+                names: error_names,
             })
         }
     }
@@ -273,8 +308,15 @@ impl Drop for Compiler<'_> {
     }
 }
 
-/// The lints that the pruner acts on.
-const LINTS: [&str; 3] = ["dead_code", "unused_imports", "unreachable_patterns"];
+/// The lints that the pruner acts on. `noop_method_call` reports a call
+/// that does nothing, such as `.clone()` on a reference to a type that is
+/// not `Clone`, which then copies the reference.
+const LINTS: [&str; 4] = [
+    "dead_code",
+    "unused_imports",
+    "unreachable_patterns",
+    "noop_method_call",
+];
 
 /// The diagnostic `value` if it is one of the `LINTS`, with its primary
 /// spans in the file `name` that come from the text itself.
@@ -286,7 +328,35 @@ fn lint_diagnostic(value: &Value, name: &str) -> Option<Diagnostic> {
     Some(Diagnostic {
         lint: lint.to_string(),
         spans: spans_of(value, name, true),
+        names: quoted_names(value),
     })
+}
+
+/// The identifiers of the code `text`, none if it cannot be lexed.
+fn identifiers(text: &str) -> impl Iterator<Item = String> {
+    let tokens = crate::minify::tokens(text).unwrap_or_default().into_iter();
+    tokens
+        .filter(|token| token.kind == crate::minify::Kind::Ident)
+        .map(|token| token.text)
+}
+
+/// The identifiers quoted between backquotes in the message of `value`, the
+/// labels of its spans and its children's.
+fn quoted_names(value: &Value) -> BTreeSet<String> {
+    let mut texts = vec![value["message"].as_str().unwrap_or("")];
+    for span in value["spans"].as_array().into_iter().flatten() {
+        texts.extend(span["label"].as_str());
+    }
+    let mut names = BTreeSet::new();
+    for text in texts {
+        for quoted in text.split('`').skip(1).step_by(2) {
+            names.extend(identifiers(quoted));
+        }
+    }
+    for child in value["children"].as_array().into_iter().flatten() {
+        names.extend(quoted_names(child));
+    }
+    names
 }
 
 /// The byte ranges of the spans of `value` that are in the file `name` and

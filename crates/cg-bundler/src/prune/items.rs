@@ -7,13 +7,19 @@
 //! not offered. The text between the previous token and the item (its doc
 //! comments and the whitespace before it) goes with the item, and so do
 //! the `impl`s and patterns of [`shapes`].
+//!
+//! It also lists the removals that rustc does not report but that a compile
+//! may accept ([`Source::trials`]): the names of `derive` lists, the impls
+//! of traits that the bundle does not define, and debug assertions.
 
 mod shapes;
+mod trials;
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::minify::{tokens, Kind, Token};
 use shapes::{Enum, Impl, Pattern, PatternKind};
+use trials::Derive;
 
 /// A removal that can be tried. The numbers are token indexes in the
 /// original text, so that an id means the same in every round.
@@ -34,6 +40,15 @@ pub enum Id {
     /// A `match` arm that rustc reports unreachable; the index is that of
     /// its first token.
     Arm(usize),
+    /// One name of a `#[derive(...)]`; the index is that of its first
+    /// token. When all of a list's names go, the attribute goes.
+    Derive(usize),
+    /// An impl of a trait that the bundle does not define, except `Drop`;
+    /// the index is that of its first token, attributes included.
+    TraitImpl(usize),
+    /// A `debug_assert!`, `debug_assert_eq!` or `debug_assert_ne!`
+    /// statement; the index is that of the macro's name.
+    Assert(usize),
 }
 
 /// A part of the text of a rendering.
@@ -134,6 +149,11 @@ pub struct Source {
     /// Every `match` arm read clearly: the bytes of its whole pattern, and
     /// its first and last tokens.
     arms: BTreeMap<(usize, usize), (usize, usize)>,
+    /// The `#[derive(...)]` attributes read clearly.
+    derives: Vec<Derive>,
+    /// The debug assertions that are statements: the macro's name and the
+    /// `;`.
+    asserts: BTreeMap<usize, usize>,
 }
 
 /// A text made from the original by some removals, and the way back from
@@ -148,6 +168,16 @@ pub struct Rendered {
 }
 
 impl Rendered {
+    /// The end of the removal that deleted the bytes `start..end` of the
+    /// original, if one did.
+    pub fn deleted(&self, start: usize, end: usize) -> Option<usize> {
+        let at = self.removals.partition_point(|r| r.1 <= start);
+        self.removals
+            .get(at)
+            .filter(|r| r.0 <= start && end <= r.1)
+            .map(|r| r.1)
+    }
+
     /// The bytes of the original that the bytes `range` of the text are
     /// copied from, when they are all in one stretch.
     pub fn to_original(&self, range: (usize, usize)) -> Option<(usize, usize)> {
@@ -386,7 +416,11 @@ impl Source {
             variant_of: BTreeMap::new(),
             patterns: Vec::new(),
             arms: BTreeMap::new(),
+            derives: Vec::new(),
+            asserts: BTreeMap::new(),
         };
+        source.derives = trials::derives(&source.tokens);
+        source.asserts = trials::asserts(&source.tokens);
         source.find_shapes();
         Ok(source)
     }
@@ -723,6 +757,85 @@ impl Source {
                     .expect("an arm is known");
                 self.cut(first, last)
             }
+            Id::Derive(lo) => {
+                let (_, (lo, hi)) = self.derive_of(lo).expect("a derived name is known");
+                (self.tokens[lo].start, self.tokens[hi].end)
+            }
+            Id::TraitImpl(first) => {
+                let block = self.impl_at(first).expect("a trait impl is known");
+                self.cut(block.first, block.close)
+            }
+            Id::Assert(at) => self.cut(at, self.asserts[&at]),
+        }
+    }
+
+    /// The attribute (its index in `derives`) and the name of the derived
+    /// name whose first token is `lo`.
+    fn derive_of(&self, lo: usize) -> Option<(usize, (usize, usize))> {
+        let at = self
+            .derives
+            .partition_point(|d| d.first < lo)
+            .checked_sub(1)?;
+        let name = *self.derives[at].names.iter().find(|n| n.0 == lo)?;
+        Some((at, name))
+    }
+
+    fn impl_at(&self, first: usize) -> Option<&Impl> {
+        self.impls.iter().find(|block| block.first == first)
+    }
+
+    /// The removals that rustc does not report but that a compile may
+    /// accept, in the order of the source: every name of a `derive` list
+    /// (but `Default` on an enum), every impl of a trait that the bundle
+    /// does not define except `Drop`, and every debug assertion that is a
+    /// statement. `Clone` is not offered when the bundle calls `to_owned`:
+    /// without it, `r.to_owned()` on a reference `r` compiles and copies the
+    /// reference, and rustc does not report it.
+    pub fn trials(&self) -> Vec<Id> {
+        let to_owned = self.tokens.iter().any(|t| t.text == "to_owned");
+        let offered = |name: &str| !(to_owned && name == "Clone");
+        let defined: BTreeSet<&str> = self
+            .tokens
+            .windows(2)
+            .filter(|pair| pair[0].kind == Kind::Ident && pair[0].text == "trait")
+            .filter(|pair| pair[1].kind == Kind::Ident)
+            .map(|pair| pair[1].text.as_str())
+            .collect();
+        let mut out = Vec::new();
+        for derive in &self.derives {
+            for &(lo, hi) in &derive.names {
+                let name = self.tokens[hi].text.as_str();
+                if offered(name) && !(derive.is_enum && name == "Default") {
+                    out.push((lo, Id::Derive(lo)));
+                }
+            }
+        }
+        for block in &self.impls {
+            if let Some(name) = block.trait_name() {
+                if offered(name) && name != "Drop" && !defined.contains(name) {
+                    out.push((block.first, Id::TraitImpl(block.first)));
+                }
+            }
+        }
+        out.extend(self.asserts.keys().map(|&at| (at, Id::Assert(at))));
+        out.sort_unstable();
+        out.into_iter().map(|(_, id)| id).collect()
+    }
+
+    /// The type and the trait of the derived name or the trait impl `id`,
+    /// which rustc's errors quote when the code needs them.
+    pub fn subject(&self, id: Id) -> Option<(&str, &str)> {
+        match id {
+            Id::Derive(lo) => {
+                let (at, (_, hi)) = self.derive_of(lo)?;
+                let derive = &self.derives[at];
+                Some((&self.tokens[derive.subject].text, &self.tokens[hi].text))
+            }
+            Id::TraitImpl(first) => {
+                let block = self.impl_at(first)?;
+                Some((block.self_name()?, block.trait_name()?))
+            }
+            _ => None,
         }
     }
 
@@ -735,14 +848,7 @@ impl Source {
 
     /// The containers that have no token left in `rendered`, as removals.
     pub fn empty_containers(&self, rendered: &Rendered) -> Vec<Id> {
-        let removals = &rendered.removals;
-        let deleted = |start: usize, end: usize| -> Option<usize> {
-            let at = removals.partition_point(|r| r.1 <= start);
-            removals
-                .get(at)
-                .filter(|r| r.0 <= start && end <= r.1)
-                .map(|r| r.1)
-        };
+        let deleted = |start: usize, end: usize| rendered.deleted(start, end);
         let mut out = Vec::new();
         for c in &self.containers {
             let token = &self.tokens[c.keyword];
@@ -773,8 +879,22 @@ impl Source {
         let mut edits = Vec::new();
         let mut leaves: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new();
         let mut variants: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new();
+        let mut derived: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new();
         for &id in selected {
             match id {
+                Id::TraitImpl(_) | Id::Assert(_) => {
+                    let (start, end) = self.bytes_of(id);
+                    edits.push(Edit {
+                        start,
+                        end,
+                        pieces: Vec::new(),
+                        removal: true,
+                    });
+                }
+                Id::Derive(lo) => {
+                    let (at, _) = self.derive_of(lo).expect("a derived name is known");
+                    derived.entry(at).or_default().insert(lo);
+                }
                 Id::Item(_) | Id::Container(_) | Id::Arm(_) => {
                     let (start, end) = self.bytes_of(id);
                     edits.push(Edit {
@@ -843,6 +963,7 @@ impl Source {
             }
         }
         self.render_variants(variants, &mut edits);
+        self.render_derives(derived, &mut edits);
         // In order; an edit inside another one is dropped.
         edits.sort_by_key(|e| (e.start, std::cmp::Reverse(e.end)));
         let mut rendered = Rendered {
@@ -1041,12 +1162,54 @@ impl Source {
 }
 
 impl Source {
+    /// The edits that remove the names `chosen` (by attribute) from their
+    /// `derive` lists, and the attributes that have none left.
+    fn render_derives(&self, chosen: BTreeMap<usize, BTreeSet<usize>>, edits: &mut Vec<Edit>) {
+        let tokens = &self.tokens;
+        for (at, names) in chosen {
+            let derive = &self.derives[at];
+            let kept: Vec<_> = derive
+                .names
+                .iter()
+                .filter(|(lo, _)| !names.contains(lo))
+                .collect();
+            if kept.is_empty() {
+                let (start, end) = self.cut(derive.first, derive.close);
+                edits.push(Edit {
+                    start,
+                    end,
+                    pieces: Vec::new(),
+                    removal: true,
+                });
+                continue;
+            }
+            let mut pieces = vec![Piece::Copy(
+                tokens[derive.first].start,
+                tokens[derive.open].end,
+            )];
+            for (i, &&(lo, hi)) in kept.iter().enumerate() {
+                if i > 0 {
+                    pieces.push(Piece::Lit(",".into()));
+                }
+                pieces.push(Piece::Copy(tokens[lo].start, tokens[hi].end));
+            }
+            pieces.push(Piece::Lit(")]".into()));
+            edits.push(Edit {
+                start: tokens[derive.first].start,
+                end: tokens[derive.close].end,
+                pieces,
+                removal: false,
+            });
+        }
+    }
+
     /// The name that other code uses for the item `id` removes, when it
     /// has one: an item's name, the last name of an import.
     pub fn name_of(&self, id: Id) -> Option<&str> {
         match id {
             Id::Item(name) | Id::Variant(name) => Some(&self.tokens[name].text),
             Id::Container(_) | Id::Arm(_) => None,
+            Id::Derive(_) | Id::TraitImpl(_) | Id::Assert(_) => None,
             Id::Leaf(lo) => {
                 let item = self.use_of(lo)?;
                 let (lo, hi) = find_leaf(&item.root, lo)?.range();
