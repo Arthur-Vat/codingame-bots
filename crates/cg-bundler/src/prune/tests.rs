@@ -721,3 +721,126 @@ fn main() {
     assert_eq!(out, source);
     assert_eq!(report.items, 0, "{report}");
 }
+
+#[test]
+fn an_impl_of_a_std_item_stays_beside_a_dead_item_of_the_same_name() {
+    // `b`'s `Drop` is std's and `Rc` is std's: neither impl goes with the
+    // dead local items of those names.
+    let source = r#"mod a {
+    pub trait Drop {
+        fn gone(&self);
+    }
+    pub struct Rc;
+}
+mod b {
+    use std::rc::Rc;
+    pub struct G;
+    impl Drop for G {
+        fn drop(&mut self) {
+            println!("dropped");
+        }
+    }
+    pub trait Tr {
+        fn n(&self) -> u8;
+    }
+    pub struct N;
+    impl Tr for N {
+        fn n(&self) -> u8 {
+            1
+        }
+    }
+    impl Tr for Rc<N> {
+        fn n(&self) -> u8 {
+            2
+        }
+    }
+    pub fn show() {
+        let _g = G;
+        println!("{}", Rc::new(N).n());
+    }
+}
+fn main() {
+    b::show();
+}
+"#;
+    let (out, _) = pruned(source);
+    assert!(
+        !out.contains("fn gone") && !out.contains("pub struct Rc;"),
+        "{out}"
+    );
+    assert!(
+        out.contains("impl Drop for G") && out.contains("impl Tr for Rc<N>"),
+        "{out}"
+    );
+    check(&out, &rustc()).unwrap();
+}
+
+#[test]
+fn an_enum_with_empty_brackets_keeps_its_variants() {
+    // `A()` has no field, so `E` can be cast: `C` must stay 2.
+    let source = r#"#[derive(Clone, Copy)]
+enum E {
+    A(),
+    B,
+    C,
+}
+fn main() {
+    for e in [E::A(), E::C] {
+        println!("{}", e as u8);
+    }
+}
+"#;
+    let (out, _) = pruned(source);
+    assert_eq!(out, source);
+}
+
+#[test]
+fn a_pattern_of_a_std_enum_is_not_taken_for_a_dead_variant() {
+    // The local `Ordering` has a `Less` that is never built; the match is on
+    // std's `Ordering`.
+    let source = r#"mod a {
+    pub enum Ordering {
+        Less,
+        More,
+    }
+    pub fn more() -> Ordering {
+        Ordering::More
+    }
+}
+fn sign(x: i8) -> i8 {
+    match x.cmp(&0) {
+        std::cmp::Ordering::Less => -1,
+        _ => 1,
+    }
+}
+fn main() {
+    let _ = a::more();
+    println!("{}", sign(-3));
+}
+"#;
+    let (out, _) = pruned(source);
+    assert!(out.contains("std::cmp::Ordering::Less => -1"), "{out}");
+    assert!(!out.contains("Less,"), "{out}");
+    check(&out, &rustc()).unwrap();
+}
+
+#[test]
+fn a_matches_that_is_not_a_plain_path_keeps_its_variant() {
+    let source = r#"enum Mode {
+    Fast(u8),
+    Slow(u8),
+}
+fn make() -> Mode {
+    Mode::Fast(1)
+}
+fn main() {
+    println!("{}", matches!(make(), Mode::Slow(_)));
+}
+"#;
+    let (out, _) = pruned(source);
+    assert!(
+        out.contains("Slow(u8)") && out.contains("Mode::Slow(_)"),
+        "{out}"
+    );
+    check(&out, &rustc()).unwrap();
+}

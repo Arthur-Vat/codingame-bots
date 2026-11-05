@@ -362,13 +362,13 @@ impl Source {
                             close,
                         });
                     }
-                    let (trait_name, self_name) = shapes::impl_names(&tokens, i, open);
+                    let (trait_path, self_path) = shapes::impl_paths(&tokens, i, open);
                     impls.push(Impl {
                         first: start_of_item(&tokens, i),
                         open,
                         close,
-                        trait_name,
-                        self_name,
+                        trait_path,
+                        self_path,
                     });
                 }
                 _ => {}
@@ -417,43 +417,24 @@ impl Source {
                 }
             }
         }
-        let mut attached = BTreeMap::new();
-        for (name, items) in &defined {
-            for &(keyword, at) in items {
-                if keyword == 0 || tokens[keyword].text == "type" || self.item_tokens(at).is_none()
-                {
-                    continue;
-                }
-                let is_trait = tokens[keyword].text == "trait";
-                let module = self.module_of(keyword);
-                let found: Vec<usize> = (0..self.impls.len())
-                    .filter(|&b| {
-                        let block = &self.impls[b];
-                        let named = if is_trait {
-                            &block.trait_name
-                        } else {
-                            &block.self_name
-                        };
-                        named.as_deref() == Some(*name)
-                            && (items.len() == 1 || self.module_of(block.first) == module)
-                    })
-                    .collect();
-                if !found.is_empty() {
-                    attached.insert(at, found);
-                }
-            }
-        }
+        // The bundle's modules, which a `use` path may start with.
+        let modules: BTreeSet<&str> = self
+            .containers
+            .iter()
+            .filter(|c| tokens[c.keyword].text == "mod")
+            .map(|c| tokens[c.keyword + 1].text.as_str())
+            .collect();
         // The imports of a name that the bundle defines once, along paths
-        // of the bundle (not std's), without renaming.
+        // of the bundle, without renaming; and the names that each module
+        // imports from elsewhere (std).
         let mut imports: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+        let mut std_imports: BTreeSet<(Option<usize>, &str)> = BTreeSet::new();
         for u in &self.uses {
             let root = tokens[u.keyword + 1..u.semicolon]
                 .iter()
                 .find(|t| t.kind == Kind::Ident)
                 .map_or("", |t| t.text.as_str());
-            if matches!(root, "std" | "core" | "alloc") {
-                continue;
-            }
+            let ours = matches!(root, "crate" | "self" | "super") || modules.contains(root);
             let mut leaves = Vec::new();
             u.root.leaves(&mut leaves);
             for lo in leaves {
@@ -464,10 +445,65 @@ impl Source {
                 if last.kind != Kind::Ident || tokens[lo..=hi].iter().any(|t| t.text == "as") {
                     continue;
                 }
+                if !ours {
+                    // From std, or along a path not read here.
+                    std_imports.insert((self.module_of(lo), last.text.as_str()));
+                    continue;
+                }
                 if let Some(&[(keyword, at)]) = defined.get(last.text.as_str()).map(Vec::as_slice) {
                     if keyword > 0 && tokens[keyword].text != "type" {
                         imports.entry(at).or_default().push(lo);
                     }
+                }
+            }
+        }
+        // Whether the path that starts at token `start`, whose last name is
+        // at token `name`, used at token `at`, names the item whose name is
+        // at token `item`: a bare name in the item's module or in a module
+        // that imports it from the bundle (and nothing of that name from
+        // elsewhere), or a path from `crate`, `self` or `super` when the
+        // bundle defines the name once.
+        let names = |item: usize, at: usize, start: usize, name: usize| -> bool {
+            let text = tokens[item].text.as_str();
+            let once = defined.get(text).is_some_and(|items| items.len() == 1);
+            if is_punct(&tokens[start], "::") {
+                return false;
+            }
+            let here = self.module_of(at);
+            if start != name {
+                return once && matches!(tokens[start].text.as_str(), "crate" | "self" | "super");
+            }
+            if std_imports.contains(&(here, text)) {
+                return false;
+            }
+            here == self.module_of(item)
+                || imports
+                    .get(&item)
+                    .is_some_and(|leaves| leaves.iter().any(|&lo| self.module_of(lo) == here))
+        };
+        let mut attached = BTreeMap::new();
+        for (name, items) in &defined {
+            for &(keyword, at) in items {
+                if keyword == 0 || tokens[keyword].text == "type" || self.item_tokens(at).is_none()
+                {
+                    continue;
+                }
+                let is_trait = tokens[keyword].text == "trait";
+                let found: Vec<usize> = (0..self.impls.len())
+                    .filter(|&b| {
+                        let block = &self.impls[b];
+                        let path = if is_trait {
+                            &block.trait_path
+                        } else {
+                            &block.self_path
+                        };
+                        path.as_ref().is_some_and(|path| {
+                            path.name == *name && names(at, block.first, path.start, path.at)
+                        })
+                    })
+                    .collect();
+                if !found.is_empty() {
+                    attached.insert(at, found);
                 }
             }
         }
@@ -487,6 +523,10 @@ impl Source {
         let hashes_discriminants = tokens
             .iter()
             .any(|t| t.kind == Kind::Ident && t.text == "discriminant");
+        // Removing a variant can make an enum smaller.
+        let sizes = tokens
+            .iter()
+            .any(|t| t.kind == Kind::Ident && matches!(t.text.as_str(), "size_of" | "size_of_val"));
         let mut enums = BTreeMap::new();
         let mut variant_of = BTreeMap::new();
         for (name, items) in &defined {
@@ -508,9 +548,10 @@ impl Source {
             let Some((parsed, refused)) = shapes::parse_enum(tokens, keyword) else {
                 continue;
             };
-            let hash_impl = self.impls.iter().any(|b| {
-                b.trait_name.as_deref() == Some("Hash") && b.self_name.as_deref() == Some(*name)
-            });
+            let hash_impl = self
+                .impls
+                .iter()
+                .any(|b| b.trait_name() == Some("Hash") && b.self_name() == Some(*name));
             let pattern_item = |v: &shapes::Variant| {
                 tokens.windows(2).any(|w| {
                     matches!(w[0].text.as_str(), "const" | "static" | "struct")
@@ -519,6 +560,7 @@ impl Source {
                 })
             };
             if refused
+                || sizes
                 || parsed.variants.len() < 2
                 || shared && parsed.variants.iter().any(pattern_item)
                 || !parsed.fieldless && (hash_impl || hashes_discriminants)
@@ -538,7 +580,7 @@ impl Source {
                 arms.insert((tokens[lo].start, tokens[hi].end), (first, last));
             }
         }
-        shapes::resolve(tokens, &mut patterns, &enums, &self.impls);
+        shapes::resolve(tokens, &mut patterns, &enums, &self.impls, names);
         patterns.retain(|p| p.refs.iter().any(|r| !r.is_empty()));
 
         self.attached = attached;
