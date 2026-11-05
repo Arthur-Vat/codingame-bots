@@ -158,8 +158,8 @@ contains "loop line" "$output" "uploaded sprt-blocks-toy-1-1-0, 3 blocks, 3 of 3
 kill "$sleeper" 2>/dev/null || true
 # Blocks come in two moments: two batches with the blocks since the last.
 # Block 2 is written before block 1: a batch holds consecutive blocks only
-# (next case), so the loop, which polls every 10 ms, cannot catch block 1
-# alone between the two writes.
+# (next case), so the loop, which re-reads the folder without pause here,
+# cannot catch block 1 alone between the two writes.
 new_shard 3
 echo b0 >"$work/blocks/block-0.jsonl"
 (sleep 1; echo b2 >"$work/blocks/block-2.jsonl"; echo b1 >"$work/blocks/block-1.jsonl") &
