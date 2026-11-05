@@ -265,6 +265,9 @@ status_is "plan: an unexpected event" true
 
 # ---- gather ----
 
+# A release of a game without a nightly league (LEAGUE_NIGHTLY=false, so that
+# the cases do not depend on a game's evaluation.env), whose pull request
+# played its league.
 # A current archive (r1, r2) among older and expired ones, new samples: the
 # league's (r2, r3) and the SPRT's (r4, r5). The listing has two pages.
 begin
@@ -300,7 +303,7 @@ canned "repos/owner/repo/actions/runs/74/artifacts?name=game-records-uttt&per_pa
 canned "repos/owner/repo/actions/runs/71/artifacts?name=game-records-uttt&per_page=100" \
   "$(listing "$(artifact 800 false 2026-10-01T00:00:00Z 2026-11-01T00:00:00Z 71 main 7 7)")"
 zip_of 800 records/r4.json records/r5.json
-gather uttt ADDING=true HEAD_SHA="$sha_a"
+gather uttt ADDING=true HEAD_SHA="$sha_a" LEAGUE_NIGHTLY=false
 status_is "gather: add to the archive" false
 output_is "gather: add to the archive" upload true
 output_is "gather: add to the archive" added 3
@@ -316,7 +319,7 @@ expect "gather: add: the older archive is not downloaded" "$(lacks "$stub/gh.log
 # The pull request is missing: a notice for each sample, go on; nothing new.
 canned "repos/owner/repo/commits/$sha_a/pulls?per_page=100" '[]'
 rm -rf "$tmp_dir/work" "$stub/tool.log"
-gather uttt ADDING=true HEAD_SHA="$sha_a"
+gather uttt ADDING=true HEAD_SHA="$sha_a" LEAGUE_NIGHTLY=false
 status_is "gather: no samples" false
 output_is "gather: no samples" upload false
 output_is "gather: no samples" added 0
@@ -327,19 +330,19 @@ expect "gather: no samples: a notice about the SPRT" "$(has "$tmp_dir/stdout" 'n
 # requests of the commit cannot be listed, then the runs of its branch.
 rm "$stub/api/$(printf '%s' "repos/owner/repo/commits/$sha_a/pulls?per_page=100" | tr '/?&=' '____').json"
 rm -rf "$tmp_dir/work" "$stub/tool.log"
-gather uttt ADDING=true HEAD_SHA="$sha_a"
+gather uttt ADDING=true HEAD_SHA="$sha_a" LEAGUE_NIGHTLY=false
 status_is "gather: the pull requests cannot be listed" true
 expect "gather: pull request failure: the tool did not run" "$([[ ! -e $stub/tool.log ]] && echo 0 || echo 1)"
 canned "repos/owner/repo/commits/$sha_a/pulls?per_page=100" "$(jq -nc --arg a "$sha_a" --arg b "$sha_b" \
   '[{number: 2, merge_commit_sha: $a, head: {sha: $b, ref: "claude/feature", repo: {full_name: "owner/repo"}}}]')"
 rm "$stub/api/$(printf '%s' "$sprt_runs" | tr '/?&=' '____').json"
 rm -rf "$tmp_dir/work" "$stub/tool.log"
-gather uttt ADDING=true HEAD_SHA="$sha_a"
+gather uttt ADDING=true HEAD_SHA="$sha_a" LEAGUE_NIGHTLY=false
 status_is "gather: the SPRT runs cannot be listed" true
 expect "gather: runs failure: the tool did not run" "$([[ ! -e $stub/tool.log ]] && echo 0 || echo 1)"
 canned "$sprt_runs" "$(jq -nc '{workflow_runs: [{id: 75, created_at: "2026-10-01T00:00:00Z", head_repository: {full_name: "owner/repo"}}]}')"
 rm -rf "$tmp_dir/work" "$stub/tool.log"
-gather uttt ADDING=true HEAD_SHA="$sha_a"
+gather uttt ADDING=true HEAD_SHA="$sha_a" LEAGUE_NIGHTLY=false
 status_is "gather: the run's artifacts cannot be listed" true
 
 # The league sample of a nightly league's run (LEAGUE_RUN), for a release that
@@ -397,6 +400,9 @@ nightly_release() { # nightly_release <game> [VAR=value...]
   expect "gather: a nightly game's release ($game): the notice" \
     "$(has "$tmp_dir/stdout" 'no league sample added: its league plays at night' && echo 0 || echo 1)"
 }
+# Both games set LEAGUE_NIGHTLY=true in their evaluation.env: uttt is given it
+# in the environment too, ice-and-fire reads it from its file. The cases above
+# check that the environment's false overrides a file's true.
 nightly_release uttt LEAGUE_NIGHTLY=true
 nightly_release ice-and-fire
 
@@ -414,9 +420,10 @@ for case in "$in_10 true" "$in_60 false"; do
   output_is "gather: refresh $expires" total 2
 done
 
-# No archive, adding a release: the archive is built from the release's
-# samples only, the league's and the SPRT's, never from league samples of main
-# (a league run on main no longer exists).
+# No archive, adding a release of a game without a nightly league: the
+# archive is built from the release's samples only, the league's and the
+# SPRT's, never from league samples of main (a league run on main no longer
+# exists).
 begin
 canned 'repos/owner/repo/actions/artifacts?name=arena-games-uttt&per_page=100' "$(listing)"
 canned "repos/owner/repo/commits/$sha_a/pulls?per_page=100" "$(jq -nc --arg a "$sha_a" --arg b "$sha_b" \
@@ -428,7 +435,7 @@ canned "repos/owner/repo/actions/runs/71/artifacts?name=game-records-uttt&per_pa
   "$(listing "$(artifact 800 false 2026-10-01T00:00:00Z 2026-11-01T00:00:00Z 71 main 7 7)")"
 zip_of 700 records/l1.json records/l2.json
 zip_of 800 records/s1.json
-gather uttt ADDING=true HEAD_SHA="$sha_a"
+gather uttt ADDING=true HEAD_SHA="$sha_a" LEAGUE_NIGHTLY=false
 status_is "gather: add without an archive" false
 output_is "gather: add without an archive" upload true
 output_is "gather: add without an archive" total 3

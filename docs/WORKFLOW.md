@@ -43,7 +43,7 @@ A replay of the whole history at new settings may instead keep the stored pairin
 
 ### The nightly league and the weekly branch
 
-A game with `LEAGUE_NIGHTLY=true` (A Code of Ice and Fire; Ultimate Tic-Tac-Toe keeps the release-pull-request league above until its league history has been replayed at its calibrated settings, [ADR 0049](adr/0049-parallel-evaluations-and-nightly-league.md), decision 8) plays no league on a release's pull request. Its release merges on the SPRT, the required checks and the owner's approval. Its rating arrives overnight, on the branch `league-results`, and reaches `main` in the weekly pull request.
+A game with `LEAGUE_NIGHTLY=true` (both games: Ultimate Tic-Tac-Toe since its league history was replayed at its calibrated settings, [ADR 0049](adr/0049-parallel-evaluations-and-nightly-league.md), decision 8) plays no league on a release's pull request. Its release merges on the SPRT, the required checks and the owner's approval. Its rating arrives overnight, on the branch `league-results`, and reaches `main` in the weekly pull request.
 
 **The night.** The workflow `league-nightly.yml` is scheduled at 19:17 UTC, because GitHub starts this repository's scheduled runs 5 to 8 hours late, so the night lands around 00:30 to 03:30 UTC; a scheduled run skips a game whose night of the same UTC date is already on `league-results`. It calls `league-night.yml` for each such game, so that each game has its own runners and budget: `LEAGUE_NIGHTLY_RUNNERS` (6) runners for `LEAGUE_NIGHTLY_MINUTES` (180) minutes ([ADR 0050](adr/0050-league-anchor-target-and-budget.md)). The steps are in `scripts/league-night.sh`:
 

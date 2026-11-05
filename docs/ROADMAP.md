@@ -232,7 +232,7 @@ Framework work that a game's plan needs but every game can use.
 - [x] Arena: per-shard seeds and a command that adds up shards and checks the SPRT's bounds; the SPRT in blocks over 8 runners in `sprt.yml`, with a simulation of its error rates and pairs played
 - [x] Screening workflow, one runner per variant, dispatched by the session; skill `run-experiment` updated
 - [x] Ultimate Tic-Tac-Toe calibrated: its timing bot, the probe on CodinGame through the API (12 games: a cut at 112 ms by the bot's clock, 296 of the workload's iterations a millisecond), its `evaluation.env`, the SPRT over 8 runners
-- [ ] Ultimate Tic-Tac-Toe's league history replayed at the calibrated settings on the owner's go-ahead, then its nightly league
+- [x] Ultimate Tic-Tac-Toe's league history replayed at the calibrated settings on the owner's go-ahead (#258; ratings within about 16 Elo of scale 1's, the order unchanged), then its nightly league
 
 ## Risks
 
