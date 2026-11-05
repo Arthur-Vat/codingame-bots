@@ -52,8 +52,9 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0047](0047-codingame-api.md) | CodinGame's public API for test games, submissions and ranks | Accepted |
 | [0049](0049-parallel-evaluations-and-nightly-league.md) | Evaluations spread over runners, and a nightly league for every game | Accepted; decision 4's shared budget and decision 4.4's ±15 Elo superseded by 0050; decision 4.2's pairs near the top superseded by 0052 |
 | [0050](0050-league-anchor-target-and-budget.md) | Every league rated from the game's first release, a nightly target of ±10 Elo, and a nightly budget per game | Accepted |
-| [0051](0051-weekly-league-pull-request.md) | A weekly scheduled task opens the league results pull request | Accepted |
+| [0051](0051-weekly-league-pull-request.md) | A weekly scheduled task opens the league results pull request | Accepted; decision 1 completed by 0053 |
 | [0052](0052-league-precision-from-the-whole-matrix.md) | The league's precision share chosen from the whole covariance of the ratings | Accepted |
+| [0053](0053-weekly-task-starts-the-branch-workflow.md) | The weekly task starts the League weekly workflow itself | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 
