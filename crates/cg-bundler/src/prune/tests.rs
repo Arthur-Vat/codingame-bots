@@ -783,8 +783,7 @@ fn main() {
 #[test]
 fn an_enum_with_empty_brackets_keeps_its_variants() {
     // `A()` has no field, so `E` can be cast: `C` must stay 2.
-    let source = r#"#[derive(Clone, Copy)]
-enum E {
+    let source = r#"enum E {
     A(),
     B,
     C,
@@ -848,4 +847,225 @@ fn main() {
         "{out}"
     );
     check(&out, &rustc()).unwrap();
+}
+
+#[test]
+fn names_of_a_derive_list_are_removed_one_by_one() {
+    let text = "#[derive(Clone, Copy, std::fmt::Debug,)]\n#[allow(dead_code)]\npub struct S;\n\
+                #[derive(Default)]\nenum E {\n    #[default]\n    A,\n}\nfn main() {}\n";
+    let source = Source::new(text).unwrap();
+    let trials = source.trials();
+    // The enum's `Default` is not offered: its `#[default]` needs it.
+    assert_eq!(trials.len(), 3, "{trials:?}");
+    let render = |ids: &[Id]| source.render(&ids.iter().copied().collect()).text;
+    assert!(
+        render(&trials[1..2]).starts_with("#[derive(Clone,std::fmt::Debug)]\n#[allow"),
+        "{}",
+        render(&trials[1..2])
+    );
+    assert!(
+        render(&trials).starts_with("\n#[allow(dead_code)]"),
+        "{}",
+        render(&trials)
+    );
+    for (id, subject) in trials.iter().zip(["Clone", "Copy", "Debug"]) {
+        assert_eq!(source.subject(*id), Some(("S", subject)));
+    }
+}
+
+#[test]
+fn derived_traits_that_nothing_needs_go() {
+    let source = r#"#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+struct P(u8);
+#[derive(Debug, Default)]
+struct Unused(u8);
+fn main() {
+    let p = P(1);
+    let q = p;
+    println!("{}", p.0 + q.0 + (p == q) as u8);
+    println!("{}", Unused(2).0);
+}
+"#;
+    let (out, report) = pruned(source);
+    assert!(
+        out.starts_with("#[derive(Clone,Copy,PartialEq)]\nstruct P(u8);\nstruct Unused(u8);"),
+        "{out}"
+    );
+    assert_eq!(report.derives, 6, "{report}");
+    check(&out, &rustc()).unwrap();
+}
+
+#[test]
+fn a_clone_that_would_copy_a_reference_keeps_its_derive() {
+    // Without `Clone`, `r.clone()` compiles and clones the reference.
+    let source = r#"#[derive(Clone)]
+struct S(u8);
+fn show(s: &S) -> u8 {
+    s.0
+}
+fn main() {
+    let s = S(1);
+    let r = &s;
+    let c = r.clone();
+    println!("{}", show(&c));
+}
+"#;
+    let (out, report) = pruned(source);
+    assert_eq!(out, source);
+    assert_eq!(report.derives, 0, "{report}");
+    // `to_owned` does the same, and rustc does not report it.
+    let source = source.replace("r.clone()", "r.to_owned()");
+    assert_eq!(pruned(&source).0, source);
+}
+
+#[test]
+fn impls_of_std_traits_go_when_unused_but_drop_stays() {
+    let source = r#"use std::fmt;
+use std::ops::Deref;
+struct Guard;
+impl Drop for Guard {
+    fn drop(&mut self) {
+        println!("dropped");
+    }
+}
+struct Shown(u8);
+impl fmt::Display for Shown {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+struct List(Vec<u8>);
+impl Deref for List {
+    type Target = [u8];
+    fn deref(&self) -> &[u8] {
+        &self.0
+    }
+}
+trait Named {
+    fn name(&self) -> u8;
+}
+impl Named for Shown {
+    fn name(&self) -> u8 {
+        self.0
+    }
+}
+fn total(xs: &[u8]) -> u8 {
+    xs.iter().sum()
+}
+fn main() {
+    let _guard = Guard;
+    let list = List(vec![1, 2]);
+    println!("{} {}", total(&list), Shown(3).name());
+}
+"#;
+    let (out, report) = pruned(source);
+    assert!(
+        !out.contains("Display") && !out.contains("use std::fmt"),
+        "{out}"
+    );
+    for kept in [
+        "impl Drop for Guard",
+        "impl Deref for List",
+        "impl Named for Shown",
+    ] {
+        assert!(out.contains(kept), "{kept} is not in\n{out}");
+    }
+    assert_eq!(report.trait_impls, 1, "{report}");
+    check(&out, &rustc()).unwrap();
+}
+
+#[test]
+fn a_chain_of_debug_impls_goes_together() {
+    // `Inner`'s `Debug` is needed while `Outer`'s impl stays.
+    let source = r#"use std::fmt;
+#[derive(Debug)]
+struct Inner(u8);
+struct Outer(Inner);
+impl fmt::Debug for Outer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Outer").field(&self.0).finish()
+    }
+}
+fn main() {
+    let o = Outer(Inner(1));
+    println!("{}", (o.0).0);
+}
+"#;
+    let (out, report) = pruned(source);
+    assert!(!out.contains("Debug") && !out.contains("fmt"), "{out}");
+    assert_eq!((report.derives, report.trait_impls), (1, 1), "{report}");
+    check(&out, &rustc()).unwrap();
+}
+
+#[test]
+fn debug_assertions_stay() {
+    // Without the assertion, `x` would be an `f64`.
+    let source = r#"fn main() {
+    let mut x = 0.1;
+    x = x * 1.7 + 0.3;
+    debug_assert!(x < 100.0f32);
+    println!("{}", x);
+}
+"#;
+    assert_eq!(pruned(source).0, source);
+}
+
+#[test]
+fn a_call_that_does_nothing_in_dead_code_does_not_hide_a_new_one() {
+    // `dead` holds a `.clone()` that does nothing; once it is gone, the one
+    // that removing `S`'s `Clone` would make must still be seen.
+    let source = r#"use std::cell::Cell;
+#[derive(Clone)]
+struct S(Cell<u8>);
+struct T;
+fn dead(t: &T) -> &T {
+    t.clone()
+}
+fn main() {
+    let s = S(Cell::new(1));
+    let r = &s;
+    let c = r.clone();
+    s.0.set(5);
+    println!("{}", c.0.get());
+}
+"#;
+    let (out, report) = pruned(source);
+    assert!(!out.contains("fn dead"), "{out}");
+    assert!(out.contains("#[derive(Clone)]"), "{out}");
+    assert_eq!(report.derives, 0, "{report}");
+}
+
+#[test]
+fn nothing_goes_from_a_type_that_derefs() {
+    // Without `W`'s `Display`, `w.to_string()` compiles and calls `u8`'s.
+    let source = r#"use std::fmt;
+use std::ops::Deref;
+#[derive(Debug)]
+struct W(u8);
+impl Deref for W {
+    type Target = u8;
+    fn deref(&self) -> &u8 {
+        &self.0
+    }
+}
+impl fmt::Display for W {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "W{}", self.0)
+    }
+}
+fn main() {
+    let w = W(3);
+    println!("{}", w.to_string());
+}
+"#;
+    let source_ids = Source::new(source).unwrap().trials();
+    assert!(source_ids.is_empty(), "{source_ids:?}");
+    assert_eq!(pruned(source).0, source);
+}
+
+#[test]
+fn a_derive_on_a_type_named_by_a_macro_is_not_offered() {
+    let text = "macro_rules! unit {\n    ($name:ident) => {\n        #[derive(Clone)]\n        struct $name;\n    };\n}\nunit!(A);\nfn main() {}\n";
+    let trials = Source::new(text).unwrap().trials();
+    assert!(trials.is_empty(), "{trials:?}");
 }

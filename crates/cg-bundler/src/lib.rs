@@ -4,7 +4,8 @@
 //! The bundler works on text. By default it then minifies the result to
 //! save room under CodinGame's size limit (ADR 0016, ADR 0045, ADR 0046),
 //! in stages that are each checked: it removes the items that rustc 1.90.0
-//! reports as never used (module [`prune`]), gives the names the bundle
+//! reports as never used, and the derived traits and std trait impls that
+//! the code compiles without (module [`prune`]), gives the names the bundle
 //! defines the shortest names not otherwise used and writes `self` and some
 //! types shorter (module [`rename`]), then reads the code token by token
 //! and writes back only the whitespace Rust needs, without comments (module
