@@ -391,16 +391,7 @@ impl Tree {
                     if !ident(name_at) || next(name_at + 1) != "{" {
                         return Err(format!("line {line}: a `mod` without a body"));
                     }
-                    for &(a, b) in &attributes {
-                        let words: Vec<&str> =
-                            tokens[a..=b].iter().map(|t| t.text.as_str()).collect();
-                        if words.get(2) != Some(&"allow") {
-                            return Err(format!(
-                                "line {}: an attribute on a module other than `allow`",
-                                tokens[a].line
-                            ));
-                        }
-                    }
+                    only_allow(tokens, &attributes, "a module")?;
                     let open = name_at + 1;
                     let close = shape.pair[open];
                     let child = self.modules.len();
@@ -425,6 +416,9 @@ impl Tree {
                     continue;
                 }
                 "use" => {
+                    // The import moves to the top without its attributes: a
+                    // `cfg` would come alive.
+                    only_allow(tokens, &attributes, "a `use`")?;
                     let semi = (k..end)
                         .find(|&at| tokens[at].text == ";" && shape.parent[at] == shape.parent[k])
                         .ok_or_else(|| format!("line {line}: a `use` without `;`"))?;
@@ -651,6 +645,20 @@ impl Tree {
             .parent
             .ok_or_else(|| "`super` at the root".to_string())
     }
+}
+
+/// Fails unless each of `attributes` (their first and last tokens) is an
+/// `allow`, which can go with the item it is on: no `cfg`, no `deny`.
+fn only_allow(tokens: &[Token], attributes: &[(usize, usize)], on: &str) -> Result<(), String> {
+    for &(a, _) in attributes {
+        if tokens.get(a + 2).map(|t| t.text.as_str()) != Some("allow") {
+            return Err(format!(
+                "line {}: an attribute on {on} other than `allow`",
+                tokens[a].line
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Reads the tree of a `use` declaration into its leaves.

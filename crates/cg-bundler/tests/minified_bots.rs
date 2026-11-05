@@ -2,8 +2,8 @@
 //! of the minifier (ADR 0045, ADR 0046): the pruned code compiles with rustc
 //! 1.90.0 and has no more tokens than the joined code; the flattened code
 //! compiles, has no module, `pub` or path through `crate` left, and after its
-//! std imports has the pruned code's tokens in order, with some left out and
-//! only the names the report lists changed; the renamed code
+//! std imports has the pruned code's tokens in order, with only names and
+//! their punctuation left out and only the names the report lists changed; the renamed code
 //! compiles and has the flattened code's tokens with only names, `self`, the
 //! aliased types and the digit separators of numbers changed, each old name
 //! to one new name (except at the places kept), plus the declarations of
@@ -156,8 +156,9 @@ fn check_bot(package: &str, rustc: &prune::Rustc) {
 
 /// Checks that `flattened` has no module, `pub` or path through `crate`,
 /// starts with std imports, and has after them `pruned`'s tokens in order,
-/// some left out and some renamed as `report` lists: each new name is in no
-/// token of `pruned`.
+/// some renamed as `report` lists (each new name is in no token of
+/// `pruned`) and some left out: names and the punctuation of paths, `use`
+/// trees, visibilities and module braces, never a literal or an operator.
 fn check_flattening(package: &str, pruned: &str, flattened: &str, report: &flatten::Report) {
     let (old, new) = (tokens(pruned).unwrap(), tokens(flattened).unwrap());
     for (i, token) in new.iter().enumerate() {
@@ -189,7 +190,17 @@ fn check_flattening(package: &str, pruned: &str, flattened: &str, report: &flatt
             );
         }
     }
-    let mut rest = old.iter();
+    // What goes is modules, `use` declarations, visibilities and the module
+    // parts of paths: names and their punctuation, never a literal or an
+    // operator.
+    let removable = |t: &Token| {
+        t.kind == Kind::Ident
+            || matches!(
+                t.text.as_str(),
+                "::" | "{" | "}" | "(" | ")" | "[" | "]" | "#" | ";" | ","
+            )
+    };
+    let mut from = 0;
     for token in &new[at..] {
         let renamed = |t: &Token| {
             report
@@ -197,11 +208,28 @@ fn check_flattening(package: &str, pruned: &str, flattened: &str, report: &flatt
                 .get(&t.text)
                 .is_some_and(|news| news.contains(&token.text))
         };
+        let found = old[from..].iter().position(|t| t.same(token) || renamed(t));
+        let Some(skipped) = found else {
+            panic!(
+                "{package}: the flattened code's `{}` (line {}) is not in the pruned code, in order",
+                token.text, token.line
+            );
+        };
+        for gone in &old[from..from + skipped] {
+            assert!(
+                removable(gone),
+                "{package}: `{}` (line {} of the pruned code) is gone",
+                gone.text,
+                gone.line
+            );
+        }
+        from += skipped + 1;
+    }
+    for gone in &old[from..] {
         assert!(
-            rest.any(|t| t.same(token) || renamed(t)),
-            "{package}: the flattened code's `{}` (line {}) is not in the pruned code, in order",
-            token.text,
-            token.line
+            removable(gone),
+            "{package}: `{}` at the end is gone",
+            gone.text
         );
     }
 }

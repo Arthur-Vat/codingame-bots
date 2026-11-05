@@ -374,7 +374,14 @@ fn forms_the_flattener_does_not_read_leave_the_bundle_as_it_is() {
             "mod a { pub fn f() {} }\nmod b { use crate::a::f as g; }\nfn main() {}",
             "`as`",
         ),
-        ("#[cfg(test)]\nmod a {}\nfn main() {}", "other than `allow`"),
+        (
+            "#[cfg(test)]\nmod a {}\nfn main() {}",
+            "on a module other than `allow`",
+        ),
+        (
+            "mod a { #[cfg(any())] use std::fmt::Write; }\nfn main() {}",
+            "on a `use` other than `allow`",
+        ),
         (
             "mod a { fn f() { use crate::b::g; } }\nmod b { pub fn g() {} }\nfn main() {}",
             "function body",

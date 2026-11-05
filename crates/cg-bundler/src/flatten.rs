@@ -40,11 +40,13 @@
 //! marked, must report the same item at the same token, every time: a name
 //! that would reach another item, a method call that a newly visible trait
 //! would take, a pattern that would become a constant, all show. What the
-//! check cannot see is a call that would move from one std method to
-//! another because a std trait is now in scope in every module: for that,
-//! a std trait method with the name of the method called must apply to the
-//! receiver at an earlier step of the method lookup than it, and the
-//! answers check of each release (ADR 0045, decision 4) would show a change.
+//! check cannot see is a call that would move to a method of a std trait,
+//! the bundle's impls of it included (trait impl items carry no mark),
+//! because that trait is now in scope in every module: for that, the trait
+//! must have a method with the name of the one called that applies to the
+//! receiver at an earlier step of the method lookup than it. The answers
+//! check of each release (ADR 0045, decision 4) could show such a change, in
+//! the games it plays.
 //!
 //! The flattener reads the forms the bundles use: modules with a body, `use`
 //! trees without globs, paths that start with `crate`, `self`, `super` or a
