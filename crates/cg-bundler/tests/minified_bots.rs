@@ -4,7 +4,8 @@
 //! compiles and has the pruned code's tokens with only names, `self`, the
 //! aliased types and the digit separators of numbers changed, each old name
 //! to one new name (except at the places kept), plus the declarations of
-//! `self`'s name and of the aliases; the minified code reads back as the
+//! `self`'s name and of the aliases, and the captures of format strings
+//! that became arguments; the minified code reads back as the
 //! renamed code's tokens, is what the bundler writes, and is smaller than
 //! the readable bundle.
 
@@ -140,10 +141,20 @@ fn check_bot(package: &str, rustc: &prune::Rustc) {
 /// at the places [`rename::kept`] keeps; `self` to `report.self_name`, after
 /// a declaration of that name in each method that uses it; each aliased type
 /// to its alias, after the alias's declarations; numbers without their digit
-/// separators.
+/// separators; in a format string that [`rename::calls`] finds, the captured
+/// names that were renamed taken out, and each written as `,new` at its
+/// slot, with its one new name.
 fn check_renaming(package: &str, pruned: &str, renamed: &str, report: &rename::Report) {
     let (old, new) = (tokens(pruned).unwrap(), tokens(renamed).unwrap());
     let kept = rename::kept(&old, StdNames::get());
+    let calls: BTreeMap<usize, rename::Call> = rename::calls(&old)
+        .into_iter()
+        .map(|call| (call.string, call))
+        .collect();
+    // The `,new` expected before an old token, with the captured name, and
+    // the captured names left in the strings.
+    let mut arguments: BTreeMap<usize, Vec<String>> = BTreeMap::new();
+    let (mut made_arguments, mut left_captured) = (Vec::new(), Vec::new());
     let self_name = report.self_name.as_deref();
     let aliases: BTreeMap<&str, &str> = report
         .aliases
@@ -182,7 +193,45 @@ fn check_renaming(package: &str, pruned: &str, renamed: &str, report: &rename::R
                 continue;
             }
         }
+        if let Some(names) = arguments.remove(&i) {
+            for name in names {
+                assert_eq!(
+                    text(&new, j).as_deref(),
+                    Some(","),
+                    "{package}: no `,{name}`"
+                );
+                let argument = &new[j + 1];
+                assert_eq!(argument.kind, Kind::Ident, "{package}: `,{name}`");
+                made_arguments.push((name, argument.text.clone()));
+                j += 2;
+            }
+        }
         let (o, n) = (&old[i], &new[j]);
+        if let (Some(call), true) = (calls.get(&i), o.text != n.text) {
+            // The captures taken out of the string: the subset that gives
+            // its new text.
+            let count = call.captures.len();
+            let out = (0..1u32 << count)
+                .find(|set| call.string_text(&o.text, |c| out_of(call, c, *set)) == n.text)
+                .unwrap_or_else(|| panic!("{package}: `{}` became `{}`", o.text, n.text));
+            for (k, capture) in call.captures.iter().enumerate() {
+                if out & (1 << k) != 0 {
+                    let slot = call.slots[capture.slot];
+                    arguments
+                        .entry(slot)
+                        .or_default()
+                        .push(capture.name.clone());
+                } else {
+                    left_captured.push(capture.name.clone());
+                }
+            }
+            i += 1;
+            j += 1;
+            continue;
+        }
+        if let Some(call) = calls.get(&i) {
+            left_captured.extend(call.captures.iter().map(|c| c.name.clone()));
+        }
         assert_eq!(
             o.kind, n.kind,
             "{package}: `{}` became `{}`",
@@ -223,6 +272,24 @@ fn check_renaming(package: &str, pruned: &str, renamed: &str, report: &rename::R
         j += 1;
     }
     assert_eq!(i, old.len(), "{package}: tokens are missing");
+    assert!(arguments.is_empty(), "{package}: arguments are missing");
+    for (name, argument) in made_arguments {
+        assert_ne!(
+            name, argument,
+            "{package}: `{name}` made an argument, not renamed"
+        );
+        assert_eq!(
+            new_of.get(&name),
+            Some(&argument),
+            "{package}: `{name}` became the argument `{argument}`"
+        );
+    }
+    for name in left_captured {
+        assert!(
+            new_of.get(&name).is_none_or(|new| *new == name),
+            "{package}: `{name}` was renamed but a string still captures it"
+        );
+    }
     assert_eq!(declared_selves, report.methods, "{package}");
     let declarations: usize = report.aliases.iter().map(|(_, _, n)| n).sum();
     assert_eq!(declared_aliases, declarations, "{package}");
@@ -236,4 +303,14 @@ fn the_same_bundle_comes_out_every_time() {
     let first = bundle_package("ice-and-fire-bot-plan", None, options).unwrap();
     let second = bundle_package("ice-and-fire-bot-plan", None, options).unwrap();
     assert_eq!(first, second);
+}
+
+/// Whether `capture`, the `k`-th of `call`, is in the subset `set`.
+fn out_of(call: &rename::Call, capture: &rename::Capture, set: u32) -> bool {
+    let k = call
+        .captures
+        .iter()
+        .position(|c| std::ptr::eq(c, capture))
+        .expect("a capture of the call");
+    set & (1 << k) != 0
 }
