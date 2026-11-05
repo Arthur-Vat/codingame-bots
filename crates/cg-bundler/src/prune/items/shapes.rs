@@ -10,20 +10,22 @@
 //! A variant that is never constructed can only appear in patterns. It goes
 //! with each alternative of a `match` arm or of a `matches!` that names it
 //! (`Enum::Variant`, or `Self::Variant` in an `impl` of the enum): such an
-//! alternative never matches. An arm with no alternative left goes; a
-//! `matches!` with none left is `false` when what it tests is a plain path,
-//! which has no effect when read. Other uses (`if let`, `let`) are not
+//! alternative never matches. An arm with no alternative left goes. Other
+//! uses (`if let`, `let`, a `matches!` with no alternative left) are not
 //! rewritten: the removal does not compile and the variant stays.
 //!
-//! The variants that stay keep their discriminants. An enum without fields
-//! can be cast with `as`, so its first variant after a removed one is given
-//! its old number (`C = 2`). An enum with fields cannot be cast; its
-//! variants are offered unless it hashes its discriminant (a derived or
-//! written `Hash`, or `discriminant` anywhere in the bundle). An enum is not
-//! offered when another item has its name, when a `use` imports its
-//! variants (a removed variant would become a binding in a pattern), when it
-//! has a `repr` or a discriminant of its own, or when it is not read
-//! clearly. An enum keeps at least one variant.
+//! Removals only delete: no number of the variants that stay changes. An
+//! enum without fields can be cast with `as`, so it loses only variants that
+//! no kept variant follows (see `Source::removed_variants`). An enum with
+//! fields cannot be cast; its variants are offered unless it hashes its
+//! discriminant (a derived or written `Hash`, or `discriminant` anywhere in
+//! the bundle) or the bundle reads a size (`size_of`), which a removal can
+//! change. An enum is not offered when another enum has its name, when a
+//! `use` imports its variants (a removed variant would become a binding in a
+//! pattern), when it has a `repr`, a discriminant of its own or a variant
+//! with empty brackets, or when it is not read clearly. A path names the
+//! bundle's item only as `Source` says (its module, its imports, or a path
+//! from `crate`). An enum keeps at least one variant.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -109,13 +111,8 @@ pub struct Pattern {
 pub enum PatternKind {
     /// An arm, from its first token to its comma or its last token.
     Arm { first: usize, last: usize },
-    /// A `matches!` from its name to its `)`; `plain` when what it tests is
-    /// a path of names and fields, which can be dropped.
-    Matches {
-        first: usize,
-        last: usize,
-        plain: bool,
-    },
+    /// The pattern of a `matches!`.
+    Matches,
 }
 
 fn is_ident(token: &Token, text: &str) -> bool {
@@ -410,16 +407,8 @@ fn parse_matches(tokens: &[Token], name: usize) -> Option<Pattern> {
         end = close - 1;
     }
     let alts = alternatives(tokens, comma + 1, end)?;
-    let plain = comma > open + 1
-        && tokens[open + 1..comma].iter().all(|t| {
-            t.kind == Kind::Ident || is_punct(t, ".") || is_punct(t, "*") || is_punct(t, "&")
-        });
     Some(Pattern {
-        kind: PatternKind::Matches {
-            first: name,
-            last: close,
-            plain,
-        },
+        kind: PatternKind::Matches,
         refs: vec![BTreeSet::new(); alts.len()],
         alts,
     })

@@ -912,17 +912,76 @@ impl Source {
         }
     }
 
-    /// The edits that remove the variants `chosen` (by enum) from their
-    /// enums and from the patterns that name them. An enum keeps at least
-    /// one variant: when all are chosen, none of its variants goes.
-    fn render_variants(&self, mut chosen: BTreeMap<usize, BTreeSet<usize>>, edits: &mut Vec<Edit>) {
+    /// The variants of `chosen` (by enum) that a rendering removes. An enum
+    /// keeps at least one variant: when all are chosen, none goes. An enum
+    /// without fields can be cast with `as`, so it loses only variants that
+    /// no kept variant follows: no number changes.
+    fn removed_variants(
+        &self,
+        mut chosen: BTreeMap<usize, BTreeSet<usize>>,
+    ) -> BTreeMap<usize, BTreeSet<usize>> {
         chosen.retain(|e, names| names.len() < self.enums[e].variants.len());
+        for (e, names) in chosen.iter_mut() {
+            let parsed = &self.enums[e];
+            if parsed.fieldless {
+                let kept = parsed
+                    .variants
+                    .iter()
+                    .rposition(|v| !names.contains(&v.name));
+                let after: BTreeSet<usize> = parsed.variants[kept.map_or(0, |k| k + 1)..]
+                    .iter()
+                    .map(|v| v.name)
+                    .collect();
+                names.retain(|n| after.contains(n));
+            }
+        }
+        chosen.retain(|_, names| !names.is_empty());
+        chosen
+    }
+
+    /// Whether the variant removal `id` can change the text, given that
+    /// `removed` says which variants of its enum go with it: a variant of an
+    /// enum without fields only when every variant after it goes too.
+    pub fn trailing(&self, id: Id, removed: impl Fn(usize) -> bool) -> bool {
+        let Id::Variant(name) = id else {
+            return true;
+        };
+        let parsed = &self.enums[&self.variant_of[&name]];
+        let at = parsed.variants.iter().position(|v| v.name == name);
+        !parsed.fieldless
+            || at.is_some_and(|at| parsed.variants[at + 1..].iter().all(|v| removed(v.name)))
+    }
+
+    /// Takes out of `selected` the variants that its rendering keeps, so
+    /// that they are offered again once the variants after them go.
+    pub fn drop_kept_variants(&self, selected: &mut BTreeSet<Id>) {
+        let mut chosen: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new();
+        for &id in selected.iter() {
+            if let Id::Variant(name) = id {
+                chosen
+                    .entry(self.variant_of[&name])
+                    .or_default()
+                    .insert(name);
+            }
+        }
+        let removed: BTreeSet<usize> = self
+            .removed_variants(chosen)
+            .into_values()
+            .flatten()
+            .collect();
+        selected.retain(|id| !matches!(id, Id::Variant(name) if !removed.contains(name)));
+    }
+
+    /// The edits that remove the variants `chosen` (by enum) from their
+    /// enums and from the patterns that name them (see
+    /// [`Source::removed_variants`]).
+    fn render_variants(&self, chosen: BTreeMap<usize, BTreeSet<usize>>, edits: &mut Vec<Edit>) {
+        let chosen = self.removed_variants(chosen);
         let tokens = &self.tokens;
         for (e, names) in &chosen {
             let parsed = &self.enums[e];
             let mut pieces = Vec::new();
-            let mut previous = None;
-            for (at, v) in parsed.variants.iter().enumerate() {
+            for v in &parsed.variants {
                 if names.contains(&v.name) {
                     continue;
                 }
@@ -930,13 +989,6 @@ impl Source {
                     pieces.push(Piece::Lit(",".into()));
                 }
                 pieces.push(Piece::Copy(tokens[v.first].start, tokens[v.last].end));
-                // A variant without fields after a removed one keeps its
-                // number, for `as` casts.
-                let renumbered = previous.map_or(at != 0, |p: usize| p + 1 != at);
-                if parsed.fieldless && renumbered {
-                    pieces.push(Piece::Lit(format!("={at}")));
-                }
-                previous = Some(at);
             }
             let (first, last) = (
                 &parsed.variants[0],
@@ -966,18 +1018,8 @@ impl Source {
                             removal: true,
                         });
                     }
-                    PatternKind::Matches {
-                        first,
-                        last,
-                        plain: true,
-                    } => edits.push(Edit {
-                        start: tokens[first].start,
-                        end: tokens[last].end,
-                        pieces: vec![Piece::Lit("false".into())],
-                        removal: false,
-                    }),
                     // The removal does not compile, and the variant stays.
-                    PatternKind::Matches { .. } => {}
+                    PatternKind::Matches => {}
                 }
                 continue;
             }

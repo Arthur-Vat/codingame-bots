@@ -279,7 +279,9 @@ fn main() {
 }
 
 #[test]
-fn never_built_variants_go_and_the_others_keep_their_numbers() {
+fn an_enum_without_fields_loses_only_its_last_variants() {
+    // `B`, `D` and `E` are never built: `D` and `E` go, `B` stays so that
+    // `C` keeps its number.
     let source = r#"#[derive(Clone, Copy, Debug, PartialEq)]
 enum Kind {
     A,
@@ -290,7 +292,7 @@ enum Kind {
     E,
 }
 fn main() {
-    let kinds = [Kind::A, Kind::C, Kind::E];
+    let kinds = [Kind::A, Kind::C];
     for kind in kinds {
         let name = match kind {
             Kind::A => "a",
@@ -300,21 +302,21 @@ fn main() {
             }
             Kind::E => "e",
         };
-        println!("{} {} {:?}", kind as u8, name, matches!(kind, Kind::D | Kind::E));
+        println!("{} {} {:?}", kind as u8, name, matches!(kind, Kind::D | Kind::E | Kind::C));
     }
 }
 "#;
     let (out, report) = pruned(source);
     let squashed = squashed(&out);
     assert!(
-        squashed.contains("enumKind{A,#[allow(unused)]C=2,E=4,}"),
+        squashed.contains("enumKind{A,B,#[allow(unused)]C,}"),
         "{out}"
     );
     assert!(
-        squashed.contains("Kind::C=>\"borc\",") && !squashed.contains("Kind::D=>"),
+        squashed.contains("Kind::B|Kind::C=>\"borc\",") && !squashed.contains("Kind::D"),
         "{out}"
     );
-    assert!(squashed.contains("matches!(kind,Kind::E)"), "{out}");
+    assert!(squashed.contains("matches!(kind,Kind::C)"), "{out}");
     assert_eq!(report.items, 2, "{report}");
     check(&out, &rustc()).unwrap();
 }
@@ -334,7 +336,7 @@ impl Budget {
         }
     }
     fn timed(&self) -> bool {
-        matches!(self, Budget::Until(_))
+        matches!(self, Budget::Until(_) | Budget::Iterations(0))
     }
 }
 fn main() {
@@ -344,7 +346,10 @@ fn main() {
 "#;
     let (out, report) = pruned(source);
     assert!(!out.contains("Until"), "{out}");
-    assert!(squashed(&out).contains("false"), "{out}");
+    assert!(
+        squashed(&out).contains("matches!(self,Budget::Iterations(0))"),
+        "{out}"
+    );
     assert_eq!(report.items, 1, "{report}");
     check(&out, &rustc()).unwrap();
 }
@@ -800,8 +805,8 @@ fn a_pattern_of_a_std_enum_is_not_taken_for_a_dead_variant() {
     // std's `Ordering`.
     let source = r#"mod a {
     pub enum Ordering {
-        Less,
         More,
+        Less,
     }
     pub fn more() -> Ordering {
         Ordering::More
@@ -820,12 +825,12 @@ fn main() {
 "#;
     let (out, _) = pruned(source);
     assert!(out.contains("std::cmp::Ordering::Less => -1"), "{out}");
-    assert!(!out.contains("Less,"), "{out}");
+    assert!(!out.contains("Less,") && out.contains("More"), "{out}");
     check(&out, &rustc()).unwrap();
 }
 
 #[test]
-fn a_matches_that_is_not_a_plain_path_keeps_its_variant() {
+fn a_matches_with_no_alternative_left_keeps_its_variant() {
     let source = r#"enum Mode {
     Fast(u8),
     Slow(u8),

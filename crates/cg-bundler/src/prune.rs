@@ -36,8 +36,10 @@
 //! that rustc reports unreachable (lint `unreachable_patterns`). A type or a
 //! trait goes with its `impl`s, trait impls included, and with the names of
 //! `use` declarations that import it; a variant goes with the alternatives
-//! of the patterns that name it, and the variants after it keep their
-//! numbers (see `items/shapes.rs` for when each is offered). What stays
+//! of the patterns that name it, and an enum without fields loses only
+//! variants that no kept one follows, so that no number changes (see
+//! `items/shapes.rs` for when each is offered). Every removal only deletes
+//! text. What stays
 //! whatever rustc reports: struct fields, a trait impl whose type and trait
 //! both stay, `main`, and macros. An item is found from rustc's span of its
 //! name, read in the tokens of [`crate::minify`] to its extent; if the
@@ -205,6 +207,14 @@ impl<'a> Pruner<'a> {
         }
         found.extend(self.source.empty_containers(&self.rendered));
         found.retain(|id| !self.state.contains(id) && !skip.contains(id));
+        // A variant of an enum without fields goes only after the ones that
+        // follow it.
+        let going = found.clone();
+        found.retain(|&id| {
+            self.source.trailing(id, |name| {
+                going.contains(&Id::Variant(name)) || self.state.contains(&Id::Variant(name))
+            })
+        });
 
         let mut by_place: Vec<((usize, usize), Id)> = found
             .into_iter()
@@ -234,6 +244,7 @@ impl<'a> Pruner<'a> {
             let rendered = self.source.render(&all);
             match self.compiler.compile(&rendered.text)? {
                 Outcome::Compiled(diagnostics) => {
+                    self.source.drop_kept_variants(&mut all);
                     self.state = all;
                     self.rendered = rendered;
                     self.diagnostics = diagnostics;
@@ -344,6 +355,7 @@ impl<'a> Pruner<'a> {
             trial.extend(candidates.iter().copied());
             let rendered = self.source.render(&trial);
             if let Outcome::Compiled(diagnostics) = self.compiler.compile(&rendered.text)? {
+                self.source.drop_kept_variants(&mut trial);
                 self.state = trial;
                 self.rendered = rendered;
                 self.diagnostics = diagnostics;
