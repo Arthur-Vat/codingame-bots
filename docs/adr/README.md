@@ -33,7 +33,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0026](0026-node-for-the-studio.md) | Node and npm build the studio's front end | Accepted; decision 3 completed by 0030 |
 | [0027](0027-game-records.md) | Game records: one format, a sample of each run, kept on the owner's computer | Accepted; decision 3 completed by 0030, decisions 2 and 3 by 0031 |
 | [0028](0028-job-logs-from-sessions.md) | Job logs readable from Claude's sessions | Accepted |
-| [0029](0029-ci-scoped-by-area-and-game.md) | CI scoped by area and game | Accepted; the league's part of decision 6 superseded by 0038 |
+| [0029](0029-ci-scoped-by-area-and-game.md) | CI scoped by area and game | Accepted; the league's part of decision 6 superseded by 0038; decision 3 completed by 0054 |
 | [0030](0030-studio-on-github-pages.md) | The studio also runs in the browser, published on GitHub Pages | Accepted; decision 6 completed by 0031, decision 2 by 0032, decision 4 by 0040 |
 | [0031](0031-arena-games-archive.md) | Arena games: one archive per game on GitHub, shown read-only in the studio | Accepted; the league sample's source in decision 2 superseded by 0038; decision 2's league sample at publication superseded by 0049 |
 | [0032](0032-analysis-engine.md) | Analysis: one program per game, run as WebAssembly in the page or natively by the local server | Accepted |
@@ -55,6 +55,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0051](0051-weekly-league-pull-request.md) | A weekly scheduled task opens the league results pull request | Accepted; decisions 1 and 2 completed by 0053 |
 | [0052](0052-league-precision-from-the-whole-matrix.md) | The league's precision share chosen from the whole covariance of the ratings | Accepted |
 | [0053](0053-weekly-task-starts-the-branch-workflow.md) | The weekly task starts the League weekly workflow itself | Accepted |
+| [0054](0054-local-checks-follow-ci-scopes.md) | Local checks follow CI's scopes | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 
