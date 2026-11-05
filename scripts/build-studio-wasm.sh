@@ -55,7 +55,7 @@ while (($# > 0)); do
   case $1 in
     --strict) strict=1 ;;
     --cache)
-      if (($# < 2)) || [[ -z $2 ]]; then usage; fi
+      if (($# < 2)) || [[ -z $2 || $2 == -* ]]; then usage; fi
       cache=$2
       shift
       ;;

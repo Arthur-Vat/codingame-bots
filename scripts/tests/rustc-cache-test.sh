@@ -2,7 +2,8 @@
 # Tests scripts/lib/rustc-cache.sh with a stand-in rustc that counts its
 # calls: a second run copies instead of compiling; the source's bytes and
 # name, rustc's arguments and rustc's version each give a new entry; a failed
-# compile stores nothing; pruning keeps only this run's entries; an empty
+# compile stores nothing; a failed copy into the cache keeps the build and
+# stores nothing, one from it fails; pruning keeps only this run's entries; an empty
 # folder turns the cache off. Needs sha256sum.
 # Usage: scripts/tests/rustc-cache-test.sh
 set -euo pipefail
@@ -50,6 +51,14 @@ EOF
 chmod +x "$bin/rustc"
 PATH="$bin:$PATH"
 export FAKE_RUSTC_CALLS="$tmp_dir/calls" FAKE_RUSTC_VERSION=1.0
+# With FAIL_CP set, cp writes part of the file, then fails (a full disk).
+cp() {
+  if [[ -n ${FAIL_CP:-} ]]; then
+    printf 'half' >"$2"
+    return 1
+  fi
+  command cp "$@"
+}
 calls() { if [[ -f $FAKE_RUSTC_CALLS ]]; then wc -l <"$FAKE_RUSTC_CALLS" | tr -d ' '; else echo 0; fi; }
 entries() { find "$cache" -type f | wc -l | tr -d ' '; }
 
@@ -99,6 +108,22 @@ status=0
 rustc_cached "$out/bad.wasm" "$src/bad.rs" -C opt-level=3 || status=$?
 expect "a failed compile fails" "$status" 1
 expect "a failed compile stores nothing" "$(entries)" "$before"
+
+# A copy that writes part of the file, then fails (a full disk): the build
+# still succeeds on a miss, the half file is never an entry, and a failed copy
+# from the cache fails the build.
+echo 'fn main() { 3; }' >"$src/d.rs"
+rustc_cache_init "$cache"
+before="$(entries)"
+status=0
+FAIL_CP=1 rustc_cached "$out/d.wasm" "$src/d.rs" -C opt-level=3 2>/dev/null || status=$?
+expect "a failed copy into the cache keeps the build" "$status" 0
+expect "the compiled file is whole" "$(tail -n 1 "$out/d.wasm")" 'fn main() { 3; }'
+expect "a failed copy into the cache stores nothing" "$(entries)" "$before"
+rustc_cached "$out/d.wasm" "$src/d.rs" -C opt-level=3
+status=0
+FAIL_CP=1 rustc_cached "$out/d.wasm" "$src/d.rs" -C opt-level=3 || status=$?
+expect "a failed copy from the cache fails" "$status" 1
 
 rustc_cache_init "$cache"
 rustc_cached "$out/b.wasm" "$src/b.rs" -C opt-level=3

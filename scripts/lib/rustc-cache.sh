@@ -45,16 +45,22 @@ rustc_cached() {
   key=${key%% *}
   entry="$rustc_cache_dir/$key"
   rustc_cache_used+=("$key")
+  # Each step checks its own status: callers run this function as a
+  # condition, where bash ignores `set -e`.
   if [[ -f $entry ]]; then
-    cp "$entry" "$out"
+    cp "$entry" "$out" || return
     rustc_cache_hits=$((rustc_cache_hits + 1))
-    return
+    return 0
   fi
   rustc "$@" -o "$out" "$source" || return
-  # Written under another name first: a run cut short leaves no half file
-  # under the entry's name.
-  cp "$out" "$entry.part"
-  mv "$entry.part" "$entry"
+  # Written under another name first, and named only once whole: a failed or
+  # cut-short copy leaves no half file under the entry's name. OUT is whole,
+  # so a failed copy fails only the cache, not the build.
+  if ! { cp "$out" "$entry.part" && mv -f "$entry.part" "$entry"; }; then
+    rm -f "$entry.part"
+    echo "rustc-cache: warning: could not keep $out in $rustc_cache_dir" >&2
+  fi
+  return 0
 }
 
 rustc_cache_prune() {
