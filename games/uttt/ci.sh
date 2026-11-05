@@ -13,6 +13,8 @@
 #   - builds the arena;
 #   - plays 1,000 games between the bundled random bots;
 #   - plays every other bundled bot against random, 100 pairs each;
+#   - checks the timing bot, which times out on purpose: no crash or invalid
+#     answer, and every game lost on time;
 #   - the evaluation controls and the A/A test (fixed seeds);
 #   - measures the engine's speed: a report, not a check (ADR 0029, decision 7),
 #     which fails only if the measurement itself crashes; with
@@ -51,6 +53,8 @@ for dir in games/uttt/bots/*/; do
   name="uttt-$(basename "$dir")"
   bot="$bin/$name"
   [ "$name" = uttt-random ] && continue
+  # The timing bot times out on purpose (its own step below).
+  [ "$name" = uttt-timing ] && continue
   if [[ ! -x $bot ]]; then
     echo "::error title=$name against random::$bot is missing"
     exit 1
@@ -67,6 +71,23 @@ for dir in games/uttt/bots/*/; do
   fi
   echo "$out"
 done
+
+echo "== The timing bot times out when its hold reaches the limit"
+# It holds its answer to 95 ms on turn 2, one more each turn, and wins no small
+# board while it can help it: at the arena's exact 100 ms it must lose every
+# game on time, and never crash or answer invalidly.
+if [[ ! -x $bin/uttt-timing ]]; then
+  echo "::error title=Timing bot::$bin/uttt-timing is missing"
+  exit 1
+fi
+out="$("$arena" match --bot "uttt-timing=$bin/uttt-timing" \
+  --bot "random=$bin/uttt-random" --pairs 5 --jobs 1 2>&1)"
+echo "$out"
+faults="$(grep -E '^  uttt-timing faults:' <<<"$out")"
+if [[ $faults != "  uttt-timing faults: 10 timeouts, 0 crashes, 0 invalid answers" ]]; then
+  echo "::error title=Timing bot::expected all 10 games lost on time, no crash or invalid answer: $faults"
+  exit 1
+fi
 
 echo "== The evaluation tells bots apart (controls and A/A test)"
 # Runs an SPRT with fixed seeds and checks its verdict and faults.
