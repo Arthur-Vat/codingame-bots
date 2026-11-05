@@ -1,6 +1,6 @@
 # 0051. A weekly scheduled task opens the league results pull request
 
-- Status: accepted (owner, 2026-10-31)
+- Status: accepted (owner, 2026-10-31); decisions 1 and 2 completed by [0053](0053-weekly-task-starts-the-branch-workflow.md)
 - Date: 2026-10-31
 - Supersedes: [0033](0033-no-daily-scheduled-session.md), decision 1, for this one task
 - Scope: framework
