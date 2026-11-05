@@ -400,6 +400,9 @@ nightly_release() { # nightly_release <game> [VAR=value...]
   expect "gather: a nightly game's release ($game): the notice" \
     "$(has "$tmp_dir/stdout" 'no league sample added: its league plays at night' && echo 0 || echo 1)"
 }
+# Both games set LEAGUE_NIGHTLY=true in their evaluation.env: uttt is given it
+# in the environment too, ice-and-fire reads it from its file. The cases above
+# check that the environment's false overrides a file's true.
 nightly_release uttt LEAGUE_NIGHTLY=true
 nightly_release ice-and-fire
 
@@ -417,9 +420,10 @@ for case in "$in_10 true" "$in_60 false"; do
   output_is "gather: refresh $expires" total 2
 done
 
-# No archive, adding a release of a game without a nightly league: the archive
-# is built from the release's samples only, the league's and the SPRT's, never from league samples of main
-# (a league run on main no longer exists).
+# No archive, adding a release of a game without a nightly league: the
+# archive is built from the release's samples only, the league's and the
+# SPRT's, never from league samples of main (a league run on main no longer
+# exists).
 begin
 canned 'repos/owner/repo/actions/artifacts?name=arena-games-uttt&per_page=100' "$(listing)"
 canned "repos/owner/repo/commits/$sha_a/pulls?per_page=100" "$(jq -nc --arg a "$sha_a" --arg b "$sha_b" \
