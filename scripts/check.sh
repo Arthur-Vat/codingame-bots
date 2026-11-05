@@ -10,10 +10,18 @@
 #                analysis mode)
 #   framework    cargo test --workspace; every bot bundled and checked
 #                (scripts/bundle-bots.sh, scripts/cg-check.sh)
-#   a game       cargo test of the game's packages and of the shared crates
-#                (the bundler's tests bundle the game's bots); the game's bots
-#                bundled and checked
+#   a game       cargo test of the shared crates (the bundler's tests bundle
+#                the game's bots), then of the game's packages, each run on
+#                its own as CI's jobs are (cargo would otherwise build each
+#                package with the features of all); the game's bots bundled
+#                and checked
 #   studio       cargo test of the packages under studio/ and games/*/studio/
+#   studio or framework
+#                the Ultimate Tic-Tac-Toe adapter's tests built alone,
+#                without its feature "analysis"; the WebAssembly build of the
+#                rules, releases and baseline bots (scripts/build-studio-wasm.sh
+#                --strict, cached in target/studio-wasm-cache), when the
+#                target wasm32-wasip1 is installed
 #   licenses     cargo deny check, when cargo-deny is installed
 #   web          a note only: CI runs the front end's checks (npm, browser
 #                tests); see studio/README.md to run them locally
@@ -21,11 +29,13 @@
 #
 # A framework change, a workflow, the workspace's configuration or an unknown
 # path select everything, as in CI. Not run here: games/<game>/ci.sh (arena
-# games), the release checks and the SPRT; play bots with the game's arena
-# for bot or engine changes (CLAUDE.md).
+# games), the release checks (scripts/check-releases.sh, determinism, the
+# readable copies), the front end's checks and the SPRT; play bots with the
+# game's arena for bot or engine changes (CLAUDE.md).
 #
 # The files are those changed since the merge base with BASE (committed,
-# staged, unstaged and untracked), or the FILEs given after --.
+# staged, unstaged and untracked; both paths of a rename, as in CI), or the
+# FILEs given after --.
 #
 # Usage: scripts/check.sh [--all] [--base REF] [--dry-run] [-- FILE...]
 #   --all       every check, as for a push to main
@@ -77,11 +87,12 @@ if [[ $given == false ]]; then
     echo "check: no merge base with $base (fetch it, or pass --base REF)" >&2
     exit 2
   fi
-  mapfile -t files < <(
+  # --no-renames: a moved file counts at its old path too, as in CI.
+  mapfile -d '' -t files < <(
     {
-      git diff --name-only "$merge_base"
-      git ls-files --others --exclude-standard
-    } | LC_ALL=C sort -u
+      git diff --name-only --no-renames -z "$merge_base"
+      git ls-files --others --exclude-standard -z
+    } | LC_ALL=C sort -z -u
   )
 fi
 
@@ -144,27 +155,38 @@ script_tests() {
   return "$status"
 }
 
-# cargo test of every package whose manifest is under one of the prefixes
-# (a prefix may hold a *, as in games/*/studio/).
+# cargo test of every package whose manifest's path, from the repository
+# root, matches one of the regular expressions, as CI's jobs choose them.
 test_packages() {
-  local root package prefix
+  local root package path pattern
   local -a args=()
   root="$PWD/"
   while IFS=$'\t' read -r package path; do
     path=${path#"$root"}
-    for prefix in "$@"; do
-      # shellcheck disable=SC2053 # the prefix is a pattern on purpose
-      if [[ $path == $prefix* ]]; then
+    for pattern in "$@"; do
+      if [[ $path =~ $pattern ]]; then
         args+=(-p "$package")
         break
       fi
     done
   done < <(cargo metadata --no-deps --format-version 1 --locked | jq -r '.packages[] | "\(.name)\t\(.manifest_path)"')
   if ((${#args[@]} == 0)); then
-    echo "check: no package under $*" >&2
+    echo "check: no package matches $*" >&2
     return 1
   fi
   cargo test --locked "${args[@]}"
+}
+
+wasm_target_installed() {
+  rustup target list --installed 2>/dev/null | grep -qx wasm32-wasip1
+}
+
+studio_wasm() {
+  local out status=0
+  out="$(mktemp -d)"
+  scripts/build-studio-wasm.sh "$out" --strict --cache target/studio-wasm-cache || status=$?
+  rm -rf "$out"
+  return "$status"
 }
 
 bundle_game() { # bundle_game <game>
@@ -183,8 +205,7 @@ bundle_all() {
 
 step "docs check" scripts/check-docs.sh
 if command -v shellcheck >/dev/null; then
-  # shellcheck disable=SC2046 # the globs expand to the files to lint
-  step "shellcheck" shellcheck $(printf '%s ' scripts/*.sh scripts/lib/*.sh scripts/tests/*.sh games/*/ci.sh)
+  step "shellcheck" shellcheck scripts/*.sh scripts/lib/*.sh scripts/tests/*.sh games/*/ci.sh
 else
   note "shellcheck is not installed: not run"
 fi
@@ -201,18 +222,30 @@ if [[ $framework == true ]]; then
   step "cargo test --workspace" cargo test --workspace --locked
   step "bundles of every game" bundle_all
 else
-  prefixes=()
+  # One cargo test per CI job.
+  if ((${#games[@]} > 0)); then
+    step "cargo test of crates/" test_packages '^crates/'
+  fi
   for game in ${games[@]+"${games[@]}"}; do
-    prefixes+=("games/$game/")
+    step "cargo test of games/$game/" test_packages "^games/$game/"
   done
-  ((${#games[@]} == 0)) || prefixes+=(crates/)
-  [[ $studio == true ]] && prefixes+=(studio/ "games/*/studio/")
-  if ((${#prefixes[@]} > 0)); then
-    step "cargo test of ${prefixes[*]}" test_packages "${prefixes[@]}"
+  if [[ $studio == true ]]; then
+    step "cargo test of studio/ and games/*/studio/" test_packages '^studio/' '^games/[^/]+/studio/'
   fi
   for game in ${games[@]+"${games[@]}"}; do
     step "bundles of $game" bundle_game "$game"
   done
+fi
+
+if [[ $studio == true || $framework == true ]]; then
+  # Built with the others, the adapter has its feature "analysis" on; one of
+  # its tests runs only without it.
+  step "cargo test of uttt-studio alone" cargo test --locked -p uttt-studio
+  if wasm_target_installed; then
+    step "WebAssembly build" studio_wasm
+  else
+    note "the target wasm32-wasip1 is not installed: the WebAssembly build runs on CI only (rustup target add wasm32-wasip1)"
+  fi
 fi
 
 if [[ $licenses == true ]]; then
