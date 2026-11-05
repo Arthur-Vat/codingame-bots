@@ -1,22 +1,22 @@
 name: League weekly
 
-# Every Thursday at 05:30 UTC, before the owner's 06:00 pull request (ADR 0049,
-# decision 6; ADR 0051): for each game whose results on the branch
+# Started by the weekly Claude task on Thursdays at 06:00 UTC, which then opens
+# the pull request (ADR 0049, decision 6; ADR 0051; ADR 0053: no schedule,
+# since GitHub starts this repository's schedules 5 to 8 hours late, and a
+# run started by hand is not delayed). For each game whose results on the branch
 # league-results are ahead of main's, makes the branch
 # claude/league-results-YYYY-MM-DD from main with the game's league.jsonl from
 # league-results and a LEADERBOARD.md generated from it with main's journal
 # (so that the League results check passes), and pushes it. It opens no pull
 # request: GitHub runs no CI on a pull request that a workflow opens with its
-# token, so a weekly Claude task opens it at 06:00. The branch name is in the
-# run's summary. Nothing differs, nothing is pushed.
+# token, so the weekly Claude task opens it. The branch name is in the run's
+# summary. Nothing differs, nothing is pushed.
 #
 # A game is left out, with a warning, when main's league.jsonl is not the
 # beginning of the one on league-results (main's results were replaced, for
 # example by a replay at new settings, after the night's lines were added):
 # that needs a decision, not a weekly copy.
 on:
-  schedule:
-    - cron: "30 5 * * 4"
   workflow_dispatch:
 
 permissions:
@@ -104,6 +104,6 @@ jobs:
             echo "## League weekly"
             echo
             echo "Pushed the branch \`$branch\` with the results of: ${changed[*]}."
-            echo "A weekly Claude task opens the pull request at 06:00."
+            echo "The weekly Claude task opens the pull request."
           } >>"$GITHUB_STEP_SUMMARY"
           echo "Pushed $branch."

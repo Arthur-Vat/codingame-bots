@@ -69,3 +69,10 @@ unsafe_code = "deny"
 
 [profile.release]
 opt-level = 3
+
+# Tests run optimised a little: on 2026-11-05, `cargo test --workspace` with
+# Rust 1.90.0 on 4 CPUs took 668 s at opt-level 0 (67 s to build, 601 s to
+# run) and 360 s at opt-level 1 (147 s, 213 s). Debug assertions and overflow
+# checks stay on, as in the dev profile.
+[profile.test]
+opt-level = 1

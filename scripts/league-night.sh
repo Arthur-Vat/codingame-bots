@@ -43,7 +43,8 @@
 # copy of RESULTS.
 #
 # publish: writes the leaderboard of RESULTS to LEADERBOARD_OUT, rated from
-# LEAGUE_ANCHOR, with the game's journal.
+# LEAGUE_ANCHOR, with the game's journal and its releases (games/GAME/releases),
+# so that it is the leaderboard `main` would generate from the same results.
 #
 # deadline: the night's budget of time is MINUTES from START (epoch seconds,
 # when the night's first job started). Prints the minutes during which a play
@@ -329,7 +330,7 @@ mode_publish() {
   [[ -n ${LEAGUE_ANCHOR:-} ]] || die "LEAGUE_ANCHOR is missing"
   build_tools "$game"
   "target/release/$game-arena" leaderboard --results "$results" --anchor "$LEAGUE_ANCHOR" \
-    --journal "games/$game/journal/README.md" --out "$out"
+    --journal "games/$game/journal/README.md" --releases "games/$game/releases" --out "$out"
 }
 
 # ---- deadline, left ----------------------------------------------------

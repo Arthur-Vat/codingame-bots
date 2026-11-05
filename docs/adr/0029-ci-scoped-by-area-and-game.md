@@ -1,6 +1,6 @@
 # 0029. CI scoped by area and game
 
-- Status: accepted (owner, 2026-10-11); the league's part of decision 6 superseded by [0038](0038-incremental-league.md)
+- Status: accepted (owner, 2026-10-11); the league's part of decision 6 superseded by [0038](0038-incremental-league.md); decision 3 completed by [0054](0054-local-checks-follow-ci-scopes.md) (local checks)
 - Date: 2026-10-11
 - Completes: [0012](0012-evaluation.md) (decisions 10 and 12: the SPRT and the league run per game)
 - Scope: framework

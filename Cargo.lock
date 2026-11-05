@@ -614,6 +614,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "uttt-bot-timing"
+version = "0.0.0"
+dependencies = [
+ "cg-core",
+ "cg-pack",
+ "cg-search",
+ "uttt-engine",
+ "uttt-referee",
+]
+
+[[package]]
 name = "uttt-bot-wood"
 version = "0.0.0"
 dependencies = [

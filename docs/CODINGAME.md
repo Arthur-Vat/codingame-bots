@@ -77,3 +77,11 @@ The timing bot (`games/ice-and-fire/bots/timing`, [its README section](../games/
 - **CodinGame's overhead between turns** was 15 to 30 ms late in a game and up to 370 ms early, beyond the opponent's own time.
 
 These figures are this game's; another game's limit and speed are measured with a probe of its own.
+
+### Measured in Ultimate Tic-Tac-Toe
+
+The timing bot (`games/uttt/bots/timing`, [its README section](../games/uttt/README.md#measuring-the-time-on-codingame)) played 12 test games against itself through the API on 2026-11-05 (game ids in `games/uttt/evaluation.env`):
+
+- **The limit by a bot's clock is about 112 ms, not 100.** Answers held to 111 ms after the turn's first line were accepted in every game, and the games were cut at 112 to 116 ms (112 in three of them). The lowest cut, 112 ms, is what the evaluations allow for ([ADR 0048](adr/0048-ice-and-fire-codingame-speed.md), applied to this game by [ADR 0049](adr/0049-parallel-evaluations-and-nightly-league.md) decision 8).
+- **The machine runs this game's workload about as fast as ours.** The workload (new searches of `uttt-v018`'s) ran a median of 296 search iterations a millisecond over 461 timed stretches, but the games' medians ranged from 256 to 377: CodinGame's machines differ between games more than in A Code of Ice and Fire's probe. The same file runs at about 290 to 300 on a session's machine with four copies at once (Intel Xeon at 2.8 GHz, 4 CPUs) and about 360 with one. Measured against A Code of Ice and Fire's workload, CodinGame is 1.6 to 1.8 times slower than a session's machine; against this one, it is not: how much slower CodinGame is depends on the work.
+- **CodinGame's overhead between turns** was a median of about 20 ms (12 to 58 ms), beyond the opponent's own time.
