@@ -93,10 +93,17 @@ fn check_bot(package: &str, rustc: &prune::Rustc) {
     // Unused items removed.
     assert!(bundled.pruned.is_some(), "{package}");
     prune::check(pruned, rustc).unwrap_or_else(|err| panic!("{package}: {err}"));
-    assert!(
-        tokens(pruned).unwrap().len() <= tokens(&joined).unwrap().len(),
-        "{package}"
-    );
+    // The pruned code is the joined code with items removed: its tokens are
+    // the joined code's, in order, with some left out.
+    let (kept, all) = (tokens(pruned).unwrap(), tokens(&joined).unwrap());
+    let mut rest = all.iter();
+    for token in &kept {
+        assert!(
+            rest.any(|t| t.text == token.text),
+            "{package}: the pruned code's `{}` is not in the joined code, in order",
+            token.text
+        );
+    }
 
     // Names, `self`, types and numbers shortened.
     let report = bundled
