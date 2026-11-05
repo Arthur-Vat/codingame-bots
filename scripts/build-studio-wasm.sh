@@ -30,38 +30,53 @@
 # Needs Node, which `npm run wasm` has, to read the rules program's answer,
 # and builds cg-bundler.
 #
-# Usage: scripts/build-studio-wasm.sh [OUT] [--strict]
-#   OUT       the output folder, relative to the current folder (default:
-#             studio/web/public/wasm in the repository, not committed)
-#   --strict  also fail when a release or a baseline bot could not be built,
-#             so that nothing is skipped without notice (used by CI)
+# Usage: scripts/build-studio-wasm.sh [OUT] [--strict] [--cache DIR]
+#   OUT          the output folder, relative to the current folder (default:
+#                studio/web/public/wasm in the repository, not committed)
+#   --strict     also fail when a release or a baseline bot could not be
+#                built, so that nothing is skipped without notice (used by CI)
+#   --cache DIR  reuse the releases and baseline bots compiled by an earlier
+#                run from DIR, and keep this run's there (scripts/lib/
+#                rustc-cache.sh; used by CI, where compiling every release
+#                took most of the build)
 set -euo pipefail
+
+usage() {
+  echo "usage: $0 [OUT] [--strict] [--cache DIR]" >&2
+  exit 2
+}
 
 caller=$PWD
 out=studio/web/public/wasm
 strict=0
+cache=
 positional=0
-for arg in "$@"; do
-  case $arg in
+while (($# > 0)); do
+  case $1 in
     --strict) strict=1 ;;
-    -*)
-      echo "usage: $0 [OUT] [--strict]" >&2
-      exit 2
+    --cache)
+      if (($# < 2)) || [[ -z $2 ]]; then usage; fi
+      cache=$2
+      shift
       ;;
+    -*) usage ;;
     *)
       positional=$((positional + 1))
-      out=$arg
+      out=$1
       ;;
   esac
+  shift
 done
-if ((positional > 1)); then
-  echo "usage: $0 [OUT] [--strict]" >&2
-  exit 2
-fi
+((positional <= 1)) || usage
 if ((positional == 1)) && [[ $out != /* ]]; then
   out=$caller/$out
 fi
+if [[ -n $cache && $cache != /* ]]; then
+  cache=$caller/$cache
+fi
 cd "$(dirname "$0")/.."
+# shellcheck source=scripts/lib/rustc-cache.sh
+source scripts/lib/rustc-cache.sh
 
 target=wasm32-wasip1
 installed=0
@@ -83,6 +98,7 @@ if ! command -v node >/dev/null; then
 fi
 
 mkdir -p "$out"
+rustc_cache_init "$cache"
 # Without symbols the file is about a fifth smaller.
 CARGO_PROFILE_RELEASE_STRIP=symbols cargo build --locked --release --target "$target" -p studio-rules
 cp "${CARGO_TARGET_DIR:-target}/$target/release/studio-rules.wasm" "$out/rules.wasm"
@@ -148,8 +164,8 @@ for game_dir in games/*/; do
     total=$((total + 1))
     wasm="$out/$game/$name.wasm"
     rm -f "$wasm"
-    if rustc --edition 2021 -C opt-level=3 -C strip=symbols --target "$target" \
-      -o "$wasm" "games/$game/releases/$name.rs"; then
+    if rustc_cached "$wasm" "games/$game/releases/$name.rs" \
+      --edition 2021 -C opt-level=3 -C strip=symbols --target "$target"; then
       compiled+=("$name")
       built=$((built + 1))
     else
@@ -172,8 +188,8 @@ for game_dir in games/*/; do
     [[ -f $manifest_file ]] && package="$(tr -d '\r' <"$manifest_file" | sed -n 's/^name = "\(.*\)"$/\1/p' | head -n 1)"
     if [[ -n $package ]] &&
       "$bundler" "$package" --no-format --keep-comments --output "$work/$name.rs" &&
-      rustc --edition 2021 -C opt-level=3 -C strip=symbols --target "$target" \
-        --crate-name baseline_bot -o "$wasm" "$work/$name.rs"; then
+      rustc_cached "$wasm" "$work/$name.rs" \
+        --edition 2021 -C opt-level=3 -C strip=symbols --target "$target" --crate-name baseline_bot; then
       compiled+=("$name")
       baseline_built=$((baseline_built + 1))
     else
@@ -190,9 +206,12 @@ for game_dir in games/*/; do
 done
 manifest+=']}'
 printf '%s\n' "$manifest" >"$out/manifest.json"
+rustc_cache_prune
 
 if ((strict == 1 && (built < total || baseline_built < baseline_total))); then
   echo "build-studio-wasm: only $built of $total releases and $baseline_built of $baseline_total baseline bots are in the manifest (--strict)" >&2
   exit 1
 fi
-echo "ok   studio wasm: rules.wasm, analysis.wasm for $analyses game(s), $built of $total releases and $baseline_built of $baseline_total baseline bots in $out"
+cached=
+[[ -z $cache ]] || cached=" ($rustc_cache_hits from the cache)"
+echo "ok   studio wasm: rules.wasm, analysis.wasm for $analyses game(s), $built of $total releases and $baseline_built of $baseline_total baseline bots$cached in $out"
