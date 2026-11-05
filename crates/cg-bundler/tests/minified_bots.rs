@@ -82,25 +82,34 @@ fn check_bot(package: &str, rustc: &prune::Rustc) {
         "{package}: the minifier starts without the readable bundle's `allow`"
     );
 
+    // The bundler's own stages, checked here rather than run a second time:
+    // the stages are where the compiles go.
+    let stages = bundled
+        .stages
+        .as_ref()
+        .expect("a minified bundle has stages");
+    let (pruned, renamed) = (stages.pruned.as_str(), stages.renamed.as_str());
+
     // Unused items removed.
-    let (pruned, report) = prune::prune(&joined, rustc).unwrap();
-    assert_eq!(Some(&report), bundled.pruned.as_ref(), "{package}");
-    prune::check(&pruned, rustc).unwrap_or_else(|err| panic!("{package}: {err}"));
+    assert!(bundled.pruned.is_some(), "{package}");
+    prune::check(pruned, rustc).unwrap_or_else(|err| panic!("{package}: {err}"));
     assert!(
-        tokens(&pruned).unwrap().len() <= tokens(&joined).unwrap().len(),
+        tokens(pruned).unwrap().len() <= tokens(&joined).unwrap().len(),
         "{package}"
     );
 
     // Names, `self`, types and numbers shortened.
-    let (renamed, report) = rename::rename(&pruned, rustc).unwrap();
-    assert_eq!(Some(&report), bundled.renamed.as_ref(), "{package}");
-    prune::check(&renamed, rustc).unwrap_or_else(|err| panic!("{package}: {err}"));
-    check_renaming(package, &pruned, &renamed, &report);
+    let report = bundled
+        .renamed
+        .as_ref()
+        .expect("a minified bundle has a renaming report");
+    prune::check(renamed, rustc).unwrap_or_else(|err| panic!("{package}: {err}"));
+    check_renaming(package, pruned, renamed, report);
 
     // Only the whitespace Rust needs.
-    let minified = minify::minify(&renamed).unwrap();
+    let minified = minify::minify(renamed).unwrap();
     assert_eq!(
-        first_difference(&tokens(&renamed).unwrap(), &tokens(&minified).unwrap()),
+        first_difference(&tokens(renamed).unwrap(), &tokens(&minified).unwrap()),
         None,
         "{package}"
     );
