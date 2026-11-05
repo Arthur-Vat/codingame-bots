@@ -104,6 +104,7 @@ contains "GITHUB_OUTPUT" "$(cat "$out_file")" "baseline_name=toy-v002"
 
 # ---- bad inputs ----
 bad "bad name" "variant name" "-a=$first"
+bad "name with a dot" "variant name" "x.y=$first"
 bad "name with a slash" "variant name" "a/b=$first"
 bad "name too long" "variant name" "$(printf 'n%.0s' {1..41})=$first"
 bad "no equal sign" "not NAME=REF" "$first"
@@ -115,6 +116,7 @@ bad "too many runners" "variants x shards" "a=$first b=$first c=$first" PAIRS=70
 bad "pairs not a multiple" "multiple of shards" "a=$first" PAIRS=401 SHARDS=2
 bad "pairs too few" "pairs must be" "a=$first" PAIRS=1
 bad "pairs too many" "pairs must be" "a=$first" PAIRS=8001
+bad "too many pairs a shard" "raise shards" "a=$first" PAIRS=2000 SHARDS=1
 bad "pairs not a number" "pairs must be" "a=$first" PAIRS=4e2
 bad "shards zero" "shards must be" "a=$first" SHARDS=0
 bad "shards nine" "shards must be" "a=$first" SHARDS=9
@@ -189,6 +191,7 @@ summary MATRIX="$sum_matrix"
 expect "missing shard: status" "$status" 1
 contains "missing shard" "$output" "::warning title=Screening a::shard 1 of a has no result"
 contains "missing shard" "$output" "::notice title=Screening a::"
+contains "missing shard" "$output" "| a (1 of 2 shards) |"
 summary
 expect "no matrix, one shard found: status" "$status" 0
 

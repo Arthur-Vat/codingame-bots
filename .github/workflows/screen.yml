@@ -12,13 +12,16 @@ name: Screening
 #   game      a folder of games/ with an evaluation.env
 #   bot       a folder of games/<game>/bots, the bot every variant bundles
 #   variants  1 to 8 of NAME=REF separated by spaces; NAME is letters, digits,
-#             _ . - (up to 40), unique and not the baseline's name; REF is a
+#             _ - (up to 40), unique and not the baseline's name; REF is a
 #             commit SHA (7 to 40 hex digits), a branch or a tag of this
 #             repository
 #   baseline  a release name such as ice-and-fire-v014 (the file
 #             games/<game>/releases/<name>.rs on the dispatched ref); empty:
 #             the newest release
-#   pairs     seat-swapped pairs per variant in all, 2 to 8000 (default 400)
+#   pairs     seat-swapped pairs per variant in all, 2 to 8000 (default 400),
+#             at most 1,000 a shard: 800 pairs take about 1.5 hours on one
+#             runner for A Code of Ice and Fire and 3 to 3.5 hours for
+#             Ultimate Tic-Tac-Toe (ADR 0049), within the job's 330 minutes
 #   shards    runners per variant, 1 to 8, pairs a multiple of it, variants x
 #             shards at most 20 (default 1)
 #   seed      a decimal u64; empty: the game's SEED in evaluation.env
@@ -64,7 +67,7 @@ on:
         required: false
         default: ""
       pairs:
-        description: "Seat-swapped pairs per variant in all, 2 to 8000; a multiple of shards"
+        description: "Seat-swapped pairs per variant in all, 2 to 8000; a multiple of shards, at most 1000 a shard"
         type: string
         required: false
         default: "400"

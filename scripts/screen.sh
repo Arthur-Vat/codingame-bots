@@ -13,10 +13,10 @@
 #
 # plan: checks the dispatch inputs, which are untrusted text, given in the
 # environment: GAME, BOT, VARIANTS (space separated NAME=REF, 1 to 8: NAME is
-# letters, digits, `_`, `.` and `-` up to 40 characters, unique and not the
+# letters, digits, `_` and `-` up to 40 characters, unique and not the
 # baseline's name; REF is a commit SHA of 7 to 40 hexadecimal digits, a branch
 # or a tag), BASELINE (a release name such as ice-and-fire-v014, empty for the
-# newest release), PAIRS (2 to 8000 in all, a multiple of SHARDS), SHARDS (1 to
+# newest release), PAIRS (2 to 8000 in all, a multiple of SHARDS, at most 1,000 a shard), SHARDS (1 to
 # 8; variants x shards at most 20) and SEED (a decimal u64, empty for the
 # game's SEED in evaluation.env). A bad input is an `::error` annotation and
 # exit status 1. It resolves each REF to a full SHA, checks that the bot exists
@@ -58,12 +58,13 @@ cd "$(dirname "$0")/.."
 # shellcheck source=scripts/lib/evaluation.sh
 source scripts/lib/evaluation.sh
 
-readonly NAME_RE='^[A-Za-z0-9][A-Za-z0-9_.-]{0,39}$'
+readonly NAME_RE='^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$'
 readonly WORD_RE='^[A-Za-z0-9][A-Za-z0-9_-]{0,59}$'
 readonly MAX_VARIANTS=8
 readonly MAX_SHARDS=8
 readonly MAX_RUNNERS=20
 readonly MAX_PAIRS=8000
+readonly MAX_SHARD_PAIRS=1000
 
 usage() {
   echo "usage: $0 plan | play GAME BOT NAME REV BASELINE.rs PAIRS SHARD SHARDS SEED | summary GAME DIR" >&2
@@ -128,6 +129,7 @@ plan() {
   [[ $shards =~ ^[1-9]$ ]] || die "shards must be a number from 1 to $MAX_SHARDS"
   ((shards <= MAX_SHARDS)) || die "shards must be a number from 1 to $MAX_SHARDS"
   ((pairs % shards == 0)) || die "pairs ($pairs) must be a multiple of shards ($shards)"
+  ((pairs / shards <= MAX_SHARD_PAIRS)) || die "at most $MAX_SHARD_PAIRS pairs a shard: raise shards (now $shards for $pairs pairs)"
 
   if [[ -z $seed ]]; then
     seed="$(sed -n 's/^SEED=//p' "games/$game/evaluation.env" | head -n 1)"
@@ -153,7 +155,7 @@ plan() {
     [[ $item == *=* ]] || die "variant '$item' is not NAME=REF"
     name="${item%%=*}"
     ref="${item#*=}"
-    [[ $name =~ $NAME_RE ]] || die "variant name '$name' must be letters, digits, _ . - (1 to 40, starting with a letter or digit)"
+    [[ $name =~ $NAME_RE ]] || die "variant name '$name' must be letters, digits, _ - (1 to 40, starting with a letter or digit)"
     [[ $names != *" $name "* ]] || die "variant name '$name' is used twice"
     [[ $name != "$baseline" ]] || die "variant name '$name' is the baseline's name"
     names+="$name "
@@ -184,7 +186,7 @@ play() {
   [[ $bot =~ $WORD_RE ]] || die "bad bot"
   [[ $name =~ $NAME_RE ]] || die "bad variant name"
   [[ $rev =~ ^[A-Za-z0-9][A-Za-z0-9_./^~{}@-]*$ ]] || die "bad revision"
-  [[ $baseline =~ ^games/$game/releases/[A-Za-z0-9][A-Za-z0-9_.-]*\.rs$ && -f $baseline ]] || die "bad baseline $baseline"
+  [[ $baseline =~ ^games/$game/releases/[A-Za-z0-9][A-Za-z0-9_-]*\.rs$ && -f $baseline ]] || die "bad baseline $baseline"
   [[ $pairs =~ ^[1-9][0-9]{0,3}$ && $shards =~ ^[1-9]$ && $shard =~ ^[0-9]$ ]] || die "bad pairs, shard or shards"
   ((pairs % shards == 0 && shard < shards)) || die "pairs must be a multiple of shards, and shard below shards"
   [[ $seed =~ ^[0-9]{1,20}$ ]] || die "bad seed"
@@ -238,11 +240,14 @@ play() {
   # more is an arena error.
   "$arena" match "${options[@]}" ${shard_option[@]+"${shard_option[@]}"} \
     --bot "$name=$work/bin/$name" --bot "$base=$work/bin/$base" \
-    --pairs "$((pairs / shards))" --out "$work/$name-$shard.jsonl" |
+    --pairs "$((pairs / shards))" --out "$work/$name-$shard.jsonl.part" |
     tee "$work/$name-$shard.txt" || status=$?
   if ((status >= 2)); then
+    # The games of a shard cut short are not kept: summary reports it missing.
+    rm -f "$work/$name-$shard.jsonl.part"
     die "the arena could not play $name (status $status)"
   fi
+  mv "$work/$name-$shard.jsonl.part" "$work/$name-$shard.jsonl"
 }
 
 # Prints "$1 $2 ..." joined by $1: join <separator> <items>...
@@ -285,11 +290,12 @@ summary() {
 "
   mapfile -t variants < <(awk '!seen[$1]++ { print $1 }' <<<"$expected")
   local variant files scales shard sha ref out settings scale speed answers vcell bcell
-  local baseline_name pairs_played elo score vfaults bfaults slow faults
+  local count total_shards baseline_name pairs_played elo score vfaults bfaults slow faults
   for variant in "${variants[@]}"; do
     files=()
     scales=()
     ref="-"
+    total_shards="$(awk -v v="$variant" '$1 == v' <<<"$expected" | wc -l)"
     while read -r _ shard sha; do
       [[ $sha == - ]] || ref="${sha:0:7}"
       if [[ ! -f $dir/$variant-$shard.jsonl ]]; then
@@ -323,7 +329,7 @@ summary() {
         fi
       fi
       shard_rows+="| $variant | $shard | $scale | $speed | $vcell | $bcell |"$'\n'
-    done < <(grep "^$variant " <<<"$expected" || true)
+    done < <(awk -v v="$variant" '$1 == v' <<<"$expected")
 
     if ((${#files[@]} == 0)); then
       md+="| $variant | \`$ref\` | 0 | no result | | | | | |"$'\n'
@@ -348,7 +354,11 @@ summary() {
     vfaults="${faults[0]:-?}"
     bfaults="${faults[1]:-?}"
     slow="$(sed -n 's/^  slowest answer: .* \([0-9.]*\) ms, .* \([0-9.]*\) ms$/\1 \/ \2 ms/p' <<<"$out")"
-    md+="| $variant | \`$ref\` | $pairs_played | $elo | ${score:-n/a} | $vfaults | $bfaults | ${slow:-n/a} | $(join ', ' "${scales[@]}") |"$'\n'
+    count=""
+    if ((${#files[@]} < total_shards)); then
+      count=" (${#files[@]} of $total_shards shards)"
+    fi
+    md+="| $variant$count | \`$ref\` | $pairs_played | $elo | ${score:-n/a} | $vfaults | $bfaults | ${slow:-n/a} | $(join ', ' "${scales[@]}") |"$'\n'
     echo "::notice title=Screening $variant::Elo $elo over $baseline_name, $pairs_played pairs, faults (timeouts/crashes/invalid) $vfaults against the baseline's $bfaults, ${#files[@]} shard(s)"
   done
 
