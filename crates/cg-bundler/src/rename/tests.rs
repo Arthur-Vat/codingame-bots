@@ -618,7 +618,7 @@ fn the_captures_of_std_format_strings_are_found() {
     assert_eq!(
         captures_in(
             "fn f() { write!(out, \"{a}\"); writeln!(out, \"{b}\",); \
-             assert!(ok, \"{c} {{d}} \\u{7b}\"); assert_eq!(x, y, \"{e}\"); \
+             assert!(ok, \"{c} {{d}} \\n \\\\x\"); assert_eq!(x, y, \"{e}\"); \
              std::println!(\"{f}\"); }"
         ),
         [
@@ -631,8 +631,14 @@ fn the_captures_of_std_format_strings_are_found() {
     );
     // An index, a count, a named argument, a raw string, a lone `}`, an
     // argument that `|` or `<` may split, a macro of the bundle, a call in
-    // a macro definition, another crate's macro: left out.
+    // a macro definition, another crate's macro, an escape that may stand
+    // for a brace, a call in the arguments of a macro of the bundle or of
+    // one that turns them into text: left out.
     for source in [
+        "fn f() { println!(\"\\x7b\\x7d {a} {}\", b); }",
+        "fn f() { format!(\"\\u{7b}{a}\\u{7d}\"); }",
+        "fn f() { stringify!(format!(\"{a}\")); }",
+        "macro_rules! pick { ($($t:tt)*) => {} } fn f() { pick!(format!(\"{a}\")); }",
         "fn f() { format!(\"{a} {0}\", b); }",
         "fn f() { format!(\"{a:w$}\"); }",
         "fn f() { format!(\"{a:.*}\", 2, b); }",

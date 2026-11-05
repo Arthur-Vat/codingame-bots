@@ -6,6 +6,7 @@
 use std::collections::BTreeSet;
 
 use super::group_end;
+use super::kept::text_macros;
 use crate::minify::{Kind, Token};
 
 /// The formatting macros of std, with the place of their format string
@@ -76,28 +77,43 @@ impl Call {
     }
 }
 
-/// The calls of `tokens` whose captured names may become arguments. Calls in
-/// `macro_rules!` definitions, calls of a macro that the bundle defines with
-/// the same name, and calls whose arguments hold `$`, `|` or `<` (where a
-/// top-level comma may not separate two arguments) are left out.
+/// The calls of `tokens` whose captured names may become arguments. Left
+/// out: calls in `macro_rules!` definitions and in the arguments of a macro
+/// of the bundle or of one that turns its tokens into text (`stringify!`),
+/// where a call is tokens, not code; calls of a macro that the bundle
+/// defines with the same name; and calls whose arguments hold `$`, `|` or
+/// `<` (where a top-level comma may not separate two arguments).
 pub fn calls(tokens: &[Token]) -> Vec<Call> {
     let text = |at: usize| tokens.get(at).map(|t| t.text.as_str());
     let mut own_macros = BTreeSet::new();
-    let mut in_definition = vec![false; tokens.len()];
     for at in 0..tokens.len() {
         if text(at) == Some("macro_rules") && text(at + 1) == Some("!") {
             if let Some(name) = text(at + 2) {
                 own_macros.insert(name);
             }
-            let end = group_end(tokens, at + 3).unwrap_or(tokens.len());
-            for flag in &mut in_definition[at..end] {
+        }
+    }
+    let text_macros = text_macros(tokens);
+    let mut left_out = vec![false; tokens.len()];
+    for at in 0..tokens.len() {
+        let Some(name) = text(at) else { break };
+        if text(at + 1) != Some("!") {
+            continue;
+        }
+        let open = match name {
+            "macro_rules" => at + 3,
+            _ if own_macros.contains(name) || text_macros.contains(name) => at + 2,
+            _ => continue,
+        };
+        if let Some(end) = group_end(tokens, open) {
+            for flag in &mut left_out[at..end] {
                 *flag = true;
             }
         }
     }
     let mut calls = Vec::new();
     for (at, token) in tokens.iter().enumerate() {
-        if token.kind != Kind::Ident || in_definition[at] || text(at + 1) != Some("!") {
+        if token.kind != Kind::Ident || left_out[at] || text(at + 1) != Some("!") {
             continue;
         }
         let Some(&(_, place)) = FORMAT_MACROS.iter().find(|(name, _)| *name == token.text) else {
@@ -183,9 +199,10 @@ fn call(tokens: &[Token], open: usize, place: usize) -> Option<Call> {
 }
 
 /// The captures of a format string token and its number of `{}`, or `None`
-/// when it is not a plain string literal or has a placeholder that is
-/// neither `{}` nor `{name}` (an index, a count with `$` or `*`, an escape
-/// in braces).
+/// when it is not a plain string literal, has a `\x` or `\u` escape (which
+/// may stand for a brace that rustc reads as one), or has a placeholder that
+/// is neither `{}` nor `{name}` (an index, a count with `$` or `*`, an
+/// escape in braces).
 fn placeholders(token: &str) -> Option<(Vec<Capture>, usize)> {
     if !token.starts_with('"') {
         return None;
@@ -197,14 +214,10 @@ fn placeholders(token: &str) -> Option<(Vec<Capture>, usize)> {
     while at < bytes.len() {
         match bytes[at] {
             b'\\' => {
-                at += 2;
-                if bytes.get(at - 1) == Some(&b'u') {
-                    // `\u{7b}`: its braces are no placeholder.
-                    while at < bytes.len() && bytes[at] != b'}' {
-                        at += 1;
-                    }
-                    at += 1;
+                if matches!(bytes.get(at + 1), Some(b'x' | b'u')) {
+                    return None;
                 }
+                at += 2;
             }
             b'{' if bytes.get(at + 1) == Some(&b'{') => at += 2,
             b'}' if bytes.get(at + 1) == Some(&b'}') => at += 2,
