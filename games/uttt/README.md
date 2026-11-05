@@ -37,6 +37,7 @@ CodinGame's [Ultimate Tic-Tac-Toe](https://www.codingame.com/multiplayer/bot-pro
 | [mcts](bots/mcts/) | Monte Carlo tree search (UCT, no playouts: since E018 the first visit to a node creates all its children and gives each the estimate of an NNUE, updated incrementally from the node's accumulators, a game-winning move scoring a win; selection uses each node's minimax value and its average, half and half since E020, plus since E030 a bias toward children the network rates highly, PUCT with priors `softmax(estimate / 0.05)` and weight 0.5 since E032) for 90 ms of 100, keeping its tree from turn to turn and proving wins and losses; plays a forced or game-winning action at once | The real bot: released as `uttt-v001`, then improved by experiments (see the journal) |
 | [wood](bots/wood/) | Perfect 3×3 tic-tac-toe; among moves that never lose, the one that wins most against random play | Promotion out of Wood league, whose boss plays randomly. Expected score against random play: 99.7% moving first, 95.8% moving second. On the 9×9 board it plays randomly. |
 | [rules-check](bots/rules-check/) | Plays randomly; every turn, compares CodinGame's valid actions with the engine's | Checking the engine against real CodinGame games, from Bronze league |
+| [timing](bots/timing/) | Plays a random valid action that wins no small board, holds each answer back from 95 ms on turn 2, one more millisecond each turn while it times a fixed workload (`uttt-v018`'s search), and prints each turn one line with all it measured in the game | Measuring CodinGame's time limit as a bot's clock sees it and CodinGame's speed against ours, in test games only ([below](#measuring-the-time-on-codingame)) |
 
 ## Playing matches locally
 
@@ -54,8 +55,8 @@ Each pair plays the same seed twice with seats swapped; `--opening-plies 4` star
 
 With the settings of [evaluation.env](evaluation.env):
 
-- `scripts/sprt.sh uttt CANDIDATE.rs [BASELINE.rs]`: smoke test against random, then SPRT against the baseline (by default the newest release older than the candidate, or `greedy`). Both play at CodinGame's exact limits, as every evaluation of every game does ([ADR 0042](../../docs/adr/0042-official-time-limits-and-800-pairs.md)). Settings can be overridden from the environment: a few milliseconds of `TIME_TOLERANCE_MS` on a small or busy machine, where the exact limits cause timeouts that GitHub's runners do not, for a local look and never for a result that decides.
-- `scripts/league.sh uttt vNNN...`: the league of each release named, as CI plays it on the release's pull request: it plays the previous release, `greedy`, `uttt-v001` and the 5 bots nearest in rating, 800 pairs each at the SPRT's limits (about 3 to 3.5 hours), and prints the new result lines to add to `league.jsonl` (created by the bootstrap) ([ADR 0038](../../docs/adr/0038-incremental-league.md)). `scripts/league-check.sh uttt` checks that the results file and `LEADERBOARD.md` agree.
+- `scripts/sprt.sh uttt CANDIDATE.rs [BASELINE.rs]`: smoke test against random, then SPRT against the baseline (by default the newest release older than the candidate, or `greedy`). Both play at CodinGame's speed and real limit, calibrated on the machine that plays ([ADR 0048](../../docs/adr/0048-ice-and-fire-codingame-speed.md), [ADR 0049](../../docs/adr/0049-parallel-evaluations-and-nightly-league.md) decision 8): the script first runs the `timing` bot's workload as many times at once as the games it plays, then sets the time scale to CodinGame's speed (`CG_SPEED`, 296 of the workload's search iterations a millisecond) over the machine's, and the tolerance to the 12 ms CodinGame allows beyond its 100 (`CG_EXTRA_MS`, [above](#measuring-the-time-on-codingame)) at that scale. On a session's machine (4 CPUs) with four games at a time, it has measured 287 to 362 iterations a millisecond: a scale of about 0.8 to 1.03 and 10 to 12 ms. On a release's pull request the SPRT plays in blocks over 8 calibrated runners (`SPRT_RUNNERS`). For a local screening, `scripts/calibrate.sh uttt` prints the scale and tolerance to give the arena. Numbers given in the environment replace `auto`, for a look at other limits, never for a result that decides.
+- `scripts/league.sh uttt vNNN...`: the league of each release named, as CI plays it on the release's pull request until the league's history is replayed at the calibrated settings: it plays the previous release, `greedy`, `uttt-v001` and the 5 bots nearest in rating, 800 pairs each at the SPRT's limits (about 3 to 3.5 hours at scale 1), and prints the new result lines to add to `league.jsonl` (created by the bootstrap) ([ADR 0038](../../docs/adr/0038-incremental-league.md)). `scripts/league-check.sh uttt` checks that the results file and `LEADERBOARD.md` agree.
 - `scripts/new-release.sh uttt BOT`: freezes a bot as the next release. The whole experiment flow is in [docs/WORKFLOW.md](../../docs/WORKFLOW.md).
 
 ## Training
@@ -145,6 +146,24 @@ The parity tests prove the engine and the referee agree with each other, not tha
 1. Paste the bundled `rules-check` bot into the IDE and click **Play my code** a few times.
 2. In the console, every turn prints a line ending with `N turns checked, M with differences`. Any difference is printed on a line starting with `rules-check: DIFFERENCE`, with the actions only one side listed.
 3. When the bot's own move ends the game, it prints the result the engine expects, to compare with CodinGame's.
+
+## Measuring the time on CodinGame
+
+A bot times a turn from the moment the turn's first line arrives; CodinGame times it from when it sends the input. The `timing` bot measures how long CodinGame lets a bot think by its own clock, CodinGame's overhead between turns, and CodinGame's speed against ours, as A Code of Ice and Fire's does ([ADR 0048](../../docs/adr/0048-ice-and-fire-codingame-speed.md), [ADR 0049](../../docs/adr/0049-parallel-evaluations-and-nightly-league.md) decision 8). It plays test games against itself (opponent `me`) through CodinGame's API ([ADR 0047](../../docs/adr/0047-codingame-api.md)), or in the IDE; it loses its games on purpose, so it is never submitted. Each side's last line in a test game's log holds that side's whole game.
+
+From turn 2 the bot holds each answer until 95 ms after the turn's first line, then one more millisecond each turn (100 ms on turn 7, 134 ms on a side's 41st and last possible answer). Its actions win no small board while another action remains, so most games against itself last 60 plies or more. While it holds, it runs units of a fixed workload: a new search of `uttt-v018`'s (its network, copied into the bot, and its settings) of 2,000 iterations from one middle-game position written in the bot; on the first turn it runs them for 500 ms. Each turn, before its hold, it prints one line:
+
+```text
+timing v1 first | turn:target/read/gap/policy/answer/speed | 1:-/0.01/-/0.01/500.12/331.5 2:95/0.01/503.2/0.01/95.00/340.2 ... 7:100/0.01/97.9/0.01/-/-
+```
+
+For each turn, by the bot's clock in ms: the target it holds to, when the rest of its input had been read, the gap from its previous answer to this turn's first line, the time to choose its action, when its answer left (`-` for the turn in progress) and the workload's speed in search iterations a millisecond. Reading a game:
+
+- **The limit.** The last turn of the side CodinGame cut off has a target and no answer: the limit by the bot's clock lies between that target and the answer of the turn before. If the game ends before a cut, raise `RAMP_START_MS` for the next game.
+- **The overhead.** Against itself, a side's gap is the other side's hold plus what CodinGame spends between the two: the referee and the input and output.
+- **The speed.** The workload's iterations a millisecond, against ours with the same file: `CG_WORKLOAD_MS=1000 target/release/uttt-bot-timing` prints 10 stretches.
+
+In our arena at time scale 1 the bot is cut off on turn 7, when its hold first passes 100 ms. On a session's machine (4 CPUs, Rust 1.90.0, 2026-11-05) its workload ran about 300 to 390 iterations a millisecond, one copy at a time; the machine was as unsteady on Ice and Fire's workload. A line is about 50 characters, then about 30 a turn.
 
 ## Putting a bot on CodinGame
 
