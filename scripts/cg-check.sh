@@ -8,9 +8,9 @@
 # Cargo or any crate, the way CodinGame compiles it. Warnings about unused
 # code are not printed (-A dead_code): the minifier keeps some unused items on
 # purpose and frozen releases carry them (ADR 0046, decision 3); the lint
-# changes no compiled code, and every other warning still shows. With --any-size, the
-# size is reported but not enforced: the readable copy of a release is not
-# pasted into CodinGame and may be over the limit (ADR 0045).
+# changes no compiled code, and every other warning still shows. With
+# --any-size, the size is reported but not enforced: the readable copy of a
+# release is not pasted into CodinGame and may be over the limit (ADR 0045).
 #
 # CodinGame limits code size in characters, not bytes (docs/CODINGAME.md). The
 # size is counted in UTF-16 units, as a browser counts a string's length: a
