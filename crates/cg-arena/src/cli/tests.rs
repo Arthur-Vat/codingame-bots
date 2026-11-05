@@ -1592,3 +1592,114 @@ mod blocks_of_an_sprt {
         let _ = fs::remove_dir_all(&dir);
     }
 }
+
+mod sum_of_shards {
+    use super::*;
+    use crate::runner::{EndReason, MatchRecord};
+
+    /// A game of pair `pair` of the shard with game seeds from `base`; the
+    /// first bot wins both games of an even pair and loses both of an odd one.
+    fn played(bots: [&str; 2], base: u64, pair: u32, swapped: bool) -> GameRecord {
+        let seats = if swapped {
+            [bots[1], bots[0]]
+        } else {
+            [bots[0], bots[1]]
+        };
+        GameRecord {
+            pair,
+            swapped,
+            game: MatchRecord {
+                seed: base + u64::from(pair),
+                seats: seats.map(str::to_string),
+                winner: Some(usize::from(swapped) ^ usize::from(pair % 2 == 1)),
+                end: EndReason::Finished,
+                turns: 1,
+                max_answer_ms: [1.0, 2.0],
+                mean_answer_ms: [1.0, 1.0],
+                later_answer_ms: Default::default(),
+                recorded_turns: Vec::new(),
+            },
+        }
+    }
+
+    fn shard(bots: [&str; 2], base: u64, pairs: u32) -> Vec<GameRecord> {
+        (0..pairs)
+            .flat_map(|pair| [false, true].map(|swapped| played(bots, base, pair, swapped)))
+            .collect()
+    }
+
+    fn sum(shards: &[Vec<GameRecord>]) -> Result<Summary, String> {
+        let path = PathBuf::from("shard.jsonl");
+        let files: Vec<_> = shards.iter().map(|games| (&path, games.clone())).collect();
+        sum_files(&files)
+    }
+
+    #[test]
+    fn two_shards_add_up_to_one_summary() {
+        let one = shard(["a", "b"], 100, 4);
+        let two = shard(["a", "b"], 200, 6);
+        let total = sum(&[one.clone(), two.clone()]).unwrap();
+        assert_eq!(total.games(), 20);
+        assert_eq!(total.pairs.iter().sum::<u32>(), 10);
+        assert_eq!(total.names, ["a".to_string(), "b".to_string()]);
+        // The same games played as one tournament, pair numbers apart.
+        let mut whole = Summary::new(total.names.clone());
+        for game in &one {
+            whole.add(game);
+        }
+        for game in &two {
+            let mut game = game.clone();
+            game.pair += 4;
+            whole.add(&game);
+        }
+        assert_eq!(total.to_string(), whole.to_string());
+    }
+
+    #[test]
+    fn the_first_bot_is_the_first_of_the_first_file() {
+        let total = sum(&[shard(["b", "a"], 100, 2)]).unwrap();
+        assert_eq!(total.names, ["b".to_string(), "a".to_string()]);
+    }
+
+    #[test]
+    fn files_of_other_bots_are_refused() {
+        let error = sum(&[shard(["a", "b"], 100, 2), shard(["a", "c"], 200, 2)]).unwrap_err();
+        assert!(error.contains("shard.jsonl"), "{error}");
+        let error = sum(&[shard(["a", "b"], 100, 2), shard(["b", "a"], 200, 2)]).unwrap_err();
+        assert!(error.contains("not by"), "{error}");
+    }
+
+    #[test]
+    fn a_game_played_twice_is_refused() {
+        let error = sum(&[shard(["a", "b"], 100, 2), shard(["a", "b"], 100, 2)]).unwrap_err();
+        assert!(error.contains("twice"), "{error}");
+        let mut doubled = shard(["a", "b"], 100, 2);
+        doubled.extend(shard(["a", "b"], 100, 2));
+        assert!(sum(&[doubled]).unwrap_err().contains("twice"));
+    }
+
+    #[test]
+    fn nothing_to_add_is_refused() {
+        assert!(sum(&[]).unwrap_err().contains("no game"));
+        assert!(sum(&[Vec::new()]).unwrap_err().contains("no game"));
+    }
+
+    #[test]
+    fn an_incomplete_pair_is_refused() {
+        let mut half = shard(["a", "b"], 100, 2);
+        half.pop();
+        assert!(sum(&[half]).unwrap_err().contains("not complete"));
+    }
+
+    #[test]
+    fn parses_sum() {
+        let cli =
+            Cli::try_parse_from(["arena", "sum", "--max-timeout-rate", "0.01", "a", "b"]).unwrap();
+        let Command::Sum(args) = cli.command else {
+            panic!("not sum")
+        };
+        assert_eq!(args.files.len(), 2);
+        assert_eq!(args.max_timeout_rate, Some(0.01));
+        assert!(Cli::try_parse_from(["arena", "sum"]).is_err());
+    }
+}

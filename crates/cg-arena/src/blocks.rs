@@ -142,7 +142,7 @@ impl BlockTest {
 
 /// Adds one block's games to the summary after checking them: every pair has
 /// its two games, one with each bot in seat 0, played by the two bots.
-fn add_block(
+pub(crate) fn add_block(
     summary: &mut Summary,
     block: &[GameRecord],
     names: &[String; 2],
