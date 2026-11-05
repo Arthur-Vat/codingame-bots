@@ -24,6 +24,21 @@
 //!   `macro_rules!` definition, the arguments of a macro that turns its
 //!   tokens into text or those of a macro of the bundle (a rule may match
 //!   the word `usize`) keeps the type's name.
+//! - **Format strings.** A renamed name that the format string of a
+//!   formatting macro of std captures becomes one of its arguments:
+//!   `format!("{score:>5} at {}", turn)` becomes `format!("{:>5} at {}",a,
+//!   turn)`. Each new argument goes where the `{}` before it leave it, so
+//!   every `{}` reads the same value, and the macro's own arguments keep
+//!   their order. Only a plain string literal (no raw string, no `\x` or
+//!   `\u` escape, which may stand for a brace) whose placeholders are `{}`
+//!   or `{name}`, with a format spec of neither `$` nor `*`, followed by one
+//!   positional argument for each `{}`, is changed, outside `macro_rules!`
+//!   definitions and the arguments of the bundle's macros and of those that
+//!   turn their tokens into text, when the bundle does not
+//!   define a macro of that name and no `$`, `|` or `<` in the arguments
+//!   could hide where one ends ([`captures`]). A new argument is never
+//!   longer than the name it replaces in the string (`{ab}` becomes `{}`
+//!   and `,c`), and rustc's rejection undoes it with the name's renaming.
 //! - **Numbers** lose their digit separators: `100_000` becomes `100000`.
 //!
 //! A name is kept as it is, everywhere, when it is:
@@ -53,7 +68,8 @@
 //!   `crate::board::Ordering::Less` is the bundle's own path;
 //! - in an attribute (`#[derive(Clone)]`, `#[allow(dead_code)]`);
 //! - in braces in a string literal, where formatting macros read names
-//!   (`"{score}"`, `"{:width$}"`), or in the arguments of `stringify!`,
+//!   (`"{score}"`, `"{:width$}"`), except a name that may become an
+//!   argument (see **Format strings**), or in the arguments of `stringify!`,
 //!   `concat!` and `module_path!`, which turn names into text, and of the
 //!   bundle's macros that call them;
 //! - anywhere, when std defines it (an enum variant included) and the bundle
@@ -93,9 +109,11 @@
 //! the new one is shorter, `self` and a type only when that saves room. The
 //! result depends only on the bundle and on rustc 1.90.0.
 
+mod captures;
 mod forms;
 mod kept;
 
+pub use captures::{calls, Call, Capture};
 pub use forms::{forms, Forms, Method, Uses, ALIASED};
 pub use kept::{kept, Kept};
 
@@ -223,6 +241,9 @@ pub struct Analysis<'t> {
     pub tokens: &'t [Token],
     pub kept: Kept,
     pub forms: Forms,
+    /// The format strings whose captured names become arguments when the
+    /// names are renamed.
+    pub calls: Vec<Call>,
     /// The names that may be renamed, with the number of places where they
     /// would be, most frequent first (ties in the order of the names).
     pub candidates: Vec<(String, usize)>,
@@ -240,6 +261,12 @@ impl<'t> Analysis<'t> {
                 *counts.entry(token.text.as_str()).or_insert(0) += 1;
             }
         }
+        let calls = calls(tokens);
+        for capture in calls.iter().flat_map(|call| &call.captures) {
+            if let Some(count) = counts.get_mut(capture.name.as_str()) {
+                *count += 1;
+            }
+        }
         let mut candidates: Vec<(String, usize)> = counts
             .into_iter()
             .map(|(name, count)| (name.to_string(), count))
@@ -255,6 +282,7 @@ impl<'t> Analysis<'t> {
             tokens,
             kept,
             forms,
+            calls,
             candidates,
         }
     }
@@ -570,17 +598,17 @@ impl Applied {
 /// separators; everything else, comments and whitespace included, stays.
 pub fn apply(source: &str, analysis: &Analysis<'_>, edits: &Edits) -> Applied {
     let tokens = analysis.tokens;
-    let mut replace: BTreeMap<usize, (String, Option<Unit>)> = BTreeMap::new();
+    let mut replace: BTreeMap<usize, (String, Vec<Unit>)> = BTreeMap::new();
     let mut insert: BTreeMap<usize, Vec<(String, Unit)>> = BTreeMap::new();
     for (at, token) in tokens.iter().enumerate() {
         match token.kind {
             Kind::Ident if !analysis.kept.positions.contains(&at) => {
                 if let Some(new) = edits.names.get(&token.text) {
-                    replace.insert(at, (new.clone(), Some(Unit::Name(token.text.clone()))));
+                    replace.insert(at, (new.clone(), vec![Unit::Name(token.text.clone())]));
                 }
             }
             Kind::Number if token.text.contains('_') => {
-                replace.insert(at, (token.text.replace('_', ""), None));
+                replace.insert(at, (token.text.replace('_', ""), Vec::new()));
             }
             _ => {}
         }
@@ -593,7 +621,7 @@ pub fn apply(source: &str, analysis: &Analysis<'_>, edits: &Edits) -> Applied {
                 .or_default()
                 .push((self_declaration(name, method.mutable), Unit::Method(m)));
             for &at in &method.selves {
-                replace.insert(at, (name.clone(), Some(Unit::Method(m))));
+                replace.insert(at, (name.clone(), vec![Unit::Method(m)]));
             }
         }
     }
@@ -615,8 +643,31 @@ pub fn apply(source: &str, analysis: &Analysis<'_>, edits: &Edits) -> Applied {
                     Unit::Alias(uses.ty),
                 ));
             for &at in list {
-                replace.insert(at, (alias.clone(), Some(Unit::Alias(uses.ty))));
+                replace.insert(at, (alias.clone(), vec![Unit::Alias(uses.ty)]));
             }
+        }
+    }
+    // A renamed name that a format string captures becomes an argument:
+    // `{score}` becomes `{}`, and `,a` goes where the `{}` before it leave
+    // it, so that each `{}` still reads its own argument.
+    for call in &analysis.calls {
+        let renamed = |capture: &Capture| edits.names.contains_key(&capture.name);
+        let units: Vec<Unit> = call
+            .captures
+            .iter()
+            .filter(|c| renamed(c))
+            .map(|c| Unit::Name(c.name.clone()))
+            .collect();
+        if units.is_empty() {
+            continue;
+        }
+        let text = call.string_text(&tokens[call.string].text, renamed);
+        replace.insert(call.string, (text, units));
+        for capture in call.captures.iter().filter(|c| renamed(c)) {
+            insert.entry(call.slots[capture.slot]).or_default().push((
+                format!(",{}", edits.names[&capture.name]),
+                Unit::Name(capture.name.clone()),
+            ));
         }
     }
 
@@ -635,10 +686,10 @@ pub fn apply(source: &str, analysis: &Analysis<'_>, edits: &Edits) -> Applied {
             out.push_str(text);
             regions.push((from, out.len(), unit.clone()));
         }
-        if let Some((text, unit)) = replace.get(&at) {
+        if let Some((text, units)) = replace.get(&at) {
             let from = out.len();
             out.push_str(text);
-            if let Some(unit) = unit {
+            for unit in units {
                 regions.push((from, out.len(), unit.clone()));
             }
             copied = tokens[at].end;

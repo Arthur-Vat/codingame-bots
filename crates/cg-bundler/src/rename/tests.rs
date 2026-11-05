@@ -4,7 +4,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::{
-    apply, assign, braced_words, kept, rename, Analysis, Case, Report, StdNames, CJK_FIRST,
+    apply, assign, braced_words, calls, kept, rename, Analysis, Case, Report, StdNames, CJK_FIRST,
 };
 use crate::minify::tokens;
 use crate::prune::Rustc;
@@ -162,10 +162,10 @@ fn std_paths_use_trees_and_the_prelude_are_kept() {
 
 #[test]
 fn a_kept_name_that_std_cannot_reach_does_not_keep_the_names_behind_it() {
-    // `board` is kept by the format string, but `board::Board` is the
-    // bundle's own path.
+    // `board` is kept by the format string (its count keeps the captured
+    // name), but `board::Board` is the bundle's own path.
     let source = "mod board { pub struct Board; }
-        fn show(board: u8) { let piece = board::Board; eprintln!(\"{board}\"); }";
+        fn show(board: u8) { let piece = board::Board; eprintln!(\"{board:>0$}\", 2); }";
     assert_kept(source, &["board", "eprintln"], &["Board", "show", "piece"]);
 }
 
@@ -566,4 +566,146 @@ fn the_arguments_of_the_bundles_macros_keep_types_and_self() {
     assert!(out.contains("!(self)"), "{out}");
     assert_eq!(report.methods, 0, "{out}");
     crate::prune::check(&out, &rustc()).unwrap();
+}
+
+/// The names that the format strings of `source` capture and may make
+/// arguments, call by call, with the slot of each.
+fn captures_in(source: &str) -> Vec<Vec<(String, usize)>> {
+    calls(&tokens(source).unwrap())
+        .into_iter()
+        .map(|call| {
+            call.captures
+                .into_iter()
+                .map(|c| (c.name, c.slot))
+                .collect()
+        })
+        .collect()
+}
+
+/// What `source`, a program, prints, compiled with the session's rustc.
+fn output_of(source: &str, name: &str) -> String {
+    let dir = std::env::temp_dir().join(format!("cg-rename-{}-{name}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("main.rs");
+    std::fs::write(&file, source).unwrap();
+    let binary = dir.join("main");
+    let compiled = std::process::Command::new("rustc")
+        .args(["--edition", "2021", "-o"])
+        .arg(&binary)
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(
+        compiled.status.success(),
+        "{}\n{source}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let run = std::process::Command::new(&binary).output().unwrap();
+    std::fs::remove_dir_all(&dir).unwrap();
+    assert!(run.status.success());
+    String::from_utf8(run.stdout).unwrap()
+}
+
+#[test]
+fn the_captures_of_std_format_strings_are_found() {
+    let pairs = |list: &[(&str, usize)]| -> Vec<(String, usize)> {
+        list.iter().map(|&(n, s)| (n.to_string(), s)).collect()
+    };
+    assert_eq!(
+        captures_in("fn f() { format!(\"{score} {} {turn:>5.2} {}{x:?}\", a, b); }"),
+        [pairs(&[("score", 0), ("turn", 1), ("x", 2)])]
+    );
+    assert_eq!(
+        captures_in(
+            "fn f() { write!(out, \"{a}\"); writeln!(out, \"{b}\",); \
+             assert!(ok, \"{c} {{d}} \\n \\\\x\"); assert_eq!(x, y, \"{e}\"); \
+             std::println!(\"{f}\"); }"
+        ),
+        [
+            pairs(&[("a", 0)]),
+            pairs(&[("b", 0)]),
+            pairs(&[("c", 0)]),
+            pairs(&[("e", 0)]),
+            pairs(&[("f", 0)]),
+        ]
+    );
+    // An index, a count, a named argument, a raw string, a lone `}`, an
+    // argument that `|` or `<` may split, a macro of the bundle, a call in
+    // a macro definition, another crate's macro, an escape that may stand
+    // for a brace, a call in the arguments of a macro of the bundle or of
+    // one that turns them into text: left out.
+    for source in [
+        "fn f() { println!(\"\\x7b\\x7d {a} {}\", b); }",
+        "fn f() { format!(\"\\u{7b}{a}\\u{7d}\"); }",
+        "fn f() { stringify!(format!(\"{a}\")); }",
+        "macro_rules! pick { ($($t:tt)*) => {} } fn f() { pick!(format!(\"{a}\")); }",
+        "fn f() { format!(\"{a} {0}\", b); }",
+        "fn f() { format!(\"{a:w$}\"); }",
+        "fn f() { format!(\"{a:.*}\", 2, b); }",
+        "fn f() { format!(\"{a} {w}\", w = 3); }",
+        "fn f() { format!(r\"{a}\"); }",
+        "fn f() { format!(\"{a} }\"); }",
+        "fn f() { format!(\"{a} {}\", |x| x); }",
+        "fn f() { format!(\"{a} {}\", h::<u8, u16>()); }",
+        "macro_rules! format { () => {} } fn f() { format!(\"{a}\"); }",
+        "macro_rules! m { () => { format!(\"{a}\") } }",
+        "fn f() { other::format!(\"{a}\"); }",
+        "fn f() { format!(\"{a} {}\"); }",
+    ] {
+        let found = captures_in(source);
+        assert!(
+            found.iter().all(|c| !c.contains(&("a".to_string(), 0))),
+            "{source}: {found:?}"
+        );
+    }
+}
+
+#[test]
+fn names_captured_by_std_format_strings_may_be_renamed() {
+    let source = "fn f(score: i64, width: usize, other: i64) -> String {
+            format!(\"{score:>5} {} {{literal}}\", other) + &format!(\"{score:>width$}\")
+        }
+        fn g(turn: u32) -> String { format!(\"{turn}\") }";
+    // `score` is read by name by a string with a count, `turn` only by a
+    // string where it may become an argument.
+    assert_kept(source, &["score", "width", "literal"], &["turn", "other"]);
+}
+
+#[test]
+fn renamed_captures_become_arguments_in_order() {
+    let source = "fn f(score: i64, a: i64, turn_count: u32, b: i64) -> String {
+            format!(\"{score} {} {turn_count:>5} {:?} {score}\", a, b,)
+        }";
+    let out = renamed(source);
+    let names = mapping(source);
+    let (s, t) = (&names["score"], &names["turn_count"]);
+    assert!(
+        out.contains(&format!(
+            "format!(\"{{}} {{}} {{:>5}} {{:?}} {{}}\",{s}, a,{t}, b,{s},)"
+        )),
+        "{out}"
+    );
+}
+
+#[test]
+fn a_program_with_captures_made_arguments_prints_the_same() {
+    let source = "use std::fmt::Write;
+        fn main() {
+            let player_score = 41i64;
+            let turn_number = 7u32;
+            let label_text = \"best\";
+            let mut out = String::new();
+            write!(out, \"{label_text}: {} {player_score:>6} {turn_number:03}\", player_score + 1).unwrap();
+            writeln!(out, \"[{:?}|{label_text:?}|{}]\", (1, 2), turn_number).unwrap();
+            assert!(turn_number > 0, \"{turn_number} {}\", player_score);
+            print!(\"{out}\");
+            println!(\"{player_score}{turn_number}{label_text}{{literal}}\");
+        }";
+    let (out, report) = rename(source, &rustc()).unwrap();
+    assert_eq!(report.refused, 0, "{out}");
+    for name in ["player_score", "turn_number", "label_text"] {
+        assert!(!out.contains(name), "{name} in {out}");
+    }
+    assert!(out.contains("{{literal}}"), "{out}");
+    assert_eq!(output_of(&out, "after"), output_of(source, "before"));
 }
