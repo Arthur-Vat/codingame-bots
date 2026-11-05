@@ -655,6 +655,8 @@ mod nightly_commands {
                 "2",
                 "--seed",
                 "3",
+                "--max-line-pairs",
+                "1000",
                 "--out",
                 out.to_str().unwrap(),
             ];
@@ -1348,6 +1350,57 @@ mod leaderboard_command {
     }
 
     #[test]
+    fn finds_the_releases_in_the_folder_given() {
+        // A results file away from the game's folder, as the nightly league's.
+        let dir = setup("folder");
+        let elsewhere = dir.join("night");
+        fs::create_dir_all(&elsewhere).unwrap();
+        fs::copy(dir.join("league.jsonl"), elsewhere.join("league.jsonl")).unwrap();
+        fs::copy(dir.join("journal.md"), elsewhere.join("journal.md")).unwrap();
+        let out = dir.join("LEADERBOARD.md");
+        let out_arg = out.to_str().unwrap();
+        assert_eq!(run(&elsewhere, "random", &["--out", out_arg]), Ok(true));
+        let text = fs::read_to_string(&out).unwrap();
+        assert!(text.contains("| v001 | +"), "no release found: {text}");
+        let releases = dir.join("releases");
+        let releases_arg = releases.to_str().unwrap();
+        assert_eq!(
+            run(
+                &elsewhere,
+                "random",
+                &["--releases", releases_arg, "--out", out_arg]
+            ),
+            Ok(true)
+        );
+        let found = fs::read_to_string(&out).unwrap();
+        assert!(
+            found.contains("| [v001](releases/uttt-v001.rs) | +"),
+            "{found}"
+        );
+        assert!(found.contains("| [E001](journal/E001-mcts.md) | 2026-10-07 |"));
+        // A folder that does not exist is an error, not a board without releases.
+        let missing = dir.join("nowhere");
+        let error = run(
+            &elsewhere,
+            "random",
+            &["--releases", missing.to_str().unwrap()],
+        )
+        .unwrap_err();
+        assert!(
+            error.contains("--releases") && error.contains("not a folder"),
+            "{error}"
+        );
+        // The same as the leaderboard of the results file in the game's folder.
+        let beside = dir.join("BESIDE.md");
+        assert_eq!(
+            run(&dir, "random", &["--out", beside.to_str().unwrap()]),
+            Ok(true)
+        );
+        assert_eq!(fs::read_to_string(&beside).unwrap(), found);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
     fn check_fails_on_a_different_or_missing_file() {
         let dir = setup("check");
         let out = dir.join("LEADERBOARD.md");
@@ -1432,5 +1485,221 @@ mod leaderboard_command {
         let error = run(&dir, "random", &[]).unwrap_err();
         assert!(error.contains("cannot read"), "{error}");
         fs::remove_dir_all(&dir).unwrap();
+    }
+}
+
+mod blocks_of_an_sprt {
+    use super::*;
+
+    fn parse(extra: &[&str]) -> Result<Command, clap::Error> {
+        Cli::try_parse_from(["arena"].into_iter().chain(extra.iter().copied()))
+            .map(|cli| cli.command)
+    }
+
+    fn directory(name: &str) -> PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("cg-arena-blocks-{}-{name}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        dir
+    }
+
+    #[test]
+    fn the_block_options_go_together() {
+        let base = ["match", "--bot", "a=x", "--bot", "b=y"];
+        let ok = |extra: &[&str]| parse(&[&base[..], extra].concat()).is_ok();
+        assert!(ok(&["--shard", "3"]));
+        assert!(ok(&[
+            "--shard",
+            "3",
+            "--block-pairs",
+            "10",
+            "--block-dir",
+            "d"
+        ]));
+        assert!(
+            !ok(&["--block-pairs", "10"]),
+            "--block-pairs needs --block-dir"
+        );
+        assert!(
+            !ok(&["--block-dir", "d"]),
+            "--block-dir needs --block-pairs"
+        );
+        assert!(!ok(&["--shard", "70000"]), "a shard is a 16-bit number");
+    }
+
+    #[test]
+    fn parses_sprt_check() {
+        let command = parse(&[
+            "sprt-check",
+            "--block",
+            "a.jsonl",
+            "--block",
+            "b.jsonl",
+            "--round-blocks",
+            "2",
+            "--candidate",
+            "v2",
+            "--baseline",
+            "v1",
+            "--max-pairs",
+            "8000",
+            "--expect-no-faults-from",
+            "v2",
+            "--max-timeout-rate",
+            "0.01",
+        ])
+        .unwrap();
+        let Command::SprtCheck(args) = command else {
+            panic!("not sprt-check")
+        };
+        assert_eq!(args.blocks.len(), 2);
+        assert_eq!((args.round_blocks, args.max_pairs), (2, 8000));
+        assert_eq!(
+            (args.elo0, args.elo1, args.alpha, args.beta),
+            (0.0, 10.0, 0.05, 0.05)
+        );
+        assert!(parse(&["sprt-check", "--candidate", "a", "--baseline", "b"]).is_err());
+    }
+
+    #[test]
+    fn a_block_is_written_when_its_games_are_whole() {
+        let dir = directory("write");
+        let mut blocks = Blocks::create(Some(&dir.join("nested")), Some(2), 4).unwrap();
+        // Block 0 has pairs 0 and 1: four games, finishing out of order.
+        for (pair, swapped) in [(1, true), (0, false), (0, true)] {
+            blocks.add(&game(pair, swapped));
+        }
+        assert!(!dir.join("nested/block-0.jsonl").exists());
+        blocks.add(&game(1, false));
+        // Block 1 is one game short.
+        blocks.add(&game(2, false));
+        blocks.finish().unwrap();
+        let games = crate::blocks::read_block(&dir.join("nested/block-0.jsonl")).unwrap();
+        let order: Vec<_> = games.iter().map(|g| (g.pair, g.swapped)).collect();
+        assert_eq!(order, [(0, false), (0, true), (1, false), (1, true)]);
+        assert!(!dir.join("nested/block-1.jsonl").exists());
+        let names: Vec<_> = fs::read_dir(dir.join("nested")).unwrap().collect();
+        assert_eq!(names.len(), 1, "no temporary file is left");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn the_pairs_must_fill_whole_blocks() {
+        let dir = directory("whole");
+        assert!(Blocks::create(Some(&dir), Some(10), 25).is_err());
+        assert!(Blocks::create(Some(&dir), Some(10), 30).is_ok());
+        assert!(Blocks::create(None, None, 25).is_ok());
+        let _ = fs::remove_dir_all(&dir);
+    }
+}
+
+mod sum_of_shards {
+    use super::*;
+    use crate::runner::{EndReason, MatchRecord};
+
+    /// A game of pair `pair` of the shard with game seeds from `base`; the
+    /// first bot wins both games of an even pair and loses both of an odd one.
+    fn played(bots: [&str; 2], base: u64, pair: u32, swapped: bool) -> GameRecord {
+        let seats = if swapped {
+            [bots[1], bots[0]]
+        } else {
+            [bots[0], bots[1]]
+        };
+        GameRecord {
+            pair,
+            swapped,
+            game: MatchRecord {
+                seed: base + u64::from(pair),
+                seats: seats.map(str::to_string),
+                winner: Some(usize::from(swapped) ^ usize::from(pair % 2 == 1)),
+                end: EndReason::Finished,
+                turns: 1,
+                max_answer_ms: [1.0, 2.0],
+                mean_answer_ms: [1.0, 1.0],
+                later_answer_ms: Default::default(),
+                recorded_turns: Vec::new(),
+            },
+        }
+    }
+
+    fn shard(bots: [&str; 2], base: u64, pairs: u32) -> Vec<GameRecord> {
+        (0..pairs)
+            .flat_map(|pair| [false, true].map(|swapped| played(bots, base, pair, swapped)))
+            .collect()
+    }
+
+    fn sum(shards: &[Vec<GameRecord>]) -> Result<Summary, String> {
+        let path = PathBuf::from("shard.jsonl");
+        let files: Vec<_> = shards.iter().map(|games| (&path, games.clone())).collect();
+        sum_files(&files)
+    }
+
+    #[test]
+    fn two_shards_add_up_to_one_summary() {
+        let one = shard(["a", "b"], 100, 4);
+        let two = shard(["a", "b"], 200, 6);
+        let total = sum(&[one.clone(), two.clone()]).unwrap();
+        assert_eq!(total.games(), 20);
+        assert_eq!(total.pairs.iter().sum::<u32>(), 10);
+        assert_eq!(total.names, ["a".to_string(), "b".to_string()]);
+        // The same games played as one tournament, pair numbers apart.
+        let mut whole = Summary::new(total.names.clone());
+        for game in &one {
+            whole.add(game);
+        }
+        for game in &two {
+            let mut game = game.clone();
+            game.pair += 4;
+            whole.add(&game);
+        }
+        assert_eq!(total.to_string(), whole.to_string());
+    }
+
+    #[test]
+    fn the_first_bot_is_the_first_of_the_first_file() {
+        let total = sum(&[shard(["b", "a"], 100, 2)]).unwrap();
+        assert_eq!(total.names, ["b".to_string(), "a".to_string()]);
+    }
+
+    #[test]
+    fn files_of_other_bots_are_refused() {
+        let error = sum(&[shard(["a", "b"], 100, 2), shard(["a", "c"], 200, 2)]).unwrap_err();
+        assert!(error.contains("shard.jsonl"), "{error}");
+        let error = sum(&[shard(["a", "b"], 100, 2), shard(["b", "a"], 200, 2)]).unwrap_err();
+        assert!(error.contains("not by"), "{error}");
+    }
+
+    #[test]
+    fn a_game_played_twice_is_refused() {
+        let error = sum(&[shard(["a", "b"], 100, 2), shard(["a", "b"], 100, 2)]).unwrap_err();
+        assert!(error.contains("twice"), "{error}");
+        let mut doubled = shard(["a", "b"], 100, 2);
+        doubled.extend(shard(["a", "b"], 100, 2));
+        assert!(sum(&[doubled]).unwrap_err().contains("twice"));
+    }
+
+    #[test]
+    fn nothing_to_add_is_refused() {
+        assert!(sum(&[]).unwrap_err().contains("no game"));
+        assert!(sum(&[Vec::new()]).unwrap_err().contains("no game"));
+    }
+
+    #[test]
+    fn an_incomplete_pair_is_refused() {
+        let mut half = shard(["a", "b"], 100, 2);
+        half.pop();
+        assert!(sum(&[half]).unwrap_err().contains("not complete"));
+    }
+
+    #[test]
+    fn parses_sum() {
+        let cli =
+            Cli::try_parse_from(["arena", "sum", "--max-timeout-rate", "0.01", "a", "b"]).unwrap();
+        let Command::Sum(args) = cli.command else {
+            panic!("not sum")
+        };
+        assert_eq!(args.files.len(), 2);
+        assert_eq!(args.max_timeout_rate, Some(0.01));
+        assert!(Cli::try_parse_from(["arena", "sum"]).is_err());
     }
 }

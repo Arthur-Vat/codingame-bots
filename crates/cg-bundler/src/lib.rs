@@ -93,6 +93,18 @@ pub struct Bundled {
     pub pruned: Option<prune::Report>,
     /// What the minifier renamed and shortened, when it ran.
     pub renamed: Option<rename::Report>,
+    /// The code after each stage of the minifier, when it ran, so that the
+    /// tests check the bundler's own stages instead of running them again.
+    pub stages: Option<Stages>,
+}
+
+/// The code after each stage of the minifier, without the header.
+#[derive(Clone, Debug)]
+pub struct Stages {
+    /// The joined code without its unused items.
+    pub pruned: String,
+    /// The pruned code with names, `self`, types and numbers shortened.
+    pub renamed: String,
 }
 
 /// Builds the bundled source of `plan`. Its first line is a comment that
@@ -140,17 +152,21 @@ pub fn bundle_report(plan: &Plan, options: Options) -> Result<Bundled, String> {
             "// Bundled by cg-bundler from the `{}` package. Minified (ADR 0045).\n",
             plan.package
         );
-        let (code, pruned) = prune::prune(&code, rustc)
+        let (pruned_code, pruned) = prune::prune(&code, rustc)
             .map_err(|err| format!("cannot remove unused items: {err}"))?;
-        let (code, renamed) =
-            rename::rename(&code, rustc).map_err(|err| format!("cannot rename: {err}"))?;
-        let code =
-            minify::minify(&code).map_err(|err| format!("cannot minify the bundle: {err}"))?;
+        let (renamed_code, renamed) =
+            rename::rename(&pruned_code, rustc).map_err(|err| format!("cannot rename: {err}"))?;
+        let code = minify::minify(&renamed_code)
+            .map_err(|err| format!("cannot minify the bundle: {err}"))?;
         prune::check(&code, rustc).map_err(|err| format!("the minified bundle is wrong: {err}"))?;
         return Ok(Bundled {
             code: header + &code,
             pruned: Some(pruned),
             renamed: Some(renamed),
+            stages: Some(Stages {
+                pruned: pruned_code,
+                renamed: renamed_code,
+            }),
         });
     }
     let mut header = format!(
@@ -170,6 +186,7 @@ pub fn bundle_report(plan: &Plan, options: Options) -> Result<Bundled, String> {
         code: header + &code,
         pruned: None,
         renamed: None,
+        stages: None,
     })
 }
 

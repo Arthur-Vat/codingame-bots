@@ -79,3 +79,40 @@ fn bots_not_linked_to_the_anchor_have_infinite_margins() {
     assert!(margins[1].is_finite(), "{margins:?}");
     assert!(margins[2..].iter().all(|m| m.is_infinite()), "{margins:?}");
 }
+
+#[test]
+fn adding_games_to_the_covariance_is_rating_them_again() {
+    let results = [
+        matchup(0, 1, 300.0, 400),
+        matchup(1, 2, 250.0, 400),
+        matchup(2, 3, 100.0, 200),
+    ];
+    let ratings = elo_ratings(5, &results, 0);
+    let mut added = Covariance::new(5, &results, 0, &ratings);
+    // The game of 1 and 3, and one of 3 and the anchor, played later.
+    added.add(1, 3, games_information(101.0, ratings[1], ratings[3]));
+    added.add(3, 0, games_information(51.0, ratings[3], ratings[0]));
+    // A bot without games stays without a rating.
+    added.add(4, 1, games_information(1000.0, ratings[4], ratings[1]));
+    let mut all = results.to_vec();
+    all.push(matchup(1, 3, 50.0, 100));
+    all.push(matchup(3, 0, 25.0, 50));
+    let rebuilt = Covariance::new(5, &all, 0, &ratings);
+    for bot in 0..5 {
+        let (x, y) = (added.margin(bot), rebuilt.margin(bot));
+        assert!(x == y || (x - y).abs() < 1e-9, "bot {bot}: {x} {y}");
+    }
+    assert_eq!(added.margin(0), 0.0);
+    assert!(added.margin(4).is_infinite());
+    // The drop it predicts is what adding gives.
+    let before = Covariance::new(5, &results, 0, &ratings);
+    let information = games_information(101.0, ratings[1], ratings[3]);
+    let drop = before.squared_margin_drop(1, 3, information, &[(2, 1.0), (3, 0.5)]);
+    let mut after = before.clone();
+    after.add(1, 3, information);
+    let squared = |c: &Covariance, bot: usize| c.margin(bot).powi(2);
+    let expected = (squared(&before, 2) - squared(&after, 2))
+        + 0.5 * (squared(&before, 3) - squared(&after, 3));
+    assert!((drop - expected).abs() < 1e-6, "{drop} {expected}");
+    assert!(drop > 0.0);
+}

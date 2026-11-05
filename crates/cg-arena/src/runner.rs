@@ -110,7 +110,7 @@ impl EndReason {
 }
 
 /// What happened in one match.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct MatchRecord {
     pub seed: u64,
     /// Bot names by seat.
@@ -122,7 +122,8 @@ pub struct MatchRecord {
     pub max_answer_ms: [f64; SEATS],
     pub mean_answer_ms: [f64; SEATS],
     /// Every answer after the first, in milliseconds, by seat: the first
-    /// answer has a longer limit. Not written to the JSON lines.
+    /// answer has a longer limit. Not written to the JSON lines, so empty in
+    /// a record read back.
     #[serde(skip)]
     pub later_answer_ms: [Vec<f32>; SEATS],
     /// The answers of every turn, in `players_to_act` order, for game

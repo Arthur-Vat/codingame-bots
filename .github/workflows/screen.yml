@@ -1,0 +1,206 @@
+name: Screening
+
+# Screening of variants of one bot, one runner per variant and shard (ADR 0049,
+# decision 2; scripts/screen.sh holds the logic). A session dispatches it with a
+# game, a bot, variants given as git refs, a baseline release, a number of
+# pairs, a number of shards and a seed. Each (variant, shard) bundles the bot at
+# its ref with that tree's own bundler, calibrates its runner as the SPRT does
+# (ADR 0048) and plays its share of the pairs against the baseline with
+# `<game>-arena match`. A variant that loses is a result, not a failure.
+#
+# Inputs (all text, checked by `plan` before anything is built):
+#   game      a folder of games/ with an evaluation.env
+#   bot       a folder of games/<game>/bots, the bot every variant bundles
+#   variants  1 to 8 of NAME=REF separated by spaces; NAME is letters, digits,
+#             _ - (up to 40), unique and not the baseline's name; REF is a
+#             commit SHA (7 to 40 hex digits), a branch or a tag of this
+#             repository
+#   baseline  a release name such as ice-and-fire-v014 (the file
+#             games/<game>/releases/<name>.rs on the dispatched ref); empty:
+#             the newest release
+#   pairs     seat-swapped pairs per variant in all, 2 to 8000 (default 400),
+#             at most 1,000 a shard: 800 pairs take about 1.5 hours on one
+#             runner for A Code of Ice and Fire and 3 to 3.5 hours for
+#             Ultimate Tic-Tac-Toe (ADR 0049), within the job's 330 minutes
+#   shards    runners per variant, 1 to 8, pairs a multiple of it, variants x
+#             shards at most 20 (default 1)
+#   seed      a decimal u64; empty: the game's SEED in evaluation.env
+#
+# Results come back in the run's step summary (a table per variant), in the
+# summary job's log, and as annotations on its check run (a notice per variant,
+# a warning per missing shard): a session reads them with
+#   gh api repos/Arthur-Vat/codingame-bots/check-runs/<job id>/annotations
+# since it cannot download artifacts. Each shard's games and settings are kept
+# as the artifact screen-<NAME>-<SHARD> for 7 days. The workflow writes nothing
+# else to GitHub, so it has no dry-run mode.
+#
+# Started by a session, for example (variants a at a commit and b at a branch):
+#   gh api -X POST repos/Arthur-Vat/codingame-bots/actions/workflows/screen.yml/dispatches \
+#     -f ref=claude/ice-and-fire-e032 -f 'inputs[game]=ice-and-fire' -f 'inputs[bot]=plan' \
+#     -f 'inputs[variants]=a=3f2c1d0 b=claude/ice-and-fire-e032' \
+#     -f 'inputs[pairs]=800' -f 'inputs[shards]=2'
+# The dispatched ref supplies the scripts, the arena and the baseline release;
+# each variant's ref supplies its bot and its bundler.
+#
+# plan:    checks the inputs, resolves the refs to SHAs and makes the matrix.
+# play:    one runner per variant and shard.
+# summary: adds each variant's shards up with the arena's `sum` and reports.
+
+on:
+  workflow_dispatch:
+    inputs:
+      game:
+        description: "Game folder"
+        type: string
+        required: true
+      bot:
+        description: "Bot folder of games/<game>/bots that every variant bundles"
+        type: string
+        required: true
+      variants:
+        description: "Variants as NAME=REF (a commit SHA, branch or tag), separated by spaces; 1 to 8"
+        type: string
+        required: true
+      baseline:
+        description: "Release name to play against, such as ice-and-fire-v014; empty: the newest"
+        type: string
+        required: false
+        default: ""
+      pairs:
+        description: "Seat-swapped pairs per variant in all, 2 to 8000; a multiple of shards, at most 1000 a shard"
+        type: string
+        required: false
+        default: "400"
+      shards:
+        description: "Runners per variant, 1 to 8 (variants x shards at most 20)"
+        type: string
+        required: false
+        default: "1"
+      seed:
+        description: "Decimal u64 seed; empty: the game's SEED"
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Fails a step when any command of a pipeline fails, not only the last.
+    shell: bash
+
+env:
+  # CodinGame's Rust compiler (docs/CODINGAME.md, ADR 0010).
+  CG_RUST: "1.90.0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      game: ${{ steps.plan.outputs.game }}
+      bot: ${{ steps.plan.outputs.bot }}
+      baseline: ${{ steps.plan.outputs.baseline }}
+      pairs: ${{ steps.plan.outputs.pairs }}
+      shards: ${{ steps.plan.outputs.shards }}
+      seed: ${{ steps.plan.outputs.seed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Every branch and tag, to resolve the refs of the variants.
+          fetch-depth: 0
+      - name: Check the inputs and plan the matrix
+        id: plan
+        env:
+          # Text from whoever dispatched the run: checked by the script before
+          # it reaches a path or a command.
+          GAME: ${{ inputs.game }}
+          BOT: ${{ inputs.bot }}
+          VARIANTS: ${{ inputs.variants }}
+          BASELINE: ${{ inputs.baseline }}
+          PAIRS: ${{ inputs.pairs }}
+          SHARDS: ${{ inputs.shards }}
+          SEED: ${{ inputs.seed }}
+        run: scripts/screen.sh plan
+
+  play:
+    name: "Play ${{ matrix.variant }} (${{ matrix.shard }})"
+    needs: plan
+    runs-on: ubuntu-latest
+    # GitHub's limit is 360 minutes.
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      GAME: ${{ needs.plan.outputs.game }}
+      BOT: ${{ needs.plan.outputs.bot }}
+      BASELINE: ${{ needs.plan.outputs.baseline }}
+      PAIRS: ${{ needs.plan.outputs.pairs }}
+      SHARDS: ${{ needs.plan.outputs.shards }}
+      SEED: ${{ needs.plan.outputs.seed }}
+      VARIANT: ${{ matrix.variant }}
+      SHA: ${{ matrix.sha }}
+      SHARD: ${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The variants' commits are on other branches.
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ needs.plan.outputs.game }}
+          save-if: ${{ strategy.job-index == 0 }}
+      - name: Bundle, calibrate and play
+        run: scripts/annotate.sh run "Screening of $VARIANT ($SHARD)" scripts/screen.sh play "$GAME" "$BOT" "$VARIANT" "$SHA" "$BASELINE" "$PAIRS" "$SHARD" "$SHARDS" "$SEED"
+      - name: Keep the games
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: screen-${{ matrix.variant }}-${{ matrix.shard }}
+          path: |
+            target/screen/${{ matrix.variant }}-${{ matrix.shard }}.jsonl
+            target/screen/${{ matrix.variant }}-${{ matrix.shard }}.settings
+            target/screen/${{ matrix.variant }}-${{ matrix.shard }}.txt
+          if-no-files-found: ignore
+          retention-days: 7
+
+  summary:
+    name: Summary
+    needs: [plan, play]
+    if: ${{ always() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ needs.plan.outputs.game }}
+          save-if: false
+      - uses: actions/download-artifact@v8
+        # No artifact at all (every shard failed) is reported by the script.
+        continue-on-error: true
+        with:
+          pattern: screen-*
+          path: target/screen-results
+          merge-multiple: true
+      - name: Add the shards up and report
+        env:
+          GAME: ${{ needs.plan.outputs.game }}
+          MATRIX: ${{ needs.plan.outputs.matrix }}
+        run: |
+          mkdir -p target/screen-results
+          scripts/screen.sh summary "$GAME" target/screen-results

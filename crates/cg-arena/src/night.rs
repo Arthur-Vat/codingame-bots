@@ -10,12 +10,13 @@
 //! (`low`). The planner plays nothing and reads no file; `plan` and `play` in
 //! [`crate::cli`] do.
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 use cg_core::rng::Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::league::{self, fnv1a, pairing_seed, PairingResult, Rating};
+use crate::ratings::games_information;
 
 /// Why a pairing is planned.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -23,7 +24,7 @@ use crate::league::{self, fnv1a, pairing_seed, PairingResult, Rating};
 pub enum Kind {
     /// A bot that lacks games plays the opponents of ADR 0038.
     New,
-    /// Precision near the top of the ratings.
+    /// Precision of the top bots' ratings.
     Top,
     /// The other bots, so that they play from time to time.
     Low,
@@ -119,6 +120,10 @@ pub struct Settings {
     /// The seed the pairings' seeds derive from.
     pub seed: u64,
     pub shards: usize,
+    /// The most pairs one plan line holds: a pair's pairs beyond it are
+    /// split into lines of their own, each with its own seed, so that the
+    /// shards share the work evenly and no line outlasts a runner's time.
+    pub max_line_pairs: u32,
 }
 
 impl Settings {
@@ -154,6 +159,7 @@ impl Settings {
             ("--top", self.top as u64),
             ("--shards", self.shards as u64),
             ("--new-pairs", u64::from(self.new_pairs)),
+            ("--max-line-pairs", u64::from(self.max_line_pairs)),
         ] {
             if value == 0 {
                 return Err(format!("{option} must be at least 1"));
@@ -316,23 +322,6 @@ fn opponents(stored: &[PairingResult]) -> HashMap<&str, HashSet<&str>> {
     found
 }
 
-/// What a block adds to the information of one bot's rating, given the
-/// block's own information `base` (as if the opponent's rating were exact) and
-/// the information of the opponent's rating: the opponent's variance reduces
-/// it. An opponent with no information adds nothing; the anchor's infinite
-/// information leaves `base`.
-fn added_information(base: f64, opponent_information: f64) -> f64 {
-    if base <= 0.0 || !base.is_finite() || opponent_information <= 0.0 {
-        return 0.0;
-    }
-    1.0 / (1.0 / base + 1.0 / opponent_information)
-}
-
-/// The expected score of a bot rated `x` against one rated `y`.
-fn expected(x: f64, y: f64) -> f64 {
-    1.0 / (1.0 + 10f64.powf((y - x) / 400.0))
-}
-
 /// Plans the night: `stored` are the lines of the results file.
 pub fn plan(stored: &[PairingResult], settings: &Settings) -> Result<Plan, String> {
     settings.validate()?;
@@ -453,84 +442,86 @@ pub fn plan(stored: &[PairingResult], settings: &Settings) -> Result<Plan, Strin
     let top_len = settings.top.min(linked.len());
     let target = settings.target_margin;
 
-    // Step T: precision near the top.
-    let met = incomplete.is_empty() && linked[..top_len].iter().all(|r| r.margin <= target);
-    // The information of every linked bot's rating, the anchor's infinite.
-    let mut information: Vec<f64> = linked
+    // The covariance of the ratings, as it will be once tonight's lines
+    // have been played and scored as expected: first the `new` lines.
+    let position: HashMap<&str, usize> = names
         .iter()
-        .map(|rating| {
-            if rating.margin > 0.0 {
-                (1.96 / rating.margin).powi(2)
-            } else {
-                f64::INFINITY
-            }
-        })
+        .enumerate()
+        .map(|(at, name)| (name.as_str(), at))
         .collect();
-    let margin_of = |information: f64| 1.96 / information.sqrt();
+    let elo = |bot: usize| ratings[bot].rating;
+    let block_information =
+        |x: usize, y: usize, pairs: u64| games_information(2.0 * pairs as f64, elo(x), elo(y));
+    let mut covariance = league::covariance(&names, stored, &settings.anchor, &ratings)?;
+    for (line, pairs) in &builder.lines {
+        let (x, y) = (position[line.a.as_str()], position[line.b.as_str()]);
+        covariance.add(x, y, block_information(x, y, *pairs));
+    }
+
+    // Step T: precision of the top bots' ratings.
+    let met = incomplete.is_empty() && linked[..top_len].iter().all(|r| r.margin <= target);
+    let tops: Vec<usize> = linked[..top_len]
+        .iter()
+        .map(|rating| position[rating.name.as_str()])
+        .collect();
     let mut top_pairs: HashSet<(String, String)> = HashSet::new();
     let mut top_planned = 0u64;
     if !met {
-        let c = std::f64::consts::LN_10 / 400.0;
-        let mut candidates: BTreeSet<(usize, usize)> = BTreeSet::new();
-        for i in 0..top_len {
-            for j in i.saturating_sub(2)..(i + 3).min(linked.len()) {
-                if j != i {
-                    candidates.insert((i.min(j), i.max(j)));
-                }
+        // Any pair of linked bots may play: the top's intervals are measured
+        // from the anchor, so a link far below the top can shrink them more
+        // than a game between neighbours (ADR 0052).
+        let mut candidates: Vec<(usize, usize, f64)> = Vec::new();
+        for x in 0..linked.len() {
+            for y in x + 1..linked.len() {
+                let (bx, by) = (
+                    position[linked[x].name.as_str()],
+                    position[linked[y].name.as_str()],
+                );
+                candidates.push((x, y, block_information(bx, by, block)));
             }
         }
-        let candidates: Vec<(usize, usize, f64)> = candidates
-            .into_iter()
-            .map(|(x, y)| {
-                let p = expected(linked[x].rating, linked[y].rating);
-                (
-                    x,
-                    y,
-                    2.0 * f64::from(settings.block_pairs) * p * (1.0 - p) * c * c,
-                )
-            })
-            .collect();
         let mut chosen: Vec<u64> = vec![0; candidates.len()];
-        // The estimate of a block's information is optimistic: a night
-        // whose estimate reaches the target can leave the real margins over
-        // it. So while the real target is not met, the whole share is
-        // spent: first on bots estimated over the target, then, once none
-        // is, on every top bot.
+        // The projection is what the night brings if its games score as
+        // expected: real results can leave the margins a little over it. So
+        // while the real target is not met, the whole share is spent: first
+        // on bots projected over the target, then, once none is, on every
+        // top bot. A bot's weight falls with its rank.
         let mut capped = true;
         let mut blocks_left = top_blocks;
         while blocks_left > 0 {
+            let weighted: Vec<(usize, f64)> = tops
+                .iter()
+                .enumerate()
+                .filter(|&(_, &bot)| !capped || covariance.margin(bot) > target)
+                .map(|(rank, &bot)| (bot, 1.0 / (1.0 + rank as f64)))
+                .collect();
             let mut best: Option<(usize, f64)> = None;
-            for (at, &(x, y, delta)) in candidates.iter().enumerate() {
-                let mut gain = 0.0;
-                for (k, o) in [(x, y), (y, x)] {
-                    if k < top_len && information[k].is_finite() {
-                        let now = margin_of(information[k]);
-                        if !capped || now > target {
-                            let after = margin_of(
-                                information[k] + added_information(delta, information[o]),
-                            );
-                            gain += (now * now - after * after) / (1.0 + k as f64);
+            if !weighted.is_empty() {
+                for (at, &(x, y, information)) in candidates.iter().enumerate() {
+                    let (bx, by) = (
+                        position[linked[x].name.as_str()],
+                        position[linked[y].name.as_str()],
+                    );
+                    let gain = covariance.squared_margin_drop(bx, by, information, &weighted);
+                    if gain <= 0.0 {
+                        continue;
+                    }
+                    let better = match best {
+                        None => true,
+                        Some((held, held_gain)) => {
+                            let (hx, hy, _) = candidates[held];
+                            gain.total_cmp(&held_gain)
+                                .then_with(|| hx.cmp(&x))
+                                .then_with(|| {
+                                    key(&linked[hx].name, &linked[hy].name)
+                                        .cmp(&key(&linked[x].name, &linked[y].name))
+                                })
+                                .is_gt()
                         }
+                    };
+                    if better {
+                        best = Some((at, gain));
                     }
-                }
-                if gain <= 0.0 {
-                    continue;
-                }
-                let better = match best {
-                    None => true,
-                    Some((held, held_gain)) => {
-                        let (hx, hy, _) = candidates[held];
-                        gain.total_cmp(&held_gain)
-                            .then_with(|| hx.cmp(&x))
-                            .then_with(|| {
-                                key(&linked[hx].name, &linked[hy].name)
-                                    .cmp(&key(&linked[x].name, &linked[y].name))
-                            })
-                            .is_gt()
-                    }
-                };
-                if better {
-                    best = Some((at, gain));
                 }
             }
             let Some((at, _)) = best else {
@@ -541,13 +532,12 @@ pub fn plan(stored: &[PairingResult], settings: &Settings) -> Result<Plan, Strin
                 break;
             };
             blocks_left -= 1;
-            let (x, y, delta) = candidates[at];
-            let (for_x, for_y) = (
-                added_information(delta, information[y]),
-                added_information(delta, information[x]),
+            let (x, y, information) = candidates[at];
+            covariance.add(
+                position[linked[x].name.as_str()],
+                position[linked[y].name.as_str()],
+                information,
             );
-            information[x] += for_x;
-            information[y] += for_y;
             chosen[at] += 1;
             top_planned += block;
         }
@@ -619,6 +609,11 @@ pub fn plan(stored: &[PairingResult], settings: &Settings) -> Result<Plan, Strin
                 (partner, bot)
             };
             add_pairs(&mut builder, &first.name, &second.name, block, Kind::Low)?;
+            let (x, y) = (
+                position[first.name.as_str()],
+                position[second.name.as_str()],
+            );
+            covariance.add(x, y, block_information(x, y, block));
             low_planned += block;
         }
     }
@@ -634,11 +629,37 @@ pub fn plan(stored: &[PairingResult], settings: &Settings) -> Result<Plan, Strin
                 .cloned(),
         );
     }
+    // Each pair's pairs, split into lines of at most `max_line_pairs`: the
+    // first keeps the pair's seed, the others take seeds of their own.
     let mut result: Vec<PlanLine> = Vec::with_capacity(lines.len());
-    for (mut line, pairs) in lines {
-        line.pairs = u32::try_from(pairs)
-            .map_err(|_| format!("{} against {} would play too many pairs", line.a, line.b))?;
-        result.push(line);
+    let mut used: HashSet<(String, String, u64)> = HashSet::new();
+    for (line, pairs) in lines {
+        let most = u64::from(settings.max_line_pairs);
+        let mut left = pairs;
+        let mut chunk = 0u64;
+        while left > 0 {
+            let take = left.min(most);
+            let mut piece = line.clone();
+            piece.pairs = u32::try_from(take)
+                .map_err(|_| format!("{} against {} would play too many pairs", line.a, line.b))?;
+            if chunk > 0 {
+                let mut rng = Rng::new(line.seed ^ fnv1a(format!("chunk {chunk}").as_bytes()));
+                piece.seed = loop {
+                    let seed = rng.next_u64();
+                    let (low, high) = key(&line.a, &line.b);
+                    if !builder.is_stored(&line.a, &line.b, seed)
+                        && !used.contains(&(low, high, seed))
+                    {
+                        break seed;
+                    }
+                };
+            }
+            let (low, high) = key(&piece.a, &piece.b);
+            used.insert((low, high, piece.seed));
+            result.push(piece);
+            left -= take;
+            chunk += 1;
+        }
     }
     let sizes: Vec<u64> = result.iter().map(|line| u64::from(line.pairs)).collect();
     for (line, shard) in result
@@ -675,7 +696,7 @@ pub fn plan(stored: &[PairingResult], settings: &Settings) -> Result<Plan, Strin
     ));
     let mut over = Vec::new();
     for (rank, rating) in linked[..top_len].iter().enumerate() {
-        let projected = margin_of(information[rank]);
+        let projected = covariance.margin(tops[rank]);
         report.push(format!(
             "top {}: {} margin ±{:.1} now, ±{:.1} estimated after tonight",
             rank + 1,

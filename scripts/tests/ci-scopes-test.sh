@@ -322,6 +322,18 @@ status=0
 "$script" frobnicate >/dev/null 2>&1 || status=$?
 if ((status != 2)); then fail "unknown mode: expected status 2, got $status"; fi
 
+# `SPRT passed` with the SPRT in blocks over runners (ADR 0049): a skipped
+# empty job is fine, a game that had to run must succeed.
+sprt_needs() { # sprt_needs <sprt result> <sprt-parallel result>
+  echo "{\"releases\":{\"result\":\"success\"},\"sprt\":{\"result\":\"$1\"},\"sprt-parallel\":{\"result\":\"$2\"},\"league\":{\"result\":\"skipped\"},\"league-results\":{\"result\":\"success\"}}"
+}
+sprt_args=(releases=true sprt=false sprt-parallel=true league=false league-results=true)
+results_are 0 "$(sprt_needs skipped success)" 'ok   sprt-parallel: success' "${sprt_args[@]}"
+results_are 1 "$(sprt_needs skipped failure)" 'FAIL sprt-parallel: failure (had to run)' "${sprt_args[@]}"
+results_are 1 "$(sprt_needs skipped skipped)" 'FAIL sprt-parallel: skipped (had to run)' "${sprt_args[@]}"
+results_are 0 "$(sprt_needs skipped skipped)" - releases=true sprt=false sprt-parallel=false league=false league-results=true
+results_are 1 "$(sprt_needs success cancelled)" 'FAIL sprt-parallel: cancelled' releases=true sprt=true sprt-parallel=false league=false league-results=true
+
 # ---- the workflow ----
 
 # An aggregate job gathers every other job of its workflow, and its results
