@@ -123,6 +123,28 @@ impl Summary {
         }
     }
 
+    /// Adds the totals of `other`, a summary of other games between the same
+    /// bots in the same order, all of whose pairs are complete.
+    pub fn merge(&mut self, other: &Summary) {
+        debug_assert_eq!(self.names, other.names);
+        debug_assert!(other.pending.is_empty());
+        self.wins += other.wins;
+        self.draws += other.draws;
+        self.losses += other.losses;
+        self.aborted += other.aborted;
+        for bot in 0..2 {
+            let (mine, theirs) = (&mut self.faults[bot], other.faults[bot]);
+            mine.timeouts += theirs.timeouts;
+            mine.crashes += theirs.crashes;
+            mine.invalid += theirs.invalid;
+            self.max_answer_ms[bot] = self.max_answer_ms[bot].max(other.max_answer_ms[bot]);
+            self.answer_ms[bot].extend_from_slice(&other.answer_ms[bot]);
+        }
+        for (mine, theirs) in self.pairs.iter_mut().zip(other.pairs) {
+            *mine += theirs;
+        }
+    }
+
     pub fn games(&self) -> u32 {
         self.wins + self.draws + self.losses
     }

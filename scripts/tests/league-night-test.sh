@@ -285,7 +285,7 @@ expect_status "merge: a missing file" 2
 # The leaderboard.
 run publish toy "$tmp_dir/stored.jsonl" "$tmp_dir/LEADERBOARD.md"
 expect_status "publish" 0
-expect_log "publish" "leaderboard --results $tmp_dir/stored.jsonl --anchor v001 --journal games/toy/journal/README.md --out $tmp_dir/LEADERBOARD.md"
+expect_log "publish" "leaderboard --results $tmp_dir/stored.jsonl --anchor v001 --journal games/toy/journal/README.md --releases games/toy/releases --out $tmp_dir/LEADERBOARD.md"
 
 if ((failures > 0)); then
   echo "FAIL league-night: $failures of $checks checks failed" >&2

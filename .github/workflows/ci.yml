@@ -326,11 +326,35 @@ jobs:
         # turns its feature "analysis" on. Alone it is built without, as in the
         # rules program, and its test of that case runs only here.
         run: scripts/annotate.sh run "Adapter without analysis" cargo test --locked -p uttt-studio
+      - name: Restore the releases compiled to WebAssembly
+        id: wasm-restore
+        # Released files never change: build-studio-wasm.sh --cache compiles
+        # each release once per Rust version, then copies it
+        # (scripts/lib/rustc-cache.sh). A cache saved by main reaches every
+        # pull request.
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/studio-wasm
+          key: studio-wasm-${{ runner.os }}-${{ env.CG_RUST }}
+          restore-keys: studio-wasm-${{ runner.os }}-${{ env.CG_RUST }}-
       - name: Build the rules, the releases and the baseline bots to WebAssembly
+        id: wasm
         # --strict: a release or a baseline bot that does not compile to
         # WebAssembly fails the step, so that none is left out of the
         # browser's list unnoticed.
-        run: scripts/annotate.sh run "WebAssembly build" scripts/build-studio-wasm.sh "$RUNNER_TEMP/wasm" --strict
+        run: scripts/annotate.sh run "WebAssembly build" scripts/build-studio-wasm.sh "$RUNNER_TEMP/wasm" --strict --cache ~/.cache/studio-wasm
+      - name: Name the cache of WebAssembly builds
+        id: wasm-key
+        if: steps.wasm.outcome == 'success'
+        # The script names each entry by what decides it and keeps only
+        # those this run used: the list of names tells whether it changed.
+        run: echo "key=studio-wasm-$RUNNER_OS-$CG_RUST-$(find ~/.cache/studio-wasm -type f -printf '%f\n' | LC_ALL=C sort | sha256sum | cut -c1-16)" >>"$GITHUB_OUTPUT"
+      - name: Keep the releases compiled to WebAssembly
+        if: ${{ !cancelled() && steps.wasm-key.outputs.key != '' && steps.wasm-key.outputs.key != steps.wasm-restore.outputs.cache-matched-key }}
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/studio-wasm
+          key: ${{ steps.wasm-key.outputs.key }}
 
   studio-web:
     name: "Studio: front end"
@@ -382,13 +406,38 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
           "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Type check" npm run typecheck
+      - name: Restore the releases compiled to WebAssembly
+        id: wasm-restore
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        # Released files never change: build-studio-wasm.sh --cache compiles
+        # each release once per Rust version, then copies it
+        # (scripts/lib/rustc-cache.sh). A cache saved by main reaches every
+        # pull request.
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/studio-wasm
+          key: studio-wasm-${{ runner.os }}-${{ env.CG_RUST }}
+          restore-keys: studio-wasm-${{ runner.os }}-${{ env.CG_RUST }}-
       - name: Build the rules, the releases and the baseline bots to WebAssembly
+        id: wasm
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         # --strict: a release or a baseline bot that does not compile to
         # WebAssembly fails the step. The unit tests of the browser engine and
         # the browser tests read the files it writes in public/wasm/.
         run: |
-          "$GITHUB_WORKSPACE/scripts/annotate.sh" run "WebAssembly build" "$GITHUB_WORKSPACE/scripts/build-studio-wasm.sh" --strict
+          "$GITHUB_WORKSPACE/scripts/annotate.sh" run "WebAssembly build" "$GITHUB_WORKSPACE/scripts/build-studio-wasm.sh" --strict --cache ~/.cache/studio-wasm
+      - name: Name the cache of WebAssembly builds
+        id: wasm-key
+        if: ${{ !cancelled() && steps.wasm.outcome == 'success' }}
+        # The script names each entry by what decides it and keeps only
+        # those this run used: the list of names tells whether it changed.
+        run: echo "key=studio-wasm-$RUNNER_OS-$CG_RUST-$(find ~/.cache/studio-wasm -type f -printf '%f\n' | LC_ALL=C sort | sha256sum | cut -c1-16)" >>"$GITHUB_OUTPUT"
+      - name: Keep the releases compiled to WebAssembly
+        if: ${{ !cancelled() && steps.wasm-key.outputs.key != '' && steps.wasm-key.outputs.key != steps.wasm-restore.outputs.cache-matched-key }}
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/studio-wasm
+          key: ${{ steps.wasm-key.outputs.key }}
       - name: Unit tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
@@ -532,6 +581,12 @@ jobs:
       - name: Test the nightly league script
         if: ${{ !cancelled() }}
         run: scripts/annotate.sh run "League night test" scripts/tests/league-night-test.sh
+      - name: Test the local check script
+        if: ${{ !cancelled() }}
+        run: scripts/annotate.sh run "Local check test" scripts/tests/check-test.sh
+      - name: Test the cache of rustc's builds
+        if: ${{ !cancelled() }}
+        run: scripts/annotate.sh run "Rustc cache test" scripts/tests/rustc-cache-test.sh
       - name: Test the size check
         if: ${{ !cancelled() }}
         # rustc and iconv are preinstalled on ubuntu-latest.
@@ -540,6 +595,10 @@ jobs:
         if: ${{ !cancelled() }}
         # jq is preinstalled on ubuntu-latest.
         run: scripts/annotate.sh run "Records test" scripts/tests/records-test.sh
+      - name: Test the screening script
+        if: ${{ !cancelled() }}
+        # jq is preinstalled on ubuntu-latest.
+        run: scripts/annotate.sh run "Screening test" scripts/tests/screen-test.sh
       - name: Lint the workflows
         if: ${{ !cancelled() }}
         # The image is pinned; it includes shellcheck, which also lints the

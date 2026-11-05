@@ -1,0 +1,23 @@
+[package]
+name = "uttt-bot-timing"
+description = "Timing probe for CodinGame: plays without winning small boards, holds each answer back a millisecond longer every turn until CodinGame's limit is found, and times a fixed workload of uttt-v018's search."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+cg-core.workspace = true
+cg-pack.workspace = true
+cg-search.workspace = true
+uttt-engine.workspace = true
+
+# Used by the tests only: games against the referee.
+[dev-dependencies]
+uttt-referee.workspace = true
+
+[lints]
+workspace = true

@@ -10,12 +10,14 @@
 //! - [`tournament`]: many matches in parallel, in seat-swapped pairs.
 //! - [`summary`]: results from the first bot's point of view.
 //! - [`sprt`]: the sequential test deciding whether a candidate is stronger.
+//! - [`blocks`]: that test over blocks of games played apart, on several runners.
 //! - [`leaderboard`]: the generated `LEADERBOARD.md` of a game.
 //! - [`league`]: the results file and opponent choice of the incremental league.
 //! - [`night`]: the nightly league's plan of pairings.
 //! - [`ratings`]: Elo ratings from many matchups.
 //! - [`cli`]: the command line every game's arena binary shares.
 
+pub mod blocks;
 pub mod cli;
 pub mod leaderboard;
 pub mod league;
