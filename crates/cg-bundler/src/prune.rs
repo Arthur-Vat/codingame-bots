@@ -32,21 +32,23 @@
 //! Once nothing that rustc reports goes, the pruner tries what it does not
 //! report ([`Pruner::trials`]): each name of a `derive` list (except
 //! `Default` on an enum, which its `#[default]` needs), each impl of a trait
-//! that the bundle does not define (except `Drop`, which acts unseen), and
-//! each `debug_assert!`, `debug_assert_eq!` or `debug_assert_ne!` that is a
-//! statement (CodinGame compiles without debug assertions,
-//! `docs/CODINGAME.md`). They are tried all at once, rounds as above, with
-//! the blame read from the errors' messages: an error blames the removals
-//! whose type and trait it names, and never the removal it sits in. A
-//! removal that compiles is kept only if rustc does not report more calls
-//! that do nothing (lint `noop_method_call`): without `Clone`, `r.clone()`
-//! on a reference `r` still compiles and copies the reference (`Clone` is
-//! not offered at all when the bundle calls `to_owned`, which the lint does
-//! not cover). Such a fallback to another impl is the one way known for a
-//! removal that compiles to change what the code does; the answers check of
-//! each release (ADR 0045, decision 4) would show any other. When code goes
-//! after them, they are tried again, since that code may have needed a
-//! trait.
+//! that the bundle does not define (except `Drop`, which acts unseen).
+//! They are tried all at once, rounds as above, with the blame read from
+//! the errors' messages: an error blames the removals whose type and trait
+//! it names, and never the removal it sits in. A removal that compiles can
+//! still change what the code does when another impl takes the removed
+//! one's place, so: a removal is kept only if rustc reports no call that
+//! does nothing (lint `noop_method_call`) at a place where it reported none
+//! before (without `Clone`, `r.clone()` on a reference `r` compiles and
+//! copies the reference); `Clone` is not offered when the bundle calls
+//! `to_owned`, which the lint does not cover; and nothing is offered on a
+//! type that has an impl of `Deref` or `DerefMut`, where a method call can
+//! fall through to the target's impl. Debug assertions are not removed:
+//! one can be what fixes a literal's type (`x < 100.0f32`), and the code
+//! compiles without it with another type. The answers check of each release
+//! (ADR 0045, decision 4) would show a change that these guards miss. When
+//! code goes after them, they are tried again, since that code may have
+//! needed a trait.
 //!
 //! What may go: `fn`, `const`, `static`, `struct`, `enum`, `union`, `type`
 //! and `trait` items, wherever they are (methods and associated items
@@ -96,8 +98,6 @@ pub struct Report {
     pub derives: usize,
     /// Impls of traits that the bundle does not define.
     pub trait_impls: usize,
-    /// Debug assertions.
-    pub asserts: usize,
     /// Removals that rustc reports but that do not compile, in the last
     /// round.
     pub refused: usize,
@@ -109,15 +109,9 @@ impl std::fmt::Display for Report {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "removed {} items, {} imported names, {} derived traits, {} trait impls and {} \
-             debug assertions, {} removals that do not compile kept, {} compiles",
-            self.items,
-            self.imports,
-            self.derives,
-            self.trait_impls,
-            self.asserts,
-            self.refused,
-            self.compiles
+            "removed {} items, {} imported names, {} derived traits and {} trait impls, {} \
+             removals that do not compile kept, {} compiles",
+            self.items, self.imports, self.derives, self.trait_impls, self.refused, self.compiles
         )
     }
 }
@@ -144,13 +138,11 @@ pub fn prune(source: &str, rustc: &Rustc) -> Result<(String, Report), String> {
     let imports = count(|id| matches!(id, Id::Leaf(_)));
     let derives = count(|id| matches!(id, Id::Derive(_)));
     let trait_impls = count(|id| matches!(id, Id::TraitImpl(_)));
-    let asserts = count(|id| matches!(id, Id::Assert(_)));
     let report = Report {
-        items: pruner.state.len() - imports - derives - trait_impls - asserts,
+        items: pruner.state.len() - imports - derives - trait_impls,
         imports,
         derives,
         trait_impls,
-        asserts,
         refused,
         compiles: pruner.compiler.compiles() + pruner.other_compiles,
     };
@@ -168,11 +160,28 @@ pub fn check(text: &str, rustc: &Rustc) -> Result<(), String> {
     }
 }
 
-/// How many of `diagnostics` say that a call does nothing (lint
-/// `noop_method_call`): a `.clone()` on a reference to a type that no
-/// longer derives `Clone` compiles, and copies the reference instead.
-fn noops(diagnostics: &[Diagnostic]) -> usize {
-    diagnostics.iter().filter(|d| d.lint == NOOP).count()
+/// The calls that do nothing (lint `noop_method_call`) among the
+/// `diagnostics` of `rendered`: how many, and their places in the original
+/// text (`None` for one that is not copied from it). A `.clone()` on a
+/// reference to a type that no longer derives `Clone` compiles, and copies
+/// the reference instead.
+type Noops = (usize, BTreeSet<Option<(usize, usize)>>);
+
+fn noops(diagnostics: &[Diagnostic], rendered: &Rendered) -> Noops {
+    let found: Vec<&Diagnostic> = diagnostics.iter().filter(|d| d.lint == NOOP).collect();
+    let places = found.iter().flat_map(|d| &d.spans);
+    let places = places.map(|&span| rendered.to_original(span)).collect();
+    (found.len(), places)
+}
+
+/// Whether a compile of `rendered` with these `diagnostics` reports no call
+/// that does nothing beyond those `known`, and none at a new place.
+fn quiet(known: &Noops, diagnostics: &[Diagnostic], rendered: &Rendered) -> bool {
+    let (count, places) = noops(diagnostics, rendered);
+    count <= known.0
+        && places
+            .iter()
+            .all(|place| place.is_some() && known.1.contains(place))
 }
 
 /// The traits that code uses without naming them or their methods, so that
@@ -190,9 +199,6 @@ struct Pruner<'a> {
     /// The text of `state`, which compiled, and rustc's diagnostics of it.
     rendered: Rendered,
     diagnostics: Vec<Diagnostic>,
-    /// The calls that do nothing in the bundle itself: a removal that
-    /// makes more is refused.
-    noops: usize,
     /// The compiles made by other threads than the pruner's.
     other_compiles: usize,
 }
@@ -281,6 +287,11 @@ impl<'a> Pruner<'a> {
         Ok(self.state.len() > start)
     }
 
+    /// The calls that do nothing in the current state.
+    fn noops(&self) -> Noops {
+        noops(&self.diagnostics, &self.rendered)
+    }
+
     fn new(text: &str, rustc: &'a Rustc) -> Result<Self, String> {
         let source = Source::new(text).map_err(|err| format!("cannot read the bundle: {err}"))?;
         let mut compiler = Compiler::new(rustc)?;
@@ -299,7 +310,6 @@ impl<'a> Pruner<'a> {
             compiler,
             state,
             rendered,
-            noops: noops(&diagnostics),
             diagnostics,
             other_compiles: 0,
         })
@@ -361,8 +371,9 @@ impl<'a> Pruner<'a> {
             let mut all = self.state.clone();
             all.extend(trial.iter().copied());
             let rendered = self.source.render(&all);
+            let known = self.noops();
             match self.compiler.compile(&rendered.text)? {
-                Outcome::Compiled(diagnostics) if noops(&diagnostics) <= self.noops => {
+                Outcome::Compiled(diagnostics) if quiet(&known, &diagnostics, &rendered) => {
                     self.source.drop_kept_variants(&mut all);
                     self.state = all;
                     self.rendered = rendered;
@@ -489,7 +500,7 @@ impl<'a> Pruner<'a> {
             .min(MAX_WORKERS)
             .min(candidates.len());
         let (source, state, rustc) = (&self.source, &self.state, self.compiler.rustc());
-        let baseline = self.noops;
+        let known = self.noops();
         let next = AtomicUsize::new(0);
         let results = std::thread::scope(|scope| {
             let handles: Vec<_> = (0..workers)
@@ -504,10 +515,11 @@ impl<'a> Pruner<'a> {
                             };
                             let mut trial = state.clone();
                             trial.insert(id);
-                            let compiled = compiler.compile(&source.render(&trial).text)?;
+                            let rendered = source.render(&trial);
+                            let compiled = compiler.compile(&rendered.text)?;
                             let clean = matches!(
                                 compiled,
-                                Outcome::Compiled(diagnostics) if noops(&diagnostics) <= baseline
+                                Outcome::Compiled(diagnostics) if quiet(&known, &diagnostics, &rendered)
                             );
                             done.push((at, clean));
                         }
@@ -546,8 +558,9 @@ impl<'a> Pruner<'a> {
             let mut trial = self.state.clone();
             trial.extend(candidates.iter().copied());
             let rendered = self.source.render(&trial);
+            let known = self.noops();
             match self.compiler.compile(&rendered.text)? {
-                Outcome::Compiled(diagnostics) if noops(&diagnostics) <= self.noops => {
+                Outcome::Compiled(diagnostics) if quiet(&known, &diagnostics, &rendered) => {
                     self.source.drop_kept_variants(&mut trial);
                     self.state = trial;
                     self.rendered = rendered;

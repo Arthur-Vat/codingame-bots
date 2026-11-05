@@ -1,18 +1,12 @@
 //! The removals that rustc does not report but that the code may not need:
-//! a trait name in a `#[derive(...)]`, and a `debug_assert!`,
-//! `debug_assert_eq!` or `debug_assert_ne!` statement. (Trait impls are
-//! read with the other `impl`s.) Only a compile tells whether one can go.
+//! a trait name in a `#[derive(...)]`. (Trait impls are read with the other
+//! `impl`s.) Only a compile tells whether one can go.
 //!
 //! A derived `Default` of an enum is not offered: its `#[default]` variant
 //! needs it.
 
-use std::collections::BTreeMap;
-
-use super::{is_opener, is_punct, match_forward};
+use super::{is_punct, match_forward};
 use crate::minify::{Kind, Token};
-
-/// The macros of debug assertions.
-const ASSERTS: [&str; 3] = ["debug_assert", "debug_assert_eq", "debug_assert_ne"];
 
 /// A `#[derive(...)]` attribute whose list holds only paths, on a
 /// `struct`, an `enum` or a `union`.
@@ -117,31 +111,4 @@ fn paths(tokens: &[Token], from: usize, end: usize) -> Option<Vec<(usize, usize)
         lo = i + 1;
     }
     Some(names)
-}
-
-/// The debug assertions that are statements, by the token of the macro's
-/// name, with the token of their `;`: after `;`, `{` or `}`, so that no
-/// attribute or label comes with them.
-pub fn asserts(tokens: &[Token]) -> BTreeMap<usize, usize> {
-    let mut out = BTreeMap::new();
-    for (at, token) in tokens.iter().enumerate().skip(1) {
-        if token.kind != Kind::Ident || !ASSERTS.contains(&token.text.as_str()) {
-            continue;
-        }
-        let statement = ["}", "{", ";"]
-            .iter()
-            .any(|text| is_punct(&tokens[at - 1], text));
-        let call = tokens.get(at + 1).is_some_and(|t| is_punct(t, "!"))
-            && tokens.get(at + 2).is_some_and(is_opener);
-        if !statement || !call {
-            continue;
-        }
-        let Some(close) = match_forward(tokens, at + 2) else {
-            continue;
-        };
-        if tokens.get(close + 1).is_some_and(|t| is_punct(t, ";")) {
-            out.insert(at, close + 1);
-        }
-    }
-    out
 }

@@ -998,24 +998,74 @@ fn main() {
 }
 
 #[test]
-fn debug_assertions_go_unless_the_types_need_them() {
-    // Without the second assertion, `n`'s type is not known.
-    let source = r#"fn small(n: u8) -> bool {
-    n < 5
+fn debug_assertions_stay() {
+    // Without the assertion, `x` would be an `f64`.
+    let source = r#"fn main() {
+    let mut x = 0.1;
+    x = x * 1.7 + 0.3;
+    debug_assert!(x < 100.0f32);
+    println!("{}", x);
+}
+"#;
+    assert_eq!(pruned(source).0, source);
+}
+
+#[test]
+fn a_call_that_does_nothing_in_dead_code_does_not_hide_a_new_one() {
+    // `dead` holds a `.clone()` that does nothing; once it is gone, the one
+    // that removing `S`'s `Clone` would make must still be seen.
+    let source = r#"use std::cell::Cell;
+#[derive(Clone)]
+struct S(Cell<u8>);
+struct T;
+fn dead(t: &T) -> &T {
+    t.clone()
 }
 fn main() {
-    let x = 3u8;
-    debug_assert!(x > 1, "x is {x}");
-    let n = Default::default();
-    debug_assert_eq!(small(n), true);
-    println!("{} {}", x, n);
+    let s = S(Cell::new(1));
+    let r = &s;
+    let c = r.clone();
+    s.0.set(5);
+    println!("{}", c.0.get());
 }
 "#;
     let (out, report) = pruned(source);
-    assert!(
-        !out.contains("debug_assert!") && out.contains("debug_assert_eq!"),
-        "{out}"
-    );
-    assert_eq!(report.asserts, 1, "{report}");
-    check(&out, &rustc()).unwrap();
+    assert!(!out.contains("fn dead"), "{out}");
+    assert!(out.contains("#[derive(Clone)]"), "{out}");
+    assert_eq!(report.derives, 0, "{report}");
+}
+
+#[test]
+fn nothing_goes_from_a_type_that_derefs() {
+    // Without `W`'s `Display`, `w.to_string()` compiles and calls `u8`'s.
+    let source = r#"use std::fmt;
+use std::ops::Deref;
+#[derive(Debug)]
+struct W(u8);
+impl Deref for W {
+    type Target = u8;
+    fn deref(&self) -> &u8 {
+        &self.0
+    }
+}
+impl fmt::Display for W {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "W{}", self.0)
+    }
+}
+fn main() {
+    let w = W(3);
+    println!("{}", w.to_string());
+}
+"#;
+    let source_ids = Source::new(source).unwrap().trials();
+    assert!(source_ids.is_empty(), "{source_ids:?}");
+    assert_eq!(pruned(source).0, source);
+}
+
+#[test]
+fn a_derive_on_a_type_named_by_a_macro_is_not_offered() {
+    let text = "macro_rules! unit {\n    ($name:ident) => {\n        #[derive(Clone)]\n        struct $name;\n    };\n}\nunit!(A);\nfn main() {}\n";
+    let trials = Source::new(text).unwrap().trials();
+    assert!(trials.is_empty(), "{trials:?}");
 }

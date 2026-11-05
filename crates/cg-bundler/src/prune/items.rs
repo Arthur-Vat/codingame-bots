@@ -9,8 +9,8 @@
 //! the `impl`s and patterns of [`shapes`].
 //!
 //! It also lists the removals that rustc does not report but that a compile
-//! may accept ([`Source::trials`]): the names of `derive` lists, the impls
-//! of traits that the bundle does not define, and debug assertions.
+//! may accept ([`Source::trials`]): the names of `derive` lists and the
+//! impls of traits that the bundle does not define.
 
 mod shapes;
 mod trials;
@@ -46,9 +46,6 @@ pub enum Id {
     /// An impl of a trait that the bundle does not define, except `Drop`;
     /// the index is that of its first token, attributes included.
     TraitImpl(usize),
-    /// A `debug_assert!`, `debug_assert_eq!` or `debug_assert_ne!`
-    /// statement; the index is that of the macro's name.
-    Assert(usize),
 }
 
 /// A part of the text of a rendering.
@@ -151,9 +148,6 @@ pub struct Source {
     arms: BTreeMap<(usize, usize), (usize, usize)>,
     /// The `#[derive(...)]` attributes read clearly.
     derives: Vec<Derive>,
-    /// The debug assertions that are statements: the macro's name and the
-    /// `;`.
-    asserts: BTreeMap<usize, usize>,
 }
 
 /// A text made from the original by some removals, and the way back from
@@ -417,10 +411,8 @@ impl Source {
             patterns: Vec::new(),
             arms: BTreeMap::new(),
             derives: Vec::new(),
-            asserts: BTreeMap::new(),
         };
         source.derives = trials::derives(&source.tokens);
-        source.asserts = trials::asserts(&source.tokens);
         source.find_shapes();
         Ok(source)
     }
@@ -765,7 +757,6 @@ impl Source {
                 let block = self.impl_at(first).expect("a trait impl is known");
                 self.cut(block.first, block.close)
             }
-            Id::Assert(at) => self.cut(at, self.asserts[&at]),
         }
     }
 
@@ -786,14 +777,22 @@ impl Source {
 
     /// The removals that rustc does not report but that a compile may
     /// accept, in the order of the source: every name of a `derive` list
-    /// (but `Default` on an enum), every impl of a trait that the bundle
-    /// does not define except `Drop`, and every debug assertion that is a
-    /// statement. `Clone` is not offered when the bundle calls `to_owned`:
-    /// without it, `r.to_owned()` on a reference `r` compiles and copies the
-    /// reference, and rustc does not report it.
+    /// (but `Default` on an enum), and every impl of a trait that the
+    /// bundle does not define except `Drop`. Not offered: `Clone` when the
+    /// bundle calls `to_owned` (without it, `r.to_owned()` on a reference
+    /// `r` compiles and copies the reference, and rustc does not report
+    /// it), and anything of a type that has an impl of `Deref` or
+    /// `DerefMut` (without its `Display`, `w.to_string()` compiles and
+    /// calls the target's).
     pub fn trials(&self) -> Vec<Id> {
         let to_owned = self.tokens.iter().any(|t| t.text == "to_owned");
-        let offered = |name: &str| !(to_owned && name == "Clone");
+        let derefs: BTreeSet<&str> = self
+            .impls
+            .iter()
+            .filter(|b| matches!(b.trait_name(), Some("Deref" | "DerefMut")))
+            .filter_map(|b| b.self_name())
+            .collect();
+        let offered = |ty: &str, name: &str| !(derefs.contains(ty) || to_owned && name == "Clone");
         let defined: BTreeSet<&str> = self
             .tokens
             .windows(2)
@@ -804,20 +803,19 @@ impl Source {
         let mut out = Vec::new();
         for derive in &self.derives {
             for &(lo, hi) in &derive.names {
-                let name = self.tokens[hi].text.as_str();
-                if offered(name) && !(derive.is_enum && name == "Default") {
+                let (ty, name) = (&self.tokens[derive.subject].text, &self.tokens[hi].text);
+                if offered(ty, name) && !(derive.is_enum && name == "Default") {
                     out.push((lo, Id::Derive(lo)));
                 }
             }
         }
         for block in &self.impls {
-            if let Some(name) = block.trait_name() {
-                if offered(name) && name != "Drop" && !defined.contains(name) {
+            if let (Some(name), Some(ty)) = (block.trait_name(), block.self_name()) {
+                if offered(ty, name) && name != "Drop" && !defined.contains(name) {
                     out.push((block.first, Id::TraitImpl(block.first)));
                 }
             }
         }
-        out.extend(self.asserts.keys().map(|&at| (at, Id::Assert(at))));
         out.sort_unstable();
         out.into_iter().map(|(_, id)| id).collect()
     }
@@ -882,7 +880,7 @@ impl Source {
         let mut derived: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new();
         for &id in selected {
             match id {
-                Id::TraitImpl(_) | Id::Assert(_) => {
+                Id::TraitImpl(_) => {
                     let (start, end) = self.bytes_of(id);
                     edits.push(Edit {
                         start,
@@ -1209,7 +1207,7 @@ impl Source {
         match id {
             Id::Item(name) | Id::Variant(name) => Some(&self.tokens[name].text),
             Id::Container(_) | Id::Arm(_) => None,
-            Id::Derive(_) | Id::TraitImpl(_) | Id::Assert(_) => None,
+            Id::Derive(_) | Id::TraitImpl(_) => None,
             Id::Leaf(lo) => {
                 let item = self.use_of(lo)?;
                 let (lo, hi) = find_leaf(&item.root, lo)?.range();
