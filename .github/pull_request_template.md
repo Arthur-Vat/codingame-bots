@@ -4,7 +4,7 @@
 
 ## How it was checked
 
-<!-- Paste the summary lines of the checks you ran (fmt, clippy, tests, cg-check). -->
+<!-- Paste the summary lines of scripts/check.sh (or of the checks you ran). -->
 
 ## Checklist
 

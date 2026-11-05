@@ -581,6 +581,9 @@ jobs:
       - name: Test the nightly league script
         if: ${{ !cancelled() }}
         run: scripts/annotate.sh run "League night test" scripts/tests/league-night-test.sh
+      - name: Test the local check script
+        if: ${{ !cancelled() }}
+        run: scripts/annotate.sh run "Local check test" scripts/tests/check-test.sh
       - name: Test the cache of rustc's builds
         if: ${{ !cancelled() }}
         run: scripts/annotate.sh run "Rustc cache test" scripts/tests/rustc-cache-test.sh

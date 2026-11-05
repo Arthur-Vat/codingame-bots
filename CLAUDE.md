@@ -4,7 +4,7 @@ Rust framework for two-player CodinGame bots. Claude writes the code; CI judges;
 
 ## Commands
 
-Run all of these before saying work is done, and paste their summary lines in the pull request:
+Run `scripts/check.sh` before saying work is done, and paste its summary lines in the pull request. It runs the local checks that CI would run for the files changed since `origin/main` ([ADR 0054](docs/adr/0054-local-checks-follow-ci-scopes.md)): the docs check and the script tests always; for Rust, `cargo fmt --check` and `cargo clippy` on the workspace; the tests and bundles of the areas changed (a game: its packages, the shared crates' and the studio's, and its bots; the framework, a workflow or the workspace's configuration: `cargo test --workspace` and every bot). `--dry-run` lists the steps; `--all` runs everything, as before:
 
 ```sh
 cargo fmt --all -- --check
