@@ -287,6 +287,16 @@ lines_to_array() { # lines_to_array <array name> <text>
   done <<<"$2"
 }
 
+remove_label() { # remove_label <number> <name>
+  local output
+  if ! output="$(gh api -X DELETE "repos/$REPO/issues/$1/labels/$(urlencode "$2")" 2>&1)"; then
+    # Another run for the same pull request may have removed it just now.
+    if grep -q 'HTTP 404' <<<"$output"; then return 0; fi
+    echo "$output" >&2
+    return 1
+  fi
+}
+
 create_label() { # create_label <name>
   local output
   if ! output="$(gh api -X POST "repos/$REPO/labels" -f name="$1" -f color="$label_color" \
@@ -333,7 +343,7 @@ apply_labels() { # apply_labels <number> <wanted label>...
     gh api -X POST "repos/$REPO/issues/$number/labels" "${args[@]}" >/dev/null || return 1
   fi
   for label in "${to_remove[@]}"; do
-    gh api -X DELETE "repos/$REPO/issues/$number/labels/$(urlencode "$label")" >/dev/null || return 1
+    remove_label "$number" "$label" || return 1
   done
 
   echo "Labels: ${wanted[*]:-none}"
