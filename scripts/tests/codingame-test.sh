@@ -201,6 +201,61 @@ run -h
 expect "help" "$rc" 0
 contains "usage text" "$out" "Usage: scripts/codingame.sh fetch"
 
+# Without --data: a worktree of the data branch, in a clone with a bare
+# repository as its origin (offline).
+export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.com GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.com
+bare="$tmp_dir/origin.git"
+clone="$tmp_dir/clone"
+git init -q --bare "$bare"
+git clone -q "$bare" "$clone" 2>/dev/null
+mkdir -p "$clone/scripts" "$clone/games/toy"
+cp "$repo/scripts/codingame.sh" "$clone/scripts/"
+cp "$repo/games/toy/evaluation.env" "$clone/games/toy/"
+git -C "$clone" add -A
+git -C "$clone" commit -q -m "chore(repo): stand-in"
+branch=refs/heads/claude/codingame-games
+cscript="$clone/scripts/codingame.sh"
+echo "{\"submission_id\":77,\"battles\":[$(battle 300 true 2026-01-03T10:00:00.000Z),$(battle 200 true 2026-01-02T10:00:00.000Z)]}" \
+  >"$STUB_DIR/${puzzle_url}_battles_limit_100.json"
+
+# (1) No --push, no remote branch: an orphan worktree, nothing pushed.
+rc=0
+out="$("$cscript" fetch toy 2>&1)" || rc=$?
+expect "worktree run exit" "$rc" 0
+wt="$(sed -n 's/^data directory: //p' <<<"$out")"
+contains "worktree path printed" "$out" "data directory: $wt"
+expect "worktree has the index" "$(wc -l <"$wt/toy/index.jsonl" | tr -d ' ')" 2
+expect "worktree is orphan" "$(git -C "$wt" rev-parse -q --verify HEAD >/dev/null 2>&1 && echo has-head || echo no-head)" no-head
+contains "push hint" "$out" "--push"
+expect "nothing pushed" "$(git -C "$bare" rev-parse -q --verify "$branch" >/dev/null && echo pushed || echo none)" none
+git -C "$clone" worktree remove --force "$wt"
+
+# (2) --push: the branch holds only the game's files.
+rc=0
+out="$("$cscript" fetch toy --push 2>&1)" || rc=$?
+expect "push exit" "$rc" 0
+expect "subject" "$(git -C "$bare" log -1 --format=%s "$branch")" "chore(repo): codingame games: toy, 2 new games"
+contains "trailer" "$(git -C "$bare" log -1 --format=%B "$branch")" "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+expect "only game files" "$(git -C "$bare" ls-tree -r --name-only "$branch" | grep -vc '^toy/' || true)" 0
+expect "files pushed" "$(git -C "$bare" ls-tree -r --name-only "$branch" | grep -c 'logs/\|index.jsonl')" 3
+expect "one commit" "$(git -C "$bare" rev-list --count "$branch")" 1
+expect "worktree removed" "$(git -C "$clone" worktree list | wc -l | tr -d ' ')" 1
+
+# (3) A new battle: a second commit on top, the old logs untouched.
+log 400 0 '"seed=9"' >"$STUB_DIR/games_400_format_json.json"
+echo "{\"submission_id\":77,\"battles\":[$(battle 400 true 2026-01-04T10:00:00.000Z),$(battle 300 true 2026-01-03T10:00:00.000Z),$(battle 200 true 2026-01-02T10:00:00.000Z)]}" \
+  >"$STUB_DIR/${puzzle_url}_battles_limit_100.json"
+first="$(git -C "$bare" rev-parse "$branch")"
+rc=0
+out="$("$cscript" fetch toy --push 2>&1)" || rc=$?
+expect "second push exit" "$rc" 0
+expect "second commit on top" "$(git -C "$bare" rev-parse "$branch^")" "$first"
+expect "second subject" "$(git -C "$bare" log -1 --format=%s "$branch")" "chore(repo): codingame games: toy, 1 new games"
+changed="$(git -C "$bare" diff --name-only "$first" "$branch" | grep -v 'leaderboard/' | tr '\n' ' ')"
+expect "only the new log and the index changed" "$changed" "toy/index.jsonl toy/logs/400.json "
+expect "index has three" "$(git -C "$bare" show "$branch:toy/index.jsonl" | wc -l | tr -d ' ')" 3
+expect "worktree removed again" "$(git -C "$clone" worktree list | wc -l | tr -d ' ')" 1
+
 if ((failures > 0)); then
   echo "$failures of $checks codingame checks failed" >&2
   exit 1
