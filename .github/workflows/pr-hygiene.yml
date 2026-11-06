@@ -6,10 +6,10 @@ name: Pull request hygiene
 # are neither labelled nor checked: their titles are generated.
 #
 # No concurrency group: a run cancelled by a newer one left a cancelled
-# "Pull request title and labels" check that could block the merge. Runs for
-# the same pull request read its current title and files from the API, so
-# they reach the same result; a label another run removed first is not an
-# error.
+# "Pull request title and labels" check that could block the merge. Each run
+# reads the pull request's current title and files when it starts, so a later
+# event's run corrects an earlier one; a label another run removed first is
+# not an error.
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]

@@ -291,7 +291,10 @@ remove_label() { # remove_label <number> <name>
   local output
   if ! output="$(gh api -X DELETE "repos/$REPO/issues/$1/labels/$(urlencode "$2")" 2>&1)"; then
     # Another run for the same pull request may have removed it just now.
-    if grep -q 'HTTP 404' <<<"$output"; then return 0; fi
+    if grep -q 'HTTP 404' <<<"$output"; then
+      echo "The label $2 was already gone"
+      return 0
+    fi
     echo "$output" >&2
     return 1
   fi

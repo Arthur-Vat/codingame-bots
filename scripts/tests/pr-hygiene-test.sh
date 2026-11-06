@@ -387,6 +387,7 @@ same "refused: title annotation" 1 "$(grep -c '^::error title=Pull request title
 export STUB_DELETE_STATUS=404
 run_pr steady
 same "removed already: status" 0 "$status"
+same "removed already: said" 1 "$(grep -c '^The label agents was already gone$' <<<"$output" || true)"
 export STUB_DELETE_STATUS=403
 run_pr steady
 unset STUB_DELETE_STATUS
