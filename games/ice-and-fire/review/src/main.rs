@@ -9,7 +9,7 @@
 //! ice-and-fire-review bank --out FILE [--count N] [--seed S] [--jobs N] GAME.json...
 //! ice-and-fire-review screening [--jobs N] GAME.json... > screening.md
 //! ice-and-fire-review codingame --out DIR [--kind ranking] [--strict] LOG.json... > check.md
-//! ice-and-fire-review codingame-report --data DIR --me NAME [--kinds ranking,test] [--top N] > report.md
+//! ice-and-fire-review codingame-report --data DIR --me NAME [--kinds ranking,test] [--top N] --out DIR
 //! ```
 
 mod bank;
@@ -146,7 +146,7 @@ enum Command {
         #[arg(required = true)]
         logs: Vec<PathBuf>,
     },
-    /// Prints the profiles of the players met on CodinGame and our
+    /// Writes the profiles of the players met on CodinGame and our
     /// weaknesses, from a data directory of `scripts/codingame.sh` (logs,
     /// index and leaderboard snapshots): results and ends by opponent, then
     /// for each of the top players its key metrics, events, decisive moments
@@ -177,6 +177,11 @@ enum Command {
         /// Also write the numbers as JSON here.
         #[arg(long)]
         json: Option<PathBuf>,
+        /// The folder to write the report's files to, created if missing:
+        /// tables as CSV, one SVG chart a metric or event, the data of every
+        /// turn, `README.md` and `signals.md`.
+        #[arg(long)]
+        out: PathBuf,
         /// Games replayed at the same time.
         #[arg(long, default_value_t = 4)]
         jobs: usize,
@@ -355,9 +360,10 @@ fn run(cli: Cli) -> Result<(), String> {
             players,
             leaderboard,
             json,
+            out,
             jobs,
         } => {
-            let (text, numbers) = profiles::run(&profiles::Request {
+            let (numbers, files) = profiles::run(&profiles::Request {
                 data,
                 me,
                 kinds,
@@ -367,7 +373,12 @@ fn run(cli: Cli) -> Result<(), String> {
                 leaderboard,
                 jobs,
             })?;
-            print!("{text}");
+            fs::create_dir_all(&out).map_err(|e| format!("{}: {e}", out.display()))?;
+            eprintln!("writing {} files to {}", files.len(), out.display());
+            for (name, body) in files {
+                let file = out.join(name);
+                fs::write(&file, body).map_err(|e| format!("{}: {e}", file.display()))?;
+            }
             if let Some(file) = json {
                 fs::write(&file, numbers).map_err(|e| format!("{}: {e}", file.display()))?;
             }

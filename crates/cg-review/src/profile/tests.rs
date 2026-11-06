@@ -1,40 +1,7 @@
-use crate::test_util::game;
+use crate::test_util::{game, Toy};
 use crate::trace::{Moment, Trace};
 
 use super::*;
-
-/// A made-up game: the event "build" is a command starting with `B`, an
-/// opening token is the command itself.
-struct Toy;
-
-impl Profiling for Toy {
-    fn turns() -> Vec<u32> {
-        vec![5, 10]
-    }
-    fn opening_plies() -> usize {
-        3
-    }
-    fn key_metrics() -> Vec<&'static str> {
-        vec!["cells"]
-    }
-    fn events(trace: &Trace, ply: usize) -> Vec<String> {
-        trace.plies[ply]
-            .commands
-            .split(';')
-            .filter(|c| c.starts_with('B'))
-            .map(|_| "build".to_string())
-            .collect()
-    }
-    fn opening(trace: &Trace, seat: usize, plies: usize) -> Vec<String> {
-        trace
-            .plies
-            .iter()
-            .filter(|p| p.to_act == seat)
-            .take(plies)
-            .map(|p| p.commands.clone())
-            .collect()
-    }
-}
 
 /// A game between `alpha` (red) and `beta` (blue); `cells` are the values
 /// at each ply, and `commands` the red and blue answers of turn 1 and 2.
@@ -265,22 +232,15 @@ fn small_samples_and_edge_cases_are_flagged() {
     );
     assert!(a.profiles[0].few_games);
     assert_eq!(a.weaknesses.losses, 0);
-    let text = markdown(&a);
-    assert!(text.contains("Few games"), "{text}");
-    assert!(text.contains("[n = 1]"), "{text}");
-    assert!(text.contains("- 9: no log"), "{text}");
-    assert!(text.contains("No loss."), "{text}");
-    assert!(text.contains("**Warning:** a name differs"), "{text}");
-    assert!(text.contains("a note"), "{text}");
-    for heading in [
-        "## Sources",
-        "## Opponents",
-        "## Profiles",
-        "## Our weaknesses",
-        "## Games",
-    ] {
-        assert!(text.contains(heading), "{heading}");
-    }
+    let files = report_files(&a, 0);
+    let readme = file(&files, "README.md");
+    assert!(readme.contains("**Warning:** a name differs"), "{readme}");
+    assert!(readme.contains("a note"), "{readme}");
+    assert!(file(&files, "left_out.csv").contains("9,no log"));
+    // The player has one game against us.
+    assert!(file(&files, "profile_results.csv").contains("alpha,2,1,"));
+    assert!(file(&files, "weaknesses_stays_below.csv").starts_with("metric,losses,"));
+    assert_eq!(files.len(), 20);
     // A named player without a game is shown as such, and the JSON is valid.
     let named = analyze::<Toy>(
         &input,
@@ -290,7 +250,7 @@ fn small_samples_and_edge_cases_are_flagged() {
         },
     );
     assert_eq!(named.profiles[0].games, 0);
-    assert!(markdown(&named).contains("nobody (unranked, 0 games)"));
+    assert!(file(&report_files(&named, 0), "profile_results.csv").contains("nobody,,0,0,0,0,0"));
     let json = serde_json::to_string(&named).expect("json");
     assert!(json.contains("\"profiles\""));
 }
@@ -335,4 +295,83 @@ fn each_side_is_read_right_after_its_own_ply() {
     assert_eq!(value_at(&trace, 1, 4, index), None);
     // So blue is never "behind from turn 1".
     assert_eq!(stays_below(&trace, 1, "cells"), None);
+}
+
+/// Five wins and five losses of ours, in which we are `blue_win` and
+/// `blue_loss` all game against red's 9.
+fn won_and_lost(blue_win: i64, blue_loss: i64) -> Input {
+    let mut games = Vec::new();
+    for i in 0..5 {
+        games.push(toy(i, &vec![(9, blue_win); 10], Some(1), &["x"]));
+        games.push(toy(10 + i, &vec![(9, blue_loss); 10], Some(0), &["x"]));
+    }
+    Input {
+        games,
+        ranks: ranks(),
+        ..Input::default()
+    }
+}
+
+/// The text of the file `name` among `files`.
+fn file(files: &[(String, String)], name: &str) -> String {
+    files
+        .iter()
+        .find(|(n, _)| n == name)
+        .map(|(_, text)| text.clone())
+        .unwrap_or_else(|| panic!("no file {name}"))
+}
+
+#[test]
+fn the_files_compare_wins_with_losses_and_point_to_the_charts() {
+    let a = analyze::<Toy>(
+        &won_and_lost(12, 3),
+        &Options {
+            top: 1,
+            players: vec![],
+        },
+    );
+    let files = report_files(&a, 7);
+    let signals = file(&files, "signals.md");
+    assert!(
+        signals.contains("**cells**: our wins and our losses separate from turn 1; at turn 3 the median is 12 for our wins and 3 for our losses (AUC 1.00, n = 5 and 5)."),
+        "{signals}"
+    );
+    assert!(signals.contains("`wins-vs-losses-cells.svg`"), "{signals}");
+    assert!(signals.contains("`turns-our-wins.csv`"), "{signals}");
+    assert!(file(&files, "separation.csv").contains("wins-vs-losses,cells,false,3,1,12,3,5,5,1\n"));
+    // The control: we are above red in every win and below in every loss.
+    assert!(file(&files, "weaknesses_stays_below.csv").contains("cells,5,5,5,0,1\n"));
+    let readme = file(&files, "README.md");
+    assert!(readme.contains("7 SVG files"), "{readme}");
+    assert!(readme.contains("`turns-all-top-players.csv`"), "{readme}");
+    assert!(readme.contains("`separation.csv`:"), "{readme}");
+    // Every table file named in the README is made.
+    for line in readme
+        .lines()
+        .filter(|l| l.starts_with("- `") && l.contains(".csv`: "))
+    {
+        let name = line
+            .trim_start_matches("- `")
+            .split('`')
+            .next()
+            .expect("name");
+        if !name.starts_with("turns-") {
+            file(&files, name);
+        }
+    }
+}
+
+#[test]
+fn signals_without_wins_or_losses_say_so() {
+    let mut input = won_and_lost(12, 3);
+    input.games.retain(|(_, trace)| trace.winner == Some(0));
+    let a = analyze::<Toy>(
+        &input,
+        &Options {
+            top: 1,
+            players: vec![],
+        },
+    );
+    let signals = file(&report_files(&a, 0), "signals.md");
+    assert!(signals.contains("Nothing to compare"), "{signals}");
 }

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" width="640" height="320" role="img" aria-labelledby="t">
+<title id="t">Event tower: the share of the games in which the side does it at that turn, in percent.</title>
+<style>text{font-family:system-ui,sans-serif}.bg{fill:#fcfcfb}.tx{fill:#0b0b0b}.mu{fill:#52514e}.gr{stroke:#e4e3df}.ds{stroke:#52514e}.s1{stroke:#2a78d6}.s2{stroke:#eb6834}.f1{fill:#2a78d6}.f2{fill:#eb6834}.halo{stroke:#fcfcfb}@media (prefers-color-scheme: dark){.bg{fill:#1a1a19}.tx{fill:#f0efec}.mu{fill:#c3c2b7}.gr{stroke:#3a3a37}.ds{stroke:#c3c2b7}.s1{stroke:#3987e5}.s2{stroke:#d95926}.f1{fill:#3987e5}.f2{fill:#d95926}.halo{stroke:#1a1a19}}</style>
+<rect class="bg" width="640" height="320"/>
+<text class="tx" x="16" y="20.0" font-size="13" font-weight="600">Event tower: the share of the games in which the side does it at that turn, in percent.</text>
+<text class="mu" x="16" y="38.0" font-size="11">share of games, in percent, per game turn; n = 175 (our wins) and 147 (our losses)</text>
+<line class="s1" x1="16.0" y1="52.0" x2="34.0" y2="52.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="40.0" y="56.0" font-size="12">our wins</text>
+<line class="s2" x1="116.8" y1="52.0" x2="134.8" y2="52.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="140.8" y="56.0" font-size="12">our losses</text>
+<line class="gr" x1="48.0" y1="276.0" x2="528.0" y2="276.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="280.0" font-size="11" text-anchor="end">0</text>
+<line class="gr" x1="48.0" y1="208.0" x2="528.0" y2="208.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="212.0" font-size="11" text-anchor="end">20</text>
+<line class="gr" x1="48.0" y1="140.0" x2="528.0" y2="140.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="144.0" font-size="11" text-anchor="end">40</text>
+<line class="gr" x1="48.0" y1="72.0" x2="528.0" y2="72.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="76.0" font-size="11" text-anchor="end">60</text>
+<text class="mu" x="76.2" y="292.0" font-size="11" text-anchor="middle">2</text>
+<text class="mu" x="132.7" y="292.0" font-size="11" text-anchor="middle">4</text>
+<text class="mu" x="189.2" y="292.0" font-size="11" text-anchor="middle">6</text>
+<text class="mu" x="245.6" y="292.0" font-size="11" text-anchor="middle">8</text>
+<text class="mu" x="302.1" y="292.0" font-size="11" text-anchor="middle">10</text>
+<text class="mu" x="358.6" y="292.0" font-size="11" text-anchor="middle">12</text>
+<text class="mu" x="415.1" y="292.0" font-size="11" text-anchor="middle">14</text>
+<text class="mu" x="471.5" y="292.0" font-size="11" text-anchor="middle">16</text>
+<text class="mu" x="528.0" y="292.0" font-size="11" text-anchor="middle">18</text>
+<text class="mu" x="288.0" y="308.0" font-size="11" text-anchor="middle">game turn</text>
+<path class="s1" d="M48.0 276.0 L76.2 276.0 L104.5 276.0 L132.7 276.0 L160.9 276.0 L189.2 276.0 L217.4 274.0 L245.6 233.8 L273.9 191.0 L302.1 199.1 L330.4 211.2 L358.6 202.5 L386.8 208.9 L415.1 214.8 L443.3 226.6 L471.5 220.4 L499.8 235.8 L528.0 225.5" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<path class="s2" d="M48.0 276.0 L76.2 276.0 L104.5 276.0 L132.7 276.0 L160.9 276.0 L189.2 276.0 L217.4 271.4 L245.6 241.3 L273.9 162.7 L302.1 137.2 L330.4 146.5 L358.6 137.2 L386.8 162.7 L415.1 162.7 L443.3 189.7 L471.5 183.0 L499.8 194.4 L528.0 199.6" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f2" cx="540.0" cy="199.6" r="4"/>
+<text class="tx" x="549.0" y="203.6" font-size="12">our losses</text>
+<circle class="f1" cx="540.0" cy="225.5" r="4"/>
+<text class="tx" x="549.0" y="229.5" font-size="12">our wins</text>
+</svg>

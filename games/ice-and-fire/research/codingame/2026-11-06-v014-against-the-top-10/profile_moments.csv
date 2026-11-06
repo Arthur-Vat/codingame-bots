@@ -1,0 +1,97 @@
+player,kind,favours,wins_with,wins_games,losses_with,losses_games,total,median_turn
+zasmu,HQ threat,them,9,9,0,1,9,20
+zasmu,HQ threat,us,0,9,1,1,1,19
+zasmu,large cut,them,2,9,0,1,3,15
+zasmu,large cut,us,3,9,1,1,4,12
+zasmu,lead change,them,1,9,0,1,1,18
+zasmu,lead change,us,1,9,1,1,2,14.5
+zasmu,swing,them,4,9,0,1,4,14
+zasmu,swing,us,3,9,1,1,5,18
+Pduhard-,HQ threat,them,7,9,0,1,7,19
+Pduhard-,HQ threat,us,0,9,1,1,1,21
+Pduhard-,debt,them,1,9,0,1,1,19
+Pduhard-,debt,us,0,9,0,1,0,
+Pduhard-,large cut,them,7,9,0,1,10,14.5
+Pduhard-,large cut,us,1,9,1,1,4,15
+Pduhard-,lead change,them,1,9,0,1,1,17
+Pduhard-,lead change,us,1,9,1,1,2,14.5
+Pduhard-,swing,them,9,9,0,1,20,15
+Pduhard-,swing,us,2,9,1,1,9,17
+karliso,HQ threat,them,9,10,0,0,9,16
+karliso,HQ threat,us,0,10,0,0,0,
+karliso,debt,them,3,10,0,0,3,15
+karliso,debt,us,0,10,0,0,0,
+karliso,large cut,them,6,10,0,0,12,16
+karliso,large cut,us,3,10,0,0,4,13.5
+karliso,lead change,them,1,10,0,0,2,28.5
+karliso,lead change,us,2,10,0,0,3,14
+karliso,swing,them,9,10,0,0,20,16
+karliso,swing,us,3,10,0,0,7,19
+_iaz,HQ threat,them,7,8,0,2,7,16
+_iaz,HQ threat,us,0,8,1,2,1,22
+_iaz,debt,them,1,8,0,2,1,15
+_iaz,debt,us,0,8,0,2,0,
+_iaz,large cut,them,7,8,0,2,22,15
+_iaz,large cut,us,2,8,2,2,5,17
+_iaz,lead change,them,1,8,0,2,1,17
+_iaz,lead change,us,1,8,1,2,2,14
+_iaz,swing,them,8,8,0,2,33,15
+_iaz,swing,us,3,8,2,2,14,15.5
+reCurse,HQ threat,them,7,7,0,3,7,15
+reCurse,HQ threat,us,0,7,2,3,2,23
+reCurse,debt,them,0,7,0,3,0,
+reCurse,debt,us,0,7,1,3,1,21
+reCurse,large cut,them,3,7,0,3,3,14
+reCurse,large cut,us,0,7,2,3,4,17
+reCurse,lead change,them,1,7,0,3,3,21
+reCurse,lead change,us,1,7,2,3,5,16
+reCurse,swing,them,6,7,0,3,8,15
+reCurse,swing,us,2,7,2,3,12,19.5
+_iahelka,HQ threat,them,5,9,0,1,5,17
+_iahelka,HQ threat,us,0,9,1,1,1,21
+_iahelka,large cut,them,8,9,0,1,18,13
+_iahelka,large cut,us,1,9,1,1,2,14
+_iahelka,lead change,them,2,9,0,1,2,16.5
+_iahelka,lead change,us,2,9,1,1,3,12
+_iahelka,swing,them,9,9,0,1,31,15
+_iahelka,swing,us,3,9,1,1,4,16
+Waffle3z,HQ threat,them,6,7,0,4,6,16
+Waffle3z,HQ threat,us,0,7,3,4,3,16
+Waffle3z,debt,them,1,7,0,4,1,14
+Waffle3z,debt,us,0,7,0,4,0,
+Waffle3z,large cut,them,3,7,1,4,6,13.5
+Waffle3z,large cut,us,0,7,4,4,15,14
+Waffle3z,lead change,them,0,7,0,4,0,
+Waffle3z,lead change,us,0,7,3,4,3,16
+Waffle3z,swing,them,7,7,0,4,17,14
+Waffle3z,swing,us,0,7,4,4,10,16
+Zylo,HQ threat,them,7,9,0,1,7,19
+Zylo,HQ threat,us,0,9,1,1,1,21
+Zylo,debt,them,2,9,0,1,2,27
+Zylo,debt,us,0,9,0,1,0,
+Zylo,large cut,them,6,9,0,1,10,17
+Zylo,large cut,us,1,9,1,1,5,19
+Zylo,lead change,them,0,9,0,1,0,
+Zylo,lead change,us,0,9,1,1,1,16
+Zylo,swing,them,7,9,0,1,26,19
+Zylo,swing,us,4,9,1,1,8,19.5
+NinjaDoggy,HQ threat,them,8,10,0,2,8,17.5
+NinjaDoggy,HQ threat,us,0,10,1,2,1,23
+NinjaDoggy,debt,them,1,10,0,2,1,18
+NinjaDoggy,debt,us,0,10,0,2,0,
+NinjaDoggy,large cut,them,9,10,1,2,23,14
+NinjaDoggy,large cut,us,0,10,1,2,3,13
+NinjaDoggy,lead change,them,3,10,0,2,3,12
+NinjaDoggy,lead change,us,0,10,1,2,1,14
+NinjaDoggy,swing,them,8,10,0,2,22,16.5
+NinjaDoggy,swing,us,2,10,1,2,8,20
+aCat,HQ threat,them,7,8,0,5,7,17
+aCat,HQ threat,us,0,8,3,5,3,16
+aCat,debt,them,1,8,0,5,1,21
+aCat,debt,us,0,8,0,5,0,
+aCat,large cut,them,5,8,0,5,10,13.5
+aCat,large cut,us,1,8,3,5,7,14
+aCat,lead change,them,4,8,0,5,6,14.5
+aCat,lead change,us,4,8,2,5,6,13
+aCat,swing,them,6,8,0,5,16,15
+aCat,swing,us,0,8,5,5,15,14

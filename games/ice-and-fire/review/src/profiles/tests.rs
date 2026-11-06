@@ -65,19 +65,28 @@ fn request(dir: &Path) -> Request {
     }
 }
 
+/// The text of the file `name` among `files`.
+fn file(files: &[(String, String)], name: &str) -> String {
+    files
+        .iter()
+        .find(|(n, _)| n == name)
+        .map(|f| f.1.clone())
+        .unwrap_or_else(|| panic!("no file {name}"))
+}
+
 #[test]
 fn the_report_covers_the_games_and_lists_those_left_out() {
     let dir = data_dir("profiles-all");
-    let (text, json) = run(&request(&dir)).expect("a report");
-    assert!(text.contains("## Sources"), "{text}");
-    assert!(text.contains("2026-11-06T154110Z.json"), "{text}");
+    let (json, files) = run(&request(&dir)).expect("a report");
+    assert!(file(&files, "README.md").contains("2026-11-06T154110Z.json"));
     // Games 5 and 6 have no log, and one line is not JSON.
-    assert!(text.contains("- 5: no log at"), "{text}");
-    assert!(text.contains("- 6: no log at"), "{text}");
-    assert!(text.contains("index line 5"), "{text}");
-    assert!(text.contains("| Gabbek | 3 | 2 [n = 2] |"), "{text}");
-    assert!(text.contains("### Gabbek (rank 3, 2 games)"), "{text}");
-    assert!(text.contains("train level 1"), "{text}");
+    let left = file(&files, "left_out.csv");
+    assert!(left.contains("\n5,no log at"), "{left}");
+    assert!(left.contains("\n6,no log at"), "{left}");
+    assert!(left.contains(",index line 5"), "{left}");
+    assert!(file(&files, "opponents.csv").contains("\nGabbek,3,2,2,0,0,"));
+    assert!(file(&files, "profile_results.csv").contains("\nGabbek,3,2,"));
+    assert!(file(&files, "profile_events.csv").contains(",train level 1,"));
     let value: serde_json::Value = serde_json::from_str(&json).expect("json");
     assert_eq!(value["opponents"][0]["games"], 2);
     assert_eq!(value["profiles"][0]["player"], "Gabbek");
@@ -92,17 +101,17 @@ fn kinds_batch_and_players_select_games() {
     only.kinds = vec!["test".to_string()];
     only.batch = Some("b1".to_string());
     only.players = vec!["Gabbek".to_string()];
-    let (text, _) = run(&only).expect("a report");
-    assert!(text.contains("| test | b1 | 1 |"), "{text}");
-    assert!(!text.contains("| ranking |"), "{text}");
-    assert!(text.contains("(rank 3, 1 games)"), "{text}");
-    assert!(text.contains("Few games"), "{text}");
+    let (_, files) = run(&only).expect("a report");
+    let sources = file(&files, "sources.csv");
+    assert!(sources.contains("\ntest,b1,1\n"), "{sources}");
+    assert!(!sources.contains("ranking"), "{sources}");
+    assert!(file(&files, "profile_results.csv").contains("\nGabbek,3,1,"));
     // A snapshot named on the command line wins over the newest.
     let other = dir.join("other.json");
     fs::write(&other, "{\"rows\":[{\"rank\":7,\"nickname\":\"Gabbek\"}]}").expect("file");
     only.leaderboard = Some(other);
-    let (text, _) = run(&only).expect("a report");
-    assert!(text.contains("(rank 7, 1 games)"), "{text}");
+    let (_, files) = run(&only).expect("a report");
+    assert!(file(&files, "profile_results.csv").contains("\nGabbek,7,1,"));
 }
 
 #[test]
@@ -110,17 +119,18 @@ fn a_missing_index_is_an_error_not_a_panic() {
     let dir = temp_dir("profiles-empty");
     assert!(run(&request(&dir)).is_err());
     fs::write(dir.join("index.jsonl"), "").expect("index");
-    let (text, _) = run(&request(&dir)).expect("an empty report");
-    assert!(text.contains("0 games used"), "{text}");
+    let (_, files) = run(&request(&dir)).expect("an empty report");
+    assert_eq!(file(&files, "sources.csv").lines().count(), 1);
+    assert!(file(&files, "signals.md").contains("Nothing to compare"));
 }
 
 #[test]
 fn a_malformed_log_is_left_out() {
     let dir = data_dir("profiles-bad");
     fs::write(dir.join("logs/914333422.json"), "{ nope").expect("log");
-    let (text, _) = run(&request(&dir)).expect("a report");
-    assert!(text.contains("- 914333422:"), "{text}");
-    assert!(text.contains("1 games used"), "{text}");
+    let (_, files) = run(&request(&dir)).expect("a report");
+    assert!(file(&files, "left_out.csv").contains("\n914333422,"));
+    assert!(file(&files, "sources.csv").contains("\nranking,,1\n"));
 }
 
 #[test]
@@ -128,15 +138,13 @@ fn an_unknown_kind_is_left_out_and_a_wrong_name_is_warned_of() {
     let dir = data_dir("profiles-kind");
     let mut wrong = request(&dir);
     wrong.me = "Someone".to_string();
-    let (text, _) = run(&wrong).expect("a report");
-    assert!(text.contains("- 7: unknown kind \"mystery\""), "{text}");
-    assert!(
-        text.contains("**Warning:** --me \"Someone\" differs"),
-        "{text}"
-    );
-    let (text, _) = run(&request(&dir)).expect("a report");
-    assert!(!text.contains("**Warning:**"), "{text}");
-    assert!(text.contains("commands carried out"), "{text}");
+    let (_, files) = run(&wrong).expect("a report");
+    assert!(file(&files, "left_out.csv").contains("\n7,\"unknown kind \"\"mystery\"\""));
+    assert!(file(&files, "README.md").contains("**Warning:** --me \"Someone\" differs"));
+    let (_, files) = run(&request(&dir)).expect("a report");
+    let readme = file(&files, "README.md");
+    assert!(!readme.contains("**Warning:**"), "{readme}");
+    assert!(readme.contains("commands carried out"), "{readme}");
 }
 
 #[test]
@@ -166,4 +174,34 @@ fn refused_commands_are_dropped_and_the_game_replays_the_same() {
     // The trace counts only what was carried out.
     let trace = crate::trace::trace("t", &kept);
     assert_eq!(trace.plies[0].commands, "TRAIN 1 1 0;TRAIN 1 2 0");
+}
+
+#[test]
+fn the_files_have_charts_data_tables_and_a_readme_and_repeat() {
+    let dir = data_dir("profiles-charts");
+    let (_, files) = run(&request(&dir)).expect("a report");
+    let names: Vec<&str> = files.iter().map(|f| f.0.as_str()).collect();
+    for name in [
+        "README.md",
+        "signals.md",
+        "separation.csv",
+        "spending.csv",
+        "turns-all-top-players.csv",
+        "turns-our-wins.csv",
+        "wins-vs-losses-cells.svg",
+        "top-vs-us-event-train-level-1.svg",
+    ] {
+        assert!(names.contains(&name), "{name}");
+    }
+    let unique: std::collections::BTreeSet<&&str> = names.iter().collect();
+    assert_eq!(unique.len(), names.len(), "a file written twice");
+    let charts = names.iter().filter(|n| n.ends_with(".svg")).count();
+    assert!(file(&files, "README.md").contains(&format!("{charts} SVG files")));
+    assert!(files
+        .iter()
+        .filter(|f| f.0.ends_with(".svg"))
+        .all(|f| f.1.starts_with("<svg ")));
+    // The same data gives the same files.
+    let (_, again) = run(&request(&dir)).expect("a report");
+    assert_eq!(files, again);
 }

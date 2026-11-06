@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" width="640" height="320" role="img" aria-labelledby="t">
+<title id="t">material: Gold + 3 x income + 4 x cells + army + 10 x towers: a side&#39;s holdings as the bots&#39; shared evaluation counts them. The lead is its difference.</title>
+<style>text{font-family:system-ui,sans-serif}.bg{fill:#fcfcfb}.tx{fill:#0b0b0b}.mu{fill:#52514e}.gr{stroke:#e4e3df}.ds{stroke:#52514e}.s1{stroke:#2a78d6}.s2{stroke:#eb6834}.f1{fill:#2a78d6}.f2{fill:#eb6834}.halo{stroke:#fcfcfb}@media (prefers-color-scheme: dark){.bg{fill:#1a1a19}.tx{fill:#f0efec}.mu{fill:#c3c2b7}.gr{stroke:#3a3a37}.ds{stroke:#c3c2b7}.s1{stroke:#3987e5}.s2{stroke:#d95926}.f1{fill:#3987e5}.f2{fill:#d95926}.halo{stroke:#1a1a19}}</style>
+<rect class="bg" width="640" height="320"/>
+<text class="tx" x="16" y="20.0" font-size="13" font-weight="600">material: Gold + 3 x income + 4 x cells + army + 10 x towers: a side&#39;s holdings as the bots&#39;</text>
+<text class="tx" x="16" y="36.0" font-size="13" font-weight="600">shared evaluation counts them. The lead is its difference.</text>
+<text class="mu" x="16" y="54.0" font-size="11">median per game turn; n = 10 (us) and 10 (reCurse)</text>
+<line class="s1" x1="16.0" y1="68.0" x2="34.0" y2="68.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="40.0" y="72.0" font-size="12">us</text>
+<line class="s2" x1="77.2" y1="68.0" x2="95.2" y2="68.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="101.2" y="72.0" font-size="12">reCurse</text>
+<text class="mu" x="624.0" y="72.0" font-size="11" text-anchor="end">line: median; band: middle half of the games</text>
+<line class="gr" x1="48.0" y1="276.0" x2="528.0" y2="276.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="280.0" font-size="11" text-anchor="end">0</text>
+<line class="gr" x1="48.0" y1="229.0" x2="528.0" y2="229.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="233.0" font-size="11" text-anchor="end">200</text>
+<line class="gr" x1="48.0" y1="182.0" x2="528.0" y2="182.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="186.0" font-size="11" text-anchor="end">400</text>
+<line class="gr" x1="48.0" y1="135.0" x2="528.0" y2="135.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="139.0" font-size="11" text-anchor="end">600</text>
+<line class="gr" x1="48.0" y1="88.0" x2="528.0" y2="88.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="92.0" font-size="11" text-anchor="end">800</text>
+<text class="mu" x="144.0" y="292.0" font-size="11" text-anchor="middle">5</text>
+<text class="mu" x="264.0" y="292.0" font-size="11" text-anchor="middle">10</text>
+<text class="mu" x="384.0" y="292.0" font-size="11" text-anchor="middle">15</text>
+<text class="mu" x="504.0" y="292.0" font-size="11" text-anchor="middle">20</text>
+<text class="mu" x="288.0" y="308.0" font-size="11" text-anchor="middle">game turn</text>
+<path class="f1" fill-opacity="0.15" d="M48.0 267.5 L72.0 264.0 L96.0 260.0 L120.0 254.6 L144.0 248.0 L168.0 241.5 L192.0 232.0 L216.0 221.4 L240.0 210.0 L264.0 198.7 L288.0 194.4 L312.0 189.2 L336.0 181.5 L360.0 175.1 L384.0 168.3 L408.0 161.2 L432.0 157.4 L456.0 160.0 L480.0 154.0 L504.0 146.0 L528.0 136.9 L528.0 166.7 L504.0 179.4 L480.0 190.4 L456.0 196.6 L432.0 194.0 L408.0 178.0 L384.0 207.5 L360.0 201.0 L336.0 189.8 L312.0 201.4 L288.0 203.5 L264.0 210.9 L240.0 216.3 L216.0 225.6 L192.0 234.8 L168.0 242.8 L144.0 249.4 L120.0 255.8 L96.0 260.0 L72.0 264.0 L48.0 267.5 Z"/>
+<path class="f2" fill-opacity="0.15" d="M48.0 265.7 L72.0 261.9 L96.0 257.7 L120.0 252.0 L144.0 244.3 L168.0 234.2 L192.0 221.5 L216.0 207.4 L240.0 196.0 L264.0 188.4 L288.0 173.2 L312.0 170.1 L336.0 157.6 L360.0 146.2 L384.0 145.6 L408.0 156.5 L432.0 146.6 L456.0 141.4 L480.0 134.1 L504.0 140.9 L528.0 142.8 L528.0 248.5 L504.0 241.5 L480.0 216.1 L456.0 202.3 L432.0 179.7 L408.0 178.4 L384.0 173.7 L360.0 171.6 L336.0 185.3 L312.0 191.9 L288.0 195.6 L264.0 191.8 L240.0 202.1 L216.0 213.5 L192.0 225.2 L168.0 235.4 L144.0 244.3 L120.0 252.0 L96.0 257.7 L72.0 261.9 L48.0 265.7 Z"/>
+<path class="s1" d="M48.0 267.5 L72.0 264.0 L96.0 260.0 L120.0 254.6 L144.0 248.0 L168.0 241.7 L192.0 233.3 L216.0 223.1 L240.0 213.7 L264.0 207.5 L288.0 199.2 L312.0 191.2 L336.0 184.1 L360.0 177.1 L384.0 178.5 L408.0 170.1 L432.0 170.5 L456.0 172.4 L480.0 171.7 L504.0 149.3 L528.0 139.5" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<path class="s2" d="M48.0 265.7 L72.0 261.9 L96.0 257.7 L120.0 252.0 L144.0 244.3 L168.0 234.2 L192.0 222.5 L216.0 210.8 L240.0 200.4 L264.0 190.0 L288.0 180.5 L312.0 186.5 L336.0 174.8 L360.0 156.7 L384.0 163.3 L408.0 176.6 L432.0 172.5 L456.0 169.2 L480.0 159.7 L504.0 151.7 L528.0 143.2" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f1" cx="540.0" cy="134.3" r="4"/>
+<text class="tx" x="549.0" y="138.3" font-size="12">us</text>
+<circle class="f2" cx="540.0" cy="148.3" r="4"/>
+<text class="tx" x="549.0" y="152.3" font-size="12">reCurse</text>
+</svg>

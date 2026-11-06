@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" width="640" height="320" role="img" aria-labelledby="t">
+<title id="t">voronoi: Non-void cells nearer this side&#39;s active cells than the enemy&#39;s (a tie counts half, rounded down): the land it is likely to get.</title>
+<style>text{font-family:system-ui,sans-serif}.bg{fill:#fcfcfb}.tx{fill:#0b0b0b}.mu{fill:#52514e}.gr{stroke:#e4e3df}.ds{stroke:#52514e}.s1{stroke:#2a78d6}.s2{stroke:#eb6834}.f1{fill:#2a78d6}.f2{fill:#eb6834}.halo{stroke:#fcfcfb}@media (prefers-color-scheme: dark){.bg{fill:#1a1a19}.tx{fill:#f0efec}.mu{fill:#c3c2b7}.gr{stroke:#3a3a37}.ds{stroke:#c3c2b7}.s1{stroke:#3987e5}.s2{stroke:#d95926}.f1{fill:#3987e5}.f2{fill:#d95926}.halo{stroke:#1a1a19}}</style>
+<rect class="bg" width="640" height="320"/>
+<text class="tx" x="16" y="20.0" font-size="13" font-weight="600">voronoi: Non-void cells nearer this side&#39;s active cells than the enemy&#39;s (a tie counts half,</text>
+<text class="tx" x="16" y="36.0" font-size="13" font-weight="600">rounded down): the land it is likely to get.</text>
+<text class="mu" x="16" y="54.0" font-size="11">median per game turn; n = 10 (us) and 10 (_iahelka)</text>
+<line class="s1" x1="16.0" y1="68.0" x2="34.0" y2="68.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="40.0" y="72.0" font-size="12">us</text>
+<line class="s2" x1="77.2" y1="68.0" x2="95.2" y2="68.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="101.2" y="72.0" font-size="12">_iahelka</text>
+<text class="mu" x="624.0" y="72.0" font-size="11" text-anchor="end">line: median; band: middle half of the games</text>
+<line class="gr" x1="48.0" y1="276.0" x2="528.0" y2="276.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="280.0" font-size="11" text-anchor="end">0</text>
+<line class="gr" x1="48.0" y1="182.0" x2="528.0" y2="182.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="186.0" font-size="11" text-anchor="end">50</text>
+<line class="gr" x1="48.0" y1="88.0" x2="528.0" y2="88.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="92.0" font-size="11" text-anchor="end">100</text>
+<text class="mu" x="78.0" y="292.0" font-size="11" text-anchor="middle">2</text>
+<text class="mu" x="138.0" y="292.0" font-size="11" text-anchor="middle">4</text>
+<text class="mu" x="198.0" y="292.0" font-size="11" text-anchor="middle">6</text>
+<text class="mu" x="258.0" y="292.0" font-size="11" text-anchor="middle">8</text>
+<text class="mu" x="318.0" y="292.0" font-size="11" text-anchor="middle">10</text>
+<text class="mu" x="378.0" y="292.0" font-size="11" text-anchor="middle">12</text>
+<text class="mu" x="438.0" y="292.0" font-size="11" text-anchor="middle">14</text>
+<text class="mu" x="498.0" y="292.0" font-size="11" text-anchor="middle">16</text>
+<text class="mu" x="288.0" y="308.0" font-size="11" text-anchor="middle">game turn</text>
+<line class="ds" x1="198.0" y1="88.0" x2="198.0" y2="276.0" stroke-width="1" stroke-dasharray="4 3"/>
+<text class="mu halo" x="202.0" y="100.0" font-size="11" text-anchor="start" stroke-width="3" paint-order="stroke">turn 6</text>
+<path class="f1" fill-opacity="0.15" d="M48.0 163.7 L78.0 165.1 L108.0 165.1 L138.0 163.7 L168.0 168.4 L198.0 174.9 L228.0 172.1 L258.0 174.9 L288.0 176.4 L318.0 175.9 L348.0 176.4 L378.0 171.7 L408.0 191.9 L438.0 191.9 L468.0 191.4 L498.0 178.2 L528.0 196.1 L528.0 257.2 L498.0 254.4 L468.0 247.8 L438.0 247.8 L408.0 226.7 L378.0 214.0 L348.0 198.9 L318.0 196.6 L288.0 189.5 L258.0 187.6 L228.0 188.1 L198.0 182.5 L168.0 178.2 L138.0 175.9 L108.0 177.8 L78.0 177.8 L48.0 177.8 Z"/>
+<path class="f2" fill-opacity="0.15" d="M48.0 169.8 L78.0 169.3 L108.0 169.3 L138.0 170.7 L168.0 159.9 L198.0 158.5 L228.0 159.9 L258.0 161.8 L288.0 152.9 L318.0 139.7 L348.0 132.2 L378.0 128.0 L408.0 114.8 L438.0 104.0 L468.0 103.0 L498.0 113.4 L528.0 112.4 L528.0 161.3 L498.0 143.5 L468.0 123.7 L438.0 155.7 L408.0 138.3 L378.0 164.1 L348.0 167.9 L318.0 168.8 L288.0 168.4 L258.0 170.2 L228.0 173.5 L198.0 175.4 L168.0 179.7 L138.0 183.9 L108.0 185.3 L78.0 185.3 L48.0 185.3 Z"/>
+<path class="s1" d="M48.0 172.6 L78.0 174.5 L108.0 173.5 L138.0 171.7 L168.0 174.5 L198.0 176.4 L228.0 179.2 L258.0 181.1 L288.0 184.8 L318.0 186.7 L348.0 196.1 L378.0 203.6 L408.0 211.1 L438.0 230.9 L468.0 242.2 L498.0 245.9 L528.0 212.1" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<path class="s2" d="M48.0 179.2 L78.0 180.1 L108.0 179.2 L138.0 179.2 L168.0 175.4 L198.0 169.8 L228.0 168.8 L258.0 167.9 L288.0 165.1 L318.0 156.6 L348.0 149.1 L378.0 144.4 L408.0 123.7 L438.0 121.8 L468.0 118.1 L498.0 114.3 L528.0 121.8" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f2" cx="540.0" cy="121.8" r="4"/>
+<text class="tx" x="549.0" y="125.8" font-size="12">_iahelka</text>
+<circle class="f1" cx="540.0" cy="212.1" r="4"/>
+<text class="tx" x="549.0" y="216.1" font-size="12">us</text>
+</svg>

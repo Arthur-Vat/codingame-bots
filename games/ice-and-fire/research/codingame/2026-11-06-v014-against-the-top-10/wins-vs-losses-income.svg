@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" width="640" height="320" role="img" aria-labelledby="t">
+<title id="t">income: Gold earned each turn: active cells, plus 4 a mine on an active cell, less upkeep.</title>
+<style>text{font-family:system-ui,sans-serif}.bg{fill:#fcfcfb}.tx{fill:#0b0b0b}.mu{fill:#52514e}.gr{stroke:#e4e3df}.ds{stroke:#52514e}.s1{stroke:#2a78d6}.s2{stroke:#eb6834}.f1{fill:#2a78d6}.f2{fill:#eb6834}.halo{stroke:#fcfcfb}@media (prefers-color-scheme: dark){.bg{fill:#1a1a19}.tx{fill:#f0efec}.mu{fill:#c3c2b7}.gr{stroke:#3a3a37}.ds{stroke:#c3c2b7}.s1{stroke:#3987e5}.s2{stroke:#d95926}.f1{fill:#3987e5}.f2{fill:#d95926}.halo{stroke:#1a1a19}}</style>
+<rect class="bg" width="640" height="320"/>
+<text class="tx" x="16" y="20.0" font-size="13" font-weight="600">income: Gold earned each turn: active cells, plus 4 a mine on an active cell, less upkeep.</text>
+<text class="mu" x="16" y="38.0" font-size="11">median per game turn; n = 175 (our wins) and 147 (our losses)</text>
+<line class="s1" x1="16.0" y1="52.0" x2="34.0" y2="52.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="40.0" y="56.0" font-size="12">our wins</text>
+<line class="s2" x1="116.8" y1="52.0" x2="134.8" y2="52.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="140.8" y="56.0" font-size="12">our losses</text>
+<text class="mu" x="624.0" y="56.0" font-size="11" text-anchor="end">line: median; band: middle half of the games</text>
+<line class="gr" x1="48.0" y1="276.0" x2="528.0" y2="276.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="280.0" font-size="11" text-anchor="end">0</text>
+<line class="gr" x1="48.0" y1="208.0" x2="528.0" y2="208.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="212.0" font-size="11" text-anchor="end">20</text>
+<line class="gr" x1="48.0" y1="140.0" x2="528.0" y2="140.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="144.0" font-size="11" text-anchor="end">40</text>
+<line class="gr" x1="48.0" y1="72.0" x2="528.0" y2="72.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="76.0" font-size="11" text-anchor="end">60</text>
+<text class="mu" x="76.2" y="292.0" font-size="11" text-anchor="middle">2</text>
+<text class="mu" x="132.7" y="292.0" font-size="11" text-anchor="middle">4</text>
+<text class="mu" x="189.2" y="292.0" font-size="11" text-anchor="middle">6</text>
+<text class="mu" x="245.6" y="292.0" font-size="11" text-anchor="middle">8</text>
+<text class="mu" x="302.1" y="292.0" font-size="11" text-anchor="middle">10</text>
+<text class="mu" x="358.6" y="292.0" font-size="11" text-anchor="middle">12</text>
+<text class="mu" x="415.1" y="292.0" font-size="11" text-anchor="middle">14</text>
+<text class="mu" x="471.5" y="292.0" font-size="11" text-anchor="middle">16</text>
+<text class="mu" x="528.0" y="292.0" font-size="11" text-anchor="middle">18</text>
+<text class="mu" x="288.0" y="308.0" font-size="11" text-anchor="middle">game turn</text>
+<line class="ds" x1="358.6" y1="72.0" x2="358.6" y2="276.0" stroke-width="1" stroke-dasharray="4 3"/>
+<text class="mu halo" x="362.6" y="84.0" font-size="11" text-anchor="start" stroke-width="3" paint-order="stroke">turn 12</text>
+<path class="f1" fill-opacity="0.15" d="M48.0 269.2 L76.2 262.4 L104.5 255.6 L132.7 248.8 L160.9 238.6 L189.2 221.6 L217.4 197.8 L245.6 187.6 L273.9 180.8 L302.1 167.2 L330.4 157.0 L358.6 146.8 L386.8 143.4 L415.1 136.6 L443.3 129.8 L471.5 126.4 L499.8 123.0 L528.0 103.4 L528.0 177.4 L499.8 191.0 L471.5 188.4 L443.3 191.0 L415.1 177.4 L386.8 178.2 L358.6 180.8 L330.4 187.6 L302.1 191.0 L273.9 194.4 L245.6 204.6 L217.4 211.4 L189.2 225.0 L160.9 242.0 L132.7 252.2 L104.5 259.0 L76.2 265.8 L48.0 272.6 Z"/>
+<path class="f2" fill-opacity="0.15" d="M48.0 272.6 L76.2 265.8 L104.5 259.0 L132.7 252.2 L160.9 242.0 L189.2 218.2 L217.4 197.8 L245.6 187.6 L273.9 180.8 L302.1 177.4 L330.4 174.0 L358.6 170.6 L386.8 172.3 L415.1 176.6 L443.3 177.4 L471.5 174.0 L499.8 177.4 L528.0 184.2 L528.0 248.8 L499.8 238.6 L471.5 231.8 L443.3 235.2 L415.1 218.2 L386.8 204.6 L358.6 197.8 L330.4 194.4 L302.1 197.8 L273.9 199.5 L245.6 204.6 L217.4 211.4 L189.2 231.8 L160.9 242.0 L132.7 252.2 L104.5 259.0 L76.2 265.8 L48.0 272.6 Z"/>
+<path class="s1" d="M48.0 272.6 L76.2 262.4 L104.5 255.6 L132.7 250.5 L160.9 242.0 L189.2 225.0 L217.4 208.0 L245.6 197.8 L273.9 187.6 L302.1 180.8 L330.4 170.6 L358.6 165.5 L386.8 160.4 L415.1 160.4 L443.3 160.4 L471.5 146.8 L499.8 153.6 L528.0 141.7" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<path class="s2" d="M48.0 272.6 L76.2 265.8 L104.5 259.0 L132.7 252.2 L160.9 242.0 L189.2 225.0 L217.4 208.0 L245.6 197.8 L273.9 191.0 L302.1 187.6 L330.4 184.2 L358.6 184.2 L386.8 184.2 L415.1 194.4 L443.3 201.2 L471.5 201.2 L499.8 201.2 L528.0 208.0" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f1" cx="540.0" cy="141.7" r="4"/>
+<text class="tx" x="549.0" y="145.7" font-size="12">our wins</text>
+<circle class="f2" cx="540.0" cy="208.0" r="4"/>
+<text class="tx" x="549.0" y="212.0" font-size="12">our losses</text>
+</svg>
