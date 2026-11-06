@@ -1,6 +1,6 @@
 # 0033. No daily scheduled session
 
-- Status: accepted (owner, 2026-10-13); the usage line of decision 3 superseded by [0034](0034-no-usage-monitoring.md); decision 1 superseded for the weekly league results pull request by [0051](0051-weekly-league-pull-request.md)
+- Status: accepted (owner, 2026-10-13); the usage line of decision 3 superseded by [0034](0034-no-usage-monitoring.md); decision 1 superseded for the weekly league results pull request by [0051](0051-weekly-league-pull-request.md), and for the daily collection of CodinGame games by [0057](0057-daily-collection-of-codingame-games.md)
 - Date: 2026-10-13
 - Scope: framework
 
