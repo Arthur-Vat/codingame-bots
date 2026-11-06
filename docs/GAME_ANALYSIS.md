@@ -136,7 +136,7 @@ One pull request each; each ends with its checks and, from step 3, a run on real
 
 Each step updates this page's status and [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## Questions left to the owner
+## The owner's answers (2026-11-06)
 
-- Whether CodinGame's terms allow publishing other players' game logs on a public branch (not checked). Until he decides, the branch holds only what he approves.
-- Whether to add games between top players by their ids, given by him from CodinGame's website (`fetch-ids`).
+- Other players' logs: the branch stores them in full, as the API gives them ("Store full logs"); CodinGame shows the same games to anyone as replays. Its terms on republishing logs were not checked.
+- Games between top players: no API call lists them, and a test game always plays our code, so they cannot be played either. `fetch-ids` stays for any game id that turns up later; the analysis rests on our ranking games and test-game batches.
