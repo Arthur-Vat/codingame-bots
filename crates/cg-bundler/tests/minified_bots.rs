@@ -430,6 +430,10 @@ fn check_renaming(package: &str, flattened: &str, renamed: &str, report: &rename
     assert_eq!(changed, report.renamed, "{package}");
 }
 
+/// Within one process: the second bundle's compiles are answered from
+/// rustc's memo, so this checks the bundler's own steps.
+/// Across processes, `scripts/check-releases.sh` bundles a new release again
+/// and compares it with the file.
 #[test]
 fn the_same_bundle_comes_out_every_time() {
     let options = Options::default();

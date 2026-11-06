@@ -160,7 +160,8 @@ pub struct Report {
     pub aliases: Vec<(String, String, usize)>,
     /// Changes that rustc rejected, undone.
     pub refused: usize,
-    /// Runs of rustc.
+    /// Compiles asked for (some may be answered from the memo of
+    /// `prune::rustc`).
     pub compiles: usize,
 }
 

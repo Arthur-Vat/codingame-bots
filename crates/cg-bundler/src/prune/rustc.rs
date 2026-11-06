@@ -200,11 +200,12 @@ static FOLDERS: AtomicUsize = AtomicUsize::new(0);
 /// lints in order, and the exact text. The other arguments are fixed.
 type Key = (Rustc, Vec<String>, String);
 
-/// The outcome of each run of rustc that completed, for the life of the
-/// process. The outcome depends only on its [`Key`], and the determinism
-/// test and the stage re-checks compile the same texts again. The lock is
-/// never held while rustc runs. (An error's text names the folder of the
-/// `Compiler` that ran first; no output of the bundler quotes it.)
+/// The outcome of each run of rustc that ended with an answer about the
+/// text, for the life of the process. The outcome depends only on its
+/// [`Key`], and the determinism test and the stage re-checks compile the
+/// same texts again. The lock is never held while rustc runs. An error's
+/// text names the temporary folder of the `Compiler` that ran first, which
+/// may be gone; only error messages quote it, never a bundle or a report.
 static MEMO: OnceLock<Mutex<HashMap<Key, Outcome>>> = OnceLock::new();
 
 fn memo() -> std::sync::MutexGuard<'static, HashMap<Key, Outcome>> {
@@ -260,13 +261,18 @@ impl<'a> Compiler<'a> {
         if let Some(outcome) = memo().get(&key) {
             return Ok(outcome.clone());
         }
-        let outcome = self.run(source, extra)?;
-        memo().insert(key, outcome.clone());
+        let (outcome, answered) = self.run(source, extra)?;
+        if answered {
+            memo().insert(key, outcome.clone());
+        }
         Ok(outcome)
     }
 
-    /// Runs rustc on `source`, whatever the memo holds.
-    fn run(&self, source: &str, extra: &[&str]) -> Result<Outcome, String> {
+    /// Runs rustc on `source`, whatever the memo holds, and says whether
+    /// its outcome is an answer about the text: it compiled, or rustc exited
+    /// and reported errors. A run killed by a signal or that failed without
+    /// a diagnostic (no disk space, for instance) is not remembered.
+    fn run(&self, source: &str, extra: &[&str]) -> Result<(Outcome, bool), String> {
         let file = self.dir.join("bundle.rs");
         std::fs::write(&file, source)
             .map_err(|err| format!("cannot write {}: {err}", file.display()))?;
@@ -332,16 +338,18 @@ impl<'a> Compiler<'a> {
             }
         }
         if output.status.success() {
-            Ok(Outcome::Compiled(diagnostics))
+            Ok((Outcome::Compiled(diagnostics), true))
         } else {
+            let answered = output.status.code().is_some() && !error_names.is_empty();
             if errors.is_empty() {
                 errors = stderr.into_owned();
             }
-            Ok(Outcome::Failed {
+            let outcome = Outcome::Failed {
                 errors,
                 spans: error_spans,
                 names: error_names,
-            })
+            };
+            Ok((outcome, answered))
         }
     }
 }
