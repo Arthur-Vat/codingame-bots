@@ -247,8 +247,8 @@ fn baselines_replay_identically(game: &str) {
     assert!(!baselines.is_empty());
     // The bots are compiled first, all at once, which is most of the time.
     // The games stay one at a time: a "fixed" seat plays by iterations,
-    // but a bot may still read the clock (the cutter's cut search stops
-    // after 3 ms), so games played at once could differ under load.
+    // but a bot may still read the clock (the ladder's cut search did
+    // until #278), so games played at once could differ under load.
     std::thread::scope(|scope| {
         let state = &state;
         let builds: Vec<_> = baselines
