@@ -49,13 +49,38 @@ const CUT_SCORE: i64 = 10;
 /// that does not read `CG_TIME_SCALE`: the evaluation's limit is 10 ms a turn
 /// (time scale 0.2) and a search of cuts takes about 2 ms at most, so the
 /// bot keeps the same behaviour at every scale, on CodinGame as in the arena.
+/// [`cut_deadline`] lifts it in fixed mode.
 const CUT_DEADLINE: Duration = Duration::from_millis(3);
+
+/// The deadline of the cut search: [`CUT_DEADLINE`], or none when
+/// `fixed_iters`, the value of `CG_FIXED_ITERS`, is a positive number (tests
+/// and the studio's replays, never CodinGame), read as the other bots read
+/// it. A turn then plays the same cuts however busy the machine is, so that a
+/// game replays exactly (ADR 0025).
+pub(crate) fn cut_deadline(fixed_iters: Option<&str>) -> Option<Duration> {
+    let fixed = fixed_iters
+        .and_then(|n| n.trim().parse::<u64>().ok())
+        .is_some_and(|n| n > 0);
+    (!fixed).then_some(CUT_DEADLINE)
+}
 
 /// The margin of a position the enemy cannot attack at all.
 const SAFE: i64 = 1_000_000;
 
 /// Plans the turn of the player to act in `state`, appending to `out`.
 pub fn plan(state: &State, steps: Steps, out: &mut Vec<Command>) {
+    let deadline = cut_deadline(std::env::var("CG_FIXED_ITERS").ok().as_deref());
+    plan_with(state, steps, deadline, out);
+}
+
+/// [`plan`] with the cut search's deadline `cut_deadline` (none: no
+/// deadline).
+pub(crate) fn plan_with(
+    state: &State,
+    steps: Steps,
+    cut_deadline: Option<Duration>,
+    out: &mut Vec<Command>,
+) {
     let seat = state.to_act();
     let mut planner = Planner {
         s: state.clone(),
@@ -66,6 +91,7 @@ pub fn plan(state: &State, steps: Steps, out: &mut Vec<Command>) {
         turn: state.game_turn(),
         steps,
         start: Instant::now(),
+        cut_deadline,
         out,
     };
     planner.run();
@@ -107,6 +133,8 @@ struct Planner<'a> {
     turn: u32,
     steps: Steps,
     start: Instant,
+    /// The time of the turn after which the cut search is skipped.
+    cut_deadline: Option<Duration>,
     out: &'a mut Vec<Command>,
 }
 
@@ -457,7 +485,10 @@ impl Planner<'_> {
     /// worth [`CUT_SCORE`] and leaves us no more exposed than before.
     fn cuts(&mut self, reserve: i64) {
         for _ in 0..CUT_ROUNDS {
-            if self.s.outcome().is_some() || self.start.elapsed() > CUT_DEADLINE {
+            let late = self
+                .cut_deadline
+                .is_some_and(|deadline| self.start.elapsed() > deadline);
+            if self.s.outcome().is_some() || late {
                 return;
             }
             let budget = self.s.gold(self.seat) - reserve;
