@@ -15,7 +15,7 @@ use std::fs;
 use std::hash::Hasher;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use cg_bundler::Options;
 use studio_game::StudioGame;
@@ -34,7 +34,9 @@ pub struct Compiled {
 pub struct Releases {
     repo: PathBuf,
     bin: PathBuf,
-    compiling: Mutex<()>,
+    /// One lock per binary, held while it is compiled: two games starting
+    /// the same bot compile it once, and different bots compile at once.
+    compiling: Mutex<HashMap<PathBuf, Arc<Mutex<()>>>>,
     /// The bundles made so far, by bot name. The lock is held while one is
     /// made, so that two games starting the same bot bundle it once.
     bundles: Mutex<HashMap<String, String>>,
@@ -45,7 +47,7 @@ impl Releases {
         Releases {
             repo,
             bin,
-            compiling: Mutex::new(()),
+            compiling: Mutex::new(HashMap::new()),
             bundles: Mutex::new(HashMap::new()),
         }
     }
@@ -137,23 +139,31 @@ impl Releases {
         if compiled.path.is_file() {
             return Ok(compiled);
         }
-        let _one_at_a_time = lock(&self.compiling);
+        let this_binary = Arc::clone(
+            lock(&self.compiling)
+                .entry(compiled.path.clone())
+                .or_default(),
+        );
+        let _one_at_a_time = lock(&this_binary);
         if compiled.path.is_file() {
             return Ok(compiled);
         }
         fs::create_dir_all(&self.bin)
             .map_err(|error| format!("cannot create {}: {error}", self.bin.display()))?;
         let partial = self.bin.join(format!(
-            ".{name}.{}.partial{}",
+            ".{name}-{}.{}.partial{}",
+            compiled.hash,
             std::process::id(),
             std::env::consts::EXE_SUFFIX
         ));
         match source {
             Source::File(file) => run_rustc(file, &partial, None),
             Source::Text(text) => {
-                let file = self
-                    .bin
-                    .join(format!(".{name}.{}.partial.rs", std::process::id()));
+                let file = self.bin.join(format!(
+                    ".{name}-{}.{}.partial.rs",
+                    compiled.hash,
+                    std::process::id()
+                ));
                 let written = fs::write(&file, text)
                     .map_err(|error| format!("cannot write {}: {error}", file.display()));
                 let result =
