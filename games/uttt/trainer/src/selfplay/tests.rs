@@ -278,8 +278,11 @@ fn side_games_leave_the_game_by_another_move_and_record_after_it() {
 #[test]
 fn the_fit_holds_out_side_games_with_their_game() {
     use crate::value_fit::{Examples, Split};
+    // Small searches: the split does not depend on how well the games are
+    // played, and 200 iterations made this the trainer's slowest test.
     let settings = SelfPlay {
         side_games: 2,
+        iterations: 20,
         ..as_the_bot(Opening::Sampled, None)
     };
     let mut split = Split::default();
@@ -292,6 +295,7 @@ fn the_fit_holds_out_side_games_with_their_game() {
         split.add(&games);
     }
     assert!(split.games > 60, "only {} games", split.games);
+    assert!(expected[1] > 0, "no position held out");
     assert_eq!([split.fitted.len(), split.held_out.len()], expected);
 }
 
