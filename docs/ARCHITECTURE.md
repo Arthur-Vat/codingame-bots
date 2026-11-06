@@ -44,6 +44,7 @@ codingame-bots/
 │  ├─ arena-archive.sh      keeps each game's arena games in one artifact: plan, gather, prune (ADR 0031)
 │  ├─ check.sh              the local checks CI would run for a branch's changes, chosen by ci-scopes.sh (ADR 0054)
 │  ├─ check-docs.sh         indexes, status lines and links match the repository; agents declare model and tools; workflows and scripts are listed
+│  ├─ codingame.sh          downloads our CodinGame ranking games and a leaderboard snapshot of a game into a data directory (ADR 0056)
 │  ├─ pr-hygiene.sh         pull request titles (ADR 0022) and labels from changed paths
 │  ├─ ci-scopes.sh          which CI checks and SPRT games run for the paths a change touches, and the verdict of the aggregate jobs `CI passed` and `SPRT passed` (ADR 0029)
 │  ├─ annotate.sh           runs a workflow step and reports its failure as an annotation

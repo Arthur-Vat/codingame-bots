@@ -624,6 +624,10 @@ jobs:
         if: ${{ !cancelled() }}
         # jq is preinstalled on ubuntu-latest.
         run: scripts/annotate.sh run "Screening test" scripts/tests/screen-test.sh
+      - name: Test the CodinGame fetch script
+        if: ${{ !cancelled() }}
+        # jq and git are preinstalled on ubuntu-latest.
+        run: scripts/annotate.sh run "CodinGame fetch test" scripts/tests/codingame-test.sh
       - name: Lint the workflows
         if: ${{ !cancelled() }}
         # The image is pinned; it includes shellcheck, which also lints the
