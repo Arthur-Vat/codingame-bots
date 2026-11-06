@@ -1,35 +1,62 @@
-# CodinGame players and our weaknesses: ice-and-fire-v014 against the top 10
+# ice-and-fire-v014 against the top 10 of CodinGame
 
-What it covers: 322 games of `ice-and-fire-v014` (our nickname is Tarleya), all on the branch `claude/codingame-games` (commit ac331ba):
+What it covers: 322 games of `ice-and-fire-v014` (our nickname is Tarleya), kept on the branch `claude/codingame-games` (commit ac331ba): the 222 ranking games its submission played on 2026-10-31 against Legend players, and 100 test games against the top 10 of the leaderboard on 2026-11-06, 10 against each on the 10 fixed maps of `games/ice-and-fire/codingame-seeds.txt` (our bot is always player 0, red, in test games). Ranks come from the leaderboard of 2026-11-06, 16:51 UTC. All 322 games were replayed by our engine and agree with CodinGame, command by command.
 
-- 222 ranking games that its submission played on 2026-10-31 against Legend players;
-- 100 test games against the top 10 of the leaderboard on 2026-11-06, 10 against each on the 10 fixed maps of `games/ice-and-fire/codingame-seeds.txt`: zasmu (#1) in a first pilot, then ranks 2 to 10 (batch `2026-11-06-ice-and-fire-v014-top2-10`). In test games our bot is always player 0 (red, first to play).
+Written by Claude from the generated charts and data (section "Data" below, and `signals.md` there). Curves show the median of each side, read right after its own play of the turn, with a band for the middle half of the games. Turn numbers are game turns; games against the top 10 last 16 to 20 turns (median by opponent).
 
-Ranks come from the leaderboard snapshot of 2026-11-06, 16:51 UTC. All 322 games were converted, replayed by our engine and found to agree with CodinGame, command by command.
+## The result: the top 10 are a level above us
 
-Made by (about 5 seconds on 4 cores), from a worktree of the data branch:
+v014 won 20 of its 106 games against the top 10 (100 test games and 6 ranking games), against 61 of 106 for ranks 11 to 30 and 61 of 75 below. Only aCat (#10: we won 5 of 13) and Waffle3z (#7: 4 of 11) are within reach; we won 0 of 10 against karliso (#3) and 1 of 10 against zasmu, Pduhard-, _iahelka and Zylo.
 
-```sh
-ice-and-fire-review codingame-report --data <claude/codingame-games>/ice-and-fire --me Tarleya > report.md
-```
+## 1. The gap opens at turn 5, in the opening, not in the fights
 
-Reading it: "ours" is Tarleya; a metric "at turn t" is read for each side right after its own ply of turn t (phase means: at the starts of its own plies); events and openings count the commands carried out (refused commands dropped); `[n = k]` marks a sample of fewer than 5 games.
+The top bots hold more cells from turn 1 (4 against our 3), and the gap grows every turn: 15 against 13 at turn 5, 29 against 23 at turn 8, 38 against 28 at turn 10, 50 against 31 at turn 15. Their income stays close to ours until turn 8 (24 against 22), then pulls away: 31 against 26 at turn 10, 34.5 against 24 at turn 15, while ours stops growing.
 
-## Interpretation
+![Active cells by game turn, top players against us](2026-11-06-v014-against-the-top-10/top-vs-us-cells.svg)
 
-Written by Claude from the tables below; numbers are medians unless said otherwise.
+![Income by game turn, top players against us](2026-11-06-v014-against-the-top-10/top-vs-us-income.svg)
 
-**The top 10 are a level above us.** Against them v014 won 20 of 106 games (100 test games and 6 ranking games). Against ranks 11 to 30 it won 61 of 106, against ranks 31 to 60 22 of 35, and below that 39 of 40. Only aCat (#10, 5 won of 13) and Waffle3z (#7, 4 of 11) are within reach; we won 0 of 10 against karliso and 1 of 10 against zasmu, Pduhard-, _iahelka and Zylo.
+## 2. Why: at turns 5 and 6 they train, we build a mine
 
-**We do not lose the opening; we lose turns 8 to 15.** At turn 5 both sides hold about the same cells and income. By turn 10 seven of the top 10 earn 2.5 to 9 gold a turn more than we do (e.g. karliso 36 against our 27, Waffle3z 36 against 27); by turn 15 they hold 41 to 71 cells against our 15 to 39, and our income has stopped growing (17 to 28) while theirs keeps rising for seven of them (zasmu 49.5, karliso 59, Waffle3z 45.5). In our 147 losses, our income stays below the opponent's from turn 13 to the end in 95% of them, our towers from turn 11 in 76%.
+Both sides save at turns 2 and 3 and train at turn 4. Then the paths split. At turn 5, 89% of the top bots' games train level-1 units, against 10% of ours; at turn 6 nearly all of theirs train again. We spend turn 6 on a mine instead: 47% of our games build one at turn 6, none of theirs. Over the early game they spend 7.9 gold a turn on level-1 units and 0.4 on mines; we spend 5.6 and 2.5. The mine pays 4 gold a turn; the units they train take cells that pay 1 each, block our growth and fight for the land between the HQs: by turn 8 they are 6 cells ahead and never give them back.
 
-**They spend on growth and strength; we keep gold.** Per game, the top bots train 2.7 to 4.9 level-2 units against our 1.3 to 2.8, and 1.1 to 2.6 level-3 units against our 0.3 to 1.8. Seven of them build 1.5 to 5.2 mines a game against our 1.1 to 2.0 (Pduhard-, NinjaDoggy and aCat build none). zasmu and Zylo build 11.2 and 8.4 towers a game against our 3.1 and 4.3. Against the strongest, we often sit on unspent gold at turn 15 (45 against zasmu's 7, 63 against Zylo's 23.5, 31 against _iahelka's 11) while they have turned theirs into income, units and towers.
+![Share of games that train a level-1 unit at each turn, top players against us](2026-11-06-v014-against-the-top-10/top-vs-us-event-train-level-1.svg)
 
-**How they beat us: a large cut around turn 12 to 14.** The first moment favouring them in their wins is a large cut of our territory for NinjaDoggy (8 of 10 wins), Pduhard- (5 of 9), _iaz (4 of 8), karliso (4 of 10) and reCurse (3 of 7), around turns 12 to 14; a swing in holdings around turns 11 to 13 for _iahelka, Waffle3z and Zylo; zasmu more often threatens our HQ around turn 17. Games against them last 16 to 20.5 turns.
+![Share of games that build a mine at each turn, top players against us](2026-11-06-v014-against-the-top-10/top-vs-us-event-mine.svg)
 
-**What this suggests for our bot** (to be tested, one experiment each): spend in the middle game rather than bank (our banking keeps gold the top bots invest); build mines earlier and more often when spots are safe; train level-2 units to hold and push the front; and guard the cells whose loss would cut us off before turn 12, when the deciding cuts come (the decisive-moments study looks at our exposure before them). The judge comparison will show whether our evaluation underrates these moves or our search does not find them.
+Our own games say the same: in our wins, 53% of games train at turn 5, against 27% in our losses.
 
-**Limits.** 10 games per top bot on 10 maps, always as player 0 in the test games; 6 ranking games against them otherwise. Differences of a few units are within the noise of 10 games; the gaps above (income, cells, mines, level-2 units) are large and consistent across the ten bots.
+## 3. What decides our games: land from turn 9
+
+Of every metric, active cells and the land nearer to us than to the enemy (`voronoi`) tell our wins from our losses best, from turn 9 on: at turn 15 we hold 49.5 cells in our wins and 28 in our losses, and that difference alone sorts 91% of pairs (one win, one loss) the right way. Material follows from turn 10.
+
+![Active cells by game turn, our wins against our losses](2026-11-06-v014-against-the-top-10/wins-vs-losses-cells.svg)
+
+## 4. The middle game: they invest, we keep gold
+
+Once their territory is large, the top bots turn their income into income and protection: in the middle game they spend 2.9 gold a turn on mines (we: 0.1), 7.5 on towers (we: 5.1) and 4.9 on level-2 units (we: 2.4); half of their games build a tower at turn 8, against 8% of ours. They keep 38% of their gold unspent at the end of a middle-game turn; we keep 46% in our wins and 57% in our losses. At turn 10 we hold 22 gold against their 9.
+
+![Share of games that build a tower at each turn, top players against us](2026-11-06-v014-against-the-top-10/top-vs-us-event-tower.svg)
+
+## 5. How they finish: a large cut around turns 12 to 14
+
+A large cut of our territory decides 101 of our 147 losses (median turn 13 against the top 10), an HQ threat 35 (around turn 17), debt 4. Before the cut, our exposure is no higher than in our wins at the same turn (5 cells or more exposed: 30% of losses, 27% of wins): we are not unusually open; we are smaller, with fewer and weaker units, so the same exposure costs us the game (decisive moments: `2026-11-06-v014-decisive-moments/`, pull request #285).
+
+## 6. Our search disagrees with their moves
+
+At each turn of a top bot, our search would play the same plan only 5 to 12% of the time, and in undecided positions it scores their plan below its own by a median of 6 (aCat) to 20 (zasmu) gold, by more than 20 gold on 31% to 49% of their turns. Since they win, the likely reading is that our evaluation underrates their plans; the largest gaps (`2026-11-06-v014-judge/largest-gaps.md`, pull request #287) are the place to look for what it misses.
+
+## What to try in our bot
+
+One experiment each, judged by the SPRT as usual:
+
+1. **Opening: train at turns 5 and 6 instead of building the first mine.** The strongest signal of this report, and it is in our own wins too. Measure the cells at turn 8 (target: close the 6-cell gap).
+2. **Middle game: spend.** Mines once the territory is large (turn 10 or later), level-2 units and towers at the front from turn 8, and less gold left unspent.
+3. **Evaluation:** check, on the judge's largest gaps, which terms make our search prefer its plan to the top bot's; the land (`voronoi`) and the cells beyond our reach are the first suspects.
+
+## Limits
+
+10 games against each top bot, on 10 maps, always as player 0 in the test games; their bots may change (the daily collection of ADR 0057 records each opponent's version). Differences of a few units are within the noise of 10 games; the gaps above (cells, income, turn-5 trainings, mines, towers, gold kept) are large and the same across the ten bots.
 
 ## Data
 
