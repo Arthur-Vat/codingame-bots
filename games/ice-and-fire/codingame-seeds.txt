@@ -1,0 +1,14 @@
+# The maps of the test games that scripts/codingame.sh batch plays on CodinGame:
+# one game option line per map, drawn at random once on 2026-11-06. Every batch
+# uses the same maps in this order, so releases and opponents compare
+# (docs/GAME_ANALYSIS.md, ADR 0056). Do not change them: a new set is a new file.
+seed=-2776397546936061085
+seed=916423572973448529
+seed=-7015546853136493611
+seed=-5607490634167120883
+seed=5939843469094711040
+seed=6898394511667840420
+seed=6495177015150501120
+seed=-1307869268535257320
+seed=6834316477272218336
+seed=-5612474609360449561
