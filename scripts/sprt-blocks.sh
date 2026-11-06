@@ -35,7 +35,7 @@
 # FILEs of the pull request, prints (and appends to $GITHUB_OUTPUT) three lines:
 #   serial_games=["id",...]     the games with SPRT_RUNNERS 1 (or none)
 #   parallel_games=["id",...]   the games with more
-#   parallel_matrix={"include":[{"game":"id","candidate":"games/id/releases/x.rs"},...]}
+#   parallel_candidates={"id":"games/id/releases/x.rs",...}   the candidate of each
 # A game with more than one runner needs TIME_SCALE=auto (calibrated; the
 # runners differ in speed otherwise), SPRT_BLOCK_PAIRS, and exactly one added
 # release: one experiment per pull request. Exit status 1 otherwise.
@@ -175,11 +175,11 @@ mode_classify() {
     fi
     [[ ${found[0]} =~ ^[A-Za-z0-9._/-]+$ ]] || die "unsupported characters in the name of ${found[0]}"
     parallel+=("$game")
-    entries+=("$(jq -cn --arg game "$game" --arg candidate "${found[0]}" '{game: $game, candidate: $candidate}')")
+    entries+=("$(jq -cn --arg game "$game" --arg candidate "${found[0]}" '{key: $game, value: $candidate}')")
   done < <(jq -r '.[]' <<<"$games_json")
   emit "serial_games=$(printf '%s\n' ${serial[@]+"${serial[@]}"} | jq -R . | jq -sc 'map(select(. != ""))')"
   emit "parallel_games=$(printf '%s\n' ${parallel[@]+"${parallel[@]}"} | jq -R . | jq -sc 'map(select(. != ""))')"
-  emit "parallel_matrix=$(printf '%s\n' ${entries[@]+"${entries[@]}"} | jq -sc '{include: map(select(. != null))}')"
+  emit "parallel_candidates=$(printf '%s\n' ${entries[@]+"${entries[@]}"} | jq -sc 'map(select(. != null)) | from_entries')"
 }
 
 # ---- plan --------------------------------------------------------------

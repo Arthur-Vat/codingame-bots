@@ -54,7 +54,7 @@ jobs:
       # candidate of each.
       serial_games: ${{ steps.scopes.outputs.serial_games }}
       parallel_games: ${{ steps.scopes.outputs.parallel_games }}
-      parallel_matrix: ${{ steps.scopes.outputs.parallel_matrix }}
+      parallel_candidates: ${{ steps.scopes.outputs.parallel_candidates }}
       # The same games without those that have a nightly league.
       league_games: ${{ steps.scopes.outputs.league_games }}
     steps:
@@ -110,7 +110,7 @@ jobs:
 
   # The SPRT of the games with one runner, on one machine.
   sprt:
-    name: "${{ matrix.game }}: SPRT"
+    name: SPRT on one runner
     needs: releases
     # An empty matrix is an error: skip the job instead.
     if: needs.releases.outputs.serial_games != '[]'
@@ -296,13 +296,15 @@ jobs:
   # what they use, and no more: actions to list the run's artifacts, pull
   # requests to post the comment.
   sprt-parallel:
-    name: "${{ matrix.game }}: SPRT in blocks"
+    name: SPRT in blocks
     needs: releases
     # An empty matrix is an error: skip the job instead.
     if: needs.releases.outputs.parallel_games != '[]'
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.releases.outputs.parallel_matrix) }}
+      # The game only: GitHub adds the matrix's values to the job's name.
+      matrix:
+        game: ${{ fromJSON(needs.releases.outputs.parallel_games) }}
     permissions:
       contents: read
       actions: read
@@ -310,7 +312,7 @@ jobs:
     uses: ./.github/workflows/sprt-parallel.yml
     with:
       game: ${{ matrix.game }}
-      candidate: ${{ matrix.candidate }}
+      candidate: ${{ fromJSON(needs.releases.outputs.parallel_candidates)[matrix.game] }}
       post: true
 
   # The league of each new release (ADR 0038), after the game's SPRT accepts
@@ -323,7 +325,7 @@ jobs:
   # with several, each is played against the stored results only, so the
   # choice of the second ignores the pairings of the first.
   league:
-    name: "${{ matrix.game }}: league"
+    name: League
     needs:
       - releases
       - sprt
