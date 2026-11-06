@@ -587,6 +587,9 @@ jobs:
       - name: Test the cache of rustc's builds
         if: ${{ !cancelled() }}
         run: scripts/annotate.sh run "Rustc cache test" scripts/tests/rustc-cache-test.sh
+      - name: Check the order of the cache steps
+        if: ${{ !cancelled() }}
+        run: scripts/annotate.sh run "Cache step order" scripts/tests/workflow-cache-order-test.sh
       - name: Test the size check
         if: ${{ !cancelled() }}
         # rustc and iconv are preinstalled on ubuntu-latest.

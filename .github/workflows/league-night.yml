@@ -106,6 +106,16 @@ jobs:
             echo "play1_timeout=$timeout"
             echo "play1_step_timeout=$((timeout - 5))"
           } >>"$GITHUB_OUTPUT"
+      # The cache comes before anything is written to target/: on a partial
+      # match it cleans target/, files included (night of 2026-11-06).
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.game }}
+          save-if: false
       - name: Take the current results
         id: results
         env:
@@ -130,16 +140,6 @@ jobs:
           fi
           echo "has_results=true" >>"$GITHUB_OUTPUT"
           echo "$(grep -c . target/night/results.jsonl || true) lines."
-      - uses: dtolnay/rust-toolchain@master
-        if: steps.results.outputs.has_results == 'true'
-        with:
-          toolchain: ${{ env.CG_RUST }}
-          components: rustfmt
-      - uses: Swatinem/rust-cache@v2
-        if: steps.results.outputs.has_results == 'true'
-        with:
-          key: ${{ inputs.game }}
-          save-if: false
       - name: Plan wave 1
         id: plan
         if: steps.results.outputs.has_results == 'true'
@@ -181,10 +181,7 @@ jobs:
         shard: ${{ fromJSON(needs.plan1.outputs.shards) }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
-        with:
-          name: league-night-${{ inputs.game }}-plan1
-          path: target/night
+      # Before the download, as in plan1.
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.CG_RUST }}
@@ -193,6 +190,10 @@ jobs:
         with:
           key: ${{ inputs.game }}
           save-if: ${{ matrix.shard == 0 }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: league-night-${{ inputs.game }}-plan1
+          path: target/night
       - name: Play the shard's lines
         timeout-minutes: ${{ fromJSON(needs.plan1.outputs.play1_step_timeout) }}
         env:
@@ -254,6 +255,15 @@ jobs:
       play2_note: ${{ steps.time.outputs.play2_note }}
     steps:
       - uses: actions/checkout@v7
+      # Before the downloads, as in plan1.
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.game }}
+          save-if: false
       - uses: actions/download-artifact@v8
         with:
           name: league-night-${{ inputs.game }}-plan1
@@ -266,14 +276,6 @@ jobs:
           pattern: league-night-${{ inputs.game }}-1-shard-*
           path: target/night/shards1
           merge-multiple: true
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.CG_RUST }}
-          components: rustfmt
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ inputs.game }}
-          save-if: false
       - name: Add the finished lines to the results
         env:
           GAME: ${{ inputs.game }}
@@ -350,10 +352,7 @@ jobs:
         shard: ${{ fromJSON(needs.merge1.outputs.shards) }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
-        with:
-          name: league-night-${{ inputs.game }}-merge1
-          path: target/night
+      # Before the download, as in plan1.
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.CG_RUST }}
@@ -362,6 +361,10 @@ jobs:
         with:
           key: ${{ inputs.game }}
           save-if: ${{ matrix.shard == 0 }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: league-night-${{ inputs.game }}-merge1
+          path: target/night
       - name: Play the shard's lines
         timeout-minutes: ${{ fromJSON(needs.merge1.outputs.play2_step_timeout) }}
         env:
@@ -417,6 +420,15 @@ jobs:
       GH_REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v7
+      # Before the downloads, as in plan1.
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.CG_RUST }}
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ inputs.game }}
+          save-if: false
       - uses: actions/download-artifact@v8
         with:
           name: league-night-${{ inputs.game }}-plan1
@@ -438,14 +450,6 @@ jobs:
           pattern: league-records-${{ inputs.game }}-[12]-*
           path: target/night/records
           merge-multiple: true
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.CG_RUST }}
-          components: rustfmt
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ inputs.game }}
-          save-if: false
       - name: Add wave 2 and generate the leaderboard
         run: |
           shopt -s nullglob

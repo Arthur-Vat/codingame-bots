@@ -119,11 +119,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: league-replay-${{ inputs.game }}-*
-          path: target/replay
-          merge-multiple: true
+      # The cache comes before the download: on a partial match it cleans
+      # target/, files included.
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.CG_RUST }}
@@ -131,6 +128,11 @@ jobs:
         with:
           key: ${{ inputs.game }}
           save-if: false
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: league-replay-${{ inputs.game }}-*
+          path: target/replay
+          merge-multiple: true
       - name: Merge the shards and generate the leaderboard
         env:
           GAME: ${{ inputs.game }}
