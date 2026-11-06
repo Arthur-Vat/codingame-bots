@@ -9,10 +9,13 @@
 //! ice-and-fire-review bank --out FILE [--count N] [--seed S] [--jobs N] GAME.json...
 //! ice-and-fire-review screening [--jobs N] GAME.json... > screening.md
 //! ice-and-fire-review codingame --out DIR [--kind ranking] [--strict] LOG.json... > check.md
+//! ice-and-fire-review codingame-report --data DIR --me NAME [--kinds ranking,test] [--top N] > report.md
 //! ```
 
 mod bank;
 mod codingame;
+mod profiles;
+mod profiling;
 mod replay;
 mod screening;
 mod study;
@@ -142,6 +145,41 @@ enum Command {
         /// The logs, `<game_id>.json`.
         #[arg(required = true)]
         logs: Vec<PathBuf>,
+    },
+    /// Prints the profiles of the players met on CodinGame and our
+    /// weaknesses, from a data directory of `scripts/codingame.sh` (logs,
+    /// index and leaderboard snapshots): results and ends by opponent, then
+    /// for each of the top players its key metrics, events, decisive moments
+    /// and openings, then the metrics at which our losses fall behind. Games
+    /// that disagree with our engine are left out and listed.
+    CodingameReport {
+        /// The game's data directory, for example `data/ice-and-fire`.
+        #[arg(long)]
+        data: PathBuf,
+        /// Our nickname on CodinGame, for games whose index has no seat.
+        #[arg(long)]
+        me: String,
+        /// The kinds of games to use, separated by commas.
+        #[arg(long, value_delimiter = ',', default_values_t = ["ranking".to_string(), "test".to_string(), "replay".to_string()])]
+        kinds: Vec<String>,
+        /// Only the games of this batch.
+        #[arg(long)]
+        batch: Option<String>,
+        /// Profiles for the top N players of the snapshot that have a game.
+        #[arg(long, default_value_t = 10)]
+        top: usize,
+        /// Profiles for these players instead, separated by commas.
+        #[arg(long, value_delimiter = ',')]
+        players: Vec<String>,
+        /// The leaderboard snapshot, instead of the newest in the data directory.
+        #[arg(long)]
+        leaderboard: Option<PathBuf>,
+        /// Also write the numbers as JSON here.
+        #[arg(long)]
+        json: Option<PathBuf>,
+        /// Games replayed at the same time.
+        #[arg(long, default_value_t = 4)]
+        jobs: usize,
     },
 }
 
@@ -305,6 +343,33 @@ fn run(cli: Cli) -> Result<(), String> {
             print!("{text}");
             if strict && !clean {
                 return Err("some games disagree or did not convert".to_string());
+            }
+            Ok(())
+        }
+        Command::CodingameReport {
+            data,
+            me,
+            kinds,
+            batch,
+            top,
+            players,
+            leaderboard,
+            json,
+            jobs,
+        } => {
+            let (text, numbers) = profiles::run(&profiles::Request {
+                data,
+                me,
+                kinds,
+                batch,
+                top,
+                players,
+                leaderboard,
+                jobs,
+            })?;
+            print!("{text}");
+            if let Some(file) = json {
+                fs::write(&file, numbers).map_err(|e| format!("{}: {e}", file.display()))?;
             }
             Ok(())
         }

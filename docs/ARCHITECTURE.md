@@ -59,7 +59,7 @@ codingame-bots/
 │  ├─ cg-bundler/           bot + its workspace crates -> one minified paste-ready .rs file (needs rustc 1.90.0) or a readable one
 │  ├─ cg-pack/              bot side: decodes data packed into characters outside ASCII
 │  ├─ cg-packer/            tool side: packs data for cg-pack to decode; cg-packer binary writes it as a Rust module
-│  ├─ cg-review/            tool side: game files for reviewers (boards, metrics, phases, decisive moments) and a batch's summary
+│  ├─ cg-review/            tool side: game files for reviewers (boards, metrics, phases, decisive moments) and a batch's summary, and profiles of the players met on CodinGame with our weaknesses (`profile`, ADR 0056)
 │  └─ cg-search/            bot side: game trait, MCTS, time budgets
 ├─ games/
 │  └─ uttt/
