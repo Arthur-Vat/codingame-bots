@@ -15,6 +15,9 @@ impl Judging for Words {
     fn gap_threshold() -> i64 {
         10
     }
+    fn decided_bound() -> i64 {
+        100
+    }
 }
 
 fn j(
@@ -57,18 +60,21 @@ fn the_csv_has_a_row_a_ply() {
     assert_eq!(lines.len(), 6);
     assert_eq!(
         lines[0],
-        "game_id,player,rank,ply,turn,phase,played,ours,played_score,ours_score,gap,match"
+        "game_id,player,rank,ply,turn,phase,played,ours,played_score,ours_score,gap,match,situation"
     );
-    assert_eq!(lines[1], "1,ann,3,0,1,early_game,a b,a b,5,5,0,same");
+    assert_eq!(
+        lines[1],
+        "1,ann,3,0,1,early_game,a b,a b,5,5,0,same,undecided"
+    );
     assert_eq!(
         lines[2],
-        "1,ann,3,2,2,middle_game,a c,a b,5,20,15,same_first"
+        "1,ann,3,2,2,middle_game,a c,a b,5,20,15,same_first,undecided"
     );
     assert_eq!(
         lines[3],
-        "1,ann,3,4,3,middle_game,x y,a b,-10,30,40,different"
+        "1,ann,3,4,3,middle_game,x y,a b,-10,30,40,different,undecided"
     );
-    assert_eq!(lines[5], "3,bob,,6,4,endgame,a b,a b,7,7,0,same");
+    assert_eq!(lines[5], "3,bob,,6,4,endgame,a b,a b,7,7,0,same,undecided");
 }
 
 #[test]
@@ -135,4 +141,26 @@ fn the_readme_names_every_file_and_the_threshold() {
 fn the_median_of_nothing_is_none() {
     assert_eq!(median(&mut []), None);
     assert_eq!(median(&mut [3, 1, 2]), Some(2.0));
+}
+
+#[test]
+fn decided_plies_are_counted_apart_and_left_out_of_the_gaps() {
+    let mut all = sample();
+    all.push(j("ann", 4, 8, Phase::Middle, "x y", [500, 3]));
+    all.push(j("ann", 4, 10, Phase::Middle, "x y", [5, -500]));
+    all.push(j("ann", 4, 12, Phase::Middle, "x y", [-500, 50]));
+    let csv = judgements_csv::<Words>(&all);
+    assert!(csv.contains(",ours_wins\n"), "{csv}");
+    assert!(csv.contains(",played_loses\n"), "{csv}");
+    assert!(csv.contains(",decided_other\n"), "{csv}");
+    let text = summary_csv::<Words>(&all);
+    let has = |row: &str| assert!(text.lines().any(|l| l == row), "{row}\n{text}");
+    has("ann,middle_game,plies,6");
+    has("ann,middle_game,undecided,3");
+    has("ann,middle_game,ours_wins,1");
+    has("ann,middle_game,played_loses,1");
+    has("ann,middle_game,decided_other,1");
+    has("ann,middle_game,median_gap,15.0");
+    let worst = largest_gaps::<Words>(&all);
+    assert!(!worst.contains("game 4"), "{worst}");
 }

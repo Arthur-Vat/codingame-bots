@@ -21,6 +21,7 @@ use cg_review::judge::{
 use cg_review::profile::{focus_players, GameMeta, Options};
 use cg_review::trace::Trace;
 use ice_and_fire_engine::Command;
+use ice_and_fire_tactics::eval::WIN;
 
 use crate::bank::block_played;
 use crate::profiles::{newest_snapshot, prepare, read_index, read_ranks, Entry, Request as Base};
@@ -49,9 +50,17 @@ pub struct Request {
 }
 
 /// A score gap (ours less the played plan's) above which the played plan
-/// counts as scoring much lower: two level-1 units' worth of the plan bot's
-/// evaluation (a unit is worth 10 per level, a tower 10).
+/// counts as scoring much lower. The evaluation counts gold 1, income 3, an
+/// active cell 4, a unit 10 per level (a level-1 unit costs 10 gold) and a
+/// tower 10, so 20 is about two level-1 units, or five active cells, or 20
+/// gold: a clear material difference, more than the noise of a search.
 pub const GAP_THRESHOLD: i64 = 20;
+
+/// Scores at or beyond this, in absolute value, are forced results: a won or
+/// lost game is `WIN`, and a plan that lets the opponent take our HQ next
+/// turn is penalised `WIN / 2`, so a quarter of `WIN` separates them from
+/// every board evaluation.
+pub const DECIDED_BOUND: i64 = WIN / 4;
 
 /// The commands of an answer line, without `WAIT`.
 fn commands(line: &str) -> Vec<Command> {
@@ -79,6 +88,10 @@ impl Judging for Hooks {
 
     fn gap_threshold() -> i64 {
         GAP_THRESHOLD
+    }
+
+    fn decided_bound() -> i64 {
+        DECIDED_BOUND
     }
 }
 
@@ -336,6 +349,7 @@ pub fn run(request: &Request) -> Result<(), String> {
         });
     }
     let mut notes = vec![
+        "One unit of score is one gold in the plan bot's evaluation (income counts 3, an active cell 4, a unit 10 per level, a tower 10); the gap threshold of 20 is about two level-1 units or five active cells, a clear material difference. Forced results (a win, or the opponent taking our HQ next turn) score 500,000 or more and are decided.".to_string(),
         format!(
             "{} games used ({} left out), players judged: {}.",
             games.len(),

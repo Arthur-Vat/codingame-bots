@@ -38,6 +38,34 @@ pub trait Judging {
     /// A score gap (ours less played) above which the played move counts as
     /// scored much lower than ours.
     fn gap_threshold() -> i64;
+    /// A score at or beyond which (either sign) a position is decided: the
+    /// score of a forced win or loss, not an evaluation of the board.
+    fn decided_bound() -> i64;
+}
+
+/// What a judged ply is, by the scores of the two plans.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Situation {
+    /// Neither score is a forced result: the gap measures the evaluation.
+    Undecided,
+    /// Our search finds a forced win.
+    OursWins,
+    /// The played plan loses by force (the opponent wins next turn).
+    PlayedLoses,
+    /// Any other decided position.
+    Other,
+}
+
+impl Situation {
+    /// The name in the CSV files.
+    pub fn name(self) -> &'static str {
+        match self {
+            Situation::Undecided => "undecided",
+            Situation::OursWins => "ours_wins",
+            Situation::PlayedLoses => "played_loses",
+            Situation::Other => "decided_other",
+        }
+    }
 }
 
 /// One ply of a player, judged.
@@ -64,6 +92,19 @@ pub struct Judgement {
 }
 
 impl Judgement {
+    /// Whether a score is a forced result under `bound`, and which.
+    pub fn situation(&self, bound: i64) -> Situation {
+        if self.ours_score >= bound {
+            Situation::OursWins
+        } else if self.played_score <= -bound {
+            Situation::PlayedLoses
+        } else if self.ours_score <= -bound || self.played_score >= bound {
+            Situation::Other
+        } else {
+            Situation::Undecided
+        }
+    }
+
     /// Our score less the played plan's.
     pub fn gap(&self) -> i64 {
         self.ours_score.saturating_sub(self.played_score)
@@ -130,12 +171,12 @@ fn phase_name(phase: &str) -> String {
 /// `judgements.csv`: one row per judged ply.
 pub fn judgements_csv<J: Judging>(judgements: &[Judgement]) -> String {
     let mut out = String::from(
-        "game_id,player,rank,ply,turn,phase,played,ours,played_score,ours_score,gap,match\n",
+        "game_id,player,rank,ply,turn,phase,played,ours,played_score,ours_score,gap,match,situation\n",
     );
     for j in judgements {
         let _ = writeln!(
             out,
-            "{},{},{},{},{},{},{},{},{},{},{},{}",
+            "{},{},{},{},{},{},{},{},{},{},{},{},{}",
             j.game_id,
             field(&j.player),
             j.rank.map_or(String::new(), |r| r.to_string()),
@@ -147,7 +188,8 @@ pub fn judgements_csv<J: Judging>(judgements: &[Judgement]) -> String {
             j.played_score,
             j.ours_score,
             j.gap(),
-            match_name(J::compare(&j.played, &j.ours))
+            match_name(J::compare(&j.played, &j.ours)),
+            j.situation(J::decided_bound()).name()
         );
     }
     out
@@ -165,13 +207,26 @@ pub fn summary_csv<J: Judging>(judgements: &[Judgement]) -> String {
                 .filter(|j| J::compare(&j.played, &j.ours) == m)
                 .count()
         };
-        let mut gaps: Vec<i64> = js.iter().map(|j| j.gap()).collect();
+        let bound = J::decided_bound();
+        let situations = |s: Situation| js.iter().filter(|j| j.situation(bound) == s).count();
+        let mut gaps: Vec<i64> = js
+            .iter()
+            .filter(|j| j.situation(bound) == Situation::Undecided)
+            .map(|j| j.gap())
+            .collect();
         let over = gaps.iter().filter(|&&g| g > threshold).count();
         let rows = [
             ("plies", js.len().to_string()),
             ("same", count(MoveMatch::Same).to_string()),
             ("same_first", count(MoveMatch::First).to_string()),
             ("different", count(MoveMatch::Different).to_string()),
+            ("undecided", gaps.len().to_string()),
+            ("ours_wins", situations(Situation::OursWins).to_string()),
+            (
+                "played_loses",
+                situations(Situation::PlayedLoses).to_string(),
+            ),
+            ("decided_other", situations(Situation::Other).to_string()),
             (
                 "median_gap",
                 median(&mut gaps).map_or(String::new(), |m| format!("{m:.1}")),
@@ -179,7 +234,7 @@ pub fn summary_csv<J: Judging>(judgements: &[Judgement]) -> String {
             ("gap_over_threshold", over.to_string()),
             (
                 "gap_over_threshold_share",
-                format!("{:.3}", over as f64 / js.len().max(1) as f64),
+                format!("{:.3}", over as f64 / gaps.len().max(1) as f64),
             ),
         ];
         for (metric, value) in rows {
@@ -194,9 +249,12 @@ pub fn largest_gaps<J: Judging>(judgements: &[Judgement]) -> String {
     let mut out = String::new();
     let _ = writeln!(
         out,
-        "# The {WORST_SHOWN} plies with the largest gaps\n\nWhere our search thinks the move played is worst, relative to its own (the gap is our plan's score less the played plan's).\n"
+        "# The {WORST_SHOWN} plies with the largest gaps\n\nUndecided positions only (no forced win or loss in either score), where our search thinks the move played is worst relative to its own (the gap is our plan's score less the played plan's).\n"
     );
-    let mut worst: Vec<&Judgement> = judgements.iter().collect();
+    let mut worst: Vec<&Judgement> = judgements
+        .iter()
+        .filter(|j| j.situation(J::decided_bound()) == Situation::Undecided)
+        .collect();
     worst.sort_by(|a, b| {
         b.gap()
             .cmp(&a.gap())
@@ -234,11 +292,12 @@ pub fn readme<J: Judging>(notes: &[String]) -> String {
     }
     let _ = writeln!(
         out,
-        "\nScores are our search's, for the player to act: the worst evaluation after the opponent's replies. The gap is our plan's score less the played plan's; a gap above {} counts as a played plan that scores much lower.\n",
-        J::gap_threshold()
+        "\nScores are our search's, for the player to act: the worst evaluation after the opponent's replies. The gap is our plan's score less the played plan's; a gap above {} counts as a played plan that scores much lower. A ply is decided when either score is at least {} in absolute value (a forced win or loss, not a board evaluation); decided plies are counted apart and left out of the gap statistics and of `largest-gaps.md`.\n",
+        J::gap_threshold(),
+        J::decided_bound()
     );
     out.push_str(
-        "- `judgements.csv`: one row per judged ply.\n  - `game_id`, `player`, `rank` (the player's rank in the leaderboard snapshot, empty if none), `ply` (index in the game), `turn` (the game's turn), `phase` (`early_game`, `middle_game`, `endgame`).\n  - `played`, `ours`: the commands played and the commands our search chooses, joined by `;`.\n  - `played_score`, `ours_score`: our search's scores of the two plans; `gap` is `ours_score` less `played_score`.\n  - `match`: `same` (same commands), `same_first` (same first command only) or `different`.\n- `summary.csv`: agreement and gap by player and phase (`all` too), in long format.\n  - `player`, `phase`, `metric`, `value`; the metrics are `plies`, `same`, `same_first`, `different`, `median_gap`, `gap_over_threshold` (plies with a gap above the threshold) and `gap_over_threshold_share`.\n- `largest-gaps.md`: the 20 plies with the largest gaps, each with both plans and the board before the ply.\n",
+        "- `judgements.csv`: one row per judged ply.\n  - `game_id`, `player`, `rank` (the player's rank in the leaderboard snapshot, empty if none), `ply` (index in the game), `turn` (the game's turn), `phase` (`early_game`, `middle_game`, `endgame`).\n  - `played`, `ours`: the commands played and the commands our search chooses, joined by `;`.\n  - `played_score`, `ours_score`: our search's scores of the two plans; `gap` is `ours_score` less `played_score`.\n  - `match`: `same` (same commands), `same_first` (same first command only) or `different`.\n  - `situation`: `undecided`, `ours_wins` (our search has a forced win), `played_loses` (the played plan loses by force) or `decided_other`.\n- `summary.csv`: agreement and gap by player and phase (`all` too), in long format.\n  - `player`, `phase`, `metric`, `value`; the metrics are `plies`, `same`, `same_first`, `different` (all plies), `undecided`, `ours_wins`, `played_loses`, `decided_other` (the plies by situation), and, over the undecided plies only, `median_gap`, `gap_over_threshold` (a gap above the threshold) and `gap_over_threshold_share`.\n- `largest-gaps.md`: the 20 undecided plies with the largest gaps, each with both plans and the board before the ply.\n",
     );
     out
 }
