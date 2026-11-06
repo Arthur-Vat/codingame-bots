@@ -43,7 +43,7 @@ pub fn files(f: &Findings) -> Vec<(String, String)> {
 fn moments_csv(f: &Findings) -> String {
     let mut out = String::new();
     let mut header: Vec<String> = [
-        "group", "game_id", "opponent", "rank", "our_seat", "kind", "ply", "turn",
+        "group", "game_id", "opponent", "rank", "focus", "our_seat", "kind", "ply", "turn",
     ]
     .map(String::from)
     .to_vec();
@@ -63,6 +63,7 @@ fn moments_csv(f: &Findings) -> String {
             loss.game_id.to_string(),
             loss.opponent.clone(),
             loss.rank.map_or(String::new(), |r| r.to_string()),
+            loss.focus.to_string(),
             SIDES[loss.our_seat].to_string(),
         ];
         match &loss.found {
@@ -90,6 +91,7 @@ fn moments_csv(f: &Findings) -> String {
                 case.game_id.to_string(),
                 case.opponent.clone(),
                 case.rank.map_or(String::new(), |r| r.to_string()),
+                case.focus.to_string(),
                 SIDES[case.our_seat].to_string(),
                 control.kind.clone(),
                 case.ply.to_string(),
@@ -153,7 +155,7 @@ fn summary_csv(f: &Findings) -> String {
             "group",
             "kind",
             "threshold",
-            "ply",
+            "own_plies_back",
             "measure",
             "value",
         ]
@@ -191,15 +193,18 @@ fn summary_csv(f: &Findings) -> String {
 }
 
 fn exposure_rows(out: &mut String, f: &Findings) {
-    let all: Vec<&Loss> = f.losses.iter().collect();
     for kind in f.kinds_found() {
-        let losses: Vec<Vec<Option<i64>>> = with_moment(&all, kind)
-            .into_iter()
-            .map(|x| x.exposure)
-            .collect();
-        let mut groups = vec![("losses".to_string(), losses)];
-        if let Some(c) = f.controls.iter().find(|c| c.kind == kind) {
-            groups.push((format!("wins_at_turn_{}", c.turn), c.exposures()));
+        let mut groups = Vec::new();
+        for (name, focus) in [("focus", true), ("others", false)] {
+            let of: Vec<&Loss> = f.losses.iter().filter(|l| l.focus == focus).collect();
+            let of: Vec<Vec<Option<i64>>> = with_moment(&of, kind)
+                .into_iter()
+                .map(|x| x.exposure)
+                .collect();
+            groups.push((format!("losses_{name}"), of));
+            if let Some(c) = f.controls.iter().find(|c| c.kind == kind) {
+                groups.push((format!("wins_matched_{name}"), c.exposures(Some(focus))));
+            }
         }
         for (group, cases) in &groups {
             for k in 0..EXPOSURE_PLIES {
@@ -250,15 +255,15 @@ fn readme(f: &Findings) -> String {
     out.push_str("- `summary.csv`: the summary tables in long format.\n");
     out.push_str("- `examples.md`: for the top players, the first losses with the boards before and after the decisive moment, in code blocks.\n\n");
     out.push_str("## Columns of moments.csv\n\n");
-    out.push_str("- `group`: `loss`, or `win_control` (one of our wins, read at the median turn of the decisive moments of the row's kind: at the first opponent ply of that turn; wins that ended earlier are left out).\n");
-    out.push_str("- `game_id`, `opponent`, `rank` (in the leaderboard snapshot, empty if unranked), `our_seat` (side name).\n");
+    out.push_str("- `group`: `loss`, or `win_control` (one of our wins used as a control: for each loss with a decisive moment of the row's kind at game turn t, each win that reached turn t is read at the first opponent ply of turn t, so a win can appear once per matched moment; wins that ended earlier are left out).\n");
+    out.push_str("- `game_id`, `opponent`, `rank` (in the leaderboard snapshot, empty if unranked), `focus` (whether the opponent is a focus player, the top of the snapshot that we met), `our_seat` (side name).\n");
     let _ = writeln!(
         out,
-        "- `kind`: the decisive kind ({}), or `none` for a loss without one; for a win, the kind whose median turn was used.",
+        "- `kind`: the decisive kind ({}), or `none` for a loss without one; for a win, the kind of the matched moment.",
         f.kinds.join(", ")
     );
     out.push_str(
-        "- `ply`, `turn`: the ply of the moment (the control ply for a win) and its game turn.\n",
+        "- `ply`, `turn`: the ply of the moment (the control ply for a win) and its game turn (for a win, the turn matched).\n",
     );
     let keys: Vec<String> = f.metrics.iter().map(|k| format!("`{k}`")).collect();
     let _ = writeln!(
@@ -273,9 +278,9 @@ fn readme(f: &Findings) -> String {
         );
     }
     out.push_str("## Columns of summary.csv\n\n");
-    out.push_str("- `table`: `losses_by_kind` (by `group` focus or others, and `kind`, with `none` and `all`) or `exposure` (by `group` losses or wins at the control turn, `kind`, `ply` 1 to 3).\n");
+    out.push_str("- `table`: `losses_by_kind` (by `group` focus or others, and `kind`, with `none` and `all`) or `exposure` (by `group` losses_focus, losses_others, wins_matched_focus or wins_matched_others, `kind`, `own_plies_back` 1 to 3).\n");
     out.push_str("- `threshold`: the exposure threshold, for `at_or_above` and `share_pct`; empty otherwise.\n");
-    out.push_str("- `measure`: `count`, `median_turn`, `n` (cases with a value at that ply), `median` (of the exposure), `at_or_above` (cases at or above the threshold), `share_pct` (that share of `n`).\n");
+    out.push_str("- `measure`: `count`, `median_turn`, `n` (cases with a value at that own ply back), `median` (of the exposure), `at_or_above` (cases at or above the threshold), `share_pct` (that share of `n`).\n");
     out.push_str("- `value`: the number.\n");
     out
 }

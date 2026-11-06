@@ -29,6 +29,11 @@ pub const EXPOSURE_PLIES: usize = 3;
 
 /// What a game provides to find the decisive moments of our losses, besides
 /// the key metrics of [`Profiling`].
+///
+/// The analysis and the report assume that the ply of a decisive moment is
+/// played by the opponent: only moments whose ply has the opponent to act
+/// (`to_act` is the opponent's seat) are kept, so a game must record its
+/// decisive moments on the opponent's plies.
 pub trait Decisive: Profiling {
     /// The kinds of moments that decide a game, in order of interest.
     fn decisive_kinds() -> Vec<&'static str>;
@@ -78,34 +83,42 @@ pub struct Loss {
     pub found: Option<Found>,
 }
 
-/// Our exposure in our wins at the median turn of the decisive moments of
-/// one kind: in each win that lasted that long, right after our last, second
-/// to last, ... own ply before the first opponent ply of that turn.
+/// Our exposure in our wins, matched by turn to the decisive moments of one
+/// kind: for each loss whose moment of that kind is at game turn t, each win
+/// that reached turn t is read right after our last, second to last, ... own
+/// ply before the first opponent ply of turn t. The readings are pooled.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Control {
     pub kind: String,
-    pub turn: u32,
-    /// Wins that ended before that turn are left out.
+    /// One reading per (loss moment, win that reached its turn).
     pub cases: Vec<ControlCase>,
 }
 
-/// One win of a [`Control`].
+/// One reading of a [`Control`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ControlCase {
     pub game_id: u64,
     pub opponent: String,
     pub rank: Option<u32>,
+    /// Whether the opponent is a focus player.
+    pub focus: bool,
     pub our_seat: usize,
-    /// The first opponent ply of the control's turn.
+    /// The first opponent ply of the matched turn.
     pub ply: usize,
+    /// The matched game turn, that of the loss's moment.
     pub turn: u32,
     pub exposure: Vec<Option<i64>>,
 }
 
 impl Control {
-    /// The exposure of each case.
-    pub fn exposures(&self) -> Vec<Vec<Option<i64>>> {
-        self.cases.iter().map(|c| c.exposure.clone()).collect()
+    /// The exposure of each case against focus players (`Some(true)`),
+    /// against the others (`Some(false)`) or all (`None`).
+    pub fn exposures(&self, focus: Option<bool>) -> Vec<Vec<Option<i64>>> {
+        self.cases
+            .iter()
+            .filter(|c| focus.is_none_or(|f| f == c.focus))
+            .map(|c| c.exposure.clone())
+            .collect()
     }
 }
 
@@ -158,22 +171,18 @@ fn exposure_before<P: Decisive>(trace: &Trace, us: usize, ply: usize) -> Vec<Opt
     exposure
 }
 
-/// The ply of a win at game turn `turn` and the exposure before it, if the
-/// game lasted that long.
+/// The first opponent ply of a win at game turn `turn` and the exposure
+/// before it, if the game reached that turn.
 fn control_exposure<P: Decisive>(
     trace: &Trace,
     us: usize,
     turn: u32,
-) -> Option<(usize, u32, Vec<Option<i64>>)> {
+) -> Option<(usize, Vec<Option<i64>>)> {
     let ply = trace
         .plies
         .iter()
-        .position(|p| p.game_turn >= turn && p.to_act == 1 - us)?;
-    Some((
-        ply,
-        trace.plies[ply].game_turn,
-        exposure_before::<P>(trace, us, ply),
-    ))
+        .position(|p| p.game_turn == turn && p.to_act == 1 - us)?;
+    Some((ply, exposure_before::<P>(trace, us, ply)))
 }
 
 fn find<P: Decisive>(trace: &Trace, us: usize, kinds: &[&str], keys: &[&str]) -> Option<Found> {
@@ -181,7 +190,9 @@ fn find<P: Decisive>(trace: &Trace, us: usize, kinds: &[&str], keys: &[&str]) ->
     let moment = trace
         .moments
         .iter()
-        .filter(|m| m.favours == Some(1 - us) && m.ply < trace.plies.len())
+        .filter(|m| {
+            m.favours == Some(1 - us) && trace.plies.get(m.ply).is_some_and(|p| p.to_act == 1 - us)
+        })
         .filter_map(|m| Some((m, rank(&m.kind)?)))
         .min_by_key(|(m, r)| (m.ply, *r))?
         .0;
@@ -241,35 +252,35 @@ pub fn analyze<P: Decisive>(input: &Input, options: &Options, examples: usize) -
     losses.sort_by_key(|l| l.game_id);
     let mut controls = Vec::new();
     for kind in &kinds {
-        let turns: Vec<f64> = losses
+        let mut cases = Vec::new();
+        for turn in losses
             .iter()
             .filter_map(|l| l.found.as_ref())
             .filter(|f| f.kind == *kind)
-            .map(|f| f64::from(f.turn))
-            .collect();
-        let Some(turn) = median(&turns) else {
-            continue;
-        };
-        let turn = turn.round() as u32;
-        controls.push(Control {
-            kind: (*kind).to_string(),
-            turn,
-            cases: wins
-                .iter()
-                .filter_map(|(us, opponent, meta, trace)| {
-                    let (ply, turn, exposure) = control_exposure::<P>(trace, *us, turn)?;
-                    Some(ControlCase {
-                        game_id: meta.game_id,
-                        opponent: opponent.clone(),
-                        rank: input.ranks.get(opponent).copied(),
-                        our_seat: *us,
-                        ply,
-                        turn,
-                        exposure,
-                    })
-                })
-                .collect(),
-        });
+            .map(|f| f.turn)
+        {
+            for (us, opponent, meta, trace) in &wins {
+                let Some((ply, exposure)) = control_exposure::<P>(trace, *us, turn) else {
+                    continue;
+                };
+                cases.push(ControlCase {
+                    game_id: meta.game_id,
+                    opponent: opponent.clone(),
+                    rank: input.ranks.get(opponent).copied(),
+                    focus: focus.contains(opponent),
+                    our_seat: *us,
+                    ply,
+                    turn,
+                    exposure,
+                });
+            }
+        }
+        if !cases.is_empty() {
+            controls.push(Control {
+                kind: (*kind).to_string(),
+                cases,
+            });
+        }
     }
     Findings {
         sources: sources(input),

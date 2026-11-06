@@ -123,7 +123,10 @@ fn a_moment_on_the_first_ply_has_nothing_before_it() {
 
 #[test]
 fn a_moment_on_the_last_ply_has_no_board_after() {
-    let f = run(vec![lost(1, vec![moment(7, "cut", 0)])]);
+    // The last ply of a game of 7 plies is the opponent's.
+    let (meta, mut trace) = lost(1, vec![moment(6, "cut", 0)]);
+    trace.plies.truncate(7);
+    let f = run(vec![(meta, trace)]);
     let found = f.losses[0].found.clone().expect("a moment");
     assert_eq!(found.after, None);
     assert!(markdown(&f).contains("No board after"));
@@ -170,44 +173,72 @@ fn examples_are_limited_and_tables_are_narrow() {
     }
     // Blue had two plies before ply 4: exposures 14 and 12, none for the third.
     assert!(
-        text.contains("| cut, losses | 4 | 14 | 100% (4/4) [n = 4] | 0% (0/4) [n = 4] | - (0) |"),
+        text.contains(
+            "| cut, losses, focus | 4 | 14 | 100% (4/4) [n = 4] | 0% (0/4) [n = 4] | - (0) |"
+        ),
         "{text}"
     );
 }
 
 #[test]
-fn wins_at_the_median_turn_are_the_control_for_exposure() {
+fn wins_that_reached_the_turn_of_each_moment_are_the_control() {
     let (meta, mut won) = lost(9, Vec::new());
     won.winner = Some(1);
-    // A win too short to reach turn 3 is left out.
+    // A win too short to reach turn 3 is left out of that moment's control.
     let (short_meta, mut short) = lost(10, Vec::new());
     short.winner = Some(1);
     short.plies.truncate(3);
     let f = run(vec![
         lost(1, vec![moment(4, "cut", 0)]),
+        lost(2, vec![moment(2, "cut", 0)]),
         (meta, won),
         (short_meta, short),
     ]);
     assert_eq!(f.controls.len(), 1);
+    let cases: Vec<(u64, u32)> = f.controls[0]
+        .cases
+        .iter()
+        .map(|c| (c.game_id, c.turn))
+        .collect();
+    // Turn 3 (loss 1): the long win only. Turn 2 (loss 2): both wins.
+    assert_eq!(cases, [(9, 3), (9, 2), (10, 2)]);
     assert_eq!(
-        (f.controls[0].kind.as_str(), f.controls[0].turn),
-        ("cut", 3)
+        f.controls[0].exposures(None),
+        [
+            [Some(14), Some(12), None],
+            [Some(12), None, None],
+            [Some(12), None, None]
+        ]
     );
-    assert_eq!(f.controls[0].exposures(), [[Some(14), Some(12), None]]);
+    assert_eq!(f.controls[0].exposures(Some(false)).len(), 0);
     let text = markdown(&f);
     assert!(text.contains("### At or above 13"), "{text}");
     assert!(
         text.contains(
-            "| cut, wins at turn 3 | 1 | 14 | 100% (1/1) [n = 1] | 0% (0/1) [n = 1] | - (0) |"
+            "| cut, wins, focus | 3 | 12 | 33% (1/3) [n = 3] | 0% (0/1) [n = 1] | - (0) |"
         ),
         "{text}"
     );
     assert!(
-        text.contains(
-            "| cut, wins at turn 3 | 1 | 14 | 0% (0/1) [n = 1] | 0% (0/1) [n = 1] | - (0) |"
-        ),
+        text.contains("| cut, losses, others | 0 | - | - (0) | - (0) | - (0) |"),
         "{text}"
     );
+}
+
+#[test]
+fn a_moment_on_our_own_ply_is_not_decisive() {
+    // Ply 3 and 5 are blue's (ours): a moment recorded there is left out.
+    let f = run(vec![lost(
+        1,
+        vec![moment(3, "cut", 0), moment(5, "threat", 0)],
+    )]);
+    assert!(f.losses[0].found.is_none());
+    let f = run(vec![lost(
+        1,
+        vec![moment(3, "cut", 0), moment(6, "threat", 0)],
+    )]);
+    let found = f.losses[0].found.clone().expect("a moment");
+    assert_eq!((found.kind.as_str(), found.ply), ("threat", 6));
 }
 
 #[test]
@@ -226,21 +257,21 @@ fn files_hold_the_numbers_the_examples_and_a_readme() {
     let lines: Vec<&str> = moments.lines().collect();
     assert_eq!(
         lines[0],
-        "group,game_id,opponent,rank,our_seat,kind,ply,turn,theirs_cells,ours_cells,exposure_1,exposure_2,exposure_3"
+        "group,game_id,opponent,rank,focus,our_seat,kind,ply,turn,theirs_cells,ours_cells,exposure_1,exposure_2,exposure_3"
     );
-    assert_eq!(lines[1], "loss,1,alpha,1,blue,cut,4,3,23,14,14,12,");
-    assert_eq!(lines[2], "win_control,9,alpha,1,blue,cut,4,3,,,14,12,");
+    assert_eq!(lines[1], "loss,1,alpha,1,true,blue,cut,4,3,23,14,14,12,");
+    assert_eq!(lines[2], "win_control,9,alpha,1,true,blue,cut,4,3,,,14,12,");
     let summary = get("summary.csv");
     assert!(
         summary.contains("losses_by_kind,focus,cut,,,count,1\n"),
         "{summary}"
     );
     assert!(
-        summary.contains("exposure,losses,cut,13,1,share_pct,100.0\n"),
+        summary.contains("exposure,losses_focus,cut,13,1,share_pct,100.0\n"),
         "{summary}"
     );
     assert!(
-        summary.contains("exposure,wins_at_turn_3,cut,15,1,at_or_above,0\n"),
+        summary.contains("exposure,wins_matched_focus,cut,15,1,at_or_above,0\n"),
         "{summary}"
     );
     assert!(get("examples.md").contains("board 4"));

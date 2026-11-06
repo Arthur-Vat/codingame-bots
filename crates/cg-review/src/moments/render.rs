@@ -104,29 +104,32 @@ fn exposure(out: &mut String, f: &Findings) {
     };
     let _ = writeln!(
         out,
-        "## Our exposure before the moment\n\nOur `{metric}` right after each of our last {EXPOSURE_PLIES} own plies before the moment (1 is the last). For each threshold, the share of the cases with a value at that ply where it was at or above it. The control rows are our wins: our exposure before the first opponent ply of the turn that is the median of the decisive moments of that kind (wins that ended earlier are left out), to show whether high exposure is special to losses.\n"
+        "## Our exposure before the moment\n\nOur `{metric}` right after each of our last {EXPOSURE_PLIES} own plies before the moment (1 is the last). For each threshold, the share of the cases with a value at that ply where it was at or above it. The wins rows are the control, matched by turn: for each decisive moment of that kind at game turn t, our exposure in each of our wins that reached turn t, before the first opponent ply of that turn, all pooled (a win counts once per moment it matches), to show whether high exposure is special to losses. Both are split by the opponent: focus players (the top {} of the snapshot that we met) or others. `all cases` counts every case, with or without a value at ply 1.\n",
+        f.focus.len()
     );
-    let all: Vec<&Loss> = f.losses.iter().collect();
     for &threshold in &f.thresholds {
         let _ = writeln!(out, "### At or above {threshold}\n");
         let mut rows = Vec::new();
         for kind in f.kinds_found() {
-            let losses: Vec<Vec<Option<i64>>> = with_moment(&all, kind)
-                .into_iter()
-                .map(|x| x.exposure)
-                .collect();
-            rows.push(row(format!("{kind}, losses"), &losses, threshold));
-            if let Some(c) = f.controls.iter().find(|c| c.kind == kind) {
-                rows.push(row(
-                    format!("{kind}, wins at turn {}", c.turn),
-                    &c.exposures(),
-                    threshold,
-                ));
+            for (name, focus) in [("focus", true), ("others", false)] {
+                let losses: Vec<&Loss> = f.losses.iter().filter(|l| l.focus == focus).collect();
+                let losses: Vec<Vec<Option<i64>>> = with_moment(&losses, kind)
+                    .into_iter()
+                    .map(|x| x.exposure)
+                    .collect();
+                rows.push(row(format!("{kind}, losses, {name}"), &losses, threshold));
+                if let Some(c) = f.controls.iter().find(|c| c.kind == kind) {
+                    rows.push(row(
+                        format!("{kind}, wins, {name}"),
+                        &c.exposures(Some(focus)),
+                        threshold,
+                    ));
+                }
             }
         }
         table(
             out,
-            &["cases", "n", "median at 1", "at 1", "at 2", "at 3"],
+            &["group", "all cases", "median at 1", "at 1", "at 2", "at 3"],
             &rows,
         );
     }
