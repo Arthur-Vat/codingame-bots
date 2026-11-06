@@ -78,7 +78,8 @@ pub struct Report {
     pub renamed: BTreeMap<String, BTreeSet<String>>,
     /// Why the bundle was left as it is, when it was.
     pub skipped: Option<String>,
-    /// Runs of rustc.
+    /// Compiles asked for (some may be answered from the memo of
+    /// `prune::rustc`).
     pub compiles: usize,
 }
 

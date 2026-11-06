@@ -3,11 +3,12 @@
 //! The output of the pruner must not depend on the session's compiler, so
 //! only rustc 1.90.0 is accepted ([`VERSION`]); there is no fallback.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Mutex, OnceLock};
 
 use serde_json::Value;
 
@@ -19,7 +20,7 @@ pub const VERSION: &str = "1.90.0";
 pub const ENV: &str = "CG_RUSTC";
 
 /// A rustc 1.90.0 that can be run.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Rustc {
     program: OsString,
     /// Arguments before the compiler's own (`run 1.90.0 rustc` for rustup).
@@ -27,7 +28,7 @@ pub struct Rustc {
 }
 
 /// What one run of rustc reported about a bundle.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Outcome {
     /// It compiled; these are the diagnostics of the `LINTS`.
     Compiled(Vec<Diagnostic>),
@@ -188,11 +189,30 @@ impl std::fmt::Display for Failure {
 pub struct Compiler<'a> {
     rustc: &'a Rustc,
     dir: PathBuf,
-    /// The compiles made so far.
+    /// The compiles asked for so far; some may have been answered from the
+    /// process's memo ([`MEMO`]) instead of a run of rustc.
     compiles: usize,
 }
 
 static FOLDERS: AtomicUsize = AtomicUsize::new(0);
+
+/// Everything that decides what rustc reports: the compiler, the extra
+/// lints in order, and the exact text. The other arguments are fixed.
+type Key = (Rustc, Vec<String>, String);
+
+/// The outcome of each run of rustc that ended with an answer about the
+/// text, for the life of the process. The outcome depends only on its
+/// [`Key`], and the determinism test and the stage re-checks compile the
+/// same texts again. The lock is never held while rustc runs. An error's
+/// text names the temporary folder of the `Compiler` that ran first, which
+/// may be gone; only error messages quote it, never a bundle or a report.
+static MEMO: OnceLock<Mutex<HashMap<Key, Outcome>>> = OnceLock::new();
+
+fn memo() -> std::sync::MutexGuard<'static, HashMap<Key, Outcome>> {
+    MEMO.get_or_init(Mutex::default)
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
 
 impl<'a> Compiler<'a> {
     pub fn new(rustc: &'a Rustc) -> Result<Self, String> {
@@ -215,7 +235,8 @@ impl<'a> Compiler<'a> {
         self.rustc
     }
 
-    /// How many times [`Compiler::compile`] ran rustc.
+    /// How many compiles were asked for; some may have been answered from
+    /// the process's memo without running rustc.
     pub fn compiles(&self) -> usize {
         self.compiles
     }
@@ -232,6 +253,26 @@ impl<'a> Compiler<'a> {
     /// their diagnostics returned with those of the `LINTS`.
     pub fn compile_with(&mut self, source: &str, extra: &[&str]) -> Result<Outcome, String> {
         self.compiles += 1;
+        let key: Key = (
+            self.rustc.clone(),
+            extra.iter().map(|lint| lint.to_string()).collect(),
+            source.to_string(),
+        );
+        if let Some(outcome) = memo().get(&key) {
+            return Ok(outcome.clone());
+        }
+        let (outcome, answered) = self.run(source, extra)?;
+        if answered {
+            memo().insert(key, outcome.clone());
+        }
+        Ok(outcome)
+    }
+
+    /// Runs rustc on `source`, whatever the memo holds, and says whether
+    /// its outcome is an answer about the text: it compiled, or rustc exited
+    /// and reported errors. A run killed by a signal or that failed without
+    /// a diagnostic (no disk space, for instance) is not remembered.
+    fn run(&self, source: &str, extra: &[&str]) -> Result<(Outcome, bool), String> {
         let file = self.dir.join("bundle.rs");
         std::fs::write(&file, source)
             .map_err(|err| format!("cannot write {}: {err}", file.display()))?;
@@ -297,16 +338,18 @@ impl<'a> Compiler<'a> {
             }
         }
         if output.status.success() {
-            Ok(Outcome::Compiled(diagnostics))
+            Ok((Outcome::Compiled(diagnostics), true))
         } else {
+            let answered = output.status.code().is_some() && !error_names.is_empty();
             if errors.is_empty() {
                 errors = stderr.into_owned();
             }
-            Ok(Outcome::Failed {
+            let outcome = Outcome::Failed {
                 errors,
                 spans: error_spans,
                 names: error_names,
-            })
+            };
+            Ok((outcome, answered))
         }
     }
 }

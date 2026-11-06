@@ -101,7 +101,8 @@ pub struct Report {
     /// Removals that rustc reports but that do not compile, in the last
     /// round.
     pub refused: usize,
-    /// Runs of rustc, the first on the bundle itself.
+    /// Compiles asked for, the first on the bundle itself (some may be
+    /// answered from the memo of `prune::rustc`).
     pub compiles: usize,
 }
 
