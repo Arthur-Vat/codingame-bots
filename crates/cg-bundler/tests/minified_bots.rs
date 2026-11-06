@@ -1,7 +1,10 @@
 //! Minifies the bundle of every bot of the workspace and checks each stage
 //! of the minifier (ADR 0045, ADR 0046): the pruned code compiles with rustc
-//! 1.90.0 and has no more tokens than the joined code; the renamed code
-//! compiles and has the pruned code's tokens with only names, `self`, the
+//! 1.90.0 and has no more tokens than the joined code; the flattened code
+//! compiles, has no module, `pub` or path through `crate` left, and after its
+//! std imports has the pruned code's tokens in order, with only names and
+//! their punctuation left out and only the names the report lists changed; the renamed code
+//! compiles and has the flattened code's tokens with only names, `self`, the
 //! aliased types and the digit separators of numbers changed, each old name
 //! to one new name (except at the places kept), plus the declarations of
 //! `self`'s name and of the aliases, and the captures of format strings
@@ -13,7 +16,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use cg_bundler::minify::{first_difference, tokens, Kind, Token};
 use cg_bundler::rename::{self, StdNames, ALIASED};
-use cg_bundler::{bundle, bundle_package, bundle_report, cg_size, joined, minify, plan, prune};
+use cg_bundler::{
+    bundle, bundle_package, bundle_report, cg_size, flatten, joined, minify, plan, prune,
+};
 use cg_bundler::{Options, SIZE_LIMIT};
 
 /// The package names of the bots in `games/*/bots/*`.
@@ -89,7 +94,11 @@ fn check_bot(package: &str, rustc: &prune::Rustc) {
         .stages
         .as_ref()
         .expect("a minified bundle has stages");
-    let (pruned, renamed) = (stages.pruned.as_str(), stages.renamed.as_str());
+    let (pruned, flattened, renamed) = (
+        stages.pruned.as_str(),
+        stages.flattened.as_str(),
+        stages.renamed.as_str(),
+    );
 
     // Unused items removed.
     assert!(bundled.pruned.is_some(), "{package}");
@@ -106,13 +115,22 @@ fn check_bot(package: &str, rustc: &prune::Rustc) {
         );
     }
 
+    // Every item at the root.
+    let report = bundled
+        .flattened
+        .as_ref()
+        .expect("a minified bundle has a flattening report");
+    assert_eq!(report.skipped, None, "{package}: every bot is flattened");
+    prune::check(flattened, rustc).unwrap_or_else(|err| panic!("{package}: {err}"));
+    check_flattening(package, pruned, flattened, report);
+
     // Names, `self`, types and numbers shortened.
     let report = bundled
         .renamed
         .as_ref()
         .expect("a minified bundle has a renaming report");
     prune::check(renamed, rustc).unwrap_or_else(|err| panic!("{package}: {err}"));
-    check_renaming(package, pruned, renamed, report);
+    check_renaming(package, flattened, renamed, report);
 
     // Only the whitespace Rust needs.
     let minified = minify::minify(renamed).unwrap();
@@ -136,7 +154,87 @@ fn check_bot(package: &str, rustc: &prune::Rustc) {
     assert!(cg_size(&bundled.code) < SIZE_LIMIT, "{package}");
 }
 
-/// Checks that `renamed` is `pruned` with only the changes that `report`
+/// Checks that `flattened` has no module, `pub` or path through `crate`,
+/// starts with std imports, and has after them `pruned`'s tokens in order,
+/// some renamed as `report` lists (each new name is in no token of
+/// `pruned`) and some left out: names and the punctuation of paths, `use`
+/// trees, visibilities and module braces, never a literal or an operator.
+fn check_flattening(package: &str, pruned: &str, flattened: &str, report: &flatten::Report) {
+    let (old, new) = (tokens(pruned).unwrap(), tokens(flattened).unwrap());
+    for (i, token) in new.iter().enumerate() {
+        let next = new.get(i + 1).map_or("", |t| t.text.as_str());
+        assert!(
+            !(token.text == "mod"
+                || token.text == "pub"
+                || (token.text == "crate" && next == "::")),
+            "{package}: `{} {next}` is left at line {}",
+            token.text,
+            token.line
+        );
+    }
+    let mut at = 0;
+    while new.get(at).is_some_and(|t| t.text == "use") {
+        let first = &new[at + 1].text;
+        assert!(
+            ["std", "core", "alloc"].contains(&first.as_str()),
+            "{package}: an import of `{first}` at the top"
+        );
+        at += new[at..].iter().position(|t| t.text == ";").unwrap() + 1;
+    }
+    let old_words: BTreeSet<&str> = old.iter().map(|t| t.text.as_str()).collect();
+    for news in report.renamed.values() {
+        for name in news {
+            assert!(
+                !old_words.contains(name.as_str()),
+                "{package}: `{name}` was in the code"
+            );
+        }
+    }
+    // What goes is modules, `use` declarations, visibilities and the module
+    // parts of paths: names and their punctuation, never a literal or an
+    // operator.
+    let removable = |t: &Token| {
+        t.kind == Kind::Ident
+            || matches!(
+                t.text.as_str(),
+                "::" | "{" | "}" | "(" | ")" | "[" | "]" | "#" | ";" | ","
+            )
+    };
+    let mut from = 0;
+    for token in &new[at..] {
+        let renamed = |t: &Token| {
+            report
+                .renamed
+                .get(&t.text)
+                .is_some_and(|news| news.contains(&token.text))
+        };
+        let found = old[from..].iter().position(|t| t.same(token) || renamed(t));
+        let Some(skipped) = found else {
+            panic!(
+                "{package}: the flattened code's `{}` (line {}) is not in the pruned code, in order",
+                token.text, token.line
+            );
+        };
+        for gone in &old[from..from + skipped] {
+            assert!(
+                removable(gone),
+                "{package}: `{}` (line {} of the pruned code) is gone",
+                gone.text,
+                gone.line
+            );
+        }
+        from += skipped + 1;
+    }
+    for gone in &old[from..] {
+        assert!(
+            removable(gone),
+            "{package}: `{}` at the end is gone",
+            gone.text
+        );
+    }
+}
+
+/// Checks that `renamed` is `flattened` with only the changes that `report`
 /// names: each old name to one new name and no two old names to one, except
 /// at the places [`rename::kept`] keeps; `self` to `report.self_name`, after
 /// a declaration of that name in each method that uses it; each aliased type
@@ -144,8 +242,8 @@ fn check_bot(package: &str, rustc: &prune::Rustc) {
 /// separators; format strings whose captured names became arguments, which
 /// [`check_format_string`] reads on its own: `rename::calls` only says
 /// where the new arguments are, to line the tokens up.
-fn check_renaming(package: &str, pruned: &str, renamed: &str, report: &rename::Report) {
-    let (old, new) = (tokens(pruned).unwrap(), tokens(renamed).unwrap());
+fn check_renaming(package: &str, flattened: &str, renamed: &str, report: &rename::Report) {
+    let (old, new) = (tokens(flattened).unwrap(), tokens(renamed).unwrap());
     let kept = rename::kept(&old, StdNames::get());
     let calls: BTreeMap<usize, rename::Call> = rename::calls(&old)
         .into_iter()

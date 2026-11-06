@@ -64,6 +64,8 @@ pub struct Diagnostic {
     /// The names that its messages, its labels and its notes quote between
     /// backquotes (`Bits: Clone` gives `Bits` and `Clone`).
     pub names: BTreeSet<String>,
+    /// Its message, as rustc writes it.
+    pub message: String,
 }
 
 impl Rustc {
@@ -136,7 +138,7 @@ impl Rustc {
         }
     }
 
-    fn command(&self) -> Command {
+    pub(crate) fn command(&self) -> Command {
         let mut command = Command::new(&self.program);
         command.args(&self.prefix);
         command
@@ -223,6 +225,12 @@ impl<'a> Compiler<'a> {
     /// forced on, so that the `allow` the bundler puts on library modules
     /// does not hide anything. It fails only when rustc cannot be run.
     pub fn compile(&mut self, source: &str) -> Result<Outcome, String> {
+        self.compile_with(source, &[])
+    }
+
+    /// As [`Compiler::compile`], with the lints `extra` forced on too and
+    /// their diagnostics returned with those of the `LINTS`.
+    pub fn compile_with(&mut self, source: &str, extra: &[&str]) -> Result<Outcome, String> {
         self.compiles += 1;
         let file = self.dir.join("bundle.rs");
         std::fs::write(&file, source)
@@ -243,6 +251,7 @@ impl<'a> Compiler<'a> {
                 "--force-warn",
                 "noop_method_call",
             ])
+            .args(extra.iter().flat_map(|lint| ["--force-warn", lint]))
             .arg("--out-dir")
             .arg(&self.dir)
             .arg(&file)
@@ -281,7 +290,7 @@ impl<'a> Compiler<'a> {
                     error_names.push(names);
                 }
                 _ => {
-                    if let Some(diagnostic) = lint_diagnostic(&value, &name) {
+                    if let Some(diagnostic) = lint_diagnostic(&value, &name, extra) {
                         diagnostics.push(diagnostic);
                     }
                 }
@@ -318,17 +327,18 @@ const LINTS: [&str; 4] = [
     "noop_method_call",
 ];
 
-/// The diagnostic `value` if it is one of the `LINTS`, with its primary
-/// spans in the file `name` that come from the text itself.
-fn lint_diagnostic(value: &Value, name: &str) -> Option<Diagnostic> {
+/// The diagnostic `value` if it is one of the `LINTS` or of `extra`, with
+/// its primary spans in the file `name` that come from the text itself.
+fn lint_diagnostic(value: &Value, name: &str, extra: &[&str]) -> Option<Diagnostic> {
     let lint = value["code"]["code"].as_str()?;
-    if !LINTS.contains(&lint) {
+    if !LINTS.contains(&lint) && !extra.contains(&lint) {
         return None;
     }
     Some(Diagnostic {
         lint: lint.to_string(),
         spans: spans_of(value, name, true),
         names: quoted_names(value),
+        message: value["message"].as_str().unwrap_or("").to_string(),
     })
 }
 
