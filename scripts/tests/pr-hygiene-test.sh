@@ -230,6 +230,11 @@ case "$method $path" in
     exit 0
     ;;
   "DELETE repos/o/r/issues/7/labels/"*)
+    if [[ -n ${STUB_DELETE_STATUS:-} ]]; then
+      echo '{"message":"stub"}'
+      echo "gh: stub (HTTP $STUB_DELETE_STATUS)" >&2
+      exit 1
+    fi
     echo "remove ${path##*/}" >>"$log"
     echo '[]'
     exit 0
@@ -376,6 +381,18 @@ unset STUB_FAIL_ADD
 same "refused: status" 1 "$status"
 same "refused: label annotation" 1 "$(grep -c '^::error title=Pull request labels::' <<<"$output" || true)"
 same "refused: title annotation" 1 "$(grep -c '^::error title=Pull request title::' <<<"$output" || true)"
+
+# Another run removed the label first (GitHub answers 404): the run passes.
+# Any other refusal to remove it fails the run.
+export STUB_DELETE_STATUS=404
+run_pr steady
+same "removed already: status" 0 "$status"
+same "removed already: said" 1 "$(grep -c '^The label agents was already gone$' <<<"$output" || true)"
+export STUB_DELETE_STATUS=403
+run_pr steady
+unset STUB_DELETE_STATUS
+same "remove refused: status" 1 "$status"
+same "remove refused: label annotation" 1 "$(grep -c '^::error title=Pull request labels::' <<<"$output" || true)"
 
 # A pr number that is not a number is refused.
 checks=$((checks + 1))

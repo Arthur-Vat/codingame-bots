@@ -4,6 +4,12 @@ name: Pull request hygiene
 # (ADR 0022, scripts/pr-hygiene.sh). The token of a pull request from a fork
 # cannot write: there only the title is checked. Dependabot's pull requests
 # are neither labelled nor checked: their titles are generated.
+#
+# No concurrency group: a run cancelled by a newer one left a cancelled
+# "Pull request title and labels" check that could block the merge. Each run
+# reads the pull request's current title and files when it starts, so a later
+# event's run corrects an earlier one; a label another run removed first is
+# not an error.
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
@@ -11,10 +17,6 @@ on:
 permissions:
   contents: read
   pull-requests: write
-
-concurrency:
-  group: pr-hygiene-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
 
 defaults:
   run:
