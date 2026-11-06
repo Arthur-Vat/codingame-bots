@@ -4,14 +4,15 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    # Commit subjects follow ADR 0022's `type(scope): summary`.
     commit-message:
-      prefix: ci
+      prefix: ci(workflows)
   - package-ecosystem: cargo
     directory: /
     schedule:
       interval: monthly
     commit-message:
-      prefix: deps
+      prefix: build(repo)
   - package-ecosystem: npm
     directory: /studio/web
     schedule:
@@ -35,4 +36,4 @@ updates:
         patterns:
           - "*"
     commit-message:
-      prefix: deps
+      prefix: build(studio)

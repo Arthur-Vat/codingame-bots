@@ -84,7 +84,7 @@ jobs:
         shard: ${{ fromJSON(needs.plan.outputs.shards) }}
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
           components: rustfmt
@@ -123,7 +123,7 @@ jobs:
       - uses: actions/checkout@v7
       # The cache comes before the download: on a partial match it cleans
       # target/, files included.
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
       - uses: Swatinem/rust-cache@v2
