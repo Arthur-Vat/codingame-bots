@@ -46,6 +46,7 @@ jobs:
   plan:
     name: Plan
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       shards: ${{ steps.plan.outputs.shards }}
       count: ${{ steps.plan.outputs.count }}
@@ -117,6 +118,7 @@ jobs:
     # missing; never when the inputs were refused.
     if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       # The cache comes before the download: on a partial match it cleans
