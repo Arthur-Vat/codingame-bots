@@ -47,6 +47,7 @@ jobs:
   build:
     name: Build the site
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       actions: read # to download the arena games archives (ADR 0031)
@@ -112,6 +113,8 @@ jobs:
     # A manual run can start from any branch; only `main` is published.
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # actions/deploy-pages waits up to 10 minutes for GitHub on its own.
+    timeout-minutes: 15
     permissions:
       pages: write
       id-token: write

@@ -28,6 +28,7 @@ jobs:
   prune:
     name: Delete finished branches
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       # main, to see which training reports it holds.
       - uses: actions/checkout@v7

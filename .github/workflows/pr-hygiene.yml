@@ -26,6 +26,7 @@ jobs:
   hygiene:
     name: Pull request title and labels
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     env:
       FROM_DEPENDABOT: ${{ github.actor == 'dependabot[bot]' || github.event.pull_request.user.login == 'dependabot[bot]' }}
       FROM_FORK: ${{ github.event.pull_request.head.repo.full_name != github.repository }}

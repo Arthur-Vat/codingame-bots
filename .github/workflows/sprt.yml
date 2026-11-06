@@ -47,6 +47,7 @@ jobs:
   releases:
     name: New releases
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       games: ${{ steps.scopes.outputs.games }}
       # The games whose SPRT is played by the job `sprt`, on one machine, and
@@ -569,6 +570,7 @@ jobs:
     name: League results
     needs: releases
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
         with:
@@ -682,6 +684,7 @@ jobs:
     # so this job must run when the run is cancelled too, and then fail.
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
         with:

@@ -22,6 +22,7 @@ jobs:
   release:
     name: GitHub release of each new version
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
       - name: Create the missing releases

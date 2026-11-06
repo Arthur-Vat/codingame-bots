@@ -25,12 +25,15 @@ env:
   CG_RUST: "1.90.0"
   CARGO_TERM_COLOR: always
 
+# Each job stops at about three times its longest recent run (at least 5
+# minutes), so a hung job fails in minutes, not after GitHub's 360.
 jobs:
   # Which areas the pull request changes (ADR 0029). Every job below that
   # depends on an area reads this job's outputs, and `ci-passed` gathers them.
   changes:
     name: Changes
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       rust: ${{ steps.scopes.outputs.rust }}
       framework: ${{ steps.scopes.outputs.framework }}
@@ -81,6 +84,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
@@ -109,6 +113,7 @@ jobs:
     # bots (ADR 0029).
     if: needs.changes.outputs.framework == 'true' || needs.changes.outputs.games != '[]'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
@@ -138,6 +143,7 @@ jobs:
     # An empty matrix is an error: skip the job instead.
     if: needs.changes.outputs.games != '[]'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -174,6 +180,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.games != '[]'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -268,6 +275,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.licenses == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     env:
       # The version EmbarkStudios/cargo-deny-action used on 2026-10-11; bump
       # both together, the checksum is the archive's.
@@ -296,6 +304,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.studio == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
@@ -364,6 +373,7 @@ jobs:
     # locked Playwright (1.56.1) cannot install Chromium for the browser
     # tests. Move back once a Playwright release supports it.
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: studio/web
@@ -555,6 +565,7 @@ jobs:
   docs:
     name: Docs and scripts
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
       - name: Indexes, status lines and links match the repository
@@ -595,6 +606,9 @@ jobs:
       - name: Check the order of the cache steps
         if: ${{ !cancelled() }}
         run: scripts/annotate.sh run "Cache step order" scripts/tests/workflow-cache-order-test.sh
+      - name: Check that every job has a time limit
+        if: ${{ !cancelled() }}
+        run: scripts/annotate.sh run "Job time limits" scripts/tests/workflow-timeouts-test.sh
       - name: Test the size check
         if: ${{ !cancelled() }}
         # rustc and iconv are preinstalled on ubuntu-latest.
@@ -633,6 +647,7 @@ jobs:
     # so this job must run when the run is cancelled too, and then fail.
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
         with:

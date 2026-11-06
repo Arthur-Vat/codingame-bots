@@ -71,6 +71,7 @@ jobs:
   plan:
     name: Plan the self-play jobs
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       shards: ${{ steps.shards.outputs.shards }}
     steps:
@@ -185,6 +186,8 @@ jobs:
     # Also when self-play was skipped for an earlier run's data.
     if: ${{ !cancelled() && (needs.selfplay.result == 'success' || needs.selfplay.result == 'skipped') }}
     runs-on: ubuntu-latest
+    # Its longest run took 82 minutes; GitHub's limit is 360.
+    timeout-minutes: 350
     # For this runner's processor: the trainer is a tool, not a bot, and is
     # built and run on the same machine. Fits went about 45% faster with it
     # on 2026-10-15, with the same weights bit for bit there.
