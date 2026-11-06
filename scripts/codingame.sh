@@ -33,7 +33,7 @@
 # status 1); --max-hours H stops it cleanly after H hours (ADR 0057).
 #
 # The ranking games get the release that played them from
-# the releases file of the game (name: see releases_name; lines: submission id, release, UTC date
+# the releases file of the game (games/GAME/codingame-submissions.txt; lines: submission id, release, UTC date
 # of the submission; # starts a comment): fetch adds "release" to the index
 # lines it makes, and fetch --backfill-releases adds it to the lines that lack
 # it, with no API call.
@@ -369,9 +369,7 @@ now_epoch() { # CODINGAME_NOW: epoch seconds, or a file that holds them (tests)
   if [[ -f ${CODINGAME_NOW:-} ]]; then cat "$CODINGAME_NOW"; else echo "${CODINGAME_NOW:-$(date +%s)}"; fi
 }
 
-# The file name is spelled in two parts: the test of this script looks for its
-# last word, to make sure that the script never uses that endpoint.
-releases_name="codingame-subm""issions.txt"
+releases_name="codingame-submissions.txt"
 # The releases that played our ranking games: {"<submission id>": "<release>"}.
 releases_json() {
   local f="games/$game/$releases_name"

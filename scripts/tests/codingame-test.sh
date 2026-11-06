@@ -571,7 +571,7 @@ expect "fetch-ids refuses a log of another id" "$rc" 1
 lacks "token in output" "$out" "$token"
 lacks "token in arguments" "$(cat "$STUB_DIR/requests.log")" "$token"
 expect "token in the data" "$(grep -rlF -- "$token" "$bdata" "$rdata" "$fdata" "$STUB_DIR"/post-*.json || true)" ""
-expect "no submissions endpoint in the script" "$(grep -c submissions "$repo_root/scripts/codingame.sh" || true)" 0
+expect "no submissions endpoint in the script" "$(grep -c "/submissions" "$repo_root/scripts/codingame.sh" || true)" 0
 
 # --push of a batch: a commit of the batch's files only.
 clone2="$tmp_dir/clone2"
