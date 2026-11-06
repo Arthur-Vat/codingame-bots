@@ -272,6 +272,14 @@ fn check_renaming(package: &str, flattened: &str, renamed: &str, report: &rename
     let (mut i, mut j) = (0, 0);
     let (mut declared_selves, mut declared_aliases) = (0, 0);
     let (mut new_of, mut old_of) = (BTreeMap::new(), BTreeMap::new());
+    // The field shorthands by the index where their field's name goes, and
+    // those that got it (`Link { next: a }`).
+    let shorthand_at: BTreeMap<usize, usize> = kept
+        .shorthands
+        .iter()
+        .map(|(&at, &start)| (start, at))
+        .collect();
+    let mut expanded = BTreeSet::new();
     while j < new.len() {
         if let Some(name) = self_name {
             if let Some(length) = [false, true]
@@ -298,6 +306,14 @@ fn check_renaming(package: &str, flattened: &str, renamed: &str, report: &rename
             assert_eq!(text(&new, j).as_deref(), Some(","), "{package}");
             inserted.extend([j, j + 1]);
             j += 2;
+        }
+        if let Some(&at) = shorthand_at.get(&i) {
+            // The old tokens there are `ref`, `mut` or the name before `,`
+            // or `}`: never the name and a `:`.
+            if text(&new, j) == text(&old, at) && text(&new, j + 1).as_deref() == Some(":") {
+                expanded.insert(at);
+                j += 2;
+            }
         }
         let (o, n) = (&old[i], &new[j]);
         aligned.insert(i, j);
@@ -353,6 +369,15 @@ fn check_renaming(package: &str, flattened: &str, renamed: &str, report: &rename
                 assert_eq!(o.text, n.text, "{package}: a kept place changed")
             }
             Kind::Ident => {
+                if kept.shorthands.contains_key(&i) {
+                    assert_eq!(
+                        expanded.contains(&i),
+                        o.text != n.text,
+                        "{package}: the shorthand `{}` became `{}`",
+                        o.text,
+                        n.text
+                    );
+                }
                 let new_name = new_of.entry(o.text.clone()).or_insert(n.text.clone());
                 assert_eq!(
                     *new_name, n.text,

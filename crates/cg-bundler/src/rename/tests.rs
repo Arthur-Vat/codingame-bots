@@ -35,13 +35,20 @@ fn renamed(source: &str) -> String {
     apply(source, &analysis, &edits).text
 }
 
-/// Asserts that `source` keeps each of `names` and renames each of
-/// `renamed_names`.
+/// Asserts that `source` keeps each of `names`, everywhere or at the places
+/// where std may be meant, and renames each of `renamed_names` everywhere.
 fn assert_kept(source: &str, names: &[&str], renamed_names: &[&str]) {
-    let kept = kept_in(source);
+    let tokens = tokens(source).unwrap();
+    let all = kept(&tokens, StdNames::get());
+    let mut somewhere = all.names.clone();
+    somewhere.extend(all.positions.iter().map(|&at| tokens[at].text.clone()));
     for name in names {
-        assert!(kept.contains(*name), "{name} should be kept in {source}");
+        assert!(
+            somewhere.contains(*name),
+            "{name} should be kept in {source}"
+        );
     }
+    let kept = kept_in(source);
     for name in renamed_names {
         assert!(
             !kept.contains(*name),
@@ -424,7 +431,9 @@ fn the_middle_of_a_std_path_is_kept_only_there() {
         .iter()
         .map(|&at| tokens[at].text.as_str())
         .collect();
-    assert_eq!(positions, ["cell", "collections"]);
+    // `new` and `len` keep their names as members; a local `len` would be
+    // renamed.
+    assert_eq!(positions, ["cell", "collections", "new", "new", "len"]);
     let (out, report) = rename(source, &rustc()).unwrap();
     assert_eq!(report.refused, 0);
     assert!(out.contains("use std::cell::RefCell;"), "{out}");
@@ -708,4 +717,96 @@ fn a_program_with_captures_made_arguments_prints_the_same() {
     }
     assert!(out.contains("{{literal}}"), "{out}");
     assert_eq!(output_of(&out, "after"), output_of(source, "before"));
+}
+
+#[test]
+fn std_member_names_are_renamed_away_from_their_member_places() {
+    let source = "struct Link { next: usize, pub count: u32 }
+        struct Walk { at: usize }
+        impl Iterator for Walk {
+            type Item = usize;
+            fn next(&mut self) -> Option<usize> { self.at += 1; Some(self.at) }
+        }
+        fn inner() -> u32 { 3 }
+        fn make(next: usize) -> Link { let count = inner(); Link { next, count } }
+        fn widen(from: u32) -> u64 { u64::from(from) }
+        fn same(next: Link) -> Link { next }
+        fn main() {
+            let mut walk = Walk { at: 0 };
+            let next = walk.next().unwrap();
+            let count = (0..next).count();
+            let mut link = make(next + count);
+            println!(\"{next} {count} {}\", widen(3));
+            let Link { ref mut next, count } = link;
+            *next += count as usize;
+            let index = link.next;
+            link = same(link);
+            println!(\"{index} {} {}\", link.next, link.count);
+        }";
+    let tokens = tokens(source).unwrap();
+    let kept = kept(&tokens, StdNames::get());
+    // A free `fn` named like a member is no member; nor is a local named
+    // like a member that a std path reaches (`u64::from`).
+    for name in ["next", "count", "inner", "from"] {
+        assert!(!kept.names.contains(name), "{name}");
+    }
+    let shorthands: Vec<(&str, &str)> = kept
+        .shorthands
+        .iter()
+        .map(|(&at, &start)| (tokens[at].text.as_str(), tokens[start].text.as_str()))
+        .collect();
+    // `-> Link { next }` is a body, not a shorthand.
+    assert_eq!(
+        shorthands,
+        [
+            ("next", "next"),
+            ("count", "count"),
+            ("next", "ref"),
+            ("count", "count")
+        ]
+    );
+
+    let (out, report) = rename(source, &rustc()).unwrap();
+    assert_eq!(report.refused, 0, "{out}");
+    for kept in [
+        "{ next: F, pub count: u32 }",
+        "fn next(&mut self)",
+        ".next().unwrap()",
+        ".count();",
+        "Item = F",
+        "::from(",
+        ".next, ",
+        ".count)",
+        "{ next:ref mut ",
+        "{ next:a, count:b }",
+    ] {
+        assert!(out.contains(kept), "{kept} in {out}");
+    }
+    for renamed in [
+        "let next",
+        "let count",
+        "let index",
+        "(next:",
+        "*next",
+        "inner",
+        "(from",
+    ] {
+        assert!(!out.contains(renamed), "{renamed} in {out}");
+    }
+    assert!(out.len() < source.len());
+    assert_eq!(
+        output_of(&out, "members-after"),
+        output_of(source, "members-before")
+    );
+}
+
+#[test]
+fn a_member_name_whose_shorthands_cost_more_is_kept() {
+    // Renaming `count` saves 3 * 4 characters and its two shorthands
+    // cost 2 * 6.
+    let source = "struct Tally { count: u32 }
+        fn make(count: u32) -> (Tally, Tally) { (Tally { count }, Tally { count }) }
+        fn main() { println!(\"{}\", make(2).0.count); }";
+    let names = mapping(source);
+    assert!(!names.contains_key("count"), "{names:?}");
 }

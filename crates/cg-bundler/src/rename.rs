@@ -49,23 +49,34 @@
 //!   or a name of a std prelude;
 //! - a macro called with `!`, unless the bundle defines it with
 //!   `macro_rules!` and std defines no name like it;
-//! - after `.`, `::`, `fn` or `type`, where std defines a member of that name
-//!   that code outside std can reach (a `pub` `fn`, `const`, `type` or
-//!   `static`, an item of a trait or a trait impl, or a `pub` field; rustc's
-//!   method lookup skips the others): `x.len()`, `u32::MAX`, `fn fmt` in an
-//!   `impl Display`, `type Item`. Wherever it is, such a name may mean std's
-//!   member, and renaming the bundle's own would make the call reach the
-//!   bundle's instead (a trait of the bundle implemented for a std type)
-//!   without an error; also in an associated type binding
-//!   (`Iterator<Item = u8>`);
+//! - at its member places, when std defines a member of that name that code
+//!   outside std can reach (a `pub` `fn`, `const`, `type` or `static`, an
+//!   item of a trait or a trait impl, or a `pub` field; rustc's method
+//!   lookup skips the others): after `.` or `::`, after `fn` or `type` in
+//!   an `impl` or a `trait` (`x.len()`, `u32::MAX`, `fn fmt` in an `impl
+//!   Display`, `type Item`; a free `fn next` is renamed with its calls), in an
+//!   associated type binding (`Iterator<Item = u8>`), and, for a name with
+//!   such a place, where it names a field (`struct Link { next: u8 }`,
+//!   `Link { next: 1 }`). There such a name may mean std's member, and
+//!   renaming the bundle's own would make the call reach the bundle's
+//!   instead (a trait of the bundle implemented for a std type) without an
+//!   error. Elsewhere it is a local, a parameter or an item of the bundle,
+//!   and is renamed: `let next = it.next();` becomes `let a = it.next();`,
+//!   and a field shorthand gets its field's name, `Link { next }` becoming
+//!   `Link { next: a }` (where braces follow a `CamelCase` name or `Self`;
+//!   rustc rejects a wrong guess, and a renaming that does not compile is
+//!   undone). A name is renamed only where that saves more than its
+//!   shorthands grow;
 //! - the last segment of a path that starts with `std::`, `core::` or
 //!   `alloc::`, a name a `use` tree of such a path imports (`io` in
 //!   `use std::io::{self, Read}`), or a name after `::` in a path whose
 //!   first name is one of those, a primitive type, a prelude name or a name
 //!   given with `as` to what a std `use` imports, and so on along the path
 //!   (`io::stdin` after `use std::io`, `Ordering::Less`,
-//!   `Vec::with_capacity`, `u32::MAX`). Only a path's first name leads:
-//!   `crate::board::Ordering::Less` is the bundle's own path;
+//!   `Vec::with_capacity`, `u32::MAX`), except that a member of std there
+//!   that no use tree imports keeps its name at its member places only
+//!   (see above: a local `from` beside `u64::from`). Only a path's first
+//!   name leads: `crate::board::Ordering::Less` is the bundle's own path;
 //! - in an attribute (`#[derive(Clone)]`, `#[allow(dead_code)]`);
 //! - in braces in a string literal, where formatting macros read names
 //!   (`"{score}"`, `"{:width$}"`), except a name that may become an
@@ -510,7 +521,7 @@ pub fn assign(analysis: &Analysis<'_>, active: &BTreeSet<Unit>, std: &StdNames) 
 
     let mut namer = Namer::default();
     let mut edits = Edits::default();
-    for (_, request) in requests {
+    for (count, request) in requests {
         let (case, old) = match &request {
             Request::Name(name) => (Case::of(name), name.as_str()),
             Request::SelfName => (Case::Lower, "self"),
@@ -526,6 +537,19 @@ pub fn assign(analysis: &Analysis<'_>, active: &BTreeSet<Unit>, std: &StdNames) 
         };
         if cg_size(&fresh) >= cg_size(old) {
             continue;
+        }
+        if let Request::Name(name) = &request {
+            // Each field shorthand of the name grows by `name:`.
+            let shorthands = analysis
+                .kept
+                .shorthands
+                .keys()
+                .filter(|&&at| analysis.tokens[at].text == *name)
+                .count();
+            let saved = count * (cg_size(old) - cg_size(&fresh));
+            if shorthands > 0 && saved <= shorthands * (cg_size(old) + 1) {
+                continue;
+            }
         }
         match request {
             Request::Name(name) => {
@@ -604,7 +628,15 @@ pub fn apply(source: &str, analysis: &Analysis<'_>, edits: &Edits) -> Applied {
         match token.kind {
             Kind::Ident if !analysis.kept.positions.contains(&at) => {
                 if let Some(new) = edits.names.get(&token.text) {
-                    replace.insert(at, (new.clone(), vec![Unit::Name(token.text.clone())]));
+                    let unit = Unit::Name(token.text.clone());
+                    // A field shorthand names its field: `Link { next: a }`.
+                    if let Some(&start) = analysis.kept.shorthands.get(&at) {
+                        insert
+                            .entry(start)
+                            .or_default()
+                            .push((format!("{}:", token.text), unit.clone()));
+                    }
+                    replace.insert(at, (new.clone(), vec![unit]));
                 }
             }
             Kind::Number if token.text.contains('_') => {
