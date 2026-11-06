@@ -77,7 +77,8 @@ if [[ -n $first ]]; then
   qstatus="$(head -n 1 "$qf")"
   qbody="$(tail -n +2 "$qf")"
   rm "$qf"
-  reply "$qstatus" "$qbody"
+  read -r qs qflag <<<"$qstatus"
+  reply "$qs" "$qbody" "$qflag"
 elif [[ -f $STUB_DIR/$name.429once ]]; then
   rm "$STUB_DIR/$name.429once"
   reply 429 '{"error":"rate-limited"}' retry
@@ -288,7 +289,11 @@ chmod +x "$bare/hooks/pre-receive"
 rc=0
 out="$("$cscript" fetch toy --push 2>&1)" || rc=$?
 expect "rejected push exit" "$rc" 1
-expect "worktree removed after a rejected push" "$(git -C "$clone" worktree list | wc -l | tr -d ' ')" 1
+expect "worktree kept after a rejected push" "$(git -C "$clone" worktree list | wc -l | tr -d ' ')" 2
+contains "rejected push says how to push by hand" "$out" "push them by hand: git -C "
+kept="$(sed -n 's/^the push failed; the games are kept, committed as [0-9a-f]* in //p' <<<"$out")"
+expect "kept worktree holds the commit" "$(git -C "$kept" log -1 --format=%s)" "chore(repo): codingame games: toy, 2 new games"
+git -C "$clone" worktree remove --force "$kept"
 expect "no local branch after a rejected push" "$(git -C "$clone" for-each-ref --format='%(refname)' refs/heads | grep -c codingame || true)" 0
 rm "$bare/hooks/pre-receive"
 
@@ -585,6 +590,126 @@ expect "batch push subject" "$(git -C "$bare2" log -1 --format=%s refs/heads/cla
 expect "batch push files" "$(git -C "$bare2" ls-tree -r --name-only refs/heads/claude/codingame-games | sed 's|leaderboard/.*|leaderboard/X|' | tr '\n' ' ')" "toy/batches/tp.json toy/index.jsonl toy/leaderboard/X toy/logs/9201.json "
 expect "batch push trailer" "$(git -C "$bare2" log -1 --format=%b refs/heads/claude/codingame-games | head -n 1)" "Co-Authored-By: Test <t@example.com>"
 expect "batch push leaves no worktree" "$(git -C "$clone2" worktree list | wc -l | tr -d ' ')" 1
+
+# --- review fixes: refusals, outages, resumes and pushes ---
+
+# A 429 on starting a test game waits and starts again.
+enqueue "$post_name" 01 "429 retry" '{"error":"rate-limited"}'
+enqueue "$post_name" 02 200 "$(done_reply 5301 "$(tglog 9301 seed=1 Gamma 33 0 '[300,100]')" 5 20)"
+before="$(posts)"
+run batch toy "$release_file" --opponents Gamma --games-per-opponent 1 --name t429 --play --data "$bdata"
+expect "429 on start exit" "$rc" 0
+expect "429 on start posts twice" "$(($(posts) - before))" 2
+expect "429 on start stored" "$(jq -r '.games[0].status' "$bdata/toy/batches/t429.json")" "done"
+
+# A 409 that is not a running test game of ours is a refusal, not waited for;
+# three of them in a row stop the batch, leaving the games planned.
+enqueue "$post_name" 01 409 '{"type":"https://www.codingame.com/api/v1/problems/test-game-running","status":409}'
+enqueue "$post_name" 02 409 '{"type":"https://www.codingame.com/api/v1/problems/challenge-paused","status":409,"test_game_id":77}'
+enqueue "$post_name" 03 409 '{"type":"https://www.codingame.com/api/v1/problems/challenge-paused","status":409}'
+: >"$STUB_DIR/requests.log"
+before="$(posts)"
+run batch toy "$release_file" --opponents Gamma --games-per-opponent 5 --name t409 --play --data "$bdata"
+expect "409 refusals exit" "$rc" 1
+expect "409 refusals: three posts, no waiting" "$(($(posts) - before))" 3
+expect "409 refusals poll nothing" "$(grep -c 'test-games/' "$STUB_DIR/requests.log" || true)" 0
+contains "409 refusal named" "$out" "FAILED after 1 attempts: 409 challenge-paused"
+contains "409 without test_game_id named" "$out" "409 test-game-running"
+contains "stop message" "$out" "stopping: 3 games failed in a row"
+expect "stopped games stay planned" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/t409.json")" "planned,planned,planned,planned,planned"
+
+# An outage: 3 games failing 3 times each stop the batch after 9 starts; a
+# resume plays the 5 games.
+for n in 1 2 3 4 5 6 7 8 9; do
+  enqueue "$post_name" "$(printf '%02d' "$n")" 200 '{"test_game_id":5400,"status":"failed","failure":"No code machine was available to run the game in time.","hint":"wait"}'
+done
+before="$(posts)"
+run batch toy "$release_file" --opponents Beta --games-per-opponent 5 --name tstreak --play --data "$bdata"
+expect "outage exit" "$rc" 1
+expect "outage burns 9 starts" "$(($(posts) - before))" 9
+contains "outage stop message" "$out" "stopping: 3 games failed in a row"
+expect "outage leaves the games planned" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/tstreak.json")" "planned,planned,planned,planned,planned"
+for n in 1 2 3 4 5; do
+  enqueue "$post_name" "$(printf '%02d' "$n")" 200 "$(done_reply "540$n" "$(tglog "930$((n + 1))" seed=1 Beta 22 0 '[300,100]')" 5 20)"
+done
+before="$(posts)"
+run batch toy "$release_file" --opponents Beta --games-per-opponent 5 --name tstreak --play --data "$bdata"
+expect "outage resume exit" "$rc" 0
+expect "outage resume plays 5" "$(($(posts) - before))" 5
+expect "outage resume done" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/tstreak.json")" "done,done,done,done,done"
+
+# A resume plays the games that failed for a reason other than a refusal, and
+# not the refused ones (tfail: a failure of the service, and INVALID_OPPONENT).
+enqueue "$post_name" 01 200 "$(done_reply 5501 "$(tglog 9501 seed=1 Beta 22 0 '[300,100]')" 5 20)"
+before="$(posts)"
+run batch toy "$release_file" --opponents Beta --games-per-opponent 3 --name tfail --play --data "$bdata"
+expect "retry of failed games exit (the refused game stays failed)" "$rc" 1
+expect "retry plays one game" "$(($(posts) - before))" 1
+expect "retry statuses" "$(jq -c '[.games[] | [.status, .failure]]' "$bdata/toy/batches/tfail.json")" '[["done",null],["done",null],["failed","INVALID_OPPONENT"]]'
+
+# Without --name an unfinished batch of the same release, maps and opponents is
+# resumed, whatever day it was made; a finished one is not.
+jq -c '.name = "1999-01-01-toy-v1-top2" | .created_at = "1999-01-01T00:00:00Z"
+  | .games[2] |= (.status = "planned" | .attempts = 0 | .game_id = null | .test_game_id = null | .seconds = null)' \
+  "$bdata/toy/batches/tb1.json" >"$bdata/toy/batches/1999-01-01-toy-v1-top2.json"
+enqueue "$post_name" 01 200 "$(done_reply 5601 "$(tglog 9601 seed=2 Alpha 11 0 '[300,100]')" 5 20)"
+before="$(posts)"
+run batch toy "$release_file" --top 2 --games-per-opponent 2 --play --data "$bdata"
+expect "auto resume exit" "$rc" 0
+contains "auto resume says so" "$out" "resuming the unfinished batch 1999-01-01-toy-v1-top2"
+expect "auto resume plays one game" "$(($(posts) - before))" 1
+run batch toy "$release_file" --top 2 --games-per-opponent 2 --data "$bdata"
+contains "a finished batch is not resumed" "$out" "(new)"
+lacks "a finished batch is not resumed, name" "$out" "1999-01-01"
+
+# fetch-ids that stores nothing pushes nothing.
+tip="$(git -C "$bare2" rev-parse refs/heads/claude/codingame-games)"
+rc=0
+out="$(cd "$clone2" && scripts/codingame.sh fetch-ids toy 8003 --push 2>&1)" || rc=$?
+expect "fetch-ids nothing exit" "$rc" 1
+expect "fetch-ids nothing pushes nothing" "$(git -C "$bare2" rev-parse refs/heads/claude/codingame-games)" "$tip"
+expect "fetch-ids nothing leaves no worktree" "$(git -C "$clone2" worktree list | wc -l | tr -d ' ')" 1
+
+# A failure in the middle of a run still pushes the games stored so far.
+newclone() { # newclone <name>: a clone with a bare origin and the stand-in files
+  git init -q --bare "$tmp_dir/$1.git"
+  git clone -q "$tmp_dir/$1.git" "$tmp_dir/$1" 2>/dev/null
+  mkdir -p "$tmp_dir/$1/scripts" "$tmp_dir/$1/games/toy/releases"
+  cp "$repo/scripts/codingame.sh" "$tmp_dir/$1/scripts/"
+  cp "$repo/games/toy/evaluation.env" "$repo/games/toy/codingame-seeds.txt" "$tmp_dir/$1/games/toy/"
+  cp "$repo/$release_file" "$tmp_dir/$1/$release_file"
+  git -C "$tmp_dir/$1" add -A
+  git -C "$tmp_dir/$1" commit -q -m "chore(repo): stand-in"
+}
+newclone clone3
+enqueue "$post_name" 01 200 "$(done_reply 5701 "$(tglog 9701 seed=1 Beta 22 0 '[300,100]')" 5 20)"
+for n in 02 03 04 05 06 07; do enqueue "$post_name" "$n" "429 retry" '{"error":"rate-limited"}'; done
+rc=0
+out="$(cd "$tmp_dir/clone3" && scripts/codingame.sh batch toy "$release_file" --opponents Beta --games-per-opponent 2 --name tpf --play --push 2>&1)" || rc=$?
+expect "mid-run failure exit" "$rc" 1
+contains "mid-run failure reported" "$out" "still rate limited"
+expect "mid-run failure subject" "$(git -C "$tmp_dir/clone3.git" log -1 --format=%s refs/heads/claude/codingame-games)" "chore(repo): codingame games: toy, batch tpf, 1 game"
+expect "mid-run failure pushed the log" "$(git -C "$tmp_dir/clone3.git" ls-tree -r --name-only refs/heads/claude/codingame-games | grep -c 'logs/9701.json')" 1
+expect "mid-run failure leaves no worktree" "$(git -C "$tmp_dir/clone3" worktree list | wc -l | tr -d ' ')" 1
+rm -rf "$STUB_DIR/$post_name.queue"
+
+# A rejected push keeps the games, and says how to push them.
+newclone clone4
+mkdir -p "$tmp_dir/clone4.git/hooks"
+printf '#!/bin/sh\nexit 1\n' >"$tmp_dir/clone4.git/hooks/pre-receive"
+chmod +x "$tmp_dir/clone4.git/hooks/pre-receive"
+enqueue "$post_name" 01 200 "$(done_reply 5801 "$(tglog 9801 seed=1 Beta 22 0 '[300,100]')" 5 20)"
+rc=0
+out="$(cd "$tmp_dir/clone4" && scripts/codingame.sh batch toy "$release_file" --opponents Beta --games-per-opponent 1 --name trej --play --push 2>&1)" || rc=$?
+expect "rejected batch push exit" "$rc" 1
+contains "rejected batch push: how to push" "$out" "push them by hand: git -C "
+kept="$(sed -n 's/^the push failed; the games are kept, committed as [0-9a-f]* in //p' <<<"$out")"
+expect "rejected batch push keeps the worktree" "$(git -C "$tmp_dir/clone4" worktree list | wc -l | tr -d ' ')" 2
+expect "rejected batch push: the log is in the kept commit" "$(git -C "$kept" ls-tree -r --name-only HEAD | grep -c 'logs/9801.json')" 1
+rm "$tmp_dir/clone4.git/hooks/pre-receive"
+commit_id="$(git -C "$kept" rev-parse HEAD)"
+git -C "$kept" push -q origin "$commit_id:refs/heads/claude/codingame-games"
+expect "pushing by hand works" "$(git -C "$tmp_dir/clone4.git" log -1 --format=%s refs/heads/claude/codingame-games)" "chore(repo): codingame games: toy, batch trej, 1 game"
 
 if ((failures > 0)); then
   echo "$failures of $checks codingame checks failed" >&2

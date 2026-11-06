@@ -332,6 +332,10 @@ nap() { "${CODINGAME_SLEEP:-sleep}" "$1"; }
 publish() { # publish <what>
   local noun_what="$1" message commit
   published=true
+  if [[ -z $noun_what ]]; then
+    echo "nothing to commit"
+    return 0
+  fi
   # Only the data files, never a temporary one.
   git -C "$worktree" add -- "$game/index.jsonl" "$game/leaderboard"
   if compgen -G "$worktree/$game/logs/*.json" >/dev/null; then
@@ -352,7 +356,15 @@ publish() { # publish <what>
       git -C "$worktree" commit -q -m "$message"
       commit="$(git -C "$worktree" rev-parse HEAD)"
     fi
-    git -C "$worktree" push origin "$commit:refs/heads/claude/codingame-games"
+    if ! git -C "$worktree" push origin "$commit:refs/heads/claude/codingame-games"; then
+      # Keep the games: the commit stays reachable from the worktree's HEAD.
+      git -C "$worktree" update-ref --no-deref HEAD "$commit" || true
+      remove_worktree=false
+      exit_status=1
+      echo "the push failed; the games are kept, committed as $commit in $worktree" >&2
+      echo "push them by hand: git -C $worktree push origin $commit:refs/heads/claude/codingame-games" >&2
+      echo "(then remove the worktree: git worktree remove --force $worktree)" >&2
+    fi
   fi
 }
 
@@ -401,11 +413,19 @@ record_game() { # record_game <log file> <kind> <ended_at or ""> <extra JSON obj
     rec_err="log not usable ($(head -n 1 "$scratch/jq-err"))"
     return 1
   fi
-  jq -c 'del(.limits)' "$1" >"$out/logs/.$id.json.tmp"
-  mv "$out/logs/.$id.json.tmp" "$out/logs/$id.json"
-  cat "$line" >>"$index"
-  jq -cs 'unique_by(.game_id)[]' "$index" >"$out/.index.tmp"
-  mv "$out/.index.tmp" "$index"
+  # Called in conditions, where set -e is off: every step is checked, the log
+  # first, so an index line never lacks its log.
+  if ! jq -c 'del(.limits)' "$1" >"$out/logs/.$id.json.tmp" ||
+    ! mv "$out/logs/.$id.json.tmp" "$out/logs/$id.json"; then
+    rec_err="cannot write the log of game $id"
+    return 1
+  fi
+  if ! cat "$line" >>"$index" ||
+    ! jq -cs 'unique_by(.game_id)[]' "$index" >"$out/.index.tmp" ||
+    ! mv "$out/.index.tmp" "$index"; then
+    rec_err="cannot write the index"
+    return 1
+  fi
   rec_id="$id"
 }
 
@@ -435,6 +455,11 @@ wait_quota() {
   fi
 }
 
+# The slug of an RFC 9457 problem: the end of its type (or the error member).
+problem_slug() { # problem_slug <body file>
+  jq -r '((.type // "") | split("/") | last // "") as $t | if $t != "" then $t else (.error // "") end' "$1" 2>/dev/null || true
+}
+
 # Waits for a test game that runs (ours, or the one a 409 names) to end.
 await_test_game() { # await_test_game <test game id>
   local polls st
@@ -452,7 +477,7 @@ await_test_game() { # await_test_game <test game id>
 # request: no retry) or retry, with tg_message, tg_test_id and tg_seconds.
 tg_outcome="" tg_message="" tg_test_id=null tg_seconds=0
 play_once() { # play_once <body file>
-  local busy=0 id st polls=0 t0
+  local busy=0 id st polls=0 t0 slug
   tg_outcome=retry tg_message="" tg_test_id=null tg_seconds=0
   while :; do
     wait_quota
@@ -462,18 +487,21 @@ play_once() { # play_once <body file>
     case "$status" in
       200 | 202) break ;;
       409)
-        # One test game at a time: wait for the running one, then start again.
+        # Only a running test game of ours is waited for (one at a time); any
+        # other 409 (challenge-paused...) is a refusal that names its slug.
+        slug="$(problem_slug "$scratch/tg.json")"
+        id="$(jq -r '.test_game_id // empty' "$scratch/tg.json" 2>/dev/null || true)"
+        if [[ $slug != test-game-running || ! $id =~ ^[0-9]+$ ]]; then
+          tg_outcome=refused
+          tg_message="409 ${slug:-conflict}"
+          return 0
+        fi
         busy=$((busy + 1))
         if ((busy > 20)); then
           tg_message="another test game keeps running (409)"
           return 0
         fi
-        id="$(jq -r '.test_game_id // empty' "$scratch/tg.json" 2>/dev/null || true)"
-        if [[ $id =~ ^[0-9]+$ ]]; then
-          await_test_game "$id" || true
-        else
-          nap 30
-        fi
+        await_test_game "$id" || true
         ;;
       400)
         tg_outcome=rejected
@@ -526,10 +554,11 @@ play_once() { # play_once <body file>
 
 # A game played until it is done or has failed 3 times; a refused request is
 # not tried again. Sets pg_outcome (done or failed), pg_attempts, pg_message.
-pg_outcome="" pg_attempts=0 pg_message=""
+pg_outcome="" pg_attempts=0 pg_message="" pg_refusal=""
 play_game() { # play_game <body file> <attempts so far> <label>
   pg_attempts="$2"
   pg_message=""
+  pg_refusal=""
   while :; do
     pg_attempts=$((pg_attempts + 1))
     play_once "$1"
@@ -538,9 +567,10 @@ play_game() { # play_game <body file> <attempts so far> <label>
         pg_outcome="done"
         return 0
         ;;
-      rejected)
+      rejected | refused)
         pg_outcome=failed
         pg_message="$tg_message"
+        pg_refusal="$tg_outcome"
         return 0
         ;;
     esac
@@ -641,13 +671,45 @@ new_batch() { # new_batch <name> <sha256>
     >"$scratch/batch.json"
 }
 
+# A game to play: planned, or failed for a reason other than a refusal of the
+# request (the failure of a refusal is an upper-case code such as
+# INVALID_OPPONENT, which a retry would meet again).
+playable_jq='(.status == "planned" or (.status == "failed" and ((.failure // "") | test("^[A-Z][A-Z0-9_]*$") | not)))'
+
+# The name of the newest unfinished batch of this release (file) and maps
+# with the same opponents (the named ones, or as many as --top), if any.
+find_resumable() { # find_resumable <release sha256>
+  local f names_json="[]" names_arr=()
+  if [[ -n $opp_names ]]; then
+    IFS=, read -ra names_arr <<<"$opp_names"
+    names_json="$(jq -cn '$ARGS.positional' --args "${names_arr[@]}")"
+  fi
+  for f in "$out"/batches/*.json; do
+    [[ -f $f ]] || continue
+    jq -r --arg rel "$release" --arg sha "$1" --argjson k "$per_opp" --argjson top "$top" --argjson names "$names_json" "
+      select(.release == \$rel and .release_sha256 == \$sha and (.seeds | length) == \$k
+             and any(.games[]; $playable_jq)
+             and (if (\$names | length) > 0 then ([.opponents[].name] | sort) == (\$names | sort)
+                  else (.opponents | length) == \$top end))
+      | \"\(.created_at) \(.name)\"" "$f" 2>/dev/null || true
+  done | sort | tail -n 1 | cut -d' ' -f2-
+}
+
 run_batch() {
-  local name sha state total i planned stored=0 opp aid opts att result failed_games
+  local name sha state total i planned stored=0 opp aid opts att result failed_games streak=0 stopped=false resumable
+  local streak_games=()
   [[ -n $seeds_file ]] || seeds_file="games/$game/codingame-seeds.txt"
   [[ $seeds_file == /* || ! -f $orig_pwd/$seeds_file ]] || seeds_file="$orig_pwd/$seeds_file"
+  sha="$(sha256sum "$release_path" | cut -d' ' -f1)"
   name="$batch_name"
   if [[ -z $name ]]; then
-    if [[ -n $opp_names ]]; then
+    # Without --name an unfinished batch of this release, maps and opponents
+    # is resumed (the newest), whatever day it is; else a new name.
+    resumable="$(find_resumable "$sha")"
+    if [[ -n $resumable ]]; then
+      name="$resumable"
+      echo "resuming the unfinished batch $name"
+    elif [[ -n $opp_names ]]; then
       name="$(date -u +%F)-$release-${opp_names//,/+}"
       name="${name//[^A-Za-z0-9._+-]/_}"
     else
@@ -656,7 +718,6 @@ run_batch() {
   fi
   batch_name_used="$name"
   batch_file="$out/batches/$name.json"
-  sha="$(sha256sum "$release_path" | cut -d' ' -f1)"
 
   if [[ -f $batch_file ]]; then
     jq -e 'type == "object" and (.games | type == "array") and (.opponents | type == "array")' "$batch_file" >/dev/null 2>&1 ||
@@ -670,7 +731,7 @@ run_batch() {
     new_batch "$name" "$sha"
   fi
   total="$(jq '.games | length' "$scratch/batch.json")"
-  planned="$(jq '[.games[] | select(.status == "planned")] | length' "$scratch/batch.json")"
+  planned="$(jq "[.games[] | select($playable_jq)] | length" "$scratch/batch.json")"
 
   echo "batch $name ($state): release $release, puzzle $puzzle"
   echo "opponents:"
@@ -694,11 +755,11 @@ run_batch() {
   publish_what="batch $name, 0 games"
   open_session
   for ((i = 0; i < total; i++)); do
-    [[ $(jq -r --argjson i "$i" '.games[$i].status' "$scratch/batch.json") == planned ]] || continue
+    [[ $(jq -r --argjson i "$i" ".games[\$i] | if $playable_jq then \"yes\" else \"no\" end" "$scratch/batch.json") == yes ]] || continue
     opp="$(jq -r --argjson i "$i" '.games[$i].opponent' "$scratch/batch.json")"
     aid="$(jq -r --argjson i "$i" '.games[$i].agent_id' "$scratch/batch.json")"
     opts="$(jq -r --argjson i "$i" '.games[$i].game_options' "$scratch/batch.json")"
-    att="$(jq -r --argjson i "$i" '.games[$i].attempts' "$scratch/batch.json")"
+    att="$(jq -r --argjson i "$i" 'if .games[$i].status == "planned" then .games[$i].attempts else 0 end' "$scratch/batch.json")"
     jq -n --rawfile code "$release_path" --argjson opp "$aid" --arg o "$opts" \
       '{language: "Rust", code: $code, opponents: [$opp], game_options: $o, show_in_ide: false,
         overwrite_ide_code: false, overwrite_ide_game_parameters: false}' >"$scratch/post.json"
@@ -713,18 +774,42 @@ run_batch() {
         --argjson gid "$rec_id" --argjson sec "$tg_seconds"
       save_batch
       stored=$((stored + 1))
+      streak=0
+      streak_games=()
       publish_what="batch $name, $(plural "$stored" game)"
       result="$(result_of "$out/logs/$rec_id.json")"
       echo "game $((i + 1))/$total: vs $opp, $opts, $result, ${tg_seconds} s, quota left ${quota_remaining:-?}"
     else
-      [[ $pg_outcome == "done" ]] && pg_message="$rec_err"
+      if [[ $pg_outcome == "done" ]]; then
+        pg_message="$rec_err"
+        pg_refusal=""
+      fi
       # shellcheck disable=SC2016
       batch_set '.games[$i].status = "failed" | .games[$i].attempts = $att | .games[$i].failure = $msg' \
         --argjson i "$i" --argjson att "$pg_attempts" --arg msg "$pg_message"
       save_batch
       echo "game $((i + 1))/$total: vs $opp, $opts, FAILED after $pg_attempts attempts: $pg_message, quota left ${quota_remaining:-?}"
+      # A game refused for itself (a 400 code) says nothing about the service.
+      if [[ $pg_refusal != rejected ]]; then
+        streak=$((streak + 1))
+        streak_games+=("$i")
+        if ((streak >= 3)); then
+          stopped=true
+          break
+        fi
+      fi
     fi
   done
+  if [[ $stopped == true ]]; then
+    # Those games stay planned, so that a resume plays them again.
+    for i in "${streak_games[@]}"; do
+      # shellcheck disable=SC2016
+      batch_set '.games[$i].status = "planned" | .games[$i].attempts = 0' --argjson i "$i"
+    done
+    save_batch
+    echo "stopping: 3 games failed in a row (the service looks down); they stay planned. Run the same command later to play them." >&2
+    exit_status=1
+  fi
   batch_totals
   failed_games="$(jq '[.games[] | select(.status == "failed")] | length' "$scratch/batch.json")"
   ((failed_games == 0)) || exit_status=1
@@ -733,7 +818,7 @@ run_batch() {
 # --- replay ---
 
 run_replay() {
-  local names_json="[]" names_arr=() count i gid opp result stored=0 failed_games=0
+  local names_json="[]" names_arr=() count i gid opp result stored=0 failed_games=0 streak=0
   if [[ -n $opp_names ]]; then
     IFS=, read -ra names_arr <<<"$opp_names"
     names_json="$(jq -cn '$ARGS.positional' --args "${names_arr[@]}")"
@@ -758,7 +843,6 @@ run_replay() {
     echo "dry run: no game was played and nothing was written; add --play to play the games"
     return 0
   fi
-  publish_what="replay $release, 0 games"
   ((count > 0)) || return 0
   open_session
   for ((i = 0; i < count; i++)); do
@@ -772,6 +856,7 @@ run_replay() {
       record_game "$scratch/tg-log.json" replay "$(now_utc)" \
         "$(jq -nc --argjson g "$gid" --arg r "$release" '{replay_of: $g, release: $r}')" null; then
       stored=$((stored + 1))
+      streak=0
       publish_what="replay $release, $(plural "$stored" game)"
       result="$(result_of "$out/logs/$rec_id.json")"
       echo "replay of $gid: vs $opp, $result, ${tg_seconds} s, quota left ${quota_remaining:-?}"
@@ -779,6 +864,11 @@ run_replay() {
       [[ $pg_outcome == "done" ]] && pg_message="$rec_err"
       failed_games=$((failed_games + 1))
       echo "replay of $gid: vs $opp, FAILED after $pg_attempts attempts: $pg_message, quota left ${quota_remaining:-?}"
+      streak=$((streak + 1))
+      if ((streak >= 3)); then
+        echo "stopping: 3 games failed in a row (the service looks down). Run the same command later." >&2
+        break
+      fi
     fi
   done
   echo "replayed: $stored, failed: $failed_games"
@@ -789,7 +879,6 @@ run_replay() {
 
 run_fetch_ids() {
   local id log stored=0 known=0 failed_games=0
-  publish_what="0 games by id"
   open_session
   for id in "${ids[@]}"; do
     if [[ -s $index ]] && jq -se --argjson id "$id" 'any(.[]; .game_id == $id)' "$index" >/dev/null 2>&1; then
@@ -978,4 +1067,4 @@ new=$((fetched + recovered))
 noun="games"
 ((new != 1)) || noun="game"
 finish "$new new $noun"
-((failed == 0)) || exit 1
+((failed == 0 && exit_status == 0)) || exit 1
