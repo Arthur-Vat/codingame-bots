@@ -111,6 +111,8 @@ The record of ADR 0027 gains an optional `origin` (CodinGame's game id, the kind
 
 ## Fetching and playing
 
+Games are also collected every day, by a dedicated session the owner approves once a day: up to 500 test games of the current release against that day's top 10 ([ADR 0057](adr/0057-daily-collection-of-codingame-games.md)).
+
 `scripts/codingame.sh` (a shell script with `curl` and `jq`, like the other scripts; the token is ADR 0047's, read from `~/.config/codingame/token` and never printed):
 
 - `fetch GAME [--submission ID]`: takes a leaderboard snapshot, pages through the ranking games of the current (or a given) submission and stores the logs of the games that ended and are not stored yet. Rerunning it fetches only what is new.

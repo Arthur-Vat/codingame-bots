@@ -57,7 +57,8 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0053](0053-weekly-task-starts-the-branch-workflow.md) | The weekly task starts the League weekly workflow itself | Accepted |
 | [0054](0054-local-checks-follow-ci-scopes.md) | Local checks follow CI's scopes | Accepted |
 | [0055](0055-pin-rust-in-the-repository.md) | Pin CodinGame's Rust in the repository | Accepted |
-| [0056](0056-codingame-game-analysis.md) | Game analysis: CodinGame games recorded, rebuilt and analysed by a generic framework | Accepted |
+| [0056](0056-codingame-game-analysis.md) | Game analysis: CodinGame games recorded, rebuilt and analysed by a generic framework | Accepted; decision 6 completed by 0057 |
+| [0057](0057-daily-collection-of-codingame-games.md) | Daily collection of CodinGame games against the top players | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 
