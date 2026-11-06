@@ -50,8 +50,11 @@ pub enum Situation {
     Undecided,
     /// Our search finds a forced win.
     OursWins,
-    /// The played plan loses by force (the opponent wins next turn).
+    /// The played plan loses by force (the opponent wins next turn) while
+    /// our plan does not.
     PlayedLoses,
+    /// Both plans lose by force: the position is already lost.
+    BothLose,
     /// Any other decided position.
     Other,
 }
@@ -63,6 +66,7 @@ impl Situation {
             Situation::Undecided => "undecided",
             Situation::OursWins => "ours_wins",
             Situation::PlayedLoses => "played_loses",
+            Situation::BothLose => "both_lose",
             Situation::Other => "decided_other",
         }
     }
@@ -96,6 +100,8 @@ impl Judgement {
     pub fn situation(&self, bound: i64) -> Situation {
         if self.ours_score >= bound {
             Situation::OursWins
+        } else if self.played_score <= -bound && self.ours_score <= -bound {
+            Situation::BothLose
         } else if self.played_score <= -bound {
             Situation::PlayedLoses
         } else if self.ours_score <= -bound || self.played_score >= bound {
@@ -226,6 +232,7 @@ pub fn summary_csv<J: Judging>(judgements: &[Judgement]) -> String {
                 "played_loses",
                 situations(Situation::PlayedLoses).to_string(),
             ),
+            ("both_lose", situations(Situation::BothLose).to_string()),
             ("decided_other", situations(Situation::Other).to_string()),
             (
                 "median_gap",
@@ -297,7 +304,7 @@ pub fn readme<J: Judging>(notes: &[String]) -> String {
         J::decided_bound()
     );
     out.push_str(
-        "- `judgements.csv`: one row per judged ply.\n  - `game_id`, `player`, `rank` (the player's rank in the leaderboard snapshot, empty if none), `ply` (index in the game), `turn` (the game's turn), `phase` (`early_game`, `middle_game`, `endgame`).\n  - `played`, `ours`: the commands played and the commands our search chooses, joined by `;`.\n  - `played_score`, `ours_score`: our search's scores of the two plans; `gap` is `ours_score` less `played_score`.\n  - `match`: `same` (same commands), `same_first` (same first command only) or `different`.\n  - `situation`: `undecided`, `ours_wins` (our search has a forced win), `played_loses` (the played plan loses by force) or `decided_other`.\n- `summary.csv`: agreement and gap by player and phase (`all` too), in long format.\n  - `player`, `phase`, `metric`, `value`; the metrics are `plies`, `same`, `same_first`, `different` (all plies), `undecided`, `ours_wins`, `played_loses`, `decided_other` (the plies by situation), and, over the undecided plies only, `median_gap`, `gap_over_threshold` (a gap above the threshold) and `gap_over_threshold_share`.\n- `largest-gaps.md`: the 20 undecided plies with the largest gaps, each with both plans and the board before the ply.\n",
+        "- `judgements.csv`: one row per judged ply.\n  - `game_id`, `player`, `rank` (the player's rank in the leaderboard snapshot, empty if none), `ply` (index in the game), `turn` (the game's turn), `phase` (`early_game`, `middle_game`, `endgame`).\n  - `played`, `ours`: the commands played and the commands our search chooses, joined by `;`.\n  - `played_score`, `ours_score`: our search's scores of the two plans; `gap` is `ours_score` less `played_score`.\n  - `match`: `same` (same commands), `same_first` (same first command only) or `different`.\n  - `situation`: `undecided`, `ours_wins` (our search has a forced win), `played_loses` (the played plan loses by force, ours does not), `both_lose` (both plans lose by force) or `decided_other`.\n- `summary.csv`: agreement and gap by player and phase (`all` too), in long format.\n  - `player`, `phase`, `metric`, `value`; the metrics are `plies`, `same`, `same_first`, `different` (all plies), `undecided`, `ours_wins`, `played_loses`, `both_lose`, `decided_other` (the plies by situation), and, over the undecided plies only, `median_gap`, `gap_over_threshold` (a gap above the threshold) and `gap_over_threshold_share`.\n- `largest-gaps.md`: the 20 undecided plies with the largest gaps, each with both plans and the board before the ply.\n",
     );
     out
 }

@@ -149,13 +149,15 @@ fn decided_plies_are_counted_apart_and_left_out_of_the_gaps() {
     all.push(j("ann", 4, 8, Phase::Middle, "x y", [500, 3]));
     all.push(j("ann", 4, 10, Phase::Middle, "x y", [5, -500]));
     all.push(j("ann", 4, 12, Phase::Middle, "x y", [-500, 50]));
+    all.push(j("ann", 4, 14, Phase::Middle, "x y", [-500, -600]));
     let csv = judgements_csv::<Words>(&all);
     assert!(csv.contains(",ours_wins\n"), "{csv}");
     assert!(csv.contains(",played_loses\n"), "{csv}");
     assert!(csv.contains(",decided_other\n"), "{csv}");
     let text = summary_csv::<Words>(&all);
     let has = |row: &str| assert!(text.lines().any(|l| l == row), "{row}\n{text}");
-    has("ann,middle_game,plies,6");
+    has("ann,middle_game,plies,7");
+    has("ann,middle_game,both_lose,1");
     has("ann,middle_game,undecided,3");
     has("ann,middle_game,ours_wins,1");
     has("ann,middle_game,played_loses,1");

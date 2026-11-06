@@ -12,7 +12,7 @@ Scores are our search's, for the player to act: the worst evaluation after the o
   - `played`, `ours`: the commands played and the commands our search chooses, joined by `;`.
   - `played_score`, `ours_score`: our search's scores of the two plans; `gap` is `ours_score` less `played_score`.
   - `match`: `same` (same commands), `same_first` (same first command only) or `different`.
-  - `situation`: `undecided`, `ours_wins` (our search has a forced win), `played_loses` (the played plan loses by force) or `decided_other`.
+  - `situation`: `undecided`, `ours_wins` (our search has a forced win), `played_loses` (the played plan loses by force, ours does not), `both_lose` (both plans lose by force) or `decided_other`.
 - `summary.csv`: agreement and gap by player and phase (`all` too), in long format.
-  - `player`, `phase`, `metric`, `value`; the metrics are `plies`, `same`, `same_first`, `different` (all plies), `undecided`, `ours_wins`, `played_loses`, `decided_other` (the plies by situation), and, over the undecided plies only, `median_gap`, `gap_over_threshold` (a gap above the threshold) and `gap_over_threshold_share`.
+  - `player`, `phase`, `metric`, `value`; the metrics are `plies`, `same`, `same_first`, `different` (all plies), `undecided`, `ours_wins`, `played_loses`, `both_lose`, `decided_other` (the plies by situation), and, over the undecided plies only, `median_gap`, `gap_over_threshold` (a gap above the threshold) and `gap_over_threshold_share`.
 - `largest-gaps.md`: the 20 undecided plies with the largest gaps, each with both plans and the board before the ply.

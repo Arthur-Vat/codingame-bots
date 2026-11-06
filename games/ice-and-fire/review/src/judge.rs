@@ -175,6 +175,8 @@ fn run_chunk(judge: &Path, file: &Path, count: usize, tries: u64) -> Chunk {
             tail.trim()
         ));
     }
+    // What the judge says on stderr (the plies it left out, and why) is passed on.
+    eprint!("{}", String::from_utf8_lossy(&result.stderr));
     let (mut outputs, mut bad) = (Vec::new(), Vec::new());
     for line in String::from_utf8_lossy(&result.stdout).lines() {
         if line.trim().is_empty() {
@@ -276,6 +278,12 @@ pub fn run(request: &Request) -> Result<(), String> {
         return Err("no player to judge: give --players, or a data directory with a leaderboard snapshot and games of its top players".to_string());
     }
     let all = items(&games, &players);
+    if all.is_empty() {
+        return Err(format!(
+            "no ply to judge: none of {} has a ply in the games",
+            players.join(", ")
+        ));
+    }
     let total = all.len();
     let all = spread(all, request.limit);
     eprintln!(
@@ -318,7 +326,9 @@ pub fn run(request: &Request) -> Result<(), String> {
             })
             .collect()
     });
-    let _ = fs::remove_dir_all(&dir);
+    if results.iter().all(Result::is_ok) {
+        let _ = fs::remove_dir_all(&dir);
+    }
     let mut outputs = BTreeMap::new();
     let mut malformed = Vec::new();
     for result in results {
@@ -329,6 +339,16 @@ pub fn run(request: &Request) -> Result<(), String> {
         }
     }
 
+    if outputs.is_empty() {
+        return Err(format!(
+            "the judge gave no judgement for {} positions (is {} the plan bot built with --features analysis?){}",
+            all.len(),
+            request.judge.display(),
+            malformed
+                .first()
+                .map_or(String::new(), |m| format!("; first line it printed that is not one: {m}"))
+        ));
+    }
     let mut judgements = Vec::new();
     for item in &all {
         let Some(output) = outputs.get(&(item.game_id.to_string(), item.ply)) else {

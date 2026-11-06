@@ -6,6 +6,7 @@ NinjaDoggy,early_game,different,62
 NinjaDoggy,early_game,undecided,85
 NinjaDoggy,early_game,ours_wins,0
 NinjaDoggy,early_game,played_loses,0
+NinjaDoggy,early_game,both_lose,0
 NinjaDoggy,early_game,decided_other,0
 NinjaDoggy,early_game,median_gap,4.0
 NinjaDoggy,early_game,gap_over_threshold,10
@@ -17,6 +18,7 @@ NinjaDoggy,middle_game,different,56
 NinjaDoggy,middle_game,undecided,68
 NinjaDoggy,middle_game,ours_wins,0
 NinjaDoggy,middle_game,played_loses,3
+NinjaDoggy,middle_game,both_lose,0
 NinjaDoggy,middle_game,decided_other,0
 NinjaDoggy,middle_game,median_gap,33.5
 NinjaDoggy,middle_game,gap_over_threshold,44
@@ -27,7 +29,8 @@ NinjaDoggy,endgame,same_first,7
 NinjaDoggy,endgame,different,58
 NinjaDoggy,endgame,undecided,54
 NinjaDoggy,endgame,ours_wins,7
-NinjaDoggy,endgame,played_loses,7
+NinjaDoggy,endgame,played_loses,4
+NinjaDoggy,endgame,both_lose,3
 NinjaDoggy,endgame,decided_other,3
 NinjaDoggy,endgame,median_gap,46.0
 NinjaDoggy,endgame,gap_over_threshold,36
@@ -38,7 +41,8 @@ NinjaDoggy,all,same_first,30
 NinjaDoggy,all,different,176
 NinjaDoggy,all,undecided,207
 NinjaDoggy,all,ours_wins,7
-NinjaDoggy,all,played_loses,10
+NinjaDoggy,all,played_loses,7
+NinjaDoggy,all,both_lose,3
 NinjaDoggy,all,decided_other,3
 NinjaDoggy,all,median_gap,14.0
 NinjaDoggy,all,gap_over_threshold,90
@@ -50,6 +54,7 @@ Pduhard-,early_game,different,59
 Pduhard-,early_game,undecided,68
 Pduhard-,early_game,ours_wins,0
 Pduhard-,early_game,played_loses,0
+Pduhard-,early_game,both_lose,0
 Pduhard-,early_game,decided_other,0
 Pduhard-,early_game,median_gap,4.0
 Pduhard-,early_game,gap_over_threshold,4
@@ -61,6 +66,7 @@ Pduhard-,middle_game,different,31
 Pduhard-,middle_game,undecided,41
 Pduhard-,middle_game,ours_wins,0
 Pduhard-,middle_game,played_loses,1
+Pduhard-,middle_game,both_lose,0
 Pduhard-,middle_game,decided_other,0
 Pduhard-,middle_game,median_gap,22.0
 Pduhard-,middle_game,gap_over_threshold,22
@@ -71,7 +77,8 @@ Pduhard-,endgame,same_first,9
 Pduhard-,endgame,different,62
 Pduhard-,endgame,undecided,56
 Pduhard-,endgame,ours_wins,9
-Pduhard-,endgame,played_loses,9
+Pduhard-,endgame,played_loses,4
+Pduhard-,endgame,both_lose,5
 Pduhard-,endgame,decided_other,0
 Pduhard-,endgame,median_gap,91.5
 Pduhard-,endgame,gap_over_threshold,45
@@ -82,7 +89,8 @@ Pduhard-,all,same_first,23
 Pduhard-,all,different,152
 Pduhard-,all,undecided,165
 Pduhard-,all,ours_wins,9
-Pduhard-,all,played_loses,10
+Pduhard-,all,played_loses,5
+Pduhard-,all,both_lose,5
 Pduhard-,all,decided_other,0
 Pduhard-,all,median_gap,13.0
 Pduhard-,all,gap_over_threshold,71
@@ -94,6 +102,7 @@ Waffle3z,early_game,different,47
 Waffle3z,early_game,undecided,78
 Waffle3z,early_game,ours_wins,0
 Waffle3z,early_game,played_loses,0
+Waffle3z,early_game,both_lose,0
 Waffle3z,early_game,decided_other,0
 Waffle3z,early_game,median_gap,2.0
 Waffle3z,early_game,gap_over_threshold,5
@@ -105,6 +114,7 @@ Waffle3z,middle_game,different,44
 Waffle3z,middle_game,undecided,54
 Waffle3z,middle_game,ours_wins,0
 Waffle3z,middle_game,played_loses,2
+Waffle3z,middle_game,both_lose,0
 Waffle3z,middle_game,decided_other,0
 Waffle3z,middle_game,median_gap,19.0
 Waffle3z,middle_game,gap_over_threshold,26
@@ -115,7 +125,8 @@ Waffle3z,endgame,same_first,9
 Waffle3z,endgame,different,41
 Waffle3z,endgame,undecided,34
 Waffle3z,endgame,ours_wins,5
-Waffle3z,endgame,played_loses,12
+Waffle3z,endgame,played_loses,3
+Waffle3z,endgame,both_lose,9
 Waffle3z,endgame,decided_other,2
 Waffle3z,endgame,median_gap,49.5
 Waffle3z,endgame,gap_over_threshold,24
@@ -126,7 +137,8 @@ Waffle3z,all,same_first,39
 Waffle3z,all,different,132
 Waffle3z,all,undecided,166
 Waffle3z,all,ours_wins,5
-Waffle3z,all,played_loses,14
+Waffle3z,all,played_loses,5
+Waffle3z,all,both_lose,9
 Waffle3z,all,decided_other,2
 Waffle3z,all,median_gap,10.0
 Waffle3z,all,gap_over_threshold,55
@@ -138,6 +150,7 @@ Zylo,early_game,different,60
 Zylo,early_game,undecided,70
 Zylo,early_game,ours_wins,0
 Zylo,early_game,played_loses,0
+Zylo,early_game,both_lose,0
 Zylo,early_game,decided_other,0
 Zylo,early_game,median_gap,4.0
 Zylo,early_game,gap_over_threshold,3
@@ -149,6 +162,7 @@ Zylo,middle_game,different,60
 Zylo,middle_game,undecided,64
 Zylo,middle_game,ours_wins,0
 Zylo,middle_game,played_loses,2
+Zylo,middle_game,both_lose,0
 Zylo,middle_game,decided_other,0
 Zylo,middle_game,median_gap,25.0
 Zylo,middle_game,gap_over_threshold,36
@@ -159,7 +173,8 @@ Zylo,endgame,same_first,11
 Zylo,endgame,different,71
 Zylo,endgame,undecided,71
 Zylo,endgame,ours_wins,9
-Zylo,endgame,played_loses,7
+Zylo,endgame,played_loses,5
+Zylo,endgame,both_lose,2
 Zylo,endgame,decided_other,1
 Zylo,endgame,median_gap,22.0
 Zylo,endgame,gap_over_threshold,37
@@ -170,7 +185,8 @@ Zylo,all,same_first,23
 Zylo,all,different,191
 Zylo,all,undecided,205
 Zylo,all,ours_wins,9
-Zylo,all,played_loses,9
+Zylo,all,played_loses,7
+Zylo,all,both_lose,2
 Zylo,all,decided_other,1
 Zylo,all,median_gap,12.0
 Zylo,all,gap_over_threshold,76
@@ -182,6 +198,7 @@ _iahelka,early_game,different,58
 _iahelka,early_game,undecided,73
 _iahelka,early_game,ours_wins,0
 _iahelka,early_game,played_loses,0
+_iahelka,early_game,both_lose,0
 _iahelka,early_game,decided_other,0
 _iahelka,early_game,median_gap,6.0
 _iahelka,early_game,gap_over_threshold,11
@@ -193,6 +210,7 @@ _iahelka,middle_game,different,38
 _iahelka,middle_game,undecided,40
 _iahelka,middle_game,ours_wins,0
 _iahelka,middle_game,played_loses,2
+_iahelka,middle_game,both_lose,0
 _iahelka,middle_game,decided_other,0
 _iahelka,middle_game,median_gap,25.5
 _iahelka,middle_game,gap_over_threshold,24
@@ -203,7 +221,8 @@ _iahelka,endgame,same_first,3
 _iahelka,endgame,different,54
 _iahelka,endgame,undecided,38
 _iahelka,endgame,ours_wins,8
-_iahelka,endgame,played_loses,14
+_iahelka,endgame,played_loses,10
+_iahelka,endgame,both_lose,4
 _iahelka,endgame,decided_other,1
 _iahelka,endgame,median_gap,48.5
 _iahelka,endgame,gap_over_threshold,26
@@ -214,7 +233,8 @@ _iahelka,all,same_first,11
 _iahelka,all,different,150
 _iahelka,all,undecided,151
 _iahelka,all,ours_wins,8
-_iahelka,all,played_loses,16
+_iahelka,all,played_loses,12
+_iahelka,all,both_lose,4
 _iahelka,all,decided_other,1
 _iahelka,all,median_gap,14.0
 _iahelka,all,gap_over_threshold,61
@@ -226,6 +246,7 @@ _iaz,early_game,different,57
 _iaz,early_game,undecided,70
 _iaz,early_game,ours_wins,0
 _iaz,early_game,played_loses,0
+_iaz,early_game,both_lose,0
 _iaz,early_game,decided_other,0
 _iaz,early_game,median_gap,7.0
 _iaz,early_game,gap_over_threshold,13
@@ -237,6 +258,7 @@ _iaz,middle_game,different,43
 _iaz,middle_game,undecided,45
 _iaz,middle_game,ours_wins,0
 _iaz,middle_game,played_loses,2
+_iaz,middle_game,both_lose,0
 _iaz,middle_game,decided_other,0
 _iaz,middle_game,median_gap,29.0
 _iaz,middle_game,gap_over_threshold,25
@@ -247,7 +269,8 @@ _iaz,endgame,same_first,13
 _iaz,endgame,different,63
 _iaz,endgame,undecided,57
 _iaz,endgame,ours_wins,8
-_iaz,endgame,played_loses,15
+_iaz,endgame,played_loses,5
+_iaz,endgame,both_lose,10
 _iaz,endgame,decided_other,1
 _iaz,endgame,median_gap,49.0
 _iaz,endgame,gap_over_threshold,39
@@ -258,7 +281,8 @@ _iaz,all,same_first,22
 _iaz,all,different,163
 _iaz,all,undecided,172
 _iaz,all,ours_wins,8
-_iaz,all,played_loses,17
+_iaz,all,played_loses,7
+_iaz,all,both_lose,10
 _iaz,all,decided_other,1
 _iaz,all,median_gap,16.0
 _iaz,all,gap_over_threshold,77
@@ -270,6 +294,7 @@ aCat,early_game,different,63
 aCat,early_game,undecided,88
 aCat,early_game,ours_wins,0
 aCat,early_game,played_loses,0
+aCat,early_game,both_lose,0
 aCat,early_game,decided_other,0
 aCat,early_game,median_gap,2.0
 aCat,early_game,gap_over_threshold,6
@@ -280,7 +305,8 @@ aCat,middle_game,same_first,4
 aCat,middle_game,different,77
 aCat,middle_game,undecided,78
 aCat,middle_game,ours_wins,0
-aCat,middle_game,played_loses,8
+aCat,middle_game,played_loses,2
+aCat,middle_game,both_lose,6
 aCat,middle_game,decided_other,0
 aCat,middle_game,median_gap,20.5
 aCat,middle_game,gap_over_threshold,39
@@ -291,7 +317,8 @@ aCat,endgame,same_first,4
 aCat,endgame,different,37
 aCat,endgame,undecided,26
 aCat,endgame,ours_wins,9
-aCat,endgame,played_loses,14
+aCat,endgame,played_loses,2
+aCat,endgame,both_lose,12
 aCat,endgame,decided_other,0
 aCat,endgame,median_gap,25.0
 aCat,endgame,gap_over_threshold,14
@@ -302,7 +329,8 @@ aCat,all,same_first,20
 aCat,all,different,177
 aCat,all,undecided,192
 aCat,all,ours_wins,9
-aCat,all,played_loses,22
+aCat,all,played_loses,4
+aCat,all,both_lose,18
 aCat,all,decided_other,0
 aCat,all,median_gap,6.0
 aCat,all,gap_over_threshold,59
@@ -314,6 +342,7 @@ karliso,early_game,different,44
 karliso,early_game,undecided,68
 karliso,early_game,ours_wins,0
 karliso,early_game,played_loses,0
+karliso,early_game,both_lose,0
 karliso,early_game,decided_other,0
 karliso,early_game,median_gap,0.0
 karliso,early_game,gap_over_threshold,3
@@ -324,7 +353,8 @@ karliso,middle_game,same_first,8
 karliso,middle_game,different,50
 karliso,middle_game,undecided,53
 karliso,middle_game,ours_wins,0
-karliso,middle_game,played_loses,5
+karliso,middle_game,played_loses,4
+karliso,middle_game,both_lose,1
 karliso,middle_game,decided_other,0
 karliso,middle_game,median_gap,34.0
 karliso,middle_game,gap_over_threshold,39
@@ -335,7 +365,8 @@ karliso,endgame,same_first,8
 karliso,endgame,different,53
 karliso,endgame,undecided,40
 karliso,endgame,ours_wins,9
-karliso,endgame,played_loses,13
+karliso,endgame,played_loses,7
+karliso,endgame,both_lose,6
 karliso,endgame,decided_other,1
 karliso,endgame,median_gap,58.0
 karliso,endgame,gap_over_threshold,31
@@ -346,7 +377,8 @@ karliso,all,same_first,30
 karliso,all,different,147
 karliso,all,undecided,161
 karliso,all,ours_wins,9
-karliso,all,played_loses,18
+karliso,all,played_loses,11
+karliso,all,both_lose,7
 karliso,all,decided_other,1
 karliso,all,median_gap,16.0
 karliso,all,gap_over_threshold,73
@@ -358,6 +390,7 @@ reCurse,early_game,different,59
 reCurse,early_game,undecided,66
 reCurse,early_game,ours_wins,0
 reCurse,early_game,played_loses,0
+reCurse,early_game,both_lose,0
 reCurse,early_game,decided_other,0
 reCurse,early_game,median_gap,4.0
 reCurse,early_game,gap_over_threshold,5
@@ -369,6 +402,7 @@ reCurse,middle_game,different,56
 reCurse,middle_game,undecided,61
 reCurse,middle_game,ours_wins,0
 reCurse,middle_game,played_loses,6
+reCurse,middle_game,both_lose,0
 reCurse,middle_game,decided_other,0
 reCurse,middle_game,median_gap,24.0
 reCurse,middle_game,gap_over_threshold,35
@@ -379,7 +413,8 @@ reCurse,endgame,same_first,4
 reCurse,endgame,different,45
 reCurse,endgame,undecided,33
 reCurse,endgame,ours_wins,6
-reCurse,endgame,played_loses,15
+reCurse,endgame,played_loses,8
+reCurse,endgame,both_lose,7
 reCurse,endgame,decided_other,1
 reCurse,endgame,median_gap,50.0
 reCurse,endgame,gap_over_threshold,23
@@ -390,7 +425,8 @@ reCurse,all,same_first,16
 reCurse,all,different,160
 reCurse,all,undecided,160
 reCurse,all,ours_wins,6
-reCurse,all,played_loses,21
+reCurse,all,played_loses,14
+reCurse,all,both_lose,7
 reCurse,all,decided_other,1
 reCurse,all,median_gap,13.0
 reCurse,all,gap_over_threshold,63
@@ -402,6 +438,7 @@ zasmu,early_game,different,51
 zasmu,early_game,undecided,69
 zasmu,early_game,ours_wins,0
 zasmu,early_game,played_loses,0
+zasmu,early_game,both_lose,0
 zasmu,early_game,decided_other,0
 zasmu,early_game,median_gap,4.0
 zasmu,early_game,gap_over_threshold,6
@@ -413,6 +450,7 @@ zasmu,middle_game,different,52
 zasmu,middle_game,undecided,60
 zasmu,middle_game,ours_wins,0
 zasmu,middle_game,played_loses,1
+zasmu,middle_game,both_lose,0
 zasmu,middle_game,decided_other,0
 zasmu,middle_game,median_gap,43.5
 zasmu,middle_game,gap_over_threshold,39
@@ -423,7 +461,8 @@ zasmu,endgame,same_first,1
 zasmu,endgame,different,53
 zasmu,endgame,undecided,42
 zasmu,endgame,ours_wins,9
-zasmu,endgame,played_loses,10
+zasmu,endgame,played_loses,8
+zasmu,endgame,both_lose,2
 zasmu,endgame,decided_other,0
 zasmu,endgame,median_gap,61.5
 zasmu,endgame,gap_over_threshold,39
@@ -434,7 +473,8 @@ zasmu,all,same_first,19
 zasmu,all,different,156
 zasmu,all,undecided,171
 zasmu,all,ours_wins,9
-zasmu,all,played_loses,11
+zasmu,all,played_loses,9
+zasmu,all,both_lose,2
 zasmu,all,decided_other,0
 zasmu,all,median_gap,20.0
 zasmu,all,gap_over_threshold,84

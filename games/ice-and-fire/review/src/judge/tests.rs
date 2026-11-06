@@ -185,10 +185,7 @@ fn a_failing_judge_is_an_error_naming_the_chunk() {
 #[test]
 fn malformed_lines_are_reported_and_their_plies_skipped() {
     let dir = data_dir("judge-bad");
-    let judge = stub(
-        &dir,
-        "echo garbage; echo '1\t2\tours=WAIT\tours_score=1\tplayed_score=-\tsame=-'",
-    );
+    let judge = stub(&dir, &format!("echo garbage; {PRINT_ALL}"));
     let asked = request(&dir, judge);
     run(&asked).expect("files");
     let readme = read(&asked, "README.md");
@@ -196,8 +193,25 @@ fn malformed_lines_are_reported_and_their_plies_skipped() {
         readme.contains("malformed judge lines were skipped"),
         "{readme}"
     );
-    assert!(readme.contains("0 judged"), "{readme}");
-    assert_eq!(read(&asked, "judgements.csv").lines().count(), 1);
+}
+
+#[test]
+fn a_judge_that_judges_nothing_is_an_error() {
+    let dir = data_dir("judge-nothing");
+    let judge = stub(&dir, "echo garbage");
+    let err = run(&request(&dir, judge)).expect_err("nothing judged");
+    assert!(err.contains("no judgement"), "{err}");
+    assert!(err.contains("garbage"), "{err}");
+}
+
+#[test]
+fn players_without_plies_are_an_error() {
+    let dir = data_dir("judge-nobody");
+    let judge = stub(&dir, PRINT_ALL);
+    let mut asked = request(&dir, judge);
+    asked.players = vec!["Nobody".to_string()];
+    let err = run(&asked).expect_err("no ply");
+    assert!(err.contains("no ply to judge"), "{err}");
 }
 
 #[test]
