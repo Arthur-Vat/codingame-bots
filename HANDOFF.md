@@ -4,6 +4,7 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
+- **#279, opened 2026-11-06** (https://github.com/Arthur-Vat/codingame-bots/pull/279): the game-analysis design, ADR 0056 (proposed) + docs/GAME_ANALYSIS.md; deep review fixed (dcff96c). Open questions in it: CodinGame's terms on publishing other players' logs on a public branch (not checked); whether to add top players' games by ids he gives from the website (`fetch-ids`). On approval: mark ADR 0056 accepted, then merge.
 - **Ice and Fire time roadmap, proposed 2026-10-30, not decided:** speed with identical answers at fixed tries (cache `severed` per side, tower guards, buffers, one end_turn per try; callgrind: evaluation 63% of the search, `severed` 31%), replies only for contending plans (opponent replies are 35-40% of the time), restarts in early-ending turns (29% of turns end early), move-and-cut plans; two-tier evaluation is his decision (pondering: no, 2026-10-15). A stronger opponent model was measured and does not pay (only near-full opponent searches help).
 - **UTTT, proposed 2026-10-16, not decided** (each one experiment): trainer fits on several Train runs' data at once (E028: v016's data hurt, -81); D3 accumulator checkpoints at nodes with many visits; a hyperparameter sweep of the fit in Train; later a second, larger network for nodes with many visits, D4 symmetry in the first layer.
 - Retrospective proposals in games/uttt/RETROSPECTIVE.md wait for his choice; the first two only when a game needs them.
