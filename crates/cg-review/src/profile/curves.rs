@@ -241,7 +241,7 @@ fn separates_from(by_turn: &[Option<f64>], either: bool) -> Option<u32> {
         .collect();
     let (_, last) = *known.last()?;
     let up = last >= SEPARATED;
-    if !up && !(either && last <= 1.0 - SEPARATED) {
+    if !(up || either && last <= 1.0 - SEPARATED) {
         return None;
     }
     let mut from = None;

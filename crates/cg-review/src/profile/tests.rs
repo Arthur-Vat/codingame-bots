@@ -302,8 +302,8 @@ fn each_side_is_read_right_after_its_own_ply() {
 fn won_and_lost(blue_win: i64, blue_loss: i64) -> Input {
     let mut games = Vec::new();
     for i in 0..5 {
-        games.push(toy(i, &vec![(9, blue_win); 10], Some(1), &["x"]));
-        games.push(toy(10 + i, &vec![(9, blue_loss); 10], Some(0), &["x"]));
+        games.push(toy(i, &[(9, blue_win); 10], Some(1), &["x"]));
+        games.push(toy(10 + i, &[(9, blue_loss); 10], Some(0), &["x"]));
     }
     Input {
         games,
