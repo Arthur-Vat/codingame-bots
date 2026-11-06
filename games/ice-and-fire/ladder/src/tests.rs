@@ -5,7 +5,9 @@ use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::League as RefereeLeague;
 use ice_and_fire_tactics::cut::cuts;
 
-use crate::plan::margin;
+use std::time::Duration;
+
+use crate::plan::{cut_deadline, margin, plan_with};
 use crate::{plan, Steps};
 
 /// The steps of the four reference bots, and of bronze.
@@ -313,6 +315,58 @@ fn a_cut_is_played_when_one_scores_enough() {
     // The row is out of the enemy's territory.
     let lost = state.active(1).count() - after.active(1).count();
     assert!(lost >= 11, "{lost}");
+}
+
+#[test]
+fn fixed_iterations_lift_the_cut_deadline() {
+    assert_eq!(cut_deadline(None), Some(Duration::from_millis(3)));
+    for value in ["500", " 7\n"] {
+        assert_eq!(cut_deadline(Some(value)), None, "{value:?}");
+    }
+    for value in ["0", "many", ""] {
+        assert_eq!(
+            cut_deadline(Some(value)),
+            Some(Duration::from_millis(3)),
+            "{value:?}"
+        );
+    }
+}
+
+/// The cutter's turns in whole games against random turns: past the cut
+/// deadline, each is bronze's turn; with no deadline, the cuts change some of
+/// them, however long the turns take.
+#[test]
+fn the_cut_deadline_alone_skips_the_cuts() {
+    let cutter = Steps {
+        cuts: true,
+        ..Steps::NONE
+    };
+    let turn = |state: &State, steps, deadline| {
+        let mut commands = Vec::new();
+        plan_with(state, steps, deadline, &mut commands);
+        commands
+    };
+    let mut rng = Rng::new(0xc07);
+    let mut random = Vec::new();
+    let mut cut_turns = 0;
+    for seed in 0..4 {
+        let mut state = start(seed);
+        while state.outcome().is_none() {
+            if state.to_act() == 0 {
+                let free = turn(&state, cutter, None);
+                let bronze = turn(&state, Steps::NONE, None);
+                assert_eq!(turn(&state, cutter, Some(Duration::ZERO)), bronze);
+                if free != bronze {
+                    cut_turns += 1;
+                }
+                state.play_turn(&free);
+            } else {
+                state.random_turn(&mut rng, &mut random);
+                state.play_turn(&random);
+            }
+        }
+    }
+    assert!(cut_turns > 0);
 }
 
 /// Blue's level 3 unit sits on (6, 1), a pocket joined to the corridor at

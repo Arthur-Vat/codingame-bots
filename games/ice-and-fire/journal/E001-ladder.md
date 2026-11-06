@@ -45,7 +45,8 @@ A turn, on a scratch state, in order:
    search is skipped once the turn has taken 3 ms. That deadline is fixed and
    does not read `CG_TIME_SCALE`: the evaluation's limit is 10 ms a turn and a
    search takes about 2 ms at most, so the bot behaves the same at every scale,
-   in the arena and on CodinGame.
+   in the arena and on CodinGame. With `CG_FIXED_ITERS` set to a positive
+   number (tests and the studio's replays) there is no deadline (fix below).
 5. **Banking** (`banking`): with no threat, if our chain to the enemy HQ is
    affordable next turn with the gold and income we have, steps 6 and 7 are
    skipped.
@@ -91,6 +92,14 @@ fixed hasher (`BuildHasherDefault<DefaultHasher>`); it is only looked up,
 so the play is the same. CodinGame was not affected: the SPRT's first run
 (head 04b2bae, accepted, +196.5 Elo, then +207.0 at full time) had no crash.
 A browser test now plays the release to the end.
+
+**Fix, 2026-11-06:** the cut search's 3 ms deadline is a wall clock, so a
+game in fixed mode (`CG_FIXED_ITERS`, which the determinism checks and the
+studio's replays set to replay a game exactly, ADR 0025) could skip a cut on
+a busy machine and replay differently. With `CG_FIXED_ITERS` set to a
+positive number, read as the other bots read it, the cut search has no
+deadline. Without it nothing changes, so the league, the SPRT and CodinGame
+see the same bots; the release `ice-and-fire-v001` stays as it is.
 
 **SPRT** (head c97d37a, time scale 0.2 and 5 ms of tolerance, against
 `bronze`): accepted after 82 pairs, 124 wins and 40 losses (75.6%), +196.5 Elo
