@@ -37,6 +37,9 @@ Usage: scripts/codingame.sh fetch GAME [--submission ID] [--data DIR] [--push]
   --data DIR       write into this plain directory (no git, no push)
   --push           commit and push the data branch claude/codingame-games
                    (without --data only); without it nothing is pushed
+
+Environment: CODINGAME_COMMIT_TRAILERS, lines (for example Co-Authored-By:)
+appended to the body of the --push commit; none when unset.
 USAGE
 }
 die() { # die <status> <message>
@@ -111,7 +114,17 @@ api="${CODINGAME_API:-https://www.codingame.com/api/v1}"
 pace="${CODINGAME_PACE:-0.6}"
 
 scratch="$(mktemp -d)"
-trap 'rm -rf "$scratch"' EXIT
+# Leaves nothing behind: the scratch directory, and the worktree of --push
+# (also when the run fails or the push is rejected).
+remove_worktree=false
+worktree=""
+cleanup() {
+  rm -rf "$scratch"
+  if [[ $remove_worktree == true && -n $worktree ]]; then
+    git worktree remove --force "$worktree" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
 (
   umask 077
   token="$(tr -d '[:space:]' <"$token_file")"
@@ -138,33 +151,57 @@ request() { # request <path with query> <body file>
   die 1 "still rate limited after 5 retries: $url"
 }
 
+# What went wrong with the last request: curl's message and the API's hint.
+detail() { # detail <body file>
+  local text=""
+  if [[ -s $scratch/curl-err ]]; then
+    text="curl: $(head -n 1 "$scratch/curl-err")"
+  fi
+  if [[ -f $1 ]]; then
+    hint="$(jq -r '.hint // .message // .error // empty' "$1" 2>/dev/null | head -n 1 || true)"
+    [[ -z $hint ]] || text+="${text:+; }$hint"
+  fi
+  [[ -z $text ]] || printf ' (%s)' "$text"
+}
+
 # A request that must answer 200 with JSON that satisfies a jq test.
 must_get() { # must_get <path> <body file> <jq test>
   request "$1" "$2"
-  [[ $status == 200 ]] || die 1 "$api$1 answered $status"
+  [[ $status == 200 ]] || die 1 "$api$1 answered $status$(detail "$2")"
   jq -e "$3" "$2" >/dev/null 2>&1 || die 1 "$api$1 answered something unexpected (not JSON, or without the expected members)"
 }
 
 # The data directory.
-worktree=""
+orphan=false
 if [[ -n $data_dir ]]; then
   mkdir -p "$data_dir"
 else
-  git fetch -q origin +refs/heads/claude/codingame-games:refs/remotes/origin/claude/codingame-games 2>/dev/null || true
+  # Exit status 2 of ls-remote: the branch does not exist; another failure
+  # (no network, no origin) stops the run.
+  lsr=0
+  git ls-remote --exit-code origin refs/heads/claude/codingame-games >/dev/null 2>"$scratch/lsr-err" || lsr=$?
+  if ((lsr != 0 && lsr != 2)); then
+    die 1 "cannot reach origin: $(head -n 1 "$scratch/lsr-err")"
+  fi
   data_dir="$(mktemp -d)/codingame-games"
-  if git rev-parse -q --verify refs/remotes/origin/claude/codingame-games >/dev/null; then
+  if ((lsr == 0)); then
+    git fetch -q origin +refs/heads/claude/codingame-games:refs/remotes/origin/claude/codingame-games
     git worktree add -q --detach "$data_dir" refs/remotes/origin/claude/codingame-games
   else
+    # No branch yet: a detached worktree emptied of files. The first commit
+    # is made without parent below, so no local branch is ever created.
+    orphan=true
     git worktree add -q --detach "$data_dir" HEAD
-    git -C "$data_dir" checkout -q --orphan codingame-games
     git -C "$data_dir" rm -rq --cached . >/dev/null
     git -C "$data_dir" clean -fdxq
   fi
   worktree="$data_dir"
+  remove_worktree="$push"
 fi
 echo "data directory: $data_dir"
 out="$data_dir/$game"
 mkdir -p "$out/logs" "$out/leaderboard"
+rm -f "$out"/logs/.*.tmp "$out"/.*.tmp
 index="$out/index.jsonl"
 touch "$index"
 
@@ -173,11 +210,11 @@ must_get "/puzzles/$puzzle" "$scratch/puzzle.json" 'type == "object"'
 
 # 2. Snapshot the leaderboard.
 now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-snapshot="$out/leaderboard/$(date -u +%Y-%m-%dT%H%M%SZ).json"
+snapshot="$out/leaderboard/${now//:/}.json"
 must_get "/puzzles/$puzzle/leaderboard?limit=100" "$scratch/leaderboard.json" '.rows | type == "array"'
 jq -c --arg puzzle "$puzzle" --arg now "$now" \
-  '{puzzle: $puzzle, fetched_at: $now, rows: .rows}' "$scratch/leaderboard.json" >"$scratch/snapshot.json"
-mv "$scratch/snapshot.json" "$snapshot"
+  '{puzzle: $puzzle, fetched_at: $now, rows: .rows}' "$scratch/leaderboard.json" >"$out/.snapshot.tmp"
+mv "$out/.snapshot.tmp" "$snapshot"
 
 # 3. List the battles, page by page.
 : >"$scratch/battles.jsonl"
@@ -216,13 +253,17 @@ while IFS= read -r battle; do
     continue
   fi
   log="$out/logs/$id.json"
+  if [[ -f $log ]] && ! jq -e '.agents | type == "array"' "$log" >/dev/null 2>&1; then
+    echo "stored log of game $id is damaged, fetching it again" >&2
+    rm -f "$log"
+  fi
   if [[ -f $log ]]; then
     origin="stored"
   else
     origin="fetched"
     request "/games/$id?format=json" "$scratch/log.json"
     if [[ $status != 200 ]]; then
-      echo "failed: game $id answered $status" >&2
+      echo "failed: game $id answered $status$(detail "$scratch/log.json")" >&2
       failed=$((failed + 1))
       continue
     fi
@@ -231,8 +272,9 @@ while IFS= read -r battle; do
       failed=$((failed + 1))
       continue
     fi
-    jq -c 'del(.limits)' "$scratch/log.json" >"$scratch/log-clean.json"
-    mv "$scratch/log-clean.json" "$log"
+    # Written next to its place, then renamed: a run cut short leaves no half log.
+    jq -c 'del(.limits)' "$scratch/log.json" >"$out/logs/.$id.json.tmp"
+    mv "$out/logs/.$id.json.tmp" "$log"
   fi
   if ! jq -c --argjson battle "$battle" --arg puzzle "$puzzle" --argjson sub "$submission_id" \
     --arg now "$now" '
@@ -254,8 +296,8 @@ while IFS= read -r battle; do
 done <"$scratch/battles-unique.jsonl"
 
 # 5. The index again: sorted, one line a game.
-jq -cs 'unique_by(.game_id)[]' "$index" >"$scratch/index.sorted"
-mv "$scratch/index.sorted" "$index"
+jq -cs 'unique_by(.game_id)[]' "$index" >"$out/.index.tmp"
+mv "$out/.index.tmp" "$index"
 
 echo "games listed: $listed"
 echo "already stored: $stored"
@@ -268,15 +310,24 @@ echo "leaderboard snapshot: $snapshot"
 new=$((fetched + recovered))
 if [[ -n $worktree ]]; then
   if [[ $push == true ]]; then
-    git -C "$worktree" add -A
-    if git -C "$worktree" diff --cached --quiet; then
+    # Only the data files, never a temporary one.
+    git -C "$worktree" add -- "$game/index.jsonl" "$game/leaderboard" "$game/logs/*.json"
+    if [[ $orphan == false ]] && git -C "$worktree" diff --cached --quiet; then
       echo "nothing to commit"
     else
-      git -C "$worktree" commit -q -m "chore(repo): codingame games: $game, $new new games" \
-        -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
-      git -C "$worktree" push origin HEAD:refs/heads/claude/codingame-games
+      noun="games"
+      ((new != 1)) || noun="game"
+      message="chore(repo): codingame games: $game, $new new $noun"
+      [[ -z ${CODINGAME_COMMIT_TRAILERS:-} ]] || message+=$'\n\n'"$CODINGAME_COMMIT_TRAILERS"
+      if [[ $orphan == true ]]; then
+        # A first commit without parent, made without a branch.
+        commit="$(git -C "$worktree" commit-tree "$(git -C "$worktree" write-tree)" -m "$message")"
+      else
+        git -C "$worktree" commit -q -m "$message"
+        commit="$(git -C "$worktree" rev-parse HEAD)"
+      fi
+      git -C "$worktree" push origin "$commit:refs/heads/claude/codingame-games"
     fi
-    git worktree remove --force "$worktree"
   else
     echo "nothing was pushed. Inspect it with: git -C $worktree status"
     echo "--push publishes it to claude/codingame-games (commit and push, no force)."

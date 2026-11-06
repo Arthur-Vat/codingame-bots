@@ -45,6 +45,7 @@ stub="$tmp_dir/curl-stub"
 cat >"$stub" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
+all="$*"
 headers="" body="" format="" hfile="" url=""
 while (($#)); do
   case "$1" in
@@ -56,7 +57,7 @@ while (($#)); do
     *) url="$1"; shift ;;
   esac
 done
-echo "$url" >>"$STUB_DIR/requests.log"
+echo "$all" >>"$STUB_DIR/requests.log"
 cat "$hfile" >>"$STUB_DIR/auth.log"
 name="$(sed 's|^http://stub||; s|[/?&=]|_|g; s|^_||' <<<"$url")"
 reply() { : >"$headers"; [[ ${3:-} == retry ]] && echo "Retry-After: 0" >"$headers"; printf '%s' "$2" >"$body"; printf '%s' "${format/\%\{http_code\}/$1}"; }
@@ -64,7 +65,7 @@ if [[ -f $STUB_DIR/$name.429once ]]; then
   rm "$STUB_DIR/$name.429once"
   reply 429 '{"error":"rate-limited"}' retry
 elif [[ -f $STUB_DIR/$name.status ]]; then
-  reply "$(cat "$STUB_DIR/$name.status")" '{"error":"x"}'
+  reply "$(cat "$STUB_DIR/$name.status")" "$(cat "$STUB_DIR/$name.body" 2>/dev/null || echo '{"error":"x"}')"
 elif [[ -f $STUB_DIR/$name.json ]]; then
   reply 200 "$(cat "$STUB_DIR/$name.json")"
 else
@@ -130,12 +131,15 @@ expect "index line of 300" "$actual" "${line300/FETCHED/$fetched_at}"
 expect "null game options" "$(sed -n 1p "$out_dir/index.jsonl" | jq -c '.game_options')" "null"
 snapshots=("$out_dir"/leaderboard/*.json)
 expect "one snapshot" "${#snapshots[@]}" 1
+expect "snapshot named after fetched_at" "$(basename "${snapshots[0]}" .json)" "$(jq -r '.fetched_at | gsub(":"; "")' "${snapshots[0]}")"
 expect "snapshot" "$(jq -c '[.puzzle, (.fetched_at | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}Z$")), (.rows | length), .rows[0].nickname]' "${snapshots[0]}")" '["toy-puzzle",true,2,"Alpha"]'
 contains "paging asked for the second page" "$(cat "$STUB_DIR/requests.log")" "battles?limit=100&before=250"
 
 # Neither the token's text nor its place in an argument shows anywhere.
 lacks "token in output" "$out" "$token"
 lacks "token in arguments" "$(cat "$STUB_DIR/requests.log")" "$token"
+contains "arguments are logged" "$(cat "$STUB_DIR/requests.log")" "-H @"
+expect "token in the data directory" "$(grep -rlF -- "$token" "$data" || true)" ""
 contains "token sent in the header" "$(cat "$STUB_DIR/auth.log")" "Authorization: Bearer $token"
 
 # Second run with the failing game fixed: only that game is fetched.
@@ -167,6 +171,27 @@ contains "recovered" "$out" "indexed from stored logs: 1"
 expect "recovery fetched no log" "$(grep -c 'games/' "$STUB_DIR/requests.log" || true)" 0
 expect "recovered line" "$(jq -c 'del(.fetched_at)' "$out_dir/index.jsonl" | sed -n 3p)" "$(jq -c 'del(.fetched_at)' <<<"${line300/FETCHED/x}")"
 expect "index again three" "$(wc -l <"$out_dir/index.jsonl" | tr -d ' ')" 3
+
+# A truncated stored log (a run cut short) is fetched again and indexed.
+printf '{"game_id":200,"agents":[{"ind' >"$out_dir/logs/200.json"
+grep -v '"game_id":200,' "$out_dir/index.jsonl" >"$tmp_dir/index.cut"
+cp "$tmp_dir/index.cut" "$out_dir/index.jsonl"
+: >"$STUB_DIR/requests.log"
+run fetch toy --data "$data"
+expect "truncated log exit" "$rc" 0
+contains "damaged log reported" "$out" "damaged"
+expect "truncated log fetched again" "$(grep -c 'games/200' "$STUB_DIR/requests.log")" 1
+expect "truncated log fixed" "$(jq -c 'has("agents")' "$out_dir/logs/200.json")" "true"
+expect "index complete again" "$(jq -r '.game_id' "$out_dir/index.jsonl" | tr '\n' ' ')" "150 200 300 "
+expect "no temporary file left" "$(find "$data" -name '*.tmp' | wc -l | tr -d ' ')" 0
+
+# The API's hint and curl's own words reach the error.
+echo 503 >"$STUB_DIR/${puzzle_url}_leaderboard_limit_100.status"
+echo '{"error":"unavailable","hint":"try again later"}' >"$STUB_DIR/${puzzle_url}_leaderboard_limit_100.body"
+run fetch toy --data "$tmp_dir/data5"
+expect "503 exit" "$rc" 1
+contains "hint shown" "$out" "answered 503 (try again later)"
+rm "$STUB_DIR/${puzzle_url}_leaderboard_limit_100.status" "$STUB_DIR/${puzzle_url}_leaderboard_limit_100.body"
 
 # --submission is passed on and recorded.
 : >"$STUB_DIR/requests.log"
@@ -225,17 +250,38 @@ expect "worktree run exit" "$rc" 0
 wt="$(sed -n 's/^data directory: //p' <<<"$out")"
 contains "worktree path printed" "$out" "data directory: $wt"
 expect "worktree has the index" "$(wc -l <"$wt/toy/index.jsonl" | tr -d ' ')" 2
-expect "worktree is orphan" "$(git -C "$wt" rev-parse -q --verify HEAD >/dev/null 2>&1 && echo has-head || echo no-head)" no-head
+expect "worktree holds only the data" "$(find "$wt" -mindepth 1 -maxdepth 1 -not -name .git | sed 's|.*/||' | tr '\n' ' ')" "toy "
 contains "push hint" "$out" "--push"
 expect "nothing pushed" "$(git -C "$bare" rev-parse -q --verify "$branch" >/dev/null && echo pushed || echo none)" none
 git -C "$clone" worktree remove --force "$wt"
+expect "no local branch after a run" "$(git -C "$clone" for-each-ref --format='%(refname)' refs/heads | grep -c codingame || true)" 0
+
+# A run that dies with --push leaves no worktree.
+echo 503 >"$STUB_DIR/${puzzle_url}_leaderboard_limit_100.status"
+rc=0
+out="$("$cscript" fetch toy --push 2>&1)" || rc=$?
+rm "$STUB_DIR/${puzzle_url}_leaderboard_limit_100.status"
+expect "failed run exit" "$rc" 1
+expect "worktree removed after a failed run" "$(git -C "$clone" worktree list | wc -l | tr -d ' ')" 1
+
+# A rejected push: the worktree is removed, no local branch is left, a rerun works.
+mkdir -p "$bare/hooks"
+printf '#!/bin/sh\nexit 1\n' >"$bare/hooks/pre-receive"
+chmod +x "$bare/hooks/pre-receive"
+rc=0
+out="$("$cscript" fetch toy --push 2>&1)" || rc=$?
+expect "rejected push exit" "$rc" 1
+expect "worktree removed after a rejected push" "$(git -C "$clone" worktree list | wc -l | tr -d ' ')" 1
+expect "no local branch after a rejected push" "$(git -C "$clone" for-each-ref --format='%(refname)' refs/heads | grep -c codingame || true)" 0
+rm "$bare/hooks/pre-receive"
 
 # (2) --push: the branch holds only the game's files.
 rc=0
-out="$("$cscript" fetch toy --push 2>&1)" || rc=$?
+out="$(CODINGAME_COMMIT_TRAILERS='Co-Authored-By: Test <t@example.com>' "$cscript" fetch toy --push 2>&1)" || rc=$?
 expect "push exit" "$rc" 0
 expect "subject" "$(git -C "$bare" log -1 --format=%s "$branch")" "chore(repo): codingame games: toy, 2 new games"
-contains "trailer" "$(git -C "$bare" log -1 --format=%B "$branch")" "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+expect "trailer" "$(git -C "$bare" log -1 --format=%b "$branch" | head -n 1)" "Co-Authored-By: Test <t@example.com>"
+expect "no local branch after a push" "$(git -C "$clone" for-each-ref --format='%(refname)' refs/heads | grep -c codingame || true)" 0
 expect "only game files" "$(git -C "$bare" ls-tree -r --name-only "$branch" | grep -vc '^toy/' || true)" 0
 expect "files pushed" "$(git -C "$bare" ls-tree -r --name-only "$branch" | grep -c 'logs/\|index.jsonl')" 3
 expect "one commit" "$(git -C "$bare" rev-list --count "$branch")" 1
@@ -250,7 +296,7 @@ rc=0
 out="$("$cscript" fetch toy --push 2>&1)" || rc=$?
 expect "second push exit" "$rc" 0
 expect "second commit on top" "$(git -C "$bare" rev-parse "$branch^")" "$first"
-expect "second subject" "$(git -C "$bare" log -1 --format=%s "$branch")" "chore(repo): codingame games: toy, 1 new games"
+expect "second subject" "$(git -C "$bare" log -1 --format=%s "$branch")" "chore(repo): codingame games: toy, 1 new game"
 changed="$(git -C "$bare" diff --name-only "$first" "$branch" | grep -v 'leaderboard/' | tr '\n' ' ')"
 expect "only the new log and the index changed" "$changed" "toy/index.jsonl toy/logs/400.json "
 expect "index has three" "$(git -C "$bare" show "$branch:toy/index.jsonl" | wc -l | tr -d ' ')" 3
