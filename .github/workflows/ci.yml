@@ -87,7 +87,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
           components: rustfmt, clippy
@@ -116,7 +116,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
           # The bundler's tests bundle bots, which formats the result.
@@ -150,7 +150,7 @@ jobs:
         game: ${{ fromJSON(needs.changes.outputs.games) }}
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
           # The tests may bundle bots, which formats the result.
@@ -192,7 +192,7 @@ jobs:
         with:
           # The parent commit, to see which release files a pull request adds.
           fetch-depth: 2
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
           components: rustfmt
@@ -283,7 +283,7 @@ jobs:
       CARGO_DENY_SHA256: 9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
       - name: Install cargo-deny
@@ -307,7 +307,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
           # The tests may bundle bots, which formats the result.
@@ -379,7 +379,7 @@ jobs:
         working-directory: studio/web
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
           # The browser engine runs the rules program, the releases and the
@@ -486,7 +486,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
       - uses: Swatinem/rust-cache@v2

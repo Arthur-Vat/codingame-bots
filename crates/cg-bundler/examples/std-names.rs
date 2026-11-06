@@ -27,6 +27,7 @@
 //! `core::arch`, reached only through paths that start with `std::` or
 //! `core::`, and the unstable `std::simd`).
 
+use cg_bundler::prune::VERSION;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
@@ -87,7 +88,7 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
     println!(
-        "# The names that the standard library of Rust 1.90.0 (core, alloc, std) defines, for"
+        "# The names that the standard library of Rust {VERSION} (core, alloc, std) defines, for"
     );
     println!("# the minifier's renaming (ADR 0046). Written by");
     println!("# `cargo run -p cg-bundler --example std-names`; do not edit.");
@@ -102,10 +103,10 @@ fn main() -> ExitCode {
     ExitCode::SUCCESS
 }
 
-/// The `library` folder of the sources of rustc 1.90.0.
+/// The `library` folder of the sources of CodinGame's rustc ([`VERSION`]).
 fn default_library() -> Result<PathBuf, String> {
     let output = Command::new("rustup")
-        .args(["run", "1.90.0", "rustc", "--print", "sysroot"])
+        .args(["run", VERSION, "rustc", "--print", "sysroot"])
         .output()
         .map_err(|err| format!("cannot run rustup: {err}"))?;
     if !output.status.success() {

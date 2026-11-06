@@ -38,16 +38,21 @@ same "docs/CODINGAME.md" "$version" \
 
 workflows=0
 for file in .github/workflows/*.yml; do
-  if grep -q 'dtolnay/rust-toolchain@' "$file"; then
+  uses="$(grep -c 'dtolnay/rust-toolchain@' "$file" || true)"
+  # CG_RUST at any level (workflow, job or step), each value.
+  values="$(sed -n 's/^[[:space:]]*CG_RUST:[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}[[:space:]]*$/\1/p' "$file" | sort -u)"
+  if ((uses > 0)); then
     workflows=$((workflows + 1))
-    same "$file: CG_RUST" "$version" "$(sed -n 's/^  CG_RUST: "\([^"]*\)"$/\1/p' "$file")"
-    # The toolchain input of each use of the action. The ${{ }} is the
-    # workflow's text, not a shell expansion.
+    same "$file: CG_RUST" "$version" "$values"
+    # Every toolchain input is CG_RUST, one for each use of the action. The
+    # ${{ }} is the workflow's text, not a shell expansion.
     # shellcheck disable=SC2016
     same "$file: toolchains other than CG_RUST" "" \
-      "$(grep -A3 'dtolnay/rust-toolchain@' "$file" | grep 'toolchain:' | grep -v 'toolchain: ${{ env.CG_RUST }}$' || true)"
+      "$(grep -E '^[[:space:]]*toolchain:' "$file" | grep -vE '^[[:space:]]*toolchain: \$\{\{ env\.CG_RUST \}\}$' || true)"
+    same "$file: one toolchain input for each use of the action" "$uses" \
+      "$(grep -cE '^[[:space:]]*toolchain:' "$file" || true)"
   else
-    same "$file: CG_RUST without the action" "" "$(grep '^  CG_RUST:' "$file" || true)"
+    same "$file: CG_RUST without the action" "" "$values"
   fi
 done
 checks=$((checks + 1))

@@ -178,7 +178,7 @@ jobs:
           path: target/sprt-result
           key: ${{ steps.find.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: ${{ steps.find.outputs.key }}-
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-matched-key == ''
         with:
           toolchain: ${{ env.CG_RUST }}
@@ -408,7 +408,7 @@ jobs:
           path: target/league-result
           key: ${{ steps.find.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: ${{ steps.find.outputs.key }}-
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         if: steps.find.outputs.candidates != '' && steps.cache.outputs.cache-matched-key == ''
         with:
           toolchain: ${{ env.CG_RUST }}
@@ -647,7 +647,7 @@ jobs:
           echo "checks=$RUNNER_TEMP/checks" >>"$GITHUB_OUTPUT"
           echo "build=$build" >>"$GITHUB_OUTPUT"
       # Nothing is built for a game without results yet: the check only says so.
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         if: steps.plan.outputs.build == 'true'
         with:
           toolchain: ${{ env.CG_RUST }}

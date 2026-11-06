@@ -138,7 +138,7 @@ jobs:
           path: target/sprt-result
           key: ${{ steps.plan.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: ${{ steps.plan.outputs.key }}-
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         if: steps.cache.outputs.cache-matched-key == ''
         with:
           toolchain: ${{ env.CG_RUST }}
@@ -208,7 +208,7 @@ jobs:
             echo "::error title=SPRT::attempt $RUN_ATTEMPT, but prepare ran in attempt $PREPARE_ATTEMPT: a partial re-run cannot work, re-run all jobs"
             exit 1
           fi
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
           components: rustfmt
@@ -302,7 +302,7 @@ jobs:
           fi
       # The cache comes before the restore and the download: on a partial
       # match it cleans target/, files included.
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         if: needs.prepare.outputs.proceed == 'true'
         with:
           toolchain: ${{ env.CG_RUST }}

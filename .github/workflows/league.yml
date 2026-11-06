@@ -92,7 +92,7 @@ jobs:
             echo "::error title=League::games/$GAME is not a folder of this repository"
             exit 1
           fi
-      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master on 2026-11-06
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
           components: rustfmt
