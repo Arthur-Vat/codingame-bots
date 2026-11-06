@@ -1,54 +1,4 @@
-# CodinGame losses: the decisive moment of each, ice-and-fire-v014
-
-What it covers: our 140 losses among 312 games of `ice-and-fire-v014` (222 ranking games of 2026-10-31, 10 test games against zasmu and 80 test games against the top 2 to 10 of 2026-11-06; our nickname is Tarleya). For each loss, the first moment against us of the kinds `large cut`, `HQ threat` or `debt`, with the board before and after it, our `exposed30` (active cells the enemy could take or cut off with 30 gold) over our last 3 own plies before it, and both sides' key metrics. The focus players are the top 10 of the leaderboard snapshot of 2026-11-06 (15:41 UTC). All 312 games were converted, replayed and found to agree with CodinGame. The raw logs are not in the repository.
-
-Made by:
-
-```sh
-ice-and-fire-review codingame-moments --data data/ice-and-fire --me Tarleya > moments.md
-```
-
-Reading it: the moment's turn is the game turn of the play that made it; "board before" is the position the opponent played from and "board after" the next one; the metrics are read for each side right after its own last ply before the moment; `[n = k]` marks a sample of fewer than 5 games. The first three examples (in game id order) of each focus player are shown.
-
-Interpretation: to be written.
-
-## Sources
-
-Events and openings count the commands carried out by the rules, not the ones refused (a refused command has no effect).
-
-| kind | batch | games |
-|---|---:|---:|
-| ranking | - | 222 |
-| test | 2026-11-06-ice-and-fire-v014-pilot-zasmu | 10 |
-| test | 2026-11-06-ice-and-fire-v014-top2-10 | 80 |
-
-312 games used.
-Ranks from the leaderboard snapshot 2026-11-06T154110Z.json.
-No game left out.
-
-## Summary
-
-We lost 140 of 312 games (draws are left out). The decisive kinds, in order of interest: large cut, HQ threat, debt. The decisive moment of a loss is the first moment against us of one of them; 134 losses have one and 6 have none.
-
-Losses by decisive kind. Focus players are the top 10 of the snapshot that we met. The turn is the game turn of the play that made the moment (for "all losses", the turn the game ended).
-
-| kind | focus | median turn | others | median turn |
-|---|---:|---:|---:|---:|
-| large cut | 51 | 13 | 46 | 15 |
-| HQ threat | 24 | 17.5 | 9 | 20 |
-| debt | 2 | 15 | 2 | 20.5 |
-| no decisive moment | 2 | - | 4 | - |
-| all losses | 79 | 18 | 61 | 21 |
-
-## Our exposure before the moment
-
-Our `exposed30` right after each of our last 3 own plies before the decisive moment (1 is the last). "> 0" is the share of the losses with a value at that ply where it was above zero.
-
-| kind | losses | median at 1 | > 0 at 1 | > 0 at 2 | > 0 at 3 |
-|---|---:|---:|---:|---:|---:|
-| large cut | 97 | 3 | 100% (97/97) | 100% (97/97) | 95% (92/97) |
-| HQ threat | 33 | 2 | 100% (33/33) | 100% (33/33) | 100% (33/33) |
-| debt | 4 | 3 | 100% (4/4) [n = 4] | 100% (4/4) [n = 4] | 100% (4/4) [n = 4] |
+# Decisive moments: examples
 
 ## Examples
 
@@ -209,7 +159,7 @@ Metrics right after each side's last own ply before the moment:
 | material | 544 | 595 |
 | voronoi | 59 | 45 |
 
-### Pduhard- (rank 2, 8 losses, 7 with a decisive moment)
+### Pduhard- (rank 2, 9 losses, 8 with a decisive moment)
 
 #### Game 917642158: we were red, lost at turn 20 (the rules ended the game)
 
@@ -388,7 +338,7 @@ Metrics right after each side's last own ply before the moment:
 | material | 341 | 212 |
 | voronoi | 75 | 19 |
 
-### karliso (rank 3, 9 losses, 8 with a decisive moment)
+### karliso (rank 3, 10 losses, 9 with a decisive moment)
 
 #### Game 917642388: we were red, lost at turn 16 (the rules ended the game)
 
@@ -551,7 +501,7 @@ Metrics right after each side's last own ply before the moment:
 | material | 612 | 621 |
 | voronoi | 37 | 67 |
 
-### _iaz (rank 4, 7 losses, 7 with a decisive moment)
+### _iaz (rank 4, 8 losses, 8 with a decisive moment)
 
 #### Game 917644176: we were red, lost at turn 16 (the rules ended the game)
 
@@ -877,7 +827,7 @@ Metrics right after each side's last own ply before the moment:
 | material | 733 | 609 |
 | voronoi | 56 | 61 |
 
-### _iahelka (rank 6, 8 losses, 8 with a decisive moment)
+### _iahelka (rank 6, 9 losses, 9 with a decisive moment)
 
 #### Game 917642852: we were red, lost at turn 17 (the rules ended the game)
 
@@ -1040,7 +990,7 @@ Metrics right after each side's last own ply before the moment:
 | material | 318 | 308 |
 | voronoi | 53 | 41 |
 
-### Waffle3z (rank 7, 6 losses, 6 with a decisive moment)
+### Waffle3z (rank 7, 7 losses, 6 with a decisive moment)
 
 #### Game 914253190: we were blue, lost at turn 17 (the rules ended the game)
 
@@ -1545,7 +1495,7 @@ Metrics right after each side's last own ply before the moment:
 | material | 392 | 421 |
 | voronoi | 61 | 39 |
 
-### aCat (rank 10, 6 losses, 6 with a decisive moment)
+### aCat (rank 10, 8 losses, 8 with a decisive moment)
 
 #### Game 914336316: we were blue, lost at turn 17 (the rules ended the game)
 

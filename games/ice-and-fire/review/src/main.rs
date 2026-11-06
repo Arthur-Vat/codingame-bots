@@ -10,7 +10,7 @@
 //! ice-and-fire-review screening [--jobs N] GAME.json... > screening.md
 //! ice-and-fire-review codingame --out DIR [--kind ranking] [--strict] LOG.json... > check.md
 //! ice-and-fire-review codingame-report --data DIR --me NAME [--kinds ranking,test] [--top N] > report.md
-//! ice-and-fire-review codingame-moments --data DIR --me NAME [--kinds ranking,test] [--top N] [--examples K] > moments.md
+//! ice-and-fire-review codingame-moments --data DIR --me NAME [--kinds ranking,test] [--top N] [--examples K] [--out DIR] > moments.md
 //! ```
 
 mod bank;
@@ -212,6 +212,10 @@ enum Command {
         /// Games replayed at the same time.
         #[arg(long, default_value_t = 4)]
         jobs: usize,
+        /// Write moments.csv, summary.csv, examples.md and README.md into
+        /// this folder, instead of printing the Markdown report.
+        #[arg(long)]
+        out: Option<PathBuf>,
     },
 }
 
@@ -414,6 +418,7 @@ fn run(cli: Cli) -> Result<(), String> {
             examples,
             leaderboard,
             jobs,
+            out,
         } => {
             let text = profiles::run_moments(
                 &profiles::Request {
@@ -427,6 +432,7 @@ fn run(cli: Cli) -> Result<(), String> {
                     jobs,
                 },
                 examples,
+                out.as_deref(),
             )?;
             print!("{text}");
             Ok(())

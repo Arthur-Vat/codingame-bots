@@ -325,12 +325,30 @@ pub fn run(request: &Request) -> Result<(String, String), String> {
     Ok((markdown(&analysis), json + "\n"))
 }
 
-/// The decisive moments of our losses (Markdown), `examples` a focus
-/// player.
-pub fn run_moments(request: &Request, examples: usize) -> Result<String, String> {
+/// The decisive moments of our losses, `examples` a focus player: the
+/// Markdown report, or, with `out`, the files of that folder (and a line
+/// that says so).
+pub fn run_moments(
+    request: &Request,
+    examples: usize,
+    out: Option<&Path>,
+) -> Result<String, String> {
     let input = load_input(request)?;
     let findings = moments::analyze::<Hooks>(&input, &options(request), examples);
-    Ok(moments::markdown(&findings))
+    let Some(dir) = out else {
+        return Ok(moments::markdown(&findings));
+    };
+    std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    let files = moments::files(&findings);
+    for (name, content) in &files {
+        let path = dir.join(name);
+        std::fs::write(&path, content).map_err(|e| format!("{}: {e}", path.display()))?;
+    }
+    Ok(format!(
+        "wrote {} files in {}\n",
+        files.len(),
+        dir.display()
+    ))
 }
 
 #[cfg(test)]

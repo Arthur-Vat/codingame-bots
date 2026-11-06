@@ -148,6 +148,11 @@ impl Decisive for IceAndFire {
     fn exposure_metric() -> Option<&'static str> {
         Some("exposed30")
     }
+
+    /// 5 cells is a small cut, 10 a large one.
+    fn exposure_thresholds() -> Vec<i64> {
+        vec![5, 10]
+    }
 }
 
 #[cfg(test)]

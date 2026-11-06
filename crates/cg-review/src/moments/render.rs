@@ -8,7 +8,7 @@ use crate::profile::median;
 use crate::profile::render::{num, share, sources, table};
 use crate::trace::SIDES;
 
-fn value(v: Option<i64>) -> String {
+pub(super) fn value(v: Option<i64>) -> String {
     v.map_or("-".to_string(), |v| v.to_string())
 }
 
@@ -32,7 +32,7 @@ pub fn markdown(f: &Findings) -> String {
     out
 }
 
-fn with_moment(losses: &[&Loss], kind: &str) -> Vec<Found> {
+pub(super) fn with_moment(losses: &[&Loss], kind: &str) -> Vec<Found> {
     losses
         .iter()
         .filter_map(|l| l.found.clone())
@@ -93,7 +93,7 @@ fn summary(out: &mut String, f: &Findings) {
     );
 }
 
-fn median_of_turns(losses: &[&Loss]) -> Option<f64> {
+pub(super) fn median_of_turns(losses: &[&Loss]) -> Option<f64> {
     let turns: Vec<f64> = losses.iter().map(|l| f64::from(l.turns)).collect();
     median(&turns)
 }
@@ -104,39 +104,52 @@ fn exposure(out: &mut String, f: &Findings) {
     };
     let _ = writeln!(
         out,
-        "## Our exposure before the moment\n\nOur `{metric}` right after each of our last {EXPOSURE_PLIES} own plies before the decisive moment (1 is the last). \"> 0\" is the share of the losses with a value at that ply where it was above zero.\n"
+        "## Our exposure before the moment\n\nOur `{metric}` right after each of our last {EXPOSURE_PLIES} own plies before the moment (1 is the last). For each threshold, the share of the cases with a value at that ply where it was at or above it. The control rows are our wins: our exposure before the first opponent ply of the turn that is the median of the decisive moments of that kind (wins that ended earlier are left out), to show whether high exposure is special to losses.\n"
     );
     let all: Vec<&Loss> = f.losses.iter().collect();
-    let mut rows = Vec::new();
-    for kind in f.kinds_found() {
-        let founds = with_moment(&all, kind);
-        let at = |k: usize| -> Vec<i64> { founds.iter().filter_map(|x| x.exposure[k]).collect() };
-        let last: Vec<f64> = at(0).iter().map(|&v| v as f64).collect();
-        let positive = |k: usize| {
-            let values = at(k);
-            share(values.iter().filter(|&&v| v > 0).count(), values.len())
-        };
-        rows.push(vec![
-            kind.to_string(),
-            founds.len().to_string(),
-            num(median(&last)),
-            positive(0),
-            positive(1),
-            positive(2),
-        ]);
+    for &threshold in &f.thresholds {
+        let _ = writeln!(out, "### At or above {threshold}\n");
+        let mut rows = Vec::new();
+        for kind in f.kinds_found() {
+            let losses: Vec<Vec<Option<i64>>> = with_moment(&all, kind)
+                .into_iter()
+                .map(|x| x.exposure)
+                .collect();
+            rows.push(row(format!("{kind}, losses"), &losses, threshold));
+            if let Some(c) = f.controls.iter().find(|c| c.kind == kind) {
+                rows.push(row(
+                    format!("{kind}, wins at turn {}", c.turn),
+                    &c.exposures(),
+                    threshold,
+                ));
+            }
+        }
+        table(
+            out,
+            &["cases", "n", "median at 1", "at 1", "at 2", "at 3"],
+            &rows,
+        );
     }
-    table(
-        out,
-        &[
-            "kind",
-            "losses",
-            "median at 1",
-            "> 0 at 1",
-            "> 0 at 2",
-            "> 0 at 3",
-        ],
-        &rows,
-    );
+}
+
+fn row(label: String, cases: &[Vec<Option<i64>>], threshold: i64) -> Vec<String> {
+    let at = |k: usize| -> Vec<i64> { cases.iter().filter_map(|x| x[k]).collect() };
+    let last: Vec<f64> = at(0).iter().map(|&v| v as f64).collect();
+    let high = |k: usize| {
+        let values = at(k);
+        share(
+            values.iter().filter(|&&v| v >= threshold).count(),
+            values.len(),
+        )
+    };
+    vec![
+        label,
+        cases.len().to_string(),
+        num(median(&last)),
+        high(0),
+        high(1),
+        high(2),
+    ]
 }
 
 fn board(out: &mut String, title: &str, lines: &[String]) {
@@ -147,7 +160,7 @@ fn board(out: &mut String, title: &str, lines: &[String]) {
     out.push_str("```\n\n");
 }
 
-fn examples(out: &mut String, f: &Findings) {
+pub(super) fn examples(out: &mut String, f: &Findings) {
     out.push_str("## Examples\n\n");
     if f.focus.is_empty() || f.examples == 0 {
         out.push_str("No example requested or no focus player.\n\n");

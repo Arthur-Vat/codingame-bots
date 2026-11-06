@@ -35,6 +35,9 @@ impl Decisive for Toy {
     fn exposure_metric() -> Option<&'static str> {
         Some("cells")
     }
+    fn exposure_thresholds() -> Vec<i64> {
+        vec![13, 15]
+    }
 }
 
 fn moment(ply: usize, kind: &str, favours: usize) -> Moment {
@@ -167,7 +170,79 @@ fn examples_are_limited_and_tables_are_narrow() {
     }
     // Blue had two plies before ply 4: exposures 14 and 12, none for the third.
     assert!(
-        text.contains("| cut | 4 | 14 | 100% (4/4) [n = 4] | 100% (4/4) [n = 4] | - (0) |"),
+        text.contains("| cut, losses | 4 | 14 | 100% (4/4) [n = 4] | 0% (0/4) [n = 4] | - (0) |"),
         "{text}"
     );
+}
+
+#[test]
+fn wins_at_the_median_turn_are_the_control_for_exposure() {
+    let (meta, mut won) = lost(9, Vec::new());
+    won.winner = Some(1);
+    // A win too short to reach turn 3 is left out.
+    let (short_meta, mut short) = lost(10, Vec::new());
+    short.winner = Some(1);
+    short.plies.truncate(3);
+    let f = run(vec![
+        lost(1, vec![moment(4, "cut", 0)]),
+        (meta, won),
+        (short_meta, short),
+    ]);
+    assert_eq!(f.controls.len(), 1);
+    assert_eq!(
+        (f.controls[0].kind.as_str(), f.controls[0].turn),
+        ("cut", 3)
+    );
+    assert_eq!(f.controls[0].exposures(), [[Some(14), Some(12), None]]);
+    let text = markdown(&f);
+    assert!(text.contains("### At or above 13"), "{text}");
+    assert!(
+        text.contains(
+            "| cut, wins at turn 3 | 1 | 14 | 100% (1/1) [n = 1] | 0% (0/1) [n = 1] | - (0) |"
+        ),
+        "{text}"
+    );
+    assert!(
+        text.contains(
+            "| cut, wins at turn 3 | 1 | 14 | 0% (0/1) [n = 1] | 0% (0/1) [n = 1] | - (0) |"
+        ),
+        "{text}"
+    );
+}
+
+#[test]
+fn files_hold_the_numbers_the_examples_and_a_readme() {
+    let (meta, mut won) = lost(9, Vec::new());
+    won.winner = Some(1);
+    let f = run(vec![lost(1, vec![moment(4, "cut", 0)]), (meta, won)]);
+    let files = files(&f);
+    let names: Vec<&str> = files.iter().map(|(n, _)| n.as_str()).collect();
+    assert_eq!(
+        names,
+        ["moments.csv", "summary.csv", "examples.md", "README.md"]
+    );
+    let get = |name: &str| files.iter().find(|(n, _)| n == name).unwrap().1.clone();
+    let moments = get("moments.csv");
+    let lines: Vec<&str> = moments.lines().collect();
+    assert_eq!(
+        lines[0],
+        "group,game_id,opponent,rank,our_seat,kind,ply,turn,theirs_cells,ours_cells,exposure_1,exposure_2,exposure_3"
+    );
+    assert_eq!(lines[1], "loss,1,alpha,1,blue,cut,4,3,23,14,14,12,");
+    assert_eq!(lines[2], "win_control,9,alpha,1,blue,cut,4,3,,,14,12,");
+    let summary = get("summary.csv");
+    assert!(
+        summary.contains("losses_by_kind,focus,cut,,,count,1\n"),
+        "{summary}"
+    );
+    assert!(
+        summary.contains("exposure,losses,cut,13,1,share_pct,100.0\n"),
+        "{summary}"
+    );
+    assert!(
+        summary.contains("exposure,wins_at_turn_3,cut,15,1,at_or_above,0\n"),
+        "{summary}"
+    );
+    assert!(get("examples.md").contains("board 4"));
+    assert!(get("README.md").contains("exposure_1"));
 }

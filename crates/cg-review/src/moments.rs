@@ -19,7 +19,9 @@ use crate::profile::{
 };
 use crate::trace::Trace;
 
+mod files;
 mod render;
+pub use files::files;
 pub use render::markdown;
 
 /// The own plies before a moment whose exposure is read.
@@ -33,6 +35,9 @@ pub trait Decisive: Profiling {
     /// The key of the metric that says how much of a side the opponent can
     /// take next (higher is worse), if the game has one.
     fn exposure_metric() -> Option<&'static str>;
+    /// The exposure values that count as high, ascending: the report gives
+    /// the share of cases at or above each.
+    fn exposure_thresholds() -> Vec<i64>;
 }
 
 /// The decisive moment of one loss.
@@ -73,6 +78,37 @@ pub struct Loss {
     pub found: Option<Found>,
 }
 
+/// Our exposure in our wins at the median turn of the decisive moments of
+/// one kind: in each win that lasted that long, right after our last, second
+/// to last, ... own ply before the first opponent ply of that turn.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Control {
+    pub kind: String,
+    pub turn: u32,
+    /// Wins that ended before that turn are left out.
+    pub cases: Vec<ControlCase>,
+}
+
+/// One win of a [`Control`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ControlCase {
+    pub game_id: u64,
+    pub opponent: String,
+    pub rank: Option<u32>,
+    pub our_seat: usize,
+    /// The first opponent ply of the control's turn.
+    pub ply: usize,
+    pub turn: u32,
+    pub exposure: Vec<Option<i64>>,
+}
+
+impl Control {
+    /// The exposure of each case.
+    pub fn exposures(&self) -> Vec<Vec<Option<i64>>> {
+        self.cases.iter().map(|c| c.exposure.clone()).collect()
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Findings {
     pub sources: Sources,
@@ -81,6 +117,10 @@ pub struct Findings {
     pub kinds: Vec<String>,
     pub metrics: Vec<String>,
     pub exposure_metric: Option<String>,
+    /// The exposure values that count as high.
+    pub thresholds: Vec<i64>,
+    /// Our exposure in our wins, as a control, for each kind found.
+    pub controls: Vec<Control>,
     /// The focus players, by rank.
     pub focus: Vec<String>,
     /// The first trace's primer, to read the boards.
@@ -106,6 +146,36 @@ fn own_plies_before(trace: &Trace, seat: usize, ply: usize, n: usize) -> Vec<usi
         .collect()
 }
 
+/// Our exposure right after each of our last [`EXPOSURE_PLIES`] own plies
+/// before `ply`, latest first.
+fn exposure_before<P: Decisive>(trace: &Trace, us: usize, ply: usize) -> Vec<Option<i64>> {
+    let index = P::exposure_metric().and_then(|k| trace.metric(k));
+    let mut exposure: Vec<Option<i64>> = own_plies_before(trace, us, ply, EXPOSURE_PLIES)
+        .into_iter()
+        .map(|own| index.and_then(|i| value_after(trace, us, own, i)))
+        .collect();
+    exposure.resize(EXPOSURE_PLIES, None);
+    exposure
+}
+
+/// The ply of a win at game turn `turn` and the exposure before it, if the
+/// game lasted that long.
+fn control_exposure<P: Decisive>(
+    trace: &Trace,
+    us: usize,
+    turn: u32,
+) -> Option<(usize, u32, Vec<Option<i64>>)> {
+    let ply = trace
+        .plies
+        .iter()
+        .position(|p| p.game_turn >= turn && p.to_act == 1 - us)?;
+    Some((
+        ply,
+        trace.plies[ply].game_turn,
+        exposure_before::<P>(trace, us, ply),
+    ))
+}
+
 fn find<P: Decisive>(trace: &Trace, us: usize, kinds: &[&str], keys: &[&str]) -> Option<Found> {
     let rank = |kind: &str| kinds.iter().position(|k| *k == kind);
     let moment = trace
@@ -124,12 +194,7 @@ fn find<P: Decisive>(trace: &Trace, us: usize, kinds: &[&str], keys: &[&str]) ->
             .map(|k| value_after(trace, seat, last?, trace.metric(k)?))
             .collect()
     };
-    let exposure_index = P::exposure_metric().and_then(|k| trace.metric(k));
-    let mut exposure: Vec<Option<i64>> = own_plies_before(trace, us, moment.ply, EXPOSURE_PLIES)
-        .into_iter()
-        .map(|own| exposure_index.and_then(|i| value_after(trace, us, own, i)))
-        .collect();
-    exposure.resize(EXPOSURE_PLIES, None);
+    let exposure = exposure_before::<P>(trace, us, moment.ply);
     Some(Found {
         kind: moment.kind.clone(),
         ply: moment.ply,
@@ -151,10 +216,14 @@ pub fn analyze<P: Decisive>(input: &Input, options: &Options, examples: usize) -
     let kinds = P::decisive_kinds();
     let keys = P::key_metrics();
     let mut losses = Vec::new();
+    let mut wins = Vec::new();
     for (meta, trace) in &games {
         let Some((us, opponent)) = versus(meta, trace) else {
             continue;
         };
+        if trace.winner == Some(us) {
+            wins.push((us, opponent.clone(), meta, trace));
+        }
         if trace.winner != Some(1 - us) {
             continue;
         }
@@ -170,12 +239,46 @@ pub fn analyze<P: Decisive>(input: &Input, options: &Options, examples: usize) -
         });
     }
     losses.sort_by_key(|l| l.game_id);
+    let mut controls = Vec::new();
+    for kind in &kinds {
+        let turns: Vec<f64> = losses
+            .iter()
+            .filter_map(|l| l.found.as_ref())
+            .filter(|f| f.kind == *kind)
+            .map(|f| f64::from(f.turn))
+            .collect();
+        let Some(turn) = median(&turns) else {
+            continue;
+        };
+        let turn = turn.round() as u32;
+        controls.push(Control {
+            kind: (*kind).to_string(),
+            turn,
+            cases: wins
+                .iter()
+                .filter_map(|(us, opponent, meta, trace)| {
+                    let (ply, turn, exposure) = control_exposure::<P>(trace, *us, turn)?;
+                    Some(ControlCase {
+                        game_id: meta.game_id,
+                        opponent: opponent.clone(),
+                        rank: input.ranks.get(opponent).copied(),
+                        our_seat: *us,
+                        ply,
+                        turn,
+                        exposure,
+                    })
+                })
+                .collect(),
+        });
+    }
     Findings {
         sources: sources(input),
         games: games.len(),
         kinds: kinds.iter().map(|k| (*k).to_string()).collect(),
         metrics: keys.iter().map(|k| (*k).to_string()).collect(),
         exposure_metric: P::exposure_metric().map(str::to_string),
+        thresholds: P::exposure_thresholds(),
+        controls,
         focus,
         primer: games
             .first()

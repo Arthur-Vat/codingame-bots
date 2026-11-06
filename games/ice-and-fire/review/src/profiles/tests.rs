@@ -171,7 +171,7 @@ fn refused_commands_are_dropped_and_the_game_replays_the_same() {
 #[test]
 fn the_moments_cover_our_losses_and_list_those_left_out() {
     let dir = data_dir("moments-all");
-    let text = run_moments(&request(&dir), 3).expect("a report");
+    let text = run_moments(&request(&dir), 3, None).expect("a report");
     assert!(
         text.starts_with("# Decisive moments of our losses"),
         "{text}"
@@ -191,6 +191,6 @@ fn the_moments_of_an_empty_selection_say_so() {
     let dir = data_dir("moments-none");
     let mut selection = request(&dir);
     selection.batch = Some("nothing".to_string());
-    let text = run_moments(&selection, 3).expect("a report");
+    let text = run_moments(&selection, 3, None).expect("a report");
     assert!(text.contains("We lost 0 of 0 games"), "{text}");
 }
