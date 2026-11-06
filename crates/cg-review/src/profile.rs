@@ -17,6 +17,9 @@
 //! `moments`, `openings`, `wins`), `weaknesses` (our losses) and `games`
 //! (game ids per opponent). Medians and means are `null` when there is no
 //! data; counts of games sit beside every number (`games`, `n`).
+//!
+//! Both sides' metrics are compared "after turn t": at the first ply of
+//! turn t + 1 (the last ply for the last turn), when both have played turn t.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -314,13 +317,21 @@ fn length(trace: &Trace) -> u32 {
     trace.plies.last().map_or(0, |p| p.game_turn)
 }
 
-/// The value of metric `index` for `seat` at the start of its ply of game
-/// turn `turn`, unless it is the metric's `none`.
+/// The value of metric `index` for `seat` once both sides have played game
+/// turn `turn`: read at the first ply of the next game turn (for the last
+/// turn, at the trace's last ply, the last state it has), so that the side
+/// that plays second is not compared at an earlier point than the first.
+/// `None` if the trace has no ply of `turn`, or the value is the metric's
+/// `none`.
 fn value_at(trace: &Trace, seat: usize, turn: u32, index: usize) -> Option<i64> {
+    if !trace.plies.iter().any(|p| p.game_turn == turn) {
+        return None;
+    }
     let ply = trace
         .plies
         .iter()
-        .find(|p| p.to_act == seat && p.game_turn == turn)?;
+        .find(|p| p.game_turn > turn)
+        .or(trace.plies.last())?;
     let value = *ply.metrics[seat].get(index)?;
     (trace.metrics[index].none != Some(value)).then_some(value)
 }

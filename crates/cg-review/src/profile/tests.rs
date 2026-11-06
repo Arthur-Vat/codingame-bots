@@ -130,12 +130,12 @@ fn a_profile_has_events_and_openings() {
     assert_eq!(p.openings[0].opening, "B1;B2 / x / B3");
     assert_eq!((p.openings[0].games, p.openings[0].wins), (1, 1));
     assert_eq!(p.openings.len(), 3);
-    // Their median at turn 5: red's value at ply 8 is 13; ours 12.
+    // Turn 5 is the last turn, read at the last ply (9): red 14, blue 12.
     let cells = &p.metrics[0];
     let at5 = cells.at_turn.iter().find(|c| c.turn == 5).expect("turn 5");
     assert_eq!(
         (at5.games, at5.theirs, at5.ours),
-        (3, Some(13.0), Some(12.0))
+        (3, Some(14.0), Some(12.0))
     );
     assert!(cells.at_turn.iter().all(|c| c.turn <= 5));
     assert_eq!(p.wins.wins, 2);
@@ -176,7 +176,8 @@ fn moments_are_counted_in_wins_and_losses() {
 
 #[test]
 fn stays_below_finds_the_turn_from_which_it_never_recovers() {
-    // Blue (seat 1) is ahead at turns 1 and 2, behind from turn 3.
+    // Read after each turn (at the next turn's first ply), blue is ahead
+    // after turn 1 and behind from turn 2.
     let cells = [
         (1, 5),
         (1, 5),
@@ -188,7 +189,7 @@ fn stays_below_finds_the_turn_from_which_it_never_recovers() {
         (6, 4),
     ];
     let trace = game(&cells, Some(0));
-    assert_eq!(stays_below(&trace, 1, "cells"), Some(3));
+    assert_eq!(stays_below(&trace, 1, "cells"), Some(2));
     assert_eq!(stays_below(&trace, 0, "cells"), None);
     assert_eq!(stays_below(&trace, 1, "nothing"), None);
     // Ahead at the last turn: not below.
@@ -225,9 +226,9 @@ fn the_weaknesses_list_the_earliest_falls() {
     assert_eq!(w.earliest.len(), EARLIEST_SHOWN);
     assert_eq!(w.earliest[0].game_id, 10);
     assert_eq!(w.earliest[0].turn, 1);
-    assert_eq!(w.earliest[1].turn, 2);
-    // Two games end with us ahead.
-    assert_eq!(w.stays_below[0].below, 5);
+    assert_eq!(w.earliest[1].turn, 1);
+    assert_eq!(w.earliest[2].turn, 2);
+    assert_eq!(w.stays_below[0].below, 7);
     assert_eq!(w.lead, "cells");
 }
 
@@ -302,4 +303,20 @@ fn a_game_we_are_not_in_counts_for_the_profile_only() {
     assert_eq!(a.profiles[0].games, 1);
     assert_eq!(a.profiles[0].vs_us[0].games(), 0);
     assert_eq!(a.weaknesses.losses, 0);
+}
+
+#[test]
+fn the_second_player_is_not_behind_only_at_the_start_of_its_own_plies() {
+    // Blue (seat 1) is 2 below red at the start of its own plies, but equal
+    // once red and blue have both played each turn: at red's next ply.
+    // Plies: red t1, blue t1, red t2, blue t2, red t3, blue t3.
+    let cells = [(5, 5), (5, 3), (7, 7), (7, 5), (9, 9), (9, 7)];
+    let trace = game(&cells, Some(0));
+    // After turn 1 (ply 2) both have 7; after turn 2 both 9; the last
+    // turn is read at the last ply, where blue is behind by 2.
+    assert_eq!(stays_below(&trace, 1, "cells"), Some(3));
+    let index = trace.metric("cells").expect("cells");
+    assert_eq!(value_at(&trace, 1, 1, index), Some(7));
+    assert_eq!(value_at(&trace, 0, 1, index), Some(7));
+    assert_eq!(value_at(&trace, 1, 4, index), None);
 }

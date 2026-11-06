@@ -228,7 +228,7 @@ fn profile(out: &mut String, p: &Profile) {
     ]);
     table(out, &["their seat", "games", "won-lost"], &rows);
 
-    out.push_str("**Key metrics at game turns**: their median / ours. Row `games` counts the games behind each turn (theirs / ours).\n\n");
+    out.push_str("**Key metrics at game turns**: their median / ours, both read after that turn was played by both sides. Row `games` counts the games behind each turn (theirs / ours).\n\n");
     let turns: Vec<u32> = TURNS
         .iter()
         .copied()
@@ -392,7 +392,7 @@ fn weaknesses(out: &mut String, a: &Analysis) {
         out.push_str("No loss.\n\n");
         return;
     }
-    out.push_str("A value is read at the start of each side's own turn, so the side that plays second sees the first side's move already made; a fall \"from turn 1\" can be that offset.\n\n");
+    out.push_str("Turns are compared after both sides have played them (at the first ply of the next turn, the last ply for the last turn), so neither side is read earlier than the other.\n\n");
     out.push_str("Moments against us in our losses, by phase (early / middle / end), counted:\n\n");
     let rows: Vec<Vec<String>> = w
         .against_us
