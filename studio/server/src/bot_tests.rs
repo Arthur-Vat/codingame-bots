@@ -245,23 +245,32 @@ fn baselines_replay_identically(game: &str) {
     let state = bot_state();
     let baselines = state.game(game).map(studio_game::baseline_names).unwrap();
     assert!(!baselines.is_empty());
-    // All the games at once: a "fixed" seat plays by iterations, not by
-    // time, and a release's speed is measured once and cached
-    // (`Speed::rate`), so both games of a bot get the same iterations.
+    // The bots are compiled first, all at once, which is most of the time.
+    // The games stay one at a time: a "fixed" seat plays by iterations,
+    // but a bot may still read the clock (the cutter's cut search stops
+    // after 3 ms), so games played at once could differ under load.
     std::thread::scope(|scope| {
         let state = &state;
-        let games: Vec<_> = baselines
+        let builds: Vec<_> = baselines
             .iter()
             .map(|bot| {
-                let play = move || fixed_game(state, game, bot);
-                (bot, scope.spawn(play), scope.spawn(play))
+                scope.spawn(move || {
+                    let rules = state.game(game).unwrap();
+                    state.releases().compile(rules, bot)
+                })
             })
             .collect();
-        for (bot, first, second) in games {
-            let (first, second) = (first.join().unwrap(), second.join().unwrap());
-            assert_eq!(first, second, "{bot} does not replay identically");
+        for (bot, build) in baselines.iter().zip(builds) {
+            if let Err(error) = build.join().unwrap() {
+                panic!("{bot}: {error}");
+            }
         }
     });
+    for bot in baselines {
+        let first = fixed_game(&state, game, &bot);
+        let second = fixed_game(&state, game, &bot);
+        assert_eq!(first, second, "{bot} does not replay identically");
+    }
 }
 
 #[test]
