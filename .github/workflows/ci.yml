@@ -458,7 +458,8 @@ jobs:
         # No --with-deps: the runner image already has every library Chromium
         # needs, and the option only added font packages fetched from a slow
         # Ubuntu mirror (about 9 minutes on #267). The browser tests compare
-        # no screenshots, so the fonts change nothing.
+        # no screenshots, and those fonts cover CJK, Thai and fallback glyphs,
+        # not the Latin text whose layout the tests measure.
         run: |
           "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Install Chromium" npx playwright install chromium
       - name: Browser tests
