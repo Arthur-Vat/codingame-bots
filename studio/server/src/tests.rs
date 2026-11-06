@@ -262,7 +262,7 @@ fn a_friend_game_is_played_by_move_index() {
     );
     assert_eq!(status, 200);
     let record: Record = serde_json::from_value(record).unwrap();
-    assert_eq!(record.format, 1);
+    assert_eq!(record.format, 2);
     assert_eq!(record.game, "uttt");
     assert_eq!(record.seed, 123);
     assert_eq!(record.source, "studio");

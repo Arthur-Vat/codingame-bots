@@ -15,8 +15,12 @@ use crate::tournament::GameRecord;
 /// The version of the record format. A change to the format raises it.
 /// Adding a kind of end (`EndReason::Resigned`) does not: readers of format 1
 /// only fail on a kind they do not know, and records made by the arena never
-/// hold it.
-pub const RECORD_FORMAT: u32 = 1;
+/// hold it. Format 2 adds [`Record::origin`]; readers accept formats 1 and 2
+/// ([`READABLE_FORMATS`]).
+pub const RECORD_FORMAT: u32 = 2;
+
+/// The formats a reader accepts: format 1 has no origin.
+pub const READABLE_FORMATS: [u32; 2] = [1, RECORD_FORMAT];
 
 /// The environment variable that replaces the bots' time budget by a fixed
 /// iteration count. The arena does not depend on `cg-search`, which defines
@@ -29,7 +33,8 @@ pub struct RecordedAnswer {
     pub seat: usize,
     pub lines: Vec<String>,
     /// How long the answer took, in milliseconds (the measurement behind
-    /// the match's `max_answer_ms`).
+    /// the match's `max_answer_ms`). It is 0 when the source gives no time
+    /// (a record with an [`Origin`]).
     pub ms: f64,
 }
 
@@ -57,6 +62,19 @@ pub struct Player {
     pub fixed_iters: Option<u64>,
 }
 
+/// Where a game played elsewhere comes from.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Origin {
+    /// The site, for example `codingame`.
+    pub site: String,
+    /// The site's number for the game.
+    pub game_id: u64,
+    /// `ranking`, `test` or `replay`: how the game was played.
+    pub kind: String,
+    /// The site's account (agent) ids by seat.
+    pub agent_ids: [i64; SEATS],
+}
+
 /// One game: enough to rebuild every position by replaying the answers
 /// with the game's referee.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -77,6 +95,10 @@ pub struct Record {
     pub end: EndReason,
     /// The winning seat, or `None` for a draw.
     pub winner: Option<usize>,
+    /// Where the game was played, when it was not by this repository's
+    /// arena or studio. Absent from format 1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub origin: Option<Origin>,
 }
 
 impl Record {
@@ -112,6 +134,7 @@ impl Record {
             turns: played.recorded_turns.clone(),
             end: played.end.clone(),
             winner: played.winner,
+            origin: None,
         }
     }
 }

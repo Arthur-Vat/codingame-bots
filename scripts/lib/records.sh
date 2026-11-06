@@ -7,7 +7,7 @@
 # turn, the winner and how the game ended (times, which vary, are ignored).
 # A record without these fields is an error, never "identical".
 readonly canon='
-  if .format != 1 then error("unexpected record format")
+  if (.format | IN(1, 2) | not) then error("unexpected record format")
   elif (has("winner") | not) then error("record without winner")
   else
     {turns: [.turns[] | [.[] | (.lines // error("record without lines"))]],

@@ -469,7 +469,8 @@ fn a_record_is_refused_with_the_servers_messages() {
     };
     let fail = |text: String| error(json!({"op": "check", "record_text": text}));
     assert!(fail("{".to_string()).starts_with("invalid game record: "));
-    assert!(fail(with("format", json!(2))).starts_with("unsupported record format 2"));
+    assert!(fail(with("format", json!(3))).starts_with("unsupported record format 3"));
+    assert!(fail(with("format", json!(0))).starts_with("unsupported record format 0"));
     assert_eq!(fail(with("game", json!("chess"))), "unknown game \"chess\"");
     assert!(fail(with("winner", json!(1))).starts_with("the referee ends the game with winner"));
     assert_eq!(
@@ -481,6 +482,17 @@ fn a_record_is_refused_with_the_servers_messages() {
         error(json!({"op": "view", "record_text": with("format", json!(9))}))
             .starts_with("unsupported record format 9")
     );
+}
+
+#[test]
+fn records_of_format_1_and_2_are_accepted() {
+    let text = record_text(5, 1_700_000_000, "studio");
+    for format in [1, 2] {
+        let mut record: Value = serde_json::from_str(&text).unwrap();
+        record["format"] = json!(format);
+        let checked = ok(json!({"op": "check", "record_text": record.to_string()}));
+        assert_eq!(checked["row"]["game"], "uttt");
+    }
 }
 
 #[test]

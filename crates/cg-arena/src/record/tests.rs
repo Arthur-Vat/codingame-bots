@@ -123,8 +123,10 @@ fn a_record_round_trips_through_json() {
         Some("target/release/bot --fast 3")
     );
     assert_eq!(record.players[1].command.as_deref(), Some("other"));
-    assert_eq!(record.format, 1);
-    assert_eq!(RECORD_FORMAT, 1);
+    assert_eq!(record.format, 2);
+    assert_eq!(RECORD_FORMAT, 2);
+    assert_eq!(READABLE_FORMATS, [1, 2]);
+    assert_eq!(record.origin, None);
     assert_eq!(record.players[1].name, "b");
     assert_eq!(record.players[1].kind, PlayerKind::Bot);
     assert_eq!(record.players[1].bot_seed, Some(bot_seed(42, 1, "b")));
@@ -136,6 +138,38 @@ fn a_record_round_trips_through_json() {
     assert!(json.contains("\"end\":{\"kind\":\"finished\"}"), "{json}");
     let back: Record = serde_json::from_str(&json).unwrap();
     assert_eq!(back, record);
+    assert!(!json.contains("origin"), "{json}");
+}
+
+#[test]
+fn a_format_1_record_without_origin_still_loads_and_an_origin_round_trips() {
+    let options = MatchOptions::default();
+    let bots = [
+        BotSpec::parse("a=x").unwrap(),
+        BotSpec::parse("b=y").unwrap(),
+    ];
+    let mut record = Record::from_match(
+        "uttt",
+        "arena match",
+        0,
+        &played(Some(0), EndReason::Finished),
+        &options,
+        [&bots[0], &bots[1]],
+    );
+    record.format = 1;
+    let old = serde_json::to_string(&record).unwrap();
+    let loaded: Record = serde_json::from_str(&old).unwrap();
+    assert_eq!((loaded.format, loaded.origin.clone()), (1, None));
+
+    record.origin = Some(Origin {
+        site: "codingame".to_string(),
+        game_id: 7,
+        kind: "ranking".to_string(),
+        agent_ids: [3, -4],
+    });
+    let json = serde_json::to_string(&record).unwrap();
+    assert!(json.contains("\"agent_ids\":[3,-4]"), "{json}");
+    assert_eq!(serde_json::from_str::<Record>(&json).unwrap(), record);
 }
 
 #[test]

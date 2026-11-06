@@ -8,9 +8,11 @@
 //! ice-and-fire-review towers [--csv DIR] [--jobs N] GAME.json... > towers.md
 //! ice-and-fire-review bank --out FILE [--count N] [--seed S] [--jobs N] GAME.json...
 //! ice-and-fire-review screening [--jobs N] GAME.json... > screening.md
+//! ice-and-fire-review codingame --out DIR [--kind ranking] [--strict] LOG.json... > check.md
 //! ```
 
 mod bank;
+mod codingame;
 mod replay;
 mod screening;
 mod study;
@@ -122,6 +124,24 @@ enum Command {
         /// Game records written by the arena (`--records`).
         #[arg(required = true)]
         records: Vec<PathBuf>,
+    },
+    /// Converts CodinGame logs (the API's JSON logs) into records, replays
+    /// each with our engine and prints, as Markdown, where the engine
+    /// disagrees with CodinGame: the winner, a command carried out or
+    /// refused, a command that is not read.
+    Codingame {
+        /// Where to write the records, as GAME_ID.json, created if missing.
+        #[arg(long)]
+        out: PathBuf,
+        /// How the games were played: ranking, test or replay.
+        #[arg(long, default_value = "ranking", value_parser = ["ranking", "test", "replay"])]
+        kind: String,
+        /// Exit with 1 when a game disagrees or does not convert.
+        #[arg(long)]
+        strict: bool,
+        /// The logs, `<game_id>.json`.
+        #[arg(required = true)]
+        logs: Vec<PathBuf>,
     },
 }
 
@@ -273,6 +293,19 @@ fn run(cli: Cli) -> Result<(), String> {
         Command::Screening { jobs, records } => {
             let games = replay::map_records(&sorted(records), jobs, screening::sides)?;
             print!("{}", screening::report(&games));
+            Ok(())
+        }
+        Command::Codingame {
+            out,
+            kind,
+            strict,
+            logs,
+        } => {
+            let (text, clean) = codingame::run(&sorted(logs), &out, &kind)?;
+            print!("{text}");
+            if strict && !clean {
+                return Err("some games disagree or did not convert".to_string());
+            }
             Ok(())
         }
         Command::Summary { dir } => {

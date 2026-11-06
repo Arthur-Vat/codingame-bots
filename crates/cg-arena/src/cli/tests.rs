@@ -245,7 +245,7 @@ fn writes_parseable_record_files_in_a_new_directory() {
     assert_eq!(names, ["uttt-5-p0-0.json"]);
     let json = fs::read_to_string(dir_arg.join(&names[0])).unwrap();
     let record: Record = serde_json::from_str(&json).unwrap();
-    assert_eq!(record.format, 1);
+    assert_eq!(record.format, crate::record::RECORD_FORMAT);
     assert_eq!(record.game, "uttt");
     assert_eq!(record.source, "arena match");
     assert_eq!(record.turns.len(), 1);
