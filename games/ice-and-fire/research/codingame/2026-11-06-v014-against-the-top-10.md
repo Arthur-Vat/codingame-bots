@@ -40,7 +40,7 @@ Once their territory is large, the top bots turn their income into income and pr
 
 ## 5. How they finish: a large cut around turns 12 to 14
 
-A large cut of our territory decides 101 of our 147 losses (median turn 13 against the top 10), an HQ threat 35 (around turn 17), debt 4. Before the cut, our exposure is no higher than in our wins at the same turn (5 cells or more exposed: 30% of losses, 27% of wins): we are not unusually open; we are smaller, with fewer and weaker units, so the same exposure costs us the game (decisive moments: `2026-11-06-v014-decisive-moments/`, pull request #285).
+A large cut of our territory decides 101 of our 147 losses (median turn 13 against the top 10), an HQ threat 35 (around turn 17), debt 4. Before a cut by a top player, we are about as open as in our wins at the same turn (5 cells or more that 30 gold could take from us: 31% of these losses against 25% of wins), and only rarely very open (10 cells or more: 5.5% against 2%): we are not unusually exposed; we are smaller, with fewer and weaker units, so the same exposure costs us the game. Against weaker players, very open positions matter more (10 cells or more: 13% of losses against 3% of wins) (decisive moments: `2026-11-06-v014-decisive-moments/`, pull request #285).
 
 ## 6. Our search disagrees with their moves
 
