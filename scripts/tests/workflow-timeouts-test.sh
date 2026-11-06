@@ -10,24 +10,34 @@ cd "$(dirname "$0")/../.."
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
-# Prints "<file>: <job>" for each job with neither timeout-minutes nor uses.
+# Prints "<file>: <job>" for each job with neither timeout-minutes nor uses,
+# and "<file>: runs-on outside a job it reads" when a runs-on line is not at
+# the level of a job it found (another indentation), so that the check cannot
+# pass by reading nothing.
 no_timeout() { # no_timeout <workflow>...
   awk '
     function finish() {
       if (job != "" && !limited) { print file ": " job }
       job = ""
     }
-    FNR == 1 { finish(); in_jobs = 0; file = FILENAME }
+    function end_file() {
+      finish()
+      if (file != "" && runs_on != job_runs_on) { print file ": runs-on outside a job it reads" }
+      runs_on = 0; job_runs_on = 0
+    }
+    FNR == 1 { end_file(); in_jobs = 0; file = FILENAME }
+    /^[[:space:]]+runs-on:/ { runs_on++ }
     /^jobs:/ { in_jobs = 1; next }
     !in_jobs { next }
     /^[^[:space:]#]/ { finish(); in_jobs = 0; next }
-    /^  [A-Za-z0-9_-]+:[[:space:]]*$/ {
+    /^  [A-Za-z0-9_-]+:[[:space:]]*(#.*)?$/ {
       finish()
       job = $1; sub(/:$/, "", job); limited = 0
       next
     }
+    /^    runs-on:/ && job != "" { job_runs_on++ }
     /^    (timeout-minutes|uses):/ { limited = 1 }
-    END { finish() }
+    END { end_file() }
   ' "$@"
 }
 
@@ -76,6 +86,23 @@ defaults:
   run:
     shell: bash
 EOF2
+cat >"$tmp_dir/odd.yml" <<'EOF2'
+jobs:
+  first:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+  second: # a comment on the job's line
+    runs-on: ubuntu-latest
+EOF2
+same "a job line with a comment" "$tmp_dir/odd.yml: second" "$(no_timeout "$tmp_dir/odd.yml")"
+
+cat >"$tmp_dir/deep.yml" <<'EOF2'
+jobs:
+    only:
+        runs-on: ubuntu-latest
+EOF2
+same "jobs indented otherwise are not read silently" "$tmp_dir/deep.yml: runs-on outside a job it reads" "$(no_timeout "$tmp_dir/deep.yml")"
+
 same "a key after jobs: ends the last job" "$tmp_dir/after.yml: only" "$(no_timeout "$tmp_dir/after.yml")"
 
 same "several files: each job under its own file" "$tmp_dir/after.yml: only
