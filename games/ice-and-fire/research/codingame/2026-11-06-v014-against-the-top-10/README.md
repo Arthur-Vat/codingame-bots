@@ -23,8 +23,8 @@ Ranks come from the leaderboard snapshot 2026-11-06T165130Z.json.
 - `weaknesses_stays_below.csv`: per `metric`: in how many of our `losses` (and of our `wins`, the control) our value stays below the opponent's from some turn to the end (`losses_below`, `wins_below`), and the `median_turn` of that turn in the losses. For metrics where less is better, read it the other way.
 - `weaknesses_earliest.csv`: the losses where the lead metric (`lead`) fell behind for good earliest: `game_id`, `opponent`, `from_turn`.
 - `separation.csv`: for each `set` of curves (see below), `metric` and game `turn`: the AUC of the first group against the second (`auc`, empty if a group has fewer than 5 values), the groups' medians (`first_median`, `second_median`) and games (`first_n`, `second_n`), and `separates_from`, the turn from which the groups stay apart (empty if never); `lower_is_better` says how the AUC is read.
-- `spending.csv`: mean gold spent per own turn: `group`, `phase`, `plies` (own plies behind it), `category` and `mean_spent`.
-- `spending_kept.csv`: the share of the gold in hand left unspent at the end of an own turn, in percent (`kept_pct`, mean over turns): `group`, `phase`, `plies`.
+- `spending.csv`: mean of the game's resource spent per own turn, by the categories of its spending hook: `group`, `phase`, `plies` (own plies behind it), `category` and `mean_spent`.
+- `spending_kept.csv`: the share of the resource in hand left unspent at the end of an own turn, in percent (`kept_pct`, mean over turns): `group`, `phase`, `plies`.
 - `games.csv`: the games: `label` (the opponent), `game_id` and our `result` (W, L, D).
 - `signals.md`: the strongest findings picked by code (no interpretation), each with its chart and data file.
 

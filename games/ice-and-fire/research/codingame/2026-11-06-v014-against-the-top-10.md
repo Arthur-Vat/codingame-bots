@@ -10,7 +10,7 @@ v014 won 20 of its 106 games against the top 10 (100 test games and 6 ranking ga
 
 ## 1. The gap opens at turn 5, in the opening, not in the fights
 
-The top bots hold more cells from turn 1 (4 against our 3), and the gap grows every turn: 15 against 13 at turn 5, 29 against 23 at turn 8, 38 against 28 at turn 10, 50 against 31 at turn 15. Their income stays close to ours until turn 8 (24 against 22), then pulls away: 31 against 26 at turn 10, 34.5 against 24 at turn 15, while ours stops growing.
+The top bots hold more cells from turn 1 (4 against our 3), and the gap never shrinks, widening from turn 5: 15 against 13 at turn 5, 29 against 23 at turn 8, 38 against 28 at turn 10, 50 against 31 at turn 15. Their income stays close to ours until turn 8 (24 against 22), then pulls away: 31 against 26 at turn 10, 34.5 against 24 at turn 15, while ours stops growing.
 
 ![Active cells by game turn, top players against us](2026-11-06-v014-against-the-top-10/top-vs-us-cells.svg)
 
@@ -34,17 +34,17 @@ Of every metric, active cells and the land nearer to us than to the enemy (`voro
 
 ## 4. The middle game: they invest, we keep gold
 
-Once their territory is large, the top bots turn their income into income and protection: in the middle game they spend 2.9 gold a turn on mines (we: 0.1), 7.5 on towers (we: 5.1) and 4.9 on level-2 units (we: 2.4); half of their games build a tower at turn 8, against 8% of ours. They keep 38% of their gold unspent at the end of a middle-game turn; we keep 46% in our wins and 57% in our losses. At turn 10 we hold 22 gold against their 9.
+Once their territory is large, the top bots turn their income into income and protection: in the middle game they spend 2.9 gold a turn on mines (we: 0.1), 7.5 on towers (we: 5.1) and 4.9 on level-2 units (we: 2.4), while we spend more on level-1 units (11.0 against 6.3); half of their games build a tower at turn 8, against 8% of ours. In the same games, they keep 38% of their gold unspent at the end of a middle-game turn and we keep 52%; across all our games, 46% in our wins and 57% in our losses. At turn 10 we hold 22 gold against their 9.
 
 ![Share of games that build a tower at each turn, top players against us](2026-11-06-v014-against-the-top-10/top-vs-us-event-tower.svg)
 
 ## 5. How they finish: a large cut around turns 12 to 14
 
-A large cut of our territory decides 101 of our 147 losses (median turn 13 against the top 10), an HQ threat 35 (around turn 17), debt 4. Before a cut by a top player, we are about as open as in our wins at the same turn (5 cells or more that 30 gold could take from us: 31% of these losses against 25% of wins), and only rarely very open (10 cells or more: 5.5% against 2%): we are not unusually exposed; we are smaller, with fewer and weaker units, so the same exposure costs us the game. Against weaker players, very open positions matter more (10 cells or more: 13% of losses against 3% of wins) (decisive moments: `2026-11-06-v014-decisive-moments/`, pull request #285).
+A large cut of our territory decides 101 of our 147 losses (median turn 13 against the top 10), an HQ threat 35 (around turn 17), debt 4. Before a cut by a top player, we are about as open as in our wins at the same turn (5 cells or more that 30 gold could take from us: 31% of these losses against 25% of wins), and only rarely very open (10 cells or more: 5.5% against 2%): we are not unusually exposed; we are smaller, with fewer and weaker units, so the same exposure costs us the game. Against weaker players, very open positions matter more (10 cells or more: 13% of losses against 3% of wins) (decisive moments: the folder `2026-11-06-v014-decisive-moments/` of pull request #285).
 
 ## 6. Our search disagrees with their moves
 
-At each turn of a top bot, our search would play the same plan only 5 to 12% of the time, and in undecided positions it scores their plan below its own by a median of 6 (aCat) to 20 (zasmu) gold, by more than 20 gold on 31% to 49% of their turns. Since they win, the likely reading is that our evaluation underrates their plans; the largest gaps (`2026-11-06-v014-judge/largest-gaps.md`, pull request #287) are the place to look for what it misses.
+At each turn of a top bot, our search would play the same plan only 4 to 12% of the time, and in undecided positions it scores their plan below its own by a median of 6 (aCat) to 20 (zasmu) gold, by more than 20 gold on 31% to 49% of their turns. Since they win, the likely reading is that our evaluation underrates their plans; the largest gaps (`2026-11-06-v014-judge/largest-gaps.md`, in the folder of pull request #287) are the place to look for what it misses.
 
 ## What to try in our bot
 
