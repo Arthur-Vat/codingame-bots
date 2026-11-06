@@ -44,10 +44,9 @@
 #
 # Every step runs even when an earlier one fails. The script ends with one
 # line per step and a last line `ok   check: ...` or `FAIL check: ...`; it
-# exits 1 if a step failed, 2 on wrong usage. Rust is the default toolchain,
-# as in CLAUDE.md's commands; CI uses 1.90.0 (`RUSTUP_TOOLCHAIN=1.90.0
-# scripts/check.sh` matches it). Needs git, and jq for cargo test of chosen
-# packages.
+# exits 1 if a step failed, 2 on wrong usage. Rust is the one that
+# rust-toolchain.toml pins, 1.90.0 as on CI (ADR 0055). Needs git, and jq for
+# cargo test of chosen packages.
 set -euo pipefail
 
 usage() {

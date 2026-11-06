@@ -1,0 +1,7 @@
+# CodinGame's Rust (ADR 0010, ADR 0055): every cargo and rustc command in the
+# repository uses it, and rustup installs it on the first one. Change it
+# together with `rust-version` in Cargo.toml and CG_RUST in the workflows.
+[toolchain]
+channel = "1.90.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

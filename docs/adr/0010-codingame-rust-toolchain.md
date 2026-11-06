@@ -1,6 +1,6 @@
 # 0010. Target CodinGame's Rust: 1.90.0, edition 2021
 
-- Status: accepted
+- Status: accepted; the decisions on local Rust and on `rust-toolchain.toml` superseded by [0055](0055-pin-rust-in-the-repository.md)
 - Date: 2026-10-07
 - Scope: framework
 

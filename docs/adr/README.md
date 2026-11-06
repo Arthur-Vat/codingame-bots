@@ -17,7 +17,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0007](0007-english.md) | English for all artifacts | Accepted |
 | [0008](0008-claude-hub.md) | A Claude conversation is the hub | Accepted |
 | [0009](0009-manual-submission.md) | Manual submission to CodinGame | Superseded by 0047; the rank reported after each submission superseded earlier by 0036 |
-| [0010](0010-codingame-rust-toolchain.md) | Target CodinGame's Rust: 1.90.0, edition 2021 | Accepted |
+| [0010](0010-codingame-rust-toolchain.md) | Target CodinGame's Rust: 1.90.0, edition 2021 | Accepted; the decisions on local Rust and on `rust-toolchain.toml` superseded by 0055 |
 | [0011](0011-framework-structure.md) | Framework structure: text-protocol referees, reference rules, textual bundler | Accepted; the bundle's comments superseded by 0016 |
 | [0012](0012-evaluation.md) | Evaluation: SPRT on game pairs, seeded openings, frozen releases | Accepted; decision 7 superseded by 0013, part of decision 5 by 0015; decisions 10 and 12 completed by 0029; the league of decision 12 superseded by 0038; decision 9 completed by 0045 |
 | [0013](0013-evaluation-time-limits.md) | Evaluation time limits: 20 ms plus 5 ms of tolerance, full time for strong bots | Accepted; decision 3 put in place by 0014, part of decision 1 superseded by 0015, and for games in Legend by 0020 and 0038; decisions 1 and 3 superseded by 0042 |
@@ -56,6 +56,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0052](0052-league-precision-from-the-whole-matrix.md) | The league's precision share chosen from the whole covariance of the ratings | Accepted |
 | [0053](0053-weekly-task-starts-the-branch-workflow.md) | The weekly task starts the League weekly workflow itself | Accepted |
 | [0054](0054-local-checks-follow-ci-scopes.md) | Local checks follow CI's scopes | Accepted |
+| [0055](0055-pin-rust-in-the-repository.md) | Pin CodinGame's Rust in the repository | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 
