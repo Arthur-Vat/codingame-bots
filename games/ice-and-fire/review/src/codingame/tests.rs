@@ -263,5 +263,12 @@ fn a_batch_is_written_checked_and_reported_with_its_conversion_errors() {
 
     let (_, clean) = run(&paths[..2], &out, "ranking").expect("runs");
     assert!(clean);
+
+    let copy = logs.join("copy.json");
+    fs::write(&copy, FINISHED).expect("a log");
+    let (text, clean) = run(&[paths[0].clone(), copy], &out, "ranking").expect("runs");
+    assert!(!clean);
+    assert!(text.contains("duplicate of game 914386214"), "{text}");
+    assert!(text.contains("| 2 | 1 | 1 | 0 |"), "{text}");
     fs::remove_dir_all(&dir).expect("cleaned up");
 }

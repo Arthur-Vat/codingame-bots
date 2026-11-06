@@ -134,7 +134,7 @@ enum Command {
         #[arg(long)]
         out: PathBuf,
         /// How the games were played: ranking, test or replay.
-        #[arg(long, default_value = "ranking")]
+        #[arg(long, default_value = "ranking", value_parser = ["ranking", "test", "replay"])]
         kind: String,
         /// Exit with 1 when a game disagrees or does not convert.
         #[arg(long)]

@@ -105,7 +105,7 @@ An index line: CodinGame's game id; the kind (`ranking`, `test`, `replay`); when
 
 The records are not stored: they are rebuilt from the logs, so a fix in a conversion applies to every game.
 
-The record of ADR 0027 gains an optional `origin` (CodinGame's game id, the kind, each seat's agent id and rank) and a new format version; CodinGame gives no answer times, so the record says they are unknown. The studio can then show a CodinGame game like any other, which is not part of this plan.
+The record of ADR 0027 gains an optional `origin` (CodinGame's game id, the kind, each seat's agent id; no rank, since ranks come from the leaderboard snapshots, as "Stored data" says) and a new format version; CodinGame gives no answer times, so the record says they are unknown. The studio can then show a CodinGame game like any other, which is not part of this plan.
 
 ## Fetching and playing
 

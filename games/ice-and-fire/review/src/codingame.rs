@@ -15,6 +15,7 @@
 //!
 //! [ADR 0056]: ../../../../docs/adr/0056-codingame-game-analysis.md
 
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -358,11 +359,18 @@ pub enum Verdict {
 
 /// Converts, writes and checks the log at `path`; the record goes to
 /// `out/<game_id>.json`.
-pub fn run_log(path: &Path, out: &Path, kind: &str) -> Verdict {
+pub fn run_log(path: &Path, out: &Path, kind: &str, seen: &mut HashSet<u64>) -> Verdict {
     let log = match read_log(path) {
         Ok(log) => log,
         Err(error) => return Verdict::Failed(error),
     };
+    if !seen.insert(log.game_id) {
+        return Verdict::Failed(format!(
+            "{}: duplicate of game {} already read in this run, skipped",
+            path.display(),
+            log.game_id
+        ));
+    }
     let record = match to_record::<IceAndFire>(&log, kind) {
         Ok(record) => record,
         Err(error) => return Verdict::Failed(format!("{}: {error}", path.display())),
@@ -430,7 +438,11 @@ pub fn report(read: usize, verdicts: &[Verdict]) -> String {
 /// and converted.
 pub fn run(logs: &[PathBuf], out: &Path, kind: &str) -> Result<(String, bool), String> {
     fs::create_dir_all(out).map_err(|e| format!("{}: {e}", out.display()))?;
-    let verdicts: Vec<Verdict> = logs.iter().map(|path| run_log(path, out, kind)).collect();
+    let mut seen = HashSet::new();
+    let verdicts: Vec<Verdict> = logs
+        .iter()
+        .map(|path| run_log(path, out, kind, &mut seen))
+        .collect();
     let clean = verdicts.iter().all(|v| match v {
         Verdict::Checked(_, checked) => checked.findings.is_empty(),
         Verdict::Failed(_) => false,
