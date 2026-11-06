@@ -19,11 +19,14 @@
 //!   the two bots compared, then the same by slice (length thirds, seats,
 //!   winner, lead at turn 10) from the start and before the end, with every
 //!   slice's points turn by turn for charts;
+//! - [`moments`]: the decisive moment of each of our losses, with the boards
+//!   around it (ADR 0056);
 //! - [`profile`]: profiles of the players met on CodinGame and our own
 //!   weaknesses (ADR 0056), from traces and a game's [`profile::Profiling`]
 //!   hooks.
 
 pub mod detect;
+pub mod moments;
 pub mod profile;
 pub mod report;
 pub mod summary;
