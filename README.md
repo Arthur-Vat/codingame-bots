@@ -44,6 +44,7 @@ Every bot change is judged by CI: unit tests, a check that the bot compiles on C
 - [Workflow](docs/WORKFLOW.md): how work is proposed, judged and approved
 - [New game playbook](docs/NEW_GAME.md): the stages a new game goes through
 - [CodinGame platform facts](docs/CODINGAME.md): compiler version, limits, how to re-check them
+- [Game analysis](docs/GAME_ANALYSIS.md): CodinGame games recorded, rebuilt and analysed (designed, not built)
 - [Decision records](docs/adr/)
 
 ## Development
