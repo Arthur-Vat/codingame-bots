@@ -133,7 +133,7 @@ jobs:
           scripts/annotate.sh run "Framework tests" cargo test --locked "${args[@]}"
 
   game-tests:
-    name: "${{ matrix.game }}: tests"
+    name: "Game: tests"
     needs: changes
     # An empty matrix is an error: skip the job instead.
     if: needs.changes.outputs.games != '[]'
@@ -170,7 +170,7 @@ jobs:
           scripts/annotate.sh run "$GAME tests" cargo test --locked "${args[@]}"
 
   game-bots:
-    name: "${{ matrix.game }}: bots"
+    name: "Game: bots"
     needs: changes
     if: needs.changes.outputs.games != '[]'
     runs-on: ubuntu-latest

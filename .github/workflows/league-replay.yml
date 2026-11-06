@@ -73,7 +73,7 @@ jobs:
           echo "count=$SHARDS" >>"$GITHUB_OUTPUT"
 
   replay:
-    name: Shard ${{ matrix.shard }}
+    name: Shard
     needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 300

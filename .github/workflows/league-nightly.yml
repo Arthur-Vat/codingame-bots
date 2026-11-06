@@ -98,7 +98,7 @@ jobs:
           fi
 
   night:
-    name: "${{ matrix.game }}"
+    name: Night
     needs: games
     # An empty matrix is an error: skip the job instead.
     if: needs.games.outputs.games != '[]'

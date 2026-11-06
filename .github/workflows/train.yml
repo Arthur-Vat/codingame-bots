@@ -94,7 +94,7 @@ jobs:
           echo "shards=[$shards]" >> "$GITHUB_OUTPUT"
 
   selfplay:
-    name: Self-play ${{ matrix.shard }}
+    name: Self-play
     needs: plan
     if: inputs.data_from_run == ''
     runs-on: ubuntu-latest

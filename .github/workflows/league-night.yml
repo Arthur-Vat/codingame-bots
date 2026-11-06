@@ -169,7 +169,7 @@ jobs:
           overwrite: true
 
   play1:
-    name: "Wave 1, shard ${{ matrix.shard }}"
+    name: Wave 1, shard
     needs: plan1
     # No line: no runner. A run with no results has no lines either.
     if: needs.plan1.outputs.lines != '' && needs.plan1.outputs.lines != '0'
@@ -341,7 +341,7 @@ jobs:
           overwrite: true
 
   play2:
-    name: "Wave 2, shard ${{ matrix.shard }}"
+    name: Wave 2, shard
     needs: [plan1, merge1]
     if: ${{ !cancelled() && needs.merge1.result == 'success' && needs.merge1.outputs.play2_run == 'true' }}
     runs-on: ubuntu-latest

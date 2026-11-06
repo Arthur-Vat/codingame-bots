@@ -72,9 +72,9 @@ run classify '["solo","toy"]' games/toy/releases/toy-v002.rs games/solo/releases
 expect "classify status" "$status" 0
 contains "classify" "$output" 'serial_games=["solo"]'
 contains "classify" "$output" 'parallel_games=["toy"]'
-contains "classify" "$output" 'parallel_matrix={"include":[{"game":"toy","candidate":"games/toy/releases/toy-v002.rs"}]}'
+contains "classify" "$output" 'parallel_candidates={"toy":"games/toy/releases/toy-v002.rs"}'
 run classify '["solo"]' games/solo/releases/solo-v002.rs
-contains "classify serial only" "$output" 'parallel_matrix={"include":[]}'
+contains "classify serial only" "$output" 'parallel_candidates={}'
 run classify '[]'
 contains "classify nothing" "$output" 'serial_games=[]'
 run classify '["toy"]' games/toy/releases/toy-v001.rs games/toy/releases/toy-v002.rs
