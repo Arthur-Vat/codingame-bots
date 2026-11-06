@@ -306,6 +306,18 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+# A TERM or INT (a session's time limit) runs the same cleanup, so that what
+# was stored is published; bash does not run the EXIT trap on its own then.
+nap_pid=""
+on_signal() { # on_signal <exit status>
+  trap - TERM INT
+  [[ -z $nap_pid ]] || kill "$nap_pid" 2>/dev/null || true
+  echo "interrupted: publishing what was stored" >&2
+  cleanup
+  exit "$1"
+}
+trap 'on_signal 143' TERM
+trap 'on_signal 130' INT
 if [[ $backfill == false ]]; then
   (
     umask 077
@@ -364,7 +376,26 @@ retry_wait="${CODINGAME_RETRY_WAIT:-60}"
 quota_remaining="" quota_reset=0
 
 now_utc() { date -u +%Y-%m-%dT%H:%M:%SZ; }
-nap() { "${CODINGAME_SLEEP:-sleep}" "$1"; }
+# The sleep runs in the background, so that a signal is handled at once.
+nap() {
+  "${CODINGAME_SLEEP:-sleep}" "$1" &
+  nap_pid=$!
+  wait "$nap_pid" || true
+  nap_pid=""
+}
+# The end of --max-hours (epoch seconds), 0 without it, and why a play stopped.
+deadline=0 stop_msg="" stop_status=0
+past_deadline() { ((deadline > 0)) && (($(now_epoch) >= deadline)); }
+# Sleeps $1 seconds, unless the wait would cross the deadline: then returns 1
+# with stop_msg set, so that the run stops cleanly and can be resumed.
+wait_for() { # wait_for <seconds> <what>
+  if ((deadline > 0)) && (($(now_epoch) + $1 >= deadline)); then
+    stop_msg="stopped: the next game cannot start before the deadline ($2 in $1 s); the games left stay planned. Run the same command to resume."
+    stop_status=0
+    return 1
+  fi
+  nap "$1"
+}
 now_epoch() { # CODINGAME_NOW: epoch seconds, or a file that holds them (tests)
   if [[ -f ${CODINGAME_NOW:-} ]]; then cat "$CODINGAME_NOW"; else echo "${CODINGAME_NOW:-$(date +%s)}"; fi
 }
@@ -523,9 +554,10 @@ note_limits() { # note_limits <body file>
   fi
 }
 wait_quota() {
+  # Returns 1 (stop_msg set) when the wait would cross the deadline.
   if [[ $quota_remaining == 0 ]]; then
+    wait_for "$quota_reset" "the quota window resets" || return 1
     echo "test game quota used up, waiting ${quota_reset}s"
-    nap "$quota_reset"
     quota_remaining=""
   fi
 }
@@ -539,6 +571,7 @@ problem_slug() { # problem_slug <body file>
 await_test_game() { # await_test_game <test game id>
   local polls st
   for polls in $(seq 1 30); do
+    wait_for 30 "waiting for test game $1" || return 2
     request "/test-games/$1?wait=30&format=json" "$scratch/await.json"
     [[ $status == 200 ]] || return 1
     st="$(jq -r '.status // empty' "$scratch/await.json" 2>/dev/null || true)"
@@ -552,10 +585,33 @@ await_test_game() { # await_test_game <test game id>
 # request: no retry) or retry, with tg_message, tg_test_id and tg_seconds.
 tg_outcome="" tg_message="" tg_test_id=null tg_seconds=0
 play_once() { # play_once <body file>
-  local busy=0 id st polls=0 t0 slug
+  local busy=0 id st polls=0 t0 slug fl awaited
   tg_outcome=retry tg_message="" tg_test_id=null tg_seconds=0
   while :; do
-    wait_quota
+    # Before every start: the deadline, then the floor of the day's quota.
+    if past_deadline; then
+      stop_msg="stopped: $max_hours hours have passed; the games left stay planned. Run the same command to resume."
+      stop_status=0
+      tg_outcome=stopped tg_message="$stop_msg"
+      return 0
+    fi
+    fl=0
+    check_floor || fl=$?
+    if ((fl == 1)); then
+      stop_msg="stopped: $keep test games of the day left to the owner ($floor_left of the 600 in 24 hours remain); the games left stay planned."
+      stop_status=0
+    elif ((fl == 2)); then
+      stop_msg="stopping: $floor_msg; the games left stay planned."
+      stop_status=1
+    fi
+    if ((fl != 0)); then
+      tg_outcome=stopped tg_message="$stop_msg"
+      return 0
+    fi
+    if ! wait_quota; then
+      tg_outcome=stopped tg_message="$stop_msg"
+      return 0
+    fi
     t0=$SECONDS
     request "/puzzles/$puzzle/test-games?wait=30&format=json" "$scratch/tg.json" "$1"
     note_limits "$scratch/tg.json"
@@ -576,7 +632,12 @@ play_once() { # play_once <body file>
           tg_message="another test game keeps running (409)"
           return 0
         fi
-        await_test_game "$id" || true
+        awaited=0
+        await_test_game "$id" || awaited=$?
+        if ((awaited == 2)); then
+          tg_outcome=stopped tg_message="$stop_msg"
+          return 0
+        fi
         ;;
       400)
         tg_outcome=rejected
@@ -642,6 +703,11 @@ play_game() { # play_game <body file> <attempts so far> <label>
         pg_outcome="done"
         return 0
         ;;
+      stopped)
+        pg_outcome=stopped
+        pg_message="$tg_message"
+        return 0
+        ;;
       rejected | refused)
         pg_outcome=failed
         pg_message="$tg_message"
@@ -655,8 +721,20 @@ play_game() { # play_game <body file> <attempts so far> <label>
       return 0
     fi
     echo "$3: attempt $pg_attempts failed ($tg_message), trying again after ${retry_wait}s" >&2
-    nap "$retry_wait"
+    if ! wait_for "$retry_wait" "the retry wait"; then
+      pg_outcome=stopped
+      pg_message="$stop_msg"
+      return 0
+    fi
   done
+}
+
+# What a stop says: on stdout when it is clean, on stderr when it is a failure.
+stop_report() {
+  if ((stop_status == 0)); then echo "$pg_message"; else
+    echo "$pg_message" >&2
+    exit_status=1
+  fi
 }
 
 plural() { # plural <n> <noun>
@@ -772,7 +850,7 @@ find_resumable() { # find_resumable <release sha256>
 
 run_batch() {
   local name sha state total i planned stored=0 opp aid opts att result failed_games streak=0 stopped=false resumable
-  local streak_games=() started deadline=0 fl
+  local streak_games=() started
   started="$(now_epoch)"
   if [[ -n $max_hours ]]; then
     deadline=$((started + $(awk -v h="$max_hours" 'BEGIN { printf "%d", h * 3600 }')))
@@ -839,16 +917,6 @@ run_batch() {
       echo "stopped: $max_hours hours have passed; the games left stay planned. Run the same command to resume."
       break
     fi
-    fl=0
-    check_floor || fl=$?
-    if ((fl == 1)); then
-      echo "stopped: $keep test games of the day left to the owner ($floor_left of the 600 in 24 hours remain); the games left stay planned."
-      break
-    elif ((fl == 2)); then
-      echo "stopping: $floor_msg; the games left stay planned." >&2
-      exit_status=1
-      break
-    fi
     opp="$(jq -r --argjson i "$i" '.games[$i].opponent' "$scratch/batch.json")"
     aid="$(jq -r --argjson i "$i" '.games[$i].agent_id' "$scratch/batch.json")"
     opts="$(jq -r --argjson i "$i" '.games[$i].game_options' "$scratch/batch.json")"
@@ -857,6 +925,10 @@ run_batch() {
       '{language: "Rust", code: $code, opponents: [$opp], game_options: $o, show_in_ide: false,
         overwrite_ide_code: false, overwrite_ide_game_parameters: false}' >"$scratch/post.json"
     play_game "$scratch/post.json" "$att" "game $((i + 1))/$total ($opp, $opts)"
+    if [[ $pg_outcome == stopped ]]; then
+      stop_report
+      break
+    fi
     if [[ $pg_outcome == "done" ]] &&
       record_game "$scratch/tg-log.json" test "$(now_utc)" \
         "$(jq -nc --arg b "$name" --arg r "$release" '{batch: $b, release: $r}')" 0; then
@@ -945,6 +1017,10 @@ run_replay() {
       '{language: "Rust", code: $code, replay_game_id: $id, show_in_ide: false,
         overwrite_ide_code: false, overwrite_ide_game_parameters: false}' >"$scratch/post.json"
     play_game "$scratch/post.json" 0 "replay of $gid ($opp)"
+    if [[ $pg_outcome == stopped ]]; then
+      stop_report
+      break
+    fi
     if [[ $pg_outcome == "done" ]] &&
       record_game "$scratch/tg-log.json" replay "$(now_utc)" \
         "$(jq -nc --argjson g "$gid" --arg r "$release" '{replay_of: $g, release: $r}')" null; then

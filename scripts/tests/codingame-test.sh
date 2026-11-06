@@ -571,7 +571,8 @@ expect "fetch-ids refuses a log of another id" "$rc" 1
 lacks "token in output" "$out" "$token"
 lacks "token in arguments" "$(cat "$STUB_DIR/requests.log")" "$token"
 expect "token in the data" "$(grep -rlF -- "$token" "$bdata" "$rdata" "$fdata" "$STUB_DIR"/post-*.json || true)" ""
-expect "no submissions endpoint in the script" "$(grep -c "/submissions" "$repo_root/scripts/codingame.sh" || true)" 0
+# Any use of "submissions" is caught, but the plain name of the file.
+expect "no submissions endpoint in the script" "$(grep -v 'codingame-submissions\.txt' "$repo_root/scripts/codingame.sh" | grep -c submissions || true)" 0
 
 # --push of a batch: a commit of the batch's files only.
 clone2="$tmp_dir/clone2"
@@ -774,6 +775,51 @@ unset CODINGAME_NOW
 rm "$STUB_DIR/clock"
 run batch toy "$release_file" --opponents Alpha --max-hours x
 expect "max-hours needs a number" "$rc" 2
+
+# A wait that would cross the deadline stops the run cleanly, without sleeping:
+# the quota wait, and the wait before trying again.
+export CODINGAME_NOW=1000
+: >"$STUB_DIR/sleeps.log"
+enqueue "$post_name" 01 200 "$(done_reply 5421 "$(tglog 9421 seed=1 Alpha 11 0 '[300,100]')" 0 7200)"
+before="$(posts)"
+run batch toy "$release_file" --opponents Alpha --games-per-opponent 2 --name tdl --max-hours 1 --play --data "$bdata"
+expect "deadline quota wait exit" "$rc" 0
+expect "deadline quota wait plays one game" "$(($(posts) - before))" 1
+contains "deadline quota wait message" "$out" "stopped: the next game cannot start before the deadline (the quota window resets in 7200 s)"
+expect "deadline quota wait does not sleep" "$(cat "$STUB_DIR/sleeps.log")" ""
+expect "deadline quota wait leaves a game planned" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/tdl.json")" "done,planned"
+enqueue "$post_name" 01 200 '{"test_game_id":5422,"status":"failed","failure":"No code machine."}'
+before="$(posts)"
+CODINGAME_RETRY_WAIT=5000 run batch toy "$release_file" --opponents Alpha --games-per-opponent 2 --name tdl --max-hours 1 --play --data "$bdata"
+expect "deadline retry wait exit" "$rc" 0
+expect "deadline retry wait plays one start" "$(($(posts) - before))" 1
+contains "deadline retry wait message" "$out" "(the retry wait in 5000 s)"
+expect "deadline retry wait does not sleep" "$(cat "$STUB_DIR/sleeps.log")" ""
+expect "deadline retry wait leaves the game planned" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/tdl.json")" "done,planned"
+unset CODINGAME_NOW
+
+# The floor is read before every start, retries included.
+enqueue "$lim_name" 01 200 "$(lim24 500)"
+enqueue "$lim_name" 02 200 "$(lim24 500)"
+enqueue "$post_name" 01 200 '{"test_game_id":5423,"status":"failed","failure":"No code machine."}'
+enqueue "$post_name" 02 200 "$(done_reply 5424 "$(tglog 9424 seed=2 Alpha 11 0 '[300,100]')" 5 20)"
+requests_before="$(grep -c "limits?puzzle=toy-puzzle" "$STUB_DIR/requests.log" || true)"
+run batch toy "$release_file" --opponents Alpha --games-per-opponent 2 --name tdl --keep 100 --play --data "$bdata"
+expect "floor read before each start" "$(($(grep -c "limits?puzzle=toy-puzzle" "$STUB_DIR/requests.log") - requests_before))" 2
+
+# A TERM during a wait publishes what was stored (--push), removes the
+# worktree and exits non-zero. The stub sleep sends TERM to the script.
+term_stub="$tmp_dir/term-stub"
+# shellcheck disable=SC2016
+printf '#!/usr/bin/env bash\nkill -TERM "$PPID"\nexec sleep 30\n' >"$term_stub"
+chmod +x "$term_stub"
+newclone clone5
+enqueue "$post_name" 01 200 "$(done_reply 5431 "$(tglog 9431 seed=1 Beta 22 0 '[300,100]')" 0 20)"
+rc=0
+out="$(cd "$tmp_dir/clone5" && CODINGAME_SLEEP="$term_stub" scripts/codingame.sh batch toy "$release_file" --opponents Beta --games-per-opponent 2 --name tterm --play --push 2>&1)" || rc=$?
+expect "TERM exit" "$rc" 143
+expect "TERM pushed the stored game" "$(git -C "$tmp_dir/clone5.git" ls-tree -r --name-only refs/heads/claude/codingame-games | grep -c 'logs/9431.json')" 1
+expect "TERM leaves no worktree" "$(git -C "$tmp_dir/clone5" worktree list | wc -l | tr -d ' ')" 1
 
 # The release of ranking games, from the submissions file.
 fdata2="$tmp_dir/fdata2"
