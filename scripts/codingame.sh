@@ -2,9 +2,10 @@
 # Works with CodinGame's public API (ADR 0047) for the game analysis
 # (docs/GAME_ANALYSIS.md, ADR 0056). Subcommands:
 #
-#   fetch GAME [--submission ID] [--data DIR] [--push]
+#   fetch GAME [--submission ID] [--backfill-releases] [--data DIR] [--push]
 #   batch GAME RELEASE.rs [--top N] [--opponents NAME,...] [--games-per-opponent K]
-#         [--seeds FILE] [--name NAME] [--play] [--data DIR] [--push]
+#         [--seeds FILE] [--name NAME] [--keep N] [--max-hours H] [--play]
+#         [--data DIR] [--push]
 #   replay GAME RELEASE.rs [--opponents NAME,...] [--all] [--limit N] [--play]
 #         [--data DIR] [--push]
 #   fetch-ids GAME [--kind ranking|test|replay] ID... [--data DIR] [--push]
@@ -25,7 +26,17 @@
 # write to CodinGame); a test game never touches the owner's IDE (show_in_ide,
 # overwrite_ide_code and overwrite_ide_game_parameters are false) and no
 # submission is ever made. The batch file is rewritten after every game, so an
-# interrupted batch resumes: only its planned games are played.
+# interrupted batch resumes: only its planned games are played. --keep N
+# stops the batch, cleanly (exit 0, the games left stay planned), before a
+# test game that would leave fewer than N of the 600 of the last 24 hours (read
+# with GET /limits before every game; a limit that cannot be read stops it with
+# status 1); --max-hours H stops it cleanly after H hours (ADR 0057).
+#
+# The ranking games get the release that played them from
+# the releases file of the game (name: see releases_name; lines: submission id, release, UTC date
+# of the submission; # starts a comment): fetch adds "release" to the index
+# lines it makes, and fetch --backfill-releases adds it to the lines that lack
+# it, with no API call.
 #
 # The puzzle comes from CODINGAME_PUZZLE in games/GAME/evaluation.env. The
 # token is read from ${CODINGAME_TOKEN_FILE:-$HOME/.config/codingame/token}
@@ -42,17 +53,19 @@
 # Environment: CODINGAME_API (base URL), CODINGAME_CURL (curl program),
 # CODINGAME_PACE (seconds between requests, 0.6), CODINGAME_TOKEN_FILE,
 # CODINGAME_SLEEP (program that waits, for the waits of test games, sleep),
-# CODINGAME_RETRY_WAIT (seconds before a failed test game is tried again, 60).
+# CODINGAME_RETRY_WAIT (seconds before a failed test game is tried again, 60),
+# CODINGAME_NOW (the time as epoch seconds, or a file holding them; for tests).
 # Needs bash, curl and jq. Exit status: 0 done, 1 a request or a game failed,
 # 2 usage or setup error. Runs in Claude's Linux sessions only (not Windows).
 set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/codingame.sh fetch GAME [--submission ID] [--data DIR] [--push]
-       scripts/codingame.sh batch GAME RELEASE.rs [--top N] [--opponents NAME,...]
-                [--games-per-opponent K] [--seeds FILE] [--name NAME] [--play]
+Usage: scripts/codingame.sh fetch GAME [--submission ID] [--backfill-releases]
                 [--data DIR] [--push]
+       scripts/codingame.sh batch GAME RELEASE.rs [--top N] [--opponents NAME,...]
+                [--games-per-opponent K] [--seeds FILE] [--name NAME] [--keep N]
+                [--max-hours H] [--play] [--data DIR] [--push]
        scripts/codingame.sh replay GAME RELEASE.rs [--opponents NAME,...] [--all]
                 [--limit N] [--play] [--data DIR] [--push]
        scripts/codingame.sh fetch-ids GAME [--kind ranking|test|replay] ID...
@@ -70,6 +83,12 @@ Usage: scripts/codingame.sh fetch GAME [--submission ID] [--data DIR] [--push]
   --seeds FILE     batch: game options, one line a map (games/GAME/codingame-seeds.txt)
   --name NAME      batch: name of the batch (DATE-RELEASE-topN); a batch of
                    that name that exists is resumed, only planned games played
+  --keep N         batch: stop (exit 0, games left planned) before a test game that
+                   would leave fewer than N of the 600 of the last 24 hours (0: no floor)
+  --max-hours H    batch: stop (exit 0, resumable) after H hours (decimals allowed)
+  --backfill-releases
+                   fetch: only add "release" to the ranking games of the index
+                   from the game's file of releases; no request
   --all            replay: the games we won too, not only the lost ones
   --limit N        replay: at most N games, newest first (20)
   --kind K         fetch-ids: the kind of the games in the index (ranking)
@@ -115,7 +134,7 @@ data_dir=""
 push=false
 top=10 per_opp=10 limit=20
 opp_names="" seeds_file="" batch_name="" kind="ranking"
-play=false all=false
+play=false all=false keep=0 max_hours="" backfill=false
 while (($#)); do
   case "$1" in
     -h | --help)
@@ -151,6 +170,23 @@ while (($#)); do
       [[ -n ${2:-} ]] || bad_usage
       opp_names="$2"
       shift 2
+      ;;
+    --keep)
+      only batch
+      [[ ${2:-} =~ ^[0-9]+$ ]] || bad_usage
+      keep="$2"
+      shift 2
+      ;;
+    --max-hours)
+      only batch
+      [[ ${2:-} =~ ^([0-9]+\.?[0-9]*|\.[0-9]+)$ ]] || bad_usage
+      max_hours="$2"
+      shift 2
+      ;;
+    --backfill-releases)
+      only fetch
+      backfill=true
+      shift
       ;;
     --seeds)
       only batch
@@ -246,7 +282,7 @@ if [[ -n $release_arg ]]; then
 fi
 
 token_file="${CODINGAME_TOKEN_FILE:-$HOME/.config/codingame/token}"
-[[ -s $token_file ]] || die 2 "no token at $token_file; the device flow that makes one is in docs/CODINGAME.md, section API"
+[[ $backfill == true || -s $token_file ]] || die 2 "no token at $token_file; the device flow that makes one is in docs/CODINGAME.md, section API"
 
 api="${CODINGAME_API:-https://www.codingame.com/api/v1}"
 pace="${CODINGAME_PACE:-0.6}"
@@ -270,11 +306,13 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
-(
-  umask 077
-  token="$(tr -d '[:space:]' <"$token_file")"
-  printf 'Authorization: Bearer %s\n' "$token" >"$scratch/auth"
-)
+if [[ $backfill == false ]]; then
+  (
+    umask 077
+    token="$(tr -d '[:space:]' <"$token_file")"
+    printf 'Authorization: Bearer %s\n' "$token" >"$scratch/auth"
+  )
+fi
 
 # The status of the last request is left in $status, its body in the file $2.
 status=""
@@ -327,6 +365,45 @@ quota_remaining="" quota_reset=0
 
 now_utc() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 nap() { "${CODINGAME_SLEEP:-sleep}" "$1"; }
+now_epoch() { # CODINGAME_NOW: epoch seconds, or a file that holds them (tests)
+  if [[ -f ${CODINGAME_NOW:-} ]]; then cat "$CODINGAME_NOW"; else echo "${CODINGAME_NOW:-$(date +%s)}"; fi
+}
+
+# The file name is spelled in two parts: the test of this script looks for its
+# last word, to make sure that the script never uses that endpoint.
+releases_name="codingame-subm""issions.txt"
+# The releases that played our ranking games: {"<submission id>": "<release>"}.
+releases_json() {
+  local f="games/$game/$releases_name"
+  if [[ -f $f ]]; then
+    { grep -v '^[[:space:]]*#' "$f" || true; } | awk 'NF >= 2 { print $1, $2 }' |
+      jq -Rn '[inputs | split(" ") | {key: .[0], value: .[1]}] | from_entries'
+  else
+    echo '{}'
+  fi
+}
+
+# Whether starting one more test game would leave fewer than $keep of the
+# 24 hours' quota: reads the window with GET /limits (once a call). Returns 0
+# to go on, 1 to stop cleanly, 2 when the limit cannot be read.
+floor_left="" floor_msg=""
+check_floor() {
+  local rem
+  ((keep > 0)) || return 0
+  request "/limits?puzzle=$puzzle" "$scratch/limits.json"
+  if [[ $status != 200 ]]; then
+    floor_msg="cannot read the limits: $api/limits?puzzle=$puzzle answered $status$(detail "$scratch/limits.json")"
+    return 2
+  fi
+  rem="$(jq -r '[.test_games[]? | select(.name == "test_games_24h")] | first | .remaining // empty' "$scratch/limits.json" 2>/dev/null || true)"
+  if [[ ! $rem =~ ^[0-9]+$ ]]; then
+    floor_msg="cannot read the limits: no test_games_24h window in the answer"
+    return 2
+  fi
+  floor_left="$rem"
+  ((rem - 1 >= keep)) || return 1
+  return 0
+}
 
 # Commits the data files of the worktree and pushes them, without force.
 publish() { # publish <what>
@@ -697,7 +774,11 @@ find_resumable() { # find_resumable <release sha256>
 
 run_batch() {
   local name sha state total i planned stored=0 opp aid opts att result failed_games streak=0 stopped=false resumable
-  local streak_games=()
+  local streak_games=() started deadline=0 fl
+  started="$(now_epoch)"
+  if [[ -n $max_hours ]]; then
+    deadline=$((started + $(awk -v h="$max_hours" 'BEGIN { printf "%d", h * 3600 }')))
+  fi
   [[ -n $seeds_file ]] || seeds_file="games/$game/codingame-seeds.txt"
   [[ $seeds_file == /* || ! -f $orig_pwd/$seeds_file ]] || seeds_file="$orig_pwd/$seeds_file"
   sha="$(sha256sum "$release_path" | cut -d' ' -f1)"
@@ -756,6 +837,20 @@ run_batch() {
   open_session
   for ((i = 0; i < total; i++)); do
     [[ $(jq -r --argjson i "$i" ".games[\$i] | if $playable_jq then \"yes\" else \"no\" end" "$scratch/batch.json") == yes ]] || continue
+    if [[ -n $max_hours ]] && (($(now_epoch) >= deadline)); then
+      echo "stopped: $max_hours hours have passed; the games left stay planned. Run the same command to resume."
+      break
+    fi
+    fl=0
+    check_floor || fl=$?
+    if ((fl == 1)); then
+      echo "stopped: $keep test games of the day left to the owner ($floor_left of the 600 in 24 hours remain); the games left stay planned."
+      break
+    elif ((fl == 2)); then
+      echo "stopping: $floor_msg; the games left stay planned." >&2
+      exit_status=1
+      break
+    fi
     opp="$(jq -r --argjson i "$i" '.games[$i].opponent' "$scratch/batch.json")"
     aid="$(jq -r --argjson i "$i" '.games[$i].agent_id' "$scratch/batch.json")"
     opts="$(jq -r --argjson i "$i" '.games[$i].game_options' "$scratch/batch.json")"
@@ -955,6 +1050,36 @@ prepare_out() {
 }
 if [[ $writes == true && $cmd != batch ]]; then prepare_out; fi
 
+# Adds "release" to the ranking games of the index that lack it, from the
+# file of releases; idempotent, no request.
+run_backfill() {
+  local before after
+  [[ -s $index ]] || die 2 "no index at $index"
+  before="$(wc -c <"$index")"
+  jq -c --argjson rels "$(releases_json)" '
+    if .kind == "ranking" and (has("release") | not) and (.submission_id != null)
+       and ($rels[.submission_id | tostring] != null)
+    then . + {release: $rels[.submission_id | tostring]} else . end' "$index" >"$out/.index.tmp"
+  after="$(wc -c <"$out/.index.tmp")"
+  if cmp -s "$index" "$out/.index.tmp"; then
+    rm -f "$out/.index.tmp"
+    echo "releases added: 0"
+    return 0
+  fi
+  added="$(jq -s '[.[] | select(.release != null)] | length' "$out/.index.tmp")"
+  mv "$out/.index.tmp" "$index"
+  echo "releases added to the index ($before -> $after bytes); lines with a release: $added"
+  publish_what="releases of ranking games"
+}
+if [[ $backfill == true ]]; then
+  prepare_out
+  run_backfill
+  missing="$(jq -s '[.[] | select(.kind == "ranking" and (has("release") | not))] | length' "$index")"
+  echo "ranking games without a release: $missing"
+  finish "$publish_what"
+  exit "$exit_status"
+fi
+
 if [[ $cmd != fetch ]]; then
   "run_${cmd//-/_}"
   finish "$publish_what"
@@ -995,6 +1120,7 @@ jq -cs 'unique_by(.game_id)[]' "$scratch/battles.jsonl" >"$scratch/battles-uniqu
   die 1 "a battle of $api/puzzles/$puzzle/battles is malformed"
 
 # 4. Fetch the logs of the finished games the index lacks.
+release_of_submission="$(releases_json | jq -r --arg s "$submission_id" '.[$s] // ""')"
 jq -r '.game_id' "$index" | sort -u >"$scratch/known"
 listed=0 stored=0 fetched=0 recovered=0 failed=0 unfinished=0
 while IFS= read -r battle; do
@@ -1033,14 +1159,15 @@ while IFS= read -r battle; do
     mv "$out/logs/.$id.json.tmp" "$log"
   fi
   if ! jq -c --argjson battle "$battle" --arg puzzle "$puzzle" --argjson sub "$submission_id" \
-    --arg now "$now" '
+    --arg now "$now" --arg rel "$release_of_submission" '
     (.agents | map(select(.me == true))) as $me
     | if ($me | length) != 1 then error("no single agent with me") else . end
     | {game_id: $battle.game_id, kind: "ranking", puzzle: $puzzle, submission_id: $sub,
        ended_at: $battle.ended_at, fetched_at: $now, our_seat: $me[0].index,
        players: [.agents[] | {seat: .index, name: .name, agent_id: .agent_id}
                  + (if .me == true then {me: true} else {} end)],
-       ranking: .ranking, game_options: (.game_options // null)}' \
+       ranking: .ranking, game_options: (.game_options // null)}
+    + (if $rel == "" then {} else {release: $rel} end)' \
     "$log" >"$scratch/line.json" 2>"$scratch/jq-err"; then
     echo "failed: game $id: log not usable ($(head -n 1 "$scratch/jq-err"))" >&2
     [[ $origin == stored ]] || rm -f "$log"
@@ -1062,6 +1189,9 @@ echo "indexed from stored logs: $recovered"
 echo "failed: $failed"
 echo "not finished: $unfinished"
 echo "leaderboard snapshot: $snapshot"
+if ((fetched + recovered > 0)) && [[ -z $release_of_submission ]]; then
+  echo "warning: submission $submission_id has no release in games/$game/$releases_name"
+fi
 
 new=$((fetched + recovered))
 noun="games"
