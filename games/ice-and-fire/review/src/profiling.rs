@@ -60,6 +60,16 @@ fn commands(line: &str) -> impl Iterator<Item = Command> + '_ {
 }
 
 impl Profiling for IceAndFire {
+    /// Games last about 20 turns (at most 100).
+    fn turns() -> Vec<u32> {
+        vec![5, 10, 15, 20, 30]
+    }
+
+    /// The first three own plies: the trainings and first moves.
+    fn opening_plies() -> usize {
+        3
+    }
+
     /// Gold in hand, income, active cells, army, mines, towers, the
     /// exposure to a 30-gold cut, the gap to a chain to the HQ, the
     /// material (the bots' evaluation) and the Voronoi land.
@@ -79,7 +89,8 @@ impl Profiling for IceAndFire {
     }
 
     /// "train level 1" to "train level 3", "mine", "tower", one for each
-    /// command, and "large cut" once when this ply took at least 30% of the
+    /// command (the traces hold only the commands carried out, see
+    /// `profiles`), and "large cut" once when this ply took at least 30% of the
     /// enemy's active cells (a `large cut` moment favouring the player).
     fn events(trace: &Trace, ply: usize) -> Vec<String> {
         let Some(p) = trace.plies.get(ply) else {

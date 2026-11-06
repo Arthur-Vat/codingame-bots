@@ -18,8 +18,14 @@
 //! (game ids per opponent). Medians and means are `null` when there is no
 //! data; counts of games sit beside every number (`games`, `n`).
 //!
-//! Both sides' metrics are compared "after turn t": at the first ply of
-//! turn t + 1 (the last ply for the last turn), when both have played turn t.
+//! A side's metrics "at turn t" are read right after its own ply of turn t:
+//! in the snapshot of the ply that follows it in the trace (a ply's snapshot
+//! is taken after the player to act's start of turn, so the next ply, the
+//! other side's, shows the first side's values as its play left them), or,
+//! for a side's last ply, in that ply's own snapshot. The turn medians,
+//! "stays below to the end" and the lead list all read so. The phase means
+//! are different: they average each side's values at the starts of its own
+//! plies in the phase.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -34,10 +40,6 @@ pub use render::markdown;
 pub const SMALL: usize = 5;
 /// A player with fewer games than this is shown with a note.
 pub const FEW_GAMES: usize = 3;
-/// The game turns at which a profile compares metrics.
-pub const TURNS: [u32; 5] = [5, 10, 15, 20, 30];
-/// The own plies an opening covers.
-pub const OPENING_PLIES: usize = 3;
 /// The openings a profile lists.
 pub const OPENINGS_SHOWN: usize = 3;
 /// The losses listed as the earliest to fall behind for good.
@@ -45,6 +47,11 @@ pub const EARLIEST_SHOWN: usize = 5;
 
 /// What a game provides to profile its players.
 pub trait Profiling {
+    /// The game turns at which a profile compares metrics, increasing (a
+    /// 20-turn game and a 200-turn game choose differently).
+    fn turns() -> Vec<u32>;
+    /// The own plies an opening covers.
+    fn opening_plies() -> usize;
     /// The metrics a profile shows, by key, in order: a short list (about 8
     /// to 12).
     fn key_metrics() -> Vec<&'static str>;
@@ -84,6 +91,12 @@ pub struct Input {
     /// The snapshot's name, for the report.
     pub snapshot: Option<String>,
     pub left_out: Vec<LeftOut>,
+    /// Things to tell the reader before the numbers (for example a name
+    /// that does not match).
+    pub warnings: Vec<String>,
+    /// What the game says about how its traces were made (for example
+    /// which commands they hold).
+    pub notes: Vec<String>,
 }
 
 /// Which players get a profile.
@@ -124,6 +137,8 @@ pub struct KindCount {
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize)]
 pub struct Sources {
+    pub warnings: Vec<String>,
+    pub notes: Vec<String>,
     pub by_kind: Vec<KindCount>,
     pub snapshot: Option<String>,
     pub left_out: Vec<LeftOut>,
@@ -229,6 +244,11 @@ pub struct Profile {
     pub rank: Option<u32>,
     pub games: usize,
     pub few_games: bool,
+    /// The own plies each opening covers.
+    pub opening_plies: usize,
+    /// The wanted turns that fewer than half of the games reach, left out
+    /// of `metrics`' `at_turn`.
+    pub turns_dropped: Vec<u32>,
     /// Their results against us, by their seat.
     pub vs_us: [Tally; 2],
     pub metrics: Vec<MetricRow>,
@@ -317,21 +337,17 @@ fn length(trace: &Trace) -> u32 {
     trace.plies.last().map_or(0, |p| p.game_turn)
 }
 
-/// The value of metric `index` for `seat` once both sides have played game
-/// turn `turn`: read at the first ply of the next game turn (for the last
-/// turn, at the trace's last ply, the last state it has), so that the side
-/// that plays second is not compared at an earlier point than the first.
-/// `None` if the trace has no ply of `turn`, or the value is the metric's
-/// `none`.
+/// The value of metric `index` for `seat` at game turn `turn`: right after
+/// its own ply of that turn, that is in the snapshot of the next ply of the
+/// trace (that ply's start of turn changes only the other side's values),
+/// or in the side's own snapshot if it is the trace's last ply. `None` if
+/// the side has no ply in `turn`, or the value is the metric's `none`.
 fn value_at(trace: &Trace, seat: usize, turn: u32, index: usize) -> Option<i64> {
-    if !trace.plies.iter().any(|p| p.game_turn == turn) {
-        return None;
-    }
-    let ply = trace
+    let own = trace
         .plies
         .iter()
-        .find(|p| p.game_turn > turn)
-        .or(trace.plies.last())?;
+        .position(|p| p.to_act == seat && p.game_turn == turn)?;
+    let ply = trace.plies.get(own + 1).unwrap_or(&trace.plies[own]);
     let value = *ply.metrics[seat].get(index)?;
     (trace.metrics[index].none != Some(value)).then_some(value)
 }
@@ -439,6 +455,8 @@ fn sources(input: &Input) -> Sources {
             .collect(),
         snapshot: input.snapshot.clone(),
         left_out: input.left_out.clone(),
+        warnings: input.warnings.clone(),
+        notes: input.notes.clone(),
     }
 }
 
@@ -534,13 +552,23 @@ fn profile<P: Profiling>(
     for g in mine.iter().filter(|g| g.us.is_some()) {
         vs_us[g.seat].add(result(g.trace, g.seat));
     }
+    let metrics = metric_rows::<P>(&mine);
     Profile {
         player: player.to_string(),
         rank: ranks.get(player).copied(),
         games: mine.len(),
         few_games: mine.len() < FEW_GAMES,
+        opening_plies: P::opening_plies(),
+        turns_dropped: P::turns()
+            .into_iter()
+            .filter(|t| {
+                !metrics
+                    .iter()
+                    .any(|m| m.at_turn.iter().any(|c| c.turn == *t))
+            })
+            .collect(),
         vs_us,
-        metrics: metric_rows::<P>(&mine),
+        metrics,
         events: event_rows::<P>(&mine),
         moments: moment_rows(&mine),
         openings: opening_rows::<P>(&mine),
@@ -566,7 +594,7 @@ fn metric_rows<P: Profiling>(mine: &[Mine]) -> Vec<MetricRow> {
     let mut rows = Vec::new();
     for key in P::key_metrics() {
         let mut at_turn = Vec::new();
-        for turn in TURNS {
+        for turn in P::turns() {
             let (mut theirs, mut ours) = (Vec::new(), Vec::new());
             for g in mine {
                 let Some(index) = g.trace.metric(key) else {
@@ -711,7 +739,7 @@ fn moment_rows(mine: &[Mine]) -> Vec<MomentRow> {
 fn opening_rows<P: Profiling>(mine: &[Mine]) -> Vec<OpeningRow> {
     let mut counts: BTreeMap<String, (usize, usize)> = BTreeMap::new();
     for g in mine {
-        let opening = P::opening(g.trace, g.seat, OPENING_PLIES).join(" / ");
+        let opening = P::opening(g.trace, g.seat, P::opening_plies()).join(" / ");
         let entry = counts.entry(opening).or_default();
         entry.0 += 1;
         if result(g.trace, g.seat) == Some(true) {

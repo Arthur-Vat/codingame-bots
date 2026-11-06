@@ -8,11 +8,13 @@ Made by (about 4 seconds on 4 cores):
 ice-and-fire-review codingame-report --data data/ice-and-fire --me Tarleya > report.md
 ```
 
-Reading it: "ours" is Tarleya; metrics of both sides are read after both have played the turn; `[n = k]` marks a sample of fewer than 5 games.
+Reading it: "ours" is Tarleya; a metric "at turn t" is read for each side right after its own ply of turn t (phase means: at the starts of its own plies); events and openings count the commands carried out (refused commands dropped); `[n = k]` marks a sample of fewer than 5 games.
 
 Interpretation: to be written.
 
 ## Sources
+
+Events and openings count the commands carried out by the rules, not the ones refused (a refused command has no effect).
 
 | kind | batch | games |
 |---|---:|---:|
@@ -136,23 +138,25 @@ Opponents with a game that did not end with "the rules ended the game":
 | seat 1 | 10 | 9-1 |
 | both | 10 | 9-1 |
 
-**Key metrics at game turns**: their median / ours, both read after that turn was played by both sides. Row `games` counts the games behind each turn (theirs / ours).
+**Key metrics at game turns**: their median / ours, each side read right after its own play of that turn (the value its play left). Row `games` counts the games behind each turn (theirs / ours).
 
 | metric | t5 | t10 | t15 | t20 |
 |---|---:|---:|---:|---:|
 | games | 10 / 10 | 10 / 10 | 10 / 10 | 5 / 5 |
-| gold | 2 / 17 | 5.5 / 39 | 7 / 67 | 141 / 96 |
-| income | 11 / 10 | 33 / 24 | 49.5 / 27 | 58 / 22 |
-| cells | 15 / 13 | 41 / 25.5 | 50.5 / 35 | 59 / 37 |
-| army | 40 / 30 | 85 / 40 | 90 / 85 | 80 / 130 |
+| gold | 2 / 7 | 5.5 / 15 | 7 / 45 | 141 / 68 |
+| income | 11 / 10 | 33 / 24 | 49.5 / 28 | 58 / 22 |
+| cells | 15 / 13 | 41 / 27 | 50.5 / 35.5 | 59 / 37 |
+| army | 40 / 30 | 85 / 50 | 90 / 85 | 80 / 130 |
 | mines | 0 / 0 | 1 / 1 | 3 / 1 | 3 / 1 |
 | towers | 0 / 0 | 1 / 1 | 5 / 2 | 12 / 3 |
-| exposed30 | 0 / 0 | 2 / 3 | 2 / 2 | 1 / 4 |
-| hq_gap | 128 / 143 | 102 / 95.5 | 93.5 / 78 | 17 / 74 |
-| material | 135 / 129 | 359 / 267 | 544.5 / 375 | 707 / 463 |
-| voronoi | 57 / 46.5 | 63 / 37.5 | 65 / 42.5 | 70 / 45 |
+| exposed30 | 0 / 0 | 2 / 2.5 | 2 / 2.5 | 1 / 4 |
+| hq_gap | 128 / 144 | 102 / 102 | 93.5 / 96 | 17 / 102 |
+| material | 135 / 119 | 359 / 265.5 | 544.5 / 373 | 707 / 441 |
+| voronoi | 57 / 53.5 | 63 / 42 | 65 / 43 | 70 / 45 |
 
-**Key metrics by phase**: mean of the games' means, theirs / ours.
+Left out: t30, which fewer than half of the games reach.
+
+**Key metrics by phase**: mean of the games' means, theirs / ours; each value is read at the start of that side's own plies in the phase.
 
 | metric | early game | middle game | endgame |
 |---|---:|---:|---:|
@@ -192,7 +196,7 @@ Opponents with a game that did not end with "the rules ended the game":
 | swing | for them | 44% (4/9) | 0% (0/1) [n = 1] | 4 | 14 [n = 4] |
 | swing | for us | 33% (3/9) | 100% (1/1) [n = 1] | 5 | 18 |
 
-**Openings**: their most common first own plies.
+**Openings**: their most common first 3 own plies.
 
 | opening | games | win rate |
 |---|---:|---:|
@@ -224,23 +228,25 @@ Few games (fewer than 3): read with care.
 | seat 1 | 0 | 0-0 |
 | both | 1 [n = 1] | 1-0 |
 
-**Key metrics at game turns**: their median / ours, both read after that turn was played by both sides. Row `games` counts the games behind each turn (theirs / ours).
+**Key metrics at game turns**: their median / ours, each side read right after its own play of that turn (the value its play left). Row `games` counts the games behind each turn (theirs / ours).
 
 | metric | t5 | t10 | t15 |
 |---|---:|---:|---:|
 | games | 1 / 1 [n = 1] | 1 / 1 [n = 1] | 1 / 1 [n = 1] |
-| gold | 17 / 2 | 41 / 38 | 187 / 6 |
-| income | 10 / 11 | 27 / 24 | 46 / 4 |
-| cells | 13 / 15 | 36 / 28 | 52 / 33 |
+| gold | 7 / 2 | 14 / 38 | 141 / 6 |
+| income | 10 / 11 | 27 / 24 | 51 / 4 |
+| cells | 13 / 15 | 36 / 28 | 53 / 33 |
 | army | 30 / 40 | 70 / 40 | 80 / 120 |
-| mines | 0 / 0 | 0 / 0 | 1 / 0 |
+| mines | 0 / 0 | 0 / 0 | 2 / 0 |
 | towers | 0 / 0 | 1 / 1 | 3 / 6 |
-| exposed30 | 0 / 0 | 2 / 2 | 4 / 2 |
-| hq_gap | 143 / 148 | 79 / 92 | 33 / 154 |
-| material | 129 / 135 | 346 / 272 | 643 / 330 |
-| voronoi | 42 / 53 | 60 / 36 | 62 / 34 |
+| exposed30 | 0 / 0 | 2 / 2 | 1 / 2 |
+| hq_gap | 163 / 148 | 106 / 92 | 49 / 154 |
+| material | 119 / 135 | 319 / 272 | 616 / 330 |
+| voronoi | 48 / 53 | 60 / 36 | 63 / 34 |
 
-**Key metrics by phase**: mean of the games' means, theirs / ours.
+Left out: t20, t30, which fewer than half of the games reach.
+
+**Key metrics by phase**: mean of the games' means, theirs / ours; each value is read at the start of that side's own plies in the phase.
 
 | metric | early game | middle game | endgame |
 |---|---:|---:|---:|
@@ -275,7 +281,7 @@ Few games (fewer than 3): read with care.
 | swing | for them | 100% (1/1) [n = 1] | - (0) | 2 | 14.5 [n = 2] |
 | swing | for us | 0% (0/1) [n = 1] | - (0) | 0 | - |
 
-**Openings**: their most common first own plies.
+**Openings**: their most common first 3 own plies.
 
 | opening | games | win rate |
 |---|---:|---:|
@@ -303,23 +309,25 @@ Few games (fewer than 3): read with care.
 | seat 1 | 0 | 0-0 |
 | both | 2 [n = 2] | 2-0 |
 
-**Key metrics at game turns**: their median / ours, both read after that turn was played by both sides. Row `games` counts the games behind each turn (theirs / ours).
+**Key metrics at game turns**: their median / ours, each side read right after its own play of that turn (the value its play left). Row `games` counts the games behind each turn (theirs / ours).
 
 | metric | t5 | t10 | t15 | t20 |
 |---|---:|---:|---:|---:|
 | games | 2 / 2 [n = 2] | 2 / 2 [n = 2] | 2 / 2 [n = 2] | 1 / 1 [n = 1] |
-| gold | 17 / 2 | 26.5 / 3 | 55 / 10.5 | 20 / 1 |
+| gold | 7 / 2 | 3 / 3 | 23.5 / 10.5 | 2 / 1 |
 | income | 10 / 11 | 23.5 / 26 | 31.5 / 14 | 18 / 7 |
-| cells | 13 / 15 | 29 / 31.5 | 45 / 21 | 65 / 8 |
-| army | 30 / 40 | 45 / 45 | 85 / 40 | 200 / 10 |
+| cells | 13 / 15 | 34 / 31.5 | 45 / 21 | 65 / 8 |
+| army | 30 / 40 | 85 / 45 | 85 / 40 | 200 / 10 |
 | mines | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
 | towers | 0 / 0 | 1 / 0.5 | 4 / 2 | 5 / 2 |
-| exposed30 | 0 / 0 | 3 / 7.5 | 1 / 2.5 | 3 / 1 |
-| hq_gap | 133 / 138 | 68.5 / 92 | 50 / 129.5 | 60 / 179 |
-| material | 129 / 135 | 268 / 257 | 454.5 / 196.5 | 584 / 84 |
-| voronoi | 57.5 / 57.5 | 62 / 53.5 | 81 / 34.5 | 96 / 14 |
+| exposed30 | 0 / 0 | 5.5 / 7.5 | 1 / 2.5 | 3 / 1 |
+| hq_gap | 143 / 138 | 77 / 92 | 81.5 / 129.5 | 58 / 179 |
+| material | 119 / 135 | 304.5 / 257 | 423 / 196.5 | 566 / 84 |
+| voronoi | 63 / 57.5 | 75 / 53.5 | 81 / 34.5 | 96 / 14 |
 
-**Key metrics by phase**: mean of the games' means, theirs / ours.
+Left out: t30, which fewer than half of the games reach.
+
+**Key metrics by phase**: mean of the games' means, theirs / ours; each value is read at the start of that side's own plies in the phase.
 
 | metric | early game | middle game | endgame |
 |---|---:|---:|---:|
@@ -358,7 +366,7 @@ Few games (fewer than 3): read with care.
 | swing | for them | 100% (2/2) [n = 2] | - (0) | 8 | 20.5 |
 | swing | for us | 0% (0/2) [n = 2] | - (0) | 0 | - |
 
-**Openings**: their most common first own plies.
+**Openings**: their most common first 3 own plies.
 
 | opening | games | win rate |
 |---|---:|---:|
@@ -385,23 +393,25 @@ First moment favouring it in each win:
 | seat 1 | 0 | 0-0 |
 | both | 3 [n = 3] | 3-0 |
 
-**Key metrics at game turns**: their median / ours, both read after that turn was played by both sides. Row `games` counts the games behind each turn (theirs / ours).
+**Key metrics at game turns**: their median / ours, each side read right after its own play of that turn (the value its play left). Row `games` counts the games behind each turn (theirs / ours).
 
 | metric | t5 | t10 | t15 |
 |---|---:|---:|---:|
 | games | 3 / 3 [n = 3] | 3 / 3 [n = 3] | 3 / 3 [n = 3] |
-| gold | 17 / 2 | 40 / 8 | 81 / 15 |
+| gold | 7 / 2 | 17 / 8 | 54 / 15 |
 | income | 10 / 11 | 27 / 24 | 29 / 14 |
-| cells | 13 / 15 | 31 / 32 | 46 / 28 |
-| army | 30 / 40 | 60 / 80 | 130 / 40 |
+| cells | 13 / 15 | 32 / 32 | 46 / 28 |
+| army | 30 / 40 | 80 / 80 | 130 / 40 |
 | mines | 0 / 0 | 0 / 0 | 0 / 0 |
 | towers | 0 / 0 | 0 / 1 | 1 / 3 |
-| exposed30 | 0 / 0 | 1 / 2 | 4 / 1 |
-| hq_gap | 133 / 138 | 66 / 92 | 56 / 115 |
-| material | 129 / 135 | 327 / 294 | 455 / 285 |
-| voronoi | 57 / 62 | 60 / 60 | 91 / 45 |
+| exposed30 | 0 / 0 | 2 / 2 | 4 / 1 |
+| hq_gap | 143 / 138 | 83 / 92 | 85 / 115 |
+| material | 119 / 135 | 302 / 294 | 426 / 285 |
+| voronoi | 63 / 62 | 65 / 60 | 91 / 45 |
 
-**Key metrics by phase**: mean of the games' means, theirs / ours.
+Left out: t20, t30, which fewer than half of the games reach.
+
+**Key metrics by phase**: mean of the games' means, theirs / ours; each value is read at the start of that side's own plies in the phase.
 
 | metric | early game | middle game | endgame |
 |---|---:|---:|---:|
@@ -441,7 +451,7 @@ First moment favouring it in each win:
 | swing | for them | 67% (2/3) [n = 3] | - (0) | 8 | 15.5 |
 | swing | for us | 0% (0/3) [n = 3] | - (0) | 0 | - |
 
-**Openings**: their most common first own plies.
+**Openings**: their most common first 3 own plies.
 
 | opening | games | win rate |
 |---|---:|---:|
@@ -470,23 +480,25 @@ First moment favouring it in each win:
 | seat 1 | 4 [n = 4] | 4-0 |
 | both | 5 | 5-0 |
 
-**Key metrics at game turns**: their median / ours, both read after that turn was played by both sides. Row `games` counts the games behind each turn (theirs / ours).
+**Key metrics at game turns**: their median / ours, each side read right after its own play of that turn (the value its play left). Row `games` counts the games behind each turn (theirs / ours).
 
 | metric | t5 | t10 | t15 | t20 |
 |---|---:|---:|---:|---:|
 | games | 5 / 5 | 5 / 5 | 5 / 5 | 5 / 5 |
-| gold | 2 / 17 | 9 / 43 | 2 / 47 | 9 / 20 |
-| income | 11 / 10 | 32 / 30 | 22 / 28 | 10 / 3 |
-| cells | 15 / 13 | 38 / 28 | 54 / 27 | 61 / 14 |
-| army | 40 / 30 | 90 / 50 | 170 / 50 | 190 / 20 |
+| gold | 2 / 7 | 9 / 13 | 2 / 29 | 7 / 19 |
+| income | 11 / 10 | 32 / 30 | 22 / 27 | 10 / 6 |
+| cells | 15 / 13 | 38 / 29 | 54 / 29 | 61 / 14 |
+| army | 40 / 30 | 90 / 60 | 170 / 60 | 190 / 20 |
 | mines | 0 / 0 | 1 / 2 | 2 / 1 | 2 / 1 |
-| towers | 0 / 0 | 1 / 1 | 2 / 2 | 2 / 2 |
-| exposed30 | 0 / 0 | 1 / 2 | 3 / 5 | 3 / 3 |
-| hq_gap | 148 / 143 | 81 / 81 | 94 / 93 | 5 / 157 |
-| material | 135 / 129 | 371 / 314 | 489 / 310 | 582 / 157 |
-| voronoi | 48 / 45 | 51 / 39 | 66 / 29 | 91 / 15 |
+| towers | 0 / 0 | 1 / 1 | 2 / 3 | 2 / 2 |
+| exposed30 | 0 / 0 | 1 / 2 | 3 / 3 | 3 / 4 |
+| hq_gap | 148 / 153 | 109 / 97 | 94 / 111 | 5 / 157 |
+| material | 135 / 119 | 350 / 303 | 489 / 316 | 549 / 157 |
+| voronoi | 48 / 49 | 51 / 42 | 66 / 31 | 91 / 15 |
 
-**Key metrics by phase**: mean of the games' means, theirs / ours.
+Left out: t30, which fewer than half of the games reach.
+
+**Key metrics by phase**: mean of the games' means, theirs / ours; each value is read at the start of that side's own plies in the phase.
 
 | metric | early game | middle game | endgame |
 |---|---:|---:|---:|
@@ -528,7 +540,7 @@ First moment favouring it in each win:
 | swing | for them | 100% (5/5) | - (0) | 19 | 21 |
 | swing | for us | 20% (1/5) | - (0) | 3 | 25 [n = 3] |
 
-**Openings**: their most common first own plies.
+**Openings**: their most common first 3 own plies.
 
 | opening | games | win rate |
 |---|---:|---:|
@@ -558,23 +570,25 @@ First moment favouring it in each win:
 | seat 1 | 2 [n = 2] | 1-1 |
 | both | 7 | 5-2 |
 
-**Key metrics at game turns**: their median / ours, both read after that turn was played by both sides. Row `games` counts the games behind each turn (theirs / ours).
+**Key metrics at game turns**: their median / ours, each side read right after its own play of that turn (the value its play left). Row `games` counts the games behind each turn (theirs / ours).
 
 | metric | t5 | t10 | t15 | t20 |
 |---|---:|---:|---:|---:|
-| games | 7 / 7 | 7 / 7 | 7 / 7 | 6 / 6 |
-| gold | 17 / 2 | 32 / 42 | 25 / 60 | 74.5 / 45 |
-| income | 10 / 11 | 33 / 30 | 22 / 25 | 48 / 19 |
-| cells | 13 / 15 | 36 / 30 | 51 / 29 | 61.5 / 24 |
-| army | 30 / 40 | 70 / 70 | 120 / 70 | 110 / 60 |
+| games | 7 / 7 | 7 / 7 | 7 / 7 | 6 / 5 |
+| gold | 7 / 2 | 5 / 31 | 3 / 33 | 13.5 / 60 |
+| income | 10 / 11 | 33 / 30 | 23 / 25 | 41.5 / 20 |
+| cells | 13 / 15 | 36 / 30 | 52 / 29 | 64.5 / 28 |
+| army | 30 / 40 | 70 / 70 | 120 / 70 | 150 / 60 |
 | mines | 0 / 0 | 2 / 1 | 3 / 1 | 3.5 / 1 |
-| towers | 0 / 0 | 1 / 1 | 2 / 2 | 4 / 3 |
-| exposed30 | 0 / 0 | 2 / 2 | 2 / 3 | 2.5 / 2 |
-| hq_gap | 143 / 138 | 79 / 79 | 87 / 81 | 57.5 / 120 |
-| material | 129 / 135 | 337 / 301 | 422 / 346 | 655.5 / 305 |
-| voronoi | 48 / 60 | 58 / 53 | 53 / 40 | 69.5 / 35 |
+| towers | 0 / 0 | 1 / 1 | 2 / 2 | 4 / 4 |
+| exposed30 | 0 / 0 | 2 / 3 | 2 / 2 | 2.5 / 2 |
+| hq_gap | 153 / 138 | 107 / 79 | 97 / 89 | 96.5 / 110 |
+| material | 119 / 135 | 325 / 301 | 400 / 346 | 624.5 / 338 |
+| voronoi | 57 / 63 | 58 / 59 | 53 / 40 | 82 / 30 |
 
-**Key metrics by phase**: mean of the games' means, theirs / ours.
+Left out: t30, which fewer than half of the games reach.
+
+**Key metrics by phase**: mean of the games' means, theirs / ours; each value is read at the start of that side's own plies in the phase.
 
 | metric | early game | middle game | endgame |
 |---|---:|---:|---:|
@@ -614,7 +628,7 @@ First moment favouring it in each win:
 | swing | for them | 80% (4/5) | 0% (0/2) [n = 2] | 29 | 20 |
 | swing | for us | 60% (3/5) | 100% (2/2) [n = 2] | 12 | 16.5 |
 
-**Openings**: their most common first own plies.
+**Openings**: their most common first 3 own plies.
 
 | opening | games | win rate |
 |---|---:|---:|
@@ -644,23 +658,25 @@ First moment favouring it in each win:
 | seat 1 | 1 [n = 1] | 0-1 |
 | both | 7 | 4-3 |
 
-**Key metrics at game turns**: their median / ours, both read after that turn was played by both sides. Row `games` counts the games behind each turn (theirs / ours).
+**Key metrics at game turns**: their median / ours, each side read right after its own play of that turn (the value its play left). Row `games` counts the games behind each turn (theirs / ours).
 
 | metric | t5 | t10 | t15 | t20 |
 |---|---:|---:|---:|---:|
-| games | 7 / 7 | 7 / 7 | 6 / 6 | 4 / 4 [n = 4] |
-| gold | 17 / 2 | 27 / 20 | 41 / 56.5 | 41.5 / 72 |
-| income | 10 / 11 | 24 / 23 | 32.5 / 28.5 | 30 / 22 |
-| cells | 13 / 15 | 32 / 31 | 49 / 36.5 | 56 / 32.5 |
-| army | 30 / 40 | 80 / 60 | 100 / 70 | 120 / 105 |
+| games | 7 / 7 | 7 / 7 | 5 / 6 | 4 / 4 [n = 4] |
+| gold | 7 / 2 | 5 / 20 | 13 / 56.5 | 11.5 / 72 |
+| income | 10 / 11 | 24 / 23 | 34 / 28.5 | 27.5 / 22 |
+| cells | 13 / 15 | 34 / 31 | 52 / 36.5 | 59 / 32.5 |
+| army | 30 / 40 | 80 / 60 | 130 / 70 | 145 / 105 |
 | mines | 0 / 0 | 0 / 0 | 0 / 0.5 | 0.5 / 1 |
-| towers | 0 / 0 | 1 / 1 | 4 / 2 | 7.5 / 2.5 |
-| exposed30 | 0 / 0 | 2 / 2 | 3.5 / 5 | 2.5 / 2 |
-| hq_gap | 133 / 138 | 82 / 92 | 66 / 77.5 | 85 / 103.5 |
-| material | 129 / 135 | 308 / 289 | 528.5 / 390.5 | 517 / 394.5 |
-| voronoi | 49 / 52 | 50 / 48 | 54 / 41.5 | 57 / 39.5 |
+| towers | 0 / 0 | 1 / 1 | 4 / 2 | 8 / 2.5 |
+| exposed30 | 0 / 0 | 2 / 2 | 4 / 5 | 2 / 2 |
+| hq_gap | 143 / 138 | 95 / 92 | 77 / 77.5 | 92.5 / 103.5 |
+| material | 119 / 135 | 301 / 289 | 507 / 390.5 | 559 / 394.5 |
+| voronoi | 53 / 53 | 51 / 48 | 57 / 41.5 | 61 / 39.5 |
 
-**Key metrics by phase**: mean of the games' means, theirs / ours.
+Left out: t30, which fewer than half of the games reach.
+
+**Key metrics by phase**: mean of the games' means, theirs / ours; each value is read at the start of that side's own plies in the phase.
 
 | metric | early game | middle game | endgame |
 |---|---:|---:|---:|
@@ -681,7 +697,7 @@ First moment favouring it in each win:
 | event | theirs | ours | first turn | per game |
 |---|---:|---:|---:|---:|
 | tower | 100% (7/7) | 100% (7/7) | 8 | 7.9 / 3.3 |
-| train level 1 | 100% (7/7) | 100% (7/7) | 1 | 15.9 / 22 |
+| train level 1 | 100% (7/7) | 100% (7/7) | 1 | 15.7 / 22 |
 | train level 3 | 100% (7/7) | 57% (4/7) | 15 | 2.3 / 2.1 |
 | train level 2 | 86% (6/7) | 71% (5/7) | 9 | 2.9 / 2 |
 | large cut | 57% (4/7) | 29% (2/7) | 19 [n = 4] | 1.6 / 0.3 |
@@ -700,7 +716,7 @@ First moment favouring it in each win:
 | swing | for them | 100% (4/4) [n = 4] | 0% (0/3) [n = 3] | 17 | 23 |
 | swing | for us | 50% (2/4) [n = 4] | 100% (3/3) [n = 3] | 9 | 15 |
 
-**Openings**: their most common first own plies.
+**Openings**: their most common first 3 own plies.
 
 | opening | games | win rate |
 |---|---:|---:|
@@ -728,23 +744,25 @@ First moment favouring it in each win:
 | seat 1 | 5 | 4-1 |
 | both | 10 | 6-4 |
 
-**Key metrics at game turns**: their median / ours, both read after that turn was played by both sides. Row `games` counts the games behind each turn (theirs / ours).
+**Key metrics at game turns**: their median / ours, each side read right after its own play of that turn (the value its play left). Row `games` counts the games behind each turn (theirs / ours).
 
 | metric | t5 | t10 | t15 |
 |---|---:|---:|---:|
 | games | 10 / 10 | 10 / 10 | 8 / 8 |
-| gold | 9.5 / 8.5 | 26.5 / 25 | 50.5 / 24.5 |
-| income | 10.5 / 10.5 | 28 / 28 | 20 / 32 |
-| cells | 14 / 13.5 | 38.5 / 28.5 | 40.5 / 45 |
-| army | 35 / 35 | 70 / 60 | 75 / 115 |
+| gold | 4.5 / 2 | 4 / 12.5 | 35 / 24.5 |
+| income | 10.5 / 10.5 | 28 / 28 | 22 / 33 |
+| cells | 14 / 13.5 | 39 / 29.5 | 43 / 45.5 |
+| army | 35 / 35 | 80 / 65 | 85 / 115 |
 | mines | 0 / 0 | 0 / 1 | 0 / 1.5 |
 | towers | 0 / 0 | 2 / 1 | 4 / 3 |
-| exposed30 | 0 / 0 | 3 / 3 | 1.5 / 3.5 |
-| hq_gap | 133 / 135.5 | 91 / 89 | 52 / 59.5 |
-| material | 132 / 129 | 349 / 314 | 375.5 / 478.5 |
-| voronoi | 55.5 / 56 | 63 / 44.5 | 55 / 53.5 |
+| exposed30 | 0 / 0 | 3 / 3 | 2.5 / 3.5 |
+| hq_gap | 140.5 / 143 | 92 / 92 | 60.5 / 59.5 |
+| material | 127 / 123 | 349 / 309.5 | 414 / 468.5 |
+| voronoi | 59.5 / 59.5 | 72 / 55 | 56.5 / 54 |
 
-**Key metrics by phase**: mean of the games' means, theirs / ours.
+Left out: t20, t30, which fewer than half of the games reach.
+
+**Key metrics by phase**: mean of the games' means, theirs / ours; each value is read at the start of that side's own plies in the phase.
 
 | metric | early game | middle game | endgame |
 |---|---:|---:|---:|
@@ -786,7 +804,7 @@ First moment favouring it in each win:
 | swing | for them | 100% (6/6) | 25% (1/4) [n = 4] | 15 | 17 |
 | swing | for us | 17% (1/6) | 75% (3/4) [n = 4] | 18 | 17.5 |
 
-**Openings**: their most common first own plies.
+**Openings**: their most common first 3 own plies.
 
 | opening | games | win rate |
 |---|---:|---:|
@@ -815,23 +833,25 @@ First moment favouring it in each win:
 | seat 1 | 2 [n = 2] | 1-1 |
 | both | 4 [n = 4] | 2-2 |
 
-**Key metrics at game turns**: their median / ours, both read after that turn was played by both sides. Row `games` counts the games behind each turn (theirs / ours).
+**Key metrics at game turns**: their median / ours, each side read right after its own play of that turn (the value its play left). Row `games` counts the games behind each turn (theirs / ours).
 
 | metric | t5 | t10 | t15 | t20 |
 |---|---:|---:|---:|---:|
 | games | 4 / 4 [n = 4] | 4 / 4 [n = 4] | 4 / 4 [n = 4] | 4 / 4 [n = 4] |
-| gold | 9.5 / 8.5 | 46 / 48 | 5.5 / 77 | 13.5 / 77.5 |
-| income | 10.5 / 10.5 | 30 / 28.5 | 25.5 / 21 | 20 / 16 |
-| cells | 14 / 13.5 | 32 / 32.5 | 47 / 22 | 48 / 32.5 |
-| army | 35 / 35 | 55 / 65 | 100 / 40 | 130 / 110 |
-| mines | 0 / 0 | 0.5 / 0.5 | 1.5 / 1 | 2.5 / 1.5 |
-| towers | 0 / 0 | 1.5 / 1.5 | 5.5 / 1.5 | 8 / 3.5 |
-| exposed30 | 0 / 0 | 1.5 / 2 | 5 / 2 | 6.5 / 7 |
-| hq_gap | 130.5 / 135.5 | 108 / 67 | 80.5 / 73 | 79 / 82.5 |
-| material | 132 / 128.5 | 324 / 346.5 | 441 / 283 | 495 / 400.5 |
-| voronoi | 49 / 50 | 49.5 / 52 | 79.5 / 23.5 | 59 / 36.5 |
+| gold | 4.5 / 2 | 28.5 / 30 | 12 / 56 | 5 / 68.5 |
+| income | 10.5 / 10.5 | 30 / 28.5 | 14 / 32 | 20 / 16 |
+| cells | 14 / 13.5 | 32 / 32.5 | 47 / 35.5 | 48 / 34 |
+| army | 35 / 35 | 55 / 65 | 145 / 65 | 130 / 110 |
+| mines | 0 / 0 | 0.5 / 0.5 | 1.5 / 1.5 | 2.5 / 1.5 |
+| towers | 0 / 0 | 1.5 / 1.5 | 5.5 / 3 | 8 / 3.5 |
+| exposed30 | 0 / 0 | 1.5 / 2 | 4.5 / 2 | 6.5 / 2 |
+| hq_gap | 135.5 / 140.5 | 108 / 81.5 | 73 / 79 | 94.5 / 71.5 |
+| material | 127 / 123.5 | 309 / 325 | 425.5 / 389 | 495 / 398.5 |
+| voronoi | 52 / 52.5 | 49.5 / 52.5 | 79.5 / 44 | 59 / 38 |
 
-**Key metrics by phase**: mean of the games' means, theirs / ours.
+Left out: t30, which fewer than half of the games reach.
+
+**Key metrics by phase**: mean of the games' means, theirs / ours; each value is read at the start of that side's own plies in the phase.
 
 | metric | early game | middle game | endgame |
 |---|---:|---:|---:|
@@ -873,7 +893,7 @@ First moment favouring it in each win:
 | swing | for them | 100% (2/2) [n = 2] | 50% (1/2) [n = 2] | 8 | 23.5 |
 | swing | for us | 100% (2/2) [n = 2] | 100% (2/2) [n = 2] | 11 | 22 |
 
-**Openings**: their most common first own plies.
+**Openings**: their most common first 3 own plies.
 
 | opening | games | win rate |
 |---|---:|---:|
@@ -901,23 +921,25 @@ First moment favouring it in each win:
 | seat 1 | 5 | 1-4 |
 | both | 6 | 2-4 |
 
-**Key metrics at game turns**: their median / ours, both read after that turn was played by both sides. Row `games` counts the games behind each turn (theirs / ours).
+**Key metrics at game turns**: their median / ours, each side read right after its own play of that turn (the value its play left). Row `games` counts the games behind each turn (theirs / ours).
 
 | metric | t5 | t10 | t15 | t20 |
 |---|---:|---:|---:|---:|
 | games | 6 / 6 | 6 / 6 | 5 / 5 | 3 / 3 [n = 3] |
-| gold | 2 / 17 | 6 / 44 | 4 / 44 | 9 / 140 |
-| income | 11 / 10 | 27.5 / 28 | 21 / 31 | 35 / 22 |
-| cells | 15 / 13 | 39 / 28 | 44 / 33 | 66 / 30 |
-| army | 40 / 30 | 85 / 55 | 120 / 50 | 180 / 60 |
+| gold | 2 / 7 | 6 / 27.5 | 4 / 15 | 6 / 93 |
+| income | 11 / 10 | 27.5 / 28.5 | 21 / 29 | 35 / 22 |
+| cells | 15 / 13 | 39 / 29 | 44 / 39 | 66 / 34 |
+| army | 40 / 30 | 85 / 65 | 120 / 70 | 180 / 70 |
 | mines | 0 / 0 | 0 / 1.5 | 0 / 2 | 1 / 1 |
-| towers | 0 / 0 | 3 / 1 | 4 / 3 | 7 / 3 |
-| exposed30 | 0 / 0 | 2 / 3 | 2 / 3 | 5 / 2 |
-| hq_gap | 128 / 133 | 80.5 / 84.5 | 82 / 80 | 61 / 59 |
-| material | 135 / 129 | 359 / 317.5 | 442 / 352 | 642 / 351 |
-| voronoi | 61 / 51 | 67.5 / 41 | 71 / 37 | 75 / 33 |
+| towers | 0 / 0 | 3 / 1 | 4 / 3 | 7 / 5 |
+| exposed30 | 0 / 0 | 2 / 3 | 2 / 4 | 5 / 3 |
+| hq_gap | 128 / 143 | 80.5 / 97.5 | 82 / 79 | 94 / 71 |
+| material | 135 / 119 | 359 / 311 | 432 / 395 | 642 / 424 |
+| voronoi | 61 / 56.5 | 67.5 / 44.5 | 72 / 47 | 75 / 36 |
 
-**Key metrics by phase**: mean of the games' means, theirs / ours.
+Left out: t30, which fewer than half of the games reach.
+
+**Key metrics by phase**: mean of the games' means, theirs / ours; each value is read at the start of that side's own plies in the phase.
 
 | metric | early game | middle game | endgame |
 |---|---:|---:|---:|
@@ -938,10 +960,10 @@ First moment favouring it in each win:
 | event | theirs | ours | first turn | per game |
 |---|---:|---:|---:|---:|
 | tower | 100% (6/6) | 100% (6/6) | 8 | 7.3 / 4 |
-| train level 1 | 100% (6/6) | 100% (6/6) | 1 | 17.5 / 21.3 |
+| train level 1 | 100% (6/6) | 100% (6/6) | 1 | 17.2 / 21.3 |
 | train level 2 | 100% (6/6) | 67% (4/6) | 10 | 3.2 / 1.5 |
 | train level 3 | 83% (5/6) | 100% (6/6) | 15 | 1.8 / 2.7 |
-| mine | 50% (3/6) | 83% (5/6) | 17 [n = 3] | 1.3 / 2.3 |
+| mine | 50% (3/6) | 83% (5/6) | 17 [n = 3] | 1 / 2.3 |
 | large cut | 33% (2/6) | 50% (3/6) | 15.5 [n = 2] | 1 / 0.7 |
 
 **Moments**: games with at least one, in their wins and in their losses; all moments counted; median game turn.
@@ -959,7 +981,7 @@ First moment favouring it in each win:
 | swing | for them | 100% (2/2) [n = 2] | 25% (1/4) [n = 4] | 6 | 22 |
 | swing | for us | 0% (0/2) [n = 2] | 100% (4/4) [n = 4] | 4 | 15.5 [n = 4] |
 
-**Openings**: their most common first own plies.
+**Openings**: their most common first 3 own plies.
 
 | opening | games | win rate |
 |---|---:|---:|
@@ -980,7 +1002,7 @@ First moment favouring it in each win:
 
 Our games only: 76 losses, 39 of them against the focus players.
 
-Turns are compared after both sides have played them (at the first ply of the next turn, the last ply for the last turn), so neither side is read earlier than the other.
+Turns are compared with each side read right after its own ply of that turn (for its last ply, at its start); a turn at which either side has no ply is skipped.
 
 Moments against us in our losses, by phase (early / middle / end), counted:
 
@@ -1001,26 +1023,26 @@ Metrics of ours that stay below the opponent's from some turn to the end of our 
 
 | metric | losses where below | median from turn |
 |---|---:|---:|
-| gold | 95% (72/76) | 17 |
-| income | 95% (72/76) | 14.5 |
-| cells | 93% (71/76) | 1 |
-| army | 74% (56/76) | 12 |
+| gold | 87% (66/76) | 17 |
+| income | 95% (72/76) | 15 |
+| cells | 93% (71/76) | 8 |
+| army | 74% (56/76) | 12.5 |
 | mines | 42% (32/76) | 11 |
-| towers | 83% (63/76) | 13 |
-| exposed30 | 37% (28/76) | 18.5 |
-| hq_gap | 3% (2/76) | 10.5 [n = 2] |
-| material | 97% (74/76) | 7.5 |
-| voronoi | 92% (70/76) | 7.5 |
+| towers | 84% (64/76) | 13 |
+| exposed30 | 36% (27/76) | 18 |
+| hq_gap | 3% (2/76) | 13.5 [n = 2] |
+| material | 97% (74/76) | 9 |
+| voronoi | 92% (70/76) | 7 |
 
 The 5 losses where the lead (`material`) fell behind for good earliest:
 
 | game | opponent | from turn |
 |---|---:|---:|
+| 914253192 | FrancoisB | 1 |
 | 914253194 | OccitanieFreelancer | 1 |
 | 914267808 | DaFish | 1 |
-| 914268661 | Khao | 1 |
 | 914279047 | Drobor | 1 |
-| 914299065 | Magus | 1 |
+| 914294072 | Drobor | 1 |
 
 ## Games
 

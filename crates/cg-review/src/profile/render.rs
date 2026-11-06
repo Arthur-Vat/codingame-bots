@@ -3,7 +3,7 @@
 
 use std::fmt::Write as _;
 
-use super::{Analysis, Profile, Tally, FEW_GAMES, SMALL, TURNS};
+use super::{Analysis, Profile, Tally, FEW_GAMES, SMALL};
 
 /// A number with at most one decimal.
 fn num(value: Option<f64>) -> String {
@@ -106,6 +106,12 @@ pub fn markdown(a: &Analysis) -> String {
 
 fn sources(out: &mut String, a: &Analysis) {
     out.push_str("## Sources\n\n");
+    for w in &a.sources.warnings {
+        let _ = writeln!(out, "**Warning:** {w}\n");
+    }
+    for n in &a.sources.notes {
+        let _ = writeln!(out, "{n}\n");
+    }
     let rows: Vec<Vec<String>> = a
         .sources
         .by_kind
@@ -228,16 +234,14 @@ fn profile(out: &mut String, p: &Profile) {
     ]);
     table(out, &["their seat", "games", "won-lost"], &rows);
 
-    out.push_str("**Key metrics at game turns**: their median / ours, both read after that turn was played by both sides. Row `games` counts the games behind each turn (theirs / ours).\n\n");
-    let turns: Vec<u32> = TURNS
+    out.push_str("**Key metrics at game turns**: their median / ours, each side read right after its own play of that turn (the value its play left). Row `games` counts the games behind each turn (theirs / ours).\n\n");
+    let mut turns: Vec<u32> = p
+        .metrics
         .iter()
-        .copied()
-        .filter(|t| {
-            p.metrics
-                .iter()
-                .any(|m| m.at_turn.iter().any(|c| c.turn == *t))
-        })
+        .flat_map(|m| m.at_turn.iter().map(|c| c.turn))
         .collect();
+    turns.sort_unstable();
+    turns.dedup();
     let heads: Vec<String> = std::iter::once("metric".to_string())
         .chain(turns.iter().map(|t| format!("t{t}")))
         .collect();
@@ -273,8 +277,16 @@ fn profile(out: &mut String, p: &Profile) {
         rows.push(row);
     }
     table(out, &heads, &rows);
+    if !p.turns_dropped.is_empty() {
+        let dropped: Vec<String> = p.turns_dropped.iter().map(|t| format!("t{t}")).collect();
+        let _ = writeln!(
+            out,
+            "Left out: {}, which fewer than half of the games reach.\n",
+            dropped.join(", ")
+        );
+    }
 
-    out.push_str("**Key metrics by phase**: mean of the games' means, theirs / ours.\n\n");
+    out.push_str("**Key metrics by phase**: mean of the games' means, theirs / ours; each value is read at the start of that side's own plies in the phase.\n\n");
     let mut rows = Vec::new();
     if let Some(first) = p.metrics.first() {
         let mut row = vec!["games".to_string()];
@@ -346,7 +358,11 @@ fn profile(out: &mut String, p: &Profile) {
         &rows,
     );
 
-    out.push_str("**Openings**: their most common first own plies.\n\n");
+    let _ = writeln!(
+        out,
+        "**Openings**: their most common first {} own plies.\n",
+        p.opening_plies
+    );
     let rows: Vec<Vec<String>> = p
         .openings
         .iter()
@@ -392,7 +408,7 @@ fn weaknesses(out: &mut String, a: &Analysis) {
         out.push_str("No loss.\n\n");
         return;
     }
-    out.push_str("Turns are compared after both sides have played them (at the first ply of the next turn, the last ply for the last turn), so neither side is read earlier than the other.\n\n");
+    out.push_str("Turns are compared with each side read right after its own ply of that turn (for its last ply, at its start); a turn at which either side has no ply is skipped.\n\n");
     out.push_str("Moments against us in our losses, by phase (early / middle / end), counted:\n\n");
     let rows: Vec<Vec<String>> = w
         .against_us

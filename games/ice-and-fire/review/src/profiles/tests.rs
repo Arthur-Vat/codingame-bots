@@ -2,6 +2,8 @@ use std::fs;
 
 use crate::test_util::temp_dir;
 
+use cg_arena::codingame::to_record;
+
 use super::*;
 
 const FINISHED: &str = include_str!("../../testdata/914386214.json");
@@ -33,6 +35,7 @@ fn data_dir(name: &str) -> PathBuf {
         line(5, "ranking", 0, ["Tarleya", "Nobody"], ""),
         line(6, "replay", 0, ["Tarleya", "Other"], ""),
         "not json\n".to_string(),
+        line(7, "mystery", 0, ["Tarleya", "Other"], ""),
     ]
     .concat();
     fs::write(dir.join("index.jsonl"), index).expect("index");
@@ -118,4 +121,49 @@ fn a_malformed_log_is_left_out() {
     let (text, _) = run(&request(&dir)).expect("a report");
     assert!(text.contains("- 914333422:"), "{text}");
     assert!(text.contains("1 games used"), "{text}");
+}
+
+#[test]
+fn an_unknown_kind_is_left_out_and_a_wrong_name_is_warned_of() {
+    let dir = data_dir("profiles-kind");
+    let mut wrong = request(&dir);
+    wrong.me = "Someone".to_string();
+    let (text, _) = run(&wrong).expect("a report");
+    assert!(text.contains("- 7: unknown kind \"mystery\""), "{text}");
+    assert!(
+        text.contains("**Warning:** --me \"Someone\" differs"),
+        "{text}"
+    );
+    let (text, _) = run(&request(&dir)).expect("a report");
+    assert!(!text.contains("**Warning:**"), "{text}");
+    assert!(text.contains("commands carried out"), "{text}");
+}
+
+#[test]
+fn refused_commands_are_dropped_and_the_game_replays_the_same() {
+    let log: cg_arena::codingame::Log = serde_json::from_str(FINISHED).expect("a log");
+    let record = to_record::<IceAndFire>(&log, "ranking").expect("converts");
+    // Red's first answer, with two commands the rules refuse: a level 3 unit
+    // far from red's cells, and a tower on a cell red does not own.
+    let mut sent = record.clone();
+    let first = &mut sent.turns[0][0].lines[0];
+    assert_eq!(first, "TRAIN 1 1 0;TRAIN 1 2 0");
+    first.push_str(";TRAIN 3 11 11;BUILD TOWER 5 5");
+    let kept = carried_out_record(&sent);
+    assert_eq!(kept.turns[0][0].lines[0], "TRAIN 1 1 0;TRAIN 1 2 0");
+    // The real record already holds only what was carried out, or refused
+    // commands that change nothing: either way the game replays the same.
+    for (a, b) in [(&sent, &kept), (&record, &carried_out_record(&record))] {
+        let (a, b) = (replay("a", a.clone()), replay("b", b.clone()));
+        assert_eq!(a.steps.len(), b.steps.len());
+        assert_eq!(a.end.outcome(), b.end.outcome());
+        for seat in 0..2 {
+            assert_eq!(a.end.gold(seat), b.end.gold(seat));
+            assert_eq!(a.end.owned(seat), b.end.owned(seat));
+            assert_eq!(a.end.unit_count(seat), b.end.unit_count(seat));
+        }
+    }
+    // The trace counts only what was carried out.
+    let trace = crate::trace::trace("t", &kept);
+    assert_eq!(trace.plies[0].commands, "TRAIN 1 1 0;TRAIN 1 2 0");
 }

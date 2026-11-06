@@ -69,6 +69,10 @@ pub trait FromCodinGame {
 
 // Built, in cg_review::profile:
 pub trait Profiling {
+    /// The game turns at which a profile compares metrics (a 200-turn game picks its own).
+    fn turns() -> Vec<u32>;
+    /// The own plies an opening covers.
+    fn opening_plies() -> usize;
     /// The metrics a profile shows, by key, in order (about 8 to 12).
     fn key_metrics() -> Vec<&'static str>;
     /// The events of one ply of a trace (the player to act's), by name (e.g. "tower", "mine", "train level 3", "large cut").
@@ -145,7 +149,7 @@ One pull request each; each ends with its checks and, from step 3, a run on real
 1. This design and [ADR 0056](adr/0056-codingame-game-analysis.md).
 2. `scripts/codingame.sh fetch` and its tests (the API stubbed), the branch `claude/codingame-games`, its index and leaderboard snapshots, the record's `origin` (done: record format 2, read by the studio in formats 1 and 2); the first fetch of our ranking games.
 3. A Code of Ice and Fire's conversion and the check, on every fetched game; the disagreements, if any, looked into. Done: `ice-and-fire-review codingame` converts logs and checks 4 things (every answer used, the winner, every command read, and per ply the commands carried out and refused against CodinGame's summaries). On 222 of our ranking games, all 222 agree; the fetch script is another pull request.
-4. Profiles, events, openings, weaknesses and the report on our past ranking games, the top 10 apart. Done: `ice-and-fire-review codingame-report` (generic code in `cg_review::profile`, the hooks in `games/ice-and-fire/review/src/profiling.rs`); the first report, on 222 ranking games and the 10 pilot games against zasmu, is in `games/ice-and-fire/research/codingame/2026-11-06-v014-ranking-and-pilot.md`. It differs from the plan above in two ways: the profile gives results by seat only (not by map), and the metrics are medians (theirs and ours) at game turns 5, 10, 15, 20 and 30 and means by phase, not whole curves (both sides are read after the same turn, at the first ply of the next one); `--json` gives the numbers for charts.
+4. Profiles, events, openings, weaknesses and the report on our past ranking games, the top 10 apart. Done: `ice-and-fire-review codingame-report` (generic code in `cg_review::profile`, the hooks in `games/ice-and-fire/review/src/profiling.rs`); the first report, on 222 ranking games and the 10 pilot games against zasmu, is in `games/ice-and-fire/research/codingame/2026-11-06-v014-ranking-and-pilot.md`. It differs from the plan above in two ways: the profile gives results by seat only (not by map), and the metrics are medians (theirs and ours) at game turns 5, 10, 15, 20 and 30 and means by phase, not whole curves (a side's value "at turn t" is read right after its own ply of turn t, in the snapshot of the next ply of the trace, which shows the first side's values as its play left them and only changes the other side's; a side's last ply is read at its own snapshot; the phase means average the values at the starts of a side's own plies; events and openings count the commands carried out, not the refused ones); `--json` gives the numbers for charts.
 5. `batch`, `replay` and `fetch-ids` (done in `scripts/codingame.sh`, tested with the API stubbed) and the fixed maps (`games/ice-and-fire/codingame-seeds.txt`); the first batch of `ice-and-fire-v014` against the top 10 waits for the owner's go-ahead.
 6. The plan bot's `judge` mode and the judge comparison.
 

@@ -8,6 +8,12 @@ use super::*;
 struct Toy;
 
 impl Profiling for Toy {
+    fn turns() -> Vec<u32> {
+        vec![5, 10]
+    }
+    fn opening_plies() -> usize {
+        3
+    }
     fn key_metrics() -> Vec<&'static str> {
         vec!["cells"]
     }
@@ -137,7 +143,10 @@ fn a_profile_has_events_and_openings() {
         (at5.games, at5.theirs, at5.ours),
         (3, Some(14.0), Some(12.0))
     );
+    // Turn 10 is not reached by half of the games: left out, and said so.
     assert!(cells.at_turn.iter().all(|c| c.turn <= 5));
+    assert_eq!(p.turns_dropped, [10]);
+    assert_eq!(p.opening_plies, 3);
     assert_eq!(p.wins.wins, 2);
 }
 
@@ -176,8 +185,8 @@ fn moments_are_counted_in_wins_and_losses() {
 
 #[test]
 fn stays_below_finds_the_turn_from_which_it_never_recovers() {
-    // Read after each turn (at the next turn's first ply), blue is ahead
-    // after turn 1 and behind from turn 2.
+    // Each side is read right after its own ply: blue is ahead at turns 1
+    // and 2 (4 against 1 and 3), behind from turn 3.
     let cells = [
         (1, 5),
         (1, 5),
@@ -189,7 +198,7 @@ fn stays_below_finds_the_turn_from_which_it_never_recovers() {
         (6, 4),
     ];
     let trace = game(&cells, Some(0));
-    assert_eq!(stays_below(&trace, 1, "cells"), Some(2));
+    assert_eq!(stays_below(&trace, 1, "cells"), Some(3));
     assert_eq!(stays_below(&trace, 0, "cells"), None);
     assert_eq!(stays_below(&trace, 1, "nothing"), None);
     // Ahead at the last turn: not below.
@@ -226,8 +235,8 @@ fn the_weaknesses_list_the_earliest_falls() {
     assert_eq!(w.earliest.len(), EARLIEST_SHOWN);
     assert_eq!(w.earliest[0].game_id, 10);
     assert_eq!(w.earliest[0].turn, 1);
-    assert_eq!(w.earliest[1].turn, 1);
-    assert_eq!(w.earliest[2].turn, 2);
+    assert_eq!(w.earliest[1].turn, 2);
+    assert_eq!(w.earliest[2].turn, 3);
     assert_eq!(w.stays_below[0].below, 7);
     assert_eq!(w.lead, "cells");
 }
@@ -244,6 +253,8 @@ fn small_samples_and_edge_cases_are_flagged() {
             game_id: Some(9),
             why: "no log".to_string(),
         }],
+        warnings: vec!["a name differs".to_string()],
+        notes: vec!["a note".to_string()],
     };
     let a = analyze::<Toy>(
         &input,
@@ -259,6 +270,8 @@ fn small_samples_and_edge_cases_are_flagged() {
     assert!(text.contains("[n = 1]"), "{text}");
     assert!(text.contains("- 9: no log"), "{text}");
     assert!(text.contains("No loss."), "{text}");
+    assert!(text.contains("**Warning:** a name differs"), "{text}");
+    assert!(text.contains("a note"), "{text}");
     for heading in [
         "## Sources",
         "## Opponents",
@@ -306,17 +319,20 @@ fn a_game_we_are_not_in_counts_for_the_profile_only() {
 }
 
 #[test]
-fn the_second_player_is_not_behind_only_at_the_start_of_its_own_plies() {
-    // Blue (seat 1) is 2 below red at the start of its own plies, but equal
-    // once red and blue have both played each turn: at red's next ply.
-    // Plies: red t1, blue t1, red t2, blue t2, red t3, blue t3.
-    let cells = [(5, 5), (5, 3), (7, 7), (7, 5), (9, 9), (9, 7)];
+fn each_side_is_read_right_after_its_own_ply() {
+    // Blue (seat 1) is below red at the start of each of its own plies
+    // (3 against 5, 5 against 7, 7 against 9: its income comes after), but
+    // equal once it has played: the snapshot of the ply after its own.
+    let cells = [(5, 5), (5, 3), (7, 5), (7, 5), (9, 7), (9, 7), (11, 9)];
     let trace = game(&cells, Some(0));
-    // After turn 1 (ply 2) both have 7; after turn 2 both 9; the last
-    // turn is read at the last ply, where blue is behind by 2.
-    assert_eq!(stays_below(&trace, 1, "cells"), Some(3));
     let index = trace.metric("cells").expect("cells");
-    assert_eq!(value_at(&trace, 1, 1, index), Some(7));
-    assert_eq!(value_at(&trace, 0, 1, index), Some(7));
+    assert_eq!(value_at(&trace, 0, 1, index), Some(5));
+    assert_eq!(value_at(&trace, 1, 1, index), Some(5));
+    assert_eq!(value_at(&trace, 0, 3, index), Some(9));
+    assert_eq!(value_at(&trace, 1, 3, index), Some(9));
+    // Red's last ply is read at its own snapshot; blue has no turn 4.
+    assert_eq!(value_at(&trace, 0, 4, index), Some(11));
     assert_eq!(value_at(&trace, 1, 4, index), None);
+    // So blue is never "behind from turn 1".
+    assert_eq!(stays_below(&trace, 1, "cells"), None);
 }

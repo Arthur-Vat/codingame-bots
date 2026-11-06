@@ -20,6 +20,8 @@ fn the_key_metrics_exist_in_the_trace() {
     let keys: Vec<String> = metrics().into_iter().map(|m| m.key).collect();
     let wanted = IceAndFire::key_metrics();
     assert_eq!(wanted.len(), 10);
+    assert_eq!(IceAndFire::turns(), [5, 10, 15, 20, 30]);
+    assert_eq!(IceAndFire::opening_plies(), 3);
     for key in wanted {
         assert!(keys.iter().any(|k| k == key), "{key}");
     }

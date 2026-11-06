@@ -10,13 +10,15 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use cg_arena::codingame::{read_log, to_record};
+use cg_arena::record::Record;
 use cg_review::profile::{analyze, markdown, GameMeta, Input, LeftOut, Options};
 use cg_review::trace::Trace;
 use serde_json::Value;
 
-use crate::codingame::{check, IceAndFire};
+use crate::codingame::{check, parts, IceAndFire};
 use crate::profiling::IceAndFire as Hooks;
-use crate::trace::trace;
+use crate::replay::replay;
+use crate::trace::{parse, trace};
 
 /// What `codingame-report` is asked.
 pub struct Request {
@@ -31,6 +33,9 @@ pub struct Request {
     pub leaderboard: Option<PathBuf>,
     pub jobs: usize,
 }
+
+/// The kinds of games the index holds.
+const KINDS: [&str; 3] = ["ranking", "test", "replay"];
 
 /// One line of the index that passes the filters.
 struct Entry {
@@ -67,6 +72,13 @@ fn read_index(path: &Path, request: &Request) -> Result<(Vec<Entry>, Vec<LeftOut
             continue;
         };
         let kind = value["kind"].as_str().unwrap_or("").to_string();
+        if !KINDS.contains(&kind.as_str()) {
+            left_out.push(LeftOut {
+                game_id: Some(game_id),
+                why: format!("unknown kind {kind:?} in the index"),
+            });
+            continue;
+        }
         let batch = value["batch"].as_str().map(str::to_string);
         if !request.kinds.is_empty() && !request.kinds.contains(&kind) {
             continue;
@@ -108,6 +120,42 @@ fn read_index(path: &Path, request: &Request) -> Result<(Vec<Entry>, Vec<LeftOut
     Ok((entries, left_out))
 }
 
+/// `record` with, in each answer, only the commands our engine carries out
+/// (the loop of the check: each applied in order to a copy of the state,
+/// stopping when the game ends), joined by `;`, or `WAIT` if none. A refused
+/// command has no effect, so the game replays the same; the events and
+/// openings then count what happened, not what was sent.
+pub fn carried_out_record(record: &Record) -> Record {
+    let game = replay("carried-out", record.clone());
+    let mut out = record.clone();
+    for (step, answers) in game.steps.iter().zip(out.turns.iter_mut()) {
+        let seat = step.state.to_act();
+        let Some(line) = answers
+            .iter_mut()
+            .find(|a| a.seat == seat)
+            .and_then(|a| a.lines.first_mut())
+        else {
+            continue;
+        };
+        let mut state = step.state.clone();
+        let mut kept = Vec::new();
+        for part in parts(line) {
+            if state.outcome().is_some() {
+                break;
+            }
+            if parse(part).is_some_and(|command| state.apply(command)) {
+                kept.push(part.to_string());
+            }
+        }
+        *line = if kept.is_empty() {
+            "WAIT".to_string()
+        } else {
+            kept.join(";")
+        };
+    }
+    out
+}
+
 /// The trace of one game, or why it is left out.
 fn load(data: &Path, entry: &Entry, me: &str) -> Result<(GameMeta, Trace), LeftOut> {
     let id = entry.meta.game_id;
@@ -141,7 +189,7 @@ fn load(data: &Path, entry: &Entry, me: &str) -> Result<(GameMeta, Trace), LeftO
             entry.names
         )));
     }
-    Ok((meta, trace(&id.to_string(), &record)))
+    Ok((meta, trace(&id.to_string(), &carried_out_record(&record))))
 }
 
 /// Runs `load` on every entry on `jobs` threads, in the order of `entries`.
@@ -229,7 +277,28 @@ pub fn run(request: &Request) -> Result<(String, String), String> {
         ),
         None => (BTreeMap::new(), None),
     };
+    let mut warnings = Vec::new();
+    let mismatched: Vec<&(GameMeta, Trace)> = games
+        .iter()
+        .filter(|(meta, trace)| {
+            meta.our_seat
+                .and_then(|s| trace.players.get(s))
+                .is_some_and(|name| *name != request.me)
+        })
+        .collect();
+    if let Some((meta, trace)) = mismatched.first() {
+        let seat = meta.our_seat.unwrap_or(0);
+        warnings.push(format!(
+            "--me {:?} differs from the player at our seat in {} games (for example game {}: {:?}); those games count that player as ours.",
+            request.me,
+            mismatched.len(),
+            meta.game_id,
+            trace.players[seat]
+        ));
+    }
     let input = Input {
+        warnings,
+        notes: vec!["Events and openings count the commands carried out by the rules, not the ones refused (a refused command has no effect).".to_string()],
         games,
         ranks,
         snapshot: name,

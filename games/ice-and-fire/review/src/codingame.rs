@@ -141,7 +141,7 @@ pub fn effects(log: &Log) -> Vec<Effects> {
 /// The parts of an answer: split at `;`, trimmed, the empty parts at the end
 /// dropped as Java's `String.split` drops them (RULES.md, "Reading the
 /// answer"); an empty line is one empty part.
-fn parts(line: &str) -> Vec<&str> {
+pub(crate) fn parts(line: &str) -> Vec<&str> {
     let mut raw: Vec<&str> = line.split(';').collect();
     while raw.len() > 1 && raw.last() == Some(&"") {
         raw.pop();
