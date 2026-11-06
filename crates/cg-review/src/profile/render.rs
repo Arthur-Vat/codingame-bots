@@ -3,10 +3,10 @@
 
 use std::fmt::Write as _;
 
-use super::{Analysis, Profile, Tally, FEW_GAMES, SMALL};
+use super::{Analysis, Profile, Sources, Tally, FEW_GAMES, SMALL};
 
 /// A number with at most one decimal.
-fn num(value: Option<f64>) -> String {
+pub(crate) fn num(value: Option<f64>) -> String {
     match value {
         None => "-".to_string(),
         Some(v) if (v - v.round()).abs() < 0.05 => format!("{:.0}", v.round()),
@@ -32,7 +32,7 @@ fn num_n(value: Option<f64>, n: usize) -> String {
 }
 
 /// "60% (3/5)", flagged when `n` is small.
-fn share(k: usize, n: usize) -> String {
+pub(crate) fn share(k: usize, n: usize) -> String {
     if n == 0 {
         return "- (0)".to_string();
     }
@@ -47,11 +47,11 @@ fn tally(t: &Tally) -> String {
     }
 }
 
-fn cell(text: &str) -> String {
+pub(crate) fn cell(text: &str) -> String {
     text.replace('|', "\\|")
 }
 
-fn table(out: &mut String, headers: &[&str], rows: &[Vec<String>]) {
+pub(crate) fn table(out: &mut String, headers: &[&str], rows: &[Vec<String>]) {
     if rows.is_empty() {
         out.push_str("(none)\n\n");
         return;
@@ -90,7 +90,7 @@ fn counts(map: &std::collections::BTreeMap<String, usize>) -> String {
 /// The report: sources, opponents, profiles, our weaknesses and the games.
 pub fn markdown(a: &Analysis) -> String {
     let mut out = String::new();
-    sources(&mut out, a);
+    sources(&mut out, &a.sources);
     opponents(&mut out, a);
     out.push_str("## Profiles\n\n");
     if a.profiles.is_empty() {
@@ -104,16 +104,15 @@ pub fn markdown(a: &Analysis) -> String {
     out
 }
 
-fn sources(out: &mut String, a: &Analysis) {
+pub(crate) fn sources(out: &mut String, sources: &Sources) {
     out.push_str("## Sources\n\n");
-    for w in &a.sources.warnings {
+    for w in &sources.warnings {
         let _ = writeln!(out, "**Warning:** {w}\n");
     }
-    for n in &a.sources.notes {
+    for n in &sources.notes {
         let _ = writeln!(out, "{n}\n");
     }
-    let rows: Vec<Vec<String>> = a
-        .sources
+    let rows: Vec<Vec<String>> = sources
         .by_kind
         .iter()
         .map(|k| {
@@ -125,19 +124,19 @@ fn sources(out: &mut String, a: &Analysis) {
         })
         .collect();
     table(out, &["kind", "batch", "games"], &rows);
-    let total: usize = a.sources.by_kind.iter().map(|k| k.games).sum();
+    let total: usize = sources.by_kind.iter().map(|k| k.games).sum();
     let _ = writeln!(out, "{total} games used.");
-    match &a.sources.snapshot {
+    match &sources.snapshot {
         Some(s) => {
             let _ = writeln!(out, "Ranks from the leaderboard snapshot {s}.");
         }
         None => out.push_str("No leaderboard snapshot: players are unranked.\n"),
     }
-    if a.sources.left_out.is_empty() {
+    if sources.left_out.is_empty() {
         out.push_str("No game left out.\n\n");
     } else {
-        let _ = writeln!(out, "\n{} games left out:\n", a.sources.left_out.len());
-        for l in &a.sources.left_out {
+        let _ = writeln!(out, "\n{} games left out:\n", sources.left_out.len());
+        for l in &sources.left_out {
             let id = l.game_id.map_or("-".to_string(), |g| g.to_string());
             let _ = writeln!(out, "- {id}: {}", l.why);
         }

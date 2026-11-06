@@ -81,6 +81,14 @@ pub trait Profiling {
     fn opening(trace: &Trace, seat: usize, plies: usize) -> Vec<String>;
 }
 
+// Built, in cg_review::moments (the decisive moments of our losses; it also uses key_metrics):
+pub trait Decisive: Profiling {
+    /// The kinds of moments that decide a game, in order of interest (e.g. "large cut", "HQ threat", "debt").
+    fn decisive_kinds() -> Vec<&'static str>;
+    /// The metric key that says how much of a side the opponent can take next (e.g. "exposed30"), if the game has one.
+    fn exposure_metric() -> Option<&'static str>;
+}
+
 // To come, in cg-review:
 pub trait Judging {
     /// The judge's input: the position before a ply and the move played there.
@@ -139,6 +147,7 @@ All of it reads traces, which a game's review binary makes (A Code of Ice and Fi
 - **Check.** Every converted game is replayed by the engine. The report starts with how many games were read, how many disagreed and their ids.
 - **Profiles**, for each player (the top 10, or any name): games and results against us by seat and by map; the metrics' mean curves by turn and their means by phase, beside ours in the same games; when each kind of event and decisive moment first happens; how its wins come (end reasons, the moments that favoured it in its wins); its openings, as the most common token sequences and how often each one won.
 - **Our weaknesses**: in our losses, the decisive moments against us by phase and by opponent, the first turn of each loss from which a metric stays behind to the end (new, computed per game from its trace), and the games where the gap was largest.
+- **Decisive moments** (`codingame-moments`): for each of our losses, the first moment against us of the game's decisive kinds (`Decisive::decisive_kinds`), with the board before the play that made it and the board after it, our exposure (`Decisive::exposure_metric`) right after each of our last 3 own plies before it (did it grow?), both sides' key metrics read right after their own last ply before it, and the moment's text. The summary counts the kinds and their median turn for the focus players (the top N of the snapshot) and for the others, counts the losses with no such moment, and gives for each kind the median exposure at the last own ply before it and the share of losses where it was above zero at each of the last 3. Then, for each focus player, up to K example losses (3 by default), the boards one after the other in code blocks. It does not propose the defence move (that is a question for the judge).
 - **Judge comparison**: at each ply of a top player, the position as our bot reads it goes to the judge, the current release built for analysis (for A Code of Ice and Fire, the plan bot with `--features analysis`, which already reads banks of positions), with a fixed number of tries so that runs repeat. The plan bot's analysis build gains a `judge` mode that, besides choosing its own plan, scores a given one; the input carries the move the top player played. Its answer is compared with the top player's (same move, same first command, different), with the judge's scores of both. The report gives the agreement by player and phase and lists the plies with the largest score gap, with their boards: the moves the top player found that our evaluation underrates.
 - **Report**: one Markdown file a batch, in `games/<game>/research/codingame/<date>-<name>.md`: the sources and the check, then a section per top player (profile), then our weaknesses, then the judge comparison, then what we could copy. Numbers come from code; the "what we could copy" part is written by the session from them. Every table is built from the trace's metric names and the game's event names, so a new game gets the same report with its own words.
 
