@@ -46,6 +46,9 @@ use ice_and_fire_tactics::eval::WIN;
 use crate::actions::{generate, xy, Action, CUT_LENGTH};
 use crate::eval::eval;
 
+#[cfg(feature = "analysis")]
+pub mod judge;
+
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8;
 /// The opponent's best cuts added to the memory after a climb.
@@ -573,6 +576,8 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
         scores[index] = Some(search.final_score(&plans[index], &memory));
         best = pick(&scores);
     }
+    #[cfg(feature = "analysis")]
+    judge::observe(&search, state, &memory, best);
     if let Some((_, index)) = best {
         // Each command is checked once more, in order, on a scratch copy.
         let mut scratch = state.clone();

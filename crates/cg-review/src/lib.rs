@@ -21,9 +21,13 @@
 //!   slice's points turn by turn for charts;
 //! - [`profile`]: profiles of the players met on CodinGame and our own
 //!   weaknesses (ADR 0056), from traces and a game's [`profile::Profiling`]
-//!   hooks.
+//!   hooks;
+//! - [`judge`]: a chosen player's moves judged by the game's own search, from
+//!   the game's [`judge::Judging`] hooks and judgements (ADR 0056,
+//!   decision 8).
 
 pub mod detect;
+pub mod judge;
 pub mod profile;
 pub mod report;
 pub mod summary;
