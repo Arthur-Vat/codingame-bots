@@ -48,7 +48,7 @@ Every bot change is judged by CI: unit tests, a check that the bot compiles on C
 
 ## Development
 
-The workspace targets Rust 1.90.0 with the 2021 edition, the compiler CodinGame uses. Any newer stable Rust works locally; CI checks with exactly 1.90.0.
+The workspace targets Rust 1.90.0 with the 2021 edition, the compiler CodinGame uses. `rust-toolchain.toml` pins it for local work as CI does ([ADR 0055](docs/adr/0055-pin-rust-in-the-repository.md)): rustup installs it on the first `cargo` command.
 
 ```sh
 scripts/check.sh                       # the checks CI runs for this branch's changes (--all: every check)
