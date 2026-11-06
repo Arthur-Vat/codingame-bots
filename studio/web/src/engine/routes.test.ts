@@ -436,7 +436,7 @@ describe('a game between friends', () => {
     expect(record.status).toBe(200);
     const parsed = record.body as Record<string, unknown>;
     expect(parsed).toMatchObject({
-      format: 1,
+      format: 2,
       game: 'uttt',
       seed: 7,
       source: 'studio',
