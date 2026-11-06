@@ -1,6 +1,6 @@
 # Game analysis: CodinGame games recorded and analysed
 
-The design of the tool that records games played on CodinGame, rebuilds them with our engines, and reports how the top players play and where our bots lose to them ([ADR 0056](adr/0056-codingame-game-analysis.md)). It is a framework for any two-player game of the repository; A Code of Ice and Fire is the first game it is applied to. Status: designed, not built (the steps are at the end).
+The design of the tool that records games played on CodinGame, rebuilds them with our engines, and reports how the top players play and where our bots lose to them ([ADR 0056](adr/0056-codingame-game-analysis.md)). It is a framework for any two-player game of the repository; A Code of Ice and Fire is the first game it is applied to. Status: the record's origin and the conversion with its check are built; the rest is designed, not built (the steps are at the end).
 
 ## What it is for
 
@@ -55,14 +55,20 @@ Only the first arrow touches the network. The rest reads files, so it runs in a 
 
 ### What a game provides
 
-In Rust, a game's review crate implements one trait, added to `cg-review`, which then depends on `cg-arena` for the record types; the log's types and the record's origin go to `cg-arena::record` (names to be settled in the code):
+In Rust, a game provides two sets of parts. The conversion part, built and done, is the trait `FromCodinGame` in `cg_arena::codingame` (it builds records, so it lives with them; the log's types, `to_record` and `read_log` are there too, and the record's `origin` is in `cg_arena::record`, format 2). A game's review crate implements it (A Code of Ice and Fire: `IceAndFire`, 2 functions). The analysis hooks (events, openings, judge), not built, will go to a second trait in `cg-review`, which then depends on `cg-arena` for the record types. Together, as designed:
 
 ```rust
-pub trait CodinGameGame {
+pub trait FromCodinGame {
+    /// The game's folder name.
+    const GAME: &'static str;
     /// The seed of a game from CodinGame's game options.
     fn seed(options: &str) -> Result<u64, String>;
     /// The answers of every turn, by seat, from the frames of a log.
     fn answers(log: &Log) -> Result<Vec<Vec<RecordedAnswer>>, String>;
+}
+
+// To come, in cg-review:
+pub trait Analysis {
     /// The events of one ply of a trace, by name (e.g. "tower", "mine", "level 3", "large cut").
     fn events(trace: &Trace, ply: usize) -> Vec<String>;
     /// The first plies of a seat as tokens, the same from both seats (mirrored when the map is).
@@ -128,8 +134,8 @@ All of it reads traces, which a game's review binary makes (A Code of Ice and Fi
 One pull request each; each ends with its checks and, from step 3, a run on real games.
 
 1. This design and [ADR 0056](adr/0056-codingame-game-analysis.md).
-2. `scripts/codingame.sh fetch` and its tests (the API stubbed), the branch `claude/codingame-games`, its index and leaderboard snapshots, the record's `origin`; the first fetch of our ranking games.
-3. A Code of Ice and Fire's conversion and the check, on every fetched game; the disagreements, if any, looked into.
+2. `scripts/codingame.sh fetch` and its tests (the API stubbed), the branch `claude/codingame-games`, its index and leaderboard snapshots, the record's `origin` (done: record format 2, read by the studio in formats 1 and 2); the first fetch of our ranking games.
+3. A Code of Ice and Fire's conversion and the check, on every fetched game; the disagreements, if any, looked into. Done: `ice-and-fire-review codingame` converts logs and checks 4 things (every answer used, the winner, every command read, and per ply the commands carried out and refused against CodinGame's summaries). On 222 of our ranking games, all 222 agree; the fetch script is another pull request.
 4. Profiles, events, openings, weaknesses and the report on our past ranking games, the top 10 apart.
 5. `batch` and `replay`, the fixed maps, and a first batch of `ice-and-fire-v014` against the top 10, with the owner's go-ahead.
 6. The plan bot's `judge` mode and the judge comparison.
