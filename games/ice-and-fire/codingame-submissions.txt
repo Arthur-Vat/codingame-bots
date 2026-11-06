@@ -1,0 +1,7 @@
+# The releases that played our ranking games on CodinGame, for scripts/codingame.sh
+# (ADR 0057): one line a submission, "<submission id> <release> <UTC date of the
+# submission>", where the release is a file name of games/ice-and-fire/releases/
+# without .rs. fetch writes the release in the index lines it adds, and
+# fetch --backfill-releases adds it to the lines that lack it. Add a line each time
+# a release is submitted (the owner approves each submission, ADR 0047).
+41605899 ice-and-fire-v014 2026-10-31

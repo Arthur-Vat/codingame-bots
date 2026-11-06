@@ -4,6 +4,8 @@
 //! Each log is converted, replayed and checked against CodinGame as
 //! `codingame` does; a game that disagrees, or whose log is missing or
 //! malformed, is left out and listed in the report's sources.
+//! `codingame-moments` loads the same games and shows the decisive moment
+//! of each of our losses.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -11,6 +13,7 @@ use std::path::{Path, PathBuf};
 
 use cg_arena::codingame::{read_log, to_record};
 use cg_arena::record::Record;
+use cg_review::moments;
 use cg_review::profile::{analyze, markdown, GameMeta, Input, LeftOut, Options};
 use cg_review::trace::Trace;
 use serde_json::Value;
@@ -264,8 +267,8 @@ pub fn newest_snapshot(data: &Path) -> Option<PathBuf> {
     files.pop()
 }
 
-/// The report (Markdown) and its numbers (JSON).
-pub fn run(request: &Request) -> Result<(String, String), String> {
+/// The games of the request, loaded and checked, with the leaderboard.
+fn load_input(request: &Request) -> Result<Input, String> {
     let (entries, mut left_out) = read_index(&request.data.join("index.jsonl"), request)?;
     let mut games = Vec::new();
     for result in load_all(&request.data, &entries, &request.me, request.jobs) {
@@ -304,21 +307,56 @@ pub fn run(request: &Request) -> Result<(String, String), String> {
             trace.players[seat]
         ));
     }
-    let input = Input {
+    Ok(Input {
         warnings,
         notes: vec!["Events and openings count the commands carried out by the rules, not the ones refused (a refused command has no effect).".to_string()],
         games,
         ranks,
         snapshot: name,
         left_out,
-    };
-    let options = Options {
+    })
+}
+
+fn options(request: &Request) -> Options {
+    Options {
         top: request.top,
         players: request.players.clone(),
-    };
+    }
+}
+
+/// The report (Markdown) and its numbers (JSON).
+pub fn run(request: &Request) -> Result<(String, String), String> {
+    let input = load_input(request)?;
+    let options = options(request);
     let analysis = analyze::<Hooks>(&input, &options);
     let json = serde_json::to_string_pretty(&analysis).map_err(|e| e.to_string())?;
     Ok((markdown(&analysis), json + "\n"))
+}
+
+/// The decisive moments of our losses, `examples` a focus player: the
+/// Markdown report, or, with `out`, the files of that folder (and a line
+/// that says so).
+pub fn run_moments(
+    request: &Request,
+    examples: usize,
+    out: Option<&Path>,
+) -> Result<String, String> {
+    let input = load_input(request)?;
+    let findings = moments::analyze::<Hooks>(&input, &options(request), examples);
+    let Some(dir) = out else {
+        return Ok(moments::markdown(&findings));
+    };
+    std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    let files = moments::files(&findings);
+    for (name, content) in &files {
+        let path = dir.join(name);
+        std::fs::write(&path, content).map_err(|e| format!("{}: {e}", path.display()))?;
+    }
+    Ok(format!(
+        "wrote {} files in {}\n",
+        files.len(),
+        dir.display()
+    ))
 }
 
 #[cfg(test)]
