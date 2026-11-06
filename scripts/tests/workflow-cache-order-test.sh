@@ -3,8 +3,9 @@
 # Swatinem/rust-cache step: on a partial match the action cleans target/,
 # files included, which lost the plan of the 2026-11-06 Ice and Fire night.
 # A job whose cache step runs only when its restore found nothing
-# (`cache-matched-key == ''` in the step's `if:`) is allowed. First checks
-# the check itself on two small workflows, then checks .github/workflows/.
+# (`cache-matched-key == ''` in the step's `if:`) is allowed. It sees only
+# `target/` written in the workflow itself, not what a script writes there.
+# First checks the check itself on small workflows, then .github/workflows/.
 # Usage: scripts/tests/workflow-cache-order-test.sh
 set -euo pipefail
 
@@ -20,17 +21,16 @@ early_target() { # early_target <workflow>...
     FNR == 1 { in_jobs = 0; job = ""; hits = "" }
     /^jobs:/ { in_jobs = 1; next }
     in_jobs && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ {
+      if (in_cache) { finish() }
       job = $1; sub(/:$/, "", job); seen_cache = 0; hits = ""; in_cache = 0
       next
     }
     job == "" || seen_cache { next }
     /^[[:space:]]*#/ { next }
-    /^      - / {
-      if (in_cache) { finish() }
-      if ($0 ~ /uses: Swatinem\/rust-cache@/) { in_cache = 1; allowed = 0; next }
-    }
+    /^      - / { if (in_cache) { finish() } }
+    /^      (- |  )uses: Swatinem\/rust-cache@/ { in_cache = 1; allowed = 0; next }
     in_cache && /^        if:.*cache-matched-key == '\'''\''/ { allowed = 1 }
-    !in_cache && /target\// { hits = hits FILENAME ":" FNR ": " job "\n" }
+    !in_cache && /(^|[^A-Za-z0-9_-])target(\/|[[:space:]]*$)/ { hits = hits FILENAME ":" FNR ": " job "\n" }
     function finish() {
       if (!allowed) { printf "%s", hits }
       seen_cache = 1; in_cache = 0
@@ -87,6 +87,28 @@ jobs:
 EOF
 same "a cache step that runs only when the restore found nothing" "" "$(early_target "$tmp_dir/allowed.yml")"
 
+cat >"$tmp_dir/forms.yml" <<'EOF'
+jobs:
+  named:
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: ./target
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+  last:
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: target/night
+      - uses: Swatinem/rust-cache@v2
+  next:
+    steps:
+      - run: true
+EOF
+same "a named cache step, ./target, a cache step that ends its job" "$tmp_dir/forms.yml:6: named
+$tmp_dir/forms.yml:13: last" "$(early_target "$tmp_dir/forms.yml")"
+
 found="$(early_target .github/workflows/*.yml)"
 same "the workflows (put the cache step first)" "" "$found"
 
@@ -94,4 +116,4 @@ if ((failures > 0)); then
   echo "workflow-cache-order-test: $failures of $checks checks failed" >&2
   exit 1
 fi
-echo "workflow-cache-order-test: $checks checks passed"
+echo "ok   workflow-cache-order-test: $checks checks"
