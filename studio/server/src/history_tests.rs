@@ -360,9 +360,9 @@ fn a_record_that_does_not_replay_is_refused() {
     let state = new_state(&dir);
     let record = friend_record(&state, 4, 4);
 
-    let mut format_2 = record.clone();
-    format_2["format"] = json!(2);
-    let (status, error) = save(&state, &format_2);
+    let mut format_3 = record.clone();
+    format_3["format"] = json!(3);
+    let (status, error) = save(&state, &format_3);
     assert_eq!(status, 400);
     assert!(
         error["error"].as_str().unwrap().contains("format"),

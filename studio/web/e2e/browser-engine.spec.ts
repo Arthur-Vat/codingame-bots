@@ -188,7 +188,7 @@ test('bot against bot in real time to the end, its playback, and the history kep
     source: string;
     players: { name: string }[];
   };
-  expect(record).toMatchObject({ format: 1, game: 'uttt', source: 'studio' });
+  expect(record).toMatchObject({ format: 2, game: 'uttt', source: 'studio' });
   expect(record.players.map((player) => player.name)).toEqual(['uttt-v001', 'uttt-v002']);
 
   // Delete asks twice; the game is gone, also after a reload.

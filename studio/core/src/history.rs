@@ -6,7 +6,7 @@
 //! A saved game's id is `<game>-<unix time>-<12 hex digits of a hash of the
 //! record>`; the server names its file with it.
 
-use cg_arena::record::{Record, RECORD_FORMAT};
+use cg_arena::record::{Record, READABLE_FORMATS, RECORD_FORMAT};
 use cg_arena::referee::{GameSetup, Outcome, SEATS};
 use cg_arena::runner::EndReason;
 use serde::{Deserialize, Serialize};
@@ -297,9 +297,9 @@ pub struct Replay {
 /// that breaks the rules. The last turn may break them when the game ended
 /// by an invalid answer: the arena records the answer that lost the game.
 pub fn replay(game: &dyn StudioGame, record: &Record) -> Result<Replay, String> {
-    if record.format != RECORD_FORMAT {
+    if !READABLE_FORMATS.contains(&record.format) {
         return Err(format!(
-            "unsupported record format {} (this studio reads format {RECORD_FORMAT})",
+            "unsupported record format {} (this studio reads formats 1 to {RECORD_FORMAT})",
             record.format
         ));
     }

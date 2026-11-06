@@ -280,7 +280,15 @@ export interface RecordPlayer {
   fixed_iters: number | null;
 }
 
-/** A game record, format 1 (ADR 0027). */
+/** Where a game played elsewhere comes from (record format 2). */
+export interface GameOrigin {
+  site: string;
+  game_id: number;
+  kind: string;
+  agent_ids: [number, number];
+}
+
+/** A game record, format 1 or 2 (ADR 0027). */
 export interface GameRecord {
   format: number;
   game: string;
@@ -294,6 +302,8 @@ export interface GameRecord {
   turns: Answer[][];
   end: EndReason;
   winner: number | null;
+  /** Absent from format 1. */
+  origin?: GameOrigin;
 }
 
 /** A record with the game's frames: `GET /api/history/{id}/view` and `POST /api/view`. */

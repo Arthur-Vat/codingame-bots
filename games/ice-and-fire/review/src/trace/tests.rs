@@ -156,6 +156,7 @@ fn a_record_replays_into_plies_with_metrics_and_what_was_spent() {
             reason: "test".to_string(),
         },
         winner: None,
+        origin: None,
     };
     let t = trace("g", &record);
     assert_eq!(t.plies.len(), 3);

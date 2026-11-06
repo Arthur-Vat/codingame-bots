@@ -50,6 +50,7 @@ pub fn random_record(seed: u64, names: [&str; 2]) -> Record {
             Some(Outcome::Win(w)) => Some(w),
             _ => None,
         },
+        origin: None,
     }
 }
 

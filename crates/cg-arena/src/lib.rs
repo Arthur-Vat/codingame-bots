@@ -5,6 +5,7 @@
 //! - [`referee`]: the trait each game implements.
 //! - [`runner`]: one match between two bot processes.
 //! - [`record`]: full game records, and the sample of a run to keep.
+//! - [`codingame`]: CodinGame game logs converted into records.
 //! - [`live`]: a game driven one turn at a time, and a bot restarted by
 //!   replaying a game into it, for the studio.
 //! - [`tournament`]: many matches in parallel, in seat-swapped pairs.
@@ -19,6 +20,7 @@
 
 pub mod blocks;
 pub mod cli;
+pub mod codingame;
 pub mod leaderboard;
 pub mod league;
 pub mod live;

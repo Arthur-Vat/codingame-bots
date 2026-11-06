@@ -48,6 +48,9 @@ reset() {
 reset
 expect "identical records" 0 ""
 
+sed -i 's/"format":1/"format":2/' "$dir/run2/g1.json"
+expect "a format 2 record of the same game" 0 ""
+
 record "$dir/run2/g1.json" 0 win "1 1" "2 2" 987
 expect "other times" 0 ""
 
@@ -69,7 +72,7 @@ record "$dir/run2/g2.json" 0 win "1 1" "2 2" 5
 expect "a game only in run 2" 1 "run 2 has other games than run 1"
 
 reset
-echo '{"format":2}' >"$dir/run2/g1.json"
+echo '{"format":3}' >"$dir/run2/g1.json"
 expect "an unknown format" 1 "cannot read"
 
 reset

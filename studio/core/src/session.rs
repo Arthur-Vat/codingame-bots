@@ -366,6 +366,7 @@ impl GameState {
             turns: self.turns.clone(),
             end: result.end,
             winner: result.winner,
+            origin: None,
         }
     }
 }
