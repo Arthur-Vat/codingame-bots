@@ -108,7 +108,7 @@ jobs:
           } >>"$GITHUB_OUTPUT"
       # The cache comes before anything is written to target/: on a partial
       # match it cleans target/, files included (night of 2026-11-06).
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
           components: rustfmt
@@ -182,7 +182,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # Before the download, as in plan1.
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
           components: rustfmt
@@ -256,7 +256,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # Before the downloads, as in plan1.
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
           components: rustfmt
@@ -353,7 +353,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # Before the download, as in plan1.
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
           components: rustfmt
@@ -421,7 +421,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # Before the downloads, as in plan1.
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
         with:
           toolchain: ${{ env.CG_RUST }}
           components: rustfmt

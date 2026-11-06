@@ -30,7 +30,7 @@ No crates are available: a bot is one file using the standard library only.
    }
    ```
 
-If the Rust version changes, update `CG_RUST` in every workflow of `.github/workflows/` that sets it (`grep -rn CG_RUST .github`) and `rust-version` in `Cargo.toml` together, and record it in a new ADR that supersedes [ADR 0010](adr/0010-codingame-rust-toolchain.md).
+If the Rust version changes, update together `CG_RUST` in every workflow of `.github/workflows/` that sets it (`grep -rn CG_RUST .github`), `rust-version` in `Cargo.toml`, the channel in `rust-toolchain.toml`, the bundler's `VERSION` (`crates/cg-bundler/src/prune/rustc.rs`), its std names list (`cargo run -p cg-bundler --example std-names`) and the table above; `scripts/tests/rust-version-test.sh` checks that they agree ([ADR 0055](adr/0055-pin-rust-in-the-repository.md), decision 3). Record it in a new ADR that supersedes [ADR 0010](adr/0010-codingame-rust-toolchain.md).
 
 ## API
 
