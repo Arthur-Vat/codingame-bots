@@ -455,8 +455,12 @@ jobs:
           "$GITHUB_WORKSPACE/scripts/annotate.sh" run "License notices" npm run notices
       - name: Install Chromium for the browser tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        # No --with-deps: the runner image already has every library Chromium
+        # needs, and the option only added font packages fetched from a slow
+        # Ubuntu mirror (about 9 minutes on #267). The browser tests compare
+        # no screenshots, so the fonts change nothing.
         run: |
-          "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Install Chromium" npx playwright install --with-deps chromium
+          "$GITHUB_WORKSPACE/scripts/annotate.sh" run "Install Chromium" npx playwright install chromium
       - name: Browser tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run e2e
