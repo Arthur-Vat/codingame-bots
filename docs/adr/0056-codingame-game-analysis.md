@@ -1,6 +1,6 @@
 # 0056. Game analysis: CodinGame games recorded, rebuilt and analysed by a generic framework
 
-- Status: accepted (owner, 2026-11-06)
+- Status: accepted (owner, 2026-11-06); decision 6 completed by [0057](0057-daily-collection-of-codingame-games.md)
 - Date: 2026-11-06
 - Scope: framework
 

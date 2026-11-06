@@ -37,7 +37,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0030](0030-studio-on-github-pages.md) | The studio also runs in the browser, published on GitHub Pages | Accepted; decision 6 completed by 0031, decision 2 by 0032, decision 4 by 0040 |
 | [0031](0031-arena-games-archive.md) | Arena games: one archive per game on GitHub, shown read-only in the studio | Accepted; the league sample's source in decision 2 superseded by 0038; decision 2's league sample at publication superseded by 0049 |
 | [0032](0032-analysis-engine.md) | Analysis: one program per game, run as WebAssembly in the page or natively by the local server | Accepted |
-| [0033](0033-no-daily-scheduled-session.md) | No daily scheduled session | Accepted; the usage line of decision 3 superseded by 0034; decision 1 superseded for the weekly league results pull request by 0051 |
+| [0033](0033-no-daily-scheduled-session.md) | No daily scheduled session | Accepted; the usage line of decision 3 superseded by 0034; decision 1 superseded for the weekly league results pull request by 0051, and for the daily collection of CodinGame games by 0057 |
 | [0034](0034-no-usage-monitoring.md) | No usage monitoring | Accepted |
 | [0035](0035-new-game-lifecycle.md) | A lifecycle for each new game | Accepted |
 | [0036](0036-ranks-optional.md) | CodinGame ranks are reported only when the owner wishes | Accepted; decision 1 superseded by 0047 |
@@ -57,7 +57,8 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0053](0053-weekly-task-starts-the-branch-workflow.md) | The weekly task starts the League weekly workflow itself | Accepted |
 | [0054](0054-local-checks-follow-ci-scopes.md) | Local checks follow CI's scopes | Accepted |
 | [0055](0055-pin-rust-in-the-repository.md) | Pin CodinGame's Rust in the repository | Accepted |
-| [0056](0056-codingame-game-analysis.md) | Game analysis: CodinGame games recorded, rebuilt and analysed by a generic framework | Accepted |
+| [0056](0056-codingame-game-analysis.md) | Game analysis: CodinGame games recorded, rebuilt and analysed by a generic framework | Accepted; decision 6 completed by 0057 |
+| [0057](0057-daily-collection-of-codingame-games.md) | Daily collection of CodinGame games against the top players | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 
