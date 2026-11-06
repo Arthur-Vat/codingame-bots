@@ -131,6 +131,37 @@ fn std_members_are_kept_where_std_may_be_meant() {
         ],
         &["Board", "cells", "evaluate", "it"],
     );
+    // Each member place keeps its name.
+    let (out, report) = rename(source, &rustc()).unwrap();
+    assert_eq!(report.refused, 0, "{out}");
+    for place in [
+        "fn len(&self)",
+        ".a.len()",
+        ".len() }",
+        "fn fmt(&self",
+        "fmt::Formatter",
+        "u32::MAX",
+        "Item = u8",
+    ] {
+        assert!(out.contains(place), "{place} in {out}");
+    }
+}
+
+#[test]
+fn a_method_in_an_impl_with_a_const_block_argument_stays_a_member() {
+    // The `{ 2 }` ends the walk back from the braces before `impl`: `len`
+    // must stay a member, or `g.len()` would reach `Vec::len` through
+    // `Deref` instead (the reviewer's case: 99 before, 3 after).
+    let source = "struct Grid<const N: usize>(Vec<u8>);
+        impl<const N: usize> std::ops::Deref for Grid<N> {
+            type Target = Vec<u8>;
+            fn deref(&self) -> &Vec<u8> { &self.0 }
+        }
+        impl Grid<{ 2 }> { fn len(&self) -> usize { 99 } }
+        fn main() { let g: Grid<2> = Grid(vec![1, 2, 3]); println!(\"{}\", g.len()); }";
+    let (out, _) = rename(source, &rustc()).unwrap();
+    assert!(out.contains("fn len(&self)"), "{out}");
+    assert_eq!(output_of(&out, "const-after"), "99\n");
 }
 
 #[test]

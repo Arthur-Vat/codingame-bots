@@ -212,7 +212,7 @@ pub fn kept(tokens: &[Token], std: &StdNames) -> Kept {
     );
     // A free `fn` or `type` is no member: it is renamed with its bare uses.
     let fields = Fields::of(tokens);
-    members.retain(|&at| !matches!(text(at - 1), Some("fn" | "type")) || fields.in_impl(at));
+    members.retain(|&at| !matches!(text(at - 1), Some("fn" | "type")) || !fields.is_free(at));
     // A name that std defines as a member keeps it at its member places
     // and at its field places, and may be renamed elsewhere: a local
     // `next` is not `it.next()`.
@@ -291,26 +291,33 @@ impl<'a> Fields<'a> {
         self.parent[at].is_some_and(|open| self.text(open) == Some("{"))
     }
 
-    /// Whether the token at `at` is directly in the braces of an `impl` or
-    /// a `trait`: the item it names is a member. The header of the braces
-    /// runs back to the end of the item before them.
-    fn in_impl(&self, at: usize) -> bool {
-        let Some(open) = self.parent[at].filter(|&o| self.text(o) == Some("{")) else {
-            return false;
+    /// Whether the token at `at` is at the root or directly in the body of
+    /// a function: the item it names is free, no member. Anything else
+    /// (the braces of an `impl` or a `trait`, a block, a header that does
+    /// not read as a function's, such as `impl Grid<{ 2 }>`) counts as a
+    /// member. The header of the braces runs back to the end of the item
+    /// before them, outside nested groups.
+    fn is_free(&self, at: usize) -> bool {
+        let Some(open) = self.parent[at] else {
+            return true;
         };
-        let mut i = open;
+        if self.text(open) != Some("{") {
+            return false;
+        }
+        let (mut function, mut i) = (false, open);
         while i > 0 {
             i -= 1;
             if self.parent[i] != self.parent[open] {
                 continue;
             }
             match self.text(i) {
-                Some("impl" | "trait") => return true,
-                Some(";" | "{" | "}") | None => return false,
+                Some("impl" | "trait") => return false,
+                Some("fn") => function = true,
+                Some(";" | "{" | "}") => break,
                 _ => {}
             }
         }
-        false
+        function
     }
 
     /// Whether the name at `at` names a field: `next` in `struct Link {
