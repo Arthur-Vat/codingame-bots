@@ -4,8 +4,8 @@
 #
 #   fetch GAME [--submission ID] [--backfill-releases] [--data DIR] [--push]
 #   batch GAME RELEASE.rs [--top N] [--opponents NAME,...] [--games-per-opponent K]
-#         [--seeds FILE] [--name NAME] [--keep N] [--max-hours H] [--play]
-#         [--data DIR] [--push]
+#         [--seeds FILE] [--name NAME] [--keep N] [--max-hours H] [--max-games N]
+#         [--play] [--data DIR] [--push]
 #   replay GAME RELEASE.rs [--opponents NAME,...] [--all] [--limit N] [--play]
 #         [--data DIR] [--push]
 #   fetch-ids GAME [--kind ranking|test|replay] ID... [--data DIR] [--push]
@@ -30,7 +30,8 @@
 # stops the batch, cleanly (exit 0, the games left stay planned), before a
 # test game that would leave fewer than N of the 600 of the last 24 hours (read
 # with GET /limits before every game; a limit that cannot be read stops it with
-# status 1); --max-hours H stops it cleanly after H hours (ADR 0057).
+# status 1); --max-hours H stops it cleanly after H hours (ADR 0057);
+# --max-games N stops it cleanly after N games started in this run (a trial).
 #
 # The ranking games get the release that played them from
 # the releases file of the game (games/GAME/codingame-submissions.txt; lines: submission id, release, UTC date
@@ -54,9 +55,12 @@
 # CODINGAME_PACE (seconds between requests, 0.6), CODINGAME_TOKEN_FILE,
 # CODINGAME_SLEEP (program that waits, for the waits of test games, sleep),
 # CODINGAME_RETRY_WAIT (seconds before a failed test game is tried again, 60),
+# CODINGAME_PUBLISH_EVERY (games stored between two pushes of a batch, 10),
 # CODINGAME_NOW (the time as epoch seconds, or a file holding them; for tests).
 # Needs bash, curl and jq. Exit status: 0 done, 1 a request or a game failed,
-# 2 usage or setup error. Runs in Claude's Linux sessions only (not Windows).
+# 2 usage or setup error, 3 CodinGame refused the token (401: expired or
+# revoked; what was stored is still published). Runs on Linux (Claude's
+# sessions, the collection workflow of ADR 0058), not on Windows.
 set -euo pipefail
 
 usage() {
@@ -65,7 +69,7 @@ Usage: scripts/codingame.sh fetch GAME [--submission ID] [--backfill-releases]
                 [--data DIR] [--push]
        scripts/codingame.sh batch GAME RELEASE.rs [--top N] [--opponents NAME,...]
                 [--games-per-opponent K] [--seeds FILE] [--name NAME] [--keep N]
-                [--max-hours H] [--play] [--data DIR] [--push]
+                [--max-hours H] [--max-games N] [--play] [--data DIR] [--push]
        scripts/codingame.sh replay GAME RELEASE.rs [--opponents NAME,...] [--all]
                 [--limit N] [--play] [--data DIR] [--push]
        scripts/codingame.sh fetch-ids GAME [--kind ranking|test|replay] ID...
@@ -86,6 +90,8 @@ Usage: scripts/codingame.sh fetch GAME [--submission ID] [--backfill-releases]
   --keep N         batch: stop (exit 0, games left planned) before a test game that
                    would leave fewer than N of the 600 of the last 24 hours (0: no floor)
   --max-hours H    batch: stop (exit 0, resumable) after H hours (decimals allowed)
+  --max-games N    batch: stop (exit 0, resumable) after N test games started in
+                   this run, played or failed (a trial run)
   --backfill-releases
                    fetch: only add "release" to the ranking games of the index
                    from the game's file of releases; no request
@@ -134,7 +140,7 @@ data_dir=""
 push=false
 top=10 per_opp=10 limit=20
 opp_names="" seeds_file="" batch_name="" kind="ranking"
-play=false all=false keep=0 max_hours="" backfill=false
+play=false all=false keep=0 max_hours="" max_games=0 backfill=false
 while (($#)); do
   case "$1" in
     -h | --help)
@@ -181,6 +187,12 @@ while (($#)); do
       only batch
       [[ ${2:-} =~ ^([0-9]+\.?[0-9]*|\.[0-9]+)$ ]] || bad_usage
       max_hours="$2"
+      shift 2
+      ;;
+    --max-games)
+      only batch
+      [[ ${2:-} =~ ^[1-9][0-9]*$ ]] || bad_usage
+      max_games="$2"
       shift 2
       ;;
     --backfill-releases)
@@ -337,6 +349,11 @@ request() { # request <path with query> <body file> [JSON file to POST]
     sleep "$pace"
     status="$("$curl_bin" -sS -D "$scratch/headers" -o "$2" -w '%{http_code}' \
       -H "@$scratch/auth" ${post[@]+"${post[@]}"} "$url" 2>"$scratch/curl-err")" || status=000
+    if [[ $status == 401 ]]; then
+      # The exit trap still publishes what was stored; status 3 is the
+      # workflow's cue to annotate the failure.
+      die 3 "CodinGame refused the token (401 from $url): it expired or was revoked; the owner makes a new one (ADR 0058, docs/CODINGAME.md)"
+    fi
     if [[ $status != 429 ]]; then
       return 0
     fi
@@ -434,15 +451,8 @@ check_floor() {
   return 0
 }
 
-# Commits the data files of the worktree and pushes them, without force.
-publish() { # publish <what>
-  local noun_what="$1" message commit
-  published=true
-  if [[ -z $noun_what ]]; then
-    echo "nothing to commit"
-    return 0
-  fi
-  # Only the data files, never a temporary one.
+# Stages the data files of the worktree, never a temporary one.
+stage_data() {
   git -C "$worktree" add -- "$game/index.jsonl" "$game/leaderboard"
   if compgen -G "$worktree/$game/logs/*.json" >/dev/null; then
     git -C "$worktree" add -- "$game/logs/*.json"
@@ -450,11 +460,66 @@ publish() { # publish <what>
   if compgen -G "$worktree/$game/batches/*.json" >/dev/null; then
     git -C "$worktree" add -- "$game/batches/*.json"
   fi
+}
+
+data_ref="refs/remotes/origin/claude/codingame-games"
+# After a rejected push: fetches the data branch, adds to the worktree what the
+# branch has and it lacks (logs, snapshots and batches are per file; the index
+# is the union of both, one line a game, ours first; of a batch in both, the
+# one with more games done, ours on a tie), and moves HEAD to the branch's
+# tip, keeping the files, so that the next commit is on top of it.
+merge_remote() {
+  local rel mine theirs
+  git -C "$worktree" fetch -q origin "+refs/heads/claude/codingame-games:$data_ref" || return 1
+  while IFS= read -r rel; do
+    mkdir -p "$(dirname "$worktree/$rel")"
+    case "$rel" in
+      "$game/index.jsonl")
+        if [[ -f $worktree/$rel ]]; then
+          { cat "$worktree/$rel"; git -C "$worktree" show "$data_ref:$rel"; } |
+            jq -cs 'unique_by(.game_id)[]' >"$scratch/merged-index" || return 1
+          mv "$scratch/merged-index" "$worktree/$rel"
+        else
+          git -C "$worktree" show "$data_ref:$rel" >"$worktree/$rel"
+        fi
+        ;;
+      "$game"/batches/*.json)
+        if [[ -f $worktree/$rel ]]; then
+          mine="$(jq '[.games[] | select(.status == "done")] | length' "$worktree/$rel" 2>/dev/null || echo 0)"
+          theirs="$(git -C "$worktree" show "$data_ref:$rel" | jq '[.games[] | select(.status == "done")] | length' 2>/dev/null || echo 0)"
+          if ((theirs > mine)); then git -C "$worktree" show "$data_ref:$rel" >"$worktree/$rel"; fi
+        else
+          git -C "$worktree" show "$data_ref:$rel" >"$worktree/$rel"
+        fi
+        ;;
+      *)
+        [[ -e $worktree/$rel ]] || git -C "$worktree" show "$data_ref:$rel" >"$worktree/$rel"
+        ;;
+    esac
+  done < <(git -C "$worktree" ls-tree -r --name-only "$data_ref" -- "$game/")
+  git -C "$worktree" reset -q --soft "$data_ref"
+  orphan=false
+}
+
+# Commits the data files of the worktree and pushes them, without force. A
+# push rejected because the branch moved is made again on top of its new tip,
+# up to 3 pushes; any other failure, or the third, keeps the worktree and the
+# commit (exit status 1 at the end).
+publish() { # publish <what>
+  local noun_what="$1" message commit try
+  published=true
+  if [[ -z $noun_what ]]; then
+    echo "nothing to commit"
+    return 0
+  fi
+  stage_data
   if [[ $orphan == false ]] && git -C "$worktree" diff --cached --quiet; then
     echo "nothing to commit"
-  else
-    message="chore(repo): codingame games: $game, $noun_what"
-    [[ -z ${CODINGAME_COMMIT_TRAILERS:-} ]] || message+=$'\n\n'"$CODINGAME_COMMIT_TRAILERS"
+    return 0
+  fi
+  message="chore(repo): codingame games: $game, $noun_what"
+  [[ -z ${CODINGAME_COMMIT_TRAILERS:-} ]] || message+=$'\n\n'"$CODINGAME_COMMIT_TRAILERS"
+  for try in 1 2 3; do
     if [[ $orphan == true ]]; then
       # A first commit without parent, made without a branch.
       commit="$(git -C "$worktree" commit-tree "$(git -C "$worktree" write-tree)" -m "$message")"
@@ -462,16 +527,29 @@ publish() { # publish <what>
       git -C "$worktree" commit -q -m "$message"
       commit="$(git -C "$worktree" rev-parse HEAD)"
     fi
-    if ! git -C "$worktree" push origin "$commit:refs/heads/claude/codingame-games"; then
-      # Keep the games: the commit stays reachable from the worktree's HEAD.
-      git -C "$worktree" update-ref --no-deref HEAD "$commit" || true
-      remove_worktree=false
-      exit_status=1
-      echo "the push failed; the games are kept, committed as $commit in $worktree" >&2
-      echo "push them by hand: git -C $worktree push origin $commit:refs/heads/claude/codingame-games" >&2
-      echo "(then remove the worktree: git worktree remove --force $worktree)" >&2
+    # HEAD follows the commit, so that the next publication builds on it.
+    git -C "$worktree" update-ref --no-deref HEAD "$commit" || true
+    if git -C "$worktree" push origin "$commit:refs/heads/claude/codingame-games"; then
+      orphan=false
+      return 0
     fi
-  fi
+    ((try < 3)) || break
+    echo "the push was rejected (attempt $try of 3): fetching the branch and building on its tip" >&2
+    # A fetch that cannot work (no network) is not repeated.
+    merge_remote || break
+    stage_data
+    if git -C "$worktree" diff --cached --quiet; then
+      # The branch already holds everything.
+      git -C "$worktree" update-ref --no-deref HEAD "$data_ref" || true
+      return 0
+    fi
+  done
+  # Keep the games: the commit stays reachable from the worktree's HEAD.
+  remove_worktree=false
+  exit_status=1
+  echo "the push failed; the games are kept, committed as $commit in $worktree" >&2
+  echo "push them by hand: git -C $worktree push origin $commit:refs/heads/claude/codingame-games" >&2
+  echo "(then remove the worktree: git worktree remove --force $worktree)" >&2
 }
 
 finish() { # finish <what>
@@ -850,7 +928,7 @@ find_resumable() { # find_resumable <release sha256>
 
 run_batch() {
   local name sha state total i planned stored=0 opp aid opts att result failed_games streak=0 stopped=false resumable
-  local streak_games=() started
+  local streak_games=() started started_games=0
   started="$(now_epoch)"
   if [[ -n $max_hours ]]; then
     deadline=$((started + $(awk -v h="$max_hours" 'BEGIN { printf "%d", h * 3600 }')))
@@ -917,6 +995,11 @@ run_batch() {
       echo "stopped: $max_hours hours have passed; the games left stay planned. Run the same command to resume."
       break
     fi
+    if ((max_games > 0 && started_games >= max_games)); then
+      echo "stopped: $max_games games started in this run; the games left stay planned. Run the same command to resume."
+      break
+    fi
+    started_games=$((started_games + 1))
     opp="$(jq -r --argjson i "$i" '.games[$i].opponent' "$scratch/batch.json")"
     aid="$(jq -r --argjson i "$i" '.games[$i].agent_id' "$scratch/batch.json")"
     opts="$(jq -r --argjson i "$i" '.games[$i].game_options' "$scratch/batch.json")"
@@ -941,7 +1024,13 @@ run_batch() {
       stored=$((stored + 1))
       streak=0
       streak_games=()
+      published=false
       publish_what="batch $name, $(plural "$stored" game)"
+      # A long play publishes as it goes, so that a failure loses few games.
+      if [[ $push == true ]] && ((stored % ${CODINGAME_PUBLISH_EVERY:-10} == 0)); then
+        publish "$publish_what"
+        published=false
+      fi
       result="$(result_of "$out/logs/$rec_id.json")"
       echo "game $((i + 1))/$total: vs $opp, $opts, $result, ${tg_seconds} s, quota left ${quota_remaining:-?}"
     else

@@ -715,6 +715,41 @@ commit_id="$(git -C "$kept" rev-parse HEAD)"
 git -C "$kept" push -q origin "$commit_id:refs/heads/claude/codingame-games"
 expect "pushing by hand works" "$(git -C "$tmp_dir/clone4.git" log -1 --format=%s refs/heads/claude/codingame-games)" "chore(repo): codingame games: toy, batch trej, 1 game"
 
+# A push rejected because another push landed in between: the games are
+# built again on top of the new tip, the other push's files are kept, nothing
+# is forced. The bare repository's post-receive hook, the first time, adds a
+# commit of its own (a log and an index line of game 7777) after the push.
+newclone clone6
+cat >"$tmp_dir/clone6.git/hooks/post-receive" <<'HOOK'
+#!/bin/sh
+[ -f injected ] && exit 0
+touch injected
+ref=refs/heads/claude/codingame-games
+tip=$(git rev-parse $ref)
+export GIT_INDEX_FILE="$PWD/inject.idx"
+git read-tree "$tip"
+{ git show "$tip:toy/index.jsonl"; echo '{"game_id":7777,"kind":"ranking"}'; } >inject.tmp
+git update-index --cacheinfo "100644,$(git hash-object -w inject.tmp),toy/index.jsonl"
+git update-index --add --cacheinfo "100644,$(echo '{"game_id":7777}' | git hash-object -w --stdin),toy/logs/7777.json"
+git update-ref $ref "$(git commit-tree "$(git write-tree)" -p "$tip" -m concurrent)"
+HOOK
+chmod +x "$tmp_dir/clone6.git/hooks/post-receive"
+enqueue "$post_name" 01 200 "$(done_reply 5901 "$(tglog 9901 seed=1 Beta 22 0 '[300,100]')" 5 20)"
+enqueue "$post_name" 02 200 "$(done_reply 5902 "$(tglog 9902 seed=2 Beta 22 0 '[300,100]')" 4 10)"
+rc=0
+out="$(cd "$tmp_dir/clone6" && CODINGAME_PUBLISH_EVERY=1 scripts/codingame.sh batch toy "$release_file" --opponents Beta --games-per-opponent 2 --name tcon --play --push 2>&1)" || rc=$?
+tip6="refs/heads/claude/codingame-games"
+expect "concurrent push exit" "$rc" 0
+contains "concurrent push: the rejection is reported" "$out" "the push was rejected (attempt 1 of 3)"
+expect "concurrent push: the index is the union" "$(git -C "$tmp_dir/clone6.git" show "$tip6:toy/index.jsonl" | jq -r '.game_id' | sort -n | tr '\n' ' ')" "7777 9901 9902 "
+expect "concurrent push: every log is there" "$(git -C "$tmp_dir/clone6.git" ls-tree -r --name-only "$tip6" | grep -c 'logs/')" 3
+expect "concurrent push: the batch has both games" "$(git -C "$tmp_dir/clone6.git" show "$tip6:toy/batches/tcon.json" | jq '[.games[] | select(.status == "done")] | length')" 2
+expect "concurrent push: three commits in a line" "$(git -C "$tmp_dir/clone6.git" rev-list --count "$tip6")-$(git -C "$tmp_dir/clone6.git" rev-list --merges --count "$tip6")" "3-0"
+expect "concurrent push: the other push is kept in the history" "$(git -C "$tmp_dir/clone6.git" log --format=%s "$tip6" | grep -c '^concurrent$')" 1
+expect "concurrent push leaves no worktree" "$(git -C "$tmp_dir/clone6" worktree list | wc -l | tr -d ' ')" 1
+# The batch's pushes come every CODINGAME_PUBLISH_EVERY games, not only at the end.
+expect "publishes as it goes" "$(git -C "$tmp_dir/clone6.git" log --format=%s "$tip6" | grep -c 'codingame games: toy, batch tcon')" 2
+
 # --- daily collection: the quota floor, the time limit, the releases ---
 
 lim_name="limits_puzzle_toy-puzzle"
@@ -846,6 +881,36 @@ lacks "no warning when listed" "$out" "warning: submission"
 run batch toy "$release_file" --backfill-releases
 expect "backfill is for fetch only" "$rc" 2
 rm games/toy/codingame-submissions.txt
+
+# --- the workflow's needs (ADR 0058): --max-games and a refused token ---
+
+# --max-games N stops, cleanly, after N games started in this run.
+enqueue "$post_name" 01 200 "$(done_reply 5501 "$(tglog 9501 seed=1 Gamma 33 0 '[300,100]')" 5 20)"
+enqueue "$post_name" 02 200 "$(done_reply 5502 "$(tglog 9502 seed=2 Gamma 33 0 '[300,100]')" 4 10)"
+before="$(posts)"
+run batch toy "$release_file" --opponents Gamma --games-per-opponent 4 --name tmax --max-games 2 --play --data "$bdata"
+expect "max-games exit" "$rc" 0
+expect "max-games plays two games" "$(($(posts) - before))" 2
+contains "max-games message" "$out" "stopped: 2 games started in this run"
+expect "max-games leaves games planned" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/tmax.json")" "done,done,planned,planned"
+run batch toy "$release_file" --opponents Gamma --max-games 0
+expect "max-games needs a positive number" "$rc" 2
+run fetch toy --max-games 2
+expect "max-games is for batch only" "$rc" 2
+
+# A 401 is a refused token: exit 3, a message that names ADR 0058, nothing
+# played, and the token's text nowhere.
+echo 401 >"$STUB_DIR/$puzzle_url.status"
+before="$(posts)"
+run batch toy "$release_file" --opponents Gamma --games-per-opponent 2 --name tauth --play --data "$bdata"
+expect "401 exit" "$rc" 3
+contains "401 message" "$out" "CodinGame refused the token"
+contains "401 names the ADR" "$out" "ADR 0058"
+lacks "401 does not print the token" "$out" "$(cat "$CODINGAME_TOKEN_FILE")"
+expect "401 plays nothing" "$(posts)" "$before"
+run fetch toy --data "$tmp_dir/data401"
+expect "401 on fetch exits 3 too" "$rc" 3
+rm "$STUB_DIR/$puzzle_url.status"
 
 if ((failures > 0)); then
   echo "$failures of $checks codingame checks failed" >&2
