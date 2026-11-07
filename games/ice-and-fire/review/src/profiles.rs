@@ -4,6 +4,8 @@
 //! Each log is converted, replayed and checked against CodinGame as
 //! `codingame` does; a game that disagrees, or whose log is missing or
 //! malformed, is left out and listed in the report's sources.
+//! `codingame-moments` loads the same games and shows the decisive moment
+//! of each of our losses.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -11,6 +13,7 @@ use std::path::{Path, PathBuf};
 
 use cg_arena::codingame::{read_log, to_record};
 use cg_arena::record::Record;
+use cg_review::moments;
 use cg_review::profile::{
     analyze, chart, data_files, report_files, GameMeta, Input, LeftOut, Options,
 };
@@ -40,15 +43,15 @@ pub struct Request {
 const KINDS: [&str; 3] = ["ranking", "test", "replay"];
 
 /// One line of the index that passes the filters.
-struct Entry {
-    meta: GameMeta,
+pub struct Entry {
+    pub meta: GameMeta,
     /// The line's players by seat, if it lists them.
-    names: Vec<String>,
+    pub names: Vec<String>,
 }
 
 /// The lines of the index: the games to use, and the lines that are not
 /// games (left out).
-fn read_index(path: &Path, request: &Request) -> Result<(Vec<Entry>, Vec<LeftOut>), String> {
+pub fn read_index(path: &Path, request: &Request) -> Result<(Vec<Entry>, Vec<LeftOut>), String> {
     let text = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let (mut entries, mut left_out) = (Vec::new(), Vec::new());
     let mut seen = std::collections::HashSet::new();
@@ -160,6 +163,14 @@ pub fn carried_out_record(record: &Record) -> Record {
 
 /// The trace of one game, or why it is left out.
 fn load(data: &Path, entry: &Entry, me: &str) -> Result<(GameMeta, Trace), LeftOut> {
+    let (meta, record) = prepare(data, entry, me)?;
+    let name = meta.game_id.to_string();
+    Ok((meta, trace(&name, &record)))
+}
+
+/// The game's record with only the commands carried out, and its meta, or
+/// why the game is left out.
+pub fn prepare(data: &Path, entry: &Entry, me: &str) -> Result<(GameMeta, Record), LeftOut> {
     let id = entry.meta.game_id;
     let left = |why: String| LeftOut {
         game_id: Some(id),
@@ -191,7 +202,7 @@ fn load(data: &Path, entry: &Entry, me: &str) -> Result<(GameMeta, Trace), LeftO
             entry.names
         )));
     }
-    Ok((meta, trace(&id.to_string(), &carried_out_record(&record))))
+    Ok((meta, carried_out_record(&record)))
 }
 
 /// Runs `load` on every entry on `jobs` threads, in the order of `entries`.
@@ -229,7 +240,7 @@ fn load_all(
 }
 
 /// The ranks of a leaderboard snapshot, by nickname, and its name.
-fn read_ranks(path: &Path) -> Result<BTreeMap<String, u32>, String> {
+pub fn read_ranks(path: &Path) -> Result<BTreeMap<String, u32>, String> {
     let text = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let value: Value =
         serde_json::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -248,7 +259,7 @@ fn read_ranks(path: &Path) -> Result<BTreeMap<String, u32>, String> {
 }
 
 /// The newest snapshot in `data/leaderboard` (the names are times).
-fn newest_snapshot(data: &Path) -> Option<PathBuf> {
+pub fn newest_snapshot(data: &Path) -> Option<PathBuf> {
     let mut files: Vec<PathBuf> = fs::read_dir(data.join("leaderboard"))
         .ok()?
         .filter_map(|e| e.ok().map(|e| e.path()))
@@ -258,9 +269,8 @@ fn newest_snapshot(data: &Path) -> Option<PathBuf> {
     files.pop()
 }
 
-/// The report's files (name and text: tables as CSV, charts, the data of
-/// every turn, `README.md`, `signals.md`) and its numbers (JSON).
-pub fn run(request: &Request) -> Result<(String, Vec<(String, String)>), String> {
+/// The games of the request, loaded and checked, with the leaderboard.
+fn load_input(request: &Request) -> Result<Input, String> {
     let (entries, mut left_out) = read_index(&request.data.join("index.jsonl"), request)?;
     let mut games = Vec::new();
     for result in load_all(&request.data, &entries, &request.me, request.jobs) {
@@ -299,18 +309,28 @@ pub fn run(request: &Request) -> Result<(String, Vec<(String, String)>), String>
             trace.players[seat]
         ));
     }
-    let input = Input {
+    Ok(Input {
         warnings,
         notes: vec!["Events and openings count the commands carried out by the rules, not the ones refused (a refused command has no effect).".to_string()],
         games,
         ranks,
         snapshot: name,
         left_out,
-    };
-    let options = Options {
+    })
+}
+
+fn options(request: &Request) -> Options {
+    Options {
         top: request.top,
         players: request.players.clone(),
-    };
+    }
+}
+
+/// The report's files (name and text: tables as CSV, charts, the data of
+/// every turn, `README.md`, `signals.md`) and its numbers (JSON).
+pub fn run(request: &Request) -> Result<(String, Vec<(String, String)>), String> {
+    let input = load_input(request)?;
+    let options = options(request);
     let analysis = analyze::<Hooks>(&input, &options);
     let json = serde_json::to_string_pretty(&analysis).map_err(|e| e.to_string())?;
     let mut files = chart::files(&analysis);
@@ -318,6 +338,32 @@ pub fn run(request: &Request) -> Result<(String, Vec<(String, String)>), String>
     files.extend(data_files::<Hooks>(&input, &options));
     files.extend(report_files(&analysis, charts));
     Ok((json + "\n", files))
+}
+
+/// The decisive moments of our losses, `examples` a focus player: the
+/// Markdown report, or, with `out`, the files of that folder (and a line
+/// that says so).
+pub fn run_moments(
+    request: &Request,
+    examples: usize,
+    out: Option<&Path>,
+) -> Result<String, String> {
+    let input = load_input(request)?;
+    let findings = moments::analyze::<Hooks>(&input, &options(request), examples);
+    let Some(dir) = out else {
+        return Ok(moments::markdown(&findings));
+    };
+    std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    let files = moments::files(&findings);
+    for (name, content) in &files {
+        let path = dir.join(name);
+        std::fs::write(&path, content).map_err(|e| format!("{}: {e}", path.display()))?;
+    }
+    Ok(format!(
+        "wrote {} files in {}\n",
+        files.len(),
+        dir.display()
+    ))
 }
 
 #[cfg(test)]

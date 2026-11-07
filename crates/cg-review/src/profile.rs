@@ -423,7 +423,7 @@ fn seat_of(trace: &Trace, player: &str) -> Option<usize> {
 }
 
 /// Our seat and the opponent's name, when we are a player.
-fn versus(meta: &GameMeta, trace: &Trace) -> Option<(usize, String)> {
+pub(crate) fn versus(meta: &GameMeta, trace: &Trace) -> Option<(usize, String)> {
     let us = meta.our_seat.filter(|&s| s < 2)?;
     Some((us, trace.players[1 - us].clone()))
 }
@@ -493,7 +493,7 @@ pub fn data_files<P: Profiling>(input: &Input, options: &Options) -> Vec<(String
     data::files::<P>(&data::groups(&games, &focus))
 }
 
-fn sources(input: &Input) -> Sources {
+pub(crate) fn sources(input: &Input) -> Sources {
     let mut counts: BTreeMap<(String, Option<String>), usize> = BTreeMap::new();
     for (meta, _) in &input.games {
         *counts
@@ -553,7 +553,7 @@ fn opponents(games: &[&(GameMeta, Trace)], ranks: &BTreeMap<String, u32>) -> Vec
     rows
 }
 
-fn focus_players(
+pub fn focus_players(
     games: &[&(GameMeta, Trace)],
     ranks: &BTreeMap<String, u32>,
     options: &Options,

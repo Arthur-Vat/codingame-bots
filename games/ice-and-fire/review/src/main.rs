@@ -10,10 +10,13 @@
 //! ice-and-fire-review screening [--jobs N] GAME.json... > screening.md
 //! ice-and-fire-review codingame --out DIR [--kind ranking] [--strict] LOG.json... > check.md
 //! ice-and-fire-review codingame-report --data DIR --me NAME [--kinds ranking,test] [--top N] --out DIR
+//! ice-and-fire-review codingame-moments --data DIR --me NAME [--kinds ranking,test] [--top N] [--examples K] [--out DIR] > moments.md
+//! ice-and-fire-review codingame-judge --data DIR --me NAME --judge BIN [--players A,B | --top N] [--tries N] [--limit PLIES] [--jobs N] --out DIR
 //! ```
 
 mod bank;
 mod codingame;
+mod judge;
 mod profiles;
 mod profiling;
 mod replay;
@@ -185,6 +188,80 @@ enum Command {
         /// Games replayed at the same time.
         #[arg(long, default_value_t = 4)]
         jobs: usize,
+    },
+    /// Prints, for each of our losses on CodinGame, its decisive moment (the
+    /// first large cut, HQ threat or debt against us) with the board before
+    /// and after it, how exposed we were before it, and what each side
+    /// held; a summary by opponent group first, then examples against each
+    /// of the top players. Reads the data directory as `codingame-report`.
+    CodingameMoments {
+        /// The game's data directory, for example `data/ice-and-fire`.
+        #[arg(long)]
+        data: PathBuf,
+        /// Our nickname on CodinGame, for games whose index has no seat.
+        #[arg(long)]
+        me: String,
+        /// The kinds of games to use, separated by commas.
+        #[arg(long, value_delimiter = ',', default_values_t = ["ranking".to_string(), "test".to_string(), "replay".to_string()])]
+        kinds: Vec<String>,
+        /// Only the games of this batch.
+        #[arg(long)]
+        batch: Option<String>,
+        /// The focus players are the top N of the snapshot that we met.
+        #[arg(long, default_value_t = 10)]
+        top: usize,
+        /// Example losses against each focus player.
+        #[arg(long, default_value_t = 3)]
+        examples: usize,
+        /// The leaderboard snapshot, instead of the newest in the data directory.
+        #[arg(long)]
+        leaderboard: Option<PathBuf>,
+        /// Games replayed at the same time.
+        #[arg(long, default_value_t = 4)]
+        jobs: usize,
+        /// Write moments.csv, summary.csv, examples.md and README.md into
+        /// this folder, instead of printing the Markdown report.
+        #[arg(long)]
+        out: Option<PathBuf>,
+    },
+    /// Writes, to a folder, for every ply of chosen CodinGame players, what the plan
+    /// bot's search would play there and how it scores its own plan and the
+    /// one played, with the agreement and the score gap by player and phase
+    /// and the plies with the largest gaps. Games are read as
+    /// `codingame-report` reads them.
+    CodingameJudge {
+        /// The game's data directory, for example `data/ice-and-fire`.
+        #[arg(long)]
+        data: PathBuf,
+        /// Our nickname on CodinGame, for games whose index has no seat.
+        #[arg(long)]
+        me: String,
+        /// The plan bot built with `--features analysis`
+        /// (`target/release/ice-and-fire-bot-plan`).
+        #[arg(long)]
+        judge: PathBuf,
+        /// The top N players of the newest leaderboard snapshot that have a game.
+        #[arg(long, default_value_t = 10)]
+        top: usize,
+        /// These players instead, separated by commas.
+        #[arg(long, value_delimiter = ',')]
+        players: Vec<String>,
+        /// Tries of each search (the plan bot's `--tries`).
+        #[arg(long, default_value_t = 600)]
+        tries: u64,
+        /// Judge at most this many plies, spread over all of them.
+        #[arg(long)]
+        limit: Option<usize>,
+        /// The leaderboard snapshot, instead of the newest in the data directory.
+        #[arg(long)]
+        leaderboard: Option<PathBuf>,
+        /// Judge processes run at the same time.
+        #[arg(long, default_value_t = 4)]
+        jobs: usize,
+        /// The folder to write to, created if missing: judgements.csv,
+        /// summary.csv, largest-gaps.md and README.md.
+        #[arg(long)]
+        out: PathBuf,
     },
 }
 
@@ -382,6 +459,60 @@ fn run(cli: Cli) -> Result<(), String> {
             if let Some(file) = json {
                 fs::write(&file, numbers).map_err(|e| format!("{}: {e}", file.display()))?;
             }
+            Ok(())
+        }
+        Command::CodingameMoments {
+            data,
+            me,
+            kinds,
+            batch,
+            top,
+            examples,
+            leaderboard,
+            jobs,
+            out,
+        } => {
+            let text = profiles::run_moments(
+                &profiles::Request {
+                    data,
+                    me,
+                    kinds,
+                    batch,
+                    top,
+                    players: Vec::new(),
+                    leaderboard,
+                    jobs,
+                },
+                examples,
+                out.as_deref(),
+            )?;
+            print!("{text}");
+            Ok(())
+        }
+        Command::CodingameJudge {
+            data,
+            me,
+            judge,
+            top,
+            players,
+            tries,
+            limit,
+            leaderboard,
+            jobs,
+            out,
+        } => {
+            judge::run(&judge::Request {
+                data,
+                me,
+                judge,
+                players,
+                top,
+                tries,
+                limit,
+                jobs,
+                leaderboard,
+                out,
+            })?;
             Ok(())
         }
         Command::Summary { dir } => {

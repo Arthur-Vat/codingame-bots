@@ -62,6 +62,9 @@ while (($#)); do
 done
 echo "$all" >>"$STUB_DIR/requests.log"
 cat "$hfile" >>"$STUB_DIR/auth.log"
+if [[ -n $postfile && -f $STUB_DIR/clock ]]; then
+  echo $(( $(cat "$STUB_DIR/clock") + 1800 )) >"$STUB_DIR/clock"
+fi
 if [[ -n $postfile ]]; then
   n=$(( $(cat "$STUB_DIR/posts.count" 2>/dev/null || echo 0) + 1 ))
   echo "$n" >"$STUB_DIR/posts.count"
@@ -568,7 +571,8 @@ expect "fetch-ids refuses a log of another id" "$rc" 1
 lacks "token in output" "$out" "$token"
 lacks "token in arguments" "$(cat "$STUB_DIR/requests.log")" "$token"
 expect "token in the data" "$(grep -rlF -- "$token" "$bdata" "$rdata" "$fdata" "$STUB_DIR"/post-*.json || true)" ""
-expect "no submissions endpoint in the script" "$(grep -c submissions "$repo_root/scripts/codingame.sh" || true)" 0
+# Any use of "submissions" is caught, but the plain name of the file.
+expect "no submissions endpoint in the script" "$(grep -v 'codingame-submissions\.txt' "$repo_root/scripts/codingame.sh" | grep -c submissions || true)" 0
 
 # --push of a batch: a commit of the batch's files only.
 clone2="$tmp_dir/clone2"
@@ -710,6 +714,138 @@ rm "$tmp_dir/clone4.git/hooks/pre-receive"
 commit_id="$(git -C "$kept" rev-parse HEAD)"
 git -C "$kept" push -q origin "$commit_id:refs/heads/claude/codingame-games"
 expect "pushing by hand works" "$(git -C "$tmp_dir/clone4.git" log -1 --format=%s refs/heads/claude/codingame-games)" "chore(repo): codingame games: toy, batch trej, 1 game"
+
+# --- daily collection: the quota floor, the time limit, the releases ---
+
+lim_name="limits_puzzle_toy-puzzle"
+lim24() { echo "{\"test_games\":[{\"name\":\"test_games_1h\",\"remaining\":3},{\"name\":\"test_games_24h\",\"remaining\":$1}],\"limits\":{}}"; }
+
+# --keep stops, cleanly, before the game that would leave fewer than 100.
+enqueue "$lim_name" 01 200 "$(lim24 102)"
+enqueue "$lim_name" 02 200 "$(lim24 101)"
+enqueue "$lim_name" 03 200 "$(lim24 100)"
+enqueue "$post_name" 01 200 "$(done_reply 5401 "$(tglog 9401 seed=1 Gamma 33 0 '[300,100]')" 5 20)"
+enqueue "$post_name" 02 200 "$(done_reply 5402 "$(tglog 9402 seed=2 Gamma 33 0 '[300,100]')" 4 10)"
+before="$(posts)"
+run batch toy "$release_file" --opponents Gamma --games-per-opponent 4 --name tkeep --keep 100 --play --data "$bdata"
+expect "keep exit" "$rc" 0
+expect "keep plays two games" "$(($(posts) - before))" 2
+contains "keep message" "$out" "stopped: 100 test games of the day left to the owner"
+expect "keep leaves games planned" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/tkeep.json")" "done,done,planned,planned"
+expect "keep reads the limits before each start" "$(grep -c "limits?puzzle=toy-puzzle" "$STUB_DIR/requests.log")" 3
+# Resumed without a floor, the rest is played.
+enqueue "$post_name" 01 200 "$(done_reply 5403 "$(tglog 9403 seed=1 Gamma 33 0 '[300,100]')" 5 20)"
+enqueue "$post_name" 02 200 "$(done_reply 5404 "$(tglog 9404 seed=2 Gamma 33 0 '[300,100]')" 4 10)"
+run batch toy "$release_file" --opponents Gamma --games-per-opponent 4 --name tkeep --play --data "$bdata"
+expect "keep resume statuses" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/tkeep.json")" "done,done,done,done"
+
+# A limit that cannot be read stops the batch, with status 1, before any game.
+echo 500 >"$STUB_DIR/$lim_name.status"
+before="$(posts)"
+run batch toy "$release_file" --opponents Gamma --games-per-opponent 2 --name tkeep2 --keep 100 --play --data "$bdata"
+expect "unreadable limits exit" "$rc" 1
+contains "unreadable limits message" "$out" "cannot read the limits"
+expect "unreadable limits plays nothing" "$(posts)" "$before"
+rm "$STUB_DIR/$lim_name.status"
+echo '{"test_games":[]}' >"$STUB_DIR/$lim_name.json"
+run batch toy "$release_file" --opponents Gamma --games-per-opponent 2 --name tkeep2 --keep 100 --play --data "$bdata"
+expect "no 24 h window exit" "$rc" 1
+contains "no 24 h window message" "$out" "no test_games_24h window"
+expect "no 24 h window plays nothing" "$(posts)" "$before"
+rm "$STUB_DIR/$lim_name.json"
+run batch toy "$release_file" --opponents Gamma --keep abc
+expect "keep needs a number" "$rc" 2
+
+# --max-hours stops, cleanly, once the hours have passed (a clock file that
+# every start of a test game moves on by 30 minutes).
+echo 1000 >"$STUB_DIR/clock"
+export CODINGAME_NOW="$STUB_DIR/clock"
+for n in 1 2 3; do
+  enqueue "$post_name" 0$n 200 "$(done_reply $((5410 + n)) "$(tglog $((9410 + n)) seed=1 Alpha 11 0 '[300,100]')" 5 20)"
+done
+before="$(posts)"
+run batch toy "$release_file" --opponents Alpha --games-per-opponent 5 --name thours --max-hours 1.5 --play --data "$bdata"
+expect "hours exit" "$rc" 0
+expect "hours plays three games" "$(($(posts) - before))" 3
+contains "hours message" "$out" "stopped: 1.5 hours have passed"
+expect "hours leaves games planned" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/thours.json")" "done,done,done,planned,planned"
+run batch toy "$release_file" --opponents Alpha --games-per-opponent 5 --name thours --max-hours 0 --play --data "$bdata"
+expect "zero hours plays nothing" "$(($(posts) - before))" 3
+unset CODINGAME_NOW
+rm "$STUB_DIR/clock"
+run batch toy "$release_file" --opponents Alpha --max-hours x
+expect "max-hours needs a number" "$rc" 2
+
+# A wait that would cross the deadline stops the run cleanly, without sleeping:
+# the quota wait, and the wait before trying again.
+export CODINGAME_NOW=1000
+: >"$STUB_DIR/sleeps.log"
+enqueue "$post_name" 01 200 "$(done_reply 5421 "$(tglog 9421 seed=1 Alpha 11 0 '[300,100]')" 0 7200)"
+before="$(posts)"
+run batch toy "$release_file" --opponents Alpha --games-per-opponent 2 --name tdl --max-hours 1 --play --data "$bdata"
+expect "deadline quota wait exit" "$rc" 0
+expect "deadline quota wait plays one game" "$(($(posts) - before))" 1
+contains "deadline quota wait message" "$out" "stopped: the next game cannot start before the deadline (the quota window resets in 7200 s)"
+expect "deadline quota wait does not sleep" "$(cat "$STUB_DIR/sleeps.log")" ""
+expect "deadline quota wait leaves a game planned" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/tdl.json")" "done,planned"
+enqueue "$post_name" 01 200 '{"test_game_id":5422,"status":"failed","failure":"No code machine."}'
+before="$(posts)"
+CODINGAME_RETRY_WAIT=5000 run batch toy "$release_file" --opponents Alpha --games-per-opponent 2 --name tdl --max-hours 1 --play --data "$bdata"
+expect "deadline retry wait exit" "$rc" 0
+expect "deadline retry wait plays one start" "$(($(posts) - before))" 1
+contains "deadline retry wait message" "$out" "(the retry wait in 5000 s)"
+expect "deadline retry wait does not sleep" "$(cat "$STUB_DIR/sleeps.log")" ""
+expect "deadline retry wait leaves the game planned" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/tdl.json")" "done,planned"
+unset CODINGAME_NOW
+
+# The floor is read before every start, retries included.
+enqueue "$lim_name" 01 200 "$(lim24 500)"
+enqueue "$lim_name" 02 200 "$(lim24 500)"
+enqueue "$post_name" 01 200 '{"test_game_id":5423,"status":"failed","failure":"No code machine."}'
+enqueue "$post_name" 02 200 "$(done_reply 5424 "$(tglog 9424 seed=2 Alpha 11 0 '[300,100]')" 5 20)"
+requests_before="$(grep -c "limits?puzzle=toy-puzzle" "$STUB_DIR/requests.log" || true)"
+run batch toy "$release_file" --opponents Alpha --games-per-opponent 2 --name tdl --keep 100 --play --data "$bdata"
+expect "floor read before each start" "$(($(grep -c "limits?puzzle=toy-puzzle" "$STUB_DIR/requests.log") - requests_before))" 2
+
+# A TERM during a wait publishes what was stored (--push), removes the
+# worktree and exits non-zero. The stub sleep sends TERM to the script.
+term_stub="$tmp_dir/term-stub"
+# shellcheck disable=SC2016
+printf '#!/usr/bin/env bash\nkill -TERM "$PPID"\nexec sleep 30\n' >"$term_stub"
+chmod +x "$term_stub"
+newclone clone5
+enqueue "$post_name" 01 200 "$(done_reply 5431 "$(tglog 9431 seed=1 Beta 22 0 '[300,100]')" 0 20)"
+rc=0
+out="$(cd "$tmp_dir/clone5" && CODINGAME_SLEEP="$term_stub" scripts/codingame.sh batch toy "$release_file" --opponents Beta --games-per-opponent 2 --name tterm --play --push 2>&1)" || rc=$?
+expect "TERM exit" "$rc" 143
+expect "TERM pushed the stored game" "$(git -C "$tmp_dir/clone5.git" ls-tree -r --name-only refs/heads/claude/codingame-games | grep -c 'logs/9431.json')" 1
+expect "TERM leaves no worktree" "$(git -C "$tmp_dir/clone5" worktree list | wc -l | tr -d ' ')" 1
+
+# The release of ranking games, from the submissions file.
+fdata2="$tmp_dir/fdata2"
+run fetch toy --data "$fdata2"
+contains "no release: warning" "$out" "warning: submission 77 has no release in games/toy/codingame-submissions.txt"
+expect "no release: no key" "$(jq -s '[.[] | has("release")] | any' "$fdata2/toy/index.jsonl")" false
+printf '# comment\n\n41 other-v0 2026-01-01\n77 toy-v1 2026-01-02\n' >games/toy/codingame-submissions.txt
+cp "$fdata2/toy/index.jsonl" "$tmp_dir/index-before.jsonl"
+requests_before="$(wc -l <"$STUB_DIR/requests.log")"
+run fetch toy --backfill-releases --data "$fdata2"
+expect "backfill exit" "$rc" 0
+expect "backfill makes no request" "$(wc -l <"$STUB_DIR/requests.log")" "$requests_before"
+expect "backfill adds the release at the end" "$(jq -c '[keys_unsorted[-1], .release]' "$fdata2/toy/index.jsonl" | sort -u)" '["release","toy-v1"]'
+expect "backfill keeps the rest" "$(jq -c 'del(.release)' "$fdata2/toy/index.jsonl")" "$(cat "$tmp_dir/index-before.jsonl")"
+cp "$fdata2/toy/index.jsonl" "$tmp_dir/index-after.jsonl"
+run fetch toy --backfill-releases --data "$fdata2"
+expect "backfill is idempotent" "$(cmp "$fdata2/toy/index.jsonl" "$tmp_dir/index-after.jsonl" && echo same)" same
+contains "backfill second run" "$out" "releases added: 0"
+fdata3="$tmp_dir/fdata3"
+run fetch toy --data "$fdata3"
+expect "fetch adds the release" "$(jq -r '.release' "$fdata3/toy/index.jsonl" | sort -u)" "toy-v1"
+expect "release is the last key" "$(jq -r 'keys_unsorted[-1]' "$fdata3/toy/index.jsonl" | sort -u)" "release"
+lacks "no warning when listed" "$out" "warning: submission"
+run batch toy "$release_file" --backfill-releases
+expect "backfill is for fetch only" "$rc" 2
+rm games/toy/codingame-submissions.txt
 
 if ((failures > 0)); then
   echo "$failures of $checks codingame checks failed" >&2

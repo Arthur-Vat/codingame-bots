@@ -4,6 +4,7 @@
 
 use std::collections::BTreeMap;
 
+use cg_review::moments::Decisive;
 use cg_review::profile::Profiling;
 use cg_review::trace::Trace;
 use ice_and_fire_engine::state::BUILD_COST;
@@ -198,6 +199,24 @@ impl Profiling for IceAndFire {
                 }
             })
             .collect()
+    }
+}
+
+impl Decisive for IceAndFire {
+    /// A large cut, a chain of trainings that can reach our HQ, or a debt
+    /// that wipes our army: the moments that end games.
+    fn decisive_kinds() -> Vec<&'static str> {
+        vec![LARGE_CUT, "HQ threat", "debt"]
+    }
+
+    /// Active cells the enemy could take or cut off with 30 gold.
+    fn exposure_metric() -> Option<&'static str> {
+        Some("exposed30")
+    }
+
+    /// 5 cells is a small cut, 10 a large one.
+    fn exposure_thresholds() -> Vec<i64> {
+        vec![5, 10]
     }
 }
 

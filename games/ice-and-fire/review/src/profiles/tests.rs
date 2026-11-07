@@ -205,3 +205,30 @@ fn the_files_have_charts_data_tables_and_a_readme_and_repeat() {
     let (_, again) = run(&request(&dir)).expect("a report");
     assert_eq!(files, again);
 }
+
+#[test]
+fn the_moments_cover_our_losses_and_list_those_left_out() {
+    let dir = data_dir("moments-all");
+    let text = run_moments(&request(&dir), 3, None).expect("a report");
+    assert!(
+        text.starts_with("# Decisive moments of our losses"),
+        "{text}"
+    );
+    assert!(text.contains("- 5: no log at"), "{text}");
+    assert!(text.contains("## Summary"), "{text}");
+    assert!(text.contains("| no decisive moment |"), "{text}");
+    assert!(text.contains("## Our exposure before the moment"), "{text}");
+    assert!(text.contains("## Examples"), "{text}");
+    for line in text.lines().filter(|l| l.starts_with('|')) {
+        assert!(line.matches(" | ").count() < 6, "{line}");
+    }
+}
+
+#[test]
+fn the_moments_of_an_empty_selection_say_so() {
+    let dir = data_dir("moments-none");
+    let mut selection = request(&dir);
+    selection.batch = Some("nothing".to_string());
+    let text = run_moments(&selection, 3, None).expect("a report");
+    assert!(text.contains("We lost 0 of 0 games"), "{text}");
+}

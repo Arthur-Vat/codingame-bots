@@ -19,9 +19,13 @@
 //! <the turn's input>
 //! end
 //! ```
+//!
+//! `codingame-judge` writes blocks with one more line before `end`,
+//! `played ANSWER` (the commands joined by `;`), the answer a player sent
+//! from the position; the plan bot's `judge` mode reads it.
 
 use cg_core::rng::Rng;
-use ice_and_fire_engine::State;
+use ice_and_fire_engine::{answer_line, State};
 use ice_and_fire_opening::middle;
 
 use crate::replay::Game;
@@ -80,10 +84,26 @@ pub fn draw(mut candidates: Vec<(usize, usize)>, count: usize, seed: u64) -> Vec
 
 /// The block of the position at the start of `ply` of `game`.
 pub fn block(game: &Game, ply: usize) -> String {
+    block_with(game, ply, false)
+}
+
+/// The block of the position at the start of `ply` of `game`, with, just
+/// before `end`, the line `played ANSWER`: the answer the game's player
+/// sent (the commands the replay carried out, `WAIT` for none).
+pub fn block_played(game: &Game, ply: usize) -> String {
+    block_with(game, ply, true)
+}
+
+fn block_with(game: &Game, ply: usize, played: bool) -> String {
     let state = &game.steps[ply].state;
     let seat = state.to_act();
+    let answer = if played {
+        format!("played {}\n", answer_line(&game.steps[ply].commands))
+    } else {
+        String::new()
+    };
     format!(
-        "position {} {ply} {}\n{}turn\n{}end\n",
+        "position {} {ply} {}\n{}turn\n{}{answer}end\n",
         game.name,
         state.game_turn(),
         state.initial_input(seat),
