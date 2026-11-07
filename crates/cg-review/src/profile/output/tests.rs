@@ -13,6 +13,7 @@ fn played(id: u64, won: bool, ours: i64) -> (GameMeta, crate::trace::Trace) {
         kind: "ranking".to_string(),
         batch: None,
         our_seat: Some(1),
+        ..GameMeta::default()
     };
     (meta, trace)
 }
@@ -116,4 +117,54 @@ fn csv_cells_with_commas_are_quoted() {
     let mut csv = Csv::new(&["a", "b"]);
     csv.row(&["x,y".to_string(), "z".to_string()]);
     assert_eq!(csv.0, "a,b\n\"x,y\",z\n");
+}
+
+#[test]
+fn versions_are_split_in_the_profiles_and_listed_by_day() {
+    use crate::profile::{Snapshot, SnapshotRow};
+    let games = [(1, 10, true), (2, 10, false), (3, 11, true)]
+        .into_iter()
+        .map(|(i, agent, won)| {
+            let mut game = played(i, won, 12);
+            game.0.agent_ids = [Some(agent), Some(99)];
+            game.0.date = Some(format!("2026-11-0{i}"));
+            game
+        })
+        .collect();
+    let snapshot = |name: &str, agent: u64| Snapshot {
+        name: name.to_string(),
+        date: name[..10].to_string(),
+        rows: vec![SnapshotRow {
+            rank: 1,
+            nickname: "alpha".to_string(),
+            agent_id: Some(agent),
+        }],
+    };
+    let a = analyze::<Toy>(
+        &Input {
+            games,
+            snapshots: vec![
+                snapshot("2026-11-02T100000Z.json", 10),
+                snapshot("2026-11-03T100000Z.json", 11),
+            ],
+            ..Input::default()
+        },
+        &Options {
+            top: 0,
+            players: vec!["alpha".to_string()],
+        },
+    );
+    let files = report_files(&a, 0);
+    // `won` is our win: alpha (red) won game 2 only.
+    assert_eq!(
+        file(&files, "profile_versions.csv"),
+        "player,agent_id,games,won,lost,drawn,first_seen,last_seen\nalpha,10,2,1,1,0,2026-11-01,2026-11-02\nalpha,11,1,0,1,0,2026-11-03,2026-11-03\n"
+    );
+    assert_eq!(
+        file(&files, "versions.csv"),
+        "player,date,snapshot,rank,agent_id,changed\nalpha,2026-11-02,2026-11-02T100000Z.json,1,10,false\nalpha,2026-11-03,2026-11-03T100000Z.json,1,11,true\n"
+    );
+    let signals = file(&files, "signals.md");
+    assert!(signals.contains("alpha changed its agent id from 10 (2026-11-02) to 11 (2026-11-03)."));
+    assert!(signals.contains("alpha was met with 2 agent ids: 10 (2 games, 2026-11-01 to 2026-11-02; it won 1, lost 1); 11 (1 games, 2026-11-03 to 2026-11-03; it won 0, lost 1)."));
 }

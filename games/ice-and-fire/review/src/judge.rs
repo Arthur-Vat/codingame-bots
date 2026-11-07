@@ -38,6 +38,8 @@ pub struct Request {
     pub judge: PathBuf,
     /// Judge these players instead of the top of the snapshot.
     pub players: Vec<String>,
+    /// Only our games played by this release (the index's `release`).
+    pub release: Option<String>,
     pub top: usize,
     /// Tries of each search.
     pub tries: u64,
@@ -242,6 +244,7 @@ pub fn run(request: &Request) -> Result<(), String> {
         me: request.me.clone(),
         kinds: vec![],
         batch: None,
+        release: request.release.clone(),
         top: request.top,
         players: request.players.clone(),
         leaderboard: request.leaderboard.clone(),

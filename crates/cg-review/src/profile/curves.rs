@@ -273,7 +273,7 @@ pub(super) fn event_turns<P: Profiling>(e: &Entry, last: u32) -> Vec<Option<Vec<
 }
 
 /// One curve from each group's entries' values by turn.
-fn build_curve(
+pub(super) fn build_curve(
     key: &str,
     meaning: String,
     lower_is_better: bool,
@@ -315,7 +315,7 @@ fn build_curve(
 
 /// The curves of `keys` (the key metrics if `None`), and of the events if
 /// `events`, for two groups of entries.
-fn curve_set<P: Profiling>(
+pub(super) fn curve_set<P: Profiling>(
     slug: &str,
     labels: [&str; 2],
     either: bool,

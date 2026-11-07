@@ -16,6 +16,7 @@ fn toy(id: u64, cells: &[(i64, i64)], winner: Option<usize>, red: &[&str]) -> (G
         kind: "ranking".to_string(),
         batch: None,
         our_seat: Some(1),
+        ..GameMeta::default()
     };
     (meta, trace)
 }
@@ -222,6 +223,7 @@ fn small_samples_and_edge_cases_are_flagged() {
         }],
         warnings: vec!["a name differs".to_string()],
         notes: vec!["a note".to_string()],
+        ..Input::default()
     };
     let a = analyze::<Toy>(
         &input,
@@ -240,7 +242,7 @@ fn small_samples_and_edge_cases_are_flagged() {
     // The player has one game against us.
     assert!(file(&files, "profile_results.csv").contains("alpha,2,1,"));
     assert!(file(&files, "weaknesses_stays_below.csv").starts_with("metric,losses,"));
-    assert_eq!(files.len(), 20);
+    assert_eq!(files.len(), 29);
     // A named player without a game is shown as such, and the JSON is valid.
     let named = analyze::<Toy>(
         &input,

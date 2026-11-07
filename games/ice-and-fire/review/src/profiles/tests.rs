@@ -58,6 +58,7 @@ fn request(dir: &Path) -> Request {
         me: "Tarleya".to_string(),
         kinds: vec![],
         batch: None,
+        release: None,
         top: 10,
         players: vec![],
         leaderboard: None,
@@ -231,4 +232,147 @@ fn the_moments_of_an_empty_selection_say_so() {
     selection.batch = Some("nothing".to_string());
     let text = run_moments(&selection, 3, None).expect("a report");
     assert!(text.contains("We lost 0 of 0 games"), "{text}");
+}
+
+/// The index of `data_dir` with the agent ids, the days and the releases
+/// that `scripts/codingame.sh` writes, and snapshots of two days.
+fn versioned_dir(name: &str) -> PathBuf {
+    let dir = data_dir(name);
+    let line = |id: u64,
+                kind: &str,
+                seat: u64,
+                names: [&str; 2],
+                agents: [u64; 2],
+                day: &str,
+                release: &str| {
+        // Test games have no end time, only the day they were fetched.
+        let ended = if kind == "test" {
+            format!("\"ended_at\":null,\"fetched_at\":\"{day}T10:00:00Z\"")
+        } else {
+            format!("\"ended_at\":\"{day}T10:00:00.000Z\"")
+        };
+        format!(
+            "{{\"game_id\":{id},\"kind\":\"{kind}\",\"puzzle\":\"p\",\"our_seat\":{seat},{ended},\"players\":[{{\"seat\":0,\"name\":\"{}\",\"agent_id\":{}}},{{\"seat\":1,\"name\":\"{}\",\"agent_id\":{}}}],\"game_options\":\"seed=1\",\"release\":\"{release}\"}}\n",
+            names[0], agents[0], names[1], agents[1]
+        )
+    };
+    let index = [
+        line(
+            914386214,
+            "ranking",
+            1,
+            ["Gabbek", "Tarleya"],
+            [100, 1],
+            "2026-11-01",
+            "v1",
+        ),
+        line(
+            914333422,
+            "test",
+            0,
+            ["Tarleya", "Gabbek"],
+            [1, 101],
+            "2026-11-02",
+            "v2",
+        ),
+    ]
+    .concat();
+    fs::write(dir.join("index.jsonl"), index).expect("index");
+    let snapshot = |agent: u64| {
+        format!("{{\"rows\":[{{\"rank\":1,\"nickname\":\"zasmu\",\"agent_id\":9}},{{\"rank\":3,\"nickname\":\"Gabbek\",\"agent_id\":{agent}}}]}}")
+    };
+    fs::write(
+        dir.join("leaderboard/2026-11-05T000000Z.json"),
+        snapshot(100),
+    )
+    .expect("snapshot");
+    fs::write(
+        dir.join("leaderboard/2026-11-06T154110Z.json"),
+        snapshot(101),
+    )
+    .expect("snapshot");
+    dir
+}
+
+#[test]
+fn a_player_with_two_agent_ids_is_split_into_versions() {
+    let dir = versioned_dir("profiles-versions");
+    let (json, files) = run(&request(&dir)).expect("a report");
+    assert_eq!(
+        file(&files, "profile_versions.csv"),
+        "player,agent_id,games,won,lost,drawn,first_seen,last_seen\nGabbek,100,1,0,1,0,2026-11-01,2026-11-01\nGabbek,101,1,0,1,0,2026-11-02,2026-11-02\n"
+    );
+    // The snapshots of the 5th and 6th: Gabbek went from 100 to 101, zasmu
+    // stayed.
+    let versions = file(&files, "versions.csv");
+    assert!(
+        versions.contains("\nGabbek,2026-11-05,2026-11-05T000000Z.json,3,100,false\n"),
+        "{versions}"
+    );
+    assert!(
+        versions.contains("\nGabbek,2026-11-06,2026-11-06T154110Z.json,3,101,true\n"),
+        "{versions}"
+    );
+    assert!(
+        versions.contains("\nzasmu,2026-11-06,2026-11-06T154110Z.json,1,9,false\n"),
+        "{versions}"
+    );
+    let signals = file(&files, "signals.md");
+    assert!(
+        signals.contains("Gabbek changed its agent id from 100 (2026-11-05) to 101 (2026-11-06)."),
+        "{signals}"
+    );
+    assert!(
+        signals.contains("Gabbek was met with 2 agent ids"),
+        "{signals}"
+    );
+    let value: serde_json::Value = serde_json::from_str(&json).expect("json");
+    assert_eq!(value["versions"]["changes"][0]["to_agent"], 101);
+    assert_eq!(value["profiles"][0]["versions"][1]["agent_id"], 101);
+}
+
+#[test]
+fn a_release_keeps_only_our_games_played_by_it() {
+    let dir = versioned_dir("profiles-release");
+    let mut only = request(&dir);
+    only.release = Some("v2".to_string());
+    let (_, files) = run(&only).expect("a report");
+    let sources = file(&files, "sources.csv");
+    assert!(
+        sources.contains("\ntest,,1\n") && !sources.contains("ranking"),
+        "{sources}"
+    );
+    assert!(file(&files, "README.md").contains("the release v2"));
+    assert_eq!(
+        file(&files, "profile_versions.csv"),
+        "player,agent_id,games,won,lost,drawn,first_seen,last_seen\nGabbek,101,1,0,1,0,2026-11-02,2026-11-02\n"
+    );
+    only.release = Some("v3".to_string());
+    let (_, files) = run(&only).expect("an empty report");
+    assert_eq!(file(&files, "sources.csv").lines().count(), 1);
+}
+
+#[test]
+fn the_report_has_the_economy_numbers_of_the_real_games() {
+    let dir = data_dir("profiles-economy");
+    let (json, files) = run(&request(&dir)).expect("a report");
+    let exchange = file(&files, "economy_exchange.csv");
+    assert!(exchange.contains("\ntop players,early game,"), "{exchange}");
+    assert!(
+        exchange.contains("\n\"us, same games\",early game,"),
+        "{exchange}"
+    );
+    assert!(file(&files, "economy_mix.csv").contains(",army,"));
+    assert!(file(&files, "economy_tempo.csv").contains("\ntop players,2,"));
+    assert!(file(&files, "economy_lead.csv").contains("\nmaterial,5,"));
+    assert!(file(&files, "economy_curves.csv").contains("\neconomy-top-vs-us,exchange,"));
+    assert!(files
+        .iter()
+        .any(|f| f.0 == "economy-top-vs-us-exchange.svg"));
+    assert!(files
+        .iter()
+        .any(|f| f.0 == "economy-wins-vs-losses-cells-per-gold.svg"));
+    assert!(file(&files, "signals.md").contains("## Economy or fighting"));
+    let value: serde_json::Value = serde_json::from_str(&json).expect("json");
+    assert_eq!(value["economy"]["decisive"][0], "large cut");
 }

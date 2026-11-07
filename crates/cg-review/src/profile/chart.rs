@@ -66,12 +66,13 @@ pub fn file_name(set: &CurveSet, key: &str, event: bool) -> String {
 }
 
 /// Every chart of the analysis: file name and SVG, in a fixed order (the
-/// metrics and the events of each set).
+/// metrics and the events of each set, then the economy sets).
 pub fn files(a: &Analysis) -> Vec<(String, String)> {
     let c = &a.curves;
     [&c.top_vs_us, &c.wins_vs_losses]
         .into_iter()
         .chain(&c.players)
+        .chain(&a.economy.sets)
         .flat_map(|set| {
             set.curves
                 .iter()

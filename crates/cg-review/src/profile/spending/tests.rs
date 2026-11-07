@@ -16,6 +16,7 @@ fn played(id: u64, red: &str, blue: &str, won: bool) -> (GameMeta, Trace) {
         kind: "ranking".to_string(),
         batch: None,
         our_seat: Some(1),
+        ..GameMeta::default()
     };
     (meta, trace)
 }

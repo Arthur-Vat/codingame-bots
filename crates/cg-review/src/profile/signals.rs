@@ -165,6 +165,162 @@ fn event_gaps(out: &mut String, set: &CurveSet, data: &str) {
     out.push('\n');
 }
 
+/// "12%" from a share in percent, or "-".
+fn pct(value: Option<f64>) -> String {
+    value.map_or("-".to_string(), |v| format!("{v:.0}%"))
+}
+
+/// The economy section: the two explanations side by side for each set,
+/// then the investment mix, the tempo and the value of a lead.
+fn economy(out: &mut String, a: &Analysis) {
+    let e = &a.economy;
+    out.push_str("## Economy or fighting\n\nTwo explanations of why a side does better, in numbers and no more. Fighting: the exchange, the training cost of the enemy units a side removed less that of its own it lost. Economy: what a side gains for each unit of resource it spends, where it puts its spending, and how much of its gross income the upkeep eats. Medians at the last compared turn the set reaches; `README.md` defines each series.\n\n");
+    if e.verdicts.is_empty() {
+        out.push_str(
+            "- No economy numbers: the game has no economy hooks, or there are too few games.\n\n",
+        );
+    }
+    for v in &e.verdicts {
+        let first = e
+            .sets
+            .iter()
+            .chain(&e.players)
+            .find(|s| s.slug == v.slug)
+            .and_then(|set| {
+                set.curves
+                    .first()
+                    .map(|c| chart::file_name(set, &c.key, false))
+            });
+        let _ = writeln!(
+            out,
+            "- {} Chart: {}. Data: `economy_curves.csv` (set `{}`).",
+            v.text,
+            first.map_or("none".to_string(), |f| format!("`{f}` and its neighbours")),
+            v.slug
+        );
+    }
+    out.push('\n');
+    out.push_str(
+        "Investment mix, the share of spending on each role by phase (`economy_mix.csv`):\n\n",
+    );
+    for group in ["top players", "us, same games", "our wins", "our losses"] {
+        for phase in ["early game", "middle game", "endgame"] {
+            let rows: Vec<&crate::profile::MixRow> = e
+                .mix
+                .iter()
+                .filter(|r| r.group == group && r.phase == phase)
+                .collect();
+            let Some(first) = rows.first() else { continue };
+            if first.plies == 0 {
+                continue;
+            }
+            let shares: Vec<String> = rows
+                .iter()
+                .map(|r| format!("{} {}", r.role, pct(r.share)))
+                .collect();
+            let _ = writeln!(
+                out,
+                "- {group}, {phase}: {} ({} plies).",
+                shares.join(", "),
+                first.plies
+            );
+        }
+    }
+    out.push_str("\nTempo (`economy_tempo.csv`):\n\n");
+    for r in e.tempo.iter().filter(|r| {
+        ["top players", "us, same games", "our wins", "our losses"].contains(&r.group.as_str())
+    }) {
+        let _ = writeln!(
+            out,
+            "- {}: first contact at turn {} ({} of {} games); first decisive moment in its favour at turn {} ({} games); from first contact to it {} turns ({} games).",
+            r.group,
+            med(r.contact_turn),
+            r.contact_games,
+            r.games,
+            med(r.decisive_turn),
+            r.decisive_games,
+            med(r.to_decisive),
+            r.both_games
+        );
+    }
+    out.push_str("\nThe value of a lead, in our games: wins out of games from each size of lead (`economy_lead.csv`):\n\n");
+    let mut seen: Vec<(&str, u32)> = Vec::new();
+    for r in &e.lead {
+        if seen.contains(&(r.metric.as_str(), r.turn)) {
+            continue;
+        }
+        seen.push((r.metric.as_str(), r.turn));
+        let bins: Vec<String> = e
+            .lead
+            .iter()
+            .filter(|x| x.metric == r.metric && x.turn == r.turn)
+            .map(|x| format!("{}: {} of {}", x.bin, x.wins, x.games))
+            .collect();
+        let _ = writeln!(
+            out,
+            "- {} at turn {}: {}.",
+            r.metric,
+            r.turn,
+            bins.join("; ")
+        );
+    }
+    out.push('\n');
+}
+
+/// The versions section: the agent ids that changed between snapshot days,
+/// and the players met with several agent ids.
+fn versions(out: &mut String, a: &Analysis) {
+    let v = &a.versions;
+    out.push_str("## Versions\n\nA player who changes its code gets a new agent id (`versions.csv`, `profile_versions.csv`).\n\n");
+    if v.days.len() < 2 {
+        let _ = writeln!(
+            out,
+            "- {} day of leaderboard snapshots: no change from one day to the next can be seen.",
+            v.days.len()
+        );
+    } else if v.changes.is_empty() {
+        let _ = writeln!(
+            out,
+            "- No tracked top player changed its agent id between the {} days of snapshots ({} to {}).",
+            v.days.len(),
+            v.days[0],
+            v.days[v.days.len() - 1]
+        );
+    }
+    for c in &v.changes {
+        let _ = writeln!(
+            out,
+            "- {} changed its agent id from {} ({}) to {} ({}).",
+            c.player, c.from_agent, c.from_date, c.to_agent, c.to_date
+        );
+    }
+    for p in a.profiles.iter().filter(|p| p.versions.len() > 1) {
+        let list: Vec<String> = p
+            .versions
+            .iter()
+            .map(|r| {
+                format!(
+                    "{} ({} games, {} to {}; it won {}, lost {})",
+                    r.agent_id.map_or("unknown".to_string(), |i| i.to_string()),
+                    r.games,
+                    r.first_seen.as_deref().unwrap_or("?"),
+                    r.last_seen.as_deref().unwrap_or("?"),
+                    r.vs_us.won,
+                    r.vs_us.lost
+                )
+            })
+            .collect();
+        let _ = writeln!(
+            out,
+            "- {} was met with {} agent ids: {}.",
+            p.player,
+            p.versions.len(),
+            list.join("; ")
+        );
+    }
+    out.push('\n');
+}
+
 /// The text of `signals.md`.
 pub(super) fn signals(a: &Analysis) -> String {
     let c = &a.curves;
@@ -236,5 +392,7 @@ pub(super) fn signals(a: &Analysis) -> String {
         &c.wins_vs_losses,
         "`turns-our-wins.csv`, `turns-our-losses.csv`",
     );
+    economy(&mut out, a);
+    versions(&mut out, a);
     out
 }
