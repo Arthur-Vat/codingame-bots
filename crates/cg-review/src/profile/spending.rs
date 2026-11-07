@@ -51,7 +51,7 @@ struct Sums {
 }
 
 /// A side of a game.
-type Side<'a> = (&'a Trace, usize);
+pub(super) type Side<'a> = (&'a Trace, usize);
 
 fn group<P: Profiling>(label: &str, sides: &[Side], categories: &[String]) -> SpendGroup {
     let mut sums: Vec<Sums> = PHASES.iter().map(|_| Sums::default()).collect();
@@ -113,29 +113,62 @@ fn categories<P: Profiling>(sides: &[Side]) -> Vec<String> {
     names.into_iter().collect()
 }
 
-pub(super) fn spending<P: Profiling>(games: &[&(GameMeta, Trace)], focus: &[String]) -> Spending {
-    let (mut top, mut us) = (Vec::new(), Vec::new());
-    let (mut wins, mut losses) = (Vec::new(), Vec::new());
-    let mut players: BTreeMap<&str, Vec<Side>> = BTreeMap::new();
-    for (meta, trace) in games {
+/// The sides of the games we play, in groups: the focus players pooled, us
+/// in the same games, our wins, our losses, and each focus player.
+pub(super) struct SideGroups<'a> {
+    pub top: Vec<Side<'a>>,
+    pub us: Vec<Side<'a>>,
+    pub wins: Vec<Side<'a>>,
+    pub losses: Vec<Side<'a>>,
+    /// Each focus player, in the games against us.
+    pub players: Vec<(String, Vec<Side<'a>>)>,
+}
+
+impl<'a> SideGroups<'a> {
+    /// The pooled groups with their labels, then the players.
+    pub(super) fn labelled(&self) -> Vec<(&str, &[Side<'a>])> {
+        let mut out: Vec<(&str, &[Side<'a>])> = vec![
+            ("top players", &self.top),
+            ("us, same games", &self.us),
+            ("our wins", &self.wins),
+            ("our losses", &self.losses),
+        ];
+        out.extend(self.players.iter().map(|(n, s)| (n.as_str(), s.as_slice())));
+        out
+    }
+}
+
+pub(super) fn side_groups<'a>(games: &[&'a (GameMeta, Trace)], focus: &[String]) -> SideGroups<'a> {
+    let mut out = SideGroups {
+        top: Vec::new(),
+        us: Vec::new(),
+        wins: Vec::new(),
+        losses: Vec::new(),
+        players: focus.iter().map(|f| (f.clone(), Vec::new())).collect(),
+    };
+    for game in games {
+        let game: &'a (GameMeta, Trace) = game;
+        let (meta, trace) = (&game.0, &game.1);
         let Some((seat, opponent)) = versus(meta, trace) else {
             continue;
         };
-        if let Some(name) = focus.iter().find(|f| **f == opponent) {
-            us.push((trace, seat));
-            top.push((trace, 1 - seat));
-            players
-                .entry(name.as_str())
-                .or_default()
-                .push((trace, 1 - seat));
+        if let Some(i) = focus.iter().position(|f| *f == opponent) {
+            out.us.push((trace, seat));
+            out.top.push((trace, 1 - seat));
+            out.players[i].1.push((trace, 1 - seat));
         }
         match result(trace, seat) {
-            Some(true) => wins.push((trace, seat)),
-            Some(false) => losses.push((trace, seat)),
+            Some(true) => out.wins.push((trace, seat)),
+            Some(false) => out.losses.push((trace, seat)),
             None => {}
         }
     }
-    let all: Vec<Side> = [&top, &us, &wins, &losses]
+    out
+}
+
+pub(super) fn spending<P: Profiling>(games: &[&(GameMeta, Trace)], focus: &[String]) -> Spending {
+    let sides = side_groups(games, focus);
+    let all: Vec<Side> = [&sides.top, &sides.us, &sides.wins, &sides.losses]
         .into_iter()
         .flatten()
         .copied()
@@ -143,17 +176,15 @@ pub(super) fn spending<P: Profiling>(games: &[&(GameMeta, Trace)], focus: &[Stri
     let categories = categories::<P>(&all);
     Spending {
         groups: vec![
-            group::<P>("top players", &top, &categories),
-            group::<P>("us, same games", &us, &categories),
-            group::<P>("our wins", &wins, &categories),
-            group::<P>("our losses", &losses, &categories),
+            group::<P>("top players", &sides.top, &categories),
+            group::<P>("us, same games", &sides.us, &categories),
+            group::<P>("our wins", &sides.wins, &categories),
+            group::<P>("our losses", &sides.losses, &categories),
         ],
-        players: focus
+        players: sides
+            .players
             .iter()
-            .map(|name| {
-                let sides = players.get(name.as_str()).cloned().unwrap_or_default();
-                group::<P>(name, &sides, &categories)
-            })
+            .map(|(name, sides)| group::<P>(name, sides, &categories))
             .collect(),
         categories,
     }

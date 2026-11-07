@@ -1,0 +1,127 @@
+group,phase,plies,role,spent_per_ply,share_pct
+top players,early game,735,economy,0.388,4.513
+top players,early game,735,army,7.878,91.686
+top players,early game,735,defence,0.327,3.8
+top players,middle game,596,economy,2.919,12.818
+top players,middle game,596,army,12.383,54.365
+top players,middle game,596,defence,7.475,32.818
+top players,endgame,656,economy,2.218,6.497
+top players,endgame,656,army,26.479,77.562
+top players,endgame,656,defence,5.442,15.941
+"us, same games",early game,760,economy,2.507,30.95
+"us, same games",early game,760,army,5.592,69.05
+"us, same games",early game,760,defence,0,0
+"us, same games",middle game,607,economy,0.124,0.633
+"us, same games",middle game,607,army,14.267,73.142
+"us, same games",middle game,607,defence,5.115,26.225
+"us, same games",endgame,634,economy,0.568,2.323
+"us, same games",endgame,634,army,20.489,83.833
+"us, same games",endgame,634,defence,3.383,13.843
+our wins,early game,1166,economy,1.878,23.753
+our wins,early game,1166,army,6.029,76.247
+our wins,early game,1166,defence,0,0
+our wins,middle game,921,economy,0.228,1.052
+our wins,middle game,921,army,17.926,82.715
+our wins,middle game,921,defence,3.518,16.232
+our wins,endgame,914,economy,2.248,6.029
+our wins,endgame,914,army,32.746,87.81
+our wins,endgame,914,defence,2.298,6.161
+our losses,early game,1044,economy,2.342,29.09
+our losses,early game,1044,army,5.709,70.91
+our losses,early game,1044,defence,0,0
+our losses,middle game,877,economy,0.12,0.666
+our losses,middle game,877,army,12.566,69.924
+our losses,middle game,877,defence,5.285,29.41
+our losses,endgame,1058,economy,0.411,1.926
+our losses,endgame,1058,army,17.136,80.275
+our losses,endgame,1058,defence,3.8,17.799
+zasmu,early game,69,economy,0.435,4.839
+zasmu,early game,69,army,8.116,90.323
+zasmu,early game,69,defence,0.435,4.839
+zasmu,middle game,61,economy,5.41,19.76
+zasmu,middle game,61,army,12.131,44.311
+zasmu,middle game,61,defence,9.836,35.928
+zasmu,endgame,61,economy,1.967,4.444
+zasmu,endgame,61,army,25.082,56.667
+zasmu,endgame,61,defence,17.213,38.889
+Pduhard-,early game,68,economy,0,0
+Pduhard-,early game,68,army,7.794,89.831
+Pduhard-,early game,68,defence,0.882,10.169
+Pduhard-,middle game,42,economy,0,0
+Pduhard-,middle game,42,army,12.381,79.389
+Pduhard-,middle game,42,defence,3.214,20.611
+Pduhard-,endgame,74,economy,0,0
+Pduhard-,endgame,74,army,22.838,94.944
+Pduhard-,endgame,74,defence,1.216,5.056
+karliso,early game,68,economy,0,0
+karliso,early game,68,army,7.794,89.831
+karliso,early game,68,defence,0.882,10.169
+karliso,middle game,58,economy,7.241,28.094
+karliso,middle game,58,army,8.966,34.783
+karliso,middle game,58,defence,9.569,37.124
+karliso,endgame,63,economy,5.714,12.926
+karliso,endgame,63,army,32.063,72.531
+karliso,endgame,63,defence,6.429,14.542
+_iaz,early game,70,economy,0,0
+_iaz,early game,70,army,8.143,100
+_iaz,early game,70,defence,0,0
+_iaz,middle game,47,economy,1.277,5.195
+_iaz,middle game,47,army,14.681,59.74
+_iaz,middle game,47,defence,8.617,35.065
+_iaz,endgame,81,economy,2.037,7.066
+_iaz,endgame,81,army,22.716,78.801
+_iaz,endgame,81,defence,4.074,14.133
+reCurse,early game,66,economy,0,0
+reCurse,early game,66,army,8.333,100
+reCurse,early game,66,defence,0,0
+reCurse,middle game,67,economy,5.821,24.224
+reCurse,middle game,67,army,11.045,45.963
+reCurse,middle game,67,defence,7.164,29.814
+reCurse,endgame,55,economy,3.545,10.078
+reCurse,endgame,55,army,27.273,77.519
+reCurse,endgame,55,defence,4.364,12.403
+_iahelka,early game,73,economy,0.411,4.959
+_iahelka,early game,73,army,7.671,92.562
+_iahelka,early game,73,defence,0.205,2.479
+_iahelka,middle game,42,economy,2.857,11.268
+_iahelka,middle game,42,army,17.143,67.606
+_iahelka,middle game,42,defence,5.357,21.127
+_iahelka,endgame,61,economy,3.934,12.632
+_iahelka,endgame,61,army,23.279,74.737
+_iahelka,endgame,61,defence,3.934,12.632
+Waffle3z,early game,78,economy,1.923,20.548
+Waffle3z,early game,78,army,7.436,79.452
+Waffle3z,early game,78,defence,0,0
+Waffle3z,middle game,56,economy,4.018,17.375
+Waffle3z,middle game,56,army,11.607,50.193
+Waffle3z,middle game,56,defence,7.5,32.432
+Waffle3z,endgame,53,economy,2.547,6.459
+Waffle3z,endgame,53,army,32.642,82.775
+Waffle3z,endgame,53,defence,4.245,10.766
+Zylo,early game,70,economy,1.071,12
+Zylo,early game,70,army,7.857,88
+Zylo,early game,70,defence,0,0
+Zylo,middle game,66,economy,2.955,11.404
+Zylo,middle game,66,army,11.818,45.614
+Zylo,middle game,66,defence,11.136,42.982
+Zylo,endgame,88,economy,2.727,6.789
+Zylo,endgame,88,army,31.477,78.359
+Zylo,endgame,88,defence,5.966,14.851
+NinjaDoggy,early game,85,economy,0,0
+NinjaDoggy,early game,85,army,7.765,89.796
+NinjaDoggy,early game,85,defence,0.882,10.204
+NinjaDoggy,middle game,71,economy,0,0
+NinjaDoggy,middle game,71,army,11.69,56.849
+NinjaDoggy,middle game,71,defence,8.873,43.151
+NinjaDoggy,endgame,71,economy,0,0
+NinjaDoggy,endgame,71,army,20.704,79.675
+NinjaDoggy,endgame,71,defence,5.282,20.325
+aCat,early game,88,economy,0,0
+aCat,early game,88,army,7.955,100
+aCat,early game,88,defence,0,0
+aCat,middle game,86,economy,0,0
+aCat,middle game,86,army,13.837,81.507
+aCat,middle game,86,defence,3.14,18.493
+aCat,endgame,49,economy,0,0
+aCat,endgame,49,army,28.571,93.96
+aCat,endgame,49,defence,1.837,6.04

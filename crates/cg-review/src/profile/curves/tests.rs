@@ -15,6 +15,7 @@ fn ours(id: u64, turns: usize, blue: impl Fn(usize) -> i64, won: bool) -> (GameM
         kind: "ranking".to_string(),
         batch: None,
         our_seat: Some(1),
+        ..GameMeta::default()
     };
     (meta, trace)
 }

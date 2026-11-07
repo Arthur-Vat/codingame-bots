@@ -141,3 +141,72 @@ fn the_spending_matches_the_gold_the_engine_takes() {
         assert_eq!(total, p.spent, "ply {ply}: {}", p.commands);
     }
 }
+
+#[test]
+fn the_economy_hooks_name_metrics_and_categories_that_exist() {
+    let keys: Vec<String> = metrics().into_iter().map(|m| m.key).collect();
+    let hooks = IceAndFire::economy().expect("hooks");
+    let mut wanted = vec![
+        hooks.balance,
+        hooks.killed,
+        hooks.lost,
+        hooks.upkeep,
+        hooks.gross_income,
+        hooks.contact,
+        hooks.income,
+    ];
+    for e in &hooks.efficiency {
+        wanted.extend(&e.gained);
+    }
+    for key in wanted {
+        assert!(keys.iter().any(|k| k == key), "{key}");
+    }
+    // Every category of the spending hook has a role.
+    let t = real();
+    for ply in 0..t.plies.len() {
+        for (category, _) in IceAndFire::spending(&t, ply) {
+            assert!(
+                hooks
+                    .roles
+                    .iter()
+                    .any(|r| r.categories.contains(&category.as_str())),
+                "{category}"
+            );
+        }
+    }
+    let role = |name: &str| {
+        hooks
+            .roles
+            .iter()
+            .find(|r| r.categories.contains(&name))
+            .map(|r| r.name)
+    };
+    assert_eq!(role("mine"), Some("economy"));
+    assert_eq!(role("train level 2"), Some("army"));
+    assert_eq!(role("tower"), Some("defence"));
+    assert_eq!(hooks.decisive, ["large cut", "HQ threat", "debt"]);
+}
+
+#[test]
+fn the_spending_a_side_names_in_an_efficiency_is_what_it_paid() {
+    // Over a real game, the cumulative spending on every category equals the
+    // gold the plies spent (`Ply::spent`).
+    let t = real();
+    let hooks = IceAndFire::economy().expect("hooks");
+    let all = &hooks.efficiency[0].spent;
+    for seat in 0..2 {
+        let named: i64 = (0..t.plies.len())
+            .filter(|&i| t.plies[i].to_act == seat)
+            .flat_map(|i| IceAndFire::spending(&t, i))
+            .filter(|(c, _)| all.contains(&c.as_str()))
+            .map(|(_, a)| a)
+            .sum();
+        let spent: i64 = t
+            .plies
+            .iter()
+            .filter(|p| p.to_act == seat)
+            .map(|p| p.spent)
+            .sum();
+        assert_eq!(named, spent);
+    }
+}

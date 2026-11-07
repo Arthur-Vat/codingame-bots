@@ -26,6 +26,15 @@ Ranks come from the leaderboard snapshot 2026-11-06T165130Z.json.
 - `spending.csv`: mean of the game's resource spent per own turn, by the categories of its spending hook: `group`, `phase`, `plies` (own plies behind it), `category` and `mean_spent`.
 - `spending_kept.csv`: the share of the resource in hand left unspent at the end of an own turn, in percent (`kept_pct`, mean over turns): `group`, `phase`, `plies`.
 - `games.csv`: the games: `label` (the opponent), `game_id` and our `result` (W, L, D).
+- `profile_versions.csv`: each focus `player`'s versions, one row for each agent id it played with in the games (`agent_id`, empty if the index does not name it): `games`, its results against us (`won`, `lost`, `drawn`) and the first and last day of its games (`first_seen`, `last_seen`); a player with several rows changed its code.
+- `versions.csv`: the agent id of each tracked top `player` in the leaderboard snapshot of each `date` (the latest of the day): `snapshot`, `rank`, `agent_id` and `changed`, true if the agent id differs from the one in the previous day's snapshot.
+- `economy_exchange.csv`: the exchange of units by `group` and `phase`: over `games` (sides with a ply in the phase), the mean of what the side removed of the enemy's (`killed`), what it lost (`lost`) and their difference (`balance`), as the training cost of the units, each read right after the side's last own ply of the phase.
+- `economy_efficiency.csv`: efficiency by `group`, `name` and game `turn`: the `median` over `games` sides of the cumulative gain over the cumulative resource spent (see `README.md` for each name's definition); `games` is 0 and `median` empty when no side has spent anything.
+- `economy_mix.csv`: the investment mix by `group` and `phase`: over `plies` own plies, the resource spent on each `role` per ply (`spent_per_ply`) and its share of all spending in the phase (`share_pct`, empty if nothing was spent).
+- `economy_upkeep.csv`: the upkeep burden by `group` and `phase`: over `plies` own plies, the mean of upkeep as a percentage of gross income (`burden_pct`), at the starts of the side's own plies; plies without gross income are left out of the mean.
+- `economy_tempo.csv`: tempo by `group`: of its `games` sides, `contact_games` made contact (the metric of first contact above zero) with the median turn `contact_turn`; `decisive_games` had a decisive moment in their favour, median turn `decisive_turn`; of the `both_games` with both, `to_decisive` is the median of the turns from first contact to the first decisive moment (negative when it came first).
+- `economy_lead.csv`: the value of a lead in our games: for a lead `metric` (ours less theirs, read so that more is an advantage) at a game `turn`, in each `bin` of lead size (relative to the median size of the leads at that turn: `up to` it, or `more than` it): our `games` and how many we won (`wins`).
+- `economy_curves.csv`: the economy curves turn by turn, for each `set` (see below) and `series`: the medians of the first and second group (`first_median`, `second_median`) over `first_n` and `second_n` games, for each game `turn` that has a value.
 - `signals.md`: the strongest findings picked by code (no interpretation), each with its chart and data file.
 
 ## Turn by turn
@@ -48,7 +57,7 @@ Ranks come from the leaderboard snapshot 2026-11-06T165130Z.json.
 
 ## Charts
 
-62 SVG files, one metric or event each, named `SET-METRIC.svg` or `SET-event-NAME.svg`. The line is the median (an event: the share of games, in percent) at each game turn, the band the middle half of the games; blue is the first group of the set, orange the second; a dashed line marks the turn from which the groups stay apart. The sets (also the `set` column of `separation.csv`; first group, second group):
+74 SVG files, one metric or event each, named `SET-METRIC.svg` or `SET-event-NAME.svg`. The line is the median (an event: the share of games, in percent) at each game turn, the band the middle half of the games; blue is the first group of the set, orange the second; a dashed line marks the turn from which the groups stay apart. The sets (also the `set` column of `separation.csv`; first group, second group):
 
 - `top-vs-us`: us (n = 106), top players (n = 106)
 - `wins-vs-losses`: our wins (n = 175), our losses (n = 147)
@@ -64,3 +73,31 @@ Ranks come from the leaderboard snapshot 2026-11-06T165130Z.json.
 - `player-acat`: us (n = 13), aCat (n = 13)
 
 The sets `player-NAME` hold, for one focus player, the three metrics that tell our wins from our losses best.
+
+## Economy or fighting
+
+Is a strategy better because of its economy or because of its fighting? `economy_*.csv` hold the numbers; `signals.md` sets them side by side. The charts of the sets below (`SET-SERIES.svg`, also in `economy_curves.csv`; there is also one set `economy-player-NAME` for each focus player, in the CSV only) show, turn by turn, the exchange (the value of the enemy's units a side removed less the value of its own it lost, and each part), the efficiencies and the upkeep burden.
+
+- `economy-top-vs-us`: us (n = 106), top players (n = 106)
+- `economy-wins-vs-losses`: our wins (n = 175), our losses (n = 147)
+- `economy-player-zasmu`: us (n = 10), zasmu (n = 10)
+- `economy-player-pduhard-`: us (n = 10), Pduhard- (n = 10)
+- `economy-player-karliso`: us (n = 10), karliso (n = 10)
+- `economy-player--iaz`: us (n = 10), _iaz (n = 10)
+- `economy-player-recurse`: us (n = 10), reCurse (n = 10)
+- `economy-player--iahelka`: us (n = 10), _iahelka (n = 10)
+- `economy-player-waffle3z`: us (n = 11), Waffle3z (n = 11)
+- `economy-player-zylo`: us (n = 10), Zylo (n = 10)
+- `economy-player-ninjadoggy`: us (n = 12), NinjaDoggy (n = 12)
+- `economy-player-acat`: us (n = 13), aCat (n = 13)
+
+Tempo counts as decisive the moments of the kinds: large cut, HQ threat, debt.
+
+The series, with their definitions:
+
+- `exchange`: cum_killed less cum_lost: what this side has won in units against what it has lost.
+- `cum_killed`: Training cost (10, 20 or 30 by level) of the enemy units this side has removed so far: the sum of cum_killed_fight and cum_killed_cut.
+- `cum_lost`: Training cost of this side's units lost so far, by any cause: taken, cut off or lost to debt.
+- `cells per gold`: cum_neutral + cum_captured so far, for each unit of resource spent so far on train level 1, train level 2, train level 3, mine, tower.
+- `kills per gold on units`: cum_killed so far, for each unit of resource spent so far on train level 1, train level 2, train level 3.
+- `upkeep burden`: upkeep as a percentage of gross_income: how much of the gross income the army eats.

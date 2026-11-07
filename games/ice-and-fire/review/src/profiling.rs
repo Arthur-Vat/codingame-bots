@@ -5,7 +5,7 @@
 use std::collections::BTreeMap;
 
 use cg_review::moments::Decisive;
-use cg_review::profile::Profiling;
+use cg_review::profile::{EconomyHooks, Efficiency, Profiling, Role};
 use cg_review::trace::Trace;
 use ice_and_fire_engine::state::BUILD_COST;
 use ice_and_fire_engine::{Command, SIZE};
@@ -22,8 +22,8 @@ const LARGE_CUT: &str = "large cut";
 /// The metrics for which less is better: the exposure to a cut, the gap to
 /// the enemy HQ, the upkeep, the cells cut off, the units and cells lost, and
 /// the weak points of the territory (joints, the cells a single cell would cut
-/// off, thin line ends).
-const LOWER_IS_BETTER: [&str; 14] = [
+/// off, thin line ends), and the value of the units lost so far.
+const LOWER_IS_BETTER: [&str; 15] = [
     "exposed30",
     "exposed50",
     "hq_gap",
@@ -38,6 +38,7 @@ const LOWER_IS_BETTER: [&str; 14] = [
     "frontier_joints",
     "empty_joints",
     "reach",
+    "cum_lost",
 ];
 
 /// `(x, y)` as the player in `seat` sees it, so that both seats' openings
@@ -178,6 +179,56 @@ impl Profiling for IceAndFire {
             *spent.entry(name).or_default() += cost;
         }
         spent.into_iter().collect()
+    }
+
+    /// The exchange of units is `exchange` (`cum_killed` less `cum_lost`).
+    /// Efficiency: the cells taken (neutral and enemy) for each gold spent
+    /// on anything, and the value killed for each gold spent on units. Roles
+    /// (the categories of `spending`): mines are the economy, units the
+    /// army, towers the defence. The upkeep burden is `upkeep` over
+    /// `gross_income`; contact is the metric `contact` (enemy units next to
+    /// our active cells); a lead is read on `income` as well as on the
+    /// lead metric `material`; the decisive moments are those of `Decisive`.
+    fn economy() -> Option<EconomyHooks> {
+        let units = vec!["train level 1", "train level 2", "train level 3"];
+        let mut everything = units.clone();
+        everything.extend(["mine", "tower"]);
+        Some(EconomyHooks {
+            balance: "exchange",
+            killed: "cum_killed",
+            lost: "cum_lost",
+            efficiency: vec![
+                Efficiency {
+                    name: "cells per gold",
+                    gained: vec!["cum_neutral", "cum_captured"],
+                    spent: everything,
+                },
+                Efficiency {
+                    name: "kills per gold on units",
+                    gained: vec!["cum_killed"],
+                    spent: units.clone(),
+                },
+            ],
+            roles: vec![
+                Role {
+                    name: "economy",
+                    categories: vec!["mine"],
+                },
+                Role {
+                    name: "army",
+                    categories: units,
+                },
+                Role {
+                    name: "defence",
+                    categories: vec!["tower"],
+                },
+            ],
+            upkeep: "upkeep",
+            gross_income: "gross_income",
+            contact: "contact",
+            income: "income",
+            decisive: <Self as Decisive>::decisive_kinds(),
+        })
     }
 
     /// The commands of each of the first own plies, tokens joined by a

@@ -15,7 +15,8 @@ use cg_arena::codingame::{read_log, to_record};
 use cg_arena::record::Record;
 use cg_review::moments;
 use cg_review::profile::{
-    analyze, chart, data_files, report_files, GameMeta, Input, LeftOut, Options,
+    analyze, chart, data_files, report_files, GameMeta, Input, LeftOut, Options, Snapshot,
+    SnapshotRow,
 };
 use cg_review::trace::Trace;
 use serde_json::Value;
@@ -33,6 +34,8 @@ pub struct Request {
     /// The kinds of games to use, empty for all.
     pub kinds: Vec<String>,
     pub batch: Option<String>,
+    /// Only our games played by this release (the index's `release`).
+    pub release: Option<String>,
     pub top: usize,
     pub players: Vec<String>,
     pub leaderboard: Option<PathBuf>,
@@ -91,6 +94,9 @@ pub fn read_index(path: &Path, request: &Request) -> Result<(Vec<Entry>, Vec<Lef
         if request.batch.is_some() && request.batch != batch {
             continue;
         }
+        if request.release.is_some() && value["release"].as_str() != request.release.as_deref() {
+            continue;
+        }
         if !seen.insert(game_id) {
             left_out.push(LeftOut {
                 game_id: Some(game_id),
@@ -109,6 +115,20 @@ pub fn read_index(path: &Path, request: &Request) -> Result<(Vec<Entry>, Vec<Lef
                 named.into_iter().map(|(_, n)| n).collect()
             })
             .unwrap_or_default();
+        let mut agent_ids = [None; 2];
+        for p in value["players"].as_array().into_iter().flatten() {
+            let seat = p["seat"].as_u64().and_then(|s| usize::try_from(s).ok());
+            if let Some(slot) = seat.and_then(|s| agent_ids.get_mut(s)) {
+                *slot = p["agent_id"].as_u64();
+            }
+        }
+        // Test games have no end time: the day they were fetched is their
+        // day (they are played just before).
+        let date = value["ended_at"]
+            .as_str()
+            .or_else(|| value["fetched_at"].as_str())
+            .and_then(|t| t.get(..10))
+            .map(str::to_string);
         let our_seat = value["our_seat"]
             .as_u64()
             .and_then(|s| usize::try_from(s).ok());
@@ -118,6 +138,8 @@ pub fn read_index(path: &Path, request: &Request) -> Result<(Vec<Entry>, Vec<Lef
                 kind,
                 batch,
                 our_seat,
+                agent_ids,
+                date,
             },
             names,
         });
@@ -269,6 +291,49 @@ pub fn newest_snapshot(data: &Path) -> Option<PathBuf> {
     files.pop()
 }
 
+/// Every snapshot of `data/leaderboard`, oldest first: the day (the first ten
+/// characters of the file name), and each row's rank, nickname and agent id.
+/// A file that cannot be read is skipped.
+pub fn read_snapshots(data: &Path) -> Vec<Snapshot> {
+    let Ok(dir) = fs::read_dir(data.join("leaderboard")) else {
+        return Vec::new();
+    };
+    let mut files: Vec<PathBuf> = dir
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.extension().is_some_and(|x| x == "json"))
+        .collect();
+    files.sort();
+    let mut out = Vec::new();
+    for path in files {
+        let Some(name) = path.file_name().map(|n| n.to_string_lossy().into_owned()) else {
+            continue;
+        };
+        let Some(date) = name.get(..10).map(str::to_string) else {
+            continue;
+        };
+        let Some(value) = fs::read_to_string(&path)
+            .ok()
+            .and_then(|t| serde_json::from_str::<Value>(&t).ok())
+        else {
+            continue;
+        };
+        let rows = value["rows"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|row| {
+                Some(SnapshotRow {
+                    rank: u32::try_from(row["rank"].as_u64()?).unwrap_or(u32::MAX),
+                    nickname: row["nickname"].as_str()?.to_string(),
+                    agent_id: row["agent_id"].as_u64(),
+                })
+            })
+            .collect();
+        out.push(Snapshot { name, date, rows });
+    }
+    out
+}
+
 /// The games of the request, loaded and checked, with the leaderboard.
 fn load_input(request: &Request) -> Result<Input, String> {
     let (entries, mut left_out) = read_index(&request.data.join("index.jsonl"), request)?;
@@ -309,9 +374,16 @@ fn load_input(request: &Request) -> Result<Input, String> {
             trace.players[seat]
         ));
     }
+    let mut notes = vec!["Events and openings count the commands carried out by the rules, not the ones refused (a refused command has no effect).".to_string()];
+    if let Some(release) = &request.release {
+        notes.push(format!(
+            "Only our games played by the release {release}; the other games, ours or not, are left out."
+        ));
+    }
     Ok(Input {
         warnings,
-        notes: vec!["Events and openings count the commands carried out by the rules, not the ones refused (a refused command has no effect).".to_string()],
+        notes,
+        snapshots: read_snapshots(&request.data),
         games,
         ranks,
         snapshot: name,

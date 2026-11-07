@@ -13,6 +13,7 @@ fn built(id: u64, won: bool) -> (GameMeta, Trace) {
         kind: "ranking".to_string(),
         batch: None,
         our_seat: Some(1),
+        ..GameMeta::default()
     };
     (meta, trace)
 }

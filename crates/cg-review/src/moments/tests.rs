@@ -76,6 +76,7 @@ fn lost(id: u64, moments: Vec<Moment>) -> (GameMeta, Trace) {
         kind: "ranking".to_string(),
         batch: None,
         our_seat: Some(1),
+        ..GameMeta::default()
     };
     (meta, trace)
 }

@@ -1899,6 +1899,272 @@ all-top-players,us,metric,material_change,35,4,-2.5,-6.5,0,-4
 all-top-players,us,metric,material_change,36,4,-28,-53,9.25,-15.75
 all-top-players,us,metric,material_change,37,3,-14,-36.5,-3.5,-22
 all-top-players,us,metric,material_change,38,3,4,2,5.5,3.667
+all-top-players,us,metric,cum_neutral,1,106,2,2,2,1.953
+all-top-players,us,metric,cum_neutral,2,106,4,4,4,3.953
+all-top-players,us,metric,cum_neutral,3,106,6,6,6,5.906
+all-top-players,us,metric,cum_neutral,4,106,9,8,9,8.623
+all-top-players,us,metric,cum_neutral,5,106,12,11,12,11.632
+all-top-players,us,metric,cum_neutral,6,106,15,15,15,14.953
+all-top-players,us,metric,cum_neutral,7,106,18,18,19,18.651
+all-top-players,us,metric,cum_neutral,8,105,22,21,23,22.448
+all-top-players,us,metric,cum_neutral,9,105,25,23,27,25.448
+all-top-players,us,metric,cum_neutral,10,105,27,25,30,27.505
+all-top-players,us,metric,cum_neutral,11,105,30,27,32,29.524
+all-top-players,us,metric,cum_neutral,12,105,31,29,34,31.267
+all-top-players,us,metric,cum_neutral,13,105,32,30,36,32.724
+all-top-players,us,metric,cum_neutral,14,102,33,31,37,33.961
+all-top-players,us,metric,cum_neutral,15,95,34,31,39,35.189
+all-top-players,us,metric,cum_neutral,16,82,35,32,40,36.146
+all-top-players,us,metric,cum_neutral,17,65,36,31,42,36.785
+all-top-players,us,metric,cum_neutral,18,58,37,32,43.75,37.897
+all-top-players,us,metric,cum_neutral,19,52,38,32.75,43.25,38.269
+all-top-players,us,metric,cum_neutral,20,35,38,33,48,39.457
+all-top-players,us,metric,cum_neutral,21,30,40,33.25,49,41.233
+all-top-players,us,metric,cum_neutral,22,20,39.5,34,49.25,41.4
+all-top-players,us,metric,cum_neutral,23,16,40,34,49.75,41.812
+all-top-players,us,metric,cum_neutral,24,13,41,37,49,42.385
+all-top-players,us,metric,cum_neutral,25,7,44,37,51.5,44.143
+all-top-players,us,metric,cum_neutral,26,4,37,33.25,42.25,38.5
+all-top-players,us,metric,cum_neutral,27,4,37,33.25,42.25,38.5
+all-top-players,us,metric,cum_neutral,28,4,37,33.5,42.25,38.75
+all-top-players,us,metric,cum_neutral,29,4,37,33.75,42.25,39
+all-top-players,us,metric,cum_neutral,30,4,37,33.75,42.25,39
+all-top-players,us,metric,cum_neutral,31,4,37,33.75,42.25,39
+all-top-players,us,metric,cum_neutral,32,4,37,33.75,42.5,39.25
+all-top-players,us,metric,cum_neutral,33,4,37,33.75,42.75,39.5
+all-top-players,us,metric,cum_neutral,34,4,37,33.75,42.75,39.5
+all-top-players,us,metric,cum_neutral,35,4,37,33.75,42.75,39.5
+all-top-players,us,metric,cum_neutral,36,4,37,33.75,42.75,39.5
+all-top-players,us,metric,cum_neutral,37,3,34,33.5,37,35.667
+all-top-players,us,metric,cum_neutral,38,3,34,33.5,37,35.667
+all-top-players,us,metric,cum_captured,1,106,0,0,0,0
+all-top-players,us,metric,cum_captured,2,106,0,0,0,0
+all-top-players,us,metric,cum_captured,3,106,0,0,0,0
+all-top-players,us,metric,cum_captured,4,106,0,0,0,0
+all-top-players,us,metric,cum_captured,5,106,0,0,0,0
+all-top-players,us,metric,cum_captured,6,106,0,0,0,0
+all-top-players,us,metric,cum_captured,7,106,0,0,0,0
+all-top-players,us,metric,cum_captured,8,105,0,0,0,0.143
+all-top-players,us,metric,cum_captured,9,105,0,0,1,0.581
+all-top-players,us,metric,cum_captured,10,105,1,0,2,1.343
+all-top-players,us,metric,cum_captured,11,105,2,0,4,2.571
+all-top-players,us,metric,cum_captured,12,105,4,1,6,4.143
+all-top-players,us,metric,cum_captured,13,105,5,2,8,5.581
+all-top-players,us,metric,cum_captured,14,102,6,3,10,6.931
+all-top-players,us,metric,cum_captured,15,95,8,4.5,12,8.642
+all-top-players,us,metric,cum_captured,16,82,10,5.25,13.75,10.622
+all-top-players,us,metric,cum_captured,17,65,11,7,16,12.4
+all-top-players,us,metric,cum_captured,18,58,12,10,18.75,14.345
+all-top-players,us,metric,cum_captured,19,52,13.5,10,18.25,15.346
+all-top-players,us,metric,cum_captured,20,35,16,11.5,23.5,18.886
+all-top-players,us,metric,cum_captured,21,30,18,12.25,28,20.867
+all-top-players,us,metric,cum_captured,22,20,19.5,14.5,31.25,22.25
+all-top-players,us,metric,cum_captured,23,16,22.5,12.75,33.25,23.375
+all-top-players,us,metric,cum_captured,24,13,24,18,34,24.308
+all-top-players,us,metric,cum_captured,25,7,25,24,33,26.429
+all-top-players,us,metric,cum_captured,26,4,31,23.25,34.5,26.75
+all-top-players,us,metric,cum_captured,27,4,32,24,37.25,29.25
+all-top-players,us,metric,cum_captured,28,4,35,27.75,38,30.75
+all-top-players,us,metric,cum_captured,29,4,37.5,29.25,40.25,32
+all-top-players,us,metric,cum_captured,30,4,38,29.25,41,32.25
+all-top-players,us,metric,cum_captured,31,4,39,30,41.75,32.75
+all-top-players,us,metric,cum_captured,32,4,40,30.75,42.5,33.25
+all-top-players,us,metric,cum_captured,33,4,42.5,31,47.75,36.25
+all-top-players,us,metric,cum_captured,34,4,42.5,31,48.25,36.75
+all-top-players,us,metric,cum_captured,35,4,42.5,31,48.75,37.25
+all-top-players,us,metric,cum_captured,36,4,43,32,49.25,38.25
+all-top-players,us,metric,cum_captured,37,3,40,27,49.5,37.667
+all-top-players,us,metric,cum_captured,38,3,40,27.5,50,38.333
+all-top-players,us,metric,cum_killed,1,106,0,0,0,0
+all-top-players,us,metric,cum_killed,2,106,0,0,0,0
+all-top-players,us,metric,cum_killed,3,106,0,0,0,0
+all-top-players,us,metric,cum_killed,4,106,0,0,0,0
+all-top-players,us,metric,cum_killed,5,106,0,0,0,0
+all-top-players,us,metric,cum_killed,6,106,0,0,0,0
+all-top-players,us,metric,cum_killed,7,106,0,0,0,0
+all-top-players,us,metric,cum_killed,8,105,0,0,0,1.048
+all-top-players,us,metric,cum_killed,9,105,0,0,10,5.524
+all-top-players,us,metric,cum_killed,10,105,0,0,20,12.286
+all-top-players,us,metric,cum_killed,11,105,20,0,30,20.381
+all-top-players,us,metric,cum_killed,12,105,30,10,50,32.381
+all-top-players,us,metric,cum_killed,13,105,40,20,60,39.238
+all-top-players,us,metric,cum_killed,14,102,50,20,77.5,51.961
+all-top-players,us,metric,cum_killed,15,95,60,30,90,62.842
+all-top-players,us,metric,cum_killed,16,82,80,50,100,79.39
+all-top-players,us,metric,cum_killed,17,65,90,50,120,88.308
+all-top-players,us,metric,cum_killed,18,58,100,70,130,101.552
+all-top-players,us,metric,cum_killed,19,52,100,80,140,108.269
+all-top-players,us,metric,cum_killed,20,35,120,100,150,125.429
+all-top-players,us,metric,cum_killed,21,30,115,100,157.5,127.333
+all-top-players,us,metric,cum_killed,22,20,135,107.5,152.5,135
+all-top-players,us,metric,cum_killed,23,16,145,107.5,192.5,152.5
+all-top-players,us,metric,cum_killed,24,13,160,100,200,160.769
+all-top-players,us,metric,cum_killed,25,7,220,150,265,200
+all-top-players,us,metric,cum_killed,26,4,275,220,280,225
+all-top-players,us,metric,cum_killed,27,4,275,220,290,235
+all-top-players,us,metric,cum_killed,28,4,290,227.5,305,242.5
+all-top-players,us,metric,cum_killed,29,4,315,250,320,255
+all-top-players,us,metric,cum_killed,30,4,315,250,320,255
+all-top-players,us,metric,cum_killed,31,4,320,257.5,322.5,260
+all-top-players,us,metric,cum_killed,32,4,320,257.5,322.5,260
+all-top-players,us,metric,cum_killed,33,4,360,265,417.5,322.5
+all-top-players,us,metric,cum_killed,34,4,360,265,417.5,322.5
+all-top-players,us,metric,cum_killed,35,4,385,265,455,335
+all-top-players,us,metric,cum_killed,36,4,395,275,470,350
+all-top-players,us,metric,cum_killed,37,3,330,240,425,333.333
+all-top-players,us,metric,cum_killed,38,3,330,240,425,333.333
+all-top-players,us,metric,cum_killed_fight,1,106,0,0,0,0
+all-top-players,us,metric,cum_killed_fight,2,106,0,0,0,0
+all-top-players,us,metric,cum_killed_fight,3,106,0,0,0,0
+all-top-players,us,metric,cum_killed_fight,4,106,0,0,0,0
+all-top-players,us,metric,cum_killed_fight,5,106,0,0,0,0
+all-top-players,us,metric,cum_killed_fight,6,106,0,0,0,0
+all-top-players,us,metric,cum_killed_fight,7,106,0,0,0,0
+all-top-players,us,metric,cum_killed_fight,8,105,0,0,0,0.381
+all-top-players,us,metric,cum_killed_fight,9,105,0,0,0,1.524
+all-top-players,us,metric,cum_killed_fight,10,105,0,0,10,3.333
+all-top-players,us,metric,cum_killed_fight,11,105,0,0,10,5.143
+all-top-players,us,metric,cum_killed_fight,12,105,10,0,10,7.429
+all-top-players,us,metric,cum_killed_fight,13,105,10,0,10,8.857
+all-top-players,us,metric,cum_killed_fight,14,102,10,0,20,12.745
+all-top-players,us,metric,cum_killed_fight,15,95,10,0,20,14.316
+all-top-players,us,metric,cum_killed_fight,16,82,20,2.5,30,18.415
+all-top-players,us,metric,cum_killed_fight,17,65,20,10,30,19.846
+all-top-players,us,metric,cum_killed_fight,18,58,20,10,30,24.483
+all-top-players,us,metric,cum_killed_fight,19,52,30,10,40,29.615
+all-top-players,us,metric,cum_killed_fight,20,35,30,20,50,34.571
+all-top-players,us,metric,cum_killed_fight,21,30,30,20,47.5,34.333
+all-top-players,us,metric,cum_killed_fight,22,20,40,30,50,42.5
+all-top-players,us,metric,cum_killed_fight,23,16,40,27.5,50,43.125
+all-top-players,us,metric,cum_killed_fight,24,13,40,30,50,46.923
+all-top-players,us,metric,cum_killed_fight,25,7,40,35,50,54.286
+all-top-players,us,metric,cum_killed_fight,26,4,40,27.5,50,37.5
+all-top-players,us,metric,cum_killed_fight,27,4,45,35,50,40
+all-top-players,us,metric,cum_killed_fight,28,4,45,35,50,40
+all-top-players,us,metric,cum_killed_fight,29,4,45,35,55,45
+all-top-players,us,metric,cum_killed_fight,30,4,45,35,55,45
+all-top-players,us,metric,cum_killed_fight,31,4,45,35,55,45
+all-top-players,us,metric,cum_killed_fight,32,4,45,35,55,45
+all-top-players,us,metric,cum_killed_fight,33,4,50,42.5,55,47.5
+all-top-players,us,metric,cum_killed_fight,34,4,50,42.5,55,47.5
+all-top-players,us,metric,cum_killed_fight,35,4,50,42.5,55,47.5
+all-top-players,us,metric,cum_killed_fight,36,4,50,47.5,55,52.5
+all-top-players,us,metric,cum_killed_fight,37,3,80,65,85,73.333
+all-top-players,us,metric,cum_killed_fight,38,3,80,65,85,73.333
+all-top-players,us,metric,cum_killed_cut,1,106,0,0,0,0
+all-top-players,us,metric,cum_killed_cut,2,106,0,0,0,0
+all-top-players,us,metric,cum_killed_cut,3,106,0,0,0,0
+all-top-players,us,metric,cum_killed_cut,4,106,0,0,0,0
+all-top-players,us,metric,cum_killed_cut,5,106,0,0,0,0
+all-top-players,us,metric,cum_killed_cut,6,106,0,0,0,0
+all-top-players,us,metric,cum_killed_cut,7,106,0,0,0,0
+all-top-players,us,metric,cum_killed_cut,8,105,0,0,0,0.667
+all-top-players,us,metric,cum_killed_cut,9,105,0,0,0,4
+all-top-players,us,metric,cum_killed_cut,10,105,0,0,10,8.952
+all-top-players,us,metric,cum_killed_cut,11,105,10,0,20,15.238
+all-top-players,us,metric,cum_killed_cut,12,105,20,0,40,24.952
+all-top-players,us,metric,cum_killed_cut,13,105,30,10,50,30.381
+all-top-players,us,metric,cum_killed_cut,14,102,30,10,60,39.216
+all-top-players,us,metric,cum_killed_cut,15,95,40,20,70,48.526
+all-top-players,us,metric,cum_killed_cut,16,82,50,30,80,60.976
+all-top-players,us,metric,cum_killed_cut,17,65,70,40,90,68.462
+all-top-players,us,metric,cum_killed_cut,18,58,70,50,97.5,77.069
+all-top-players,us,metric,cum_killed_cut,19,52,70,50,92.5,78.654
+all-top-players,us,metric,cum_killed_cut,20,35,80,65,115,90.857
+all-top-players,us,metric,cum_killed_cut,21,30,85,62.5,117.5,93
+all-top-players,us,metric,cum_killed_cut,22,20,80,57.5,120,92.5
+all-top-players,us,metric,cum_killed_cut,23,16,90,57.5,145,109.375
+all-top-players,us,metric,cum_killed_cut,24,13,90,70,140,113.846
+all-top-players,us,metric,cum_killed_cut,25,7,120,80,220,145.714
+all-top-players,us,metric,cum_killed_cut,26,4,225,177.5,235,187.5
+all-top-players,us,metric,cum_killed_cut,27,4,225,177.5,242.5,195
+all-top-players,us,metric,cum_killed_cut,28,4,240,185,257.5,202.5
+all-top-players,us,metric,cum_killed_cut,29,4,255,200,265,210
+all-top-players,us,metric,cum_killed_cut,30,4,255,200,265,210
+all-top-players,us,metric,cum_killed_cut,31,4,265,200,280,215
+all-top-players,us,metric,cum_killed_cut,32,4,265,200,280,215
+all-top-players,us,metric,cum_killed_cut,33,4,310,222.5,362.5,275
+all-top-players,us,metric,cum_killed_cut,34,4,310,222.5,362.5,275
+all-top-players,us,metric,cum_killed_cut,35,4,335,222.5,400,287.5
+all-top-players,us,metric,cum_killed_cut,36,4,345,227.5,415,297.5
+all-top-players,us,metric,cum_killed_cut,37,3,280,175,355,260
+all-top-players,us,metric,cum_killed_cut,38,3,280,175,355,260
+all-top-players,us,metric,cum_lost,1,106,0,0,0,0
+all-top-players,us,metric,cum_lost,2,106,0,0,0,0
+all-top-players,us,metric,cum_lost,3,106,0,0,0,0
+all-top-players,us,metric,cum_lost,4,106,0,0,0,0
+all-top-players,us,metric,cum_lost,5,106,0,0,0,0
+all-top-players,us,metric,cum_lost,6,106,0,0,0,0
+all-top-players,us,metric,cum_lost,7,106,0,0,0,0
+all-top-players,us,metric,cum_lost,8,105,0,0,0,0.095
+all-top-players,us,metric,cum_lost,9,105,0,0,0,4.952
+all-top-players,us,metric,cum_lost,10,105,10,0,20,15.238
+all-top-players,us,metric,cum_lost,11,105,20,0,40,24.667
+all-top-players,us,metric,cum_lost,12,105,30,10,60,38.19
+all-top-players,us,metric,cum_lost,13,105,50,20,80,51.714
+all-top-players,us,metric,cum_lost,14,102,70,32.5,100,68.333
+all-top-players,us,metric,cum_lost,15,95,80,45,110,80.842
+all-top-players,us,metric,cum_lost,16,82,90,70,130,100.122
+all-top-players,us,metric,cum_lost,17,65,100,80,140,105.385
+all-top-players,us,metric,cum_lost,18,58,120,80,150,116.034
+all-top-players,us,metric,cum_lost,19,52,140,90,180,131.346
+all-top-players,us,metric,cum_lost,20,35,150,120,180,148.857
+all-top-players,us,metric,cum_lost,21,30,155,122.5,207.5,159.333
+all-top-players,us,metric,cum_lost,22,20,220,140,260,190.5
+all-top-players,us,metric,cum_lost,23,16,260,212.5,270,224.375
+all-top-players,us,metric,cum_lost,24,13,270,200,300,236.923
+all-top-players,us,metric,cum_lost,25,7,290,230,310,277.143
+all-top-players,us,metric,cum_lost,26,4,310,275,327.5,292.5
+all-top-players,us,metric,cum_lost,27,4,325,275,350,300
+all-top-players,us,metric,cum_lost,28,4,350,315,382.5,347.5
+all-top-players,us,metric,cum_lost,29,4,415,317.5,490,392.5
+all-top-players,us,metric,cum_lost,30,4,475,410,490,425
+all-top-players,us,metric,cum_lost,31,4,485,410,505,430
+all-top-players,us,metric,cum_lost,32,4,485,410,505,430
+all-top-players,us,metric,cum_lost,33,4,490,410,515,435
+all-top-players,us,metric,cum_lost,34,4,525,412.5,615,502.5
+all-top-players,us,metric,cum_lost,35,4,530,412.5,622.5,505
+all-top-players,us,metric,cum_lost,36,4,555,412.5,660,517.5
+all-top-players,us,metric,cum_lost,37,3,470,355,575,463.333
+all-top-players,us,metric,cum_lost,38,3,530,385,605,483.333
+all-top-players,us,metric,exchange,1,106,0,0,0,0
+all-top-players,us,metric,exchange,2,106,0,0,0,0
+all-top-players,us,metric,exchange,3,106,0,0,0,0
+all-top-players,us,metric,exchange,4,106,0,0,0,0
+all-top-players,us,metric,exchange,5,106,0,0,0,0
+all-top-players,us,metric,exchange,6,106,0,0,0,0
+all-top-players,us,metric,exchange,7,106,0,0,0,0
+all-top-players,us,metric,exchange,8,105,0,0,0,0.952
+all-top-players,us,metric,exchange,9,105,0,0,0,0.571
+all-top-players,us,metric,exchange,10,105,0,-20,10,-2.952
+all-top-players,us,metric,exchange,11,105,0,-20,10,-4.286
+all-top-players,us,metric,exchange,12,105,0,-30,10,-5.81
+all-top-players,us,metric,exchange,13,105,-20,-30,10,-12.476
+all-top-players,us,metric,exchange,14,102,-20,-47.5,17.5,-16.373
+all-top-players,us,metric,exchange,15,95,-20,-50,10,-18
+all-top-players,us,metric,exchange,16,82,-20,-60,20,-20.732
+all-top-players,us,metric,exchange,17,65,-20,-50,20,-17.077
+all-top-players,us,metric,exchange,18,58,-20,-50,20,-14.483
+all-top-players,us,metric,exchange,19,52,-20,-70,30,-23.077
+all-top-players,us,metric,exchange,20,35,-20,-65,30,-23.429
+all-top-players,us,metric,exchange,21,30,-35,-87.5,27.5,-32
+all-top-players,us,metric,exchange,22,20,-60,-112.5,0,-55.5
+all-top-players,us,metric,exchange,23,16,-100,-120,-7.5,-71.875
+all-top-players,us,metric,exchange,24,13,-100,-130,-20,-76.154
+all-top-players,us,metric,exchange,25,7,-100,-140,-30,-77.143
+all-top-players,us,metric,exchange,26,4,-60,-85,-42.5,-67.5
+all-top-players,us,metric,exchange,27,4,-75,-92.5,-47.5,-65
+all-top-players,us,metric,exchange,28,4,-105,-145,-65,-105
+all-top-players,us,metric,exchange,29,4,-155,-170,-122.5,-137.5
+all-top-players,us,metric,exchange,30,4,-160,-170,-160,-170
+all-top-players,us,metric,exchange,31,4,-170,-185,-155,-170
+all-top-players,us,metric,exchange,32,4,-170,-185,-155,-170
+all-top-players,us,metric,exchange,33,4,-130,-145,-97.5,-112.5
+all-top-players,us,metric,exchange,34,4,-180,-197.5,-162.5,-180
+all-top-players,us,metric,exchange,35,4,-160,-182.5,-147.5,-170
+all-top-players,us,metric,exchange,36,4,-160,-190,-137.5,-167.5
+all-top-players,us,metric,exchange,37,3,-140,-150,-115,-130
+all-top-players,us,metric,exchange,38,3,-160,-180,-125,-150
 all-top-players,us,event,large cut,1,106,0,0,0,0
 all-top-players,us,event,large cut,2,106,0,0,0,0
 all-top-players,us,event,large cut,3,106,0,0,0,0
@@ -4027,6 +4293,272 @@ all-top-players,top players,metric,material_change,35,4,9,-4,14.75,1.75
 all-top-players,top players,metric,material_change,36,4,37,22,56.25,41.25
 all-top-players,top players,metric,material_change,37,3,0,-2.5,14.5,8
 all-top-players,top players,metric,material_change,38,3,8,-3,18.5,7.667
+all-top-players,top players,metric,cum_neutral,1,106,2,2,2,2
+all-top-players,top players,metric,cum_neutral,2,106,4,4,4,3.953
+all-top-players,top players,metric,cum_neutral,3,106,6,6,6,5.953
+all-top-players,top players,metric,cum_neutral,4,106,9,9,9,8.858
+all-top-players,top players,metric,cum_neutral,5,106,13,12,13,12.491
+all-top-players,top players,metric,cum_neutral,6,106,18,16,18,17.179
+all-top-players,top players,metric,cum_neutral,7,105,23,22,24,22.4
+all-top-players,top players,metric,cum_neutral,8,105,27,26,29,27.143
+all-top-players,top players,metric,cum_neutral,9,105,31,29,34,31.105
+all-top-players,top players,metric,cum_neutral,10,105,35,32,38,34.619
+all-top-players,top players,metric,cum_neutral,11,105,37,34,42,37.571
+all-top-players,top players,metric,cum_neutral,12,105,40,36,44,40.038
+all-top-players,top players,metric,cum_neutral,13,104,42,37,47,42.365
+all-top-players,top players,metric,cum_neutral,14,102,44,39,49,44.039
+all-top-players,top players,metric,cum_neutral,15,94,44,40,50,44.979
+all-top-players,top players,metric,cum_neutral,16,78,45,40.25,52,46.064
+all-top-players,top players,metric,cum_neutral,17,67,46,41,53,46.94
+all-top-players,top players,metric,cum_neutral,18,57,47,43,55,48.211
+all-top-players,top players,metric,cum_neutral,19,51,49,43,56,49.118
+all-top-players,top players,metric,cum_neutral,20,35,49,42,55.5,49.457
+all-top-players,top players,metric,cum_neutral,21,27,50,43.5,57,50.556
+all-top-players,top players,metric,cum_neutral,22,18,53.5,48.25,58.75,52.611
+all-top-players,top players,metric,cum_neutral,23,15,56,48.5,61,54.667
+all-top-players,top players,metric,cum_neutral,24,11,59,53.5,64,59.273
+all-top-players,top players,metric,cum_neutral,25,8,57.5,50.5,61.25,58.125
+all-top-players,top players,metric,cum_neutral,26,4,50,48.75,54.5,53.25
+all-top-players,top players,metric,cum_neutral,27,4,50,48.75,54.5,53.25
+all-top-players,top players,metric,cum_neutral,28,4,50,48.75,54.5,53.25
+all-top-players,top players,metric,cum_neutral,29,4,50,48.75,54.5,53.25
+all-top-players,top players,metric,cum_neutral,30,4,50,48.75,54.5,53.25
+all-top-players,top players,metric,cum_neutral,31,4,50,48.75,54.5,53.25
+all-top-players,top players,metric,cum_neutral,32,4,50,48.75,54.5,53.25
+all-top-players,top players,metric,cum_neutral,33,4,50,48.75,54.5,53.25
+all-top-players,top players,metric,cum_neutral,34,4,50.5,48.75,55.25,53.5
+all-top-players,top players,metric,cum_neutral,35,4,51,48.75,56,53.75
+all-top-players,top players,metric,cum_neutral,36,4,52.5,48.75,58.25,54.5
+all-top-players,top players,metric,cum_neutral,37,3,60,54.5,62.5,58
+all-top-players,top players,metric,cum_neutral,38,3,60,54.5,62.5,58
+all-top-players,top players,metric,cum_captured,1,106,0,0,0,0
+all-top-players,top players,metric,cum_captured,2,106,0,0,0,0
+all-top-players,top players,metric,cum_captured,3,106,0,0,0,0
+all-top-players,top players,metric,cum_captured,4,106,0,0,0,0
+all-top-players,top players,metric,cum_captured,5,106,0,0,0,0
+all-top-players,top players,metric,cum_captured,6,106,0,0,0,0
+all-top-players,top players,metric,cum_captured,7,105,0,0,0,0.01
+all-top-players,top players,metric,cum_captured,8,105,0,0,0,0.371
+all-top-players,top players,metric,cum_captured,9,105,1,0,2,1.276
+all-top-players,top players,metric,cum_captured,10,105,3,1,4,2.619
+all-top-players,top players,metric,cum_captured,11,105,4,2,6,4.267
+all-top-players,top players,metric,cum_captured,12,105,6,3,8,6.181
+all-top-players,top players,metric,cum_captured,13,104,8,4,11,8.317
+all-top-players,top players,metric,cum_captured,14,102,10,6.25,14.75,10.5
+all-top-players,top players,metric,cum_captured,15,94,11.5,7.25,16,12.266
+all-top-players,top players,metric,cum_captured,16,78,13,9.25,19,13.885
+all-top-players,top players,metric,cum_captured,17,67,14,10,21,15.194
+all-top-players,top players,metric,cum_captured,18,57,16,12,22,16.825
+all-top-players,top players,metric,cum_captured,19,51,19,13,23,18.157
+all-top-players,top players,metric,cum_captured,20,35,19,13.5,24,18.971
+all-top-players,top players,metric,cum_captured,21,27,21,14,27,20.741
+all-top-players,top players,metric,cum_captured,22,18,23,15.5,31.5,23.833
+all-top-players,top players,metric,cum_captured,23,15,30,23,34.5,28.6
+all-top-players,top players,metric,cum_captured,24,11,32,25.5,40,32
+all-top-players,top players,metric,cum_captured,25,8,33,26.5,38.25,32.25
+all-top-players,top players,metric,cum_captured,26,4,26.5,25.25,29,27.75
+all-top-players,top players,metric,cum_captured,27,4,30.5,27,34.5,31
+all-top-players,top players,metric,cum_captured,28,4,32,27.75,38.75,34.5
+all-top-players,top players,metric,cum_captured,29,4,35.5,32.75,40.25,37.5
+all-top-players,top players,metric,cum_captured,30,4,41,38.25,43.75,41
+all-top-players,top players,metric,cum_captured,31,4,44,40,47,43
+all-top-players,top players,metric,cum_captured,32,4,47.5,43.25,49.75,45.5
+all-top-players,top players,metric,cum_captured,33,4,49,45,50.5,46.5
+all-top-players,top players,metric,cum_captured,34,4,52,47.5,53.5,49
+all-top-players,top players,metric,cum_captured,35,4,55.5,50,57.25,51.75
+all-top-players,top players,metric,cum_captured,36,4,61,54.75,61,54.75
+all-top-players,top players,metric,cum_captured,37,3,61,48.5,61.5,53
+all-top-players,top players,metric,cum_captured,38,3,64,50,67,56.667
+all-top-players,top players,metric,cum_killed,1,106,0,0,0,0
+all-top-players,top players,metric,cum_killed,2,106,0,0,0,0
+all-top-players,top players,metric,cum_killed,3,106,0,0,0,0
+all-top-players,top players,metric,cum_killed,4,106,0,0,0,0
+all-top-players,top players,metric,cum_killed,5,106,0,0,0,0
+all-top-players,top players,metric,cum_killed,6,106,0,0,0,0
+all-top-players,top players,metric,cum_killed,7,105,0,0,0,0.095
+all-top-players,top players,metric,cum_killed,8,105,0,0,0,3.81
+all-top-players,top players,metric,cum_killed,9,105,10,0,20,13.905
+all-top-players,top players,metric,cum_killed,10,105,20,0,40,23.905
+all-top-players,top players,metric,cum_killed,11,105,30,10,60,37.238
+all-top-players,top players,metric,cum_killed,12,105,50,20,80,50.952
+all-top-players,top players,metric,cum_killed,13,104,70,30,100,66.731
+all-top-players,top players,metric,cum_killed,14,102,80,40,110,79.314
+all-top-players,top players,metric,cum_killed,15,94,90,60,127.5,92.128
+all-top-players,top players,metric,cum_killed,16,78,105,72.5,140,104.231
+all-top-players,top players,metric,cum_killed,17,67,120,80,150,112.836
+all-top-players,top players,metric,cum_killed,18,57,120,80,160,126.842
+all-top-players,top players,metric,cum_killed,19,51,140,90,180,139.216
+all-top-players,top players,metric,cum_killed,20,35,150,120,205,157.143
+all-top-players,top players,metric,cum_killed,21,27,170,125,240,170.741
+all-top-players,top players,metric,cum_killed,22,18,235,167.5,267.5,208.333
+all-top-players,top players,metric,cum_killed,23,15,260,195,300,232.667
+all-top-players,top players,metric,cum_killed,24,11,290,215,310,256.364
+all-top-players,top players,metric,cum_killed,25,8,295,252.5,327.5,292.5
+all-top-players,top players,metric,cum_killed,26,4,325,275,350,300
+all-top-players,top players,metric,cum_killed,27,4,350,315,382.5,347.5
+all-top-players,top players,metric,cum_killed,28,4,415,317.5,490,392.5
+all-top-players,top players,metric,cum_killed,29,4,475,410,490,425
+all-top-players,top players,metric,cum_killed,30,4,485,410,505,430
+all-top-players,top players,metric,cum_killed,31,4,485,410,505,430
+all-top-players,top players,metric,cum_killed,32,4,490,410,515,435
+all-top-players,top players,metric,cum_killed,33,4,500,412.5,542.5,455
+all-top-players,top players,metric,cum_killed,34,4,500,412.5,545,457.5
+all-top-players,top players,metric,cum_killed,35,4,500,412.5,557.5,470
+all-top-players,top players,metric,cum_killed,36,4,500,412.5,567.5,480
+all-top-players,top players,metric,cum_killed,37,3,470,355,575,463.333
+all-top-players,top players,metric,cum_killed,38,3,470,355,630,500
+all-top-players,top players,metric,cum_killed_fight,1,106,0,0,0,0
+all-top-players,top players,metric,cum_killed_fight,2,106,0,0,0,0
+all-top-players,top players,metric,cum_killed_fight,3,106,0,0,0,0
+all-top-players,top players,metric,cum_killed_fight,4,106,0,0,0,0
+all-top-players,top players,metric,cum_killed_fight,5,106,0,0,0,0
+all-top-players,top players,metric,cum_killed_fight,6,106,0,0,0,0
+all-top-players,top players,metric,cum_killed_fight,7,105,0,0,0,0.095
+all-top-players,top players,metric,cum_killed_fight,8,105,0,0,0,1.238
+all-top-players,top players,metric,cum_killed_fight,9,105,0,0,10,4.381
+all-top-players,top players,metric,cum_killed_fight,10,105,10,0,10,6.857
+all-top-players,top players,metric,cum_killed_fight,11,105,10,0,20,10.762
+all-top-players,top players,metric,cum_killed_fight,12,105,20,10,20,15.524
+all-top-players,top players,metric,cum_killed_fight,13,104,20,10,30,19.615
+all-top-players,top players,metric,cum_killed_fight,14,102,20,10,30,22.353
+all-top-players,top players,metric,cum_killed_fight,15,94,30,10,40,26.809
+all-top-players,top players,metric,cum_killed_fight,16,78,30,20,40,31.026
+all-top-players,top players,metric,cum_killed_fight,17,67,40,20,50,34.179
+all-top-players,top players,metric,cum_killed_fight,18,57,40,20,50,38.772
+all-top-players,top players,metric,cum_killed_fight,19,51,40,30,50,41.765
+all-top-players,top players,metric,cum_killed_fight,20,35,50,40,60,49.143
+all-top-players,top players,metric,cum_killed_fight,21,27,50,40,60,55.185
+all-top-players,top players,metric,cum_killed_fight,22,18,60,50,77.5,66.111
+all-top-players,top players,metric,cum_killed_fight,23,15,60,60,100,74
+all-top-players,top players,metric,cum_killed_fight,24,11,70,60,100,80
+all-top-players,top players,metric,cum_killed_fight,25,8,90,60,100,81.25
+all-top-players,top players,metric,cum_killed_fight,26,4,95,77.5,105,87.5
+all-top-players,top players,metric,cum_killed_fight,27,4,105,80,130,105
+all-top-players,top players,metric,cum_killed_fight,28,4,120,105,130,115
+all-top-players,top players,metric,cum_killed_fight,29,4,135,107.5,152.5,125
+all-top-players,top players,metric,cum_killed_fight,30,4,135,107.5,155,127.5
+all-top-players,top players,metric,cum_killed_fight,31,4,135,107.5,155,127.5
+all-top-players,top players,metric,cum_killed_fight,32,4,140,115,157.5,132.5
+all-top-players,top players,metric,cum_killed_fight,33,4,140,117.5,157.5,135
+all-top-players,top players,metric,cum_killed_fight,34,4,140,117.5,160,137.5
+all-top-players,top players,metric,cum_killed_fight,35,4,140,117.5,165,142.5
+all-top-players,top players,metric,cum_killed_fight,36,4,140,117.5,167.5,145
+all-top-players,top players,metric,cum_killed_fight,37,3,150,115,185,150
+all-top-players,top players,metric,cum_killed_fight,38,3,150,115,190,153.333
+all-top-players,top players,metric,cum_killed_cut,1,106,0,0,0,0
+all-top-players,top players,metric,cum_killed_cut,2,106,0,0,0,0
+all-top-players,top players,metric,cum_killed_cut,3,106,0,0,0,0
+all-top-players,top players,metric,cum_killed_cut,4,106,0,0,0,0
+all-top-players,top players,metric,cum_killed_cut,5,106,0,0,0,0
+all-top-players,top players,metric,cum_killed_cut,6,106,0,0,0,0
+all-top-players,top players,metric,cum_killed_cut,7,105,0,0,0,0
+all-top-players,top players,metric,cum_killed_cut,8,105,0,0,0,2.571
+all-top-players,top players,metric,cum_killed_cut,9,105,0,0,10,9.524
+all-top-players,top players,metric,cum_killed_cut,10,105,10,0,20,17.048
+all-top-players,top players,metric,cum_killed_cut,11,105,20,0,40,26.476
+all-top-players,top players,metric,cum_killed_cut,12,105,30,10,50,35.429
+all-top-players,top players,metric,cum_killed_cut,13,104,40,20,70,47.115
+all-top-players,top players,metric,cum_killed_cut,14,102,50,22.5,87.5,56.961
+all-top-players,top players,metric,cum_killed_cut,15,94,60,32.5,90,65.319
+all-top-players,top players,metric,cum_killed_cut,16,78,70,50,100,73.205
+all-top-players,top players,metric,cum_killed_cut,17,67,80,50,100,78.657
+all-top-players,top players,metric,cum_killed_cut,18,57,80,50,120,88.07
+all-top-players,top players,metric,cum_killed_cut,19,51,90,65,130,97.451
+all-top-players,top players,metric,cum_killed_cut,20,35,100,75,145,108
+all-top-players,top players,metric,cum_killed_cut,21,27,120,80,150,115.556
+all-top-players,top players,metric,cum_killed_cut,22,18,150,100,185,142.222
+all-top-players,top players,metric,cum_killed_cut,23,15,170,135,200,158.667
+all-top-players,top players,metric,cum_killed_cut,24,11,180,150,200,176.364
+all-top-players,top players,metric,cum_killed_cut,25,8,200,177.5,230,211.25
+all-top-players,top players,metric,cum_killed_cut,26,4,215,190,237.5,212.5
+all-top-players,top players,metric,cum_killed_cut,27,4,245,212.5,275,242.5
+all-top-players,top players,metric,cum_killed_cut,28,4,275,212.5,340,277.5
+all-top-players,top players,metric,cum_killed_cut,29,4,320,280,340,300
+all-top-players,top players,metric,cum_killed_cut,30,4,325,280,347.5,302.5
+all-top-players,top players,metric,cum_killed_cut,31,4,325,280,347.5,302.5
+all-top-players,top players,metric,cum_killed_cut,32,4,325,280,347.5,302.5
+all-top-players,top players,metric,cum_killed_cut,33,4,360,280,400,320
+all-top-players,top players,metric,cum_killed_cut,34,4,360,280,400,320
+all-top-players,top players,metric,cum_killed_cut,35,4,360,280,407.5,327.5
+all-top-players,top players,metric,cum_killed_cut,36,4,360,280,415,335
+all-top-players,top players,metric,cum_killed_cut,37,3,320,240,390,313.333
+all-top-players,top players,metric,cum_killed_cut,38,3,320,240,440,346.667
+all-top-players,top players,metric,cum_lost,1,106,0,0,0,0
+all-top-players,top players,metric,cum_lost,2,106,0,0,0,0
+all-top-players,top players,metric,cum_lost,3,106,0,0,0,0
+all-top-players,top players,metric,cum_lost,4,106,0,0,0,0
+all-top-players,top players,metric,cum_lost,5,106,0,0,0,0
+all-top-players,top players,metric,cum_lost,6,106,0,0,0,0
+all-top-players,top players,metric,cum_lost,7,105,0,0,0,0
+all-top-players,top players,metric,cum_lost,8,105,0,0,0,0.476
+all-top-players,top players,metric,cum_lost,9,105,0,0,10,5.238
+all-top-players,top players,metric,cum_lost,10,105,0,0,20,10.857
+all-top-players,top players,metric,cum_lost,11,105,20,0,30,20.19
+all-top-players,top players,metric,cum_lost,12,105,30,10,50,31.619
+all-top-players,top players,metric,cum_lost,13,104,35,20,60,38.846
+all-top-players,top players,metric,cum_lost,14,102,50,20,70,51.078
+all-top-players,top players,metric,cum_lost,15,94,60,30,90,63.298
+all-top-players,top players,metric,cum_lost,16,78,75,42.5,100,76.154
+all-top-players,top players,metric,cum_lost,17,67,90,55,110,85.672
+all-top-players,top players,metric,cum_lost,18,57,100,70,130,100.351
+all-top-players,top players,metric,cum_lost,19,51,100,80,125,104.706
+all-top-players,top players,metric,cum_lost,20,35,120,100,150,125.429
+all-top-players,top players,metric,cum_lost,21,27,110,100,155,127.407
+all-top-players,top players,metric,cum_lost,22,18,120,100,157.5,132.778
+all-top-players,top players,metric,cum_lost,23,15,140,105,180,147.333
+all-top-players,top players,metric,cum_lost,24,11,160,100,210,161.818
+all-top-players,top players,metric,cum_lost,25,8,190,130,257.5,187.5
+all-top-players,top players,metric,cum_lost,26,4,275,220,280,225
+all-top-players,top players,metric,cum_lost,27,4,275,220,290,235
+all-top-players,top players,metric,cum_lost,28,4,290,227.5,305,242.5
+all-top-players,top players,metric,cum_lost,29,4,315,250,320,255
+all-top-players,top players,metric,cum_lost,30,4,315,250,320,255
+all-top-players,top players,metric,cum_lost,31,4,320,257.5,322.5,260
+all-top-players,top players,metric,cum_lost,32,4,320,257.5,322.5,260
+all-top-players,top players,metric,cum_lost,33,4,360,265,417.5,322.5
+all-top-players,top players,metric,cum_lost,34,4,360,265,417.5,322.5
+all-top-players,top players,metric,cum_lost,35,4,385,265,455,335
+all-top-players,top players,metric,cum_lost,36,4,395,275,470,350
+all-top-players,top players,metric,cum_lost,37,3,330,240,425,333.333
+all-top-players,top players,metric,cum_lost,38,3,330,240,425,333.333
+all-top-players,top players,metric,exchange,1,106,0,0,0,0
+all-top-players,top players,metric,exchange,2,106,0,0,0,0
+all-top-players,top players,metric,exchange,3,106,0,0,0,0
+all-top-players,top players,metric,exchange,4,106,0,0,0,0
+all-top-players,top players,metric,exchange,5,106,0,0,0,0
+all-top-players,top players,metric,exchange,6,106,0,0,0,0
+all-top-players,top players,metric,exchange,7,105,0,0,0,0.095
+all-top-players,top players,metric,exchange,8,105,0,0,0,3.333
+all-top-players,top players,metric,exchange,9,105,0,0,20,8.667
+all-top-players,top players,metric,exchange,10,105,10,0,30,13.048
+all-top-players,top players,metric,exchange,11,105,20,0,30,17.048
+all-top-players,top players,metric,exchange,12,105,20,0,40,19.333
+all-top-players,top players,metric,exchange,13,104,30,0,60,27.885
+all-top-players,top players,metric,exchange,14,102,30,0,60,28.235
+all-top-players,top players,metric,exchange,15,94,30,-7.5,67.5,28.83
+all-top-players,top players,metric,exchange,16,78,30,-10,60,28.077
+all-top-players,top players,metric,exchange,17,67,30,-10,70,27.164
+all-top-players,top players,metric,exchange,18,57,20,-20,70,26.491
+all-top-players,top players,metric,exchange,19,51,20,-10,70,34.51
+all-top-players,top players,metric,exchange,20,35,20,-30,90,31.714
+all-top-players,top players,metric,exchange,21,27,50,-15,110,43.333
+all-top-players,top players,metric,exchange,22,18,105,22.5,127.5,75.556
+all-top-players,top players,metric,exchange,23,15,110,55,130,85.333
+all-top-players,top players,metric,exchange,24,11,110,40,140,94.545
+all-top-players,top players,metric,exchange,25,8,115,70,135,105
+all-top-players,top players,metric,exchange,26,4,75,57.5,92.5,75
+all-top-players,top players,metric,exchange,27,4,110,77.5,145,112.5
+all-top-players,top players,metric,exchange,28,4,155,125,180,150
+all-top-players,top players,metric,exchange,29,4,160,160,170,170
+all-top-players,top players,metric,exchange,30,4,170,160,185,175
+all-top-players,top players,metric,exchange,31,4,170,155,185,170
+all-top-players,top players,metric,exchange,32,4,175,155,195,175
+all-top-players,top players,metric,exchange,33,4,155,112.5,175,132.5
+all-top-players,top players,metric,exchange,34,4,155,112.5,177.5,135
+all-top-players,top players,metric,exchange,35,4,155,112.5,177.5,135
+all-top-players,top players,metric,exchange,36,4,135,105,160,130
+all-top-players,top players,metric,exchange,37,3,140,115,150,130
+all-top-players,top players,metric,exchange,38,3,140,115,205,166.667
 all-top-players,top players,event,large cut,1,106,0,0,0,0
 all-top-players,top players,event,large cut,2,106,0,0,0,0
 all-top-players,top players,event,large cut,3,106,0,0,0,0

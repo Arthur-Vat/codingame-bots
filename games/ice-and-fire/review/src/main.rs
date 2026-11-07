@@ -9,9 +9,9 @@
 //! ice-and-fire-review bank --out FILE [--count N] [--seed S] [--jobs N] GAME.json...
 //! ice-and-fire-review screening [--jobs N] GAME.json... > screening.md
 //! ice-and-fire-review codingame --out DIR [--kind ranking] [--strict] LOG.json... > check.md
-//! ice-and-fire-review codingame-report --data DIR --me NAME [--kinds ranking,test] [--top N] --out DIR
-//! ice-and-fire-review codingame-moments --data DIR --me NAME [--kinds ranking,test] [--top N] [--examples K] [--out DIR] > moments.md
-//! ice-and-fire-review codingame-judge --data DIR --me NAME --judge BIN [--players A,B | --top N] [--tries N] [--limit PLIES] [--jobs N] --out DIR
+//! ice-and-fire-review codingame-report --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--top N] --out DIR
+//! ice-and-fire-review codingame-moments --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--top N] [--examples K] [--out DIR] > moments.md
+//! ice-and-fire-review codingame-judge --data DIR --me NAME --judge BIN [--release NAME] [--players A,B | --top N] [--tries N] [--limit PLIES] [--jobs N] --out DIR
 //! ```
 
 mod bank;
@@ -168,6 +168,11 @@ enum Command {
         /// Only the games of this batch.
         #[arg(long)]
         batch: Option<String>,
+        /// Only our games played by this release (the index's `release`,
+        /// which test games carry and ranking games get from
+        /// `scripts/codingame.sh fetch --backfill-releases`).
+        #[arg(long)]
+        release: Option<String>,
         /// Profiles for the top N players of the snapshot that have a game.
         #[arg(long, default_value_t = 10)]
         top: usize,
@@ -207,6 +212,9 @@ enum Command {
         /// Only the games of this batch.
         #[arg(long)]
         batch: Option<String>,
+        /// Only our games played by this release (see `codingame-report`).
+        #[arg(long)]
+        release: Option<String>,
         /// The focus players are the top N of the snapshot that we met.
         #[arg(long, default_value_t = 10)]
         top: usize,
@@ -240,6 +248,9 @@ enum Command {
         /// (`target/release/ice-and-fire-bot-plan`).
         #[arg(long)]
         judge: PathBuf,
+        /// Only our games played by this release (see `codingame-report`).
+        #[arg(long)]
+        release: Option<String>,
         /// The top N players of the newest leaderboard snapshot that have a game.
         #[arg(long, default_value_t = 10)]
         top: usize,
@@ -433,6 +444,7 @@ fn run(cli: Cli) -> Result<(), String> {
             me,
             kinds,
             batch,
+            release,
             top,
             players,
             leaderboard,
@@ -445,6 +457,7 @@ fn run(cli: Cli) -> Result<(), String> {
                 me,
                 kinds,
                 batch,
+                release,
                 top,
                 players,
                 leaderboard,
@@ -466,6 +479,7 @@ fn run(cli: Cli) -> Result<(), String> {
             me,
             kinds,
             batch,
+            release,
             top,
             examples,
             leaderboard,
@@ -478,6 +492,7 @@ fn run(cli: Cli) -> Result<(), String> {
                     me,
                     kinds,
                     batch,
+                    release,
                     top,
                     players: Vec::new(),
                     leaderboard,
@@ -493,6 +508,7 @@ fn run(cli: Cli) -> Result<(), String> {
             data,
             me,
             judge,
+            release,
             top,
             players,
             tries,
@@ -506,6 +522,7 @@ fn run(cli: Cli) -> Result<(), String> {
                 me,
                 judge,
                 players,
+                release,
                 top,
                 tries,
                 limit,

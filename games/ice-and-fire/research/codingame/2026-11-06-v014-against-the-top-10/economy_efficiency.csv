@@ -1,0 +1,141 @@
+group,name,turn,games,median
+top players,cells per gold,5,106,0.325
+top players,cells per gold,10,105,0.308
+top players,cells per gold,15,94,0.214
+top players,cells per gold,20,35,0.17
+top players,cells per gold,30,4,0.131
+top players,kills per gold on units,5,106,0
+top players,kills per gold on units,10,105,0.25
+top players,kills per gold on units,15,94,0.5
+top players,kills per gold on units,20,35,0.649
+top players,kills per gold on units,30,4,0.96
+"us, same games",cells per gold,5,106,0.4
+"us, same games",cells per gold,10,105,0.27
+"us, same games",cells per gold,15,95,0.191
+"us, same games",cells per gold,20,35,0.157
+"us, same games",cells per gold,30,4,0.12
+"us, same games",kills per gold on units,5,106,0
+"us, same games",kills per gold on units,10,105,0
+"us, same games",kills per gold on units,15,95,0.357
+"us, same games",kills per gold on units,20,35,0.467
+"us, same games",kills per gold on units,30,4,0.572
+our wins,cells per gold,5,170,0.325
+our wins,cells per gold,10,168,0.296
+our wins,cells per gold,15,124,0.223
+our wins,cells per gold,20,49,0.183
+our wins,cells per gold,30,4,0.117
+our wins,kills per gold on units,5,170,0
+our wins,kills per gold on units,10,168,0.273
+our wins,kills per gold on units,15,124,0.455
+our wins,kills per gold on units,20,49,0.467
+our wins,kills per gold on units,30,4,0.518
+our losses,cells per gold,5,147,0.4
+our losses,cells per gold,10,147,0.272
+our losses,cells per gold,15,134,0.191
+our losses,cells per gold,20,64,0.157
+our losses,cells per gold,30,12,0.133
+our losses,kills per gold on units,5,147,0
+our losses,kills per gold on units,10,147,0
+our losses,kills per gold on units,15,134,0.333
+our losses,kills per gold on units,20,64,0.5
+our losses,kills per gold on units,30,12,0.626
+zasmu,cells per gold,5,10,0.325
+zasmu,cells per gold,10,10,0.288
+zasmu,cells per gold,15,10,0.176
+zasmu,cells per gold,20,5,0.145
+zasmu,cells per gold,30,0,
+zasmu,kills per gold on units,5,10,0
+zasmu,kills per gold on units,10,10,0.275
+zasmu,kills per gold on units,15,10,0.361
+zasmu,kills per gold on units,20,5,0.52
+zasmu,kills per gold on units,30,0,
+Pduhard-,cells per gold,5,10,0.325
+Pduhard-,cells per gold,10,10,0.378
+Pduhard-,cells per gold,15,9,0.27
+Pduhard-,cells per gold,20,4,0.218
+Pduhard-,cells per gold,30,0,
+Pduhard-,kills per gold on units,5,10,0
+Pduhard-,kills per gold on units,10,10,0.268
+Pduhard-,kills per gold on units,15,9,0.5
+Pduhard-,kills per gold on units,20,4,0.579
+Pduhard-,kills per gold on units,30,0,
+karliso,cells per gold,5,10,0.325
+karliso,cells per gold,10,10,0.293
+karliso,cells per gold,15,8,0.211
+karliso,cells per gold,20,2,0.169
+karliso,cells per gold,30,1,0.135
+karliso,kills per gold on units,5,10,0
+karliso,kills per gold on units,10,10,0
+karliso,kills per gold on units,15,8,0.5
+karliso,kills per gold on units,20,2,0.839
+karliso,kills per gold on units,30,1,1.04
+_iaz,cells per gold,5,10,0.325
+_iaz,cells per gold,10,10,0.31
+_iaz,cells per gold,15,9,0.218
+_iaz,cells per gold,20,3,0.209
+_iaz,cells per gold,30,1,0.123
+_iaz,kills per gold on units,5,10,0
+_iaz,kills per gold on units,10,10,0.348
+_iaz,kills per gold on units,15,9,0.579
+_iaz,kills per gold on units,20,3,0.531
+_iaz,kills per gold on units,30,1,0.893
+reCurse,cells per gold,5,10,0.325
+reCurse,cells per gold,10,10,0.305
+reCurse,cells per gold,15,8,0.184
+reCurse,cells per gold,20,5,0.153
+reCurse,cells per gold,30,0,
+reCurse,kills per gold on units,5,10,0
+reCurse,kills per gold on units,10,10,0.133
+reCurse,kills per gold on units,15,8,0.577
+reCurse,kills per gold on units,20,5,0.643
+reCurse,kills per gold on units,30,0,
+_iahelka,cells per gold,5,10,0.325
+_iahelka,cells per gold,10,10,0.32
+_iahelka,cells per gold,15,9,0.234
+_iahelka,cells per gold,20,2,0.183
+_iahelka,cells per gold,30,0,
+_iahelka,kills per gold on units,5,10,0
+_iahelka,kills per gold on units,10,10,0.254
+_iahelka,kills per gold on units,15,9,0.588
+_iahelka,kills per gold on units,20,2,0.688
+_iahelka,kills per gold on units,30,0,
+Waffle3z,cells per gold,5,11,0.325
+Waffle3z,cells per gold,10,11,0.262
+Waffle3z,cells per gold,15,10,0.19
+Waffle3z,cells per gold,20,2,0.128
+Waffle3z,cells per gold,30,0,
+Waffle3z,kills per gold on units,5,11,0
+Waffle3z,kills per gold on units,10,11,0.222
+Waffle3z,kills per gold on units,15,10,0.439
+Waffle3z,kills per gold on units,20,2,0.722
+Waffle3z,kills per gold on units,30,0,
+Zylo,cells per gold,5,10,0.325
+Zylo,cells per gold,10,10,0.269
+Zylo,cells per gold,15,10,0.21
+Zylo,cells per gold,20,6,0.174
+Zylo,cells per gold,30,1,0.127
+Zylo,kills per gold on units,5,10,0
+Zylo,kills per gold on units,10,10,0.275
+Zylo,kills per gold on units,15,10,0.5
+Zylo,kills per gold on units,20,6,0.681
+Zylo,kills per gold on units,30,1,1
+NinjaDoggy,cells per gold,5,12,0.325
+NinjaDoggy,cells per gold,10,11,0.322
+NinjaDoggy,cells per gold,15,11,0.208
+NinjaDoggy,cells per gold,20,3,0.167
+NinjaDoggy,cells per gold,30,1,0.161
+NinjaDoggy,kills per gold on units,5,12,0
+NinjaDoggy,kills per gold on units,10,11,0.429
+NinjaDoggy,kills per gold on units,15,11,0.773
+NinjaDoggy,kills per gold on units,20,3,0.767
+NinjaDoggy,kills per gold on units,30,1,0.92
+aCat,cells per gold,5,13,0.367
+aCat,cells per gold,10,13,0.333
+aCat,cells per gold,15,10,0.245
+aCat,cells per gold,20,3,0.265
+aCat,cells per gold,30,0,
+aCat,kills per gold on units,5,13,0
+aCat,kills per gold on units,10,13,0.25
+aCat,kills per gold on units,15,10,0.531
+aCat,kills per gold on units,20,3,0.667
+aCat,kills per gold on units,30,0,

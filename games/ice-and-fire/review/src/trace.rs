@@ -89,6 +89,13 @@ pub fn metrics() -> Vec<Metric> {
         ("lost", "Cells of this side the enemy took in its last turn."),
         ("cells_change", "The change of this side's active cells since the start of its previous turn."),
         ("material_change", "The change of this side's material since the start of its previous turn."),
+        ("cum_neutral", "Neutral cells this side has taken so far (summed over its own turns)."),
+        ("cum_captured", "Enemy cells this side has taken so far."),
+        ("cum_killed", "Training cost (10, 20 or 30 by level) of the enemy units this side has removed so far: the sum of cum_killed_fight and cum_killed_cut."),
+        ("cum_killed_fight", "Training cost of the enemy units this side has taken by moving or training onto them so far."),
+        ("cum_killed_cut", "Training cost of the enemy units that died so far because this side's play cut them off from their HQ (they die at their owner's next turn); a debt wipe-out is not a kill."),
+        ("cum_lost", "Training cost of this side's units lost so far, by any cause: taken, cut off or lost to debt."),
+        ("exchange", "cum_killed less cum_lost: what this side has won in units against what it has lost."),
     ]
     .iter()
     .map(|(key, meaning)| Metric {
@@ -238,6 +245,23 @@ pub struct Flow {
     /// Active cells and material at the start of this side's previous
     /// turn, if it had one.
     pub before: Option<(i64, i64)>,
+    /// What the side has taken and lost up to this point.
+    pub cum: Cum,
+}
+
+/// What a side has taken and lost over its turns so far: the numbers behind
+/// the `cum_*` metrics (cells, and training cost of units).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Cum {
+    /// Neutral and enemy cells taken.
+    pub neutral: i64,
+    pub captured: i64,
+    /// Enemy units removed by the side's moves and trainings.
+    pub killed_fight: i64,
+    /// Enemy units that died because the side's play cut them off.
+    pub killed_cut: i64,
+    /// Own units lost, by any cause.
+    pub lost: i64,
 }
 
 /// Manhattan distance between two cells.
@@ -286,6 +310,17 @@ pub fn side_metrics(state: &State, seat: usize, flow: &Flow) -> Vec<i64> {
         material,
     ];
     out.extend(shape_metrics(state, seat, material, flow));
+    let c = flow.cum;
+    let killed = c.killed_fight + c.killed_cut;
+    out.extend([
+        c.neutral,
+        c.captured,
+        killed,
+        c.killed_fight,
+        c.killed_cut,
+        c.lost,
+        killed - c.lost,
+    ]);
     out
 }
 
@@ -427,6 +462,76 @@ fn turn_flow(state: &State, commands: &[Command]) -> Flow {
     flow
 }
 
+/// The training cost of the unit on `cell` (10, 20 or 30), 0 if none.
+fn unit_cost(state: &State, cell: usize) -> i64 {
+    state.unit_level(cell).map_or(0, |l| 10 * i64::from(l))
+}
+
+/// The training cost of the enemy's units that one turn removed, by cause
+/// (RULES.md, "Start of a player's turn" and "Moving"): see [`losses`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Losses {
+    /// Units taken by a move or a training onto them, during the turn.
+    pub fight: i64,
+    /// Units on cells the turn cut off from their HQ: they die at their
+    /// owner's start of turn, and count as kills of the side whose play cut
+    /// them off (the units were on active cells before the turn).
+    pub cut: i64,
+    /// Units lost to the owner's own play at its start of turn: debt wipes
+    /// out the army, and the rare unit trained on a cell the owner had
+    /// already cut off. Not a kill.
+    pub debt: i64,
+}
+
+impl Losses {
+    /// Everything the owner lost.
+    pub fn total(&self) -> i64 {
+        self.fight + self.cut + self.debt
+    }
+}
+
+/// What `commands`, the turn of the player to act in `before`, did to the
+/// enemy's units, given `after`, the state once the turn is played and the
+/// enemy's start of turn done. The commands are replayed on a copy to see
+/// the units each removes; the cut-off deaths are the enemy units, active
+/// before the turn, that stand on inactive cells once the commands are
+/// done; of the other units that disappeared at the start of turn, the rest
+/// is debt. Nothing dies at a start of turn if the game ended in the turn.
+pub fn losses(before: &State, commands: &[Command], after: &State) -> Losses {
+    let seat = before.to_act();
+    let other = 1 - seat;
+    let mut sim = before.clone();
+    let mut out = Losses::default();
+    for &command in commands {
+        let standing: Vec<(usize, i64)> = sim
+            .units(other)
+            .iter()
+            .map(|c| (c, unit_cost(&sim, c)))
+            .collect();
+        if !sim.apply(command) {
+            continue;
+        }
+        out.fight += standing
+            .iter()
+            .filter(|(c, _)| !sim.units(other).test(*c))
+            .map(|(_, v)| v)
+            .sum::<i64>();
+    }
+    if after.outcome().is_some() {
+        return out;
+    }
+    let dying = sim.units(other).and_not(sim.active(other));
+    let cut = dying & before.active(other);
+    out.cut = cut.iter().map(|c| unit_cost(&sim, c)).sum();
+    out.debt = sim
+        .units(other)
+        .iter()
+        .filter(|&c| !cut.test(c) && !after.units(other).test(c))
+        .map(|c| unit_cost(&sim, c))
+        .sum();
+    out
+}
+
 /// Replays `record` (a Bronze game) into a trace named `name`.
 pub fn trace(name: &str, record: &Record) -> Trace {
     let map = generate(record.seed, ice_and_fire_referee::League::Bronze);
@@ -443,6 +548,7 @@ pub fn trace(name: &str, record: &Record) -> Trace {
     }; 2];
     // Each side's units at the end of its last turn.
     let mut units_after: [Option<i64>; 2] = [None; 2];
+    let mut cum = [Cum::default(); 2];
     for answers in &record.turns {
         if state.outcome().is_some() {
             break;
@@ -460,6 +566,9 @@ pub fn trace(name: &str, record: &Record) -> Trace {
             .cloned()
             .unwrap_or_default();
         let commands: Vec<Command> = line.split(';').filter_map(|p| parse(p.trim())).collect();
+        for (side, flow) in flows.iter_mut().enumerate() {
+            flow.cum = cum[side];
+        }
         for (side, after) in units_after.iter().enumerate() {
             if let Some(after) = after {
                 flows[side].units_lost = (after - state.unit_count(side) as i64).max(0);
@@ -493,8 +602,17 @@ pub fn trace(name: &str, record: &Record) -> Trace {
         let start = (snapshot.metrics[seat][3], snapshot.metrics[seat][14]);
         let mut flow = turn_flow(&state, &commands);
         let enemy_before = state.owned(other);
+        let own_before = state.owned(seat);
+        let before = state.clone();
         state.play_turn(&commands);
         flow.captured = i64::from((state.owned(seat) & enemy_before).count());
+        let neutral = state.owned(seat).and_not(own_before).and_not(enemy_before);
+        let dead = losses(&before, &commands, &state);
+        cum[seat].neutral += i64::from(neutral.count());
+        cum[seat].captured += flow.captured;
+        cum[seat].killed_fight += dead.fight;
+        cum[seat].killed_cut += dead.cut;
+        cum[other].lost += dead.total();
         flow.kept_share = if gold > 0 {
             state.gold(seat).max(0) * 100 / gold
         } else {

@@ -54,6 +54,7 @@ fn request(dir: &Path, judge: PathBuf) -> Request {
         me: "Tarleya".to_string(),
         judge,
         players: vec![],
+        release: None,
         top: 10,
         tries: 7,
         limit: None,

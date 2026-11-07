@@ -42,15 +42,22 @@ use crate::trace::{Phase, Trace, SIDES};
 pub mod chart;
 mod curves;
 mod data;
+mod economy;
 mod output;
 mod signals;
 mod spending;
+mod versions;
 pub use curves::{
     stats, Comparison, Curve, CurveSet, Curves, Point, SepCell, SepRow, Stats, SEPARATED,
 };
 pub use data::DataGroup;
+pub use economy::{
+    Economy, EconomyHooks, Efficiency, EfficiencyRow, ExchangeRow, LeadRow, MixRow, Role, TempoRow,
+    UpkeepRow,
+};
 pub use output::report_files;
 pub use spending::{SpendCell, SpendGroup, Spending};
+pub use versions::{Change, Snapshot, SnapshotRow, TrackedAgent, VersionRow, Versions};
 
 /// Samples smaller than this are flagged in the report.
 pub const SMALL: usize = 5;
@@ -93,10 +100,17 @@ pub trait Profiling {
     /// the rules carried out, by category (for example "train level 2"); a
     /// category is listed only if something was spent on it.
     fn spending(trace: &Trace, ply: usize) -> Vec<(String, i64)>;
+    /// What the game says about economy and fighting (which metrics hold
+    /// the exchange of units, how efficiency and the investment mix are
+    /// read): `None` for a game without them, which leaves the economy
+    /// tables empty.
+    fn economy() -> Option<EconomyHooks> {
+        None
+    }
 }
 
 /// What the report must know about a game besides its trace.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GameMeta {
     pub game_id: u64,
     /// How it was played: `ranking`, `test`, `replay`.
@@ -104,6 +118,11 @@ pub struct GameMeta {
     pub batch: Option<String>,
     /// Our seat, or `None` when we are not a player.
     pub our_seat: Option<usize>,
+    /// The agent (submission) id of each seat's player, when the index
+    /// names it: a player who changes its code changes its agent id.
+    pub agent_ids: [Option<u64>; 2],
+    /// The day the game ended, `YYYY-MM-DD`.
+    pub date: Option<String>,
 }
 
 /// A game that could not be used, and why.
@@ -128,6 +147,9 @@ pub struct Input {
     /// What the game says about how its traces were made (for example
     /// which commands they hold).
     pub notes: Vec<String>,
+    /// Every leaderboard snapshot of the data directory, for the agent ids
+    /// of the top players by day.
+    pub snapshots: Vec<Snapshot>,
 }
 
 /// Which players get a profile.
@@ -287,6 +309,10 @@ pub struct Profile {
     pub moments: Vec<MomentRow>,
     pub openings: Vec<OpeningRow>,
     pub wins: Wins,
+    /// The agent ids the player appeared with in the games, with their
+    /// results against us (more than one when it changed its code), the
+    /// first seen first.
+    pub versions: Vec<VersionRow>,
 }
 
 /// Moments against us in our losses, for one kind and group of opponents.
@@ -346,6 +372,11 @@ pub struct Analysis {
     pub weaknesses: Weaknesses,
     pub curves: Curves,
     pub spending: Spending,
+    /// Economy or fighting: exchange of units, efficiency, investment mix,
+    /// upkeep burden, tempo and the value of a lead.
+    pub economy: Economy,
+    /// The top players' agent ids by day.
+    pub versions: Versions,
     /// The data files `data_files` makes, one a group of games.
     pub data: Vec<DataGroup>,
     pub games: Vec<GameList>,
@@ -480,6 +511,8 @@ pub fn analyze<P: Profiling>(input: &Input, options: &Options) -> Analysis {
         curves: curves::curves::<P>(&groups),
         data: groups.iter().map(data::Group::summary).collect(),
         spending: spending::spending::<P>(&games, &focus),
+        economy: economy::economy::<P>(&games, &focus, &groups),
+        versions: versions::versions(&input.snapshots, options),
         games: game_lists(&games, &input.ranks),
     }
 }
@@ -581,6 +614,7 @@ pub fn focus_players(
 
 /// One game of a focus player.
 struct Mine<'a> {
+    meta: &'a GameMeta,
     trace: &'a Trace,
     /// Their seat, and ours if we are the other player.
     seat: usize,
@@ -597,7 +631,12 @@ fn profile<P: Profiling>(
         .filter_map(|(meta, trace)| {
             let seat = seat_of(trace, player)?;
             let us = meta.our_seat.filter(|&s| s < 2 && s != seat);
-            Some(Mine { trace, seat, us })
+            Some(Mine {
+                meta,
+                trace,
+                seat,
+                us,
+            })
         })
         .collect();
     let mut vs_us = [Tally::default(), Tally::default()];
@@ -625,7 +664,21 @@ fn profile<P: Profiling>(
         moments: moment_rows(&mine),
         openings: opening_rows::<P>(&mine),
         wins: win_rows(&mine),
+        versions: versions::version_rows(&mine_versions(&mine)),
     }
+}
+
+/// For `versions::version_rows`: each game's agent id of the player, its
+/// day, and the player's result against us (`None` if we were not the
+/// opponent).
+fn mine_versions(mine: &[Mine]) -> Vec<versions::Seen> {
+    mine.iter()
+        .map(|g| versions::Seen {
+            agent_id: g.meta.agent_ids[g.seat],
+            date: g.meta.date.clone(),
+            theirs: g.us.map(|_| result(g.trace, g.seat)),
+        })
+        .collect()
 }
 
 /// The mean of `seat`'s values of metric `index` over its plies in `phase`.
