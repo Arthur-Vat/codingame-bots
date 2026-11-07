@@ -478,7 +478,7 @@ pub struct Losses {
     /// them off (the units were on active cells before the turn).
     pub cut: i64,
     /// Units lost to the owner's own play at its start of turn: debt wipes
-    /// out the army, and the rare unit trained on a cell the owner had
+    /// out the army, and the rare unit moved onto a cell the owner had
     /// already cut off. Not a kill.
     pub debt: i64,
 }

@@ -94,7 +94,7 @@ pub struct TrackedAgent {
     pub snapshot: String,
     pub rank: u32,
     pub agent_id: Option<u64>,
-    /// The agent id differs from the one in the previous day's snapshot.
+    /// The agent id differs from the one of the last earlier day on which the player was listed.
     pub changed: bool,
 }
 
