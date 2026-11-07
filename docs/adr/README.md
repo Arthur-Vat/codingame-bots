@@ -58,7 +58,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0054](0054-local-checks-follow-ci-scopes.md) | Local checks follow CI's scopes | Accepted |
 | [0055](0055-pin-rust-in-the-repository.md) | Pin CodinGame's Rust in the repository | Accepted |
 | [0056](0056-codingame-game-analysis.md) | Game analysis: CodinGame games recorded, rebuilt and analysed by a generic framework | Accepted; decision 6 completed by 0057 |
-| [0057](0057-daily-collection-of-codingame-games.md) | Daily collection of CodinGame games against the top players | Accepted; decision 1 superseded by 0058 |
+| [0057](0057-daily-collection-of-codingame-games.md) | Daily collection of CodinGame games against the top players | Accepted; decisions 1 and 5 superseded by 0058 |
 | [0058](0058-codingame-collection-on-github-actions.md) | The daily collection of CodinGame games runs on GitHub Actions | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
