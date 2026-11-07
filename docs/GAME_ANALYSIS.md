@@ -162,9 +162,9 @@ The record of ADR 0027 gains an optional `origin` (CodinGame's game id, the kind
 
 ## Fetching and playing
 
-Games are also collected every day, by a scheduled GitHub workflow with a token the owner stored ([ADR 0058](adr/0058-codingame-collection-on-github-actions.md)): up to 500 test games of the current release against that day's top 10 ([ADR 0057](adr/0057-daily-collection-of-codingame-games.md)).
+Games are also collected every day, by a scheduled GitHub workflow with a token the owner stored ([ADR 0058](adr/0058-codingame-collection-on-github-actions.md)): up to 500 test games of the current release against that day's top 10 ([ADR 0057](adr/0057-daily-collection-of-codingame-games.md)). The workflow `codingame-collect.yml` runs every 3 hours: it fetches our new ranking games, plays the day's batch as far as the quota floor (`--keep 100`) and the job's time (`--max-hours 5.25`) allow, resuming the same batch run after run, pushes to `claude/codingame-games`, and writes a job summary (games fetched and played, won and lost by opponent, quota left, top-10 agent changes). `scripts/codingame.sh` exits 3 when CodinGame refuses the token; `batch --max-games N` stops after N games (a trial). Setup and renewal are in [CODINGAME.md](CODINGAME.md), section "The collection's token"; the checks, in skill `collect-games`.
 
-`scripts/codingame.sh` (a shell script with `curl` and `jq`, like the other scripts; the token is ADR 0047's, read from `~/.config/codingame/token` and never printed):
+`scripts/codingame.sh` (a shell script with `curl` and `jq`, like the other scripts; the token is read from `~/.config/codingame/token` (a session's, ADR 0047) or from `CODINGAME_TOKEN_FILE` (the workflow's, ADR 0058) and never printed):
 
 - `fetch GAME [--submission ID]`: takes a leaderboard snapshot, pages through the ranking games of the current (or a given) submission and stores the logs of the games that ended and are not stored yet. Rerunning it fetches only what is new.
 - `fetch-ids GAME [--kind ranking|test|replay] ID...`: stores the logs of games whose ids the owner gives (for example top players' games seen on CodinGame's website), with index lines of that kind (`ranking` by default). Ids are never guessed or scanned.

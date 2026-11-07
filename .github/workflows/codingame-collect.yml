@@ -1,0 +1,128 @@
+name: CodinGame collection
+
+# The collection of CodinGame games (ADR 0058, which supersedes ADR 0057's
+# session): every 3 hours it fetches our new ranking games and plays the day's
+# batch of test games, the current release against the top 10 (50 games each
+# on the 50 fixed maps), with scripts/codingame.sh, which keeps 100 of the
+# 600 test games of 24 hours for the owner and stops by itself before the
+# job's time runs out (--max-hours 5.25 of the job's 350 minutes). What it
+# stores is pushed, never forced, to the branch claude/codingame-games, which
+# is never merged. A run that finds the day's batch done, or the floor
+# reached, ends at once and cleanly. Runs never overlap.
+#
+# The token: the secret CODINGAME_TOKEN of the environment `codingame`, whose
+# deployment branches the owner limits to main, so that no other branch's run
+# gets it. This workflow never runs for a pull request or a push, and the
+# secret is read by one step only: the one that writes it to a file with mode
+# 600 (scripts/tests/codingame-collect-test.sh checks all of this). Setup and
+# renewal: docs/CODINGAME.md, section "The collection's token".
+#
+# By hand (workflow_dispatch): `play` false only prints the day's plan;
+# `max_games` stops the batch after that many games (a trial: 2).
+on:
+  schedule:
+    # Every 3 hours, off the hour.
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+    inputs:
+      play:
+        description: "Play the test games (unchecked: only print the plan, push nothing)"
+        type: boolean
+        default: true
+      max_games:
+        description: "Stop the batch after this many games (a trial run: 2); empty: no limit"
+        type: number
+        required: false
+
+permissions:
+  contents: write # to push the branch claude/codingame-games
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  GAME: ice-and-fire
+
+jobs:
+  collect:
+    name: Fetch and play
+    runs-on: ubuntu-latest
+    environment: codingame
+    timeout-minutes: 350
+    concurrency:
+      group: codingame-collect
+      cancel-in-progress: false
+    steps:
+      # main (a scheduled run is on the default branch); the data branch is
+      # fetched by scripts/codingame.sh.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Write the token to a file
+        env:
+          CODINGAME_TOKEN: ${{ secrets.CODINGAME_TOKEN }}
+        run: |
+          set +x
+          if [ -z "$CODINGAME_TOKEN" ]; then
+            echo "::error title=CodinGame::the secret CODINGAME_TOKEN of the environment codingame is empty or missing (docs/CODINGAME.md, section The collection's token)"
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$CODINGAME_TOKEN" >"$RUNNER_TEMP/codingame-token"
+          echo "CODINGAME_TOKEN_FILE=$RUNNER_TEMP/codingame-token" >>"$GITHUB_ENV"
+      - name: Fetch our games and play the day's batch
+        env:
+          PLAY: ${{ github.event_name != 'workflow_dispatch' || inputs.play }}
+          MAX_GAMES: ${{ github.event_name == 'workflow_dispatch' && inputs.max_games || '' }}
+          CODINGAME_COMMIT_TRAILERS: "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        run: |
+          set +e
+          log="$RUNNER_TEMP/collect"
+          mkdir -p "$log"
+          release="$(ls "games/$GAME/releases/$GAME"-v*.rs | sort -V | tail -n 1 | xargs basename | sed 's/\.rs$//')"
+          if [ -z "$release" ]; then
+            echo "::error title=CodinGame::no release in games/$GAME/releases"
+            exit 1
+          fi
+          day="$(date -u +%F)"
+          status=0
+
+          # A refused token ends the run: nothing else would work.
+          refused() {
+            echo "::error title=CodinGame::CodinGame refused the token: the owner makes a new one (ADR 0058)"
+            exit 1
+          }
+
+          if [ "$PLAY" = true ]; then
+            scripts/codingame.sh fetch "$GAME" --push 2>&1 | tee "$log/fetch.log"
+            code=${PIPESTATUS[0]}
+            [ "$code" -ne 3 ] || refused
+            [ "$code" -eq 0 ] || status=1
+          else
+            echo "play is unchecked: no fetch (it would push), only the plan of the batch" >"$log/fetch.log"
+          fi
+
+          args=(batch "$GAME" "games/$GAME/releases/$release.rs" --top 10 --games-per-opponent 50
+            --seeds "games/$GAME/codingame-seeds-50.txt" --keep 100 --max-hours 5.25
+            --name "$day-$release-daily")
+          if [ -n "$MAX_GAMES" ]; then args+=(--max-games "$MAX_GAMES"); fi
+          if [ "$PLAY" = true ]; then args+=(--play --push); fi
+          scripts/codingame.sh "${args[@]}" 2>&1 | tee "$log/batch.log"
+          code=${PIPESTATUS[0]}
+          [ "$code" -ne 3 ] || refused
+          [ "$code" -eq 0 ] || status=1
+          if [ "$status" -ne 0 ]; then
+            echo "::error title=CodinGame::the collection had a failure (see this step's log; what was stored is pushed)"
+          fi
+          exit "$status"
+      - name: Summary
+        if: ${{ always() }}
+        run: |
+          git fetch --quiet origin +refs/heads/claude/codingame-games:refs/remotes/origin/claude/codingame-games || true
+          scripts/codingame-summary.sh "$GAME" "$RUNNER_TEMP/collect/fetch.log" "$RUNNER_TEMP/collect/batch.log" >>"$GITHUB_STEP_SUMMARY"
+      - name: Remove the token file
+        if: ${{ always() }}
+        run: rm -f "$RUNNER_TEMP/codingame-token"

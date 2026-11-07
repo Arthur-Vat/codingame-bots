@@ -4,8 +4,8 @@
 #
 #   fetch GAME [--submission ID] [--backfill-releases] [--data DIR] [--push]
 #   batch GAME RELEASE.rs [--top N] [--opponents NAME,...] [--games-per-opponent K]
-#         [--seeds FILE] [--name NAME] [--keep N] [--max-hours H] [--play]
-#         [--data DIR] [--push]
+#         [--seeds FILE] [--name NAME] [--keep N] [--max-hours H] [--max-games N]
+#         [--play] [--data DIR] [--push]
 #   replay GAME RELEASE.rs [--opponents NAME,...] [--all] [--limit N] [--play]
 #         [--data DIR] [--push]
 #   fetch-ids GAME [--kind ranking|test|replay] ID... [--data DIR] [--push]
@@ -30,7 +30,8 @@
 # stops the batch, cleanly (exit 0, the games left stay planned), before a
 # test game that would leave fewer than N of the 600 of the last 24 hours (read
 # with GET /limits before every game; a limit that cannot be read stops it with
-# status 1); --max-hours H stops it cleanly after H hours (ADR 0057).
+# status 1); --max-hours H stops it cleanly after H hours (ADR 0057);
+# --max-games N stops it cleanly after N games started in this run (a trial).
 #
 # The ranking games get the release that played them from
 # the releases file of the game (games/GAME/codingame-submissions.txt; lines: submission id, release, UTC date
@@ -56,7 +57,9 @@
 # CODINGAME_RETRY_WAIT (seconds before a failed test game is tried again, 60),
 # CODINGAME_NOW (the time as epoch seconds, or a file holding them; for tests).
 # Needs bash, curl and jq. Exit status: 0 done, 1 a request or a game failed,
-# 2 usage or setup error. Runs in Claude's Linux sessions only (not Windows).
+# 2 usage or setup error, 3 CodinGame refused the token (401: expired or
+# revoked; what was stored is still published). Runs on Linux (Claude's
+# sessions, the collection workflow of ADR 0058), not on Windows.
 set -euo pipefail
 
 usage() {
@@ -65,7 +68,7 @@ Usage: scripts/codingame.sh fetch GAME [--submission ID] [--backfill-releases]
                 [--data DIR] [--push]
        scripts/codingame.sh batch GAME RELEASE.rs [--top N] [--opponents NAME,...]
                 [--games-per-opponent K] [--seeds FILE] [--name NAME] [--keep N]
-                [--max-hours H] [--play] [--data DIR] [--push]
+                [--max-hours H] [--max-games N] [--play] [--data DIR] [--push]
        scripts/codingame.sh replay GAME RELEASE.rs [--opponents NAME,...] [--all]
                 [--limit N] [--play] [--data DIR] [--push]
        scripts/codingame.sh fetch-ids GAME [--kind ranking|test|replay] ID...
@@ -86,6 +89,8 @@ Usage: scripts/codingame.sh fetch GAME [--submission ID] [--backfill-releases]
   --keep N         batch: stop (exit 0, games left planned) before a test game that
                    would leave fewer than N of the 600 of the last 24 hours (0: no floor)
   --max-hours H    batch: stop (exit 0, resumable) after H hours (decimals allowed)
+  --max-games N    batch: stop (exit 0, resumable) after N test games started in
+                   this run, played or failed (a trial run)
   --backfill-releases
                    fetch: only add "release" to the ranking games of the index
                    from the game's file of releases; no request
@@ -134,7 +139,7 @@ data_dir=""
 push=false
 top=10 per_opp=10 limit=20
 opp_names="" seeds_file="" batch_name="" kind="ranking"
-play=false all=false keep=0 max_hours="" backfill=false
+play=false all=false keep=0 max_hours="" max_games=0 backfill=false
 while (($#)); do
   case "$1" in
     -h | --help)
@@ -181,6 +186,12 @@ while (($#)); do
       only batch
       [[ ${2:-} =~ ^([0-9]+\.?[0-9]*|\.[0-9]+)$ ]] || bad_usage
       max_hours="$2"
+      shift 2
+      ;;
+    --max-games)
+      only batch
+      [[ ${2:-} =~ ^[1-9][0-9]*$ ]] || bad_usage
+      max_games="$2"
       shift 2
       ;;
     --backfill-releases)
@@ -337,6 +348,11 @@ request() { # request <path with query> <body file> [JSON file to POST]
     sleep "$pace"
     status="$("$curl_bin" -sS -D "$scratch/headers" -o "$2" -w '%{http_code}' \
       -H "@$scratch/auth" ${post[@]+"${post[@]}"} "$url" 2>"$scratch/curl-err")" || status=000
+    if [[ $status == 401 ]]; then
+      # The exit trap still publishes what was stored; status 3 is the
+      # workflow's cue to annotate the failure.
+      die 3 "CodinGame refused the token (401 from $url): it expired or was revoked; the owner makes a new one (ADR 0058, docs/CODINGAME.md)"
+    fi
     if [[ $status != 429 ]]; then
       return 0
     fi
@@ -850,7 +866,7 @@ find_resumable() { # find_resumable <release sha256>
 
 run_batch() {
   local name sha state total i planned stored=0 opp aid opts att result failed_games streak=0 stopped=false resumable
-  local streak_games=() started
+  local streak_games=() started started_games=0
   started="$(now_epoch)"
   if [[ -n $max_hours ]]; then
     deadline=$((started + $(awk -v h="$max_hours" 'BEGIN { printf "%d", h * 3600 }')))
@@ -917,6 +933,11 @@ run_batch() {
       echo "stopped: $max_hours hours have passed; the games left stay planned. Run the same command to resume."
       break
     fi
+    if ((max_games > 0 && started_games >= max_games)); then
+      echo "stopped: $max_games games started in this run; the games left stay planned. Run the same command to resume."
+      break
+    fi
+    started_games=$((started_games + 1))
     opp="$(jq -r --argjson i "$i" '.games[$i].opponent' "$scratch/batch.json")"
     aid="$(jq -r --argjson i "$i" '.games[$i].agent_id' "$scratch/batch.json")"
     opts="$(jq -r --argjson i "$i" '.games[$i].game_options' "$scratch/batch.json")"

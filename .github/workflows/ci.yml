@@ -628,6 +628,14 @@ jobs:
         if: ${{ !cancelled() }}
         # jq and git are preinstalled on ubuntu-latest.
         run: scripts/annotate.sh run "CodinGame fetch test" scripts/tests/codingame-test.sh
+      - name: Test the CodinGame token helper
+        if: ${{ !cancelled() }}
+        # jq is preinstalled on ubuntu-latest.
+        run: scripts/annotate.sh run "CodinGame token test" scripts/tests/codingame-token-test.sh
+      - name: Check the CodinGame collection workflow
+        if: ${{ !cancelled() }}
+        # jq and git are preinstalled on ubuntu-latest.
+        run: scripts/annotate.sh run "CodinGame collection test" scripts/tests/codingame-collect-test.sh
       - name: Lint the workflows
         if: ${{ !cancelled() }}
         # The image is pinned; it includes shellcheck, which also lints the

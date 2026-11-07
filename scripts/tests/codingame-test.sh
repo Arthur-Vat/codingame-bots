@@ -847,6 +847,36 @@ run batch toy "$release_file" --backfill-releases
 expect "backfill is for fetch only" "$rc" 2
 rm games/toy/codingame-submissions.txt
 
+# --- the workflow's needs (ADR 0058): --max-games and a refused token ---
+
+# --max-games N stops, cleanly, after N games started in this run.
+enqueue "$post_name" 01 200 "$(done_reply 5501 "$(tglog 9501 seed=1 Gamma 33 0 '[300,100]')" 5 20)"
+enqueue "$post_name" 02 200 "$(done_reply 5502 "$(tglog 9502 seed=2 Gamma 33 0 '[300,100]')" 4 10)"
+before="$(posts)"
+run batch toy "$release_file" --opponents Gamma --games-per-opponent 4 --name tmax --max-games 2 --play --data "$bdata"
+expect "max-games exit" "$rc" 0
+expect "max-games plays two games" "$(($(posts) - before))" 2
+contains "max-games message" "$out" "stopped: 2 games started in this run"
+expect "max-games leaves games planned" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/tmax.json")" "done,done,planned,planned"
+run batch toy "$release_file" --opponents Gamma --max-games 0
+expect "max-games needs a positive number" "$rc" 2
+run fetch toy --max-games 2
+expect "max-games is for batch only" "$rc" 2
+
+# A 401 is a refused token: exit 3, a message that names ADR 0058, nothing
+# played, and the token's text nowhere.
+echo 401 >"$STUB_DIR/$puzzle_url.status"
+before="$(posts)"
+run batch toy "$release_file" --opponents Gamma --games-per-opponent 2 --name tauth --play --data "$bdata"
+expect "401 exit" "$rc" 3
+contains "401 message" "$out" "CodinGame refused the token"
+contains "401 names the ADR" "$out" "ADR 0058"
+lacks "401 does not print the token" "$out" "$(cat "$CODINGAME_TOKEN_FILE")"
+expect "401 plays nothing" "$(posts)" "$before"
+run fetch toy --data "$tmp_dir/data401"
+expect "401 on fetch exits 3 too" "$rc" 3
+rm "$STUB_DIR/$puzzle_url.status"
+
 if ((failures > 0)); then
   echo "$failures of $checks codingame checks failed" >&2
   exit 1
