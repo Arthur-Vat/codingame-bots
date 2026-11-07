@@ -6,16 +6,22 @@
 //! generic: every table is built from the trace's metric keys, the hooks'
 //! event names and the trace's moments and phases, never from a game's
 //! names. [`analyze`] computes an [`Analysis`] (which serializes to the
-//! JSON of `--json`, see below) and [`markdown`] renders it.
+//! JSON of `--json`, see below), [`report_files`] writes its tables as CSV with
+//! a README and `signals.md`, [`chart::files`] draws the curves and
+//! [`data_files`] writes every metric and event turn by turn.
 //!
 //! # The JSON
 //!
-//! `Analysis` has the five sections of the report: `sources` (games by
+//! `Analysis` has the sections of the report: `sources` (games by
 //! kind and batch, the leaderboard snapshot, the games left out),
 //! `opponents` (one row per opponent of ours), `profiles` (one per focus
 //! player: results by seat, `metrics` at game turns and by phase, `events`,
-//! `moments`, `openings`, `wins`), `weaknesses` (our losses) and `games`
-//! (game ids per opponent). Medians and means are `null` when there is no
+//! `moments`, `openings`, `wins`), `weaknesses` (our losses, and the same
+//! control in our wins), `curves` (the medians turn by turn of the top
+//! players against us and of our wins against our losses, with the AUC of
+//! each turn and the turn from which the groups stay apart; [`chart`] draws
+//! them as SVG), `spending` (what each group spent by category and phase,
+//! and the share left unspent) and `games` (game ids per opponent). Medians and means are `null` when there is no
 //! data; counts of games sit beside every number (`games`, `n`).
 //!
 //! A side's metrics "at turn t" are read right after its own ply of turn t:
@@ -33,8 +39,18 @@ use serde::Serialize;
 
 use crate::trace::{Phase, Trace, SIDES};
 
-pub(crate) mod render;
-pub use render::markdown;
+pub mod chart;
+mod curves;
+mod data;
+mod output;
+mod signals;
+mod spending;
+pub use curves::{
+    stats, Comparison, Curve, CurveSet, Curves, Point, SepCell, SepRow, Stats, SEPARATED,
+};
+pub use data::DataGroup;
+pub use output::report_files;
+pub use spending::{SpendCell, SpendGroup, Spending};
 
 /// Samples smaller than this are flagged in the report.
 pub const SMALL: usize = 5;
@@ -62,6 +78,21 @@ pub trait Profiling {
     /// same from both seats (a game with a symmetric board maps the second
     /// seat's cells onto the first's).
     fn opening(trace: &Trace, seat: usize, plies: usize) -> Vec<String>;
+    /// Whether less of the metric `key` is better (a gap, an exposure, a
+    /// loss), which the comparisons of curves read the other way.
+    fn lower_is_better(key: &str) -> bool;
+    /// The game turns at which the comparisons rank the metrics by how well
+    /// they tell two groups of games apart, increasing: a few turns in the
+    /// middle of a typical game.
+    fn compare_turns() -> Vec<u32>;
+    /// The key of the metric that holds the resource a player spends (for
+    /// example gold) at the start of each ply, which the spending section
+    /// reads as the amount available.
+    fn resource() -> &'static str;
+    /// What the player to act of `ply` spent of the resource in the commands
+    /// the rules carried out, by category (for example "train level 2"); a
+    /// category is listed only if something was spent on it.
+    fn spending(trace: &Trace, ply: usize) -> Vec<(String, i64)>;
 }
 
 /// What the report must know about a game besides its trace.
@@ -274,6 +305,10 @@ pub struct StaysBelow {
     pub key: String,
     pub losses: usize,
     pub below: usize,
+    /// The same in our wins, as a control: a metric that is just as often
+    /// below in wins does not decide the games.
+    pub wins: usize,
+    pub wins_below: usize,
     pub median_turn: Option<f64>,
 }
 
@@ -309,6 +344,10 @@ pub struct Analysis {
     pub opponents: Vec<OpponentRow>,
     pub profiles: Vec<Profile>,
     pub weaknesses: Weaknesses,
+    pub curves: Curves,
+    pub spending: Spending,
+    /// The data files `data_files` makes, one a group of games.
+    pub data: Vec<DataGroup>,
     pub games: Vec<GameList>,
 }
 
@@ -428,6 +467,7 @@ fn phase_index(phase: Phase) -> usize {
 pub fn analyze<P: Profiling>(input: &Input, options: &Options) -> Analysis {
     let games: Vec<&(GameMeta, Trace)> = input.games.iter().collect();
     let focus = focus_players(&games, &input.ranks, options);
+    let groups = data::groups(&games, &focus);
     let profiles = focus
         .iter()
         .map(|name| profile::<P>(name, &games, &input.ranks))
@@ -437,8 +477,20 @@ pub fn analyze<P: Profiling>(input: &Input, options: &Options) -> Analysis {
         opponents: opponents(&games, &input.ranks),
         profiles,
         weaknesses: weaknesses::<P>(&games, &focus),
+        curves: curves::curves::<P>(&groups),
+        data: groups.iter().map(data::Group::summary).collect(),
+        spending: spending::spending::<P>(&games, &focus),
         games: game_lists(&games, &input.ranks),
     }
+}
+
+/// The data files (file name and CSV): every metric and event at every game
+/// turn, for each focus player against us, all of them, our wins and our
+/// losses (see [`DataGroup`]).
+pub fn data_files<P: Profiling>(input: &Input, options: &Options) -> Vec<(String, String)> {
+    let games: Vec<&(GameMeta, Trace)> = input.games.iter().collect();
+    let focus = focus_players(&games, &input.ranks, options);
+    data::files::<P>(&data::groups(&games, &focus))
 }
 
 pub(crate) fn sources(input: &Input) -> Sources {
@@ -819,6 +871,13 @@ fn weaknesses<P: Profiling>(games: &[&(GameMeta, Trace)], focus: &[String]) -> W
             by_phase,
         })
         .collect();
+    let wins: Vec<(usize, &Trace)> = games
+        .iter()
+        .filter_map(|(meta, trace)| {
+            let (us, _) = versus(meta, trace)?;
+            (trace.winner == Some(us)).then_some((us, trace))
+        })
+        .collect();
     let stays = P::key_metrics()
         .into_iter()
         .map(|key| {
@@ -830,6 +889,11 @@ fn weaknesses<P: Profiling>(games: &[&(GameMeta, Trace)], focus: &[String]) -> W
                 key: key.to_string(),
                 losses: losses.len(),
                 below: from.len(),
+                wins: wins.len(),
+                wins_below: wins
+                    .iter()
+                    .filter(|(us, trace)| stays_below(trace, *us, key).is_some())
+                    .count(),
                 median_turn: median(&from),
             }
         })

@@ -26,6 +26,18 @@ impl Profiling for Toy {
     fn opening(_: &Trace, _: usize, _: usize) -> Vec<String> {
         Vec::new()
     }
+    fn lower_is_better(_: &str) -> bool {
+        false
+    }
+    fn compare_turns() -> Vec<u32> {
+        vec![5]
+    }
+    fn resource() -> &'static str {
+        "cells"
+    }
+    fn spending(_: &Trace, _: usize) -> Vec<(String, i64)> {
+        Vec::new()
+    }
 }
 
 impl Decisive for Toy {

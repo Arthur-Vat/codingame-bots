@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" width="640" height="320" role="img" aria-labelledby="t">
+<title id="t">material: Gold + 3 x income + 4 x cells + army + 10 x towers: a side&#39;s holdings as the bots&#39; shared evaluation counts them. The lead is its difference.</title>
+<style>text{font-family:system-ui,sans-serif}.bg{fill:#fcfcfb}.tx{fill:#0b0b0b}.mu{fill:#52514e}.gr{stroke:#e4e3df}.ds{stroke:#52514e}.s1{stroke:#2a78d6}.s2{stroke:#eb6834}.f1{fill:#2a78d6}.f2{fill:#eb6834}.halo{stroke:#fcfcfb}@media (prefers-color-scheme: dark){.bg{fill:#1a1a19}.tx{fill:#f0efec}.mu{fill:#c3c2b7}.gr{stroke:#3a3a37}.ds{stroke:#c3c2b7}.s1{stroke:#3987e5}.s2{stroke:#d95926}.f1{fill:#3987e5}.f2{fill:#d95926}.halo{stroke:#1a1a19}}</style>
+<rect class="bg" width="640" height="320"/>
+<text class="tx" x="16" y="20.0" font-size="13" font-weight="600">material: Gold + 3 x income + 4 x cells + army + 10 x towers: a side&#39;s holdings as the bots&#39;</text>
+<text class="tx" x="16" y="36.0" font-size="13" font-weight="600">shared evaluation counts them. The lead is its difference.</text>
+<text class="mu" x="16" y="54.0" font-size="11">median per game turn; n = 10 (us) and 10 (Zylo)</text>
+<line class="s1" x1="16.0" y1="68.0" x2="34.0" y2="68.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="40.0" y="72.0" font-size="12">us</text>
+<line class="s2" x1="77.2" y1="68.0" x2="95.2" y2="68.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="101.2" y="72.0" font-size="12">Zylo</text>
+<text class="mu" x="624.0" y="72.0" font-size="11" text-anchor="end">line: median; band: middle half of the games</text>
+<line class="gr" x1="48.0" y1="276.0" x2="528.0" y2="276.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="280.0" font-size="11" text-anchor="end">0</text>
+<line class="gr" x1="48.0" y1="182.0" x2="528.0" y2="182.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="186.0" font-size="11" text-anchor="end">500</text>
+<line class="gr" x1="48.0" y1="88.0" x2="528.0" y2="88.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="92.0" font-size="11" text-anchor="end">1000</text>
+<text class="mu" x="73.3" y="292.0" font-size="11" text-anchor="middle">2</text>
+<text class="mu" x="123.8" y="292.0" font-size="11" text-anchor="middle">4</text>
+<text class="mu" x="174.3" y="292.0" font-size="11" text-anchor="middle">6</text>
+<text class="mu" x="224.8" y="292.0" font-size="11" text-anchor="middle">8</text>
+<text class="mu" x="275.4" y="292.0" font-size="11" text-anchor="middle">10</text>
+<text class="mu" x="325.9" y="292.0" font-size="11" text-anchor="middle">12</text>
+<text class="mu" x="376.4" y="292.0" font-size="11" text-anchor="middle">14</text>
+<text class="mu" x="426.9" y="292.0" font-size="11" text-anchor="middle">16</text>
+<text class="mu" x="477.5" y="292.0" font-size="11" text-anchor="middle">18</text>
+<text class="mu" x="528.0" y="292.0" font-size="11" text-anchor="middle">20</text>
+<text class="mu" x="288.0" y="308.0" font-size="11" text-anchor="middle">game turn</text>
+<line class="ds" x1="48.0" y1="88.0" x2="48.0" y2="276.0" stroke-width="1" stroke-dasharray="4 3"/>
+<text class="mu halo" x="52.0" y="100.0" font-size="11" text-anchor="start" stroke-width="3" paint-order="stroke">turn 1</text>
+<path class="f1" fill-opacity="0.15" d="M48.0 269.2 L73.3 266.4 L98.5 263.2 L123.8 258.9 L149.1 253.6 L174.3 248.4 L199.6 240.8 L224.8 231.8 L250.1 224.3 L275.4 220.5 L300.6 220.3 L325.9 211.9 L351.2 206.6 L376.4 205.6 L401.7 198.1 L426.9 193.0 L452.2 183.0 L477.5 176.7 L502.7 180.1 L528.0 195.8 L528.0 230.3 L502.7 235.6 L477.5 227.4 L452.2 217.7 L426.9 214.5 L401.7 204.7 L376.4 211.0 L351.2 218.0 L325.9 219.6 L300.6 223.4 L275.4 226.8 L250.1 231.3 L224.8 236.0 L199.6 243.0 L174.3 249.4 L149.1 254.8 L123.8 259.9 L98.5 263.2 L73.3 266.4 L48.0 269.2 Z"/>
+<path class="f2" fill-opacity="0.15" d="M48.0 267.7 L73.3 264.7 L98.5 261.3 L123.8 256.8 L149.1 250.6 L174.3 242.5 L199.6 233.7 L224.8 223.9 L250.1 214.1 L275.4 204.5 L300.6 195.8 L325.9 185.0 L351.2 178.2 L376.4 164.5 L401.7 151.4 L426.9 143.3 L452.2 137.7 L477.5 130.3 L502.7 119.0 L528.0 122.6 L528.0 182.2 L502.7 160.8 L477.5 165.7 L452.2 175.4 L426.9 178.5 L401.7 172.7 L376.4 182.1 L351.2 189.7 L325.9 199.2 L300.6 208.9 L275.4 212.5 L250.1 218.8 L224.8 228.2 L199.6 235.9 L174.3 245.1 L149.1 252.1 L123.8 257.8 L98.5 261.3 L73.3 264.7 L48.0 267.7 Z"/>
+<path class="s1" d="M48.0 269.2 L73.3 266.4 L98.5 263.2 L123.8 258.9 L149.1 253.6 L174.3 248.6 L199.6 241.9 L224.8 232.9 L250.1 228.7 L275.4 224.5 L300.6 221.1 L325.9 216.3 L351.2 213.2 L376.4 207.1 L401.7 200.1 L426.9 201.8 L452.2 195.5 L477.5 191.2 L502.7 209.8 L528.0 213.3" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<path class="s2" d="M48.0 267.7 L73.3 264.7 L98.5 261.3 L123.8 256.8 L149.1 250.6 L174.3 243.9 L199.6 234.5 L224.8 225.8 L250.1 216.3 L275.4 209.2 L300.6 201.0 L325.9 190.2 L351.2 181.8 L376.4 170.2 L401.7 161.5 L426.9 158.5 L452.2 145.8 L477.5 141.1 L502.7 140.5 L528.0 146.4" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f2" cx="540.0" cy="146.4" r="4"/>
+<text class="tx" x="549.0" y="150.4" font-size="12">Zylo</text>
+<circle class="f1" cx="540.0" cy="213.3" r="4"/>
+<text class="tx" x="549.0" y="217.3" font-size="12">us</text>
+</svg>

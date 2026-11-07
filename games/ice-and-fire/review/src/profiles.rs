@@ -14,7 +14,9 @@ use std::path::{Path, PathBuf};
 use cg_arena::codingame::{read_log, to_record};
 use cg_arena::record::Record;
 use cg_review::moments;
-use cg_review::profile::{analyze, markdown, GameMeta, Input, LeftOut, Options};
+use cg_review::profile::{
+    analyze, chart, data_files, report_files, GameMeta, Input, LeftOut, Options,
+};
 use cg_review::trace::Trace;
 use serde_json::Value;
 
@@ -324,13 +326,18 @@ fn options(request: &Request) -> Options {
     }
 }
 
-/// The report (Markdown) and its numbers (JSON).
-pub fn run(request: &Request) -> Result<(String, String), String> {
+/// The report's files (name and text: tables as CSV, charts, the data of
+/// every turn, `README.md`, `signals.md`) and its numbers (JSON).
+pub fn run(request: &Request) -> Result<(String, Vec<(String, String)>), String> {
     let input = load_input(request)?;
     let options = options(request);
     let analysis = analyze::<Hooks>(&input, &options);
     let json = serde_json::to_string_pretty(&analysis).map_err(|e| e.to_string())?;
-    Ok((markdown(&analysis), json + "\n"))
+    let mut files = chart::files(&analysis);
+    let charts = files.len();
+    files.extend(data_files::<Hooks>(&input, &options));
+    files.extend(report_files(&analysis, charts));
+    Ok((json + "\n", files))
 }
 
 /// The decisive moments of our losses, `examples` a focus player: the

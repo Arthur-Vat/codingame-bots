@@ -3,9 +3,9 @@
 
 use std::fmt::Write as _;
 
+use super::format::{num, share, sources, table};
 use super::{median_turn, Findings, Found, Loss, EXPOSURE_PLIES};
 use crate::profile::median;
-use crate::profile::render::{num, share, sources, table};
 use crate::trace::SIDES;
 
 pub(super) fn value(v: Option<i64>) -> String {

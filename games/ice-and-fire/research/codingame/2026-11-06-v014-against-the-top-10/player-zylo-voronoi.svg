@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" width="640" height="320" role="img" aria-labelledby="t">
+<title id="t">voronoi: Non-void cells nearer this side&#39;s active cells than the enemy&#39;s (a tie counts half, rounded down): the land it is likely to get.</title>
+<style>text{font-family:system-ui,sans-serif}.bg{fill:#fcfcfb}.tx{fill:#0b0b0b}.mu{fill:#52514e}.gr{stroke:#e4e3df}.ds{stroke:#52514e}.s1{stroke:#2a78d6}.s2{stroke:#eb6834}.f1{fill:#2a78d6}.f2{fill:#eb6834}.halo{stroke:#fcfcfb}@media (prefers-color-scheme: dark){.bg{fill:#1a1a19}.tx{fill:#f0efec}.mu{fill:#c3c2b7}.gr{stroke:#3a3a37}.ds{stroke:#c3c2b7}.s1{stroke:#3987e5}.s2{stroke:#d95926}.f1{fill:#3987e5}.f2{fill:#d95926}.halo{stroke:#1a1a19}}</style>
+<rect class="bg" width="640" height="320"/>
+<text class="tx" x="16" y="20.0" font-size="13" font-weight="600">voronoi: Non-void cells nearer this side&#39;s active cells than the enemy&#39;s (a tie counts half,</text>
+<text class="tx" x="16" y="36.0" font-size="13" font-weight="600">rounded down): the land it is likely to get.</text>
+<text class="mu" x="16" y="54.0" font-size="11">median per game turn; n = 10 (us) and 10 (Zylo)</text>
+<line class="s1" x1="16.0" y1="68.0" x2="34.0" y2="68.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="40.0" y="72.0" font-size="12">us</text>
+<line class="s2" x1="77.2" y1="68.0" x2="95.2" y2="68.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="101.2" y="72.0" font-size="12">Zylo</text>
+<text class="mu" x="624.0" y="72.0" font-size="11" text-anchor="end">line: median; band: middle half of the games</text>
+<line class="gr" x1="48.0" y1="276.0" x2="528.0" y2="276.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="280.0" font-size="11" text-anchor="end">0</text>
+<line class="gr" x1="48.0" y1="182.0" x2="528.0" y2="182.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="186.0" font-size="11" text-anchor="end">50</text>
+<line class="gr" x1="48.0" y1="88.0" x2="528.0" y2="88.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="92.0" font-size="11" text-anchor="end">100</text>
+<text class="mu" x="73.3" y="292.0" font-size="11" text-anchor="middle">2</text>
+<text class="mu" x="123.8" y="292.0" font-size="11" text-anchor="middle">4</text>
+<text class="mu" x="174.3" y="292.0" font-size="11" text-anchor="middle">6</text>
+<text class="mu" x="224.8" y="292.0" font-size="11" text-anchor="middle">8</text>
+<text class="mu" x="275.4" y="292.0" font-size="11" text-anchor="middle">10</text>
+<text class="mu" x="325.9" y="292.0" font-size="11" text-anchor="middle">12</text>
+<text class="mu" x="376.4" y="292.0" font-size="11" text-anchor="middle">14</text>
+<text class="mu" x="426.9" y="292.0" font-size="11" text-anchor="middle">16</text>
+<text class="mu" x="477.5" y="292.0" font-size="11" text-anchor="middle">18</text>
+<text class="mu" x="528.0" y="292.0" font-size="11" text-anchor="middle">20</text>
+<text class="mu" x="288.0" y="308.0" font-size="11" text-anchor="middle">game turn</text>
+<line class="ds" x1="149.1" y1="88.0" x2="149.1" y2="276.0" stroke-width="1" stroke-dasharray="4 3"/>
+<text class="mu halo" x="153.1" y="100.0" font-size="11" text-anchor="start" stroke-width="3" paint-order="stroke">turn 5</text>
+<path class="f1" fill-opacity="0.15" d="M48.0 163.7 L73.3 169.8 L98.5 169.8 L123.8 167.9 L149.1 172.6 L174.3 178.7 L199.6 178.2 L224.8 180.6 L250.1 179.7 L275.4 184.4 L300.6 177.8 L325.9 185.8 L351.2 188.6 L376.4 191.4 L401.7 187.2 L426.9 182.9 L452.2 180.1 L477.5 180.1 L502.7 178.2 L528.0 190.0 L528.0 236.5 L502.7 238.4 L477.5 230.4 L452.2 207.4 L426.9 206.0 L401.7 206.0 L376.4 207.9 L351.2 211.1 L325.9 205.0 L300.6 206.0 L275.4 200.8 L250.1 198.4 L224.8 183.9 L199.6 187.2 L174.3 183.4 L149.1 183.9 L123.8 180.1 L98.5 185.3 L73.3 185.3 L48.0 177.8 Z"/>
+<path class="f2" fill-opacity="0.15" d="M48.0 165.1 L73.3 165.1 L98.5 164.1 L123.8 162.3 L149.1 157.1 L174.3 160.4 L199.6 158.5 L224.8 151.4 L250.1 141.1 L275.4 134.5 L300.6 133.6 L325.9 134.1 L351.2 131.2 L376.4 135.9 L401.7 118.1 L426.9 136.4 L452.2 134.5 L477.5 113.4 L502.7 93.6 L528.0 97.4 L528.0 172.6 L502.7 178.2 L477.5 177.8 L452.2 177.8 L426.9 182.0 L401.7 171.7 L376.4 167.0 L351.2 164.6 L325.9 159.0 L300.6 170.2 L275.4 158.0 L250.1 167.0 L224.8 171.7 L199.6 173.5 L174.3 174.0 L149.1 175.4 L123.8 178.7 L98.5 177.8 L73.3 177.8 L48.0 175.4 Z"/>
+<path class="s1" d="M48.0 172.6 L73.3 181.1 L98.5 181.1 L123.8 176.4 L149.1 179.2 L174.3 182.0 L199.6 182.0 L224.8 182.0 L250.1 185.8 L275.4 186.7 L300.6 185.8 L325.9 193.3 L351.2 196.1 L376.4 196.1 L401.7 195.2 L426.9 191.4 L452.2 190.5 L477.5 198.0 L502.7 200.8 L528.0 216.8" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<path class="s2" d="M48.0 171.7 L73.3 172.6 L98.5 172.6 L123.8 171.7 L149.1 167.9 L174.3 167.0 L199.6 164.1 L224.8 160.4 L250.1 151.9 L275.4 151.0 L300.6 154.7 L325.9 152.9 L351.2 149.1 L376.4 152.9 L401.7 150.0 L426.9 164.1 L452.2 151.9 L477.5 156.6 L502.7 114.3 L528.0 123.7" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f2" cx="540.0" cy="123.7" r="4"/>
+<text class="tx" x="549.0" y="127.7" font-size="12">Zylo</text>
+<circle class="f1" cx="540.0" cy="216.8" r="4"/>
+<text class="tx" x="549.0" y="220.8" font-size="12">us</text>
+</svg>

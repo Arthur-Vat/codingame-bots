@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" width="640" height="320" role="img" aria-labelledby="t">
+<title id="t">material: Gold + 3 x income + 4 x cells + army + 10 x towers: a side&#39;s holdings as the bots&#39; shared evaluation counts them. The lead is its difference.</title>
+<style>text{font-family:system-ui,sans-serif}.bg{fill:#fcfcfb}.tx{fill:#0b0b0b}.mu{fill:#52514e}.gr{stroke:#e4e3df}.ds{stroke:#52514e}.s1{stroke:#2a78d6}.s2{stroke:#eb6834}.f1{fill:#2a78d6}.f2{fill:#eb6834}.halo{stroke:#fcfcfb}@media (prefers-color-scheme: dark){.bg{fill:#1a1a19}.tx{fill:#f0efec}.mu{fill:#c3c2b7}.gr{stroke:#3a3a37}.ds{stroke:#c3c2b7}.s1{stroke:#3987e5}.s2{stroke:#d95926}.f1{fill:#3987e5}.f2{fill:#d95926}.halo{stroke:#1a1a19}}</style>
+<rect class="bg" width="640" height="320"/>
+<text class="tx" x="16" y="20.0" font-size="13" font-weight="600">material: Gold + 3 x income + 4 x cells + army + 10 x towers: a side&#39;s holdings as the bots&#39;</text>
+<text class="tx" x="16" y="36.0" font-size="13" font-weight="600">shared evaluation counts them. The lead is its difference.</text>
+<text class="mu" x="16" y="54.0" font-size="11">median per game turn; n = 13 (us) and 13 (aCat)</text>
+<line class="s1" x1="16.0" y1="68.0" x2="34.0" y2="68.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="40.0" y="72.0" font-size="12">us</text>
+<line class="s2" x1="77.2" y1="68.0" x2="95.2" y2="68.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="101.2" y="72.0" font-size="12">aCat</text>
+<text class="mu" x="624.0" y="72.0" font-size="11" text-anchor="end">line: median; band: middle half of the games</text>
+<line class="gr" x1="48.0" y1="276.0" x2="528.0" y2="276.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="280.0" font-size="11" text-anchor="end">0</text>
+<line class="gr" x1="48.0" y1="229.0" x2="528.0" y2="229.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="233.0" font-size="11" text-anchor="end">200</text>
+<line class="gr" x1="48.0" y1="182.0" x2="528.0" y2="182.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="186.0" font-size="11" text-anchor="end">400</text>
+<line class="gr" x1="48.0" y1="135.0" x2="528.0" y2="135.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="139.0" font-size="11" text-anchor="end">600</text>
+<line class="gr" x1="48.0" y1="88.0" x2="528.0" y2="88.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="92.0" font-size="11" text-anchor="end">800</text>
+<text class="mu" x="80.0" y="292.0" font-size="11" text-anchor="middle">2</text>
+<text class="mu" x="144.0" y="292.0" font-size="11" text-anchor="middle">4</text>
+<text class="mu" x="208.0" y="292.0" font-size="11" text-anchor="middle">6</text>
+<text class="mu" x="272.0" y="292.0" font-size="11" text-anchor="middle">8</text>
+<text class="mu" x="336.0" y="292.0" font-size="11" text-anchor="middle">10</text>
+<text class="mu" x="400.0" y="292.0" font-size="11" text-anchor="middle">12</text>
+<text class="mu" x="464.0" y="292.0" font-size="11" text-anchor="middle">14</text>
+<text class="mu" x="528.0" y="292.0" font-size="11" text-anchor="middle">16</text>
+<text class="mu" x="288.0" y="308.0" font-size="11" text-anchor="middle">game turn</text>
+<path class="f1" fill-opacity="0.15" d="M48.0 267.5 L80.0 264.0 L112.0 260.0 L144.0 254.6 L176.0 248.0 L208.0 239.8 L240.0 229.9 L272.0 217.5 L304.0 208.6 L336.0 203.9 L368.0 196.1 L400.0 178.2 L432.0 174.2 L464.0 172.0 L496.0 156.5 L528.0 133.1 L528.0 218.0 L496.0 212.8 L464.0 225.9 L432.0 207.9 L400.0 209.0 L368.0 206.0 L336.0 213.7 L304.0 215.4 L272.0 223.1 L240.0 233.5 L208.0 241.9 L176.0 248.0 L144.0 254.6 L112.0 260.0 L80.0 264.0 L48.0 267.5 Z"/>
+<path class="f2" fill-opacity="0.15" d="M48.0 265.7 L80.0 261.9 L112.0 257.7 L144.0 252.0 L176.0 244.3 L208.0 235.8 L240.0 226.7 L272.0 215.6 L304.0 204.8 L336.0 192.3 L368.0 190.2 L400.0 187.9 L432.0 179.2 L464.0 173.1 L496.0 169.9 L528.0 155.7 L528.0 185.1 L496.0 193.0 L464.0 196.8 L432.0 202.9 L400.0 206.0 L368.0 212.6 L336.0 211.8 L304.0 218.9 L272.0 220.8 L240.0 229.5 L208.0 239.8 L176.0 248.0 L144.0 254.1 L112.0 259.6 L80.0 263.5 L48.0 265.7 Z"/>
+<path class="s1" d="M48.0 267.5 L80.0 264.0 L112.0 260.0 L144.0 254.6 L176.0 248.0 L208.0 241.5 L240.0 232.5 L272.0 221.0 L304.0 211.6 L336.0 207.1 L368.0 198.4 L400.0 195.2 L432.0 186.5 L464.0 190.2 L496.0 188.8 L528.0 187.2" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<path class="s2" d="M48.0 265.7 L80.0 263.5 L112.0 259.6 L144.0 254.1 L176.0 247.6 L208.0 239.3 L240.0 228.3 L272.0 218.9 L304.0 210.2 L336.0 205.0 L368.0 202.0 L400.0 198.4 L432.0 194.6 L464.0 188.1 L496.0 183.3 L528.0 180.1" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f2" cx="540.0" cy="176.6" r="4"/>
+<text class="tx" x="549.0" y="180.6" font-size="12">aCat</text>
+<circle class="f1" cx="540.0" cy="190.6" r="4"/>
+<text class="tx" x="549.0" y="194.6" font-size="12">us</text>
+</svg>

@@ -1,0 +1,61 @@
+player,event,games,theirs_in,our_games,ours_in,first_turn,mean_theirs,mean_ours
+zasmu,mine,10,10,10,8,9.5,3.2,1.3
+zasmu,tower,10,10,10,10,8,11.2,3.1
+zasmu,train level 1,10,10,10,10,1,16.8,15.7
+zasmu,train level 2,10,10,10,8,9,4.1,1.6
+zasmu,train level 3,10,5,10,6,13,1.1,0.8
+zasmu,large cut,10,2,10,4,14.5,0.3,0.4
+Pduhard-,train level 1,10,10,10,10,1,15.1,17.5
+Pduhard-,train level 2,10,10,10,7,10.5,2.7,1.4
+Pduhard-,tower,10,9,10,10,7,1.9,3.7
+Pduhard-,train level 3,10,9,10,4,13,2.3,0.6
+Pduhard-,large cut,10,7,10,2,13,1,0.4
+Pduhard-,mine,10,0,10,10,,0,1.8
+karliso,mine,10,10,10,9,11,5.2,1.4
+karliso,tower,10,10,10,10,7,6.8,3.7
+karliso,train level 1,10,10,10,10,1,17.1,16.3
+karliso,train level 2,10,10,10,6,13.5,2.9,1.7
+karliso,train level 3,10,9,10,8,16,2.6,1.7
+karliso,large cut,10,6,10,3,15.5,1.2,0.4
+_iaz,tower,10,10,10,10,8,4.9,3.4
+_iaz,train level 1,10,10,10,10,1,15.7,20.3
+_iaz,train level 2,10,9,10,6,9,4.2,1.5
+_iaz,train level 3,10,8,10,6,13,2.3,1.7
+_iaz,large cut,10,7,10,4,13,2.2,0.5
+_iaz,mine,10,3,10,10,14,1.5,1.6
+reCurse,mine,10,10,10,9,10,3.9,2
+reCurse,tower,10,10,10,10,8,4.8,2.6
+reCurse,train level 1,10,10,10,10,1,17.9,19.7
+reCurse,train level 2,10,9,10,9,10,2.9,2.8
+reCurse,train level 3,10,6,10,5,17,1.4,0.9
+reCurse,large cut,10,3,10,2,14,0.3,0.4
+_iahelka,tower,10,10,10,10,9.5,3.2,3.8
+_iahelka,train level 1,10,10,10,10,1,14.4,16.7
+_iahelka,train level 3,10,10,10,4,13,2.2,1.2
+_iahelka,large cut,10,8,10,2,13,1.8,0.2
+_iahelka,train level 2,10,8,10,8,11,3,1.3
+_iahelka,mine,10,7,10,10,8,2.6,1.5
+Waffle3z,mine,11,11,11,9,7,3.091,1.636
+Waffle3z,tower,11,11,11,10,8,3.909,2.727
+Waffle3z,train level 1,11,11,11,11,1,15.091,15.636
+Waffle3z,train level 2,11,11,11,10,10,3.182,1.727
+Waffle3z,train level 3,11,6,11,6,16.5,1.818,1.364
+Waffle3z,large cut,11,4,11,4,13,0.545,1.364
+Zylo,mine,10,10,10,9,8,3.4,1.1
+Zylo,tower,10,10,10,10,8,8.4,4.3
+Zylo,train level 1,10,10,10,10,1,23.4,19.8
+Zylo,train level 2,10,10,10,9,9.5,4.9,1.6
+Zylo,train level 3,10,9,10,4,18,2.6,1.8
+Zylo,large cut,10,6,10,2,15.5,1,0.5
+NinjaDoggy,train level 1,12,12,12,12,1,14.417,15.5
+NinjaDoggy,tower,12,11,12,11,8,6,3.167
+NinjaDoggy,train level 2,12,11,12,11,9,2.75,2.083
+NinjaDoggy,large cut,12,10,12,1,13,1.917,0.25
+NinjaDoggy,train level 3,12,10,12,6,14.5,1.583,0.917
+NinjaDoggy,mine,12,0,12,10,,0,1.25
+aCat,train level 1,13,13,13,13,1,14,18.692
+aCat,tower,13,12,13,12,10.5,1.846,2.769
+aCat,train level 2,13,12,13,11,9.5,3.923,2
+aCat,train level 3,13,7,13,4,14,1.154,0.308
+aCat,large cut,13,5,13,4,13,0.769,0.538
+aCat,mine,13,0,13,10,,0,1.231

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" width="640" height="320" role="img" aria-labelledby="t">
+<title id="t">cells: Active cells: owned and joined to the HQ.</title>
+<style>text{font-family:system-ui,sans-serif}.bg{fill:#fcfcfb}.tx{fill:#0b0b0b}.mu{fill:#52514e}.gr{stroke:#e4e3df}.ds{stroke:#52514e}.s1{stroke:#2a78d6}.s2{stroke:#eb6834}.f1{fill:#2a78d6}.f2{fill:#eb6834}.halo{stroke:#fcfcfb}@media (prefers-color-scheme: dark){.bg{fill:#1a1a19}.tx{fill:#f0efec}.mu{fill:#c3c2b7}.gr{stroke:#3a3a37}.ds{stroke:#c3c2b7}.s1{stroke:#3987e5}.s2{stroke:#d95926}.f1{fill:#3987e5}.f2{fill:#d95926}.halo{stroke:#1a1a19}}</style>
+<rect class="bg" width="640" height="320"/>
+<text class="tx" x="16" y="20.0" font-size="13" font-weight="600">cells: Active cells: owned and joined to the HQ.</text>
+<text class="mu" x="16" y="38.0" font-size="11">median per game turn; n = 11 (us) and 11 (Waffle3z)</text>
+<line class="s1" x1="16.0" y1="52.0" x2="34.0" y2="52.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="40.0" y="56.0" font-size="12">us</text>
+<line class="s2" x1="77.2" y1="52.0" x2="95.2" y2="52.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="101.2" y="56.0" font-size="12">Waffle3z</text>
+<text class="mu" x="624.0" y="56.0" font-size="11" text-anchor="end">line: median; band: middle half of the games</text>
+<line class="gr" x1="48.0" y1="276.0" x2="528.0" y2="276.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="280.0" font-size="11" text-anchor="end">0</text>
+<line class="gr" x1="48.0" y1="208.0" x2="528.0" y2="208.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="212.0" font-size="11" text-anchor="end">20</text>
+<line class="gr" x1="48.0" y1="140.0" x2="528.0" y2="140.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="144.0" font-size="11" text-anchor="end">40</text>
+<line class="gr" x1="48.0" y1="72.0" x2="528.0" y2="72.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="76.0" font-size="11" text-anchor="end">60</text>
+<text class="mu" x="80.0" y="292.0" font-size="11" text-anchor="middle">2</text>
+<text class="mu" x="144.0" y="292.0" font-size="11" text-anchor="middle">4</text>
+<text class="mu" x="208.0" y="292.0" font-size="11" text-anchor="middle">6</text>
+<text class="mu" x="272.0" y="292.0" font-size="11" text-anchor="middle">8</text>
+<text class="mu" x="336.0" y="292.0" font-size="11" text-anchor="middle">10</text>
+<text class="mu" x="400.0" y="292.0" font-size="11" text-anchor="middle">12</text>
+<text class="mu" x="464.0" y="292.0" font-size="11" text-anchor="middle">14</text>
+<text class="mu" x="528.0" y="292.0" font-size="11" text-anchor="middle">16</text>
+<text class="mu" x="288.0" y="308.0" font-size="11" text-anchor="middle">game turn</text>
+<path class="f1" fill-opacity="0.15" d="M48.0 265.8 L80.0 259.0 L112.0 252.2 L144.0 242.0 L176.0 231.8 L208.0 221.6 L240.0 209.7 L272.0 196.1 L304.0 180.8 L336.0 165.5 L368.0 167.2 L400.0 163.8 L432.0 151.9 L464.0 153.6 L496.0 135.8 L528.0 143.4 L528.0 184.2 L496.0 192.7 L464.0 189.3 L432.0 194.4 L400.0 182.5 L368.0 180.8 L336.0 187.6 L304.0 192.7 L272.0 201.2 L240.0 211.4 L208.0 223.3 L176.0 233.5 L144.0 243.7 L112.0 252.2 L80.0 259.0 L48.0 265.8 Z"/>
+<path class="f2" fill-opacity="0.15" d="M48.0 262.4 L80.0 255.6 L112.0 248.8 L144.0 238.6 L176.0 225.0 L208.0 208.0 L240.0 191.0 L272.0 170.6 L304.0 157.0 L336.0 146.8 L368.0 129.8 L400.0 114.5 L432.0 92.4 L464.0 87.3 L496.0 96.7 L528.0 87.3 L528.0 133.2 L496.0 195.2 L464.0 167.2 L432.0 162.1 L400.0 143.4 L368.0 146.8 L336.0 158.7 L304.0 174.0 L272.0 180.8 L240.0 199.5 L208.0 214.8 L176.0 228.4 L144.0 238.6 L112.0 248.8 L80.0 255.6 L48.0 262.4 Z"/>
+<path class="s1" d="M48.0 265.8 L80.0 259.0 L112.0 252.2 L144.0 242.0 L176.0 231.8 L208.0 221.6 L240.0 211.4 L272.0 197.8 L304.0 187.6 L336.0 180.8 L368.0 174.0 L400.0 170.6 L432.0 167.2 L464.0 167.2 L496.0 160.4 L528.0 153.6" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<path class="s2" d="M48.0 262.4 L80.0 255.6 L112.0 248.8 L144.0 238.6 L176.0 225.0 L208.0 208.0 L240.0 194.4 L272.0 177.4 L304.0 170.6 L336.0 153.6 L368.0 140.0 L400.0 119.6 L432.0 116.2 L464.0 102.6 L496.0 107.7 L528.0 102.6" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f2" cx="540.0" cy="102.6" r="4"/>
+<text class="tx" x="549.0" y="106.6" font-size="12">Waffle3z</text>
+<circle class="f1" cx="540.0" cy="153.6" r="4"/>
+<text class="tx" x="549.0" y="157.6" font-size="12">us</text>
+</svg>

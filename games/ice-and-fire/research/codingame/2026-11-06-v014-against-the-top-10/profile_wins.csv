@@ -1,0 +1,41 @@
+player,item,name,wins,median_turn
+zasmu,ending,the rules ended the game,9,
+zasmu,first_moment,HQ threat,4,17
+zasmu,first_moment,swing,3,15
+zasmu,first_moment,large cut,2,14.5
+Pduhard-,ending,the rules ended the game,9,
+Pduhard-,first_moment,large cut,5,13
+Pduhard-,first_moment,swing,4,11.5
+karliso,ending,the rules ended the game,10,
+karliso,first_moment,large cut,4,13.5
+karliso,first_moment,swing,4,14
+karliso,first_moment,HQ threat,1,19
+karliso,first_moment,debt,1,15
+_iaz,ending,the rules ended the game,8,
+_iaz,first_moment,large cut,4,12
+_iaz,first_moment,swing,3,11
+_iaz,first_moment,debt,1,15
+reCurse,ending,the rules ended the game,7,
+reCurse,first_moment,large cut,3,14
+reCurse,first_moment,swing,2,13.5
+reCurse,first_moment,HQ threat,1,14
+reCurse,first_moment,lead change,1,16
+_iahelka,ending,the rules ended the game,9,
+_iahelka,first_moment,swing,5,12
+_iahelka,first_moment,large cut,4,11.5
+Waffle3z,ending,the rules ended the game,7,
+Waffle3z,first_moment,swing,5,11
+Waffle3z,first_moment,large cut,2,13.5
+Zylo,ending,the rules ended the game,9,
+Zylo,first_moment,swing,6,13
+Zylo,first_moment,HQ threat,2,18.5
+Zylo,first_moment,large cut,1,15
+NinjaDoggy,ending,the rules ended the game,10,
+NinjaDoggy,first_moment,large cut,8,13
+NinjaDoggy,first_moment,HQ threat,1,15
+NinjaDoggy,first_moment,swing,1,12
+aCat,ending,the rules ended the game,8,
+aCat,first_moment,large cut,3,12
+aCat,first_moment,lead change,2,12.5
+aCat,first_moment,swing,2,9.5
+aCat,first_moment,HQ threat,1,15

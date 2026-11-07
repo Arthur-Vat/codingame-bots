@@ -3,10 +3,10 @@
 
 use std::fmt::Write as _;
 
+use super::format::num;
 use super::render::{examples, median_of_turns, with_moment};
 use super::{median_turn, Findings, Loss, EXPOSURE_PLIES};
 use crate::profile::median;
-use crate::profile::render::num;
 use crate::trace::SIDES;
 
 /// A CSV field, quoted when it needs it.

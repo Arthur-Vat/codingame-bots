@@ -85,3 +85,59 @@ fn buildings_and_large_cuts_are_events() {
     trace.moments = vec![moment(Some(1))];
     assert!(!IceAndFire::events(&trace, 2).contains(&"large cut".to_string()));
 }
+
+#[test]
+fn spending_counts_the_costs_of_the_commands_carried_out() {
+    let mut trace = real();
+    trace.plies[2].commands =
+        "BUILD MINE 1 0;BUILD TOWER 2 2;MOVE 1 1 1;TRAIN 3 0 1;TRAIN 1 0 2;TRAIN 1 0 3;WAIT"
+            .to_string();
+    assert_eq!(
+        IceAndFire::spending(&trace, 2),
+        [
+            ("mine".to_string(), 15),
+            ("tower".to_string(), 15),
+            ("train level 1".to_string(), 20),
+            ("train level 3".to_string(), 30),
+        ]
+    );
+    // A level 2 unit costs 20; a ply of moves, or past the end, nothing.
+    trace.plies[2].commands = "TRAIN 2 0 1;MOVE 1 2 2".to_string();
+    assert_eq!(
+        IceAndFire::spending(&trace, 2),
+        [("train level 2".to_string(), 20)]
+    );
+    trace.plies[2].commands = "MOVE 1 2 2".to_string();
+    assert!(IceAndFire::spending(&trace, 2).is_empty());
+    assert!(IceAndFire::spending(&trace, 10_000).is_empty());
+}
+
+#[test]
+fn what_counts_as_better_and_where_it_is_compared() {
+    for key in ["exposed30", "hq_gap", "upkeep", "cut_off", "units_lost"] {
+        assert!(IceAndFire::lower_is_better(key), "{key}");
+    }
+    for key in ["gold", "income", "cells", "army", "mines", "material"] {
+        assert!(!IceAndFire::lower_is_better(key), "{key}");
+    }
+    let keys: Vec<String> = metrics().into_iter().map(|m| m.key).collect();
+    assert!(keys.iter().any(|k| k == IceAndFire::resource()));
+    assert_eq!(IceAndFire::compare_turns(), [10, 15]);
+    for key in super::LOWER_IS_BETTER {
+        assert!(keys.iter().any(|k| k == key), "{key}");
+    }
+}
+
+/// The hook's total is what the trace says the player spent (its gold before
+/// the ply less its gold after), on every ply of a real game.
+#[test]
+fn the_spending_matches_the_gold_the_engine_takes() {
+    let trace = real();
+    for (ply, p) in trace.plies.iter().enumerate() {
+        let total: i64 = IceAndFire::spending(&trace, ply)
+            .iter()
+            .map(|(_, cost)| cost)
+            .sum();
+        assert_eq!(total, p.spent, "ply {ply}: {}", p.commands);
+    }
+}

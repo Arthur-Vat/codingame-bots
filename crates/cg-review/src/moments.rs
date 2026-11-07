@@ -20,6 +20,7 @@ use crate::profile::{
 use crate::trace::Trace;
 
 mod files;
+mod format;
 mod render;
 pub use files::files;
 pub use render::markdown;

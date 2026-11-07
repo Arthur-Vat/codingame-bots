@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" width="640" height="320" role="img" aria-labelledby="t">
+<title id="t">cells: Active cells: owned and joined to the HQ.</title>
+<style>text{font-family:system-ui,sans-serif}.bg{fill:#fcfcfb}.tx{fill:#0b0b0b}.mu{fill:#52514e}.gr{stroke:#e4e3df}.ds{stroke:#52514e}.s1{stroke:#2a78d6}.s2{stroke:#eb6834}.f1{fill:#2a78d6}.f2{fill:#eb6834}.halo{stroke:#fcfcfb}@media (prefers-color-scheme: dark){.bg{fill:#1a1a19}.tx{fill:#f0efec}.mu{fill:#c3c2b7}.gr{stroke:#3a3a37}.ds{stroke:#c3c2b7}.s1{stroke:#3987e5}.s2{stroke:#d95926}.f1{fill:#3987e5}.f2{fill:#d95926}.halo{stroke:#1a1a19}}</style>
+<rect class="bg" width="640" height="320"/>
+<text class="tx" x="16" y="20.0" font-size="13" font-weight="600">cells: Active cells: owned and joined to the HQ.</text>
+<text class="mu" x="16" y="38.0" font-size="11">median per game turn; n = 10 (us) and 10 (reCurse)</text>
+<line class="s1" x1="16.0" y1="52.0" x2="34.0" y2="52.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="40.0" y="56.0" font-size="12">us</text>
+<line class="s2" x1="77.2" y1="52.0" x2="95.2" y2="52.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="101.2" y="56.0" font-size="12">reCurse</text>
+<text class="mu" x="624.0" y="56.0" font-size="11" text-anchor="end">line: median; band: middle half of the games</text>
+<line class="gr" x1="48.0" y1="276.0" x2="528.0" y2="276.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="280.0" font-size="11" text-anchor="end">0</text>
+<line class="gr" x1="48.0" y1="208.0" x2="528.0" y2="208.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="212.0" font-size="11" text-anchor="end">20</text>
+<line class="gr" x1="48.0" y1="140.0" x2="528.0" y2="140.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="144.0" font-size="11" text-anchor="end">40</text>
+<line class="gr" x1="48.0" y1="72.0" x2="528.0" y2="72.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="76.0" font-size="11" text-anchor="end">60</text>
+<text class="mu" x="144.0" y="292.0" font-size="11" text-anchor="middle">5</text>
+<text class="mu" x="264.0" y="292.0" font-size="11" text-anchor="middle">10</text>
+<text class="mu" x="384.0" y="292.0" font-size="11" text-anchor="middle">15</text>
+<text class="mu" x="504.0" y="292.0" font-size="11" text-anchor="middle">20</text>
+<text class="mu" x="288.0" y="308.0" font-size="11" text-anchor="middle">game turn</text>
+<path class="f1" fill-opacity="0.15" d="M48.0 265.8 L72.0 259.0 L96.0 252.2 L120.0 242.0 L144.0 231.8 L168.0 221.6 L192.0 208.8 L216.0 192.7 L240.0 180.8 L264.0 163.8 L288.0 157.8 L312.0 144.2 L336.0 131.5 L360.0 127.2 L384.0 130.7 L408.0 107.7 L432.0 112.8 L456.0 115.3 L480.0 115.3 L504.0 109.4 L528.0 89.0 L528.0 129.8 L504.0 129.8 L480.0 151.9 L456.0 162.1 L432.0 168.9 L408.0 152.8 L384.0 191.0 L360.0 181.6 L336.0 153.6 L312.0 170.6 L288.0 179.1 L264.0 180.8 L240.0 190.2 L216.0 200.3 L192.0 211.4 L168.0 224.2 L144.0 234.3 L120.0 244.6 L96.0 252.2 L72.0 259.0 L48.0 265.8 Z"/>
+<path class="f2" fill-opacity="0.15" d="M48.0 262.4 L72.0 255.6 L96.0 248.8 L120.0 238.6 L144.0 225.0 L168.0 208.0 L192.0 187.6 L216.0 164.7 L240.0 144.2 L264.0 131.5 L288.0 111.1 L312.0 115.3 L336.0 113.7 L360.0 95.8 L384.0 97.5 L408.0 106.8 L432.0 96.7 L456.0 94.1 L480.0 90.7 L504.0 82.2 L528.0 89.0 L528.0 225.0 L504.0 214.8 L480.0 185.9 L456.0 167.2 L432.0 158.7 L408.0 157.0 L384.0 134.1 L360.0 124.7 L336.0 140.8 L312.0 150.2 L288.0 157.8 L264.0 155.3 L240.0 166.4 L216.0 177.4 L192.0 194.4 L168.0 210.6 L144.0 225.0 L120.0 238.6 L96.0 248.8 L72.0 255.6 L48.0 262.4 Z"/>
+<path class="s1" d="M48.0 265.8 L72.0 259.0 L96.0 252.2 L120.0 242.0 L144.0 231.8 L168.0 221.6 L192.0 211.4 L216.0 197.8 L240.0 184.2 L264.0 177.4 L288.0 168.9 L312.0 155.3 L336.0 146.8 L360.0 150.2 L384.0 150.2 L408.0 131.5 L432.0 138.3 L456.0 124.7 L480.0 124.7 L504.0 112.8 L528.0 109.4" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<path class="s2" d="M48.0 262.4 L72.0 255.6 L96.0 248.8 L120.0 238.6 L144.0 225.0 L168.0 208.0 L192.0 189.3 L216.0 172.3 L240.0 153.6 L264.0 140.0 L288.0 129.8 L312.0 140.0 L336.0 128.1 L360.0 109.4 L384.0 116.2 L408.0 123.0 L432.0 126.4 L456.0 117.9 L480.0 107.7 L504.0 102.6 L528.0 95.8" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f2" cx="540.0" cy="95.6" r="4"/>
+<text class="tx" x="549.0" y="99.6" font-size="12">reCurse</text>
+<circle class="f1" cx="540.0" cy="109.6" r="4"/>
+<text class="tx" x="549.0" y="113.6" font-size="12">us</text>
+</svg>
