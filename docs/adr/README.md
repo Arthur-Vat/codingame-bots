@@ -49,7 +49,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0044](0044-metrics-reports.md) | Metrics reports: large batches measured by code, interpreted by Haiku | Accepted |
 | [0045](0045-minified-releases.md) | Minified releases, each with a readable copy | Accepted; decision 2's three levels and decision 3 superseded by 0046 |
 | [0046](0046-one-minifier.md) | One minifier, with names outside ASCII and aliases | Accepted |
-| [0047](0047-codingame-api.md) | CodinGame's public API for test games, submissions and ranks | Accepted |
+| [0047](0047-codingame-api.md) | CodinGame's public API for test games, submissions and ranks | Accepted; decision 2 superseded for the token of the daily collection by 0058 |
 | [0049](0049-parallel-evaluations-and-nightly-league.md) | Evaluations spread over runners, and a nightly league for every game | Accepted; decision 4's shared budget and decision 4.4's ±15 Elo superseded by 0050; decision 4.2's pairs near the top superseded by 0052 |
 | [0050](0050-league-anchor-target-and-budget.md) | Every league rated from the game's first release, a nightly target of ±10 Elo, and a nightly budget per game | Accepted |
 | [0051](0051-weekly-league-pull-request.md) | A weekly scheduled task opens the league results pull request | Accepted; decisions 1 and 2 completed by 0053 |
@@ -58,7 +58,8 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0054](0054-local-checks-follow-ci-scopes.md) | Local checks follow CI's scopes | Accepted |
 | [0055](0055-pin-rust-in-the-repository.md) | Pin CodinGame's Rust in the repository | Accepted |
 | [0056](0056-codingame-game-analysis.md) | Game analysis: CodinGame games recorded, rebuilt and analysed by a generic framework | Accepted; decision 6 completed by 0057 |
-| [0057](0057-daily-collection-of-codingame-games.md) | Daily collection of CodinGame games against the top players | Accepted |
+| [0057](0057-daily-collection-of-codingame-games.md) | Daily collection of CodinGame games against the top players | Accepted; decision 1 superseded by 0058 |
+| [0058](0058-codingame-collection-on-github-actions.md) | The daily collection of CodinGame games runs on GitHub Actions | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 

@@ -1,6 +1,6 @@
 # 0057. Daily collection of CodinGame games against the top players
 
-- Status: accepted (owner, 2026-11-06)
+- Status: accepted (owner, 2026-11-06); decision 1 superseded by [0058](0058-codingame-collection-on-github-actions.md)
 - Date: 2026-11-06
 - Supersedes: [0033](0033-no-daily-scheduled-session.md), decision 1, for this one task
 - Completes: [0056](0056-codingame-game-analysis.md), decision 6
