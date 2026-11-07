@@ -11,10 +11,12 @@
 //! ice-and-fire-review codingame --out DIR [--kind ranking] [--strict] LOG.json... > check.md
 //! ice-and-fire-review codingame-report --data DIR --me NAME [--kinds ranking,test] [--top N] > report.md
 //! ice-and-fire-review codingame-moments --data DIR --me NAME [--kinds ranking,test] [--top N] [--examples K] [--out DIR] > moments.md
+//! ice-and-fire-review codingame-judge --data DIR --me NAME --judge BIN [--players A,B | --top N] [--tries N] [--limit PLIES] [--jobs N] --out DIR
 //! ```
 
 mod bank;
 mod codingame;
+mod judge;
 mod profiles;
 mod profiling;
 mod replay;
@@ -216,6 +218,45 @@ enum Command {
         /// this folder, instead of printing the Markdown report.
         #[arg(long)]
         out: Option<PathBuf>,
+    },
+    /// Writes, to a folder, for every ply of chosen CodinGame players, what the plan
+    /// bot's search would play there and how it scores its own plan and the
+    /// one played, with the agreement and the score gap by player and phase
+    /// and the plies with the largest gaps. Games are read as
+    /// `codingame-report` reads them.
+    CodingameJudge {
+        /// The game's data directory, for example `data/ice-and-fire`.
+        #[arg(long)]
+        data: PathBuf,
+        /// Our nickname on CodinGame, for games whose index has no seat.
+        #[arg(long)]
+        me: String,
+        /// The plan bot built with `--features analysis`
+        /// (`target/release/ice-and-fire-bot-plan`).
+        #[arg(long)]
+        judge: PathBuf,
+        /// The top N players of the newest leaderboard snapshot that have a game.
+        #[arg(long, default_value_t = 10)]
+        top: usize,
+        /// These players instead, separated by commas.
+        #[arg(long, value_delimiter = ',')]
+        players: Vec<String>,
+        /// Tries of each search (the plan bot's `--tries`).
+        #[arg(long, default_value_t = 600)]
+        tries: u64,
+        /// Judge at most this many plies, spread over all of them.
+        #[arg(long)]
+        limit: Option<usize>,
+        /// The leaderboard snapshot, instead of the newest in the data directory.
+        #[arg(long)]
+        leaderboard: Option<PathBuf>,
+        /// Judge processes run at the same time.
+        #[arg(long, default_value_t = 4)]
+        jobs: usize,
+        /// The folder to write to, created if missing: judgements.csv,
+        /// summary.csv, largest-gaps.md and README.md.
+        #[arg(long)]
+        out: PathBuf,
     },
 }
 
@@ -435,6 +476,32 @@ fn run(cli: Cli) -> Result<(), String> {
                 out.as_deref(),
             )?;
             print!("{text}");
+            Ok(())
+        }
+        Command::CodingameJudge {
+            data,
+            me,
+            judge,
+            top,
+            players,
+            tries,
+            limit,
+            leaderboard,
+            jobs,
+            out,
+        } => {
+            judge::run(&judge::Request {
+                data,
+                me,
+                judge,
+                players,
+                top,
+                tries,
+                limit,
+                jobs,
+                leaderboard,
+                out,
+            })?;
             Ok(())
         }
         Command::Summary { dir } => {

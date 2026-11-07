@@ -7,9 +7,15 @@
 //!   bank --positions FILE [--tries 400] [--reps 200] [--out FILE.tsv]
 //! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
 //!   speed --positions FILE [--tries 600] [--reps 3] [--answers OUT] [--expect FILE]
+//! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
+//!   judge --positions FILE [--tries 600]
 //! ```
 //!
 //! `speed` (the [`speed`] module) times the search alone on a bank.
+//!
+//! `judge` (the [`judge`] module) compares, on each position of a bank that
+//! carries the answer a player played, the plan the search chooses with it,
+//! and prints how the search scores both.
 //!
 //! `bank` reads a bank of positions (`ice-and-fire-review bank` writes one)
 //! and measures, on each, the evaluation's cost in microseconds and the plan
@@ -25,9 +31,15 @@
 //! <the initial input, as CodinGame sends it>
 //! turn
 //! <the turn's input of the player to act>
+//! played ANSWER
 //! end
 //! ```
+//!
+//! The `played` line is optional (a bank without it is read as before) and
+//! comes just before `end`: the answer a player sent from the position, its
+//! commands joined by `;` (`WAIT` for none). `bank` and `speed` ignore it.
 
+pub mod judge;
 pub mod speed;
 
 #[cfg(test)]
@@ -118,6 +130,9 @@ pub struct Position {
     pub game_turn: u32,
     pub initial: String,
     pub turn: String,
+    /// The answer a player played from here, if the block says (its
+    /// `played` line).
+    pub played: Option<String>,
 }
 
 impl Position {
@@ -153,13 +168,22 @@ pub fn read_bank(text: &str) -> Result<Vec<Position>, String> {
             Err(format!("{}: no `{end}` line", words[1]))
         };
         let initial = part("turn")?;
-        let turn = part("end")?;
+        let mut turn = part("end")?;
+        // An optional last line before `end`: the answer played.
+        let mut played = None;
+        let body = turn.trim_end_matches('\n');
+        let cut = body.rfind('\n').map_or(0, |i| i + 1);
+        if let Some(answer) = body[cut..].strip_prefix("played ") {
+            played = Some(answer.trim().to_string());
+            turn.truncate(cut);
+        }
         out.push(Position {
             name: words[1].to_string(),
             ply,
             game_turn,
             initial,
             turn,
+            played,
         });
     }
     Ok(out)
@@ -478,9 +502,21 @@ pub fn bank(args: &[String]) -> Result<String, String> {
 }
 
 /// Runs the analysis mode and exits if the first argument names it
-/// (`bank` or `speed`); returns otherwise, and the bot plays.
+/// (`bank`, `speed` or `judge`); returns otherwise, and the bot plays.
 pub fn main_if_asked() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("judge") {
+        match judge::run(&args[1..]) {
+            Ok(text) => {
+                print!("{text}");
+                std::process::exit(0);
+            }
+            Err(err) => {
+                eprintln!("plan judge: {err}");
+                std::process::exit(2);
+            }
+        }
+    }
     if args.first().map(String::as_str) == Some("speed") {
         match speed::run(&args[1..]) {
             Ok((text, same)) => {

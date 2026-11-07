@@ -501,7 +501,7 @@ fn opponents(games: &[&(GameMeta, Trace)], ranks: &BTreeMap<String, u32>) -> Vec
     rows
 }
 
-pub(crate) fn focus_players(
+pub fn focus_players(
     games: &[&(GameMeta, Trace)],
     ranks: &BTreeMap<String, u32>,
     options: &Options,
