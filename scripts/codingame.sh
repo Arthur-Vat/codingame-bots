@@ -55,6 +55,7 @@
 # CODINGAME_PACE (seconds between requests, 0.6), CODINGAME_TOKEN_FILE,
 # CODINGAME_SLEEP (program that waits, for the waits of test games, sleep),
 # CODINGAME_RETRY_WAIT (seconds before a failed test game is tried again, 60),
+# CODINGAME_PUBLISH_EVERY (games stored between two pushes of a batch, 10),
 # CODINGAME_NOW (the time as epoch seconds, or a file holding them; for tests).
 # Needs bash, curl and jq. Exit status: 0 done, 1 a request or a game failed,
 # 2 usage or setup error, 3 CodinGame refused the token (401: expired or
@@ -450,15 +451,8 @@ check_floor() {
   return 0
 }
 
-# Commits the data files of the worktree and pushes them, without force.
-publish() { # publish <what>
-  local noun_what="$1" message commit
-  published=true
-  if [[ -z $noun_what ]]; then
-    echo "nothing to commit"
-    return 0
-  fi
-  # Only the data files, never a temporary one.
+# Stages the data files of the worktree, never a temporary one.
+stage_data() {
   git -C "$worktree" add -- "$game/index.jsonl" "$game/leaderboard"
   if compgen -G "$worktree/$game/logs/*.json" >/dev/null; then
     git -C "$worktree" add -- "$game/logs/*.json"
@@ -466,11 +460,66 @@ publish() { # publish <what>
   if compgen -G "$worktree/$game/batches/*.json" >/dev/null; then
     git -C "$worktree" add -- "$game/batches/*.json"
   fi
+}
+
+data_ref="refs/remotes/origin/claude/codingame-games"
+# After a rejected push: fetches the data branch, adds to the worktree what the
+# branch has and it lacks (logs, snapshots and batches are per file; the index
+# is the union of both, one line a game, ours first; of a batch in both, the
+# one with more games done, ours on a tie), and moves HEAD to the branch's
+# tip, keeping the files, so that the next commit is on top of it.
+merge_remote() {
+  local rel mine theirs
+  git -C "$worktree" fetch -q origin "+refs/heads/claude/codingame-games:$data_ref" || return 1
+  while IFS= read -r rel; do
+    mkdir -p "$(dirname "$worktree/$rel")"
+    case "$rel" in
+      "$game/index.jsonl")
+        if [[ -f $worktree/$rel ]]; then
+          { cat "$worktree/$rel"; git -C "$worktree" show "$data_ref:$rel"; } |
+            jq -cs 'unique_by(.game_id)[]' >"$scratch/merged-index" || return 1
+          mv "$scratch/merged-index" "$worktree/$rel"
+        else
+          git -C "$worktree" show "$data_ref:$rel" >"$worktree/$rel"
+        fi
+        ;;
+      "$game"/batches/*.json)
+        if [[ -f $worktree/$rel ]]; then
+          mine="$(jq '[.games[] | select(.status == "done")] | length' "$worktree/$rel" 2>/dev/null || echo 0)"
+          theirs="$(git -C "$worktree" show "$data_ref:$rel" | jq '[.games[] | select(.status == "done")] | length' 2>/dev/null || echo 0)"
+          if ((theirs > mine)); then git -C "$worktree" show "$data_ref:$rel" >"$worktree/$rel"; fi
+        else
+          git -C "$worktree" show "$data_ref:$rel" >"$worktree/$rel"
+        fi
+        ;;
+      *)
+        [[ -e $worktree/$rel ]] || git -C "$worktree" show "$data_ref:$rel" >"$worktree/$rel"
+        ;;
+    esac
+  done < <(git -C "$worktree" ls-tree -r --name-only "$data_ref" -- "$game/")
+  git -C "$worktree" reset -q --soft "$data_ref"
+  orphan=false
+}
+
+# Commits the data files of the worktree and pushes them, without force. A
+# push rejected because the branch moved is made again on top of its new tip,
+# up to 3 pushes; any other failure, or the third, keeps the worktree and the
+# commit (exit status 1 at the end).
+publish() { # publish <what>
+  local noun_what="$1" message commit try
+  published=true
+  if [[ -z $noun_what ]]; then
+    echo "nothing to commit"
+    return 0
+  fi
+  stage_data
   if [[ $orphan == false ]] && git -C "$worktree" diff --cached --quiet; then
     echo "nothing to commit"
-  else
-    message="chore(repo): codingame games: $game, $noun_what"
-    [[ -z ${CODINGAME_COMMIT_TRAILERS:-} ]] || message+=$'\n\n'"$CODINGAME_COMMIT_TRAILERS"
+    return 0
+  fi
+  message="chore(repo): codingame games: $game, $noun_what"
+  [[ -z ${CODINGAME_COMMIT_TRAILERS:-} ]] || message+=$'\n\n'"$CODINGAME_COMMIT_TRAILERS"
+  for try in 1 2 3; do
     if [[ $orphan == true ]]; then
       # A first commit without parent, made without a branch.
       commit="$(git -C "$worktree" commit-tree "$(git -C "$worktree" write-tree)" -m "$message")"
@@ -478,16 +527,29 @@ publish() { # publish <what>
       git -C "$worktree" commit -q -m "$message"
       commit="$(git -C "$worktree" rev-parse HEAD)"
     fi
-    if ! git -C "$worktree" push origin "$commit:refs/heads/claude/codingame-games"; then
-      # Keep the games: the commit stays reachable from the worktree's HEAD.
-      git -C "$worktree" update-ref --no-deref HEAD "$commit" || true
-      remove_worktree=false
-      exit_status=1
-      echo "the push failed; the games are kept, committed as $commit in $worktree" >&2
-      echo "push them by hand: git -C $worktree push origin $commit:refs/heads/claude/codingame-games" >&2
-      echo "(then remove the worktree: git worktree remove --force $worktree)" >&2
+    # HEAD follows the commit, so that the next publication builds on it.
+    git -C "$worktree" update-ref --no-deref HEAD "$commit" || true
+    if git -C "$worktree" push origin "$commit:refs/heads/claude/codingame-games"; then
+      orphan=false
+      return 0
     fi
-  fi
+    ((try < 3)) || break
+    echo "the push was rejected (attempt $try of 3): fetching the branch and building on its tip" >&2
+    # A fetch that cannot work (no network) is not repeated.
+    merge_remote || break
+    stage_data
+    if git -C "$worktree" diff --cached --quiet; then
+      # The branch already holds everything.
+      git -C "$worktree" update-ref --no-deref HEAD "$data_ref" || true
+      return 0
+    fi
+  done
+  # Keep the games: the commit stays reachable from the worktree's HEAD.
+  remove_worktree=false
+  exit_status=1
+  echo "the push failed; the games are kept, committed as $commit in $worktree" >&2
+  echo "push them by hand: git -C $worktree push origin $commit:refs/heads/claude/codingame-games" >&2
+  echo "(then remove the worktree: git worktree remove --force $worktree)" >&2
 }
 
 finish() { # finish <what>
@@ -962,7 +1024,13 @@ run_batch() {
       stored=$((stored + 1))
       streak=0
       streak_games=()
+      published=false
       publish_what="batch $name, $(plural "$stored" game)"
+      # A long play publishes as it goes, so that a failure loses few games.
+      if [[ $push == true ]] && ((stored % ${CODINGAME_PUBLISH_EVERY:-10} == 0)); then
+        publish "$publish_what"
+        published=false
+      fi
       result="$(result_of "$out/logs/$rec_id.json")"
       echo "game $((i + 1))/$total: vs $opp, $opts, $result, ${tg_seconds} s, quota left ${quota_remaining:-?}"
     else

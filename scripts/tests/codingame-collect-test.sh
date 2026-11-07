@@ -53,7 +53,7 @@ problems() { # problems <workflow>
   grep -E '^[[:space:]]*-?[[:space:]]*uses:' "$f" | sed -E 's/^[[:space:]]*-?[[:space:]]*uses:[[:space:]]*//; s/[[:space:]]*#.*//' |
     grep -vE '^actions/checkout@[0-9a-f]{40}$' | sed 's/^/action other than a pinned checkout: /' || true
   # The secret: named once, in the step that writes the file.
-  secret_lines="$(grep -n 'secrets\.' "$f" || true)"
+  secret_lines="$(grep -nE '(^|[^A-Za-z_])secrets([^A-Za-z_]|$)' "$f" | grep -vE '^[0-9]+:[[:space:]]*#' || true)"
   n="$(grep -c . <<<"$secret_lines" || true)"
   [[ -z $secret_lines ]] && n=0
   [[ $n -eq 1 ]] || echo "secrets. is used $n times, not once"
@@ -75,6 +75,22 @@ problems() { # problems <workflow>
   grep -nE 'set -[a-z]*x|xtrace|ACTIONS_STEP_DEBUG|ACTIONS_RUNNER_DEBUG' "$f" | grep -vE 'set \+x' | sed 's/^/tracing: /' || true
   # The token file: written under umask 077 and named only by that step.
   grep -q 'umask 077' "$f" || echo "the token file is not written under umask 077"
+  # One permissions block (the workflow's), none on the job; one job.
+  [[ "$(grep -cE '^[[:space:]]*permissions:' "$f")" -eq 1 ]] || echo "more than the workflow's one permissions: block (a job's?)"
+  [[ "$(awk '/^jobs:/ { j = 1; next } /^[^[:space:]#]/ { j = 0 } j && /^  [A-Za-z0-9_-]+:/' "$f" | grep -c .)" -eq 1 ]] || echo "not exactly one job"
+  # A run block takes nothing from the event or the inputs inside the script.
+  awk '
+    /^[[:space:]]*(- )?run:/ { match($0, /^ */); ind = RLENGTH; inrun = 1; if ($0 ~ /\$\{\{ *(inputs|github\.event|github\.head_ref)/) print "run block uses " $0; next }
+    inrun && NF && match($0, /^ */) && RLENGTH <= ind { inrun = 0 }
+    inrun && /\$\{\{ *(inputs|github\.event|github\.head_ref)/ { print "run block uses " $0 }
+  ' "$f"
+  # The token file and its path appear only in the steps that write, use and
+  # remove it.
+  awk '
+    /^      - (name|uses):/ { step = $0 }
+    /codingame-token|CODINGAME_TOKEN_FILE/ && $0 !~ /^[[:space:]]*#/ && step != "" &&
+      step !~ /Write the token to a file|Fetch our games and play|Remove the token file/ { print "the token file is named in the step " step ": " $0 }
+  ' "$f"
 }
 
 good="$repo_root/.github/workflows/codingame-collect.yml"
@@ -99,6 +115,14 @@ bad echo 's|^(          umask 077)|          echo "$CODINGAME_TOKEN"\n\1|' "toke
 bad trace 's|^(          set \+x)|          set -x|' "tracing"
 bad second 's|^(          MAX_GAMES: .*)|\1\n          OTHER: ${{ secrets.CODINGAME_TOKEN }}|' "secrets. is used 2 times"
 bad where '/^          CODINGAME_TOKEN: .*secrets/d; s|^(          PLAY: .*)|\1\n          CODINGAME_TOKEN: ${{ secrets.CODINGAME_TOKEN }}|' "the secret is in the step"
+bad tojson 's|^(          MAX_GAMES: .*)|\1\n          ALL: ${{ toJSON(secrets) }}|' "secrets. is used 2 times"
+bad bracket 's|^(          MAX_GAMES: .*)|\1\n          ALL: ${{ secrets['"'"'CODINGAME_TOKEN'"'"'] }}|' "secrets. is used 2 times"
+bad jobperm 's|^(    timeout-minutes: .*)|\1\n    permissions:\n      contents: write|' "permissions: block"
+bad jobs2 's|^(jobs:)|\1\n  extra:\n    runs-on: ubuntu-latest\n    steps: []|' "not exactly one job"
+bad inputs 's|^(          set \+e)|\1\n          echo ${{ inputs.max_games }}|' "run block uses"
+bad event 's|^(          set \+e)|\1\n          echo ${{ github.event.inputs.play }}|' "run block uses"
+bad file 's|^(          git fetch --quiet)|          cat "$CODINGAME_TOKEN_FILE"\n\1|' "the token file is named in the step"
+bad path 's|^(          git config user.name)|          cat "$RUNNER_TEMP/codingame-token"\n\1|' "the token file is named in the step"
 
 # Another file than the workflow: the shape of each rule on a minimal one.
 cat >"$tmp_dir/one-line.yml" <<'EOF2'

@@ -59,6 +59,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Git identity
         run: |
+          # The batch's time counts from here: the fetch takes some of it.
+          echo "JOB_START=$(date +%s)" >>"$GITHUB_ENV"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Write the token to a file
@@ -82,7 +84,7 @@ jobs:
           set +e
           log="$RUNNER_TEMP/collect"
           mkdir -p "$log"
-          release="$(ls "games/$GAME/releases/$GAME"-v*.rs | sort -V | tail -n 1 | xargs basename | sed 's/\.rs$//')"
+          release="$(find "games/$GAME/releases" -name "$GAME-v*.rs" | sort -V | tail -n 1 | xargs -r basename | sed 's/\.rs$//')"
           if [ -z "$release" ]; then
             echo "::error title=CodinGame::no release in games/$GAME/releases"
             exit 1
@@ -105,8 +107,14 @@ jobs:
             echo "play is unchecked: no fetch (it would push), only the plan of the batch" >"$log/fetch.log"
           fi
 
+          # 5.25 hours from the start of the job, less what has passed.
+          hours="$(awk -v s="$JOB_START" -v n="$(date +%s)" 'BEGIN { h = 5.25 - (n - s) / 3600; if (h < 0) h = 0; printf "%.4f", h }')"
+          if [ "$hours" = "0.0000" ]; then
+            echo "::notice title=CodinGame::no time left for the batch after the fetch"
+            exit "$status"
+          fi
           args=(batch "$GAME" "games/$GAME/releases/$release.rs" --top 10 --games-per-opponent 50
-            --seeds "games/$GAME/codingame-seeds-50.txt" --keep 100 --max-hours 5.25
+            --seeds "games/$GAME/codingame-seeds-50.txt" --keep 100 --max-hours "$hours"
             --name "$day-$release-daily")
           if [ -n "$MAX_GAMES" ]; then args+=(--max-games "$MAX_GAMES"); fi
           if [ "$PLAY" = true ]; then args+=(--play --push); fi
