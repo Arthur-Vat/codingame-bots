@@ -50,14 +50,14 @@ pub fn threatened(state: &State, seat: usize) -> i64 {
 }
 
 /// What a mine on an active cell counts beyond its income (E033).
-pub const MINE: i64 = 10;
+pub const MINE: i64 = 6;
 /// The enemy's turns a mine must be out of its reach to count [`MINE`]: 0
 /// counts every mine, 1 leaves out the mines on [`exposed`] cells, 2 those
 /// its chains reach for its gold plus two incomes.
 pub const MINE_SAFE_TURNS: i64 = 1;
 /// The active cells a side needs for its mines to count (E033's second
 /// round: mines "when the territory is large"); 0 for no such rule.
-pub const MINE_MIN_CELLS: i64 = 30;
+pub const MINE_MIN_CELLS: i64 = 36;
 /// Whether only the side with more active cells than the other counts its
 /// mines (second round).
 pub const MINE_LEAD: bool = false;
