@@ -3,9 +3,9 @@ id: E033
 date: 2026-11-12
 pull_request: pending
 parent: ice-and-fire-v014
-hypothesis: The top 10 of CodinGame build a mine in about a fifth of their games at every turn from turn 9 and v014 almost never does, because its evaluation scores a mine below the gold it costs; counting a mine above its income, where the enemy cannot take it at once, makes the search build mines in the middle game and beats v014.
-change: The plan bot's evaluation adds a bonus for each of a side's mines on an active cell that the enemy cannot take at its next turn.
-release: pending
+hypothesis: The top 10 of CodinGame build a mine in about a fifth of their games at every turn from turn 9, once their territory is large, and v014 almost never does, because its evaluation scores a mine below the gold it costs; counting a mine above its income, where the enemy cannot take it at once and the more so the larger its side's territory, makes the search build mines in the middle game and beats v014 (candidate `ice-and-fire-v015`).
+change: The plan bot's evaluation adds, for each of a side's mines on an active cell that the enemy cannot take at its next turn, a quarter of that side's active cells.
+release: ice-and-fire-v015
 sprt: pending
 elo: pending
 pairs: pending
@@ -29,30 +29,40 @@ below its own choice, against 22 for their plain turns. The report warns
 that the top 10 are already ahead when their mines show, so the mines may
 follow their lead as much as make it: only an experiment says.
 
-v014's search cannot gain by a mine. The shared evaluation
+v014's search rarely gains by a mine. The shared evaluation
 (`ice_and_fire_tactics::eval`) counts gold at 1 and income at 3, so a mine
-is 15 gold less and 4 of income more, 12 − 15 = −3, before the pressure
-and threatened-cell terms, which both count the gold spent against it too.
-A climb adds only actions that raise the plan's score. In the games
-below v014 builds 2.8 to 3.0 mines a game, nearly all in the opening, by
-its rules (a mine in 36% of games at its turn 6, 74% at turn 7, 28% at
-turn 8), then in 1% to 3% of games a turn from its turn 10 to 14 and 5% to
-10% later.
+is worth 12 for the 15 gold it costs, and the pressure term counts the
+gold spent against it too. A climb adds only actions that raise the plan's
+score. In the games below v014 builds 2.6 to 3.0 mines a game, nearly all
+in the opening, by its rules (a mine in 36% of games at its turn 6, 74% at
+turn 7, 28% at turn 8), then in 1% to 3% of games a turn from its turn 10
+to 14 and 5% to 10% later.
 
 ## The change
 
 `bots/plan/src/eval.rs`: each mine of a side on one of its active cells
-counts `MINE` more, in both sides' scores, unless the enemy can take its
-cell within `MINE_SAFE_TURNS` of its turns: with 1, the mine's cell is not
-among the side's threatened cells of E023 (those the enemy's chains of
-trainings reach for its gold plus its income), which the evaluation
-already finds; with 2, nor among those reached for its gold plus two
-incomes, searched only when a side has a mine that still counts. A mine
+that the enemy cannot take at its next turn counts, beyond its income, one
+for every `MINE_PER_CELLS` (4) active cells of that side (`mine_bonus`):
+5 with 21 cells, 9 with 36, 12 with 48. It counts in both sides' scores,
+so the search also sees more in taking the enemy's mines. The cells the
+enemy can take at its next turn are the threatened cells of E023 (those
+its chains of trainings reach for its gold plus its income), which the
+evaluation already finds, so the term costs two counts of bits. A mine
 pays its 15 gold back in four turns, and one the enemy takes is destroyed.
 
-A test checks the term on a quiet position (a mine built far from the
-enemy adds `MINE` to its side and takes as much from the other) and on a
-corridor (a mine on a cell the enemy can take next turn adds nothing).
+A test checks the bonus by territory and the term on the corridor: a mine
+out of the enemy's reach adds the bonus to its side and takes as much from
+the other, a mine on a cell the enemy can take next turn adds nothing, and
+neither does a mine of a territory of 3 cells.
+
+The screening went through other forms of the term: a fixed bonus for
+every mine ("flat"), for the mines out of the enemy's reach for one, two
+or three of its incomes ("safe 1" to "safe 3"), and the second round's
+forms that tie the bonus to the territory. Those screened on GitHub are
+commits of this pull request, named in the tables below. The candidate's
+code keeps only the form chosen; it plays the same games as the screened commit `efbbb86` at 500
+fixed tries (12 games against v014, 558 turns, compared as
+`scripts/check-minified.sh` compares records).
 
 ## Screening
 
@@ -61,7 +71,8 @@ calibrated on each machine (ADR 0048).
 
 **A local look** (150 seat-swapped pairs each, four matches at a time on
 a 4-core machine, time scale 0.575, tolerance 7 ms; seed 33033, and 33035
-for the last four; read with `ice-and-fire-review screening`). "Flat"
+for the last four; variants bundled from the working tree; read with
+`ice-and-fire-review screening`). "Flat"
 counts every mine on an active cell; "safe 1" leaves out the mines on
 cells the enemy can take at its next turn, "safe 2" and "safe 3" those its
 chains reach for its gold plus two or three incomes. Mines are those
@@ -132,3 +143,53 @@ Their neighbours, run 43262029341, seed 33038, 800 pairs each:
 | a sixth of the cells | `d635543` | +9.1 [−4.0, +22.3] | 51.3% |
 | from 30 cells, 10 | `a5056d9` | +11.3 [−2.1, +24.8] | 51.6% |
 | from 36 cells, 6 | `e3b8c0b` | +4.8 [−7.8, +17.3] | 50.7% |
+
+The three "share of the cells" forms again, run 43264990487, seed 33039,
+1,600 pairs each:
+
+| Variant | Commit | Elo against v014 | Score | All its pairs on GitHub |
+| --- | --- | --- | ---: | --- |
+| a third of the cells | `cf07e29` | **+13.0 [+3.4, +22.7]** | 51.9% | +13.3 over 2,400 |
+| a quarter of the cells | `efbbb86` | **+12.2 [+2.8, +21.6]** | 51.7% | +9.2 over 4,000 |
+| a sixth of the cells | `d635543` | **+13.9 [+4.8, +23.1]** | 52.0% | +12.3 over 2,400 |
+
+Together the three scored +11.2 over 8,800 pairs (the pairs' mean of the
+runs' estimates, about ±4). The divisor hardly matters between 3 and 6.
+
+In two local matches of 150 pairs with game records (seed 33040), "a
+third" built 0.98 mines a game at its turns 9 to 15 and "a quarter" 0.77,
+against v014's 0.16 and 0.20: a mine in 7% to 14% of games at each of
+those turns, against v014's 1% to 7%.
+
+## The candidate
+
+`ice-and-fire-v015`: a quarter of the cells, the middle of the three and
+the one with the most games (4,000 pairs, +9.2), rather than the best of
+three estimates that do not differ. Frozen by `scripts/new-release.sh`
+(40,952 characters; the same answers as its readable copy in 4 games).
+
+## What was learned
+
+- **A mine is worth more only to a side with a large territory.** A fixed
+  bonus for every safe mine, at 6, 10 or 16, was level with v014 (+3.0,
+  −0.4, +2.6 over 800 pairs each), and weaker at 24 and 40; the same
+  bonus tied to the territory (from 30 or 36 cells, for the side ahead, or
+  as a share of the cells) scored +4 to +14 in 14 matches of 17 (the
+  others: 16 from 36 or 44 cells, and "ahead, 16" once), and the share of
+  the cells +11 over 8,800 pairs. This is the report's "when the
+  territory is large".
+- **A mine the enemy can reach should not count.** The flat bonus was
+  weaker (46.2% of 900 local games) and built 3.3 to 4.5 mines a game;
+  all that "safe 1" changes is to leave out the mines on cells the enemy
+  can take at its next turn. Looking two incomes ahead instead of one did
+  not help (−6.5 and −10.0 on GitHub).
+- **Mines go with a lead, in our games too.** With a fixed bonus of 10
+  for safe mines, the bot built a mine at its turns 9 to 15 in 155 of 300
+  games and won 75% of those, against 32% of the others, and was no
+  stronger than v014, whose few such games it also won at 72%. The
+  report's caution holds: most of what the top 10's mines show is their
+  lead. What mines built on a large territory add by themselves is about
+  +10 Elo in the screening.
+- **A local look of 150 pairs misleads.** "Safe 1, 10" scored +27.9
+  locally and −0.4 over 800 pairs on GitHub. A screening run of 800 pairs
+  for six variants takes 11 minutes there.
