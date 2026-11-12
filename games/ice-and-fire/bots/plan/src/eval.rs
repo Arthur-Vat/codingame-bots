@@ -63,7 +63,7 @@ pub const MINE_MIN_CELLS: i64 = 0;
 pub const MINE_LEAD: bool = false;
 /// When positive, a mine counts its side's active cells divided by this
 /// instead of [`MINE`] (second round).
-pub const MINE_PER_CELLS: i64 = 4;
+pub const MINE_PER_CELLS: i64 = 0;
 
 /// What each mine of a side with `cells` active cells, against `others` of
 /// the enemy, counts beyond its income.
