@@ -96,3 +96,20 @@ First round, run 43256901773, seed 33034:
 | safe 1, 24 | `b15cb49` | **−19.1 [−32.5, −5.8]** | 47.2% |
 | safe 2, 10 | `38894a6` | −6.5 [−20.2, +7.1] | 49.1% |
 | safe 2, 16 | `ecee9cb` | −10.0 [−23.9, +3.9] | 48.6% |
+
+Second round, run 43259971659, seed 33036: the report's "when the
+territory is large", three ways, each with the "safe 1" rule. "From 36
+cells" counts a side's mines only when it has at least 36 active cells (a
+quarter of the board; the top 10's median at turn 10 is 38); "ahead" only
+for the side with more active cells than the other; "a quarter of the
+cells" counts each mine its side's active cells divided by 4 (9 at 36
+cells) in place of a fixed bonus.
+
+| Variant | Commit | Elo against v014 | Score |
+| --- | --- | --- | ---: |
+| from 36 cells, 10 | `f5f833c` | **+13.9 [+2.0, +25.9]** | 52.0% |
+| from 36 cells, 16 | `c29b718` | −4.3 [−17.3, +8.6] | 49.4% |
+| from 44 cells, 16 | `afe2a7d` | −0.4 [−10.7, +9.8] | 49.9% |
+| ahead, 10 | `74613e1` | +7.8 [−5.9, +21.6] | 51.1% |
+| ahead, 16 | `6b43093` | +8.7 [−5.6, +23.0] | 51.2% |
+| a quarter of the cells | `efbbb86` | +11.3 [−2.3, +24.9] | 51.6% |
