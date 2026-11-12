@@ -580,10 +580,11 @@ fn cells_the_enemy_can_take_next_turn_count_less() {
 
 #[test]
 fn a_mine_counts_more_than_its_income() {
-    use crate::eval::{eval, MINE};
+    use crate::eval::{eval, mine_bonus};
     // E033: red builds a mine on the spot (1, 0), far from blue. The shared
     // evaluation counts what it changes (15 gold less, 4 of income more);
-    // the bot's own adds MINE for the mine.
+    // the bot's own adds the bonus of a mine of a side with 3 active cells
+    // against 2.
     let rows = [
         "OOO.........",
         "............",
@@ -608,9 +609,9 @@ fn a_mine_counts_more_than_its_income() {
     let income = state.income(0);
     assert!(state.apply(Command::BuildMine { x: 1, y: 0 }));
     assert_eq!((state.gold(0), state.income(0)), (15, income + 4));
-    assert_eq!(own(&state, 0), MINE);
+    assert_eq!(own(&state, 0), mine_bonus(3, 2));
     // It counts as much against its side, seen from the other.
-    assert_eq!(own(&state, 1), -MINE);
+    assert_eq!(own(&state, 1), -mine_bonus(3, 2));
 
     // A mine the enemy can take at its next turn counts nothing more: blue
     // (20 gold, income 1) reaches (11, 9) of the corridor for 20, so red's
@@ -621,11 +622,12 @@ fn a_mine_counts_more_than_its_income() {
     assert_eq!(crate::eval::threatened(&state, 0), 1);
     let exposed = own(&state, 0);
     assert_eq!(exposed, 7 * (crate::eval::threatened(&state, 1) - 1) / 4);
-    // On (5, 0), out of blue's reach, it counts.
+    // On (5, 0), out of blue's reach, it counts: red has 21 active cells
+    // against 1.
     let mut state = position_with_spots("2\n5 0\n11 9\n", CORRIDOR, [30, 20], &[]);
     assert!(state.apply(Command::BuildMine { x: 5, y: 0 }));
     assert_eq!(crate::eval::threatened(&state, 0), 1);
-    assert_eq!(own(&state, 0), exposed + MINE);
+    assert_eq!(own(&state, 0), exposed + mine_bonus(21, 1));
 }
 
 /// The towers among the actions of the player to act.

@@ -55,12 +55,39 @@ pub const MINE: i64 = 10;
 /// counts every mine, 1 leaves out the mines on [`exposed`] cells, 2 those
 /// its chains reach for its gold plus two incomes.
 pub const MINE_SAFE_TURNS: i64 = 1;
+/// The active cells a side needs for its mines to count (E033's second
+/// round: mines "when the territory is large"); 0 for no such rule.
+pub const MINE_MIN_CELLS: i64 = 0;
+/// Whether only the side with more active cells than the other counts its
+/// mines (second round).
+pub const MINE_LEAD: bool = false;
+/// When positive, a mine counts its side's active cells divided by this
+/// instead of [`MINE`] (second round).
+pub const MINE_PER_CELLS: i64 = 0;
 
-/// The mines of `seat` that count [`MINE`]: those on its active cells that
-/// the enemy cannot take within [`MINE_SAFE_TURNS`] turns. `exposed` is
-/// `exposed(state, seat)`.
+/// What each mine of a side with `cells` active cells, against `others` of
+/// the enemy, counts beyond its income.
+pub fn mine_bonus(cells: i64, others: i64) -> i64 {
+    if cells < MINE_MIN_CELLS || (MINE_LEAD && cells <= others) {
+        0
+    } else if MINE_PER_CELLS > 0 {
+        cells / MINE_PER_CELLS
+    } else {
+        MINE
+    }
+}
+
+/// What the mines of `seat` count beyond their income: [`mine_bonus`] for
+/// each on its active cells that the enemy cannot take within
+/// [`MINE_SAFE_TURNS`] turns. `exposed` is `exposed(state, seat)`.
 fn mines(state: &State, seat: usize, exposed: Bits) -> i64 {
-    let mut mines = state.mines() & state.active(seat);
+    let active = state.active(seat);
+    let cells = i64::from(active.count());
+    let each = mine_bonus(cells, i64::from(state.active(1 - seat).count()));
+    let mut mines = state.mines() & active;
+    if each == 0 || mines.is_empty() {
+        return 0;
+    }
     if MINE_SAFE_TURNS >= 1 {
         mines = mines.and_not(exposed);
     }
@@ -70,7 +97,7 @@ fn mines(state: &State, seat: usize, exposed: Bits) -> i64 {
         let budget = state.gold(enemy) + MINE_SAFE_TURNS * state.income(enemy);
         mines = mines.and_not(reach_within(state, enemy, false, budget));
     }
-    i64::from(mines.count())
+    each * i64::from(mines.count())
 }
 
 /// The weight of a joint and of a cell that one capture cuts off.
@@ -211,5 +238,6 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         + shape(state, seat)
         + LEVEL2_DISCOUNT * (twos(state, 1 - seat) - twos(state, seat))
         + 7 * threats / 4
-        + MINE * (mines(state, seat, ours) - mines(state, 1 - seat, theirs))
+        + mines(state, seat, ours)
+        - mines(state, 1 - seat, theirs)
 }
