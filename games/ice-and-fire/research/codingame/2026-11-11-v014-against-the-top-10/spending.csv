@@ -1,0 +1,211 @@
+group,phase,plies,category,mean_spent
+top players,early game,12344,mine,0.424
+top players,early game,12344,tower,0.411
+top players,early game,12344,train level 1,7.81
+top players,early game,12344,train level 2,0
+top players,early game,12344,train level 3,0
+top players,middle game,10051,mine,3.431
+top players,middle game,10051,tower,8.245
+top players,middle game,10051,train level 1,6.167
+top players,middle game,10051,train level 2,4.678
+top players,middle game,10051,train level 3,1.376
+top players,endgame,11888,mine,2.413
+top players,endgame,11888,tower,6.965
+top players,endgame,11888,train level 1,11.73
+top players,endgame,11888,train level 2,5.851
+top players,endgame,11888,train level 3,7.916
+"us, same games",early game,12834,mine,2.685
+"us, same games",early game,12834,tower,0
+"us, same games",early game,12834,train level 1,5.338
+"us, same games",early game,12834,train level 2,0
+"us, same games",early game,12834,train level 3,0
+"us, same games",middle game,10300,mine,0.087
+"us, same games",middle game,10300,tower,5.042
+"us, same games",middle game,10300,train level 1,10.694
+"us, same games",middle game,10300,train level 2,2.353
+"us, same games",middle game,10300,train level 3,1.378
+"us, same games",endgame,11449,mine,0.892
+"us, same games",endgame,11449,tower,3.283
+"us, same games",endgame,11449,train level 1,11.234
+"us, same games",endgame,11449,train level 2,3.024
+"us, same games",endgame,11449,train level 3,5.833
+our wins,early game,3884,mine,2.503
+our wins,early game,3884,tower,0
+our wins,early game,3884,train level 1,5.502
+our wins,early game,3884,train level 2,0
+our wins,early game,3884,train level 3,0
+our wins,middle game,3195,mine,0.197
+our wins,middle game,3195,tower,3.939
+our wins,middle game,3195,train level 1,14.376
+our wins,middle game,3195,train level 2,2.905
+our wins,middle game,3195,train level 3,1.164
+our wins,endgame,4051,mine,2.818
+our wins,endgame,4051,tower,2.214
+our wins,endgame,4051,train level 1,19.395
+our wins,endgame,4051,train level 2,2.71
+our wins,endgame,4051,train level 3,9.82
+our losses,early game,11636,mine,2.61
+our losses,early game,11636,tower,0
+our losses,early game,11636,train level 1,5.37
+our losses,early game,11636,train level 2,0
+our losses,early game,11636,train level 3,0
+our losses,middle game,9483,mine,0.073
+our losses,middle game,9483,tower,5.176
+our losses,middle game,9483,train level 1,9.987
+our losses,middle game,9483,train level 2,2.328
+our losses,middle game,9483,train level 3,1.322
+our losses,endgame,9769,mine,0.327
+our losses,endgame,9769,tower,3.553
+our losses,endgame,9769,train level 1,9.278
+our losses,endgame,9769,train level 2,3.036
+our losses,endgame,9769,train level 3,4.259
+zasmu,early game,1336,mine,0.494
+zasmu,early game,1336,tower,0.483
+zasmu,early game,1336,train level 1,7.927
+zasmu,early game,1336,train level 2,0
+zasmu,early game,1336,train level 3,0
+zasmu,middle game,1297,mine,4.545
+zasmu,middle game,1297,tower,13.381
+zasmu,middle game,1297,train level 1,6.099
+zasmu,middle game,1297,train level 2,3.392
+zasmu,middle game,1297,train level 3,1.226
+zasmu,endgame,1492,mine,2.282
+zasmu,endgame,1492,tower,22.54
+zasmu,endgame,1492,train level 1,12.326
+zasmu,endgame,1492,train level 2,4.357
+zasmu,endgame,1492,train level 3,6.253
+Pduhard-,early game,1320,mine,0
+Pduhard-,early game,1320,tower,0.898
+Pduhard-,early game,1320,train level 1,7.795
+Pduhard-,early game,1320,train level 2,0
+Pduhard-,early game,1320,train level 3,0
+Pduhard-,middle game,995,mine,0
+Pduhard-,middle game,995,tower,3.015
+Pduhard-,middle game,995,train level 1,5.769
+Pduhard-,middle game,995,train level 2,4.121
+Pduhard-,middle game,995,train level 3,3.769
+Pduhard-,endgame,1317,mine,0.137
+Pduhard-,endgame,1317,tower,1.481
+Pduhard-,endgame,1317,train level 1,10.251
+Pduhard-,endgame,1317,train level 2,5.254
+Pduhard-,endgame,1317,train level 3,8.838
+karliso,early game,1323,mine,0.034
+karliso,early game,1323,tower,0.93
+karliso,early game,1323,train level 1,7.831
+karliso,early game,1323,train level 2,0
+karliso,early game,1323,train level 3,0
+karliso,middle game,1223,mine,6.746
+karliso,middle game,1223,tower,9.407
+karliso,middle game,1223,train level 1,6.41
+karliso,middle game,1223,train level 2,2.6
+karliso,middle game,1223,train level 3,0.932
+karliso,endgame,1040,mine,4.861
+karliso,endgame,1040,tower,4.774
+karliso,endgame,1040,train level 1,15.721
+karliso,endgame,1040,train level 2,7.615
+karliso,endgame,1040,train level 3,12.433
+_iaz,early game,1351,mine,0
+_iaz,early game,1351,tower,0.666
+_iaz,early game,1351,train level 1,7.794
+_iaz,early game,1351,train level 2,0
+_iaz,early game,1351,train level 3,0
+_iaz,middle game,1064,mine,1.297
+_iaz,middle game,1064,tower,6.725
+_iaz,middle game,1064,train level 1,6.316
+_iaz,middle game,1064,train level 2,6.523
+_iaz,middle game,1064,train level 3,1.325
+_iaz,endgame,1345,mine,2.476
+_iaz,endgame,1345,tower,4.372
+_iaz,endgame,1345,train level 1,8.662
+_iaz,endgame,1345,train level 2,5.219
+_iaz,endgame,1345,train level 3,7.673
+reCurse,early game,1329,mine,0.034
+reCurse,early game,1329,tower,0.079
+reCurse,early game,1329,train level 1,8.397
+reCurse,early game,1329,train level 2,0
+reCurse,early game,1329,train level 3,0
+reCurse,middle game,1195,mine,5.887
+reCurse,middle game,1195,tower,7.067
+reCurse,middle game,1195,train level 1,6.686
+reCurse,middle game,1195,train level 2,3.565
+reCurse,middle game,1195,train level 3,0.025
+reCurse,endgame,1220,mine,3.184
+reCurse,endgame,1220,tower,4.414
+reCurse,endgame,1220,train level 1,12.295
+reCurse,endgame,1220,train level 2,5.721
+reCurse,endgame,1220,train level 3,6.541
+_iahelka,early game,1367,mine,0.34
+_iahelka,early game,1367,tower,0.088
+_iahelka,early game,1367,train level 1,7.608
+_iahelka,early game,1367,train level 2,0
+_iahelka,early game,1367,train level 3,0
+_iahelka,middle game,775,mine,3.619
+_iahelka,middle game,775,tower,5.323
+_iahelka,middle game,775,train level 1,6.981
+_iahelka,middle game,775,train level 2,6.065
+_iahelka,middle game,775,train level 3,4.335
+_iahelka,endgame,1285,mine,3.023
+_iahelka,endgame,1285,tower,3.969
+_iahelka,endgame,1285,train level 1,12.14
+_iahelka,endgame,1285,train level 2,5.152
+_iahelka,endgame,1285,train level 3,7.821
+Waffle3z,early game,1379,mine,1.936
+Waffle3z,early game,1379,tower,0
+Waffle3z,early game,1379,train level 1,7.389
+Waffle3z,early game,1379,train level 2,0
+Waffle3z,early game,1379,train level 3,0
+Waffle3z,middle game,1081,mine,4.718
+Waffle3z,middle game,1081,tower,7.229
+Waffle3z,middle game,1081,train level 1,7.234
+Waffle3z,middle game,1081,train level 2,5.661
+Waffle3z,middle game,1081,train level 3,0.083
+Waffle3z,endgame,1092,mine,3.269
+Waffle3z,endgame,1092,tower,4.835
+Waffle3z,endgame,1092,train level 1,14.304
+Waffle3z,endgame,1092,train level 2,8.022
+Waffle3z,endgame,1092,train level 3,8.132
+Zylo,early game,1373,mine,0.798
+Zylo,early game,1373,tower,0.142
+Zylo,early game,1373,train level 1,7.932
+Zylo,early game,1373,train level 2,0
+Zylo,early game,1373,train level 3,0
+Zylo,middle game,1214,mine,2.953
+Zylo,middle game,1214,tower,9.378
+Zylo,middle game,1214,train level 1,6.054
+Zylo,middle game,1214,train level 2,6.079
+Zylo,middle game,1214,train level 3,0.42
+Zylo,endgame,1702,mine,2.573
+Zylo,endgame,1702,tower,6.892
+Zylo,endgame,1702,train level 1,11.868
+Zylo,endgame,1702,train level 2,6.686
+Zylo,endgame,1702,train level 3,8.055
+N3l,early game,197,mine,1.294
+N3l,early game,197,tower,0
+N3l,early game,197,train level 1,7.817
+N3l,early game,197,train level 2,0
+N3l,early game,197,train level 3,0
+N3l,middle game,139,mine,3.129
+N3l,middle game,139,tower,6.043
+N3l,middle game,139,train level 1,8.345
+N3l,middle game,139,train level 2,6.187
+N3l,middle game,139,train level 3,3.453
+N3l,endgame,231,mine,4.286
+N3l,endgame,231,tower,6.688
+N3l,endgame,231,train level 1,12.121
+N3l,endgame,231,train level 2,7.186
+N3l,endgame,231,train level 3,5.844
+NinjaDoggy,early game,1369,mine,0
+NinjaDoggy,early game,1369,tower,0.504
+NinjaDoggy,early game,1369,train level 1,7.641
+NinjaDoggy,early game,1369,train level 2,0
+NinjaDoggy,early game,1369,train level 3,0
+NinjaDoggy,middle game,1068,mine,0
+NinjaDoggy,middle game,1068,tower,10.534
+NinjaDoggy,middle game,1068,train level 1,3.783
+NinjaDoggy,middle game,1068,train level 2,4.757
+NinjaDoggy,middle game,1068,train level 3,1.376
+NinjaDoggy,endgame,1164,mine,0
+NinjaDoggy,endgame,1164,tower,6.302
+NinjaDoggy,endgame,1164,train level 1,8.883
+NinjaDoggy,endgame,1164,train level 2,4.983
+NinjaDoggy,endgame,1164,train level 3,6.804

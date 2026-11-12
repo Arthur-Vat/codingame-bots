@@ -36,6 +36,9 @@ pub struct Request {
     pub batch: Option<String>,
     /// Only our games played by this release (the index's `release`).
     pub release: Option<String>,
+    /// Only the games in which we sat in this seat (the index's `our_seat`):
+    /// the seats do not start alike, so a comparison is fair only within one.
+    pub our_seat: Option<usize>,
     pub top: usize,
     pub players: Vec<String>,
     pub leaderboard: Option<PathBuf>,
@@ -96,6 +99,11 @@ pub fn read_index(path: &Path, request: &Request) -> Result<(Vec<Entry>, Vec<Lef
         }
         if request.release.is_some() && value["release"].as_str() != request.release.as_deref() {
             continue;
+        }
+        if let Some(seat) = request.our_seat {
+            if value["our_seat"].as_u64() != Some(seat as u64) {
+                continue;
+            }
         }
         if !seen.insert(game_id) {
             left_out.push(LeftOut {
@@ -378,6 +386,11 @@ fn load_input(request: &Request) -> Result<Input, String> {
     if let Some(release) = &request.release {
         notes.push(format!(
             "Only our games played by the release {release}; the other games, ours or not, are left out."
+        ));
+    }
+    if let Some(seat) = request.our_seat {
+        notes.push(format!(
+            "Only the games in which we sat in seat {seat}; the other games are left out."
         ));
     }
     Ok(Input {

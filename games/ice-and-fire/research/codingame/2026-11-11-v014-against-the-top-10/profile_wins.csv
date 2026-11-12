@@ -1,0 +1,58 @@
+player,item,name,wins,median_turn
+zasmu,ending,the rules ended the game,186,
+zasmu,first_moment,swing,101,15
+zasmu,first_moment,HQ threat,50,18
+zasmu,first_moment,large cut,21,11
+zasmu,first_moment,debt,7,27
+zasmu,first_moment,lead change,6,13
+Pduhard-,ending,the rules ended the game,172,
+Pduhard-,first_moment,swing,79,12
+Pduhard-,first_moment,large cut,78,13
+Pduhard-,first_moment,HQ threat,3,15
+Pduhard-,first_moment,lead change,3,19
+Pduhard-,first_moment,debt,1,24
+karliso,ending,the rules ended the game,183,
+karliso,first_moment,large cut,88,13
+karliso,first_moment,swing,55,14
+karliso,first_moment,HQ threat,24,16
+karliso,first_moment,debt,9,15
+karliso,first_moment,lead change,6,16
+_iaz,ending,the rules ended the game,152,
+_iaz,first_moment,swing,84,12
+_iaz,first_moment,large cut,51,13
+_iaz,first_moment,lead change,10,13
+_iaz,first_moment,debt,5,15
+_iaz,first_moment,HQ threat,1,16
+reCurse,ending,the rules ended the game,146,
+reCurse,first_moment,swing,63,13
+reCurse,first_moment,large cut,49,13
+reCurse,first_moment,HQ threat,25,15
+reCurse,first_moment,lead change,9,14
+_iahelka,ending,the rules ended the game,170,
+_iahelka,first_moment,large cut,96,11
+_iahelka,first_moment,swing,68,13
+_iahelka,first_moment,HQ threat,3,14
+_iahelka,first_moment,lead change,2,14.5
+Waffle3z,ending,the rules ended the game,151,
+Waffle3z,first_moment,swing,94,12
+Waffle3z,first_moment,lead change,19,17
+Waffle3z,first_moment,large cut,17,14
+Waffle3z,first_moment,HQ threat,10,16.5
+Waffle3z,first_moment,debt,10,12.5
+Zylo,ending,the rules ended the game,156,
+Zylo,first_moment,swing,98,13
+Zylo,first_moment,large cut,30,14.5
+Zylo,first_moment,lead change,19,14
+Zylo,first_moment,HQ threat,8,18
+Zylo,first_moment,debt,1,20
+N3l,ending,the rules ended the game,19,
+N3l,first_moment,swing,12,13
+N3l,first_moment,large cut,4,11
+N3l,first_moment,lead change,2,19
+N3l,first_moment,HQ threat,1,20
+NinjaDoggy,ending,the rules ended the game,142,
+NinjaDoggy,first_moment,large cut,71,13
+NinjaDoggy,first_moment,swing,51,12
+NinjaDoggy,first_moment,HQ threat,12,15.5
+NinjaDoggy,first_moment,lead change,4,15
+NinjaDoggy,first_moment,debt,2,20

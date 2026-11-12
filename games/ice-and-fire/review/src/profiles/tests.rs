@@ -59,6 +59,7 @@ fn request(dir: &Path) -> Request {
         kinds: vec![],
         batch: None,
         release: None,
+        our_seat: None,
         top: 10,
         players: vec![],
         leaderboard: None,
@@ -350,6 +351,28 @@ fn a_release_keeps_only_our_games_played_by_it() {
     only.release = Some("v3".to_string());
     let (_, files) = run(&only).expect("an empty report");
     assert_eq!(file(&files, "sources.csv").lines().count(), 1);
+}
+
+#[test]
+fn a_seat_keeps_only_the_games_we_played_in_it() {
+    // The ranking game has us in seat 1, the test game in seat 0.
+    let dir = versioned_dir("profiles-seat");
+    let mut only = request(&dir);
+    only.our_seat = Some(1);
+    let (_, files) = run(&only).expect("a report");
+    let sources = file(&files, "sources.csv");
+    assert!(
+        sources.contains("\nranking,,1\n") && !sources.contains("test"),
+        "{sources}"
+    );
+    assert!(file(&files, "README.md").contains("we sat in seat 1"));
+    only.our_seat = Some(0);
+    let (_, files) = run(&only).expect("a report");
+    let sources = file(&files, "sources.csv");
+    assert!(
+        sources.contains("\ntest,,1\n") && !sources.contains("ranking"),
+        "{sources}"
+    );
 }
 
 #[test]

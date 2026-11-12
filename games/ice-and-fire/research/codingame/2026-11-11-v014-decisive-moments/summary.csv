@@ -1,0 +1,235 @@
+table,group,kind,threshold,own_plies_back,measure,value
+losses_by_kind,focus,large cut,,,count,874
+losses_by_kind,focus,large cut,,,median_turn,14
+losses_by_kind,focus,HQ threat,,,count,469
+losses_by_kind,focus,HQ threat,,,median_turn,18
+losses_by_kind,focus,debt,,,count,75
+losses_by_kind,focus,debt,,,median_turn,18
+losses_by_kind,focus,none,,,count,59
+losses_by_kind,focus,all,,,count,1477
+losses_by_kind,focus,all,,,median_turn,18
+losses_by_kind,others,large cut,,,count,86
+losses_by_kind,others,large cut,,,median_turn,14
+losses_by_kind,others,HQ threat,,,count,44
+losses_by_kind,others,HQ threat,,,median_turn,18
+losses_by_kind,others,debt,,,count,6
+losses_by_kind,others,debt,,,median_turn,15
+losses_by_kind,others,none,,,count,4
+losses_by_kind,others,all,,,count,140
+losses_by_kind,others,all,,,median_turn,19
+exposure,losses_focus,large cut,,1,n,874
+exposure,losses_focus,large cut,,1,median,3
+exposure,losses_focus,large cut,5,1,at_or_above,294
+exposure,losses_focus,large cut,5,1,share_pct,33.6
+exposure,losses_focus,large cut,10,1,at_or_above,57
+exposure,losses_focus,large cut,10,1,share_pct,6.5
+exposure,losses_focus,large cut,,2,n,874
+exposure,losses_focus,large cut,,2,median,3
+exposure,losses_focus,large cut,5,2,at_or_above,161
+exposure,losses_focus,large cut,5,2,share_pct,18.4
+exposure,losses_focus,large cut,10,2,at_or_above,22
+exposure,losses_focus,large cut,10,2,share_pct,2.5
+exposure,losses_focus,large cut,,3,n,874
+exposure,losses_focus,large cut,,3,median,2
+exposure,losses_focus,large cut,5,3,at_or_above,134
+exposure,losses_focus,large cut,5,3,share_pct,15.3
+exposure,losses_focus,large cut,10,3,at_or_above,7
+exposure,losses_focus,large cut,10,3,share_pct,0.8
+exposure,wins_matched_focus,large cut,,1,n,240953
+exposure,wins_matched_focus,large cut,,1,median,3
+exposure,wins_matched_focus,large cut,5,1,at_or_above,48403
+exposure,wins_matched_focus,large cut,5,1,share_pct,20.1
+exposure,wins_matched_focus,large cut,10,1,at_or_above,5185
+exposure,wins_matched_focus,large cut,10,1,share_pct,2.2
+exposure,wins_matched_focus,large cut,,2,n,240953
+exposure,wins_matched_focus,large cut,,2,median,3
+exposure,wins_matched_focus,large cut,5,2,at_or_above,46393
+exposure,wins_matched_focus,large cut,5,2,share_pct,19.3
+exposure,wins_matched_focus,large cut,10,2,at_or_above,4294
+exposure,wins_matched_focus,large cut,10,2,share_pct,1.8
+exposure,wins_matched_focus,large cut,,3,n,240953
+exposure,wins_matched_focus,large cut,,3,median,2
+exposure,wins_matched_focus,large cut,5,3,at_or_above,41536
+exposure,wins_matched_focus,large cut,5,3,share_pct,17.2
+exposure,wins_matched_focus,large cut,10,3,at_or_above,3258
+exposure,wins_matched_focus,large cut,10,3,share_pct,1.4
+exposure,losses_others,large cut,,1,n,86
+exposure,losses_others,large cut,,1,median,3
+exposure,losses_others,large cut,5,1,at_or_above,19
+exposure,losses_others,large cut,5,1,share_pct,22.1
+exposure,losses_others,large cut,10,1,at_or_above,7
+exposure,losses_others,large cut,10,1,share_pct,8.1
+exposure,losses_others,large cut,,2,n,86
+exposure,losses_others,large cut,,2,median,2
+exposure,losses_others,large cut,5,2,at_or_above,11
+exposure,losses_others,large cut,5,2,share_pct,12.8
+exposure,losses_others,large cut,10,2,at_or_above,4
+exposure,losses_others,large cut,10,2,share_pct,4.7
+exposure,losses_others,large cut,,3,n,86
+exposure,losses_others,large cut,,3,median,2
+exposure,losses_others,large cut,5,3,at_or_above,16
+exposure,losses_others,large cut,5,3,share_pct,18.6
+exposure,losses_others,large cut,10,3,at_or_above,3
+exposure,losses_others,large cut,10,3,share_pct,3.5
+exposure,wins_matched_others,large cut,,1,n,181080
+exposure,wins_matched_others,large cut,,1,median,3
+exposure,wins_matched_others,large cut,5,1,at_or_above,41086
+exposure,wins_matched_others,large cut,5,1,share_pct,22.7
+exposure,wins_matched_others,large cut,10,1,at_or_above,3997
+exposure,wins_matched_others,large cut,10,1,share_pct,2.2
+exposure,wins_matched_others,large cut,,2,n,181080
+exposure,wins_matched_others,large cut,,2,median,3
+exposure,wins_matched_others,large cut,5,2,at_or_above,37471
+exposure,wins_matched_others,large cut,5,2,share_pct,20.7
+exposure,wins_matched_others,large cut,10,2,at_or_above,3162
+exposure,wins_matched_others,large cut,10,2,share_pct,1.7
+exposure,wins_matched_others,large cut,,3,n,181080
+exposure,wins_matched_others,large cut,,3,median,2
+exposure,wins_matched_others,large cut,5,3,at_or_above,31276
+exposure,wins_matched_others,large cut,5,3,share_pct,17.3
+exposure,wins_matched_others,large cut,10,3,at_or_above,2312
+exposure,wins_matched_others,large cut,10,3,share_pct,1.3
+exposure,losses_focus,HQ threat,,1,n,469
+exposure,losses_focus,HQ threat,,1,median,2
+exposure,losses_focus,HQ threat,5,1,at_or_above,62
+exposure,losses_focus,HQ threat,5,1,share_pct,13.2
+exposure,losses_focus,HQ threat,10,1,at_or_above,6
+exposure,losses_focus,HQ threat,10,1,share_pct,1.3
+exposure,losses_focus,HQ threat,,2,n,469
+exposure,losses_focus,HQ threat,,2,median,2
+exposure,losses_focus,HQ threat,5,2,at_or_above,49
+exposure,losses_focus,HQ threat,5,2,share_pct,10.4
+exposure,losses_focus,HQ threat,10,2,at_or_above,4
+exposure,losses_focus,HQ threat,10,2,share_pct,0.9
+exposure,losses_focus,HQ threat,,3,n,469
+exposure,losses_focus,HQ threat,,3,median,2
+exposure,losses_focus,HQ threat,5,3,at_or_above,60
+exposure,losses_focus,HQ threat,5,3,share_pct,12.8
+exposure,losses_focus,HQ threat,10,3,at_or_above,2
+exposure,losses_focus,HQ threat,10,3,share_pct,0.4
+exposure,wins_matched_focus,HQ threat,,1,n,99166
+exposure,wins_matched_focus,HQ threat,,1,median,3
+exposure,wins_matched_focus,HQ threat,5,1,at_or_above,19208
+exposure,wins_matched_focus,HQ threat,5,1,share_pct,19.4
+exposure,wins_matched_focus,HQ threat,10,1,at_or_above,2794
+exposure,wins_matched_focus,HQ threat,10,1,share_pct,2.8
+exposure,wins_matched_focus,HQ threat,,2,n,99166
+exposure,wins_matched_focus,HQ threat,,2,median,3
+exposure,wins_matched_focus,HQ threat,5,2,at_or_above,20924
+exposure,wins_matched_focus,HQ threat,5,2,share_pct,21.1
+exposure,wins_matched_focus,HQ threat,10,2,at_or_above,2574
+exposure,wins_matched_focus,HQ threat,10,2,share_pct,2.6
+exposure,wins_matched_focus,HQ threat,,3,n,99166
+exposure,wins_matched_focus,HQ threat,,3,median,3
+exposure,wins_matched_focus,HQ threat,5,3,at_or_above,20796
+exposure,wins_matched_focus,HQ threat,5,3,share_pct,21.0
+exposure,wins_matched_focus,HQ threat,10,3,at_or_above,1988
+exposure,wins_matched_focus,HQ threat,10,3,share_pct,2.0
+exposure,losses_others,HQ threat,,1,n,44
+exposure,losses_others,HQ threat,,1,median,2
+exposure,losses_others,HQ threat,5,1,at_or_above,4
+exposure,losses_others,HQ threat,5,1,share_pct,9.1
+exposure,losses_others,HQ threat,10,1,at_or_above,0
+exposure,losses_others,HQ threat,10,1,share_pct,0.0
+exposure,losses_others,HQ threat,,2,n,44
+exposure,losses_others,HQ threat,,2,median,2
+exposure,losses_others,HQ threat,5,2,at_or_above,6
+exposure,losses_others,HQ threat,5,2,share_pct,13.6
+exposure,losses_others,HQ threat,10,2,at_or_above,0
+exposure,losses_others,HQ threat,10,2,share_pct,0.0
+exposure,losses_others,HQ threat,,3,n,44
+exposure,losses_others,HQ threat,,3,median,2
+exposure,losses_others,HQ threat,5,3,at_or_above,9
+exposure,losses_others,HQ threat,5,3,share_pct,20.5
+exposure,losses_others,HQ threat,10,3,at_or_above,0
+exposure,losses_others,HQ threat,10,3,share_pct,0.0
+exposure,wins_matched_others,HQ threat,,1,n,60844
+exposure,wins_matched_others,HQ threat,,1,median,3
+exposure,wins_matched_others,HQ threat,5,1,at_or_above,14979
+exposure,wins_matched_others,HQ threat,5,1,share_pct,24.6
+exposure,wins_matched_others,HQ threat,10,1,at_or_above,2076
+exposure,wins_matched_others,HQ threat,10,1,share_pct,3.4
+exposure,wins_matched_others,HQ threat,,2,n,60844
+exposure,wins_matched_others,HQ threat,,2,median,3
+exposure,wins_matched_others,HQ threat,5,2,at_or_above,15696
+exposure,wins_matched_others,HQ threat,5,2,share_pct,25.8
+exposure,wins_matched_others,HQ threat,10,2,at_or_above,1791
+exposure,wins_matched_others,HQ threat,10,2,share_pct,2.9
+exposure,wins_matched_others,HQ threat,,3,n,60844
+exposure,wins_matched_others,HQ threat,,3,median,3
+exposure,wins_matched_others,HQ threat,5,3,at_or_above,14880
+exposure,wins_matched_others,HQ threat,5,3,share_pct,24.5
+exposure,wins_matched_others,HQ threat,10,3,at_or_above,1364
+exposure,wins_matched_others,HQ threat,10,3,share_pct,2.2
+exposure,losses_focus,debt,,1,n,75
+exposure,losses_focus,debt,,1,median,3
+exposure,losses_focus,debt,5,1,at_or_above,19
+exposure,losses_focus,debt,5,1,share_pct,25.3
+exposure,losses_focus,debt,10,1,at_or_above,0
+exposure,losses_focus,debt,10,1,share_pct,0.0
+exposure,losses_focus,debt,,2,n,75
+exposure,losses_focus,debt,,2,median,2
+exposure,losses_focus,debt,5,2,at_or_above,7
+exposure,losses_focus,debt,5,2,share_pct,9.3
+exposure,losses_focus,debt,10,2,at_or_above,0
+exposure,losses_focus,debt,10,2,share_pct,0.0
+exposure,losses_focus,debt,,3,n,75
+exposure,losses_focus,debt,,3,median,1
+exposure,losses_focus,debt,5,3,at_or_above,4
+exposure,losses_focus,debt,5,3,share_pct,5.3
+exposure,losses_focus,debt,10,3,at_or_above,0
+exposure,losses_focus,debt,10,3,share_pct,0.0
+exposure,wins_matched_focus,debt,,1,n,16016
+exposure,wins_matched_focus,debt,,1,median,3
+exposure,wins_matched_focus,debt,5,1,at_or_above,3351
+exposure,wins_matched_focus,debt,5,1,share_pct,20.9
+exposure,wins_matched_focus,debt,10,1,at_or_above,467
+exposure,wins_matched_focus,debt,10,1,share_pct,2.9
+exposure,wins_matched_focus,debt,,2,n,16016
+exposure,wins_matched_focus,debt,,2,median,3
+exposure,wins_matched_focus,debt,5,2,at_or_above,3254
+exposure,wins_matched_focus,debt,5,2,share_pct,20.3
+exposure,wins_matched_focus,debt,10,2,at_or_above,395
+exposure,wins_matched_focus,debt,10,2,share_pct,2.5
+exposure,wins_matched_focus,debt,,3,n,16016
+exposure,wins_matched_focus,debt,,3,median,3
+exposure,wins_matched_focus,debt,5,3,at_or_above,3274
+exposure,wins_matched_focus,debt,5,3,share_pct,20.4
+exposure,wins_matched_focus,debt,10,3,at_or_above,283
+exposure,wins_matched_focus,debt,10,3,share_pct,1.8
+exposure,losses_others,debt,,1,n,6
+exposure,losses_others,debt,,1,median,5
+exposure,losses_others,debt,5,1,at_or_above,5
+exposure,losses_others,debt,5,1,share_pct,83.3
+exposure,losses_others,debt,10,1,at_or_above,0
+exposure,losses_others,debt,10,1,share_pct,0.0
+exposure,losses_others,debt,,2,n,6
+exposure,losses_others,debt,,2,median,4
+exposure,losses_others,debt,5,2,at_or_above,0
+exposure,losses_others,debt,5,2,share_pct,0.0
+exposure,losses_others,debt,10,2,at_or_above,0
+exposure,losses_others,debt,10,2,share_pct,0.0
+exposure,losses_others,debt,,3,n,6
+exposure,losses_others,debt,,3,median,3
+exposure,losses_others,debt,5,3,at_or_above,1
+exposure,losses_others,debt,5,3,share_pct,16.7
+exposure,losses_others,debt,10,3,at_or_above,0
+exposure,losses_others,debt,10,3,share_pct,0.0
+exposure,wins_matched_others,debt,,1,n,10103
+exposure,wins_matched_others,debt,,1,median,3
+exposure,wins_matched_others,debt,5,1,at_or_above,2518
+exposure,wins_matched_others,debt,5,1,share_pct,24.9
+exposure,wins_matched_others,debt,10,1,at_or_above,322
+exposure,wins_matched_others,debt,10,1,share_pct,3.2
+exposure,wins_matched_others,debt,,2,n,10103
+exposure,wins_matched_others,debt,,2,median,3
+exposure,wins_matched_others,debt,5,2,at_or_above,2566
+exposure,wins_matched_others,debt,5,2,share_pct,25.4
+exposure,wins_matched_others,debt,10,2,at_or_above,293
+exposure,wins_matched_others,debt,10,2,share_pct,2.9
+exposure,wins_matched_others,debt,,3,n,10103
+exposure,wins_matched_others,debt,,3,median,3
+exposure,wins_matched_others,debt,5,3,at_or_above,2412
+exposure,wins_matched_others,debt,5,3,share_pct,23.9
+exposure,wins_matched_others,debt,10,3,at_or_above,218
+exposure,wins_matched_others,debt,10,3,share_pct,2.2

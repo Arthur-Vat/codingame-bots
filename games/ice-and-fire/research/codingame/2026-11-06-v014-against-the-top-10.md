@@ -1,5 +1,7 @@
 # ice-and-fire-v014 against the top 10 of CodinGame
 
+> **Correction, 2026-11-11.** Sections 1, 2 and 7 compare the top players with us in the same games, where they play second and we play first. The second player starts with one more cell, and the opening differences reported here (more cells from turn 1, trainings at turn 5, first contact a turn earlier) come from the seat, not from the players: as second player we train at turn 5 too. What holds, within a seat: our early mine, the top players' mines in the middle game, their cuts and their exchanges. See [the report of 2026-11-11](2026-11-11-v014-against-the-top-10.md), on 2,177 games, which compares within a seat.
+
 What it covers: 322 games of `ice-and-fire-v014` (our nickname is Tarleya), kept on the branch `claude/codingame-games` (commit ac331ba): the 222 ranking games its submission played on 2026-10-31 against Legend players, and 100 test games against the top 10 of the leaderboard on 2026-11-06, 10 against each on the 10 fixed maps of `games/ice-and-fire/codingame-seeds.txt` (our bot is always player 0, red, in test games). Ranks come from the leaderboard of 2026-11-06, 16:51 UTC. All 322 games were replayed by our engine and agree with CodinGame, command by command.
 
 Written by Claude from the generated charts and data (section "Data" below, and `signals.md` there). Curves show the median of each side, read right after its own play of the turn, with a band for the middle half of the games. Turn numbers are game turns; games against the top 10 last 16 to 20 turns (median by opponent).

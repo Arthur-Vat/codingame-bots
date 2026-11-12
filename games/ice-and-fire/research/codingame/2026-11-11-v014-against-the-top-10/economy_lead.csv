@@ -1,0 +1,49 @@
+metric,turn,bin,games,wins
+material,5,behind by more than 16,430,45
+material,5,behind by up to 16,1597,398
+material,5,ahead by up to 16,118,87
+material,5,ahead by more than 16,18,16
+material,10,behind by more than 64,954,65
+material,10,behind by up to 64,789,198
+material,10,level,15,8
+material,10,ahead by up to 64,289,168
+material,10,ahead by more than 64,101,92
+material,15,behind by more than 196,729,5
+material,15,behind by up to 196,669,89
+material,15,level,1,1
+material,15,ahead by up to 196,246,152
+material,15,ahead by more than 196,185,184
+material,20,behind by more than 269,309,4
+material,20,behind by up to 269,258,32
+material,20,level,1,0
+material,20,ahead by up to 269,156,105
+material,20,ahead by more than 269,104,104
+material,30,behind by more than 259,37,1
+material,30,behind by up to 259,35,4
+material,30,ahead by up to 259,26,17
+material,30,ahead by more than 259,19,19
+income,5,behind by more than 1,209,16
+income,5,behind by up to 1,1524,334
+income,5,level,188,78
+income,5,ahead by up to 1,154,96
+income,5,ahead by more than 1,88,22
+income,10,behind by more than 6,730,57
+income,10,behind by up to 6,644,121
+income,10,level,106,35
+income,10,ahead by up to 6,401,185
+income,10,ahead by more than 6,267,133
+income,15,behind by more than 19,720,30
+income,15,behind by up to 19,543,86
+income,15,level,14,4
+income,15,ahead by up to 19,366,155
+income,15,ahead by more than 19,187,156
+income,20,behind by more than 23,295,10
+income,20,behind by up to 23,242,44
+income,20,level,16,6
+income,20,ahead by up to 23,183,103
+income,20,ahead by more than 23,92,82
+income,30,behind by more than 21,28,1
+income,30,behind by up to 21,31,2
+income,30,level,1,1
+income,30,ahead by up to 21,29,14
+income,30,ahead by more than 21,28,23
