@@ -23,15 +23,15 @@ v014 won 403 of its 1,950 test games against the top 10 (21%), the same every da
 | N3l (9, new in the top 10) | 8 of 27 | 4.1 mines, 4.7 level-2 units | (27 games only) |
 | NinjaDoggy (10) | 54 of 196 (28%) | no mines, 6.6 towers | a large cut (50%, turn 13) |
 
-aCat, tenth when the collection started and twelfth now, is the one we hold: 96 won of 177 (54%). A "swing" is a turn in which the lead in holdings moves by 60 or more; a "large cut" takes 30% or more of our cells at once.
+The counts include the few ranking games against these players (N3l: 7 of its 27 games). aCat, tenth when the collection started and twelfth now, is the one we hold: 96 won of 177 (54%). A "swing" is a turn in which the lead in holdings moves by 60 or more; a "large cut" takes 30% or more of our cells at once.
 
 ## 1. The seat matters, and test games give us the worse one
 
-On these maps the second player (blue) starts with two cells and the first (red) with one. Blue is one cell ahead after turn 1 and about seven at turn 8, whoever plays it: at turn 8 the top 10 as blue hold 30 cells against us, the rest of Legend as blue hold 30 against us, and we hold 29 as blue ourselves; as red we hold 23, and the rest of Legend as red 26. In our 227 ranking games the first player won 100 (44%); we won 68 of 106 as red (64%) and 89 of 121 as blue (74%).
+On these maps the second player (blue) starts with two cells and the first (red) with one. Blue is one cell ahead after turn 1 and about four at turn 8 for players other than us (the rest of Legend holds 30 cells as blue and 26 as red); for us the gap between the seats is six (29 as blue, 23 as red), the extra coming from our early mine (section 2). The top 10 as blue hold 30 at turn 8, like everyone else in that seat. In our 227 ranking games the first player won 100 (44%); we won 68 of 106 as red (64%) and 89 of 121 as blue (74%).
 
 CodinGame's test games always make the tested bot the first player. So our 21% against the top 10 is measured in the worse seat, and any chart of "top players against us" from these games carries the seat's head start.
 
-![Active cells by game turn, top players (second player) against us (first player)](2026-11-11-v014-against-the-top-10/top-vs-us-cells.svg)
+![Active cells by game turn, top players (second player) against us (first player): the seats are mixed](2026-11-11-v014-against-the-top-10/top-vs-us-cells.svg)
 
 ## 2. The opening: everyone plays alike, except our early mine
 
@@ -54,13 +54,15 @@ Against the same opponent (us, as red) and in the same seat (blue), the top 10 a
 | Mines held: top 10 | 0 | 1 | 2 |
 | Mines held: rest of Legend | 0 | 0 | 0 |
 
-The top 10 keep growing; the others stall and their income falls as the fights cost them. The clearest habit behind it is mines in the middle game: from turn 9 to turn 15 the top 10 build a mine in about 20% of games every turn, the rest of Legend in 6% to 9%, and we in 0% to 2%: our bot builds its mine early and then never again (under 1% of our spending goes to the economy in the middle game, against 14% of theirs). Level-2 units and towers come at the same rate for the top 10 and the rest of Legend (from turn 9, a level-2 unit in 20% to 26% of games a turn for the top 10 and 15% to 30% for the others, a tower in about 40% for both); we train level-2 units about half as often (12% to 16%) and start towers a turn later (15% of games at turn 8, against 42% to 48%).
+The top 10 keep growing; the others stall and their income falls as the fights cost them. One caution: the top 10 are measured in the test games (the 50 fixed maps) and the rest of Legend in our ranking games (other maps, another day), so part of the difference may come from the maps.
+
+One habit goes with it, mines in the middle game: from turn 9 to turn 15 the top 10 build a mine in about 20% of games every turn, the rest of Legend in 6% to 9%, and we almost never (0% to 2% against the top 10; 4% to 9% at turns 13 to 15 in our ranking games): our bot builds its mine early and then stops (under 1% of our spending goes to the economy in the middle game, against 14% of theirs). The top 10 are already 2 cells and 4 gold of income ahead of the rest of Legend at turn 10, before their mines show, so the mines may follow their lead as much as make it. Level-2 units and towers come at the same rate for the top 10 and the rest of Legend (from turn 9, a level-2 unit in 20% to 26% of games a turn for the top 10 and 15% to 30% for the others, a tower in about 40% for both); we train level-2 units about half as often (12% to 16%) and start towers a turn later (15% of games at turn 8, against 42% to 48%).
 
 Against the top 10, our own cells stop at 31 from turn 12 and our income falls from 27 to 24.
 
-![Share of games that build a mine at each turn, top players against us](2026-11-11-v014-against-the-top-10/top-vs-us-event-mine.svg)
+![Share of games that build a mine at each turn, top players (second player) against us (first player)](2026-11-11-v014-against-the-top-10/top-vs-us-event-mine.svg)
 
-![Income by game turn, top players against us](2026-11-11-v014-against-the-top-10/top-vs-us-income.svg)
+![Income by game turn, top players (second player) against us (first player): the seats are mixed](2026-11-11-v014-against-the-top-10/top-vs-us-income.svg)
 
 ## 4. What decides our games: land from turn 10, and a lead is nearly final
 
@@ -80,9 +82,9 @@ They make more of these cuts than the rest of Legend does: from turn 11 to turn 
 
 ## 6. Fighting: they win the exchanges, a little better than the rest of Legend
 
-At turn 15 the top 10 have removed 90 gold of our units and lost 60 (exchange +30); the rest of Legend, in the same seat against us, removed 65 and lost 60. We stand at -20 against the top 10 and level against the others. Per gold spent on units, the top 10 remove 0.53 of enemy value and we 0.35.
+At turn 15 the top 10 have removed 90 gold of our units and lost 60 (exchange +30); the rest of Legend, in the same seat against us, removed 65 and lost 60. We stand at -20 against the top 10 and level against the others. Per gold spent on units, and within one seat (blue), the top 10 remove 0.53 of enemy value, the rest of Legend 0.40 and we 0.39.
 
-![Exchange by game turn, top players against us](2026-11-11-v014-against-the-top-10/economy-top-vs-us-exchange.svg)
+![Exchange by game turn, top players (second player) against us (first player): the seats are mixed](2026-11-11-v014-against-the-top-10/economy-top-vs-us-exchange.svg)
 
 ## 7. What our search thinks of their moves
 
@@ -98,7 +100,7 @@ On the 45 maps with 20 games or more, our win rate against the top 10 goes from 
 
 One experiment each, judged by the SPRT as usual; the order is by the strength of the evidence.
 
-1. **Mines in the middle game.** Let the search build mines from turn 9 when the territory is large: the top 10 do it three times as often as the rest of Legend, we never do, and our search scores their mine turns 13 gold below their plain turns.
+1. **Mines in the middle game.** Let the search build mines from turn 9 when the territory is large: the top 10 do it two to three times as often as the rest of Legend, we almost never do, and our search scores their mine turns 13 gold below their plain turns. The games show that it goes with their lead, not that it makes it.
 2. **Level-3 and level-2 units.** Look at how the evaluation counts stronger units, on the judge's largest gaps (`2026-11-11-v014-judge/largest-gaps.md`): the top 10's level-3 turns score 109 below our own choice, and we train level-2 units half as often as everyone else.
 3. **The first mine.** Try trainings instead of the early mine (turn 6 as red, turn 7 as blue), as everyone else plays; our games do not settle whether it helps.
 4. **The first tower** a turn earlier (turn 8), as the top 10 and the rest of Legend build it.
@@ -107,7 +109,7 @@ One experiment each, judged by the SPRT as usual; the order is by the strength o
 ## Limits
 
 - The seat: all test games are played as red. How the top 10 play as red, and how we do against them as blue, is seen in a handful of ranking games only.
-- The "rest of Legend" comparison rests on our 227 ranking games (106 as red, 121 as blue), against players ranked about 11 to 60: medians of about 100 games.
+- The "rest of Legend" comparison rests on our 227 ranking games (106 as red, 121 as blue), against players ranked 9 to 100 and a few unranked ones (a handful of these games are against top-10 players), on other maps than the test games: medians of about 100 games.
 - 50 maps, the same every day; one release (v014); six days.
 - The judge compares plans by our own evaluation: a large gap shows a disagreement, and since they win, probably our error, but not which term is wrong.
 

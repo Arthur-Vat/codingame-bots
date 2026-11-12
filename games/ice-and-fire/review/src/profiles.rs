@@ -58,6 +58,11 @@ pub struct Entry {
 /// The lines of the index: the games to use, and the lines that are not
 /// games (left out).
 pub fn read_index(path: &Path, request: &Request) -> Result<(Vec<Entry>, Vec<LeftOut>), String> {
+    if let Some(seat) = request.our_seat {
+        if seat > 1 {
+            return Err(format!("--our-seat is 0 or 1, not {seat}"));
+        }
+    }
     let text = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     let (mut entries, mut left_out) = (Vec::new(), Vec::new());
     let mut seen = std::collections::HashSet::new();

@@ -1,5 +1,7 @@
 # Decisive moments of our losses: data
 
+> In this folder `moments.csv` is replaced by `moments-losses.csv`, its loss rows only (1,617): the 608,162 rows of the wins control are 51 MB and are not committed; `codingame-moments --out` writes them again.
+
 2176 games used, 1617 of them our losses. Made by `codingame-moments --out`; the report that links this folder reads these numbers.
 
 ## Files

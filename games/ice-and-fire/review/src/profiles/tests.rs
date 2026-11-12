@@ -373,6 +373,10 @@ fn a_seat_keeps_only_the_games_we_played_in_it() {
         sources.contains("\ntest,,1\n") && !sources.contains("ranking"),
         "{sources}"
     );
+    // A seat that does not exist is refused, not an empty report.
+    only.our_seat = Some(2);
+    let error = run(&only).expect_err("a refusal");
+    assert!(error.contains("--our-seat is 0 or 1"), "{error}");
 }
 
 #[test]
