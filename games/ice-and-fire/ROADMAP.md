@@ -47,6 +47,7 @@ Iteration: one experiment per pull request ([journal](journal/README.md)).
 - [x] Evaluations at CodinGame's speed and real limit, calibrated on each machine with the timing bot's workload ([ADR 0048](../../docs/adr/0048-ice-and-fire-codingame-speed.md), #233): the calibration in the SPRT and league scripts, `scripts/calibrate.sh` for screenings, and the League replay workflow
 - [x] The league's 105 stored pairings replayed at those settings (League replay run 41204625632, 15 shards in 52 minutes, owner's go-ahead "Start the replay (Recommended)"): the new `league.jsonl` and `LEADERBOARD.md`, same order of the bots
 - [ ] E032: the plan bot's hard limit at 56 ms by its clock, every phase bounded, screened and tested at the calibrated settings against v014
+- [ ] E033, mines in the middle game, the first experiment proposed by the report on 2,177 CodinGame games: a mine counted above its income in the evaluation where the enemy cannot take it at once ([E033](journal/E033-middle-game-mines.md))
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 

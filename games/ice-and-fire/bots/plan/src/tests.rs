@@ -30,6 +30,17 @@ fn evals(max_evals: u64) -> Limit {
 /// cells, `X`/`x` blue's), the gold of both and the units (owner, id, level,
 /// x, y). No building but the HQs.
 fn position(rows: [&str; 12], gold: [i64; 2], units: &[(u8, u32, u8, u8, u8)]) -> State {
+    position_with_spots("0\n", rows, gold, units)
+}
+
+/// [`position`] on a map whose mine spots are `spots`, the initial input's
+/// text: their count, then a line `x y` for each.
+fn position_with_spots(
+    spots: &str,
+    rows: [&str; 12],
+    gold: [i64; 2],
+    units: &[(u8, u32, u8, u8, u8)],
+) -> State {
     let mut income = [0i64; 2];
     let mut text = String::new();
     for row in rows {
@@ -58,7 +69,7 @@ fn position(rows: [&str; 12], gold: [i64; 2], units: &[(u8, u32, u8, u8, u8)]) -
     for (owner, id, level, x, y) in units {
         turn.push_str(&format!("{owner} {id} {level} {x} {y}\n"));
     }
-    State::read("0\n", &turn, League::Bronze, 10).expect("a valid position")
+    State::read(spots, &turn, League::Bronze, 10).expect("a valid position")
 }
 
 /// Red holds the top row and the right column down to (11, 9); blue's HQ is
@@ -565,6 +576,56 @@ fn cells_the_enemy_can_take_next_turn_count_less() {
     ];
     let state = position(rows, [30, 20], &[]);
     assert_eq!((threatened(&state, 0), threatened(&state, 1)), (0, 0));
+}
+
+#[test]
+fn a_mine_counts_more_than_its_income() {
+    use crate::eval::{eval, MINE};
+    // E033: red builds a mine on the spot (1, 0), far from blue. The shared
+    // evaluation counts what it changes (15 gold less, 4 of income more);
+    // the bot's own adds MINE for the mine.
+    let rows = [
+        "OOO.........",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "...........X",
+        "...........X",
+    ];
+    let own = |state: &State, seat: usize| {
+        eval(state, seat)
+            - ice_and_fire_tactics::eval::evaluate(state, seat)
+            - crate::eval::shape(state, seat)
+    };
+    let mut state = position_with_spots("1\n1 0\n", rows, [30, 20], &[]);
+    assert_eq!(own(&state, 0), 0);
+    let income = state.income(0);
+    assert!(state.apply(Command::BuildMine { x: 1, y: 0 }));
+    assert_eq!((state.gold(0), state.income(0)), (15, income + 4));
+    assert_eq!(own(&state, 0), MINE);
+    // It counts as much against its side, seen from the other.
+    assert_eq!(own(&state, 1), -MINE);
+
+    // A mine the enemy can take at its next turn counts nothing more: blue
+    // (20 gold, income 1) reaches (11, 9) of the corridor for 20, so red's
+    // mine there leaves only the threatened cells' term (E023), red's one
+    // against blue's one.
+    let mut state = position_with_spots("2\n5 0\n11 9\n", CORRIDOR, [30, 20], &[]);
+    assert!(state.apply(Command::BuildMine { x: 11, y: 9 }));
+    assert_eq!(crate::eval::threatened(&state, 0), 1);
+    let exposed = own(&state, 0);
+    assert_eq!(exposed, 7 * (crate::eval::threatened(&state, 1) - 1) / 4);
+    // On (5, 0), out of blue's reach, it counts.
+    let mut state = position_with_spots("2\n5 0\n11 9\n", CORRIDOR, [30, 20], &[]);
+    assert!(state.apply(Command::BuildMine { x: 5, y: 0 }));
+    assert_eq!(crate::eval::threatened(&state, 0), 1);
+    assert_eq!(own(&state, 0), exposed + MINE);
 }
 
 /// The towers among the actions of the player to act.
