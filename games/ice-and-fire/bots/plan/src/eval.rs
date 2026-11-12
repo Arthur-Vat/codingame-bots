@@ -24,11 +24,12 @@
 //!   of a cell's value (4 as a cell, 3 as its income): [`threatened`] cells
 //!   cost a side `7 / 4` each.
 //! - **Mines** (E033): the shared evaluation counts a mine as its income of
-//!   4, three times, 12 against the 15 gold it costs, so a climb never
+//!   4, three times, 12 against the 15 gold it costs, so a climb rarely
 //!   gained by building one, while the top 10 of CodinGame build one in a
-//!   fifth of their games at every turn from turn 9. A mine on an active
-//!   cell counts [`MINE`] more, unless the enemy can take its cell within
-//!   [`MINE_SAFE_TURNS`] of its turns: a mine pays for itself in four.
+//!   fifth of their games at every turn from turn 9, once their territory
+//!   is large. A mine on an active cell that the enemy cannot take at its
+//!   next turn counts one more for every [`MINE_PER_CELLS`] active cells of
+//!   its side ([`mine_bonus`]): little on a small territory, 9 at 36 cells.
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::reach_within;
@@ -49,55 +50,23 @@ pub fn threatened(state: &State, seat: usize) -> i64 {
     i64::from(exposed(state, seat).count())
 }
 
-/// What a mine on an active cell counts beyond its income (E033).
-pub const MINE: i64 = 6;
-/// The enemy's turns a mine must be out of its reach to count [`MINE`]: 0
-/// counts every mine, 1 leaves out the mines on [`exposed`] cells, 2 those
-/// its chains reach for its gold plus two incomes.
-pub const MINE_SAFE_TURNS: i64 = 1;
-/// The active cells a side needs for its mines to count (E033's second
-/// round: mines "when the territory is large"); 0 for no such rule.
-pub const MINE_MIN_CELLS: i64 = 36;
-/// Whether only the side with more active cells than the other counts its
-/// mines (second round).
-pub const MINE_LEAD: bool = false;
-/// When positive, a mine counts its side's active cells divided by this
-/// instead of [`MINE`] (second round).
-pub const MINE_PER_CELLS: i64 = 0;
+/// The active cells of a side for which each of its mines counts one more
+/// than its income (E033).
+pub const MINE_PER_CELLS: i64 = 4;
 
-/// What each mine of a side with `cells` active cells, against `others` of
-/// the enemy, counts beyond its income.
-pub fn mine_bonus(cells: i64, others: i64) -> i64 {
-    if cells < MINE_MIN_CELLS || (MINE_LEAD && cells <= others) {
-        0
-    } else if MINE_PER_CELLS > 0 {
-        cells / MINE_PER_CELLS
-    } else {
-        MINE
-    }
+/// What each mine of a side with `cells` active cells counts beyond its
+/// income.
+pub fn mine_bonus(cells: i64) -> i64 {
+    cells / MINE_PER_CELLS
 }
 
 /// What the mines of `seat` count beyond their income: [`mine_bonus`] for
-/// each on its active cells that the enemy cannot take within
-/// [`MINE_SAFE_TURNS`] turns. `exposed` is `exposed(state, seat)`.
+/// each on its active cells that the enemy cannot take at its next turn.
+/// `exposed` is `exposed(state, seat)`.
 fn mines(state: &State, seat: usize, exposed: Bits) -> i64 {
     let active = state.active(seat);
-    let cells = i64::from(active.count());
-    let each = mine_bonus(cells, i64::from(state.active(1 - seat).count()));
-    let mut mines = state.mines() & active;
-    if each == 0 || mines.is_empty() {
-        return 0;
-    }
-    if MINE_SAFE_TURNS >= 1 {
-        mines = mines.and_not(exposed);
-    }
-    // The wider reach is searched only for a mine that is still counted.
-    if MINE_SAFE_TURNS >= 2 && !mines.is_empty() {
-        let enemy = 1 - seat;
-        let budget = state.gold(enemy) + MINE_SAFE_TURNS * state.income(enemy);
-        mines = mines.and_not(reach_within(state, enemy, false, budget));
-    }
-    each * i64::from(mines.count())
+    let mines = (state.mines() & active).and_not(exposed);
+    mine_bonus(i64::from(active.count())) * i64::from(mines.count())
 }
 
 /// The weight of a joint and of a cell that one capture cuts off.
