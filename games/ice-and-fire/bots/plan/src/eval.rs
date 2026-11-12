@@ -50,11 +50,11 @@ pub fn threatened(state: &State, seat: usize) -> i64 {
 }
 
 /// What a mine on an active cell counts beyond its income (E033).
-pub const MINE: i64 = 16;
+pub const MINE: i64 = 10;
 /// The enemy's turns a mine must be out of its reach to count [`MINE`]: 0
 /// counts every mine, 1 leaves out the mines on [`exposed`] cells, 2 those
 /// its chains reach for its gold plus two incomes.
-pub const MINE_SAFE_TURNS: i64 = 2;
+pub const MINE_SAFE_TURNS: i64 = 1;
 
 /// The mines of `seat` that count [`MINE`]: those on its active cells that
 /// the enemy cannot take within [`MINE_SAFE_TURNS`] turns. `exposed` is
