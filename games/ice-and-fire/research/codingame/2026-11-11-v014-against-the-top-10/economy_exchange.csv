@@ -1,0 +1,43 @@
+group,phase,games,killed,lost,balance
+top players,early game,1777,0,0,0
+top players,middle game,1763,56.988,31.327,25.661
+top players,endgame,1761,140.676,108.683,31.993
+"us, same games",early game,1785,0,0,0
+"us, same games",middle game,1749,37.044,45.432,-8.388
+"us, same games",endgame,1757,106.858,153.409,-46.551
+our wins,early game,557,0,0,0
+our wins,middle game,534,65.3,45.356,19.944
+our wins,endgame,530,149.17,125.906,23.264
+our losses,early game,1617,0,0,0
+our losses,middle game,1599,32.602,45.478,-12.877
+our losses,endgame,1611,97.356,155.587,-58.231
+zasmu,early game,196,0,0,0
+zasmu,middle game,196,50.918,33.112,17.806
+zasmu,endgame,196,84.082,90.204,-6.122
+Pduhard-,early game,196,0,0,0
+Pduhard-,middle game,196,48.929,24.847,24.082
+Pduhard-,endgame,195,136.923,129.333,7.59
+karliso,early game,194,0,0,0
+karliso,middle game,194,55.979,33.196,22.784
+karliso,endgame,194,151.031,104.639,46.392
+_iaz,early game,195,0,0,0
+_iaz,middle game,195,61.077,29.744,31.333
+_iaz,endgame,195,148.923,103.077,45.846
+reCurse,early game,195,0,0,0
+reCurse,middle game,195,54.359,38.718,15.641
+reCurse,endgame,195,135.692,98.615,37.077
+_iahelka,early game,187,0,0,0
+_iahelka,middle game,187,63.316,19.84,43.476
+_iahelka,endgame,187,173.369,108.021,65.348
+Waffle3z,early game,196,0,0,0
+Waffle3z,middle game,196,50.051,37.5,12.551
+Waffle3z,endgame,196,116.582,117.449,-0.867
+Zylo,early game,195,0,0,0
+Zylo,middle game,195,62.103,32.051,30.051
+Zylo,endgame,195,178.462,129.179,49.282
+N3l,early game,27,0,0,0
+N3l,middle game,27,71.111,36.667,34.444
+N3l,endgame,27,164.815,148.148,16.667
+NinjaDoggy,early game,196,0,0,0
+NinjaDoggy,middle game,182,65.11,31.758,33.352
+NinjaDoggy,endgame,181,139.392,90.884,48.508

@@ -1,0 +1,11 @@
+kind,group,early,middle,end
+HQ threat,others,0,0,114
+HQ threat,focus,0,0,1233
+debt,others,0,4,12
+debt,focus,0,6,148
+large cut,others,0,42,130
+large cut,focus,0,332,1334
+lead change,others,0,22,28
+lead change,focus,0,53,171
+swing,others,0,43,267
+swing,focus,0,471,2791

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" width="640" height="320" role="img" aria-labelledby="t">
+<title id="t">cells: Active cells: owned and joined to the HQ.</title>
+<style>text{font-family:system-ui,sans-serif}.bg{fill:#fcfcfb}.tx{fill:#0b0b0b}.mu{fill:#52514e}.gr{stroke:#e4e3df}.ds{stroke:#52514e}.s1{stroke:#2a78d6}.s2{stroke:#eb6834}.f1{fill:#2a78d6}.f2{fill:#eb6834}.halo{stroke:#fcfcfb}@media (prefers-color-scheme: dark){.bg{fill:#1a1a19}.tx{fill:#f0efec}.mu{fill:#c3c2b7}.gr{stroke:#3a3a37}.ds{stroke:#c3c2b7}.s1{stroke:#3987e5}.s2{stroke:#d95926}.f1{fill:#3987e5}.f2{fill:#d95926}.halo{stroke:#1a1a19}}</style>
+<rect class="bg" width="640" height="320"/>
+<text class="tx" x="16" y="20.0" font-size="13" font-weight="600">cells: Active cells: owned and joined to the HQ.</text>
+<text class="mu" x="16" y="38.0" font-size="11">median per game turn; n = 27 (us) and 27 (N3l)</text>
+<line class="s1" x1="16.0" y1="52.0" x2="34.0" y2="52.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="40.0" y="56.0" font-size="12">us</text>
+<line class="s2" x1="77.2" y1="52.0" x2="95.2" y2="52.0" stroke-width="2" stroke-linecap="round"/>
+<text class="tx" x="101.2" y="56.0" font-size="12">N3l</text>
+<text class="mu" x="624.0" y="56.0" font-size="11" text-anchor="end">line: median; band: middle half of the games</text>
+<line class="gr" x1="48.0" y1="276.0" x2="528.0" y2="276.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="280.0" font-size="11" text-anchor="end">0</text>
+<line class="gr" x1="48.0" y1="174.0" x2="528.0" y2="174.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="178.0" font-size="11" text-anchor="end">50</text>
+<line class="gr" x1="48.0" y1="72.0" x2="528.0" y2="72.0" stroke-width="1"/>
+<text class="mu" x="42.0" y="76.0" font-size="11" text-anchor="end">100</text>
+<text class="mu" x="139.4" y="292.0" font-size="11" text-anchor="middle">5</text>
+<text class="mu" x="253.7" y="292.0" font-size="11" text-anchor="middle">10</text>
+<text class="mu" x="368.0" y="292.0" font-size="11" text-anchor="middle">15</text>
+<text class="mu" x="482.3" y="292.0" font-size="11" text-anchor="middle">20</text>
+<text class="mu" x="288.0" y="308.0" font-size="11" text-anchor="middle">game turn</text>
+<line class="ds" x1="48.0" y1="72.0" x2="48.0" y2="276.0" stroke-width="1" stroke-dasharray="4 3"/>
+<text class="mu halo" x="52.0" y="84.0" font-size="11" text-anchor="start" stroke-width="3" paint-order="stroke">turn 1</text>
+<path class="f1" fill-opacity="0.15" d="M48.0 269.9 L70.9 265.8 L93.7 261.7 L116.6 255.6 L139.4 249.5 L162.3 241.3 L185.1 232.1 L208.0 223.0 L230.9 215.8 L253.7 207.7 L276.6 204.6 L299.4 197.5 L322.3 197.5 L345.1 191.3 L368.0 180.1 L390.9 198.5 L413.7 202.6 L436.6 206.6 L459.4 200.5 L482.3 196.4 L505.1 195.4 L528.0 196.4 L528.0 239.3 L505.1 243.4 L482.3 237.2 L459.4 233.2 L436.6 235.2 L413.7 235.2 L390.9 233.2 L368.0 230.1 L345.1 226.0 L322.3 223.0 L299.4 220.9 L276.6 220.9 L253.7 224.0 L230.9 227.0 L208.0 229.1 L185.1 237.2 L162.3 243.4 L139.4 249.5 L116.6 255.6 L93.7 261.7 L70.9 265.8 L48.0 269.9 Z"/>
+<path class="f2" fill-opacity="0.15" d="M48.0 267.8 L70.9 263.8 L93.7 259.7 L116.6 253.6 L139.4 245.4 L162.3 235.2 L185.1 223.0 L208.0 208.7 L230.9 196.4 L253.7 188.3 L276.6 178.1 L299.4 174.0 L322.3 161.8 L345.1 151.6 L368.0 133.2 L390.9 121.0 L413.7 116.9 L436.6 110.8 L459.4 108.7 L482.3 105.2 L505.1 96.5 L528.0 97.5 L528.0 182.7 L505.1 170.9 L482.3 178.6 L459.4 178.1 L436.6 169.9 L413.7 167.9 L390.9 166.9 L368.0 186.2 L345.1 204.6 L322.3 200.5 L299.4 193.4 L276.6 196.4 L253.7 202.6 L230.9 207.7 L208.0 215.8 L185.1 229.1 L162.3 238.3 L139.4 247.4 L116.6 253.6 L93.7 259.7 L70.9 263.8 L48.0 267.8 Z"/>
+<path class="s1" d="M48.0 269.9 L70.9 265.8 L93.7 261.7 L116.6 255.6 L139.4 249.5 L162.3 243.4 L185.1 235.2 L208.0 227.0 L230.9 218.9 L253.7 214.8 L276.6 212.8 L299.4 210.7 L322.3 212.8 L345.1 216.8 L368.0 216.8 L390.9 214.8 L413.7 218.9 L436.6 223.0 L459.4 218.9 L482.3 218.9 L505.1 229.1 L528.0 223.0" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<path class="s2" d="M48.0 267.8 L70.9 263.8 L93.7 259.7 L116.6 253.6 L139.4 245.4 L162.3 235.2 L185.1 225.0 L208.0 212.8 L230.9 200.5 L253.7 192.4 L276.6 186.2 L299.4 178.1 L322.3 169.9 L345.1 165.8 L368.0 163.8 L390.9 149.5 L413.7 143.4 L436.6 137.3 L459.4 139.3 L482.3 133.2 L505.1 116.9 L528.0 118.9" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle class="f2" cx="540.0" cy="118.9" r="4"/>
+<text class="tx" x="549.0" y="122.9" font-size="12">N3l</text>
+<circle class="f1" cx="540.0" cy="223.0" r="4"/>
+<text class="tx" x="549.0" y="227.0" font-size="12">us</text>
+</svg>

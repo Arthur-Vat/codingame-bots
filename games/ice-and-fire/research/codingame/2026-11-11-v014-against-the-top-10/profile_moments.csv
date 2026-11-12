@@ -1,0 +1,101 @@
+player,kind,favours,wins_with,wins_games,losses_with,losses_games,total,median_turn
+zasmu,HQ threat,them,176,186,1,10,177,20
+zasmu,HQ threat,us,0,186,8,10,8,22
+zasmu,debt,them,21,186,2,10,30,24
+zasmu,debt,us,0,186,0,10,0,
+zasmu,large cut,them,35,186,0,10,43,11
+zasmu,large cut,us,31,186,10,10,64,21.5
+zasmu,lead change,them,14,186,1,10,22,24.5
+zasmu,lead change,us,11,186,7,10,26,19.5
+zasmu,swing,them,131,186,2,10,199,15
+zasmu,swing,us,44,186,7,10,67,19
+Pduhard-,HQ threat,them,113,172,0,24,113,17
+Pduhard-,HQ threat,us,0,172,21,24,21,22
+Pduhard-,debt,them,11,172,0,24,11,20
+Pduhard-,debt,us,2,172,1,24,3,25
+Pduhard-,large cut,them,123,172,2,24,205,14
+Pduhard-,large cut,us,19,172,19,24,64,15
+Pduhard-,lead change,them,8,172,2,24,16,25
+Pduhard-,lead change,us,7,172,24,24,38,13
+Pduhard-,swing,them,154,172,6,24,329,15
+Pduhard-,swing,us,35,172,22,24,105,17
+karliso,HQ threat,them,149,183,0,11,149,18
+karliso,HQ threat,us,0,183,9,11,9,25
+karliso,debt,them,21,183,0,11,21,16
+karliso,debt,us,0,183,1,11,1,24
+karliso,large cut,them,130,183,5,11,326,15
+karliso,large cut,us,22,183,8,11,48,15
+karliso,lead change,them,30,183,6,11,44,17
+karliso,lead change,us,33,183,10,11,61,14
+karliso,swing,them,152,183,7,11,363,16
+karliso,swing,us,31,183,9,11,83,18
+_iaz,HQ threat,them,109,152,0,43,109,18
+_iaz,HQ threat,us,0,152,30,43,30,21
+_iaz,debt,them,24,152,0,43,25,18
+_iaz,debt,us,1,152,3,43,4,17
+_iaz,large cut,them,113,152,0,43,220,15
+_iaz,large cut,us,26,152,29,43,86,16
+_iaz,lead change,them,16,152,1,43,24,18
+_iaz,lead change,us,11,152,26,43,41,15
+_iaz,swing,them,149,152,3,43,422,15.5
+_iaz,swing,us,23,152,38,43,179,16
+reCurse,HQ threat,them,140,146,0,49,140,17
+reCurse,HQ threat,us,0,146,43,49,43,25
+reCurse,debt,them,5,146,0,49,5,14
+reCurse,debt,us,0,146,7,49,7,21
+reCurse,large cut,them,78,146,7,49,118,15
+reCurse,large cut,us,21,146,45,49,121,16
+reCurse,lead change,them,15,146,10,49,30,17
+reCurse,lead change,us,15,146,40,49,69,13
+reCurse,swing,them,114,146,2,49,280,15
+reCurse,swing,us,32,146,42,49,236,18
+_iahelka,HQ threat,them,129,170,0,25,129,17
+_iahelka,HQ threat,us,0,170,13,25,13,21
+_iahelka,debt,them,5,170,0,25,5,18
+_iahelka,debt,us,0,170,1,25,1,26
+_iahelka,large cut,them,142,170,7,25,317,14
+_iahelka,large cut,us,4,170,6,25,19,16
+_iahelka,lead change,them,22,170,6,25,36,18
+_iahelka,lead change,us,20,170,14,25,43,15
+_iahelka,swing,them,164,170,3,25,485,15
+_iahelka,swing,us,29,170,13,25,83,18
+Waffle3z,HQ threat,them,144,151,0,45,144,17
+Waffle3z,HQ threat,us,0,151,35,45,35,17
+Waffle3z,debt,them,24,151,1,45,25,18
+Waffle3z,debt,us,0,151,1,45,1,23
+Waffle3z,large cut,them,56,151,3,45,82,14
+Waffle3z,large cut,us,49,151,45,45,224,14
+Waffle3z,lead change,them,23,151,3,45,26,17
+Waffle3z,lead change,us,17,151,36,45,54,14.5
+Waffle3z,swing,them,127,151,3,45,311,15
+Waffle3z,swing,us,20,151,42,45,174,17
+Zylo,HQ threat,them,142,156,0,39,142,21
+Zylo,HQ threat,us,1,156,36,39,37,21
+Zylo,debt,them,23,156,0,39,23,24
+Zylo,debt,us,7,156,7,39,14,24.5
+Zylo,large cut,them,104,156,4,39,182,17
+Zylo,large cut,us,23,156,28,39,90,16
+Zylo,lead change,them,25,156,8,39,40,19
+Zylo,lead change,us,15,156,31,39,55,16
+Zylo,swing,them,147,156,15,39,546,17
+Zylo,swing,us,37,156,35,39,155,19
+N3l,HQ threat,them,15,19,0,8,15,22
+N3l,HQ threat,us,0,19,7,8,7,16
+N3l,debt,them,4,19,0,8,4,20
+N3l,debt,us,0,19,0,8,0,
+N3l,large cut,them,15,19,0,8,25,19
+N3l,large cut,us,1,19,8,8,16,13
+N3l,lead change,them,2,19,0,8,2,19
+N3l,lead change,us,2,19,7,8,9,12
+N3l,swing,them,18,19,2,8,104,17
+N3l,swing,us,5,19,8,8,30,15
+NinjaDoggy,HQ threat,them,116,142,0,54,116,18
+NinjaDoggy,HQ threat,us,0,142,34,54,34,20.5
+NinjaDoggy,debt,them,12,142,0,54,12,19
+NinjaDoggy,debt,us,0,142,1,54,1,21
+NinjaDoggy,large cut,them,101,142,4,54,197,15
+NinjaDoggy,large cut,us,5,142,16,54,35,15
+NinjaDoggy,lead change,them,24,142,4,54,36,15.5
+NinjaDoggy,lead change,us,17,142,16,54,37,15
+NinjaDoggy,swing,them,117,142,6,54,283,16
+NinjaDoggy,swing,us,30,142,33,54,125,16

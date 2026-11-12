@@ -245,6 +245,7 @@ pub fn run(request: &Request) -> Result<(), String> {
         kinds: vec![],
         batch: None,
         release: request.release.clone(),
+        our_seat: None,
         top: request.top,
         players: request.players.clone(),
         leaderboard: request.leaderboard.clone(),

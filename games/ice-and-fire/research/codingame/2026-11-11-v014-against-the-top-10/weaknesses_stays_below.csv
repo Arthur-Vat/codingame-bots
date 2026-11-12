@@ -1,0 +1,11 @@
+metric,losses,losses_below,wins,wins_below,median_turn
+gold,1617,1531,559,169,16
+income,1617,1523,559,34,11
+cells,1617,1478,559,79,1
+army,1617,1131,559,78,12
+mines,1617,914,559,22,12
+towers,1617,1127,559,207,11
+exposed30,1617,561,559,216,16
+hq_gap,1617,3,559,524,15
+material,1617,1597,559,46,1
+voronoi,1617,1443,559,80,5

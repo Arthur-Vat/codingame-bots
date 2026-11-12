@@ -1,0 +1,1333 @@
+set,series,turn,first_median,second_median,first_n,second_n
+economy-top-vs-us,exchange,1,0,0,1785,1777
+economy-top-vs-us,exchange,2,0,0,1777,1777
+economy-top-vs-us,exchange,3,0,0,1777,1777
+economy-top-vs-us,exchange,4,0,0,1777,1777
+economy-top-vs-us,exchange,5,0,0,1777,1777
+economy-top-vs-us,exchange,6,0,0,1777,1777
+economy-top-vs-us,exchange,7,0,0,1777,1767
+economy-top-vs-us,exchange,8,0,0,1767,1763
+economy-top-vs-us,exchange,9,0,0,1763,1763
+economy-top-vs-us,exchange,10,0,10,1763,1763
+economy-top-vs-us,exchange,11,0,20,1763,1758
+economy-top-vs-us,exchange,12,-10,20,1755,1755
+economy-top-vs-us,exchange,13,-10,20,1727,1724
+economy-top-vs-us,exchange,14,-10,30,1673,1657
+economy-top-vs-us,exchange,15,-20,30,1551,1547
+economy-top-vs-us,exchange,16,-20,30,1410,1388
+economy-top-vs-us,exchange,17,-20,40,1217,1206
+economy-top-vs-us,exchange,18,-30,30,1031,1013
+economy-top-vs-us,cum_killed,1,0,0,1785,1777
+economy-top-vs-us,cum_killed,2,0,0,1777,1777
+economy-top-vs-us,cum_killed,3,0,0,1777,1777
+economy-top-vs-us,cum_killed,4,0,0,1777,1777
+economy-top-vs-us,cum_killed,5,0,0,1777,1777
+economy-top-vs-us,cum_killed,6,0,0,1777,1777
+economy-top-vs-us,cum_killed,7,0,0,1777,1767
+economy-top-vs-us,cum_killed,8,0,0,1767,1763
+economy-top-vs-us,cum_killed,9,0,10,1763,1763
+economy-top-vs-us,cum_killed,10,0,20,1763,1763
+economy-top-vs-us,cum_killed,11,10,30,1763,1758
+economy-top-vs-us,cum_killed,12,20,50,1755,1755
+economy-top-vs-us,cum_killed,13,30,60,1727,1724
+economy-top-vs-us,cum_killed,14,40,80,1673,1657
+economy-top-vs-us,cum_killed,15,60,90,1551,1547
+economy-top-vs-us,cum_killed,16,70,110,1410,1388
+economy-top-vs-us,cum_killed,17,80,120,1217,1206
+economy-top-vs-us,cum_killed,18,90,130,1031,1013
+economy-top-vs-us,cum_lost,1,0,0,1785,1777
+economy-top-vs-us,cum_lost,2,0,0,1777,1777
+economy-top-vs-us,cum_lost,3,0,0,1777,1777
+economy-top-vs-us,cum_lost,4,0,0,1777,1777
+economy-top-vs-us,cum_lost,5,0,0,1777,1777
+economy-top-vs-us,cum_lost,6,0,0,1777,1777
+economy-top-vs-us,cum_lost,7,0,0,1777,1767
+economy-top-vs-us,cum_lost,8,0,0,1767,1763
+economy-top-vs-us,cum_lost,9,0,0,1763,1763
+economy-top-vs-us,cum_lost,10,10,0,1763,1763
+economy-top-vs-us,cum_lost,11,20,10,1763,1758
+economy-top-vs-us,cum_lost,12,30,20,1755,1755
+economy-top-vs-us,cum_lost,13,50,30,1727,1724
+economy-top-vs-us,cum_lost,14,60,40,1673,1657
+economy-top-vs-us,cum_lost,15,80,60,1551,1547
+economy-top-vs-us,cum_lost,16,90,70,1410,1388
+economy-top-vs-us,cum_lost,17,110,80,1217,1206
+economy-top-vs-us,cum_lost,18,120,90,1031,1013
+economy-top-vs-us,cells per gold,1,0.1,0.1,1785,1777
+economy-top-vs-us,cells per gold,2,0.2,0.2,1777,1777
+economy-top-vs-us,cells per gold,3,0.3,0.3,1777,1777
+economy-top-vs-us,cells per gold,4,0.3,0.3,1777,1777
+economy-top-vs-us,cells per gold,5,0.4,0.325,1777,1777
+economy-top-vs-us,cells per gold,6,0.333,0.36,1777,1777
+economy-top-vs-us,cells per gold,7,0.345,0.367,1777,1767
+economy-top-vs-us,cells per gold,8,0.32,0.353,1767,1763
+economy-top-vs-us,cells per gold,9,0.293,0.326,1763,1763
+economy-top-vs-us,cells per gold,10,0.267,0.297,1763,1763
+economy-top-vs-us,cells per gold,11,0.244,0.274,1763,1758
+economy-top-vs-us,cells per gold,12,0.229,0.256,1755,1755
+economy-top-vs-us,cells per gold,13,0.216,0.237,1727,1724
+economy-top-vs-us,cells per gold,14,0.204,0.224,1673,1657
+economy-top-vs-us,cells per gold,15,0.194,0.212,1551,1547
+economy-top-vs-us,cells per gold,16,0.184,0.2,1410,1388
+economy-top-vs-us,cells per gold,17,0.176,0.186,1217,1206
+economy-top-vs-us,cells per gold,18,0.171,0.18,1031,1013
+economy-top-vs-us,kills per gold on units,1,0,0,1785,1777
+economy-top-vs-us,kills per gold on units,2,0,0,1777,1777
+economy-top-vs-us,kills per gold on units,3,0,0,1777,1777
+economy-top-vs-us,kills per gold on units,4,0,0,1777,1777
+economy-top-vs-us,kills per gold on units,5,0,0,1777,1777
+economy-top-vs-us,kills per gold on units,6,0,0,1777,1777
+economy-top-vs-us,kills per gold on units,7,0,0,1777,1767
+economy-top-vs-us,kills per gold on units,8,0,0,1767,1763
+economy-top-vs-us,kills per gold on units,9,0,0.111,1763,1763
+economy-top-vs-us,kills per gold on units,10,0,0.222,1763,1763
+economy-top-vs-us,kills per gold on units,11,0.143,0.304,1763,1758
+economy-top-vs-us,kills per gold on units,12,0.2,0.375,1755,1755
+economy-top-vs-us,kills per gold on units,13,0.25,0.438,1727,1724
+economy-top-vs-us,kills per gold on units,14,0.308,0.5,1673,1657
+economy-top-vs-us,kills per gold on units,15,0.353,0.526,1551,1547
+economy-top-vs-us,kills per gold on units,16,0.37,0.55,1410,1388
+economy-top-vs-us,kills per gold on units,17,0.389,0.571,1217,1206
+economy-top-vs-us,kills per gold on units,18,0.412,0.579,1031,1013
+economy-top-vs-us,upkeep burden,1,66.667,50,1785,1777
+economy-top-vs-us,upkeep burden,2,40,33.333,1777,1777
+economy-top-vs-us,upkeep burden,3,28.571,25,1777,1777
+economy-top-vs-us,upkeep burden,4,30,27.273,1777,1777
+economy-top-vs-us,upkeep burden,5,23.077,26.667,1777,1777
+economy-top-vs-us,upkeep burden,6,15.789,25,1777,1777
+economy-top-vs-us,upkeep burden,7,16.667,20.833,1777,1767
+economy-top-vs-us,upkeep burden,8,17.391,20,1767,1763
+economy-top-vs-us,upkeep burden,9,18.182,19.444,1763,1763
+economy-top-vs-us,upkeep burden,10,18.75,21.277,1763,1763
+economy-top-vs-us,upkeep burden,11,20,22.857,1763,1758
+economy-top-vs-us,upkeep burden,12,21.622,23.81,1755,1755
+economy-top-vs-us,upkeep burden,13,22.727,24.561,1727,1724
+economy-top-vs-us,upkeep burden,14,24.242,24.39,1673,1657
+economy-top-vs-us,upkeep burden,15,25.806,26.027,1551,1547
+economy-top-vs-us,upkeep burden,16,27.475,27.273,1410,1388
+economy-top-vs-us,upkeep burden,17,28.571,28.571,1217,1206
+economy-top-vs-us,upkeep burden,18,29.87,32.353,1031,1013
+economy-wins-vs-losses,exchange,1,0,0,557,1617
+economy-wins-vs-losses,exchange,2,0,0,546,1617
+economy-wins-vs-losses,exchange,3,0,0,546,1617
+economy-wins-vs-losses,exchange,4,0,0,546,1617
+economy-wins-vs-losses,exchange,5,0,0,546,1617
+economy-wins-vs-losses,exchange,6,0,0,546,1617
+economy-wins-vs-losses,exchange,7,0,0,546,1617
+economy-wins-vs-losses,exchange,8,0,0,536,1617
+economy-wins-vs-losses,exchange,9,0,0,531,1617
+economy-wins-vs-losses,exchange,10,10,0,531,1617
+economy-wins-vs-losses,exchange,11,10,0,531,1617
+economy-wins-vs-losses,exchange,12,10,-10,520,1614
+economy-wins-vs-losses,exchange,13,20,-20,510,1583
+economy-wins-vs-losses,exchange,14,20,-20,491,1518
+economy-wins-vs-losses,exchange,15,20,-20,456,1399
+economy-wins-vs-losses,exchange,16,20,-30,421,1252
+economy-wins-vs-losses,exchange,17,20,-30,387,1064
+economy-wins-vs-losses,exchange,18,10,-30,350,882
+economy-wins-vs-losses,cum_killed,1,0,0,557,1617
+economy-wins-vs-losses,cum_killed,2,0,0,546,1617
+economy-wins-vs-losses,cum_killed,3,0,0,546,1617
+economy-wins-vs-losses,cum_killed,4,0,0,546,1617
+economy-wins-vs-losses,cum_killed,5,0,0,546,1617
+economy-wins-vs-losses,cum_killed,6,0,0,546,1617
+economy-wins-vs-losses,cum_killed,7,0,0,546,1617
+economy-wins-vs-losses,cum_killed,8,0,0,536,1617
+economy-wins-vs-losses,cum_killed,9,0,0,531,1617
+economy-wins-vs-losses,cum_killed,10,20,0,531,1617
+economy-wins-vs-losses,cum_killed,11,30,10,531,1617
+economy-wins-vs-losses,cum_killed,12,50,20,520,1614
+economy-wins-vs-losses,cum_killed,13,60,30,510,1583
+economy-wins-vs-losses,cum_killed,14,70,40,491,1518
+economy-wins-vs-losses,cum_killed,15,90,50,456,1399
+economy-wins-vs-losses,cum_killed,16,100,60,421,1252
+economy-wins-vs-losses,cum_killed,17,100,70,387,1064
+economy-wins-vs-losses,cum_killed,18,110,90,350,882
+economy-wins-vs-losses,cum_lost,1,0,0,557,1617
+economy-wins-vs-losses,cum_lost,2,0,0,546,1617
+economy-wins-vs-losses,cum_lost,3,0,0,546,1617
+economy-wins-vs-losses,cum_lost,4,0,0,546,1617
+economy-wins-vs-losses,cum_lost,5,0,0,546,1617
+economy-wins-vs-losses,cum_lost,6,0,0,546,1617
+economy-wins-vs-losses,cum_lost,7,0,0,546,1617
+economy-wins-vs-losses,cum_lost,8,0,0,536,1617
+economy-wins-vs-losses,cum_lost,9,0,0,531,1617
+economy-wins-vs-losses,cum_lost,10,10,10,531,1617
+economy-wins-vs-losses,cum_lost,11,20,20,531,1617
+economy-wins-vs-losses,cum_lost,12,30,30,520,1614
+economy-wins-vs-losses,cum_lost,13,40,50,510,1583
+economy-wins-vs-losses,cum_lost,14,50,60,491,1518
+economy-wins-vs-losses,cum_lost,15,60,80,456,1399
+economy-wins-vs-losses,cum_lost,16,80,90,421,1252
+economy-wins-vs-losses,cum_lost,17,90,110,387,1064
+economy-wins-vs-losses,cum_lost,18,100,130,350,882
+economy-wins-vs-losses,cells per gold,1,0.1,0.1,557,1617
+economy-wins-vs-losses,cells per gold,2,0.2,0.2,546,1617
+economy-wins-vs-losses,cells per gold,3,0.3,0.3,546,1617
+economy-wins-vs-losses,cells per gold,4,0.3,0.3,546,1617
+economy-wins-vs-losses,cells per gold,5,0.4,0.4,546,1617
+economy-wins-vs-losses,cells per gold,6,0.333,0.333,546,1617
+economy-wins-vs-losses,cells per gold,7,0.345,0.345,546,1617
+economy-wins-vs-losses,cells per gold,8,0.323,0.32,536,1617
+economy-wins-vs-losses,cells per gold,9,0.295,0.29,531,1617
+economy-wins-vs-losses,cells per gold,10,0.276,0.264,531,1617
+economy-wins-vs-losses,cells per gold,11,0.255,0.243,531,1617
+economy-wins-vs-losses,cells per gold,12,0.24,0.226,520,1614
+economy-wins-vs-losses,cells per gold,13,0.237,0.212,510,1583
+economy-wins-vs-losses,cells per gold,14,0.226,0.2,491,1518
+economy-wins-vs-losses,cells per gold,15,0.216,0.189,456,1399
+economy-wins-vs-losses,cells per gold,16,0.209,0.18,421,1252
+economy-wins-vs-losses,cells per gold,17,0.2,0.173,387,1064
+economy-wins-vs-losses,cells per gold,18,0.193,0.167,350,882
+economy-wins-vs-losses,kills per gold on units,1,0,0,557,1617
+economy-wins-vs-losses,kills per gold on units,2,0,0,546,1617
+economy-wins-vs-losses,kills per gold on units,3,0,0,546,1617
+economy-wins-vs-losses,kills per gold on units,4,0,0,546,1617
+economy-wins-vs-losses,kills per gold on units,5,0,0,546,1617
+economy-wins-vs-losses,kills per gold on units,6,0,0,546,1617
+economy-wins-vs-losses,kills per gold on units,7,0,0,546,1617
+economy-wins-vs-losses,kills per gold on units,8,0,0,536,1617
+economy-wins-vs-losses,kills per gold on units,9,0,0,531,1617
+economy-wins-vs-losses,kills per gold on units,10,0.222,0,531,1617
+economy-wins-vs-losses,kills per gold on units,11,0.3,0.125,531,1617
+economy-wins-vs-losses,kills per gold on units,12,0.333,0.182,520,1614
+economy-wins-vs-losses,kills per gold on units,13,0.375,0.231,510,1583
+economy-wins-vs-losses,kills per gold on units,14,0.4,0.294,491,1518
+economy-wins-vs-losses,kills per gold on units,15,0.408,0.333,456,1399
+economy-wins-vs-losses,kills per gold on units,16,0.4,0.364,421,1252
+economy-wins-vs-losses,kills per gold on units,17,0.412,0.381,387,1064
+economy-wins-vs-losses,kills per gold on units,18,0.409,0.419,350,882
+economy-wins-vs-losses,upkeep burden,1,66.667,66.667,557,1617
+economy-wins-vs-losses,upkeep burden,2,40,40,546,1617
+economy-wins-vs-losses,upkeep burden,3,28.571,28.571,546,1617
+economy-wins-vs-losses,upkeep burden,4,30,30,546,1617
+economy-wins-vs-losses,upkeep burden,5,23.077,23.077,546,1617
+economy-wins-vs-losses,upkeep burden,6,15.789,15.789,546,1617
+economy-wins-vs-losses,upkeep burden,7,16.667,16.667,546,1617
+economy-wins-vs-losses,upkeep burden,8,17.857,17.857,536,1617
+economy-wins-vs-losses,upkeep burden,9,18.75,18.182,531,1617
+economy-wins-vs-losses,upkeep burden,10,21.053,18.75,531,1617
+economy-wins-vs-losses,upkeep burden,11,22.857,20,531,1617
+economy-wins-vs-losses,upkeep burden,12,23.624,21.212,520,1614
+economy-wins-vs-losses,upkeep burden,13,25.455,21.951,510,1583
+economy-wins-vs-losses,upkeep burden,14,28.302,23.81,491,1518
+economy-wins-vs-losses,upkeep burden,15,31.148,25,456,1399
+economy-wins-vs-losses,upkeep burden,16,30.556,26.316,421,1252
+economy-wins-vs-losses,upkeep burden,17,31.818,27.842,387,1064
+economy-wins-vs-losses,upkeep burden,18,32.836,29.412,350,882
+economy-player-zasmu,exchange,1,0,0,196,196
+economy-player-zasmu,exchange,2,0,0,196,196
+economy-player-zasmu,exchange,3,0,0,196,196
+economy-player-zasmu,exchange,4,0,0,196,196
+economy-player-zasmu,exchange,5,0,0,196,196
+economy-player-zasmu,exchange,6,0,0,196,196
+economy-player-zasmu,exchange,7,0,0,196,196
+economy-player-zasmu,exchange,8,0,0,196,196
+economy-player-zasmu,exchange,9,0,10,196,196
+economy-player-zasmu,exchange,10,-10,10,196,196
+economy-player-zasmu,exchange,11,-10,10,196,196
+economy-player-zasmu,exchange,12,0,15,196,196
+economy-player-zasmu,exchange,13,-10,20,192,192
+economy-player-zasmu,exchange,14,-10,10,191,191
+economy-player-zasmu,exchange,15,0,10,187,187
+economy-player-zasmu,exchange,16,0,10,178,178
+economy-player-zasmu,exchange,17,0,0,162,162
+economy-player-zasmu,exchange,18,0,0,150,150
+economy-player-zasmu,exchange,19,-10,10,139,136
+economy-player-zasmu,exchange,20,-10,0,114,113
+economy-player-zasmu,cum_killed,1,0,0,196,196
+economy-player-zasmu,cum_killed,2,0,0,196,196
+economy-player-zasmu,cum_killed,3,0,0,196,196
+economy-player-zasmu,cum_killed,4,0,0,196,196
+economy-player-zasmu,cum_killed,5,0,0,196,196
+economy-player-zasmu,cum_killed,6,0,0,196,196
+economy-player-zasmu,cum_killed,7,0,0,196,196
+economy-player-zasmu,cum_killed,8,0,0,196,196
+economy-player-zasmu,cum_killed,9,0,20,196,196
+economy-player-zasmu,cum_killed,10,0,20,196,196
+economy-player-zasmu,cum_killed,11,10,20,196,196
+economy-player-zasmu,cum_killed,12,20,30,196,196
+economy-player-zasmu,cum_killed,13,30,35,192,192
+economy-player-zasmu,cum_killed,14,30,40,191,191
+economy-player-zasmu,cum_killed,15,50,50,187,187
+economy-player-zasmu,cum_killed,16,60,55,178,178
+economy-player-zasmu,cum_killed,17,60,60,162,162
+economy-player-zasmu,cum_killed,18,70,75,150,150
+economy-player-zasmu,cum_killed,19,70,80,139,136
+economy-player-zasmu,cum_killed,20,80,80,114,113
+economy-player-zasmu,cum_lost,1,0,0,196,196
+economy-player-zasmu,cum_lost,2,0,0,196,196
+economy-player-zasmu,cum_lost,3,0,0,196,196
+economy-player-zasmu,cum_lost,4,0,0,196,196
+economy-player-zasmu,cum_lost,5,0,0,196,196
+economy-player-zasmu,cum_lost,6,0,0,196,196
+economy-player-zasmu,cum_lost,7,0,0,196,196
+economy-player-zasmu,cum_lost,8,0,0,196,196
+economy-player-zasmu,cum_lost,9,0,0,196,196
+economy-player-zasmu,cum_lost,10,20,0,196,196
+economy-player-zasmu,cum_lost,11,20,10,196,196
+economy-player-zasmu,cum_lost,12,20,20,196,196
+economy-player-zasmu,cum_lost,13,30,30,192,192
+economy-player-zasmu,cum_lost,14,40,30,191,191
+economy-player-zasmu,cum_lost,15,40,50,187,187
+economy-player-zasmu,cum_lost,16,50,60,178,178
+economy-player-zasmu,cum_lost,17,60,60,162,162
+economy-player-zasmu,cum_lost,18,80,70,150,150
+economy-player-zasmu,cum_lost,19,80,70,139,136
+economy-player-zasmu,cum_lost,20,80,80,114,113
+economy-player-zasmu,cells per gold,1,0.1,0.1,196,196
+economy-player-zasmu,cells per gold,2,0.2,0.2,196,196
+economy-player-zasmu,cells per gold,3,0.3,0.3,196,196
+economy-player-zasmu,cells per gold,4,0.3,0.3,196,196
+economy-player-zasmu,cells per gold,5,0.4,0.325,196,196
+economy-player-zasmu,cells per gold,6,0.333,0.36,196,196
+economy-player-zasmu,cells per gold,7,0.327,0.354,196,196
+economy-player-zasmu,cells per gold,8,0.329,0.347,196,196
+economy-player-zasmu,cells per gold,9,0.278,0.32,196,196
+economy-player-zasmu,cells per gold,10,0.265,0.286,196,196
+economy-player-zasmu,cells per gold,11,0.244,0.26,196,196
+economy-player-zasmu,cells per gold,12,0.229,0.234,196,196
+economy-player-zasmu,cells per gold,13,0.218,0.212,192,192
+economy-player-zasmu,cells per gold,14,0.211,0.194,191,191
+economy-player-zasmu,cells per gold,15,0.205,0.175,187,187
+economy-player-zasmu,cells per gold,16,0.204,0.158,178,178
+economy-player-zasmu,cells per gold,17,0.195,0.147,162,162
+economy-player-zasmu,cells per gold,18,0.185,0.138,150,150
+economy-player-zasmu,cells per gold,19,0.179,0.125,139,136
+economy-player-zasmu,cells per gold,20,0.174,0.117,114,113
+economy-player-zasmu,kills per gold on units,1,0,0,196,196
+economy-player-zasmu,kills per gold on units,2,0,0,196,196
+economy-player-zasmu,kills per gold on units,3,0,0,196,196
+economy-player-zasmu,kills per gold on units,4,0,0,196,196
+economy-player-zasmu,kills per gold on units,5,0,0,196,196
+economy-player-zasmu,kills per gold on units,6,0,0,196,196
+economy-player-zasmu,kills per gold on units,7,0,0,196,196
+economy-player-zasmu,kills per gold on units,8,0,0,196,196
+economy-player-zasmu,kills per gold on units,9,0,0.222,196,196
+economy-player-zasmu,kills per gold on units,10,0,0.2,196,196
+economy-player-zasmu,kills per gold on units,11,0.167,0.222,196,196
+economy-player-zasmu,kills per gold on units,12,0.2,0.293,196,196
+economy-player-zasmu,kills per gold on units,13,0.214,0.312,192,192
+economy-player-zasmu,kills per gold on units,14,0.273,0.333,191,191
+economy-player-zasmu,kills per gold on units,15,0.333,0.368,187,187
+economy-player-zasmu,kills per gold on units,16,0.368,0.38,178,178
+economy-player-zasmu,kills per gold on units,17,0.373,0.4,162,162
+economy-player-zasmu,kills per gold on units,18,0.4,0.415,150,150
+economy-player-zasmu,kills per gold on units,19,0.4,0.385,139,136
+economy-player-zasmu,kills per gold on units,20,0.396,0.4,114,113
+economy-player-zasmu,upkeep burden,1,66.667,50,196,196
+economy-player-zasmu,upkeep burden,2,40,33.333,196,196
+economy-player-zasmu,upkeep burden,3,28.571,25,196,196
+economy-player-zasmu,upkeep burden,4,30,27.273,196,196
+economy-player-zasmu,upkeep burden,5,23.077,26.667,196,196
+economy-player-zasmu,upkeep burden,6,15.789,25,196,196
+economy-player-zasmu,upkeep burden,7,16.667,20,196,196
+economy-player-zasmu,upkeep burden,8,17.241,21.32,196,196
+economy-player-zasmu,upkeep burden,9,20.294,21.807,196,196
+economy-player-zasmu,upkeep burden,10,18.519,21.154,196,196
+economy-player-zasmu,upkeep burden,11,20.639,20,196,196
+economy-player-zasmu,upkeep burden,12,23.431,19.398,196,196
+economy-player-zasmu,upkeep burden,13,24.19,18.519,192,192
+economy-player-zasmu,upkeep burden,14,25.714,17.391,191,191
+economy-player-zasmu,upkeep burden,15,27.586,17.188,187,187
+economy-player-zasmu,upkeep burden,16,27.083,15.517,178,178
+economy-player-zasmu,upkeep burden,17,27.586,15.254,162,162
+economy-player-zasmu,upkeep burden,18,28.889,15.254,150,150
+economy-player-zasmu,upkeep burden,19,30,15.254,139,136
+economy-player-zasmu,upkeep burden,20,33.03,15.254,114,113
+economy-player-pduhard-,exchange,1,0,0,196,196
+economy-player-pduhard-,exchange,2,0,0,196,196
+economy-player-pduhard-,exchange,3,0,0,196,196
+economy-player-pduhard-,exchange,4,0,0,196,196
+economy-player-pduhard-,exchange,5,0,0,196,196
+economy-player-pduhard-,exchange,6,0,0,196,196
+economy-player-pduhard-,exchange,7,0,0,196,196
+economy-player-pduhard-,exchange,8,0,0,196,196
+economy-player-pduhard-,exchange,9,0,5,196,196
+economy-player-pduhard-,exchange,10,0,20,196,196
+economy-player-pduhard-,exchange,11,-10,20,196,196
+economy-player-pduhard-,exchange,12,-10,20,196,196
+economy-player-pduhard-,exchange,13,-10,30,185,183
+economy-player-pduhard-,exchange,14,0,20,174,173
+economy-player-pduhard-,exchange,15,-10,20,160,160
+economy-player-pduhard-,exchange,16,0,20,138,135
+economy-player-pduhard-,exchange,17,0,10,110,108
+economy-player-pduhard-,cum_killed,1,0,0,196,196
+economy-player-pduhard-,cum_killed,2,0,0,196,196
+economy-player-pduhard-,cum_killed,3,0,0,196,196
+economy-player-pduhard-,cum_killed,4,0,0,196,196
+economy-player-pduhard-,cum_killed,5,0,0,196,196
+economy-player-pduhard-,cum_killed,6,0,0,196,196
+economy-player-pduhard-,cum_killed,7,0,0,196,196
+economy-player-pduhard-,cum_killed,8,0,0,196,196
+economy-player-pduhard-,cum_killed,9,0,10,196,196
+economy-player-pduhard-,cum_killed,10,0,20,196,196
+economy-player-pduhard-,cum_killed,11,10,30,196,196
+economy-player-pduhard-,cum_killed,12,20,50,196,196
+economy-player-pduhard-,cum_killed,13,40,60,185,183
+economy-player-pduhard-,cum_killed,14,60,80,174,173
+economy-player-pduhard-,cum_killed,15,70,90,160,160
+economy-player-pduhard-,cum_killed,16,90,110,138,135
+economy-player-pduhard-,cum_killed,17,100,120,110,108
+economy-player-pduhard-,cum_lost,1,0,0,196,196
+economy-player-pduhard-,cum_lost,2,0,0,196,196
+economy-player-pduhard-,cum_lost,3,0,0,196,196
+economy-player-pduhard-,cum_lost,4,0,0,196,196
+economy-player-pduhard-,cum_lost,5,0,0,196,196
+economy-player-pduhard-,cum_lost,6,0,0,196,196
+economy-player-pduhard-,cum_lost,7,0,0,196,196
+economy-player-pduhard-,cum_lost,8,0,0,196,196
+economy-player-pduhard-,cum_lost,9,0,0,196,196
+economy-player-pduhard-,cum_lost,10,10,0,196,196
+economy-player-pduhard-,cum_lost,11,20,10,196,196
+economy-player-pduhard-,cum_lost,12,30,20,196,196
+economy-player-pduhard-,cum_lost,13,50,40,185,183
+economy-player-pduhard-,cum_lost,14,70,60,174,173
+economy-player-pduhard-,cum_lost,15,80,70,160,160
+economy-player-pduhard-,cum_lost,16,90,90,138,135
+economy-player-pduhard-,cum_lost,17,110,100,110,108
+economy-player-pduhard-,cells per gold,1,0.1,0.1,196,196
+economy-player-pduhard-,cells per gold,2,0.2,0.2,196,196
+economy-player-pduhard-,cells per gold,3,0.3,0.3,196,196
+economy-player-pduhard-,cells per gold,4,0.3,0.3,196,196
+economy-player-pduhard-,cells per gold,5,0.4,0.325,196,196
+economy-player-pduhard-,cells per gold,6,0.333,0.36,196,196
+economy-player-pduhard-,cells per gold,7,0.345,0.354,196,196
+economy-player-pduhard-,cells per gold,8,0.314,0.362,196,196
+economy-player-pduhard-,cells per gold,9,0.274,0.379,196,196
+economy-player-pduhard-,cells per gold,10,0.248,0.347,196,196
+economy-player-pduhard-,cells per gold,11,0.229,0.338,196,196
+economy-player-pduhard-,cells per gold,12,0.206,0.311,196,196
+economy-player-pduhard-,cells per gold,13,0.196,0.286,185,183
+economy-player-pduhard-,cells per gold,14,0.19,0.261,174,173
+economy-player-pduhard-,cells per gold,15,0.184,0.255,160,160
+economy-player-pduhard-,cells per gold,16,0.178,0.245,138,135
+economy-player-pduhard-,cells per gold,17,0.168,0.228,110,108
+economy-player-pduhard-,kills per gold on units,1,0,0,196,196
+economy-player-pduhard-,kills per gold on units,2,0,0,196,196
+economy-player-pduhard-,kills per gold on units,3,0,0,196,196
+economy-player-pduhard-,kills per gold on units,4,0,0,196,196
+economy-player-pduhard-,kills per gold on units,5,0,0,196,196
+economy-player-pduhard-,kills per gold on units,6,0,0,196,196
+economy-player-pduhard-,kills per gold on units,7,0,0,196,196
+economy-player-pduhard-,kills per gold on units,8,0,0,196,196
+economy-player-pduhard-,kills per gold on units,9,0,0.134,196,196
+economy-player-pduhard-,kills per gold on units,10,0,0.25,196,196
+economy-player-pduhard-,kills per gold on units,11,0.111,0.3,196,196
+economy-player-pduhard-,kills per gold on units,12,0.222,0.387,196,196
+economy-player-pduhard-,kills per gold on units,13,0.375,0.429,185,183
+economy-player-pduhard-,kills per gold on units,14,0.45,0.476,174,173
+economy-player-pduhard-,kills per gold on units,15,0.5,0.5,160,160
+economy-player-pduhard-,kills per gold on units,16,0.556,0.5,138,135
+economy-player-pduhard-,kills per gold on units,17,0.574,0.55,110,108
+economy-player-pduhard-,upkeep burden,1,66.667,50,196,196
+economy-player-pduhard-,upkeep burden,2,40,33.333,196,196
+economy-player-pduhard-,upkeep burden,3,28.571,25,196,196
+economy-player-pduhard-,upkeep burden,4,30,27.273,196,196
+economy-player-pduhard-,upkeep burden,5,23.077,26.667,196,196
+economy-player-pduhard-,upkeep burden,6,16.667,25,196,196
+economy-player-pduhard-,upkeep burden,7,16.667,20,196,196
+economy-player-pduhard-,upkeep burden,8,16.398,20,196,196
+economy-player-pduhard-,upkeep burden,9,16.667,19.355,196,196
+economy-player-pduhard-,upkeep burden,10,18.75,25.581,196,196
+economy-player-pduhard-,upkeep burden,11,19.139,31.915,196,196
+economy-player-pduhard-,upkeep burden,12,21.951,35.147,196,196
+economy-player-pduhard-,upkeep burden,13,23.077,44.444,185,183
+economy-player-pduhard-,upkeep burden,14,27.951,58.824,174,173
+economy-player-pduhard-,upkeep burden,15,29.79,58.537,160,160
+economy-player-pduhard-,upkeep burden,16,28.73,62.712,138,135
+economy-player-pduhard-,upkeep burden,17,29.15,59.353,110,108
+economy-player-karliso,exchange,1,0,0,194,194
+economy-player-karliso,exchange,2,0,0,194,194
+economy-player-karliso,exchange,3,0,0,194,194
+economy-player-karliso,exchange,4,0,0,194,194
+economy-player-karliso,exchange,5,0,0,194,194
+economy-player-karliso,exchange,6,0,0,194,194
+economy-player-karliso,exchange,7,0,0,194,194
+economy-player-karliso,exchange,8,0,0,194,194
+economy-player-karliso,exchange,9,0,0,194,194
+economy-player-karliso,exchange,10,0,0,194,194
+economy-player-karliso,exchange,11,0,0,194,194
+economy-player-karliso,exchange,12,0,0,194,194
+economy-player-karliso,exchange,13,0,20,194,194
+economy-player-karliso,exchange,14,-10,30,186,185
+economy-player-karliso,exchange,15,-30,40,163,163
+economy-player-karliso,exchange,16,-30,40,152,151
+economy-player-karliso,exchange,17,-30,50,125,125
+economy-player-karliso,exchange,18,-50,45,102,100
+economy-player-karliso,cum_killed,1,0,0,194,194
+economy-player-karliso,cum_killed,2,0,0,194,194
+economy-player-karliso,cum_killed,3,0,0,194,194
+economy-player-karliso,cum_killed,4,0,0,194,194
+economy-player-karliso,cum_killed,5,0,0,194,194
+economy-player-karliso,cum_killed,6,0,0,194,194
+economy-player-karliso,cum_killed,7,0,0,194,194
+economy-player-karliso,cum_killed,8,0,0,194,194
+economy-player-karliso,cum_killed,9,0,0,194,194
+economy-player-karliso,cum_killed,10,0,0,194,194
+economy-player-karliso,cum_killed,11,10,0,194,194
+economy-player-karliso,cum_killed,12,20,20,194,194
+economy-player-karliso,cum_killed,13,20,60,194,194
+economy-player-karliso,cum_killed,14,40,80,186,185
+economy-player-karliso,cum_killed,15,60,110,163,163
+economy-player-karliso,cum_killed,16,70,120,152,151
+economy-player-karliso,cum_killed,17,80,130,125,125
+economy-player-karliso,cum_killed,18,100,150,102,100
+economy-player-karliso,cum_lost,1,0,0,194,194
+economy-player-karliso,cum_lost,2,0,0,194,194
+economy-player-karliso,cum_lost,3,0,0,194,194
+economy-player-karliso,cum_lost,4,0,0,194,194
+economy-player-karliso,cum_lost,5,0,0,194,194
+economy-player-karliso,cum_lost,6,0,0,194,194
+economy-player-karliso,cum_lost,7,0,0,194,194
+economy-player-karliso,cum_lost,8,0,0,194,194
+economy-player-karliso,cum_lost,9,0,0,194,194
+economy-player-karliso,cum_lost,10,0,0,194,194
+economy-player-karliso,cum_lost,11,0,10,194,194
+economy-player-karliso,cum_lost,12,0,20,194,194
+economy-player-karliso,cum_lost,13,20,20,194,194
+economy-player-karliso,cum_lost,14,60,40,186,185
+economy-player-karliso,cum_lost,15,80,60,163,163
+economy-player-karliso,cum_lost,16,110,70,152,151
+economy-player-karliso,cum_lost,17,120,80,125,125
+economy-player-karliso,cum_lost,18,150,100,102,100
+economy-player-karliso,cells per gold,1,0.1,0.1,194,194
+economy-player-karliso,cells per gold,2,0.2,0.2,194,194
+economy-player-karliso,cells per gold,3,0.3,0.3,194,194
+economy-player-karliso,cells per gold,4,0.3,0.3,194,194
+economy-player-karliso,cells per gold,5,0.4,0.325,194,194
+economy-player-karliso,cells per gold,6,0.333,0.36,194,194
+economy-player-karliso,cells per gold,7,0.345,0.354,194,194
+economy-player-karliso,cells per gold,8,0.303,0.353,194,194
+economy-player-karliso,cells per gold,9,0.3,0.34,194,194
+economy-player-karliso,cells per gold,10,0.281,0.292,194,194
+economy-player-karliso,cells per gold,11,0.27,0.263,194,194
+economy-player-karliso,cells per gold,12,0.232,0.239,194,194
+economy-player-karliso,cells per gold,13,0.224,0.222,194,194
+economy-player-karliso,cells per gold,14,0.211,0.207,186,185
+economy-player-karliso,cells per gold,15,0.188,0.194,163,163
+economy-player-karliso,cells per gold,16,0.176,0.184,152,151
+economy-player-karliso,cells per gold,17,0.171,0.171,125,125
+economy-player-karliso,cells per gold,18,0.163,0.166,102,100
+economy-player-karliso,kills per gold on units,1,0,0,194,194
+economy-player-karliso,kills per gold on units,2,0,0,194,194
+economy-player-karliso,kills per gold on units,3,0,0,194,194
+economy-player-karliso,kills per gold on units,4,0,0,194,194
+economy-player-karliso,kills per gold on units,5,0,0,194,194
+economy-player-karliso,kills per gold on units,6,0,0,194,194
+economy-player-karliso,kills per gold on units,7,0,0,194,194
+economy-player-karliso,kills per gold on units,8,0,0,194,194
+economy-player-karliso,kills per gold on units,9,0,0,194,194
+economy-player-karliso,kills per gold on units,10,0,0,194,194
+economy-player-karliso,kills per gold on units,11,0.125,0,194,194
+economy-player-karliso,kills per gold on units,12,0.16,0.231,194,194
+economy-player-karliso,kills per gold on units,13,0.182,0.425,194,194
+economy-player-karliso,kills per gold on units,14,0.25,0.533,186,185
+economy-player-karliso,kills per gold on units,15,0.364,0.611,163,163
+economy-player-karliso,kills per gold on units,16,0.372,0.607,152,151
+economy-player-karliso,kills per gold on units,17,0.375,0.667,125,125
+economy-player-karliso,kills per gold on units,18,0.417,0.617,102,100
+economy-player-karliso,upkeep burden,1,66.667,50,194,194
+economy-player-karliso,upkeep burden,2,40,33.333,194,194
+economy-player-karliso,upkeep burden,3,28.571,25,194,194
+economy-player-karliso,upkeep burden,4,30,27.273,194,194
+economy-player-karliso,upkeep burden,5,23.077,26.667,194,194
+economy-player-karliso,upkeep burden,6,15,25,194,194
+economy-player-karliso,upkeep burden,7,16.667,20,194,194
+economy-player-karliso,upkeep burden,8,18.519,21.429,194,194
+economy-player-karliso,upkeep burden,9,20,18.182,194,194
+economy-player-karliso,upkeep burden,10,19.355,16,194,194
+economy-player-karliso,upkeep burden,11,24.324,15.217,194,194
+economy-player-karliso,upkeep burden,12,23.957,15.385,194,194
+economy-player-karliso,upkeep burden,13,25.714,17.778,194,194
+economy-player-karliso,upkeep burden,14,26.19,19.355,186,185
+economy-player-karliso,upkeep burden,15,25,18.75,163,163
+economy-player-karliso,upkeep burden,16,27.273,21.818,152,151
+economy-player-karliso,upkeep burden,17,31.25,24.359,125,125
+economy-player-karliso,upkeep burden,18,28,31.193,102,100
+economy-player--iaz,exchange,1,0,0,195,195
+economy-player--iaz,exchange,2,0,0,195,195
+economy-player--iaz,exchange,3,0,0,195,195
+economy-player--iaz,exchange,4,0,0,195,195
+economy-player--iaz,exchange,5,0,0,195,195
+economy-player--iaz,exchange,6,0,0,195,195
+economy-player--iaz,exchange,7,0,0,195,195
+economy-player--iaz,exchange,8,0,0,195,195
+economy-player--iaz,exchange,9,0,10,195,195
+economy-player--iaz,exchange,10,-10,20,195,195
+economy-player--iaz,exchange,11,-10,20,195,195
+economy-player--iaz,exchange,12,-20,30,195,195
+economy-player--iaz,exchange,13,-20,40,194,193
+economy-player--iaz,exchange,14,-30,40,185,181
+economy-player--iaz,exchange,15,-30,40,171,171
+economy-player--iaz,exchange,16,-20,40,158,155
+economy-player--iaz,exchange,17,-30,40,139,139
+economy-player--iaz,exchange,18,-35,50,118,115
+economy-player--iaz,cum_killed,1,0,0,195,195
+economy-player--iaz,cum_killed,2,0,0,195,195
+economy-player--iaz,cum_killed,3,0,0,195,195
+economy-player--iaz,cum_killed,4,0,0,195,195
+economy-player--iaz,cum_killed,5,0,0,195,195
+economy-player--iaz,cum_killed,6,0,0,195,195
+economy-player--iaz,cum_killed,7,0,0,195,195
+economy-player--iaz,cum_killed,8,0,0,195,195
+economy-player--iaz,cum_killed,9,0,20,195,195
+economy-player--iaz,cum_killed,10,0,30,195,195
+economy-player--iaz,cum_killed,11,20,40,195,195
+economy-player--iaz,cum_killed,12,20,50,195,195
+economy-player--iaz,cum_killed,13,30,70,194,193
+economy-player--iaz,cum_killed,14,40,80,185,181
+economy-player--iaz,cum_killed,15,50,90,171,171
+economy-player--iaz,cum_killed,16,70,110,158,155
+economy-player--iaz,cum_killed,17,80,110,139,139
+economy-player--iaz,cum_killed,18,95,140,118,115
+economy-player--iaz,cum_lost,1,0,0,195,195
+economy-player--iaz,cum_lost,2,0,0,195,195
+economy-player--iaz,cum_lost,3,0,0,195,195
+economy-player--iaz,cum_lost,4,0,0,195,195
+economy-player--iaz,cum_lost,5,0,0,195,195
+economy-player--iaz,cum_lost,6,0,0,195,195
+economy-player--iaz,cum_lost,7,0,0,195,195
+economy-player--iaz,cum_lost,8,0,0,195,195
+economy-player--iaz,cum_lost,9,0,0,195,195
+economy-player--iaz,cum_lost,10,20,0,195,195
+economy-player--iaz,cum_lost,11,30,20,195,195
+economy-player--iaz,cum_lost,12,40,20,195,195
+economy-player--iaz,cum_lost,13,50,30,194,193
+economy-player--iaz,cum_lost,14,60,40,185,181
+economy-player--iaz,cum_lost,15,80,50,171,171
+economy-player--iaz,cum_lost,16,90,70,158,155
+economy-player--iaz,cum_lost,17,110,80,139,139
+economy-player--iaz,cum_lost,18,130,90,118,115
+economy-player--iaz,cells per gold,1,0.1,0.1,195,195
+economy-player--iaz,cells per gold,2,0.2,0.2,195,195
+economy-player--iaz,cells per gold,3,0.3,0.3,195,195
+economy-player--iaz,cells per gold,4,0.3,0.3,195,195
+economy-player--iaz,cells per gold,5,0.4,0.325,195,195
+economy-player--iaz,cells per gold,6,0.333,0.36,195,195
+economy-player--iaz,cells per gold,7,0.345,0.367,195,195
+economy-player--iaz,cells per gold,8,0.32,0.35,195,195
+economy-player--iaz,cells per gold,9,0.294,0.326,195,195
+economy-player--iaz,cells per gold,10,0.258,0.308,195,195
+economy-player--iaz,cells per gold,11,0.231,0.293,195,195
+economy-player--iaz,cells per gold,12,0.225,0.28,195,195
+economy-player--iaz,cells per gold,13,0.216,0.26,194,193
+economy-player--iaz,cells per gold,14,0.2,0.243,185,181
+economy-player--iaz,cells per gold,15,0.19,0.238,171,171
+economy-player--iaz,cells per gold,16,0.177,0.224,158,155
+economy-player--iaz,cells per gold,17,0.169,0.211,139,139
+economy-player--iaz,cells per gold,18,0.165,0.208,118,115
+economy-player--iaz,kills per gold on units,1,0,0,195,195
+economy-player--iaz,kills per gold on units,2,0,0,195,195
+economy-player--iaz,kills per gold on units,3,0,0,195,195
+economy-player--iaz,kills per gold on units,4,0,0,195,195
+economy-player--iaz,kills per gold on units,5,0,0,195,195
+economy-player--iaz,kills per gold on units,6,0,0,195,195
+economy-player--iaz,kills per gold on units,7,0,0,195,195
+economy-player--iaz,kills per gold on units,8,0,0,195,195
+economy-player--iaz,kills per gold on units,9,0,0.222,195,195
+economy-player--iaz,kills per gold on units,10,0,0.273,195,195
+economy-player--iaz,kills per gold on units,11,0.182,0.4,195,195
+economy-player--iaz,kills per gold on units,12,0.2,0.417,195,195
+economy-player--iaz,kills per gold on units,13,0.267,0.467,194,193
+economy-player--iaz,kills per gold on units,14,0.294,0.474,185,181
+economy-player--iaz,kills per gold on units,15,0.312,0.522,171,171
+economy-player--iaz,kills per gold on units,16,0.364,0.556,158,155
+economy-player--iaz,kills per gold on units,17,0.379,0.556,139,139
+economy-player--iaz,kills per gold on units,18,0.417,0.586,118,115
+economy-player--iaz,upkeep burden,1,66.667,50,195,195
+economy-player--iaz,upkeep burden,2,40,33.333,195,195
+economy-player--iaz,upkeep burden,3,28.571,25,195,195
+economy-player--iaz,upkeep burden,4,30,27.273,195,195
+economy-player--iaz,upkeep burden,5,23.077,26.667,195,195
+economy-player--iaz,upkeep burden,6,15.789,25,195,195
+economy-player--iaz,upkeep burden,7,16.667,21.739,195,195
+economy-player--iaz,upkeep burden,8,17.857,23.333,195,195
+economy-player--iaz,upkeep burden,9,16.667,24.324,195,195
+economy-player--iaz,upkeep burden,10,17.241,27.5,195,195
+economy-player--iaz,upkeep burden,11,17.391,28.571,195,195
+economy-player--iaz,upkeep burden,12,17.5,27.778,195,195
+economy-player--iaz,upkeep burden,13,17.131,31.373,194,193
+economy-player--iaz,upkeep burden,14,20,33.333,185,181
+economy-player--iaz,upkeep burden,15,22.917,38.636,171,171
+economy-player--iaz,upkeep burden,16,26.569,40,158,155
+economy-player--iaz,upkeep burden,17,25.641,42.268,139,139
+economy-player--iaz,upkeep burden,18,30,46.512,118,115
+economy-player-recurse,exchange,1,0,0,195,195
+economy-player-recurse,exchange,2,0,0,195,195
+economy-player-recurse,exchange,3,0,0,195,195
+economy-player-recurse,exchange,4,0,0,195,195
+economy-player-recurse,exchange,5,0,0,195,195
+economy-player-recurse,exchange,6,0,0,195,195
+economy-player-recurse,exchange,7,0,0,195,195
+economy-player-recurse,exchange,8,0,0,195,195
+economy-player-recurse,exchange,9,0,0,195,195
+economy-player-recurse,exchange,10,10,0,195,195
+economy-player-recurse,exchange,11,10,0,195,195
+economy-player-recurse,exchange,12,10,0,195,195
+economy-player-recurse,exchange,13,10,10,195,195
+economy-player-recurse,exchange,14,0,10,191,191
+economy-player-recurse,exchange,15,-10,30,171,171
+economy-player-recurse,exchange,16,-20,40,148,148
+economy-player-recurse,exchange,17,-30,40,130,129
+economy-player-recurse,exchange,18,-20,35,102,102
+economy-player-recurse,cum_killed,1,0,0,195,195
+economy-player-recurse,cum_killed,2,0,0,195,195
+economy-player-recurse,cum_killed,3,0,0,195,195
+economy-player-recurse,cum_killed,4,0,0,195,195
+economy-player-recurse,cum_killed,5,0,0,195,195
+economy-player-recurse,cum_killed,6,0,0,195,195
+economy-player-recurse,cum_killed,7,0,0,195,195
+economy-player-recurse,cum_killed,8,0,0,195,195
+economy-player-recurse,cum_killed,9,0,0,195,195
+economy-player-recurse,cum_killed,10,10,0,195,195
+economy-player-recurse,cum_killed,11,20,20,195,195
+economy-player-recurse,cum_killed,12,30,40,195,195
+economy-player-recurse,cum_killed,13,40,60,195,195
+economy-player-recurse,cum_killed,14,50,70,191,191
+economy-player-recurse,cum_killed,15,60,90,171,171
+economy-player-recurse,cum_killed,16,70,130,148,148
+economy-player-recurse,cum_killed,17,70,130,130,129
+economy-player-recurse,cum_killed,18,100,140,102,102
+economy-player-recurse,cum_lost,1,0,0,195,195
+economy-player-recurse,cum_lost,2,0,0,195,195
+economy-player-recurse,cum_lost,3,0,0,195,195
+economy-player-recurse,cum_lost,4,0,0,195,195
+economy-player-recurse,cum_lost,5,0,0,195,195
+economy-player-recurse,cum_lost,6,0,0,195,195
+economy-player-recurse,cum_lost,7,0,0,195,195
+economy-player-recurse,cum_lost,8,0,0,195,195
+economy-player-recurse,cum_lost,9,0,0,195,195
+economy-player-recurse,cum_lost,10,0,10,195,195
+economy-player-recurse,cum_lost,11,0,20,195,195
+economy-player-recurse,cum_lost,12,20,30,195,195
+economy-player-recurse,cum_lost,13,40,40,195,195
+economy-player-recurse,cum_lost,14,60,50,191,191
+economy-player-recurse,cum_lost,15,80,60,171,171
+economy-player-recurse,cum_lost,16,90,70,148,148
+economy-player-recurse,cum_lost,17,130,70,130,129
+economy-player-recurse,cum_lost,18,130,100,102,102
+economy-player-recurse,cells per gold,1,0.1,0.1,195,195
+economy-player-recurse,cells per gold,2,0.2,0.2,195,195
+economy-player-recurse,cells per gold,3,0.3,0.3,195,195
+economy-player-recurse,cells per gold,4,0.3,0.3,195,195
+economy-player-recurse,cells per gold,5,0.4,0.325,195,195
+economy-player-recurse,cells per gold,6,0.333,0.36,195,195
+economy-player-recurse,cells per gold,7,0.345,0.4,195,195
+economy-player-recurse,cells per gold,8,0.32,0.365,195,195
+economy-player-recurse,cells per gold,9,0.289,0.324,195,195
+economy-player-recurse,cells per gold,10,0.278,0.295,195,195
+economy-player-recurse,cells per gold,11,0.25,0.267,195,195
+economy-player-recurse,cells per gold,12,0.231,0.25,195,195
+economy-player-recurse,cells per gold,13,0.221,0.23,195,195
+economy-player-recurse,cells per gold,14,0.206,0.219,191,191
+economy-player-recurse,cells per gold,15,0.203,0.208,171,171
+economy-player-recurse,cells per gold,16,0.192,0.2,148,148
+economy-player-recurse,cells per gold,17,0.188,0.18,130,129
+economy-player-recurse,cells per gold,18,0.189,0.176,102,102
+economy-player-recurse,kills per gold on units,1,0,0,195,195
+economy-player-recurse,kills per gold on units,2,0,0,195,195
+economy-player-recurse,kills per gold on units,3,0,0,195,195
+economy-player-recurse,kills per gold on units,4,0,0,195,195
+economy-player-recurse,kills per gold on units,5,0,0,195,195
+economy-player-recurse,kills per gold on units,6,0,0,195,195
+economy-player-recurse,kills per gold on units,7,0,0,195,195
+economy-player-recurse,kills per gold on units,8,0,0,195,195
+economy-player-recurse,kills per gold on units,9,0,0,195,195
+economy-player-recurse,kills per gold on units,10,0.167,0,195,195
+economy-player-recurse,kills per gold on units,11,0.222,0.182,195,195
+economy-player-recurse,kills per gold on units,12,0.267,0.333,195,195
+economy-player-recurse,kills per gold on units,13,0.294,0.429,195,195
+economy-player-recurse,kills per gold on units,14,0.294,0.455,191,191
+economy-player-recurse,kills per gold on units,15,0.316,0.588,171,171
+economy-player-recurse,kills per gold on units,16,0.333,0.619,148,148
+economy-player-recurse,kills per gold on units,17,0.357,0.579,130,129
+economy-player-recurse,kills per gold on units,18,0.353,0.591,102,102
+economy-player-recurse,upkeep burden,1,66.667,50,195,195
+economy-player-recurse,upkeep burden,2,40,33.333,195,195
+economy-player-recurse,upkeep burden,3,28.571,25,195,195
+economy-player-recurse,upkeep burden,4,30,27.273,195,195
+economy-player-recurse,upkeep burden,5,23.077,26.667,195,195
+economy-player-recurse,upkeep burden,6,15.789,25,195,195
+economy-player-recurse,upkeep burden,7,16.667,23.077,195,195
+economy-player-recurse,upkeep burden,8,17.857,19.444,195,195
+economy-player-recurse,upkeep burden,9,19.355,17.5,195,195
+economy-player-recurse,upkeep burden,10,23.81,16.667,195,195
+economy-player-recurse,upkeep burden,11,26.087,16.129,195,195
+economy-player-recurse,upkeep burden,12,29.268,18.519,195,195
+economy-player-recurse,upkeep burden,13,30,20,195,195
+economy-player-recurse,upkeep burden,14,31.915,18.966,191,191
+economy-player-recurse,upkeep burden,15,34.328,20.339,171,171
+economy-player-recurse,upkeep burden,16,31.579,24.59,148,148
+economy-player-recurse,upkeep burden,17,33.772,23.729,130,129
+economy-player-recurse,upkeep burden,18,38.835,27.027,102,102
+economy-player--iahelka,exchange,1,0,0,195,187
+economy-player--iahelka,exchange,2,0,0,187,187
+economy-player--iahelka,exchange,3,0,0,187,187
+economy-player--iahelka,exchange,4,0,0,187,187
+economy-player--iahelka,exchange,5,0,0,187,187
+economy-player--iahelka,exchange,6,0,0,187,187
+economy-player--iahelka,exchange,7,0,0,187,187
+economy-player--iahelka,exchange,8,0,0,187,187
+economy-player--iahelka,exchange,9,0,20,187,187
+economy-player--iahelka,exchange,10,-10,20,187,187
+economy-player--iahelka,exchange,11,-10,30,187,187
+economy-player--iahelka,exchange,12,-30,50,184,184
+economy-player--iahelka,exchange,13,-40,50,180,180
+economy-player--iahelka,exchange,14,-40,50,164,164
+economy-player--iahelka,exchange,15,-40,60,151,151
+economy-player--iahelka,exchange,16,-50,70,129,126
+economy-player--iahelka,exchange,17,-50,70,110,110
+economy-player--iahelka,cum_killed,1,0,0,195,187
+economy-player--iahelka,cum_killed,2,0,0,187,187
+economy-player--iahelka,cum_killed,3,0,0,187,187
+economy-player--iahelka,cum_killed,4,0,0,187,187
+economy-player--iahelka,cum_killed,5,0,0,187,187
+economy-player--iahelka,cum_killed,6,0,0,187,187
+economy-player--iahelka,cum_killed,7,0,0,187,187
+economy-player--iahelka,cum_killed,8,0,0,187,187
+economy-player--iahelka,cum_killed,9,0,20,187,187
+economy-player--iahelka,cum_killed,10,10,30,187,187
+economy-player--iahelka,cum_killed,11,10,50,187,187
+economy-player--iahelka,cum_killed,12,20,70,184,184
+economy-player--iahelka,cum_killed,13,30,80,180,180
+economy-player--iahelka,cum_killed,14,50,95,164,164
+economy-player--iahelka,cum_killed,15,60,120,151,151
+economy-player--iahelka,cum_killed,16,70,140,129,126
+economy-player--iahelka,cum_killed,17,80,160,110,110
+economy-player--iahelka,cum_lost,1,0,0,195,187
+economy-player--iahelka,cum_lost,2,0,0,187,187
+economy-player--iahelka,cum_lost,3,0,0,187,187
+economy-player--iahelka,cum_lost,4,0,0,187,187
+economy-player--iahelka,cum_lost,5,0,0,187,187
+economy-player--iahelka,cum_lost,6,0,0,187,187
+economy-player--iahelka,cum_lost,7,0,0,187,187
+economy-player--iahelka,cum_lost,8,0,0,187,187
+economy-player--iahelka,cum_lost,9,0,0,187,187
+economy-player--iahelka,cum_lost,10,20,10,187,187
+economy-player--iahelka,cum_lost,11,30,10,187,187
+economy-player--iahelka,cum_lost,12,50,20,184,184
+economy-player--iahelka,cum_lost,13,70,30,180,180
+economy-player--iahelka,cum_lost,14,80,50,164,164
+economy-player--iahelka,cum_lost,15,100,60,151,151
+economy-player--iahelka,cum_lost,16,110,70,129,126
+economy-player--iahelka,cum_lost,17,140,80,110,110
+economy-player--iahelka,cells per gold,1,0.1,0.1,195,187
+economy-player--iahelka,cells per gold,2,0.2,0.2,187,187
+economy-player--iahelka,cells per gold,3,0.3,0.3,187,187
+economy-player--iahelka,cells per gold,4,0.3,0.3,187,187
+economy-player--iahelka,cells per gold,5,0.4,0.325,187,187
+economy-player--iahelka,cells per gold,6,0.333,0.36,187,187
+economy-player--iahelka,cells per gold,7,0.333,0.4,187,187
+economy-player--iahelka,cells per gold,8,0.329,0.4,187,187
+economy-player--iahelka,cells per gold,9,0.294,0.345,187,187
+economy-player--iahelka,cells per gold,10,0.256,0.329,187,187
+economy-player--iahelka,cells per gold,11,0.237,0.306,187,187
+economy-player--iahelka,cells per gold,12,0.228,0.286,184,184
+economy-player--iahelka,cells per gold,13,0.212,0.262,180,180
+economy-player--iahelka,cells per gold,14,0.194,0.249,164,164
+economy-player--iahelka,cells per gold,15,0.182,0.231,151,151
+economy-player--iahelka,cells per gold,16,0.177,0.215,129,126
+economy-player--iahelka,cells per gold,17,0.168,0.197,110,110
+economy-player--iahelka,kills per gold on units,1,0,0,195,187
+economy-player--iahelka,kills per gold on units,2,0,0,187,187
+economy-player--iahelka,kills per gold on units,3,0,0,187,187
+economy-player--iahelka,kills per gold on units,4,0,0,187,187
+economy-player--iahelka,kills per gold on units,5,0,0,187,187
+economy-player--iahelka,kills per gold on units,6,0,0,187,187
+economy-player--iahelka,kills per gold on units,7,0,0,187,187
+economy-player--iahelka,kills per gold on units,8,0,0,187,187
+economy-player--iahelka,kills per gold on units,9,0,0.222,187,187
+economy-player--iahelka,kills per gold on units,10,0.111,0.333,187,187
+economy-player--iahelka,kills per gold on units,11,0.125,0.438,187,187
+economy-player--iahelka,kills per gold on units,12,0.143,0.5,184,184
+economy-player--iahelka,kills per gold on units,13,0.214,0.538,180,180
+economy-player--iahelka,kills per gold on units,14,0.333,0.562,164,164
+economy-player--iahelka,kills per gold on units,15,0.364,0.607,151,151
+economy-player--iahelka,kills per gold on units,16,0.391,0.647,129,126
+economy-player--iahelka,kills per gold on units,17,0.412,0.632,110,110
+economy-player--iahelka,upkeep burden,1,66.667,50,195,187
+economy-player--iahelka,upkeep burden,2,40,33.333,187,187
+economy-player--iahelka,upkeep burden,3,28.571,25,187,187
+economy-player--iahelka,upkeep burden,4,30,27.273,187,187
+economy-player--iahelka,upkeep burden,5,23.077,26.667,187,187
+economy-player--iahelka,upkeep burden,6,15,25,187,187
+economy-player--iahelka,upkeep burden,7,16.667,23.077,187,187
+economy-player--iahelka,upkeep burden,8,15.152,18.75,187,187
+economy-player--iahelka,upkeep burden,9,17.241,25.641,187,187
+economy-player--iahelka,upkeep burden,10,16.216,25,187,187
+economy-player--iahelka,upkeep burden,11,16.216,27.451,187,187
+economy-player--iahelka,upkeep burden,12,16.279,39.319,184,184
+economy-player--iahelka,upkeep burden,13,15.192,45.13,180,180
+economy-player--iahelka,upkeep burden,14,18.275,44.262,164,164
+economy-player--iahelka,upkeep burden,15,21.053,47.143,151,151
+economy-player--iahelka,upkeep burden,16,21.429,42.739,129,126
+economy-player--iahelka,upkeep burden,17,28.571,43.347,110,110
+economy-player-waffle3z,exchange,1,0,0,196,196
+economy-player-waffle3z,exchange,2,0,0,196,196
+economy-player-waffle3z,exchange,3,0,0,196,196
+economy-player-waffle3z,exchange,4,0,0,196,196
+economy-player-waffle3z,exchange,5,0,0,196,196
+economy-player-waffle3z,exchange,6,0,0,196,196
+economy-player-waffle3z,exchange,7,0,0,196,196
+economy-player-waffle3z,exchange,8,0,0,196,196
+economy-player-waffle3z,exchange,9,0,0,196,196
+economy-player-waffle3z,exchange,10,0,10,196,196
+economy-player-waffle3z,exchange,11,0,10,196,191
+economy-player-waffle3z,exchange,12,0,10,191,191
+economy-player-waffle3z,exchange,13,0,20,189,189
+economy-player-waffle3z,exchange,14,0,10,186,186
+economy-player-waffle3z,exchange,15,10,10,171,169
+economy-player-waffle3z,exchange,16,0,10,156,151
+economy-player-waffle3z,exchange,17,0,10,126,121
+economy-player-waffle3z,cum_killed,1,0,0,196,196
+economy-player-waffle3z,cum_killed,2,0,0,196,196
+economy-player-waffle3z,cum_killed,3,0,0,196,196
+economy-player-waffle3z,cum_killed,4,0,0,196,196
+economy-player-waffle3z,cum_killed,5,0,0,196,196
+economy-player-waffle3z,cum_killed,6,0,0,196,196
+economy-player-waffle3z,cum_killed,7,0,0,196,196
+economy-player-waffle3z,cum_killed,8,0,0,196,196
+economy-player-waffle3z,cum_killed,9,0,0,196,196
+economy-player-waffle3z,cum_killed,10,0,10,196,196
+economy-player-waffle3z,cum_killed,11,10,20,196,191
+economy-player-waffle3z,cum_killed,12,20,40,191,191
+economy-player-waffle3z,cum_killed,13,40,60,189,189
+economy-player-waffle3z,cum_killed,14,50,70,186,186
+economy-player-waffle3z,cum_killed,15,80,90,171,169
+economy-player-waffle3z,cum_killed,16,90,110,156,151
+economy-player-waffle3z,cum_killed,17,100,120,126,121
+economy-player-waffle3z,cum_lost,1,0,0,196,196
+economy-player-waffle3z,cum_lost,2,0,0,196,196
+economy-player-waffle3z,cum_lost,3,0,0,196,196
+economy-player-waffle3z,cum_lost,4,0,0,196,196
+economy-player-waffle3z,cum_lost,5,0,0,196,196
+economy-player-waffle3z,cum_lost,6,0,0,196,196
+economy-player-waffle3z,cum_lost,7,0,0,196,196
+economy-player-waffle3z,cum_lost,8,0,0,196,196
+economy-player-waffle3z,cum_lost,9,0,0,196,196
+economy-player-waffle3z,cum_lost,10,0,0,196,196
+economy-player-waffle3z,cum_lost,11,10,10,196,191
+economy-player-waffle3z,cum_lost,12,20,20,191,191
+economy-player-waffle3z,cum_lost,13,40,40,189,189
+economy-player-waffle3z,cum_lost,14,60,50,186,186
+economy-player-waffle3z,cum_lost,15,70,80,171,169
+economy-player-waffle3z,cum_lost,16,90,90,156,151
+economy-player-waffle3z,cum_lost,17,115,100,126,121
+economy-player-waffle3z,cells per gold,1,0.1,0.1,196,196
+economy-player-waffle3z,cells per gold,2,0.2,0.2,196,196
+economy-player-waffle3z,cells per gold,3,0.3,0.3,196,196
+economy-player-waffle3z,cells per gold,4,0.3,0.3,196,196
+economy-player-waffle3z,cells per gold,5,0.4,0.325,196,196
+economy-player-waffle3z,cells per gold,6,0.333,0.36,196,196
+economy-player-waffle3z,cells per gold,7,0.345,0.354,196,196
+economy-player-waffle3z,cells per gold,8,0.32,0.311,196,196
+economy-player-waffle3z,cells per gold,9,0.3,0.283,196,196
+economy-player-waffle3z,cells per gold,10,0.276,0.262,196,196
+economy-player-waffle3z,cells per gold,11,0.26,0.239,196,191
+economy-player-waffle3z,cells per gold,12,0.235,0.226,191,191
+economy-player-waffle3z,cells per gold,13,0.218,0.216,189,189
+economy-player-waffle3z,cells per gold,14,0.21,0.202,186,186
+economy-player-waffle3z,cells per gold,15,0.186,0.193,171,169
+economy-player-waffle3z,cells per gold,16,0.181,0.183,156,151
+economy-player-waffle3z,cells per gold,17,0.183,0.172,126,121
+economy-player-waffle3z,kills per gold on units,1,0,0,196,196
+economy-player-waffle3z,kills per gold on units,2,0,0,196,196
+economy-player-waffle3z,kills per gold on units,3,0,0,196,196
+economy-player-waffle3z,kills per gold on units,4,0,0,196,196
+economy-player-waffle3z,kills per gold on units,5,0,0,196,196
+economy-player-waffle3z,kills per gold on units,6,0,0,196,196
+economy-player-waffle3z,kills per gold on units,7,0,0,196,196
+economy-player-waffle3z,kills per gold on units,8,0,0,196,196
+economy-player-waffle3z,kills per gold on units,9,0,0,196,196
+economy-player-waffle3z,kills per gold on units,10,0,0.143,196,196
+economy-player-waffle3z,kills per gold on units,11,0.143,0.231,196,191
+economy-player-waffle3z,kills per gold on units,12,0.25,0.308,191,191
+economy-player-waffle3z,kills per gold on units,13,0.333,0.4,189,189
+economy-player-waffle3z,kills per gold on units,14,0.357,0.412,186,186
+economy-player-waffle3z,kills per gold on units,15,0.471,0.462,171,169
+economy-player-waffle3z,kills per gold on units,16,0.455,0.5,156,151
+economy-player-waffle3z,kills per gold on units,17,0.5,0.5,126,121
+economy-player-waffle3z,upkeep burden,1,66.667,50,196,196
+economy-player-waffle3z,upkeep burden,2,40,33.333,196,196
+economy-player-waffle3z,upkeep burden,3,28.571,25,196,196
+economy-player-waffle3z,upkeep burden,4,30,27.273,196,196
+economy-player-waffle3z,upkeep burden,5,23.077,26.667,196,196
+economy-player-waffle3z,upkeep burden,6,15.789,25,196,196
+economy-player-waffle3z,upkeep burden,7,16.667,17.241,196,196
+economy-player-waffle3z,upkeep burden,8,17.857,17.857,196,196
+economy-player-waffle3z,upkeep burden,9,17.949,15.385,196,196
+economy-player-waffle3z,upkeep burden,10,18.182,20,196,196
+economy-player-waffle3z,upkeep burden,11,20,21.667,196,191
+economy-player-waffle3z,upkeep burden,12,22.5,22.807,191,191
+economy-player-waffle3z,upkeep burden,13,25.532,21.875,189,189
+economy-player-waffle3z,upkeep burden,14,28,22.222,186,186
+economy-player-waffle3z,upkeep burden,15,33.333,22.222,171,169
+economy-player-waffle3z,upkeep burden,16,33.74,21.782,156,151
+economy-player-waffle3z,upkeep burden,17,35.294,20.588,126,121
+economy-player-zylo,exchange,1,0,0,195,195
+economy-player-zylo,exchange,2,0,0,195,195
+economy-player-zylo,exchange,3,0,0,195,195
+economy-player-zylo,exchange,4,0,0,195,195
+economy-player-zylo,exchange,5,0,0,195,195
+economy-player-zylo,exchange,6,0,0,195,195
+economy-player-zylo,exchange,7,0,0,195,195
+economy-player-zylo,exchange,8,0,0,195,195
+economy-player-zylo,exchange,9,0,0,195,195
+economy-player-zylo,exchange,10,0,10,195,195
+economy-player-zylo,exchange,11,0,20,195,195
+economy-player-zylo,exchange,12,-10,20,195,195
+economy-player-zylo,exchange,13,-10,20,195,195
+economy-player-zylo,exchange,14,-10,30,195,192
+economy-player-zylo,exchange,15,-30,50,191,191
+economy-player-zylo,exchange,16,-40,40,182,179
+economy-player-zylo,exchange,17,-40,50,170,169
+economy-player-zylo,exchange,18,-40,60,157,152
+economy-player-zylo,exchange,19,-40,50,130,129
+economy-player-zylo,exchange,20,-40,50,116,112
+economy-player-zylo,exchange,21,-60,70,102,98
+economy-player-zylo,cum_killed,1,0,0,195,195
+economy-player-zylo,cum_killed,2,0,0,195,195
+economy-player-zylo,cum_killed,3,0,0,195,195
+economy-player-zylo,cum_killed,4,0,0,195,195
+economy-player-zylo,cum_killed,5,0,0,195,195
+economy-player-zylo,cum_killed,6,0,0,195,195
+economy-player-zylo,cum_killed,7,0,0,195,195
+economy-player-zylo,cum_killed,8,0,0,195,195
+economy-player-zylo,cum_killed,9,0,20,195,195
+economy-player-zylo,cum_killed,10,10,20,195,195
+economy-player-zylo,cum_killed,11,20,40,195,195
+economy-player-zylo,cum_killed,12,20,50,195,195
+economy-player-zylo,cum_killed,13,20,70,195,195
+economy-player-zylo,cum_killed,14,30,80,195,192
+economy-player-zylo,cum_killed,15,50,100,191,191
+economy-player-zylo,cum_killed,16,50,110,182,179
+economy-player-zylo,cum_killed,17,65,120,170,169
+economy-player-zylo,cum_killed,18,70,140,157,152
+economy-player-zylo,cum_killed,19,80,150,130,129
+economy-player-zylo,cum_killed,20,100,160,116,112
+economy-player-zylo,cum_killed,21,100,180,102,98
+economy-player-zylo,cum_lost,1,0,0,195,195
+economy-player-zylo,cum_lost,2,0,0,195,195
+economy-player-zylo,cum_lost,3,0,0,195,195
+economy-player-zylo,cum_lost,4,0,0,195,195
+economy-player-zylo,cum_lost,5,0,0,195,195
+economy-player-zylo,cum_lost,6,0,0,195,195
+economy-player-zylo,cum_lost,7,0,0,195,195
+economy-player-zylo,cum_lost,8,0,0,195,195
+economy-player-zylo,cum_lost,9,0,0,195,195
+economy-player-zylo,cum_lost,10,20,10,195,195
+economy-player-zylo,cum_lost,11,20,20,195,195
+economy-player-zylo,cum_lost,12,40,20,195,195
+economy-player-zylo,cum_lost,13,50,20,195,195
+economy-player-zylo,cum_lost,14,70,30,195,192
+economy-player-zylo,cum_lost,15,80,50,191,191
+economy-player-zylo,cum_lost,16,90,50,182,179
+economy-player-zylo,cum_lost,17,110,60,170,169
+economy-player-zylo,cum_lost,18,120,70,157,152
+economy-player-zylo,cum_lost,19,145,80,130,129
+economy-player-zylo,cum_lost,20,150,105,116,112
+economy-player-zylo,cum_lost,21,170,110,102,98
+economy-player-zylo,cells per gold,1,0.1,0.1,195,195
+economy-player-zylo,cells per gold,2,0.2,0.2,195,195
+economy-player-zylo,cells per gold,3,0.3,0.3,195,195
+economy-player-zylo,cells per gold,4,0.3,0.3,195,195
+economy-player-zylo,cells per gold,5,0.4,0.325,195,195
+economy-player-zylo,cells per gold,6,0.333,0.36,195,195
+economy-player-zylo,cells per gold,7,0.345,0.354,195,195
+economy-player-zylo,cells per gold,8,0.314,0.347,195,195
+economy-player-zylo,cells per gold,9,0.312,0.309,195,195
+economy-player-zylo,cells per gold,10,0.272,0.276,195,195
+economy-player-zylo,cells per gold,11,0.248,0.265,195,195
+economy-player-zylo,cells per gold,12,0.241,0.253,195,195
+economy-player-zylo,cells per gold,13,0.226,0.234,195,195
+economy-player-zylo,cells per gold,14,0.218,0.228,195,192
+economy-player-zylo,cells per gold,15,0.2,0.213,191,191
+economy-player-zylo,cells per gold,16,0.187,0.2,182,179
+economy-player-zylo,cells per gold,17,0.18,0.187,170,169
+economy-player-zylo,cells per gold,18,0.174,0.181,157,152
+economy-player-zylo,cells per gold,19,0.166,0.176,130,129
+economy-player-zylo,cells per gold,20,0.156,0.168,116,112
+economy-player-zylo,cells per gold,21,0.149,0.164,102,98
+economy-player-zylo,kills per gold on units,1,0,0,195,195
+economy-player-zylo,kills per gold on units,2,0,0,195,195
+economy-player-zylo,kills per gold on units,3,0,0,195,195
+economy-player-zylo,kills per gold on units,4,0,0,195,195
+economy-player-zylo,kills per gold on units,5,0,0,195,195
+economy-player-zylo,kills per gold on units,6,0,0,195,195
+economy-player-zylo,kills per gold on units,7,0,0,195,195
+economy-player-zylo,kills per gold on units,8,0,0,195,195
+economy-player-zylo,kills per gold on units,9,0,0.222,195,195
+economy-player-zylo,kills per gold on units,10,0.1,0.286,195,195
+economy-player-zylo,kills per gold on units,11,0.182,0.364,195,195
+economy-player-zylo,kills per gold on units,12,0.182,0.417,195,195
+economy-player-zylo,kills per gold on units,13,0.214,0.467,195,195
+economy-player-zylo,kills per gold on units,14,0.286,0.5,195,192
+economy-player-zylo,kills per gold on units,15,0.294,0.524,191,191
+economy-player-zylo,kills per gold on units,16,0.316,0.529,182,179
+economy-player-zylo,kills per gold on units,17,0.333,0.526,170,169
+economy-player-zylo,kills per gold on units,18,0.333,0.526,157,152
+economy-player-zylo,kills per gold on units,19,0.387,0.533,130,129
+economy-player-zylo,kills per gold on units,20,0.408,0.577,116,112
+economy-player-zylo,kills per gold on units,21,0.413,0.615,102,98
+economy-player-zylo,upkeep burden,1,66.667,50,195,195
+economy-player-zylo,upkeep burden,2,40,33.333,195,195
+economy-player-zylo,upkeep burden,3,28.571,25,195,195
+economy-player-zylo,upkeep burden,4,30,27.273,195,195
+economy-player-zylo,upkeep burden,5,23.077,26.667,195,195
+economy-player-zylo,upkeep burden,6,15.789,25,195,195
+economy-player-zylo,upkeep burden,7,16.667,23.077,195,195
+economy-player-zylo,upkeep burden,8,17.241,19.355,195,195
+economy-player-zylo,upkeep burden,9,16.667,21.429,195,195
+economy-player-zylo,upkeep burden,10,19.512,23.913,195,195
+economy-player-zylo,upkeep burden,11,20.588,24.074,195,195
+economy-player-zylo,upkeep burden,12,18,24.39,195,195
+economy-player-zylo,upkeep burden,13,18.605,24.49,195,195
+economy-player-zylo,upkeep burden,14,20,24.476,195,192
+economy-player-zylo,upkeep burden,15,22.222,28.846,191,191
+economy-player-zylo,upkeep burden,16,24.457,29.412,182,179
+economy-player-zylo,upkeep burden,17,26.471,32.53,170,169
+economy-player-zylo,upkeep burden,18,27.586,36.364,157,152
+economy-player-zylo,upkeep burden,19,28.437,40,130,129
+economy-player-zylo,upkeep burden,20,31.504,44.132,116,112
+economy-player-zylo,upkeep burden,21,27.525,47.762,102,98
+economy-player-n3l,exchange,1,0,0,27,27
+economy-player-n3l,exchange,2,0,0,27,27
+economy-player-n3l,exchange,3,0,0,27,27
+economy-player-n3l,exchange,4,0,0,27,27
+economy-player-n3l,exchange,5,0,0,27,27
+economy-player-n3l,exchange,6,0,0,27,27
+economy-player-n3l,exchange,7,0,0,27,27
+economy-player-n3l,exchange,8,0,0,27,27
+economy-player-n3l,exchange,9,0,10,27,27
+economy-player-n3l,exchange,10,0,20,27,27
+economy-player-n3l,exchange,11,-10,20,27,27
+economy-player-n3l,exchange,12,-20,30,27,27
+economy-player-n3l,exchange,13,-30,40,27,27
+economy-player-n3l,exchange,14,-40,50,27,27
+economy-player-n3l,exchange,15,-30,50,27,25
+economy-player-n3l,exchange,16,-30,50,25,22
+economy-player-n3l,exchange,17,-50,50,21,21
+economy-player-n3l,exchange,18,-40,50,21,21
+economy-player-n3l,exchange,19,0,20,17,17
+economy-player-n3l,exchange,20,-10,20,15,16
+economy-player-n3l,exchange,21,-10,30,15,15
+economy-player-n3l,exchange,22,0,40,13,14
+economy-player-n3l,cum_killed,1,0,0,27,27
+economy-player-n3l,cum_killed,2,0,0,27,27
+economy-player-n3l,cum_killed,3,0,0,27,27
+economy-player-n3l,cum_killed,4,0,0,27,27
+economy-player-n3l,cum_killed,5,0,0,27,27
+economy-player-n3l,cum_killed,6,0,0,27,27
+economy-player-n3l,cum_killed,7,0,0,27,27
+economy-player-n3l,cum_killed,8,0,0,27,27
+economy-player-n3l,cum_killed,9,0,20,27,27
+economy-player-n3l,cum_killed,10,0,30,27,27
+economy-player-n3l,cum_killed,11,10,40,27,27
+economy-player-n3l,cum_killed,12,20,70,27,27
+economy-player-n3l,cum_killed,13,50,80,27,27
+economy-player-n3l,cum_killed,14,60,90,27,27
+economy-player-n3l,cum_killed,15,60,100,27,25
+economy-player-n3l,cum_killed,16,70,110,25,22
+economy-player-n3l,cum_killed,17,80,120,21,21
+economy-player-n3l,cum_killed,18,100,130,21,21
+economy-player-n3l,cum_killed,19,120,150,17,17
+economy-player-n3l,cum_killed,20,130,165,15,16
+economy-player-n3l,cum_killed,21,150,180,15,15
+economy-player-n3l,cum_killed,22,160,215,13,14
+economy-player-n3l,cum_lost,1,0,0,27,27
+economy-player-n3l,cum_lost,2,0,0,27,27
+economy-player-n3l,cum_lost,3,0,0,27,27
+economy-player-n3l,cum_lost,4,0,0,27,27
+economy-player-n3l,cum_lost,5,0,0,27,27
+economy-player-n3l,cum_lost,6,0,0,27,27
+economy-player-n3l,cum_lost,7,0,0,27,27
+economy-player-n3l,cum_lost,8,0,0,27,27
+economy-player-n3l,cum_lost,9,0,0,27,27
+economy-player-n3l,cum_lost,10,20,0,27,27
+economy-player-n3l,cum_lost,11,40,10,27,27
+economy-player-n3l,cum_lost,12,40,20,27,27
+economy-player-n3l,cum_lost,13,70,40,27,27
+economy-player-n3l,cum_lost,14,80,50,27,27
+economy-player-n3l,cum_lost,15,90,60,27,25
+economy-player-n3l,cum_lost,16,100,60,25,22
+economy-player-n3l,cum_lost,17,120,80,21,21
+economy-player-n3l,cum_lost,18,140,100,21,21
+economy-player-n3l,cum_lost,19,150,120,17,17
+economy-player-n3l,cum_lost,20,160,125,15,16
+economy-player-n3l,cum_lost,21,170,150,15,15
+economy-player-n3l,cum_lost,22,190,160,13,14
+economy-player-n3l,cells per gold,1,0.1,0.1,27,27
+economy-player-n3l,cells per gold,2,0.2,0.2,27,27
+economy-player-n3l,cells per gold,3,0.3,0.3,27,27
+economy-player-n3l,cells per gold,4,0.3,0.3,27,27
+economy-player-n3l,cells per gold,5,0.4,0.325,27,27
+economy-player-n3l,cells per gold,6,0.35,0.36,27,27
+economy-player-n3l,cells per gold,7,0.345,0.4,27,27
+economy-player-n3l,cells per gold,8,0.329,0.36,27,27
+economy-player-n3l,cells per gold,9,0.295,0.317,27,27
+economy-player-n3l,cells per gold,10,0.248,0.304,27,27
+economy-player-n3l,cells per gold,11,0.236,0.283,27,27
+economy-player-n3l,cells per gold,12,0.225,0.251,27,27
+economy-player-n3l,cells per gold,13,0.209,0.236,27,27
+economy-player-n3l,cells per gold,14,0.197,0.23,27,27
+economy-player-n3l,cells per gold,15,0.194,0.216,27,25
+economy-player-n3l,cells per gold,16,0.186,0.201,25,22
+economy-player-n3l,cells per gold,17,0.173,0.189,21,21
+economy-player-n3l,cells per gold,18,0.167,0.185,21,21
+economy-player-n3l,cells per gold,19,0.161,0.163,17,17
+economy-player-n3l,cells per gold,20,0.165,0.158,15,16
+economy-player-n3l,cells per gold,21,0.158,0.158,15,15
+economy-player-n3l,cells per gold,22,0.149,0.157,13,14
+economy-player-n3l,kills per gold on units,1,0,0,27,27
+economy-player-n3l,kills per gold on units,2,0,0,27,27
+economy-player-n3l,kills per gold on units,3,0,0,27,27
+economy-player-n3l,kills per gold on units,4,0,0,27,27
+economy-player-n3l,kills per gold on units,5,0,0,27,27
+economy-player-n3l,kills per gold on units,6,0,0,27,27
+economy-player-n3l,kills per gold on units,7,0,0,27,27
+economy-player-n3l,kills per gold on units,8,0,0,27,27
+economy-player-n3l,kills per gold on units,9,0,0.2,27,27
+economy-player-n3l,kills per gold on units,10,0,0.273,27,27
+economy-player-n3l,kills per gold on units,11,0.167,0.364,27,27
+economy-player-n3l,kills per gold on units,12,0.25,0.467,27,27
+economy-player-n3l,kills per gold on units,13,0.333,0.5,27,27
+economy-player-n3l,kills per gold on units,14,0.353,0.5,27,27
+economy-player-n3l,kills per gold on units,15,0.353,0.52,27,25
+economy-player-n3l,kills per gold on units,16,0.364,0.482,25,22
+economy-player-n3l,kills per gold on units,17,0.375,0.48,21,21
+economy-player-n3l,kills per gold on units,18,0.444,0.448,21,21
+economy-player-n3l,kills per gold on units,19,0.517,0.469,17,17
+economy-player-n3l,kills per gold on units,20,0.565,0.494,15,16
+economy-player-n3l,kills per gold on units,21,0.577,0.5,15,15
+economy-player-n3l,kills per gold on units,22,0.531,0.538,13,14
+economy-player-n3l,upkeep burden,1,66.667,50,27,27
+economy-player-n3l,upkeep burden,2,40,33.333,27,27
+economy-player-n3l,upkeep burden,3,28.571,25,27,27
+economy-player-n3l,upkeep burden,4,30,27.273,27,27
+economy-player-n3l,upkeep burden,5,23.077,26.667,27,27
+economy-player-n3l,upkeep burden,6,21.053,25,27,27
+economy-player-n3l,upkeep burden,7,16.667,23.077,27,27
+economy-player-n3l,upkeep burden,8,17.647,23.333,27,27
+economy-player-n3l,upkeep burden,9,14.815,24.324,27,27
+economy-player-n3l,upkeep burden,10,21.429,27.451,27,27
+economy-player-n3l,upkeep burden,11,20.513,26.923,27,27
+economy-player-n3l,upkeep burden,12,20,30.357,27,27
+economy-player-n3l,upkeep burden,13,20.93,33.333,27,27
+economy-player-n3l,upkeep burden,14,20,37.5,27,27
+economy-player-n3l,upkeep burden,15,23.077,31.707,27,25
+economy-player-n3l,upkeep burden,16,25,37.828,25,22
+economy-player-n3l,upkeep burden,17,24.49,40,21,21
+economy-player-n3l,upkeep burden,18,31.25,36.19,21,21
+economy-player-n3l,upkeep burden,19,35.135,39.241,17,17
+economy-player-n3l,upkeep burden,20,37.288,57.083,15,16
+economy-player-n3l,upkeep burden,21,38.095,54.286,15,15
+economy-player-n3l,upkeep burden,22,46.512,55.228,13,14
+economy-player-ninjadoggy,exchange,1,0,0,196,196
+economy-player-ninjadoggy,exchange,2,0,0,196,196
+economy-player-ninjadoggy,exchange,3,0,0,196,196
+economy-player-ninjadoggy,exchange,4,0,0,196,196
+economy-player-ninjadoggy,exchange,5,0,0,196,196
+economy-player-ninjadoggy,exchange,6,0,0,196,196
+economy-player-ninjadoggy,exchange,7,0,0,196,186
+economy-player-ninjadoggy,exchange,8,0,0,186,182
+economy-player-ninjadoggy,exchange,9,0,10,182,182
+economy-player-ninjadoggy,exchange,10,0,10,182,182
+economy-player-ninjadoggy,exchange,11,-10,20,182,182
+economy-player-ninjadoggy,exchange,12,-10,20,182,182
+economy-player-ninjadoggy,exchange,13,-20,30,176,176
+economy-player-ninjadoggy,exchange,14,-20,40,174,167
+economy-player-ninjadoggy,exchange,15,-30,40,159,159
+economy-player-ninjadoggy,exchange,16,-30,40,144,143
+economy-player-ninjadoggy,exchange,17,-40,50,124,122
+economy-player-ninjadoggy,exchange,18,-40,60,113,113
+economy-player-ninjadoggy,cum_killed,1,0,0,196,196
+economy-player-ninjadoggy,cum_killed,2,0,0,196,196
+economy-player-ninjadoggy,cum_killed,3,0,0,196,196
+economy-player-ninjadoggy,cum_killed,4,0,0,196,196
+economy-player-ninjadoggy,cum_killed,5,0,0,196,196
+economy-player-ninjadoggy,cum_killed,6,0,0,196,196
+economy-player-ninjadoggy,cum_killed,7,0,0,196,186
+economy-player-ninjadoggy,cum_killed,8,0,0,186,182
+economy-player-ninjadoggy,cum_killed,9,10,20,182,182
+economy-player-ninjadoggy,cum_killed,10,10,20,182,182
+economy-player-ninjadoggy,cum_killed,11,10,40,182,182
+economy-player-ninjadoggy,cum_killed,12,20,60,182,182
+economy-player-ninjadoggy,cum_killed,13,30,70,176,176
+economy-player-ninjadoggy,cum_killed,14,40,80,174,167
+economy-player-ninjadoggy,cum_killed,15,50,90,159,159
+economy-player-ninjadoggy,cum_killed,16,50,100,144,143
+economy-player-ninjadoggy,cum_killed,17,60,120,124,122
+economy-player-ninjadoggy,cum_killed,18,70,140,113,113
+economy-player-ninjadoggy,cum_lost,1,0,0,196,196
+economy-player-ninjadoggy,cum_lost,2,0,0,196,196
+economy-player-ninjadoggy,cum_lost,3,0,0,196,196
+economy-player-ninjadoggy,cum_lost,4,0,0,196,196
+economy-player-ninjadoggy,cum_lost,5,0,0,196,196
+economy-player-ninjadoggy,cum_lost,6,0,0,196,196
+economy-player-ninjadoggy,cum_lost,7,0,0,196,186
+economy-player-ninjadoggy,cum_lost,8,0,0,186,182
+economy-player-ninjadoggy,cum_lost,9,0,10,182,182
+economy-player-ninjadoggy,cum_lost,10,20,10,182,182
+economy-player-ninjadoggy,cum_lost,11,20,10,182,182
+economy-player-ninjadoggy,cum_lost,12,40,20,182,182
+economy-player-ninjadoggy,cum_lost,13,60,30,176,176
+economy-player-ninjadoggy,cum_lost,14,70,50,174,167
+economy-player-ninjadoggy,cum_lost,15,80,50,159,159
+economy-player-ninjadoggy,cum_lost,16,90,50,144,143
+economy-player-ninjadoggy,cum_lost,17,100,60,124,122
+economy-player-ninjadoggy,cum_lost,18,120,70,113,113
+economy-player-ninjadoggy,cells per gold,1,0.1,0.1,196,196
+economy-player-ninjadoggy,cells per gold,2,0.2,0.2,196,196
+economy-player-ninjadoggy,cells per gold,3,0.3,0.3,196,196
+economy-player-ninjadoggy,cells per gold,4,0.3,0.3,196,196
+economy-player-ninjadoggy,cells per gold,5,0.4,0.325,196,196
+economy-player-ninjadoggy,cells per gold,6,0.333,0.36,196,196
+economy-player-ninjadoggy,cells per gold,7,0.327,0.4,196,186
+economy-player-ninjadoggy,cells per gold,8,0.32,0.373,186,182
+economy-player-ninjadoggy,cells per gold,9,0.29,0.324,182,182
+economy-player-ninjadoggy,cells per gold,10,0.267,0.305,182,182
+economy-player-ninjadoggy,cells per gold,11,0.247,0.277,182,182
+economy-player-ninjadoggy,cells per gold,12,0.226,0.263,182,182
+economy-player-ninjadoggy,cells per gold,13,0.21,0.254,176,176
+economy-player-ninjadoggy,cells per gold,14,0.193,0.228,174,167
+economy-player-ninjadoggy,cells per gold,15,0.189,0.215,159,159
+economy-player-ninjadoggy,cells per gold,16,0.181,0.213,144,143
+economy-player-ninjadoggy,cells per gold,17,0.176,0.209,124,122
+economy-player-ninjadoggy,cells per gold,18,0.161,0.195,113,113
+economy-player-ninjadoggy,kills per gold on units,1,0,0,196,196
+economy-player-ninjadoggy,kills per gold on units,2,0,0,196,196
+economy-player-ninjadoggy,kills per gold on units,3,0,0,196,196
+economy-player-ninjadoggy,kills per gold on units,4,0,0,196,196
+economy-player-ninjadoggy,kills per gold on units,5,0,0,196,196
+economy-player-ninjadoggy,kills per gold on units,6,0,0,196,196
+economy-player-ninjadoggy,kills per gold on units,7,0,0,196,186
+economy-player-ninjadoggy,kills per gold on units,8,0,0,186,182
+economy-player-ninjadoggy,kills per gold on units,9,0.125,0.286,182,182
+economy-player-ninjadoggy,kills per gold on units,10,0.125,0.286,182,182
+economy-player-ninjadoggy,kills per gold on units,11,0.125,0.429,182,182
+economy-player-ninjadoggy,kills per gold on units,12,0.185,0.539,182,182
+economy-player-ninjadoggy,kills per gold on units,13,0.257,0.6,176,176
+economy-player-ninjadoggy,kills per gold on units,14,0.294,0.615,174,167
+economy-player-ninjadoggy,kills per gold on units,15,0.3,0.636,159,159
+economy-player-ninjadoggy,kills per gold on units,16,0.294,0.63,144,143
+economy-player-ninjadoggy,kills per gold on units,17,0.309,0.723,124,122
+economy-player-ninjadoggy,kills per gold on units,18,0.3,0.75,113,113
+economy-player-ninjadoggy,upkeep burden,1,66.667,50,196,196
+economy-player-ninjadoggy,upkeep burden,2,40,33.333,196,196
+economy-player-ninjadoggy,upkeep burden,3,28.571,25,196,196
+economy-player-ninjadoggy,upkeep burden,4,30,27.273,196,196
+economy-player-ninjadoggy,upkeep burden,5,23.077,26.667,196,196
+economy-player-ninjadoggy,upkeep burden,6,15,25,196,196
+economy-player-ninjadoggy,upkeep burden,7,16.667,20.833,196,186
+economy-player-ninjadoggy,upkeep burden,8,17.241,19.231,186,182
+economy-player-ninjadoggy,upkeep burden,9,18.75,18.919,182,182
+economy-player-ninjadoggy,upkeep burden,10,18.677,22.222,182,182
+economy-player-ninjadoggy,upkeep burden,11,17.949,23.077,182,182
+economy-player-ninjadoggy,upkeep burden,12,21.059,22.887,182,182
+economy-player-ninjadoggy,upkeep burden,13,24,25,176,176
+economy-player-ninjadoggy,upkeep burden,14,24,25.926,174,167
+economy-player-ninjadoggy,upkeep burden,15,25,30,159,159
+economy-player-ninjadoggy,upkeep burden,16,26.667,29.032,144,143
+economy-player-ninjadoggy,upkeep burden,17,25.61,44.274,124,122
+economy-player-ninjadoggy,upkeep burden,18,26.786,45.07,113,113

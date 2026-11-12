@@ -9,8 +9,8 @@
 //! ice-and-fire-review bank --out FILE [--count N] [--seed S] [--jobs N] GAME.json...
 //! ice-and-fire-review screening [--jobs N] GAME.json... > screening.md
 //! ice-and-fire-review codingame --out DIR [--kind ranking] [--strict] LOG.json... > check.md
-//! ice-and-fire-review codingame-report --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--top N] --out DIR
-//! ice-and-fire-review codingame-moments --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--top N] [--examples K] [--out DIR] > moments.md
+//! ice-and-fire-review codingame-report --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--our-seat 0|1] [--top N] --out DIR
+//! ice-and-fire-review codingame-moments --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--our-seat 0|1] [--top N] [--examples K] [--out DIR] > moments.md
 //! ice-and-fire-review codingame-judge --data DIR --me NAME --judge BIN [--release NAME] [--players A,B | --top N] [--tries N] [--limit PLIES] [--jobs N] --out DIR
 //! ```
 
@@ -173,6 +173,10 @@ enum Command {
         /// `scripts/codingame.sh fetch --backfill-releases`).
         #[arg(long)]
         release: Option<String>,
+        /// Only the games in which we sat in this seat, 0 or 1 (the index's
+        /// `our_seat`): the seats do not start alike.
+        #[arg(long)]
+        our_seat: Option<usize>,
         /// Profiles for the top N players of the snapshot that have a game.
         #[arg(long, default_value_t = 10)]
         top: usize,
@@ -215,6 +219,9 @@ enum Command {
         /// Only our games played by this release (see `codingame-report`).
         #[arg(long)]
         release: Option<String>,
+        /// Only the games in which we sat in this seat (see `codingame-report`).
+        #[arg(long)]
+        our_seat: Option<usize>,
         /// The focus players are the top N of the snapshot that we met.
         #[arg(long, default_value_t = 10)]
         top: usize,
@@ -445,6 +452,7 @@ fn run(cli: Cli) -> Result<(), String> {
             kinds,
             batch,
             release,
+            our_seat,
             top,
             players,
             leaderboard,
@@ -458,6 +466,7 @@ fn run(cli: Cli) -> Result<(), String> {
                 kinds,
                 batch,
                 release,
+                our_seat,
                 top,
                 players,
                 leaderboard,
@@ -480,6 +489,7 @@ fn run(cli: Cli) -> Result<(), String> {
             kinds,
             batch,
             release,
+            our_seat,
             top,
             examples,
             leaderboard,
@@ -493,6 +503,7 @@ fn run(cli: Cli) -> Result<(), String> {
                     kinds,
                     batch,
                     release,
+                    our_seat,
                     top,
                     players: Vec::new(),
                     leaderboard,

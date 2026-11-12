@@ -1,0 +1,301 @@
+player,metric,phase,games,theirs,our_games,ours
+zasmu,gold,early game,196,12.81,196,11.742
+zasmu,gold,middle game,196,37.127,192,45.19
+zasmu,gold,endgame,196,95.023,196,86.488
+zasmu,income,early game,196,6.55,196,6.121
+zasmu,income,middle game,196,29.838,192,23.459
+zasmu,income,endgame,196,48.766,196,22.292
+zasmu,cells,early game,196,9.021,196,7.781
+zasmu,cells,middle game,196,34.376,192,25.022
+zasmu,cells,endgame,196,48.493,196,32.828
+zasmu,army,early game,196,24.867,196,21.64
+zasmu,army,middle game,196,68.081,192,53.048
+zasmu,army,endgame,196,83.067,196,89.255
+zasmu,mines,early game,196,0.004,196,0.126
+zasmu,mines,middle game,196,1.006,192,1.224
+zasmu,mines,endgame,196,2.78,196,1.215
+zasmu,towers,early game,196,0,196,0
+zasmu,towers,middle game,196,2.11,192,0.774
+zasmu,towers,endgame,196,10.795,196,2.386
+zasmu,exposed30,early game,196,0.072,196,0.065
+zasmu,exposed30,middle game,196,2.719,192,3.567
+zasmu,exposed30,endgame,196,2.312,196,3.242
+zasmu,hq_gap,early game,196,154.515,196,167.691
+zasmu,hq_gap,middle game,196,77.199,192,94.744
+zasmu,hq_gap,endgame,196,38.658,196,79.787
+zasmu,material,early game,196,93.412,196,82.871
+zasmu,material,middle game,196,353.323,192,276.442
+zasmu,material,endgame,196,626.304,196,397.788
+zasmu,voronoi,early game,196,50.499,196,46.851
+zasmu,voronoi,middle game,196,58.837,192,38.941
+zasmu,voronoi,endgame,196,59.912,196,39.809
+Pduhard-,gold,early game,196,12.751,196,12.022
+Pduhard-,gold,middle game,196,42.585,192,38.246
+Pduhard-,gold,endgame,195,62.983,195,37.574
+Pduhard-,income,early game,196,6.448,196,6.357
+Pduhard-,income,middle game,196,22.926,192,23.435
+Pduhard-,income,endgame,195,23.96,195,17.903
+Pduhard-,cells,early game,196,8.909,196,7.991
+Pduhard-,cells,middle game,196,30.7,192,23.127
+Pduhard-,cells,endgame,195,44.007,195,21.796
+Pduhard-,army,early game,196,24.604,196,21.937
+Pduhard-,army,middle game,196,60.811,192,44.535
+Pduhard-,army,endgame,195,90.985,195,54.499
+Pduhard-,mines,early game,196,0,196,0.14
+Pduhard-,mines,middle game,196,0,192,1.306
+Pduhard-,mines,endgame,195,0.016,195,1.148
+Pduhard-,towers,early game,196,0,196,0
+Pduhard-,towers,middle game,196,0.952,192,0.783
+Pduhard-,towers,endgame,195,1.506,195,1.644
+Pduhard-,exposed30,early game,196,0.093,196,0.123
+Pduhard-,exposed30,middle game,196,2.599,192,3.91
+Pduhard-,exposed30,endgame,195,4.259,195,4.42
+Pduhard-,hq_gap,early game,196,154.136,196,166.411
+Pduhard-,hq_gap,middle game,196,70.485,192,95.437
+Pduhard-,hq_gap,endgame,195,37.194,195,106.555
+Pduhard-,material,early game,196,92.336,196,84.994
+Pduhard-,material,middle game,196,304.489,192,253.422
+Pduhard-,material,endgame,195,416.94,195,249.405
+Pduhard-,voronoi,early game,196,51.139,196,46.033
+Pduhard-,voronoi,middle game,196,58.783,192,38.314
+Pduhard-,voronoi,endgame,195,69.442,195,27.413
+karliso,gold,early game,194,12.819,194,11.557
+karliso,gold,middle game,194,40.448,194,47.344
+karliso,gold,endgame,194,88.01,193,55.683
+karliso,income,early game,194,6.582,194,5.977
+karliso,income,middle game,194,30.24,194,24.846
+karliso,income,endgame,194,46.062,193,21.212
+karliso,cells,early game,194,9.081,194,7.665
+karliso,cells,middle game,194,33.862,194,26.765
+karliso,cells,endgame,194,50.003,193,26.121
+karliso,army,early game,194,24.986,194,21.469
+karliso,army,middle game,194,60.985,194,59.922
+karliso,army,endgame,194,92.209,193,62.74
+karliso,mines,early game,194,0,194,0.115
+karliso,mines,middle game,194,0.743,194,1.218
+karliso,mines,endgame,194,3.259,193,1.117
+karliso,towers,early game,194,0,194,0
+karliso,towers,middle game,194,2.069,194,0.699
+karliso,towers,endgame,194,4.64,193,1.728
+karliso,exposed30,early game,194,0.091,194,0.056
+karliso,exposed30,middle game,194,2.96,194,3.296
+karliso,exposed30,endgame,194,3.588,193,3.78
+karliso,hq_gap,early game,194,153.159,194,168.028
+karliso,hq_gap,middle game,194,76.418,194,85.709
+karliso,hq_gap,endgame,194,34.106,193,94.175
+karliso,material,early game,194,93.876,194,81.616
+karliso,material,middle game,194,348.291,194,295.855
+karliso,material,endgame,194,564.82,193,303.822
+karliso,voronoi,early game,194,51.148,194,46.639
+karliso,voronoi,middle game,194,56.874,194,41.216
+karliso,voronoi,endgame,194,63.658,193,30.728
+_iaz,gold,early game,195,12.799,195,11.992
+_iaz,gold,middle game,195,33.488,191,41.97
+_iaz,gold,endgame,195,54.919,193,53.966
+_iaz,income,early game,195,6.568,195,6.313
+_iaz,income,middle game,195,23.69,191,24.531
+_iaz,income,endgame,195,29.592,193,22.747
+_iaz,cells,early game,195,9.096,195,8.03
+_iaz,cells,middle game,195,31.52,191,24.701
+_iaz,cells,endgame,195,46.834,193,27.623
+_iaz,army,early game,195,25.274,195,22.094
+_iaz,army,middle game,195,67.728,191,45.19
+_iaz,army,endgame,195,104.008,193,62.176
+_iaz,mines,early game,195,0,195,0.123
+_iaz,mines,middle game,195,0.152,191,1.255
+_iaz,mines,endgame,195,0.871,193,1.42
+_iaz,towers,early game,195,0,195,0
+_iaz,towers,middle game,195,1.278,191,0.813
+_iaz,towers,endgame,195,2.976,193,1.919
+_iaz,exposed30,early game,195,0.098,195,0.057
+_iaz,exposed30,middle game,195,3.672,191,3.688
+_iaz,exposed30,endgame,195,3.739,193,3.895
+_iaz,hq_gap,early game,195,153.867,195,166.216
+_iaz,hq_gap,middle game,195,77.625,191,91.784
+_iaz,hq_gap,endgame,195,56.417,193,97.531
+_iaz,material,early game,195,94.162,195,85.147
+_iaz,material,middle game,195,311.143,191,267.688
+_iaz,material,endgame,195,464.797,193,314.065
+_iaz,voronoi,early game,195,51.379,195,46.037
+_iaz,voronoi,middle game,195,58.58,191,38.541
+_iaz,voronoi,endgame,195,63.721,193,33.913
+reCurse,gold,early game,195,12.688,195,11.561
+reCurse,gold,middle game,195,42.007,191,41.278
+reCurse,gold,endgame,195,89.938,195,46.97
+reCurse,income,early game,195,6.492,195,5.955
+reCurse,income,middle game,195,28.132,191,24.062
+reCurse,income,endgame,195,38.206,195,22.806
+reCurse,cells,early game,195,8.989,195,7.671
+reCurse,cells,middle game,195,31.495,191,26.996
+reCurse,cells,endgame,195,42.32,195,33.092
+reCurse,army,early game,195,24.971,195,21.518
+reCurse,army,middle game,195,60.084,191,61.329
+reCurse,army,endgame,195,85.282,195,96.373
+reCurse,mines,early game,195,0,195,0.109
+reCurse,mines,middle game,195,0.807,191,1.105
+reCurse,mines,endgame,195,2.204,195,1.29
+reCurse,towers,early game,195,0,195,0
+reCurse,towers,middle game,195,1.236,191,0.779
+reCurse,towers,endgame,195,2.925,195,1.946
+reCurse,exposed30,early game,195,0.07,195,0.019
+reCurse,exposed30,middle game,195,4.269,191,3.398
+reCurse,exposed30,endgame,195,4.571,195,3.255
+reCurse,hq_gap,early game,195,153.463,195,167.734
+reCurse,hq_gap,middle game,195,74.093,191,84.337
+reCurse,hq_gap,endgame,195,46.882,195,84.968
+reCurse,material,early game,195,93.09,195,81.629
+reCurse,material,middle game,195,324.826,191,290.564
+reCurse,material,endgame,195,488.369,195,363.592
+reCurse,voronoi,early game,195,51.501,195,46.138
+reCurse,voronoi,middle game,195,57.043,191,40.956
+reCurse,voronoi,endgame,195,59.048,195,37.976
+_iahelka,gold,early game,187,13.467,195,13.379
+_iahelka,gold,middle game,187,43.784,187,44.049
+_iahelka,gold,endgame,187,55.94,187,51.48
+_iahelka,income,early game,187,7.295,195,7.094
+_iahelka,income,middle game,187,26.011,187,26.848
+_iahelka,income,endgame,187,34.349,187,20.912
+_iahelka,cells,early game,187,9.996,195,8.464
+_iahelka,cells,middle game,187,32.762,187,25.175
+_iahelka,cells,endgame,187,52.307,187,21.281
+_iahelka,army,early game,187,27.037,195,22.074
+_iahelka,army,middle game,187,65.145,187,44.288
+_iahelka,army,endgame,187,113.395,187,39.704
+_iahelka,mines,early game,187,0.001,195,0.209
+_iahelka,mines,middle game,187,0.603,187,1.578
+_iahelka,mines,endgame,187,1.727,187,1.425
+_iahelka,towers,early game,187,0,195,0
+_iahelka,towers,middle game,187,0.653,187,0.509
+_iahelka,towers,endgame,187,2.246,187,1.373
+_iahelka,exposed30,early game,187,0.003,195,0.006
+_iahelka,exposed30,middle game,187,3.138,187,2.491
+_iahelka,exposed30,endgame,187,3.762,187,3.857
+_iahelka,hq_gap,early game,187,161.057,195,165.848
+_iahelka,hq_gap,middle game,187,79.119,187,82.634
+_iahelka,hq_gap,endgame,187,41.8,187,107.724
+_iahelka,material,early game,187,102.37,195,90.594
+_iahelka,material,middle game,187,324.536,187,274.672
+_iahelka,material,endgame,187,504.067,187,252.779
+_iahelka,voronoi,early game,187,49.028,195,48.724
+_iahelka,voronoi,middle game,187,55.309,187,42.094
+_iahelka,voronoi,endgame,187,70.859,187,25.162
+Waffle3z,gold,early game,196,13.072,196,11.853
+Waffle3z,gold,middle game,196,41.136,196,46.185
+Waffle3z,gold,endgame,196,86.45,195,50.796
+Waffle3z,income,early game,196,6.91,196,6.278
+Waffle3z,income,middle game,196,30.473,196,24.986
+Waffle3z,income,endgame,196,39.811,195,22.838
+Waffle3z,cells,early game,196,9.389,196,7.952
+Waffle3z,cells,middle game,196,31.29,196,26.17
+Waffle3z,cells,endgame,196,41.163,195,30.867
+Waffle3z,army,early game,196,25.584,196,21.968
+Waffle3z,army,middle game,196,61.626,196,52.979
+Waffle3z,army,endgame,196,80.67,195,71.361
+Waffle3z,mines,early game,196,0.02,196,0.131
+Waffle3z,mines,middle game,196,1.542,196,1.278
+Waffle3z,mines,endgame,196,2.617,195,1.266
+Waffle3z,towers,early game,196,0,196,0
+Waffle3z,towers,middle game,196,1.046,196,0.8
+Waffle3z,towers,endgame,196,2.42,195,2.27
+Waffle3z,exposed30,early game,196,0.058,196,0.015
+Waffle3z,exposed30,middle game,196,3.577,196,3.367
+Waffle3z,exposed30,endgame,196,4.575,195,3.798
+Waffle3z,hq_gap,early game,196,156.871,196,167.993
+Waffle3z,hq_gap,middle game,196,79.642,196,86.033
+Waffle3z,hq_gap,endgame,196,45.639,195,82.578
+Waffle3z,material,early game,196,96.942,196,84.463
+Waffle3z,material,middle game,196,329.804,196,286.801
+Waffle3z,material,endgame,196,475.404,195,336.835
+Waffle3z,voronoi,early game,196,49.7,196,47.837
+Waffle3z,voronoi,middle game,196,55.277,196,41.809
+Waffle3z,voronoi,endgame,196,56.899,195,39.507
+Zylo,gold,early game,195,12.784,195,11.93
+Zylo,gold,middle game,195,39.24,195,50.852
+Zylo,gold,endgame,195,73.937,195,75.196
+Zylo,income,early game,195,6.768,195,6.289
+Zylo,income,middle game,195,28.294,195,25.629
+Zylo,income,endgame,195,38.402,195,24.13
+Zylo,cells,early game,195,9.322,195,8.028
+Zylo,cells,middle game,195,32.806,195,25.973
+Zylo,cells,endgame,195,51.504,195,29.542
+Zylo,army,early game,195,25.823,195,22.184
+Zylo,army,middle game,195,66.847,195,49.433
+Zylo,army,endgame,195,123.827,195,69.439
+Zylo,mines,early game,195,0.007,195,0.12
+Zylo,mines,middle game,195,0.855,195,1.265
+Zylo,mines,endgame,195,2.269,195,1.35
+Zylo,towers,early game,195,0,195,0
+Zylo,towers,middle game,195,1.742,195,0.867
+Zylo,towers,endgame,195,5.252,195,2.544
+Zylo,exposed30,early game,195,0.074,195,0.03
+Zylo,exposed30,middle game,195,3.448,195,2.963
+Zylo,exposed30,endgame,195,3.217,195,3.074
+Zylo,hq_gap,early game,195,152.962,195,165.862
+Zylo,hq_gap,middle game,195,78.264,195,84.235
+Zylo,hq_gap,endgame,195,50.347,195,91.218
+Zylo,material,early game,195,96.197,195,85.092
+Zylo,material,middle game,195,339.609,195,289.727
+Zylo,material,endgame,195,571.508,195,360.639
+Zylo,voronoi,early game,195,50.863,195,46.702
+Zylo,voronoi,middle game,195,56.569,195,40.751
+Zylo,voronoi,endgame,195,63.042,195,35.233
+N3l,gold,early game,27,13.192,27,13.177
+N3l,gold,middle game,27,33.057,27,45.588
+N3l,gold,endgame,27,51.256,27,56.372
+N3l,income,early game,27,7.118,27,7.172
+N3l,income,middle game,27,27.066,27,26.998
+N3l,income,endgame,27,34.15,27,23.947
+N3l,cells,early game,27,9.691,27,8.922
+N3l,cells,middle game,27,34.066,27,26.358
+N3l,cells,endgame,27,50.51,27,30.055
+N3l,army,early game,27,26.29,27,23.561
+N3l,army,middle game,27,74.461,27,47.212
+N3l,army,endgame,27,124.439,27,75.045
+N3l,mines,early game,27,0.014,27,0.151
+N3l,mines,middle game,27,1.052,27,1.44
+N3l,mines,endgame,27,2.332,27,1.331
+N3l,towers,early game,27,0,27,0
+N3l,towers,middle game,27,0.825,27,0.526
+N3l,towers,endgame,27,3.606,27,1.687
+N3l,exposed30,early game,27,0.021,27,0.042
+N3l,exposed30,middle game,27,3.661,27,3.909
+N3l,exposed30,endgame,27,3.47,27,3.854
+N3l,hq_gap,early game,27,159.559,27,161.708
+N3l,hq_gap,middle game,27,84.934,27,80.961
+N3l,hq_gap,endgame,27,63.672,27,101.639
+N3l,material,early game,27,99.6,27,93.942
+N3l,material,middle game,27,333.224,27,284.485
+N3l,material,endgame,27,516.24,27,340.343
+N3l,voronoi,early game,27,49.918,27,49.498
+N3l,voronoi,middle game,27,53.919,27,44.203
+N3l,voronoi,endgame,27,60.098,27,40.763
+NinjaDoggy,gold,early game,196,12.829,196,12.077
+NinjaDoggy,gold,middle game,182,43.383,184,45.292
+NinjaDoggy,gold,endgame,181,73.236,181,65.908
+NinjaDoggy,income,early game,196,6.714,196,6.454
+NinjaDoggy,income,middle game,182,24.539,184,26.213
+NinjaDoggy,income,endgame,181,28.737,181,23.208
+NinjaDoggy,cells,early game,196,9.277,196,8.101
+NinjaDoggy,cells,middle game,182,31.552,184,26.025
+NinjaDoggy,cells,endgame,181,44.567,181,27.248
+NinjaDoggy,army,early game,196,25.635,196,22.127
+NinjaDoggy,army,middle game,182,55.685,184,49.904
+NinjaDoggy,army,endgame,181,77.295,181,65.257
+NinjaDoggy,mines,early game,196,0,196,0.141
+NinjaDoggy,mines,middle game,182,0,184,1.391
+NinjaDoggy,mines,endgame,181,0,181,1.419
+NinjaDoggy,towers,early game,196,0,196,0
+NinjaDoggy,towers,middle game,182,2.065,184,0.815
+NinjaDoggy,towers,endgame,181,5.262,181,2.057
+NinjaDoggy,exposed30,early game,196,0.056,196,0.006
+NinjaDoggy,exposed30,middle game,182,3.071,184,2.733
+NinjaDoggy,exposed30,endgame,181,2.986,181,3.183
+NinjaDoggy,hq_gap,early game,196,157.543,196,166.74
+NinjaDoggy,hq_gap,middle game,182,74.042,184,88.066
+NinjaDoggy,hq_gap,endgame,181,45.079,181,87.687
+NinjaDoggy,material,early game,196,95.715,196,85.968
+NinjaDoggy,material,middle game,182,319.542,184,286.09
+NinjaDoggy,material,endgame,181,467.637,181,330.353
+NinjaDoggy,voronoi,early game,196,50.884,196,46.64
+NinjaDoggy,voronoi,middle game,182,58.411,184,38.702
+NinjaDoggy,voronoi,endgame,181,64.804,181,32.546

@@ -1,0 +1,61 @@
+player,event,games,theirs_in,our_games,ours_in,first_turn,mean_theirs,mean_ours
+zasmu,tower,196,196,196,191,8,17.561,3.204
+zasmu,train level 1,196,196,196,196,1,18.821,14.913
+zasmu,mine,196,195,196,159,9,3.388,1.398
+zasmu,train level 2,196,180,196,150,9,2.781,1.321
+zasmu,train level 3,196,163,196,132,19,1.857,2.01
+zasmu,large cut,196,35,196,41,11,0.219,0.327
+Pduhard-,train level 1,196,196,196,196,1,15.066,15.694
+Pduhard-,tower,196,190,196,186,7,2.087,3.582
+Pduhard-,train level 2,196,183,196,152,10,2.811,1.653
+Pduhard-,train level 3,196,171,196,81,12,2.617,0.985
+Pduhard-,large cut,196,125,196,38,13,1.046,0.327
+Pduhard-,mine,196,10,196,156,18.5,0.061,1.398
+karliso,tower,194,194,194,183,7,6.082,3.18
+karliso,train level 1,194,194,194,194,1,17.809,16
+karliso,mine,194,183,194,158,10,4.588,1.428
+karliso,train level 2,194,183,194,164,13,2.861,2.18
+karliso,train level 3,194,174,194,114,15,2.418,1.222
+karliso,large cut,194,135,194,30,14,1.68,0.247
+_iaz,tower,195,195,195,193,8,4.764,3.513
+_iaz,train level 1,195,195,195,195,1,14.821,18.656
+_iaz,train level 2,195,187,195,134,9,3.579,1.333
+_iaz,train level 3,195,163,195,132,14,2.005,1.61
+_iaz,large cut,195,113,195,55,14,1.128,0.441
+_iaz,mine,195,110,195,181,13,1.61,2.051
+reCurse,mine,195,195,195,169,9,3.749,2.005
+reCurse,train level 1,195,195,195,195,1,17.513,19.159
+reCurse,tower,195,193,195,192,8,4.764,2.8
+reCurse,train level 2,195,182,195,182,11,2.882,2.287
+reCurse,train level 3,195,131,195,114,17,1.369,1.569
+reCurse,large cut,195,85,195,66,15,0.605,0.621
+_iahelka,train level 1,195,187,195,195,1,16.108,16.728
+_iahelka,train level 3,195,167,195,91,12,2.292,1.067
+_iahelka,tower,195,165,195,182,9,3.195,3.415
+_iahelka,train level 2,195,162,195,145,10,2.903,1.554
+_iahelka,large cut,195,149,195,10,13,1.626,0.097
+_iahelka,mine,195,136,195,174,8,2.446,1.749
+Waffle3z,tower,196,196,196,185,8,4.454,2.806
+Waffle3z,train level 1,196,196,196,196,1,17.158,16.913
+Waffle3z,mine,196,195,196,177,7,3.857,1.602
+Waffle3z,train level 2,196,191,196,143,10,3.796,1.372
+Waffle3z,train level 3,196,139,196,138,17,1.526,1.454
+Waffle3z,large cut,196,59,196,94,14,0.418,1.143
+Zylo,train level 1,195,195,195,195,1,19.713,19.749
+Zylo,tower,195,194,195,194,8,7.969,4.169
+Zylo,mine,195,192,195,182,9,3.097,1.749
+Zylo,train level 2,195,190,195,159,10,4.81,1.615
+Zylo,train level 3,195,173,195,136,17,2.431,2.338
+Zylo,large cut,195,108,195,51,16,0.933,0.462
+N3l,tower,27,27,27,26,10,5.889,3.667
+N3l,train level 1,27,27,27,27,1,20.37,20.963
+N3l,train level 2,27,27,27,20,10,4.667,1.741
+N3l,mine,27,24,27,25,8,4.148,1.667
+N3l,train level 3,27,23,27,21,12,2.259,1.444
+N3l,large cut,27,15,27,9,16,0.926,0.593
+NinjaDoggy,train level 1,196,196,196,196,1,12.673,16.617
+NinjaDoggy,tower,196,182,196,181,8,6.556,3.378
+NinjaDoggy,train level 2,196,163,196,147,9,2.776,1.515
+NinjaDoggy,train level 3,196,151,196,126,15,1.597,1.362
+NinjaDoggy,large cut,196,105,196,21,14,1.005,0.179
+NinjaDoggy,mine,196,0,196,185,,0,1.944
