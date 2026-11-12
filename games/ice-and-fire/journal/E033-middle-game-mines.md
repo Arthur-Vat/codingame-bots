@@ -53,3 +53,46 @@ pays its 15 gold back in four turns, and one the enemy takes is destroyed.
 A test checks the term on a quiet position (a mine built far from the
 enemy adds `MINE` to its side and takes as much from the other) and on a
 corridor (a mine on a cell the enemy can take next turn adds nothing).
+
+## Screening
+
+All against `ice-and-fire-v014` at CodinGame's speed and real limit,
+calibrated on each machine (ADR 0048).
+
+**A local look** (150 seat-swapped pairs each, four matches at a time on
+a 4-core machine, time scale 0.575, tolerance 7 ms; seed 33033, and 33035
+for the last four; read with `ice-and-fire-review screening`). "Flat"
+counts every mine on an active cell; "safe 1" leaves out the mines on
+cells the enemy can take at its next turn, "safe 2" and "safe 3" those its
+chains reach for its gold plus two or three incomes. Mines are those
+built a game, v014's in the same games in parentheses.
+
+| Variant | Elo against v014 | Score as red | Score as blue | Mines | Timeouts |
+| --- | --- | ---: | ---: | ---: | ---: |
+| flat, 6 | −32.5 [−62.8, −2.8] | 32.0% | 58.7% | 3.31 (2.92) | 6 (3) |
+| flat, 10 | −23.2 [−58.1, +11.2] | 30.7% | 62.7% | 4.21 (2.94) | 2 (4) |
+| flat, 16 | −23.2 [−58.1, +11.2] | 32.0% | 61.3% | 4.46 (3.03) | 4 (4) |
+| safe 1, 10 | +27.9 [−0.6, +56.7] | 38.0% | 70.0% | 3.54 (2.78) | 5 (2) |
+| safe 1, 40 | −41.9 [−74.9, −9.6] | 24.0% | 64.0% | 3.74 (3.03) | 2 (2) |
+| safe 2, 24 | −18.5 [−50.2, +12.8] | 34.0% | 60.7% | 3.51 (2.75) | 0 (2) |
+| safe 3, 10 | +11.6 [−22.7, +46.1] | 35.3% | 68.0% | 3.37 (2.65) | 1 (0) |
+| safe 3, 16 | +6.9 [−24.2, +38.2] | 38.7% | 63.3% | 3.60 (2.80) | 0 (0) |
+
+The three flat variants together won 416 of their 900 games (46.2%). The
+flat bonus of 10 and 16 scored the same by chance: 206 of their 300 games
+had the same winner.
+
+**On GitHub** (`screen.yml`, 800 pairs each over two calibrated runners,
+time scales 0.43 to 0.99; no timeout, crash or invalid answer on either
+side in any match).
+
+First round, run 43256901773, seed 33034:
+
+| Variant | Commit | Elo against v014 | Score |
+| --- | --- | --- | ---: |
+| safe 1, 6 | `215a5d1` | +3.0 [−9.3, +15.4] | 50.4% |
+| safe 1, 10 | `4fd8509` | −0.4 [−13.7, +12.8] | 49.9% |
+| safe 1, 16 | `7ffca2a` | +2.6 [−10.6, +15.9] | 50.4% |
+| safe 1, 24 | `b15cb49` | **−19.1 [−32.5, −5.8]** | 47.2% |
+| safe 2, 10 | `38894a6` | −6.5 [−20.2, +7.1] | 49.1% |
+| safe 2, 16 | `ecee9cb` | −10.0 [−23.9, +3.9] | 48.6% |
