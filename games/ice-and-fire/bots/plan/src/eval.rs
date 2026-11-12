@@ -57,7 +57,7 @@ pub const MINE: i64 = 16;
 pub const MINE_SAFE_TURNS: i64 = 1;
 /// The active cells a side needs for its mines to count (E033's second
 /// round: mines "when the territory is large"); 0 for no such rule.
-pub const MINE_MIN_CELLS: i64 = 36;
+pub const MINE_MIN_CELLS: i64 = 44;
 /// Whether only the side with more active cells than the other counts its
 /// mines (second round).
 pub const MINE_LEAD: bool = false;
