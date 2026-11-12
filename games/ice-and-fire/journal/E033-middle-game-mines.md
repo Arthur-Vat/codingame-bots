@@ -113,3 +113,22 @@ cells) in place of a fixed bonus.
 | ahead, 10 | `74613e1` | +7.8 [−5.9, +21.6] | 51.1% |
 | ahead, 16 | `6b43093` | +8.7 [−5.6, +23.0] | 51.2% |
 | a quarter of the cells | `efbbb86` | +11.3 [−2.3, +24.9] | 51.6% |
+
+Confirmation of the second round's four best, run 43261955814, seed
+33037, 1,600 pairs each over four runners (one timeout, of "ahead, 16"):
+
+| Variant | Commit | Elo against v014 | Score | With the second round, 2,400 pairs |
+| --- | --- | --- | ---: | --- |
+| from 36 cells, 10 | `f5f833c` | +4.1 [−4.6, +12.8] | 50.6% | +7.4 |
+| a quarter of the cells | `efbbb86` | +5.2 [−3.8, +14.2] | 50.7% | +7.2 |
+| ahead, 10 | `74613e1` | +6.7 [−2.5, +16.0] | 51.0% | +7.1 |
+| ahead, 16 | `6b43093` | −0.0 [−9.4, +9.4] | 50.0% | +2.9 |
+
+Their neighbours, run 43262029341, seed 33038, 800 pairs each:
+
+| Variant | Commit | Elo against v014 | Score |
+| --- | --- | --- | ---: |
+| a third of the cells | `cf07e29` | **+13.9 [+0.6, +27.3]** | 52.0% |
+| a sixth of the cells | `d635543` | +9.1 [−4.0, +22.3] | 51.3% |
+| from 30 cells, 10 | `a5056d9` | +11.3 [−2.1, +24.8] | 51.6% |
+| from 36 cells, 6 | `e3b8c0b` | +4.8 [−7.8, +17.3] | 50.7% |
