@@ -124,6 +124,11 @@ const OBJECTIVE: Objective = Objective {
     voronoi: 1,
 };
 
+/// The opening uses a mine spot only when the enemy's territory is more than
+/// this many steps from it (v003's 3; `u8::MAX`: no mine in the opening,
+/// E034).
+const OPENING_SAFE_SPOT: u8 = 3;
+
 /// The opening: v003's opening with the solo planner's weight sets, planned
 /// over [`OPENING_TURNS`] of our turns within the turn's time.
 fn opening() -> Planned {
@@ -137,7 +142,14 @@ fn opening_of(width: usize) -> Planned {
         width,
         objective: OBJECTIVE,
     };
-    Planned::new(planner, solo::SETS.to_vec(), Params::V003)
+    let sets = solo::SETS
+        .iter()
+        .map(|&params| Params {
+            safe_spot: OPENING_SAFE_SPOT,
+            ..params
+        })
+        .collect();
+    Planned::new(planner, sets, Params::V003)
 }
 
 fn main() {
