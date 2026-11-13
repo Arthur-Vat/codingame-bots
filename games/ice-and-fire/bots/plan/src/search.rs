@@ -60,9 +60,9 @@ const REPLY_EVALS: u64 = 300;
 /// The trainings from which a plan is long (E040): its replies are searched
 /// with [`LONG_REPLY_EVALS`], [`LONG_REPLY_CUTS`] and [`LONG_CUT_LENGTH`].
 /// `None`: never (v018).
-pub const LONG_PLAN: Option<usize> = None;
+pub const LONG_PLAN: Option<usize> = Some(4);
 /// Most plans scored by the opponent's climb against a long plan (E040).
-const LONG_REPLY_EVALS: u64 = 300;
+const LONG_REPLY_EVALS: u64 = 600;
 /// The opponent's best cuts tried against a long plan (E040).
 const LONG_REPLY_CUTS: usize = 3;
 /// Longest of those cuts, in trainings (E040).
