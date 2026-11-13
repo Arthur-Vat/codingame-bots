@@ -1092,3 +1092,26 @@ fn the_cells_a_reply_enters_get_blockers() {
     );
     assert_eq!(out.len(), 2);
 }
+
+#[test]
+fn no_training_is_offered_on_our_own_active_cells() {
+    use crate::actions::OWN_CELLS;
+    use ice_and_fire_engine::SIZE;
+    // E045: with OWN_CELLS 2, the generator offers trainings only on cells
+    // that are not active for us; towers on our cells stay offered.
+    assert_eq!(OWN_CELLS, 2);
+    let state = position(CORRIDOR, [50, 20], &[]);
+    let mut actions = Vec::new();
+    actions_of(&state, &mut actions);
+    let active = state.active(0);
+    let mut trainings = 0;
+    for action in &actions {
+        if let [Command::Train { x, y, .. }] = action.commands() {
+            trainings += 1;
+            let cell = usize::from(*y) * SIZE + usize::from(*x);
+            assert!(!active.test(cell), "a training on our cell ({x}, {y})");
+        }
+    }
+    assert!(trainings > 0, "no training at all");
+    assert_eq!(towers_offered(&state), vec![(11, 9)]);
+}

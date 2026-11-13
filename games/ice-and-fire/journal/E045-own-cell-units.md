@@ -5,7 +5,7 @@ pull_request: "pending"
 parent: ice-and-fire-v021
 hypothesis: In the collected CodinGame games against the top 10, from turn 7, we spend 7% to 9% of our gold on units trained on our own cells and the top 10 1%, while they spend 30% on towers and 13% on mines against our 18% and 6% to 9%; a level-1 unit on our own cell costs 10 and an upkeep every turn and only makes the enemy pay a level-2 training for that cell, so offering trainings on our own active cells only on the border, or not at all (E044's blockers may still put a unit where a reply enters), spends the gold where it pays and beats v021.
 change: The plan bot's generator offers trainings on our own empty active cells everywhere (v021), only on cells next to a cell that is not active for us, or nowhere, with or without a level-1 blocker on the cells the remembered replies enter.
-release: pending
+release: ice-and-fire-v022
 sprt: pending
 elo: pending
 pairs: pending
@@ -47,5 +47,37 @@ cells offered towers and mines are unchanged. E044's `BLOCK_LEVEL` can
 add a level-1 unit on the cells the remembered replies enter.
 
 ## Screening
+
+All against `ice-and-fire-v021` on GitHub (`screen.yml`, one calibrated
+runner per variant and shard at CodinGame's speed and real limit, ADR
+0048). The variants nb1 and bb1 add E044's level-1 blocker (`BLOCK_LEVEL`
+`Some(1)`) on the cells the remembered replies enter.
+
+First round, run 43525437644, seed 45045, 800 pairs each over two runners:
+
+| Variant | Commit | Own cells offered | Level-1 blocker | Elo against v021 | Score |
+| --- | --- | --- | --- | --- | ---: |
+| n | `8865600` | none | no | **+25.2 [+14.4, +36.1]** | 53.6% |
+| b | `d90cf3c` | border | no | **+15.2 [+5.4, +25.0]** | 52.2% |
+| nb1 | `54cbccf` | none | yes | +6.5 [−4.8, +17.8] | 50.9% |
+| bb1 | `7d3b863` | border | yes | +5.6 [−4.8, +16.1] | 50.8% |
+
+(bb1 had one timeout in 1,600 games; no other timeout, crash or invalid
+answer.)
+
+The two best again, run 43526765969, seed 45046, 1,600 pairs each over
+four runners (no fault):
+
+| Variant | Commit | Elo against v021 | Score | Both rounds, 2,400 pairs |
+| --- | --- | --- | ---: | --- |
+| n | `8865600` | **+25.5 [+17.7, +33.2]** | 53.7% | about +25 |
+| b | `d90cf3c` | **+17.8 [+10.6, +25.1]** | 52.6% | about +17 |
+
+Fewer trainings on our own cells gained, and none at all gained most; the
+level-1 blocker gave most of the gain back. The candidate is n
+(`OWN_CELLS = 2`), whose bundle is the same, byte for byte, as the
+screened commit's.
+
+## SPRT
 
 Pending.
