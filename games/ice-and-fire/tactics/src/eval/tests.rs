@@ -126,8 +126,16 @@ fn the_margins_are_those_of_the_pressure_term() {
         assert_eq!(margins, [margin(&state, seat), margin(&state, 1 - seat)]);
     }
     // A finished game has no margins; an unreachable HQ is the lowest
-    // pressure, as before.
+    // pressure, as before: blue's HQ walled off by void cells.
     assert_eq!(evaluate_with_margins(&won_state(), 0), (WIN, [0, 0]));
+    let mut void = [false; ice_and_fire_engine::CELLS];
+    let size = ice_and_fire_engine::SIZE;
+    void[size * size - 2] = true;
+    void[size * (size - 1) - 1] = true;
+    let walled = State::new(&void, &[], League::Bronze);
+    assert_eq!(margin(&walled, 0), i64::MIN);
+    let (_, margins) = evaluate_with_margins(&walled, 0);
+    assert_eq!(margins[0], i64::MIN);
     assert_eq!(pressure(i64::MIN), -MAX_PRESSURE);
     assert_eq!(pressure(5), 0);
     assert_eq!(pressure(-30), -30);
