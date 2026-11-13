@@ -43,11 +43,11 @@ use ice_and_fire_tactics::eval::evaluate;
 
 /// The lowest level of a unit whose moves count in [`exposed`] (E037): 1 to
 /// 3, or 4 for none (v016).
-pub const MOVER_LEVEL: u8 = 1;
+pub const MOVER_LEVEL: u8 = 2;
 
 /// What a threatened cell costs its side, in quarters (E023: 7, a quarter
 /// of a cell's value of 7).
-pub const THREAT_QUARTERS: i64 = 9;
+pub const THREAT_QUARTERS: i64 = 5;
 
 /// The units of `seat` whose moves count in [`exposed`]: those on its active
 /// cells of at least [`MOVER_LEVEL`], all of which may move at its next turn.
