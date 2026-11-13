@@ -48,8 +48,16 @@ pub fn cost_to(state: &State, seat: usize, moves: bool, target: usize) -> i64 {
 /// [`Reach::new`]`(state, seat, moves).cost` is at most `budget`, found on
 /// bitboards as [`cost_to`] does.
 pub fn reach_within(state: &State, seat: usize, moves: bool, budget: i64) -> Bits {
+    reach_within_moving(state, seat, movers(state, seat, moves), budget)
+}
+
+/// [`reach_within`] where the units of `seat` on the cells `movers` (of any
+/// seat to act) each step first onto every neighbour their level may enter,
+/// at no cost, as [`Reach::new`] lets the movable units of the player to act
+/// do.
+pub fn reach_within_moving(state: &State, seat: usize, movers: Bits, budget: i64) -> Bits {
     let mut reached = Bits::EMPTY;
-    flood(state, seat, moves, |step, new| {
+    flood_from(state, seat, movers, |step, new| {
         if 10 * step as i64 > budget {
             return true;
         }
@@ -62,7 +70,27 @@ pub fn reach_within(state: &State, seat: usize, moves: bool, budget: i64) -> Bit
 /// The bitboard search of [`cost_to`]: calls `visit(step, cells)` with the
 /// cells first reached at the cost of `step` steps of 10 gold, cheapest
 /// first, until `visit` returns true or no cell is left.
-fn flood(state: &State, seat: usize, moves: bool, mut visit: impl FnMut(usize, Bits) -> bool) {
+fn flood(state: &State, seat: usize, moves: bool, visit: impl FnMut(usize, Bits) -> bool) {
+    flood_from(state, seat, movers(state, seat, moves), visit);
+}
+
+/// The units that step first in a search with `moves`: the movable units of
+/// `seat` when it is to act, else none.
+fn movers(state: &State, seat: usize, moves: bool) -> Bits {
+    if moves && seat == state.to_act() {
+        state.movable_units()
+    } else {
+        Bits::EMPTY
+    }
+}
+
+/// [`flood`] where the units of `seat` on the cells `movers` step first.
+fn flood_from(
+    state: &State,
+    seat: usize,
+    movers: Bits,
+    mut visit: impl FnMut(usize, Bits) -> bool,
+) {
     let max = state.league().max_level();
     // `entry[l - 1]`: the cells whose cheapest level to enter is `l`.
     let mut entry = [Bits::EMPTY; 3];
@@ -74,11 +102,9 @@ fn flood(state: &State, seat: usize, moves: bool, mut visit: impl FnMut(usize, B
     }
     // `open[c % 4]`: cells first reached at the cost of `c` steps.
     let mut open = [state.active(seat), Bits::EMPTY, Bits::EMPTY, Bits::EMPTY];
-    if moves && seat == state.to_act() {
-        for cell in state.movable_units().iter() {
-            if let Some(level) = state.unit_level(cell).filter(|&level| level <= max) {
-                open[0] |= Bits::cell(cell).neighbours() & state.enterable(seat, level);
-            }
+    for cell in (movers & state.units(seat)).iter() {
+        if let Some(level) = state.unit_level(cell).filter(|&level| level <= max) {
+            open[0] |= Bits::cell(cell).neighbours() & state.enterable(seat, level);
         }
     }
     let mut done = Bits::EMPTY;

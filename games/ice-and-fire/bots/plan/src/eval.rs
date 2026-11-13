@@ -30,18 +30,55 @@
 //!   is large. A mine on an active cell that the enemy cannot take at its
 //!   next turn counts one more for every [`MINE_PER_CELLS`] active cells of
 //!   its side ([`mine_bonus`]): little on a small territory, 9 at 36 cells.
+//! - **Units' moves** (E037): the threatened cells of E023 were those the
+//!   enemy's chains of trainings reach, so a unit at the front threatened
+//!   nothing, though a move costs no gold. The enemy's units on its active
+//!   cells of at least level [`MOVER_LEVEL`] now step first onto every
+//!   neighbour they may enter, as `ice_and_fire_tactics::chain::Reach` lets
+//!   units do, and the chains go on from there.
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
-use ice_and_fire_tactics::chain::reach_within;
+use ice_and_fire_tactics::chain::reach_within_moving;
 use ice_and_fire_tactics::eval::evaluate;
 
-/// The active cells of `seat` that the enemy can take at its next turn:
-/// those its chains of trainings reach for its gold plus its income (moves
-/// left out, as in the pressure term).
+/// The lowest level of a unit whose moves count in [`exposed`] (E037): 1 to
+/// 3, or 4 for none (v016).
+pub const MOVER_LEVEL: u8 = 4;
+
+/// What a threatened cell costs its side, in quarters (E023: 7, a quarter
+/// of a cell's value of 7).
+pub const THREAT_QUARTERS: i64 = 7;
+
+/// The units of `seat` whose moves count in [`exposed`]: those on its active
+/// cells of at least [`MOVER_LEVEL`], all of which may move at its next turn.
+fn movers(state: &State, seat: usize) -> Bits {
+    let mut movers = Bits::EMPTY;
+    if MOVER_LEVEL > 3 {
+        return movers;
+    }
+    for cell in (state.units(seat) & state.active(seat)).iter() {
+        if state
+            .unit_level(cell)
+            .is_some_and(|level| level >= MOVER_LEVEL)
+        {
+            movers |= Bits::cell(cell);
+        }
+    }
+    movers
+}
+
+/// The cells, other than its active cells, that `side` can take at its next
+/// turn: those its chains of trainings reach for its gold plus its income,
+/// after its [`movers`] step (E037; the pressure term leaves moves out).
+pub fn reach(state: &State, side: usize) -> Bits {
+    let budget = state.gold(side) + state.income(side);
+    reach_within_moving(state, side, movers(state, side), budget)
+}
+
+/// The active cells of `seat` that the enemy can take at its next turn
+/// ([`reach`]).
 fn exposed(state: &State, seat: usize) -> Bits {
-    let enemy = 1 - seat;
-    let budget = state.gold(enemy) + state.income(enemy);
-    reach_within(state, enemy, false, budget) & state.active(seat)
+    reach(state, 1 - seat) & state.active(seat)
 }
 
 /// The number of active cells of `seat` that the enemy can take at its next
@@ -206,7 +243,7 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         + 2 * debt(state, 1 - seat)
         + shape(state, seat)
         + LEVEL2_DISCOUNT * (twos(state, 1 - seat) - twos(state, seat))
-        + 7 * threats / 4
+        + THREAT_QUARTERS * threats / 4
         + mines(state, seat, ours)
         - mines(state, 1 - seat, theirs)
 }
