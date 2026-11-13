@@ -1,7 +1,7 @@
 ---
 id: E042
 date: 2026-11-13
-pull_request: "pending"
+pull_request: "#304"
 parent: ice-and-fire-v018
 hypothesis: In v014's CodinGame games the top 10, after 28% of their long chains (4 or more trainings), could pay at their next turn for a chain of trainings to our HQ (we after 4% of ours), and the cuts that would have killed three quarters of those chains mostly left our HQ open (122 of 296 lost by force in v018's search); v018's pressure term stops counting once a side can pay for that chain, so counting a standing threat on the enemy HQ makes the search keep one, which ties the enemy to its defence and protects our chains, and beats v018.
 change: The plan bot's evaluation counts a side that can pay, at its next turn, for its cheapest chain of trainings to the enemy HQ the gold it would have left after paying, up to 100 (flat bonuses and other shares screened).
