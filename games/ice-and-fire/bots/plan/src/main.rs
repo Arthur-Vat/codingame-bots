@@ -121,7 +121,7 @@ const OBJECTIVE: Objective = Objective {
     joints: 2,
     tips: 2,
     reach: 6,
-    voronoi: 1,
+    voronoi: 6,
 };
 
 /// The opening uses a mine spot only when the enemy's territory is more than
