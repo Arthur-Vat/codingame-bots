@@ -6,11 +6,11 @@ parent: ice-and-fire-v020
 hypothesis: In the collected CodinGame games, the cells we lose on a threatened turn are mostly cut off (61%), our defence (towers on the border in 60% of cases, on a joint in 22%) holds the cells it guards but only 6% of the cells we then lose were in its zone, and our losses are the same whether we defend or not (4.8 and 4.6 cells), while the top 10 put towers on joints (35%) and lose less when they defend (2.3 against 3.2 cells); the search already finds the opponent's replies that enter our territory, so offering blockers on the cells those replies enter (towers there or next to them, or a level-2 unit there) lets it defend where the enemy strikes and beats v020.
 change: The plan bot's search is also offered, at every step of a climb, a tower on each of our free cells that the opponent's remembered replies enter (towers next to them and level-2 trainings screened).
 release: ice-and-fire-v021
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +31.4 [+14.4, +48.5] at CodinGame's limits
+pairs: 400
+full_time: +31.4 [+14.4, +48.5] (the SPRT's own, ADR 0042), 1 timeout of v021 in 800 games (v020 none), slowest answer 616.1 ms (v020's first turn)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -86,3 +86,23 @@ Towers on the cells the replies enter gained, alone or with level-2 units;
 level-2 units alone lost, and towers on the neighbouring cells as well
 diluted the gain. The candidate is t, the simplest form and the best in
 both rounds.
+
+## SPRT
+
+Accepted on the pull request (run 43524269477, at 27328892), at CodinGame's
+speed and real limit, in blocks of 10 pairs over 8 calibrated runners (a
+first run was cancelled by a Markdown-only commit pushed while it played):
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v021 vs ice-and-fire-v020: 800 games, 400 complete pairs
+  ice-and-fire-v021: 436 wins, 0 draws, 364 losses (score 54.5%)
+  Elo of ice-and-fire-v021 over ice-and-fire-v020: +31.4 [+14.4, +48.5] (95%, from pairs)
+  pairs by ice-and-fire-v021's points (0, 1/2, 1, 3/2, 2): [33, 0, 298, 0, 69]
+  ice-and-fire-v021 faults: 1 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v020 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  slowest answer: ice-and-fire-v021 602.6 ms, ice-and-fire-v020 616.1 ms
+Checked 5 rounds of 8 blocks (40 blocks counted, 56 left out)
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.52 (bounds -2.94, 2.94) after 400 pairs
+Verdict: ACCEPTED: ice-and-fire-v021 is stronger than ice-and-fire-v020
+```
