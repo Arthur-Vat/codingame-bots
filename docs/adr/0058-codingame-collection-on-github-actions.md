@@ -1,6 +1,6 @@
 # 0058. The daily collection of CodinGame games runs on GitHub Actions
 
-- Status: accepted (owner, 2026-11-07)
+- Status: accepted (owner, 2026-11-07); decision 1 completed by [0059](0059-collection-follows-the-newest-release.md) (a batch stops for a newer release, which the Release workflow starts)
 - Date: 2026-11-07
 - Supersedes: [0057](0057-daily-collection-of-codingame-games.md), decisions 1 and 5; [0047](0047-codingame-api.md), decision 2, for the collection's token
 - Scope: framework

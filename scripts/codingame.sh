@@ -5,6 +5,7 @@
 #   fetch GAME [--submission ID] [--backfill-releases] [--data DIR] [--push]
 #   batch GAME RELEASE.rs [--top N] [--opponents NAME,...] [--games-per-opponent K]
 #         [--seeds FILE] [--name NAME] [--keep N] [--max-hours H] [--max-games N]
+#         [--until-newer-release]
 #         [--play] [--data DIR] [--push]
 #   replay GAME RELEASE.rs [--opponents NAME,...] [--all] [--limit N] [--play]
 #         [--data DIR] [--push]
@@ -31,7 +32,11 @@
 # test game that would leave fewer than N of the 600 of the last 24 hours (read
 # with GET /limits before every game; a limit that cannot be read stops it with
 # status 1); --max-hours H stops it cleanly after H hours (ADR 0057);
-# --max-games N stops it cleanly after N games started in this run (a trial).
+# --max-games N stops it cleanly after N games started in this run (a trial);
+# --until-newer-release stops it cleanly before a game when main holds a
+# newer release of the game than the one played, so that the next run plays
+# that one (the collection workflow; checked at most every 5 minutes, with a
+# fetch of origin's main in the current repository).
 #
 # The ranking games get the release that played them from
 # the releases file of the game (games/GAME/codingame-submissions.txt; lines: submission id, release, UTC date
@@ -69,7 +74,8 @@ Usage: scripts/codingame.sh fetch GAME [--submission ID] [--backfill-releases]
                 [--data DIR] [--push]
        scripts/codingame.sh batch GAME RELEASE.rs [--top N] [--opponents NAME,...]
                 [--games-per-opponent K] [--seeds FILE] [--name NAME] [--keep N]
-                [--max-hours H] [--max-games N] [--play] [--data DIR] [--push]
+                [--max-hours H] [--max-games N] [--until-newer-release]
+                [--play] [--data DIR] [--push]
        scripts/codingame.sh replay GAME RELEASE.rs [--opponents NAME,...] [--all]
                 [--limit N] [--play] [--data DIR] [--push]
        scripts/codingame.sh fetch-ids GAME [--kind ranking|test|replay] ID...
@@ -92,6 +98,9 @@ Usage: scripts/codingame.sh fetch GAME [--submission ID] [--backfill-releases]
   --max-hours H    batch: stop (exit 0, resumable) after H hours (decimals allowed)
   --max-games N    batch: stop (exit 0, resumable) after N test games started in
                    this run, played or failed (a trial run)
+  --until-newer-release
+                   batch: stop (exit 0, resumable) before a test game when
+                   origin's main holds a newer release of GAME than RELEASE.rs
   --backfill-releases
                    fetch: only add "release" to the ranking games of the index
                    from the game's file of releases; no request
@@ -140,7 +149,7 @@ data_dir=""
 push=false
 top=10 per_opp=10 limit=20
 opp_names="" seeds_file="" batch_name="" kind="ranking"
-play=false all=false keep=0 max_hours="" max_games=0 backfill=false
+play=false all=false keep=0 max_hours="" max_games=0 backfill=false until_newer=false
 while (($#)); do
   case "$1" in
     -h | --help)
@@ -194,6 +203,11 @@ while (($#)); do
       [[ ${2:-} =~ ^[1-9][0-9]*$ ]] || bad_usage
       max_games="$2"
       shift 2
+      ;;
+    --until-newer-release)
+      only batch
+      until_newer=true
+      shift
       ;;
     --backfill-releases)
       only fetch
@@ -926,6 +940,35 @@ find_resumable() { # find_resumable <release sha256>
   done | sort | tail -n 1 | cut -d' ' -f2-
 }
 
+# The newest release of $game on origin's main (a file name without .rs), or
+# nothing when it cannot be read. CODINGAME_NEWEST_RELEASE, a program that
+# prints it, stands in for the fetch (tests).
+newest_release() {
+  if [[ -n ${CODINGAME_NEWEST_RELEASE:-} ]]; then
+    "$CODINGAME_NEWEST_RELEASE" 2>/dev/null || true
+    return 0
+  fi
+  git -C "$orig_pwd" fetch --quiet origin main 2>/dev/null || return 0
+  git -C "$orig_pwd" ls-tree --name-only origin/main "games/$game/releases/" 2>/dev/null |
+    sed -n "s|.*/\($game-v[0-9][0-9]*\)\.rs\$|\1|p" | sort -V | tail -n 1
+}
+
+# Whether a newer release than $release is on origin's main, checked at most
+# every CODINGAME_NEWER_EVERY seconds (300); sets newer to its name.
+newer="" newer_checked=""
+newer_release() {
+  local now every="${CODINGAME_NEWER_EVERY:-300}" newest
+  now="$(now_epoch)"
+  if [[ -n $newer_checked ]] && ((now - newer_checked < every)); then
+    return 1
+  fi
+  newer_checked="$now"
+  newest="$(newest_release)"
+  [[ -n $newest && $newest != "$release" ]] || return 1
+  [[ $(printf '%s\n%s\n' "$release" "$newest" | sort -V | tail -n 1) == "$newest" ]] || return 1
+  newer="$newest"
+}
+
 run_batch() {
   local name sha state total i planned stored=0 opp aid opts att result failed_games streak=0 stopped=false resumable
   local streak_games=() started started_games=0
@@ -997,6 +1040,10 @@ run_batch() {
     fi
     if ((max_games > 0 && started_games >= max_games)); then
       echo "stopped: $max_games games started in this run; the games left stay planned. Run the same command to resume."
+      break
+    fi
+    if [[ $until_newer == true ]] && newer_release; then
+      echo "stopped: a newer release, $newer, is on main; the games left stay planned, for a run with that release."
       break
     fi
     started_games=$((started_games + 1))

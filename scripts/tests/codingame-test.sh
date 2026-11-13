@@ -898,6 +898,48 @@ expect "max-games needs a positive number" "$rc" 2
 run fetch toy --max-games 2
 expect "max-games is for batch only" "$rc" 2
 
+# --until-newer-release stops, cleanly, before a game when main holds a newer
+# release; the same or an older release, or none read, does not stop it.
+newest_stub="$tmp_dir/newest.sh"
+printf '#!/usr/bin/env bash\ncat "%s"\n' "$tmp_dir/newest.txt" >"$newest_stub"
+chmod +x "$newest_stub"
+export CODINGAME_NEWEST_RELEASE="$newest_stub"
+echo toy-v2 >"$tmp_dir/newest.txt"
+before="$(posts)"
+run batch toy "$release_file" --opponents Gamma --games-per-opponent 2 --name tnewer --until-newer-release --play --data "$bdata"
+expect "newer release exit" "$rc" 0
+expect "newer release plays nothing" "$(posts)" "$before"
+contains "newer release message" "$out" "stopped: a newer release, toy-v2, is on main"
+expect "newer release leaves games planned" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/tnewer.json")" "planned,planned"
+for same in toy-v1 toy-v0 none; do
+  if [[ $same == none ]]; then : >"$tmp_dir/newest.txt"; else echo "$same" >"$tmp_dir/newest.txt"; fi
+  enqueue "$post_name" 01 200 "$(done_reply 5601 "$(tglog 9601 seed=1 Gamma 33 0 '[300,100]')" 5 20)"
+  before="$(posts)"
+  run batch toy "$release_file" --opponents Gamma --games-per-opponent 1 --name "tsame-$same" --until-newer-release --play --data "$bdata"
+  expect "newest $same exit" "$rc" 0
+  expect "newest $same plays the game" "$(($(posts) - before))" 1
+done
+# Checked again only after CODINGAME_NEWER_EVERY seconds: with 0, before
+# every game; a release merged after the first game stops the second.
+cat >"$newest_stub" <<STUB
+#!/usr/bin/env bash
+f="$tmp_dir/calls"
+n=\$(cat "\$f" 2>/dev/null || echo 0)
+echo \$((n + 1)) >"\$f"
+if ((n == 0)); then echo toy-v1; else echo toy-v2; fi
+STUB
+rm -f "$tmp_dir/calls"
+export CODINGAME_NEWER_EVERY=0
+enqueue "$post_name" 01 200 "$(done_reply 5701 "$(tglog 9701 seed=1 Gamma 33 0 '[300,100]')" 5 20)"
+before="$(posts)"
+run batch toy "$release_file" --opponents Gamma --games-per-opponent 3 --name tlater --until-newer-release --play --data "$bdata"
+expect "later release exit" "$rc" 0
+expect "later release: one game, then the stop" "$(($(posts) - before))" 1
+expect "later release leaves the rest planned" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/tlater.json")" "done,planned,planned"
+unset CODINGAME_NEWEST_RELEASE CODINGAME_NEWER_EVERY
+run fetch toy --until-newer-release
+expect "until-newer-release is for batch only" "$rc" 2
+
 # A 401 is a refused token: exit 3, a message that names ADR 0058, nothing
 # played, and the token's text nowhere.
 echo 401 >"$STUB_DIR/$puzzle_url.status"

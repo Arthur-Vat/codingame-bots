@@ -5,7 +5,9 @@ name: CodinGame collection
 # batch of test games, the current release against the top 10 (50 games each
 # on the 50 fixed maps), with scripts/codingame.sh, which keeps 100 of the
 # 600 test games of 24 hours for the owner and stops by itself before the
-# job's time runs out (--max-hours 5.25 of the job's 350 minutes). What it
+# job's time runs out (--max-hours 5.25 of the job's 350 minutes), or when a
+# newer release reaches main (--until-newer-release, ADR 0059): the Release
+# workflow then dispatches a run, which plays that release. What it
 # stores is pushed, never forced, to the branch claude/codingame-games, which
 # is never merged. A run that finds the day's batch done, or the floor
 # reached, ends at once and cleanly. Runs never overlap.
@@ -115,7 +117,7 @@ jobs:
           fi
           args=(batch "$GAME" "games/$GAME/releases/$release.rs" --top 10 --games-per-opponent 50
             --seeds "games/$GAME/codingame-seeds-50.txt" --keep 100 --max-hours "$hours"
-            --name "$day-$release-daily")
+            --name "$day-$release-daily" --until-newer-release)
           if [ -n "$MAX_GAMES" ]; then args+=(--max-games "$MAX_GAMES"); fi
           if [ "$PLAY" = true ]; then args+=(--play --push); fi
           scripts/codingame.sh "${args[@]}" 2>&1 | tee "$log/batch.log"

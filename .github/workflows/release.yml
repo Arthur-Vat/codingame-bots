@@ -2,7 +2,10 @@ name: Release
 
 # Publishes a GitHub release, tagged with the version, for every release
 # file on main that has none yet, with the paste-ready file attached, and the
-# readable copy of the release when it has one (ADR 0045).
+# readable copy of the release when it has one (ADR 0045). When it publishes
+# a new release of the game the CodinGame collection plays, it starts a run of
+# that workflow (codingame-collect.yml, on main), so that the day's games are
+# played with the newest release (ADR 0059).
 on:
   push:
     branches: [main]
@@ -11,6 +14,7 @@ on:
 
 permissions:
   contents: write # to create tags and releases
+  actions: write # to start the CodinGame collection with a new release (ADR 0059)
 
 defaults:
   run:
@@ -52,4 +56,15 @@ jobs:
               notes="$notes Journal: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$GITHUB_SHA/$entry"
             fi
             scripts/annotate.sh run "Release $tag" gh release create "$tag" "${assets[@]}" --target "$GITHUB_SHA" --title "$tag" --notes "$notes"
+            echo "$game" >>"$RUNNER_TEMP/released-games"
           done
+      - name: Start the CodinGame collection with a new release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The collection plays one game (its GAME); a run already going
+          # stops before its next game and this one waits for it (ADR 0059).
+          collected="$(sed -n 's/^  GAME: \(.*\)$/\1/p' .github/workflows/codingame-collect.yml | head -n 1)"
+          if [ -n "$collected" ] && grep -qx -- "$collected" "$RUNNER_TEMP/released-games" 2>/dev/null; then
+            scripts/annotate.sh run "Start the CodinGame collection" gh workflow run codingame-collect.yml --ref main -f play=true
+          fi
