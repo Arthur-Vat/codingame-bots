@@ -3,7 +3,7 @@ id: E040
 date: 2026-11-13
 pull_request: "#302"
 parent: ice-and-fire-v018
-hypothesis: On our cuts of 3 or more enemy cells in v014's CodinGame games, v018's search predicts the evaluation after the opponent's reply too optimistically in about one case in ten (90th percentile of predicted less actual +51 on the cuts whose chain was wiped the next turn, +33 on other plies), and 46% of those cuts lost three quarters of their units the next turn (26% for the top 10); searching the opponent's replies harder after a plan of many trainings (more tries for its climb, more or longer cuts) finds the re-cuts it misses and beats v018.
+hypothesis: On our cuts of 3 or more enemy cells in v014's CodinGame games, v018's search predicts the evaluation after the opponent's reply too optimistically in about one case in ten (90th percentile of predicted less actual +51 on the cuts whose chain was wiped the next turn, +33 on other plies), and 46% of our long chains that cut 3 or more cells lost three quarters of their units the next turn (26% of the top 10's); searching the opponent's replies harder after a plan of many trainings (more tries for its climb, more or longer cuts) finds the re-cuts it misses and beats v018.
 change: None released. Screening only: when a plan has a chosen number of trainings or more, the opponent's replies to it searched with more tries for the opponent's climb (300 in v018), more of its best cuts (3) or longer ones (5 trainings).
 release: none
 sprt: not run: no gain in screening
@@ -75,5 +75,5 @@ share of the turns and most games play alike, and no form gained. The
 search's optimism on our cuts (about one case in ten, from the study)
 does not come from too few tries or too few or short cuts in its reply
 search. The owner's choice before the confirmation ("Confirm the 3
-leaders (Recommended)") was to send a leader that held to the SPRT and
+leaders (Recommended)", three leaders across E040 and E041) was to send a leader that held to the SPRT and
 drop the rest; none held.
