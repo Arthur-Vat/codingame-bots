@@ -102,7 +102,7 @@ pub fn threatened(state: &State, seat: usize) -> i64 {
 /// The share of their training cost, in percent, that a side's units count
 /// less where the enemy can kill them at its next turn (E039): 0 for none
 /// (v018).
-pub const RISK_PERCENT: i64 = 0;
+pub const RISK_PERCENT: i64 = 25;
 
 /// Whether the units at risk include those on the cells the enemy cuts off
 /// by taking one cell it can take (E039), not only those on such cells.
