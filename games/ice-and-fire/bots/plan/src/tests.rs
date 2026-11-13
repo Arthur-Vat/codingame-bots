@@ -980,3 +980,38 @@ fn a_side_that_can_pay_for_its_chain_to_the_enemy_hq_holds_a_threat() {
     assert_eq!(score, evaluate(&state, 0));
     assert_eq!(margins, [margin(&state, 0), margin(&state, 1)]);
 }
+
+#[test]
+fn an_enemy_unit_of_level_two_moves_toward_our_hq() {
+    use crate::eval::{eval, shape, strong_units, threatened, THREAT_QUARTERS};
+    use ice_and_fire_engine::{Bits, SIZE};
+    use ice_and_fire_tactics::eval::{margin, margin_moving};
+    // E043: blue's level-2 unit on (6, 11) steps first onto red's (5, 11),
+    // which makes blue's chain to red's HQ 10 cheaper; its margin stays
+    // within the pressure term's 200, so the term changes too.
+    let rows = [
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOOXXXXXX",
+    ];
+    let state = position(rows, [0, 0], &[(1, 1, 2, 6, 11)]);
+    let unit = Bits::cell(11 * SIZE + 6);
+    let still = margin(&state, 1);
+    assert_eq!(margin_moving(&state, 1, unit), still + 10);
+    assert!((-200..-10).contains(&still), "{still}");
+    // The bot's evaluation is the shared one with both sides' movers and the
+    // terms these positions hold (no debt, no mine).
+    let expected = bot_shared(&state, 0) + shape(&state, 0) + strong_units(&state, 0)
+        - strong_units(&state, 1)
+        + THREAT_QUARTERS * (threatened(&state, 1) - threatened(&state, 0)) / 4;
+    assert_eq!(eval(&state, 0), expected);
+}
