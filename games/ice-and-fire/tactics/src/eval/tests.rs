@@ -140,3 +140,34 @@ fn the_margins_are_those_of_the_pressure_term() {
     assert_eq!(pressure(5), 0);
     assert_eq!(pressure(-30), -30);
 }
+
+#[test]
+fn evaluate_with_movers_gives_each_seat_its_own_movers() {
+    let mut differ = 0;
+    for seed in 0..10 {
+        for state in crate::test_util::random_positions(seed, League::Bronze, &[5, 15, 30]) {
+            if state.outcome().is_some() {
+                continue;
+            }
+            for seat in 0..2 {
+                let (ours, theirs) = (state.units(seat), state.units(1 - seat));
+                let (_, margins) = evaluate_with_movers(&state, seat, [ours, theirs]);
+                assert_eq!(
+                    margins,
+                    [
+                        margin_moving(&state, seat, ours),
+                        margin_moving(&state, 1 - seat, theirs)
+                    ]
+                );
+                let expected = [margin(&state, seat), margin(&state, 1 - seat)];
+                differ += usize::from(margins != expected);
+                let (plain, _) = evaluate_with_movers(&state, seat, [Bits::EMPTY; 2]);
+                assert_eq!(plain, evaluate(&state, seat));
+            }
+        }
+    }
+    assert!(
+        differ > 10,
+        "{differ} positions where moves change a margin"
+    );
+}
