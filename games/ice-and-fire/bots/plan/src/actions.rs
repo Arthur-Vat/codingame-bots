@@ -6,10 +6,8 @@
 //! border cell that guards something (E026, [`guards`]) and each mine on a
 //! mine spot. Macro actions: the best few cuts
 //! of the enemy's territory and the lethal chain of trainings, if there is
-//! one. With E041's settings, also defenders (a training at a higher level on
-//! our own cells the enemy can take, at joints) and towers that guard such
-//! joints. Every action is checked by applying it on a clone, so a list may
-//! hold some that the rules refuse.
+//! one. Every action is checked by applying it on a clone, so a list may hold
+//! some that the rules refuse.
 
 use ice_and_fire_engine::state::BUILD_COST;
 use ice_and_fire_engine::{Bits, Command, State, HQ, SIZE};
@@ -53,18 +51,6 @@ fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64) -> 
     }
     hq_guard && cost_to(&after, enemy, false, HQ[me]) > chain
 }
-
-/// The level of the defenders offered (E041): a training at that level on
-/// each of our empty active cells that the enemy can take at its next turn
-/// and whose loss cuts off at least [`DEFENDER_MIN_CUT`] cells. `None`:
-/// none (v018), where a training on our own cell is offered at level 1 only.
-pub const DEFENDER_LEVEL: Option<u8> = None;
-/// The cells a defender's cell must cut off when lost (0: any exposed cell).
-pub const DEFENDER_MIN_CUT: i64 = 1;
-/// A tower is also offered on our free cells on or next to a cell the enemy
-/// can take at its next turn and whose loss cuts off at least this many
-/// cells (E041). `None`: no such tower (v018).
-pub const TOWER_MIN_CUT: Option<i64> = None;
 
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
@@ -137,32 +123,6 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
         }
     }
 
-    // Defenders and the towers that guard joints (E041).
-    let mut joint_towers = Bits::EMPTY;
-    if DEFENDER_LEVEL.is_some() || TOWER_MIN_CUT.is_some() {
-        let exposed = crate::eval::reach(state, 1 - me) & state.active(me);
-        let severed = ice_and_fire_opening::solo::severed(state, me);
-        if let Some(level) = DEFENDER_LEVEL.filter(|&level| level <= max) {
-            if gold >= 10 * i64::from(level) {
-                for cell in (exposed & state.empty_cells()).iter() {
-                    if severed[cell] >= DEFENDER_MIN_CUT {
-                        let (x, y) = xy(cell);
-                        out.push(Action::One(Command::Train { level, x, y }));
-                    }
-                }
-            }
-        }
-        if let Some(min) = TOWER_MIN_CUT {
-            let mut joints = Bits::EMPTY;
-            for cell in exposed.iter() {
-                if severed[cell] >= min {
-                    joints |= Bits::cell(cell);
-                }
-            }
-            joint_towers = joints | joints.neighbours();
-        }
-    }
-
     // Buildings.
     if gold >= BUILD_COST {
         let free = state.owned(me) & near & state.empty_cells();
@@ -180,19 +140,10 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
             let reach = crate::eval::reach(state, 1 - me);
             let threats = i64::from((reach & state.active(me)).count());
             let chain = cost_to(state, 1 - me, false, HQ[me]);
-            let mut offered = Bits::EMPTY;
             for cell in cells
                 .iter()
                 .filter(|&cell| guards(state, cell, threats, reach, chain))
             {
-                offered |= Bits::cell(cell);
-                let (x, y) = xy(cell);
-                out.push(Action::One(Command::BuildTower { x, y }));
-            }
-            let guarding = (free & joint_towers)
-                .and_not(state.map().spots)
-                .and_not(offered);
-            for cell in guarding.iter() {
                 let (x, y) = xy(cell);
                 out.push(Action::One(Command::BuildTower { x, y }));
             }

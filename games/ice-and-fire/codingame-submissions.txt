@@ -5,3 +5,5 @@
 # fetch --backfill-releases adds it to the lines that lack it. Add a line each time
 # a release is submitted (the owner approves each submission, ADR 0047).
 41605899 ice-and-fire-v014 2026-10-31
+41707217 ice-and-fire-v016 2026-11-13
+41709589 ice-and-fire-v018 2026-11-13
