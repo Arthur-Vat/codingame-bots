@@ -37,6 +37,11 @@
 //!   neighbour they may enter, as `ice_and_fire_tactics::chain::Reach` lets
 //!   units do, and the chains go on from there; a threatened cell costs
 //!   [`THREAT_QUARTERS`] quarters.
+//! - **Cells cut off** (E038): a capture at a joint cuts off the cells
+//!   behind it, and in v014's CodinGame games most of the cells and units
+//!   we lost the turn after a long chain were cut off rather than taken.
+//!   The cells the enemy cuts off by taking one of the cells it can take at
+//!   its next turn cost [`CUT_QUARTERS`] quarters each.
 //! - **Upkeep of strong units** (E036): the shared evaluation counts income
 //!   three times, and income is net of upkeep, so a level-3 unit (upkeep 20)
 //!   costs 60 there and a level-2 unit (upkeep 4) 12, beyond their training
@@ -92,6 +97,49 @@ fn exposed(state: &State, seat: usize) -> Bits {
 /// turn ([`exposed`]).
 pub fn threatened(state: &State, seat: usize) -> i64 {
     i64::from(exposed(state, seat).count())
+}
+
+/// What a cell the enemy can cut off at its next turn costs its side, in
+/// quarters (E038): 0 for none (v018).
+pub const CUT_QUARTERS: i64 = 0;
+
+/// Whether the cells cut off are those of the largest single cut (true) or
+/// of all the cuts the enemy can make (false) (E038).
+pub const CUT_LARGEST: bool = false;
+
+/// The active cells of `seat` connected to `root` without `gone`.
+fn connected(active: Bits, root: usize, gone: usize) -> Bits {
+    let active = active.and_not(Bits::cell(gone));
+    let mut reached = Bits::cell(root) & active;
+    loop {
+        let next = (reached | reached.neighbours()) & active;
+        if next == reached {
+            return reached;
+        }
+        reached = next;
+    }
+}
+
+/// The number of active cells of `seat`, other than `exposed`, that the
+/// enemy cuts off from the HQ by taking one cell of `exposed` (E038): the
+/// union over those cells, or the largest with [`CUT_LARGEST`].
+pub fn cut_off(state: &State, seat: usize, exposed: Bits) -> i64 {
+    let active = state.active(seat);
+    let root = HQ[seat];
+    let mut union = Bits::EMPTY;
+    let mut largest = 0;
+    for cell in exposed.iter() {
+        // A cell with at most one active neighbour cuts nothing off.
+        if cell == root || (Bits::cell(cell).neighbours() & active).count() < 2 {
+            continue;
+        }
+        let off = active
+            .and_not(connected(active, root, cell))
+            .and_not(exposed);
+        union |= off;
+        largest = largest.max(off.count());
+    }
+    i64::from(if CUT_LARGEST { largest } else { union.count() })
 }
 
 /// The active cells of a side for which each of its mines counts one more
@@ -267,7 +315,12 @@ pub fn eval(state: &State, seat: usize) -> i64 {
     let ours = exposed(state, seat);
     let theirs = exposed(state, 1 - seat);
     let threats = i64::from(theirs.count()) - i64::from(ours.count());
-    score - 2 * debt(state, seat)
+    let cuts = if CUT_QUARTERS > 0 {
+        CUT_QUARTERS * (cut_off(state, 1 - seat, theirs) - cut_off(state, seat, ours)) / 4
+    } else {
+        0
+    };
+    score + cuts - 2 * debt(state, seat)
         + 2 * debt(state, 1 - seat)
         + shape(state, seat)
         + strong_units(state, seat)
