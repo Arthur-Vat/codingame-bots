@@ -22,7 +22,7 @@
 //!   first afford with one more income was made within one turn about a
 //!   quarter of the time, so a cell it can take at its next turn counts 0.75
 //!   of a cell's value (4 as a cell, 3 as its income): [`threatened`] cells
-//!   cost a side `7 / 4` each.
+//!   cost a side `7 / 4` each (`5 / 4` since E037).
 //! - **Mines** (E033): the shared evaluation counts a mine as its income of
 //!   4, three times, 12 against the 15 gold it costs, so a climb rarely
 //!   gained by building one, while the top 10 of CodinGame build one in a
@@ -30,23 +30,62 @@
 //!   is large. A mine on an active cell that the enemy cannot take at its
 //!   next turn counts one more for every [`MINE_PER_CELLS`] active cells of
 //!   its side ([`mine_bonus`]): little on a small territory, 9 at 36 cells.
-//! - **Pressure** (E035): the shared pressure term counts a side's gold
-//!   toward its chain to the enemy HQ, on top of the gold's own value, so
-//!   while the chain is within reach each gold kept counts twice and
-//!   spending looks costly; [`PRESSURE`] sets the share of the gold it
-//!   counts and its lowest value.
+//! - **Units' moves** (E037): the threatened cells of E023 were those the
+//!   enemy's chains of trainings reach, so a unit at the front threatened
+//!   nothing, though a move costs no gold. The enemy's units on its active
+//!   cells of at least level [`MOVER_LEVEL`] now step first onto every
+//!   neighbour they may enter, as `ice_and_fire_tactics::chain::Reach` lets
+//!   units do, and the chains go on from there; a threatened cell costs
+//!   [`THREAT_QUARTERS`] quarters.
+//! - **Upkeep of strong units** (E036): the shared evaluation counts income
+//!   three times, and income is net of upkeep, so a level-3 unit (upkeep 20)
+//!   costs 60 there and a level-2 unit (upkeep 4) 12, beyond their training
+//!   cost: a level-3 training scores about -50 before what it takes. Each
+//!   level-2 and level-3 unit on an active cell gives back the upkeep of
+//!   the turns beyond [`UPKEEP_TURNS`].
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
-use ice_and_fire_tactics::chain::reach_within;
-use ice_and_fire_tactics::eval::{evaluate_with, Pressure};
+use ice_and_fire_tactics::chain::reach_within_moving;
+use ice_and_fire_tactics::eval::evaluate;
 
-/// The active cells of `seat` that the enemy can take at its next turn:
-/// those its chains of trainings reach for its gold plus its income (moves
-/// left out, as in the pressure term).
+/// The lowest level of a unit whose moves count in [`exposed`] (E037): 1 to
+/// 3, or 4 for none (v016). Level 2 won the screening.
+pub const MOVER_LEVEL: u8 = 2;
+
+/// What a threatened cell costs its side, in quarters: 7 in E023 (a quarter
+/// of a cell's value of 7), 5 since E037, which finds more of them.
+pub const THREAT_QUARTERS: i64 = 5;
+
+/// The units of `seat` whose moves count in [`exposed`]: those on its active
+/// cells of at least [`MOVER_LEVEL`], all of which may move at its next turn.
+fn movers(state: &State, seat: usize) -> Bits {
+    let mut movers = Bits::EMPTY;
+    if MOVER_LEVEL > 3 {
+        return movers;
+    }
+    for cell in (state.units(seat) & state.active(seat)).iter() {
+        if state
+            .unit_level(cell)
+            .is_some_and(|level| level >= MOVER_LEVEL)
+        {
+            movers |= Bits::cell(cell);
+        }
+    }
+    movers
+}
+
+/// The cells, other than its active cells, that `side` can take at its next
+/// turn: those its chains of trainings reach for its gold plus its income,
+/// after its [`movers`] step (E037; the pressure term leaves moves out).
+pub fn reach(state: &State, side: usize) -> Bits {
+    let budget = state.gold(side) + state.income(side);
+    reach_within_moving(state, side, movers(state, side), budget)
+}
+
+/// The active cells of `seat` that the enemy can take at its next turn
+/// ([`reach`]).
 fn exposed(state: &State, seat: usize) -> Bits {
-    let enemy = 1 - seat;
-    let budget = state.gold(enemy) + state.income(enemy);
-    reach_within(state, enemy, false, budget) & state.active(seat)
+    reach(state, 1 - seat) & state.active(seat)
 }
 
 /// The number of active cells of `seat` that the enemy can take at its next
@@ -188,29 +227,38 @@ fn debt(state: &State, seat: usize) -> i64 {
 /// How much less than its training cost a level-2 unit is worth (E020).
 pub const LEVEL2_DISCOUNT: i64 = 15;
 
-/// The level-2 units of `seat` on active cells.
-fn twos(state: &State, seat: usize) -> i64 {
-    (state.units(seat) & state.active(seat))
-        .iter()
-        .filter(|&cell| state.unit_level(cell) == Some(2))
-        .count() as i64
+/// The turns of upkeep the evaluation charges for a level-2 and a level-3
+/// unit (E036); the shared evaluation charges 3, its weight of income.
+pub const UPKEEP_TURNS: [i64; 2] = [3, 1];
+
+/// The upkeep of a level-2 and a level-3 unit (RULES.md, "Income").
+const UPKEEP: [i64; 2] = [4, 20];
+
+/// The level-2 and level-3 units of `seat` on active cells.
+fn strong(state: &State, seat: usize) -> [i64; 2] {
+    let mut count = [0; 2];
+    for cell in (state.units(seat) & state.active(seat)).iter() {
+        match state.unit_level(cell) {
+            Some(2) => count[0] += 1,
+            Some(3) => count[1] += 1,
+            _ => {}
+        }
+    }
+    count
 }
 
-/// How the pressure term counts (E035): the quarters of a side's gold
-/// toward its chain to the enemy HQ, and the term's lowest value.
-pub const PRESSURE: Pressure = Pressure {
-    gold_quarters: 4,
-    max: 200,
-};
-
-/// The shared evaluation with the bot's pressure term ([`PRESSURE`]).
-pub fn shared(state: &State, seat: usize) -> i64 {
-    evaluate_with(state, seat, PRESSURE)
+/// What the level-2 and level-3 units of `seat` count beyond the shared
+/// evaluation: less [`LEVEL2_DISCOUNT`] each level 2 (E020), plus the
+/// upkeep of the turns beyond [`UPKEEP_TURNS`] (E036).
+pub fn strong_units(state: &State, seat: usize) -> i64 {
+    let [twos, threes] = strong(state, seat);
+    let back = |level: usize| (3 - UPKEEP_TURNS[level]) * UPKEEP[level];
+    -LEVEL2_DISCOUNT * twos + back(0) * twos + back(1) * threes
 }
 
 /// The score of `state` for `seat`, higher is better for it.
 pub fn eval(state: &State, seat: usize) -> i64 {
-    let score = shared(state, seat);
+    let score = evaluate(state, seat);
     if state.outcome().is_some() {
         return score;
     }
@@ -222,8 +270,9 @@ pub fn eval(state: &State, seat: usize) -> i64 {
     score - 2 * debt(state, seat)
         + 2 * debt(state, 1 - seat)
         + shape(state, seat)
-        + LEVEL2_DISCOUNT * (twos(state, 1 - seat) - twos(state, seat))
-        + 7 * threats / 4
+        + strong_units(state, seat)
+        - strong_units(state, 1 - seat)
+        + THREAT_QUARTERS * threats / 4
         + mines(state, seat, ours)
         - mines(state, 1 - seat, theirs)
 }

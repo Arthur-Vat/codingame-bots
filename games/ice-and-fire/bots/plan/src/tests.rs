@@ -470,9 +470,42 @@ fn a_level_two_unit_counts_less_than_its_cost() {
     ];
     for (level, discount) in [(1, 0), (2, crate::eval::LEVEL2_DISCOUNT)] {
         let state = position(rows, [30, 20], &[(0, 1, level, 2, 0)]);
-        let shared = crate::eval::shared(&state, 0) + crate::eval::shape(&state, 0);
+        let shared =
+            ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
         assert_eq!(crate::eval::eval(&state, 0), shared - discount);
     }
+}
+
+#[test]
+fn a_level_three_unit_is_charged_one_turn_of_upkeep() {
+    use crate::eval::{strong_units, LEVEL2_DISCOUNT, UPKEEP_TURNS};
+    // E036: the shared evaluation charges three turns of upkeep through its
+    // weight of income; a level-3 unit is charged one (its upkeep of 20
+    // given back twice), a level-2 unit three, less E020's discount.
+    assert_eq!(UPKEEP_TURNS, [3, 1]);
+    let rows = [
+        "OOOO........",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "...........X",
+        "...........X",
+    ];
+    let units = |level: u8| position(rows, [100, 20], &[(0, 1, level, 2, 0)]);
+    assert_eq!(strong_units(&units(1), 0), 0);
+    assert_eq!(strong_units(&units(2), 0), -LEVEL2_DISCOUNT);
+    assert_eq!(strong_units(&units(3), 0), 2 * 20);
+    // Each side's term counts for it and against the other.
+    let state = units(3);
+    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+    assert_eq!(crate::eval::eval(&state, 0) - shared, 2 * 20);
+    assert_eq!(crate::eval::eval(&state, 1) + shared, -2 * 20);
 }
 
 #[test]
@@ -493,20 +526,23 @@ fn a_side_that_cannot_pay_its_upkeep_counts_its_units_as_lost() {
         "...........X",
         "...........X",
     ];
+    // The level-3 unit's upkeep beyond its turns (E036) is given back
+    // whether or not it can be paid.
+    let back = crate::eval::strong_units(&position(rows, [17, 20], &[(0, 1, 3, 2, 0)]), 0);
     let state = position(rows, [5, 20], &[(0, 1, 3, 2, 0)]);
     assert_eq!(state.income(0), -17);
-    let shared = crate::eval::shared(&state, 0) + crate::eval::shape(&state, 0);
-    assert_eq!(crate::eval::eval(&state, 0), shared - 2 * 30);
+    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+    assert_eq!(crate::eval::eval(&state, 0), shared - 2 * 30 + back);
     // With the gold to pay it, nothing is taken.
     let state = position(rows, [17, 20], &[(0, 1, 3, 2, 0)]);
-    let shared = crate::eval::shared(&state, 0) + crate::eval::shape(&state, 0);
-    assert_eq!(crate::eval::eval(&state, 0), shared);
+    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+    assert_eq!(crate::eval::eval(&state, 0), shared + back);
     // Blue's debt counts for red; so does the discount of its level-2 unit
     // (E020).
     rows[0] = "O...........";
     let state = position(rows, [5, 0], &[(1, 1, 2, 11, 10)]);
     assert_eq!(state.income(1), 2 - 4);
-    let shared = crate::eval::shared(&state, 0) + crate::eval::shape(&state, 0);
+    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
     assert_eq!(
         crate::eval::eval(&state, 0),
         shared + 2 * 20 + crate::eval::LEVEL2_DISCOUNT
@@ -555,9 +591,13 @@ fn cells_the_enemy_can_take_next_turn_count_less() {
     assert_eq!(threatened(&state, 0), 2);
     // Red (income 21) threatens blue's one cell, its HQ, for 20.
     assert_eq!(threatened(&state, 1), 1);
-    // Each threatened cell costs its side 7/4 (0.25 of a cell's value of 7).
-    let shared = crate::eval::shared(&state, 0) + crate::eval::shape(&state, 0);
-    assert_eq!(eval(&state, 0), shared + 7 * (1 - 2) / 4);
+    // Each threatened cell costs its side THREAT_QUARTERS / 4 (E023: 7/4,
+    // 0.25 of a cell's value of 7; E037: 5/4).
+    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+    assert_eq!(
+        eval(&state, 0),
+        shared + crate::eval::THREAT_QUARTERS * (1 - 2) / 4
+    );
     // Far from each other, nothing is threatened.
     let rows = [
         "OOO.........",
@@ -578,6 +618,37 @@ fn cells_the_enemy_can_take_next_turn_count_less() {
 }
 
 #[test]
+fn an_enemy_unit_of_level_two_threatens_the_cells_it_can_step_onto() {
+    use crate::eval::{threatened, MOVER_LEVEL};
+    // E037: blue holds the bottom row from (6, 11) to its HQ, with a unit
+    // on (6, 11) next to red's (5, 11) and no gold: its budget, 0 plus an
+    // income of 5 or 2, pays for no training, but its unit can step.
+    let rows = [
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOOXXXXXX",
+    ];
+    assert_eq!(MOVER_LEVEL, 2);
+    let threats = |level: u8| {
+        let state = position(rows, [0, 0], &[(1, 1, level, 6, 11)]);
+        threatened(&state, 0)
+    };
+    // A level-1 unit's moves are left out; a level-2 one can take (5, 11),
+    // the one red cell next to it.
+    assert_eq!(threats(1), 0);
+    assert_eq!(threats(2), 1);
+}
+
+#[test]
 fn a_mine_counts_more_with_a_larger_territory() {
     use crate::eval::{eval, mine_bonus, threatened};
     // E033: a mine counts one more than its income for every 4 active cells
@@ -589,7 +660,9 @@ fn a_mine_counts_more_with_a_larger_territory() {
     );
     // What the bot's evaluation adds to the shared one and the shape term.
     let own = |state: &State, seat: usize| {
-        eval(state, seat) - crate::eval::shared(state, seat) - crate::eval::shape(state, seat)
+        eval(state, seat)
+            - ice_and_fire_tactics::eval::evaluate(state, seat)
+            - crate::eval::shape(state, seat)
     };
     // Red holds 21 cells of the corridor and blue its HQ alone. Blue (20
     // gold, income 1) reaches (11, 9) for 20, and red blue's HQ: one

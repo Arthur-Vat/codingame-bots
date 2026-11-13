@@ -11,7 +11,7 @@
 
 use ice_and_fire_engine::state::BUILD_COST;
 use ice_and_fire_engine::{Bits, Command, State, HQ, SIZE};
-use ice_and_fire_tactics::chain::{chain_to, cost_to, reach_within};
+use ice_and_fire_tactics::chain::{chain_to, cost_to};
 use ice_and_fire_tactics::cut::cuts;
 
 use crate::eval::threatened;
@@ -137,8 +137,7 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
             let border = state.map().valid.and_not(state.owned(me)).neighbours();
             let cells = (free & border).and_not(state.map().spots);
             // `threatened(state, me)`, keeping the enemy's reach.
-            let budget = state.gold(1 - me) + state.income(1 - me);
-            let reach = reach_within(state, 1 - me, false, budget);
+            let reach = crate::eval::reach(state, 1 - me);
             let threats = i64::from((reach & state.active(me)).count());
             let chain = cost_to(state, 1 - me, false, HQ[me]);
             for cell in cells

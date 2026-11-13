@@ -29,32 +29,15 @@ fn side(state: &State, seat: usize) -> i64 {
         + 10 * i64::from((state.towers() & active).count())
 }
 
-/// How the pressure term counts: the share of a side's gold it counts, in
-/// quarters, and its lowest value.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Pressure {
-    /// Quarters of the side's gold counted toward the chain (4: all of it).
-    pub gold_quarters: i64,
-    /// The lowest pressure term of one side, a positive number.
-    pub max: i64,
-}
-
-/// The pressure term of [`evaluate`]: all of the gold, at least
-/// `-MAX_PRESSURE`.
-pub const PRESSURE: Pressure = Pressure {
-    gold_quarters: 4,
-    max: MAX_PRESSURE,
-};
-
 /// How far `seat` is from affording the chain to the enemy HQ: 0 when its
-/// gold (the share `how` counts) and income pay for it, else minus the
-/// shortfall, at least `-how.max`.
-pub fn pressure_with(state: &State, seat: usize, how: Pressure) -> i64 {
+/// gold and income pay for it, else minus the shortfall, at least
+/// `-MAX_PRESSURE`.
+fn pressure(state: &State, seat: usize) -> i64 {
     let cost = cost_to(state, seat, false, HQ[1 - seat]);
     if cost == UNREACHABLE {
-        return -how.max;
+        return -MAX_PRESSURE;
     }
-    (how.gold_quarters * state.gold(seat) / 4 + state.income(seat) - cost).clamp(-how.max, 0)
+    (state.gold(seat) + state.income(seat) - cost).clamp(-MAX_PRESSURE, 0)
 }
 
 /// A static score of `state` for `seat`, higher is better for it.
@@ -68,11 +51,6 @@ pub fn pressure_with(state: &State, seat: usize, how: Pressure) -> i64 {
 /// chain to the other's HQ, at most 200). Without the threat term the score
 /// of one seat is the other's negated.
 pub fn evaluate(state: &State, seat: usize) -> i64 {
-    evaluate_with(state, seat, PRESSURE)
-}
-
-/// [`evaluate`] with its pressure term counted as `how` says.
-pub fn evaluate_with(state: &State, seat: usize, how: Pressure) -> i64 {
     let other = 1 - seat;
     match state.outcome() {
         Some(Outcome::Win(winner)) => return if winner == seat { WIN } else { -WIN },
@@ -87,7 +65,7 @@ pub fn evaluate_with(state: &State, seat: usize, how: Pressure) -> i64 {
             score -= WIN / 2;
         }
     }
-    score + pressure_with(state, seat, how) - pressure_with(state, other, how)
+    score + pressure(state, seat) - pressure(state, other)
 }
 
 #[cfg(test)]

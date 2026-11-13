@@ -3,7 +3,7 @@ use ice_and_fire_engine::{Command, League, Outcome, State, HQ};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::League as RefereeLeague;
 use ice_and_fire_tactics::chain::cost_to;
-use ice_and_fire_tactics::eval::WIN;
+use ice_and_fire_tactics::eval::{evaluate, WIN};
 
 use super::*;
 
@@ -63,7 +63,7 @@ fn the_terms_removed_are_exactly_those_of_the_shared_evaluation() {
             continue;
         }
         for seat in 0..2 {
-            assert_eq!(crate::eval::shared(state, seat), rebuilt(state, seat));
+            assert_eq!(evaluate(state, seat), rebuilt(state, seat));
             with_towers += usize::from(tower_term(state, seat) != 0);
             with_pressure += usize::from(pressure_term(state, seat) != 0);
         }
