@@ -275,7 +275,7 @@ pub const HQ_BONUS: i64 = 0;
 /// Halves of the gold left after paying for that chain that count too (2,
 /// all of it, won the screening), up
 /// to [`HQ_MARGIN_CAP`] (E042).
-pub const HQ_MARGIN_HALVES: i64 = 2;
+pub const HQ_MARGIN_HALVES: i64 = 4;
 /// The most of that gold counted.
 pub const HQ_MARGIN_CAP: i64 = 100;
 
