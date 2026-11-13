@@ -115,13 +115,13 @@ const OPENING_TURNS: usize = 7;
 /// out (E010).
 const OBJECTIVE: Objective = Objective {
     cells: 4,
-    income: 1,
+    income: 3,
     gold: 1,
     cut: 2,
     joints: 2,
     tips: 2,
     reach: 6,
-    voronoi: 3,
+    voronoi: 1,
 };
 
 /// The opening uses a mine spot only when the enemy's territory is more than
