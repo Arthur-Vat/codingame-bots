@@ -64,7 +64,7 @@ pub const DEFENDER_MIN_CUT: i64 = 1;
 /// A tower is also offered on our free cells on or next to a cell the enemy
 /// can take at its next turn and whose loss cuts off at least this many
 /// cells (E041). `None`: no such tower (v018).
-pub const TOWER_MIN_CUT: Option<i64> = Some(4);
+pub const TOWER_MIN_CUT: Option<i64> = Some(8);
 
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
