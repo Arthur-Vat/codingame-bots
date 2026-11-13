@@ -1,7 +1,7 @@
 ---
 id: E041
 date: 2026-11-13
-pull_request: "pending"
+pull_request: "#303"
 parent: ice-and-fire-v018
 hypothesis: In v014's CodinGame games against the top 10, 31% of the gold we spent on trainings was dead after the opponent's next ply (18% for the top 10), most often after one capture at a joint cut a chain off, and E038 and E039 showed that putting that danger into the evaluation counts it twice; v018's generator offers a training on our own cell at level 1 only and a tower only where it lowers the cells the enemy can take, so offering level-2 defenders and towers at the joints the enemy can take gives the search the defensive turns it lacks and beats v018.
 change: None released. Screening only: the plan bot's generator also offering, on our empty active cells that the enemy can take at its next turn and whose loss cuts off cells, a training at level 2, and towers on or next to such joints when they cut off enough cells.
