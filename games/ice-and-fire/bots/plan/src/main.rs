@@ -12,7 +12,8 @@
 //! the opponent passed (`ice_and_fire_opening::solo`), which rates the
 //! territory, the income and the gold, less the cells one capture would cut
 //! off, the joints and the ends of lines, plus the land nearer us than the
-//! enemy and the progress toward its HQ. The plan is made on the first turn,
+//! enemy and the progress toward its HQ; it builds no mine and weighs land
+//! above income (E034). The plan is made on the first turn,
 //! kept while our side of the board is as predicted, and made again within
 //! the turn's time otherwise. Else it climbs: from
 //! the start of the turn it keeps adding the single action (a move, a
@@ -112,10 +113,11 @@ fn limit(start: Instant, turn: u32) -> Limit {
 const OPENING_TURNS: usize = 7;
 
 /// What the opening's plans maximize: the solo planner's weights, written
-/// out (E010).
+/// out (E010), with cells 3 and income 1 rather than 4 and 3 (E034): the
+/// opening spends on land rather than on income.
 const OBJECTIVE: Objective = Objective {
-    cells: 4,
-    income: 3,
+    cells: 3,
+    income: 1,
     gold: 1,
     cut: 2,
     joints: 2,
@@ -125,9 +127,9 @@ const OBJECTIVE: Objective = Objective {
 };
 
 /// The opening uses a mine spot only when the enemy's territory is more than
-/// this many steps from it (v003's 3; `u8::MAX`: no mine in the opening,
-/// E034).
-const OPENING_SAFE_SPOT: u8 = 3;
+/// this many steps from it: `u8::MAX`, so it builds no mine (E034; v003's
+/// opening used 3). The middle game's search builds them (E033).
+const OPENING_SAFE_SPOT: u8 = u8::MAX;
 
 /// The opening: v003's opening with the solo planner's weight sets, planned
 /// over [`OPENING_TURNS`] of our turns within the turn's time.
