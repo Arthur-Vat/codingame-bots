@@ -101,7 +101,7 @@ pub fn threatened(state: &State, seat: usize) -> i64 {
 
 /// What a cell the enemy can cut off at its next turn costs its side, in
 /// quarters (E038): 0 for none (v018).
-pub const CUT_QUARTERS: i64 = 5;
+pub const CUT_QUARTERS: i64 = 8;
 
 /// Whether the cells cut off are those of the largest single cut (true) or
 /// of all the cuts the enemy can make (false) (E038).
