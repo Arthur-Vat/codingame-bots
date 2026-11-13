@@ -56,7 +56,7 @@ fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64) -> 
 /// all of them (v021); 1, those next to a cell that is not active for us;
 /// 2, none. E044's blockers may still offer a unit on a cell a reply
 /// enters.
-pub const OWN_CELLS: u8 = 1;
+pub const OWN_CELLS: u8 = 2;
 
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
