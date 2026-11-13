@@ -51,12 +51,11 @@ use std::fmt::Write as _;
 use std::hint::black_box;
 use std::time::Instant;
 
-use ice_and_fire_engine::{Command, League, State, HQ};
+use ice_and_fire_engine::{Command, League, State};
 use ice_and_fire_opening::planned::Planned;
-use ice_and_fire_tactics::chain::{cost_to, UNREACHABLE};
-use ice_and_fire_tactics::eval::evaluate;
+use ice_and_fire_tactics::eval::{evaluate, pressure_with};
 
-use crate::eval::eval;
+use crate::eval::{eval, PRESSURE};
 use crate::search::{think, Limit};
 
 /// The evaluation with one of its terms removed, for the whole search (both
@@ -81,21 +80,14 @@ pub fn set_variant(variant: Variant) {
     VARIANT.with(|v| v.set(variant));
 }
 
-/// The lowest pressure term of one side, as in the shared evaluation.
-pub const MAX_PRESSURE: i64 = 200;
 /// The static value of an active tower in the shared evaluation.
 pub const TOWER_VALUE: i64 = 10;
 
-/// The shared evaluation's pressure term of `seat`: 0 when its gold and
-/// income pay for its cheapest chain to the enemy HQ, else minus the
-/// shortfall, at least `-MAX_PRESSURE`. A copy of the private
-/// `ice_and_fire_tactics::eval::pressure`, which the tests check.
+/// The bot's pressure term of `seat` (`crate::eval::PRESSURE`): 0 when its
+/// gold and income pay for its cheapest chain to the enemy HQ, else minus the
+/// shortfall.
 pub fn pressure(state: &State, seat: usize) -> i64 {
-    let cost = cost_to(state, seat, false, HQ[1 - seat]);
-    if cost == UNREACHABLE {
-        return -MAX_PRESSURE;
-    }
-    (state.gold(seat) + state.income(seat) - cost).clamp(-MAX_PRESSURE, 0)
+    pressure_with(state, seat, PRESSURE)
 }
 
 /// The active towers of `seat`.
