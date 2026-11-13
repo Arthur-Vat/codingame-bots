@@ -116,20 +116,20 @@ const OPENING_TURNS: usize = 7;
 /// out (E010), with cells 3 and income 1 rather than 4 and 3 (E034): the
 /// opening spends on land rather than on income.
 const OBJECTIVE: Objective = Objective {
-    cells: 6,
-    income: 2,
+    cells: 3,
+    income: 1,
     gold: 1,
-    cut: 4,
-    joints: 4,
-    tips: 4,
-    reach: 12,
-    voronoi: 2,
+    cut: 2,
+    joints: 2,
+    tips: 2,
+    reach: 6,
+    voronoi: 1,
 };
 
 /// The opening uses a mine spot only when the enemy's territory is more than
 /// this many steps from it: `u8::MAX`, so it builds no mine (E034; v003's
 /// opening used 3). The middle game's search builds them (E033).
-const OPENING_SAFE_SPOT: u8 = 8;
+const OPENING_SAFE_SPOT: u8 = u8::MAX;
 
 /// The opening: v003's opening with the solo planner's weight sets, planned
 /// over [`OPENING_TURNS`] of our turns within the turn's time.
