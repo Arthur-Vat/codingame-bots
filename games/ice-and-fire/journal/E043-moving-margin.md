@@ -1,7 +1,7 @@
 ---
 id: E043
 date: 2026-11-13
-pull_request: "pending"
+pull_request: "#307"
 parent: ice-and-fire-v019
 hypothesis: v019's pressure term and its standing threat (E042) price a side's chain of trainings to the enemy HQ without its units' moves, which cost no gold, while E037 found that counting the moves of level-2 and level-3 units in the cells a side can take gained +15; counting those moves in the chain to the HQ as well prices threats as the top 10 make them and beats v019.
 change: In the plan bot's evaluation, the chain to the enemy HQ behind the pressure term and the standing threat lets each side's level-2 and level-3 units on its active cells step first, at no cost (levels 1 to 3, and larger shares of E042's margin, screened).
