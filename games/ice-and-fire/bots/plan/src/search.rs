@@ -139,7 +139,7 @@ struct Search {
 pub const BLOCK_TOWERS: bool = true;
 /// Towers also on our free cells next to those cells (a tower guards its
 /// neighbours).
-pub const BLOCK_NEIGHBOURS: bool = false;
+pub const BLOCK_NEIGHBOURS: bool = true;
 /// A training at this level on those cells when they are empty (`None`:
 /// none).
 pub const BLOCK_LEVEL: Option<u8> = Some(2);
