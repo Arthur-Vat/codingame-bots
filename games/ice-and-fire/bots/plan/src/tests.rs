@@ -506,6 +506,13 @@ fn a_level_three_unit_is_charged_one_turn_of_upkeep() {
     let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
     assert_eq!(crate::eval::eval(&state, 0) - shared, 2 * 20);
     assert_eq!(crate::eval::eval(&state, 1) + shared, -2 * 20);
+    // Only units on active cells pay upkeep (RULES.md, "Income"), so a
+    // level-3 unit on a cell cut off from the HQ gets nothing back.
+    let mut cut = rows;
+    cut[0] = "OOOO.o......";
+    let state = position(cut, [100, 20], &[(0, 1, 3, 5, 0)]);
+    assert!(!state.active(0).test(5));
+    assert_eq!(strong_units(&state, 0), 0);
 }
 
 #[test]
@@ -528,7 +535,7 @@ fn a_side_that_cannot_pay_its_upkeep_counts_its_units_as_lost() {
     ];
     // The level-3 unit's upkeep beyond its turns (E036) is given back
     // whether or not it can be paid.
-    let back = crate::eval::strong_units(&position(rows, [17, 20], &[(0, 1, 3, 2, 0)]), 0);
+    let back = 2 * 20;
     let state = position(rows, [5, 20], &[(0, 1, 3, 2, 0)]);
     assert_eq!(state.income(0), -17);
     let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
