@@ -37,6 +37,11 @@
 //!   neighbour they may enter, as `ice_and_fire_tactics::chain::Reach` lets
 //!   units do, and the chains go on from there; a threatened cell costs
 //!   [`THREAT_QUARTERS`] quarters.
+//! - **Units at risk** (E039): in v014's CodinGame games 31% of the gold we
+//!   spent on trainings was dead after the opponent's next ply (18% for the
+//!   top 10), but a unit counts its whole training cost until it dies. A
+//!   unit the enemy can kill at its next turn ([`at_risk`]) counts
+//!   [`RISK_PERCENT`] of its cost less.
 //! - **Upkeep of strong units** (E036): the shared evaluation counts income
 //!   three times, and income is net of upkeep, so a level-3 unit (upkeep 20)
 //!   costs 60 there and a level-2 unit (upkeep 4) 12, beyond their training
@@ -92,6 +97,61 @@ fn exposed(state: &State, seat: usize) -> Bits {
 /// turn ([`exposed`]).
 pub fn threatened(state: &State, seat: usize) -> i64 {
     i64::from(exposed(state, seat).count())
+}
+
+/// The share of their training cost, in percent, that a side's units count
+/// less where the enemy can kill them at its next turn (E039): 0 for none
+/// (v018).
+pub const RISK_PERCENT: i64 = 0;
+
+/// Whether the units at risk include those on the cells the enemy cuts off
+/// by taking one cell it can take (E039), not only those on such cells.
+pub const RISK_CUT_OFF: bool = false;
+
+/// The active cells of `seat` connected to its HQ without `gone`.
+fn connected(active: Bits, root: usize, gone: usize) -> Bits {
+    let active = active.and_not(Bits::cell(gone));
+    let mut reached = Bits::cell(root) & active;
+    loop {
+        let next = (reached | reached.neighbours()) & active;
+        if next == reached {
+            return reached;
+        }
+        reached = next;
+    }
+}
+
+/// The cells of `seat` whose units the enemy can kill at its next turn
+/// (E039): those of `exposed`, and with [`RISK_CUT_OFF`] the active cells
+/// it cuts off from the HQ by taking one of them.
+pub fn at_risk(state: &State, seat: usize, exposed: Bits) -> Bits {
+    let mut cells = exposed;
+    if RISK_CUT_OFF {
+        let active = state.active(seat);
+        let root = HQ[seat];
+        for cell in exposed.iter() {
+            if cell == root || (Bits::cell(cell).neighbours() & active).count() < 2 {
+                continue;
+            }
+            cells |= active.and_not(connected(active, root, cell));
+        }
+    }
+    cells
+}
+
+/// What the units of `seat` at risk ([`at_risk`]) count less: [`RISK_PERCENT`]
+/// of their training cost.
+pub fn risk(state: &State, seat: usize, exposed: Bits) -> i64 {
+    if RISK_PERCENT == 0 {
+        return 0;
+    }
+    let cells = at_risk(state, seat, exposed) & state.units(seat);
+    let cost: i64 = cells
+        .iter()
+        .filter_map(|cell| state.unit_level(cell))
+        .map(|level| 10 * i64::from(level))
+        .sum();
+    RISK_PERCENT * cost / 100
 }
 
 /// The active cells of a side for which each of its mines counts one more
@@ -267,7 +327,7 @@ pub fn eval(state: &State, seat: usize) -> i64 {
     let ours = exposed(state, seat);
     let theirs = exposed(state, 1 - seat);
     let threats = i64::from(theirs.count()) - i64::from(ours.count());
-    score - 2 * debt(state, seat)
+    score - risk(state, seat, ours) + risk(state, 1 - seat, theirs) - 2 * debt(state, seat)
         + 2 * debt(state, 1 - seat)
         + shape(state, seat)
         + strong_units(state, seat)

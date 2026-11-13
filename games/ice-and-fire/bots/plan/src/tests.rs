@@ -913,3 +913,33 @@ fn the_opening_builds_no_mine() {
         );
     }
 }
+
+#[test]
+fn units_the_enemy_can_kill_or_cut_off_are_at_risk() {
+    use crate::eval::at_risk;
+    use ice_and_fire_engine::Bits;
+    // E039: red holds a line from its HQ (0, 0) to (5, 0); with (2, 0)
+    // exposed, the cells at risk are (2, 0) and, with RISK_CUT_OFF, the
+    // cells behind it.
+    let rows = [
+        "OOOOOO......",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "...........X",
+        "...........X",
+    ];
+    let state = position(rows, [0, 0], &[]);
+    let cells = at_risk(&state, 0, Bits::cell(2));
+    let behind = Bits::cell(3) | Bits::cell(4) | Bits::cell(5);
+    assert!(cells.test(2));
+    assert_eq!(cells & behind == behind, crate::eval::RISK_CUT_OFF);
+    assert_eq!(at_risk(&state, 0, Bits::cell(0)), Bits::cell(0));
+    assert_eq!(at_risk(&state, 0, Bits::EMPTY), Bits::EMPTY);
+}
