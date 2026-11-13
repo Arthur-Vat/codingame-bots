@@ -493,3 +493,36 @@ fn reach_within_holds_the_cells_reach_prices_within_the_budget() {
     }
     assert!(checked > 500, "{checked} non-empty reaches");
 }
+
+#[test]
+fn reach_within_moving_steps_the_units_it_is_given() {
+    let mut moved = 0;
+    for seed in 0..20 {
+        for state in crate::test_util::random_positions(seed, League::Bronze, &[0, 5, 15, 30]) {
+            for seat in 0..2 {
+                for budget in [0, 10, 40, 1_000] {
+                    // No movers is the search without moves.
+                    let still = reach_within(&state, seat, false, budget);
+                    assert_eq!(
+                        reach_within_moving(&state, seat, Bits::EMPTY, budget),
+                        still
+                    );
+                    // The movable units of the player to act are the search
+                    // with moves.
+                    let movers = if seat == state.to_act() {
+                        state.movable_units()
+                    } else {
+                        Bits::EMPTY
+                    };
+                    let moving = reach_within(&state, seat, true, budget);
+                    assert_eq!(reach_within_moving(&state, seat, movers, budget), moving);
+                    // Every unit of the seat stepping reaches at least as far.
+                    let all = reach_within_moving(&state, seat, state.units(seat), budget);
+                    assert_eq!(all & still, still);
+                    moved += usize::from(all != still);
+                }
+            }
+        }
+    }
+    assert!(moved > 100, "{moved} reaches changed by moves");
+}

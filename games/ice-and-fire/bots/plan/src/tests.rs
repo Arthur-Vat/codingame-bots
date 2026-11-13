@@ -556,9 +556,13 @@ fn cells_the_enemy_can_take_next_turn_count_less() {
     assert_eq!(threatened(&state, 0), 2);
     // Red (income 21) threatens blue's one cell, its HQ, for 20.
     assert_eq!(threatened(&state, 1), 1);
-    // Each threatened cell costs its side 7/4 (0.25 of a cell's value of 7).
+    // Each threatened cell costs its side THREAT_QUARTERS / 4 (E023: 7/4,
+    // 0.25 of a cell's value of 7; E037: 5/4).
     let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
-    assert_eq!(eval(&state, 0), shared + 7 * (1 - 2) / 4);
+    assert_eq!(
+        eval(&state, 0),
+        shared + crate::eval::THREAT_QUARTERS * (1 - 2) / 4
+    );
     // Far from each other, nothing is threatened.
     let rows = [
         "OOO.........",
@@ -576,6 +580,37 @@ fn cells_the_enemy_can_take_next_turn_count_less() {
     ];
     let state = position(rows, [30, 20], &[]);
     assert_eq!((threatened(&state, 0), threatened(&state, 1)), (0, 0));
+}
+
+#[test]
+fn an_enemy_unit_of_level_two_threatens_the_cells_it_can_step_onto() {
+    use crate::eval::{threatened, MOVER_LEVEL};
+    // E037: blue holds the bottom row from (6, 11) to its HQ, with a unit
+    // on (6, 11) next to red's (5, 11) and no gold: its budget, 0 plus an
+    // income of 5 or 2, pays for no training, but its unit can step.
+    let rows = [
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOO......",
+        "OOOOOOXXXXXX",
+    ];
+    assert_eq!(MOVER_LEVEL, 2);
+    let threats = |level: u8| {
+        let state = position(rows, [0, 0], &[(1, 1, level, 6, 11)]);
+        threatened(&state, 0)
+    };
+    // A level-1 unit's moves are left out; a level-2 one can take (5, 11),
+    // the one red cell next to it.
+    assert_eq!(threats(1), 0);
+    assert_eq!(threats(2), 1);
 }
 
 #[test]
