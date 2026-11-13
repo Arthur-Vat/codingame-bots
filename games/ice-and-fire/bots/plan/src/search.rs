@@ -57,6 +57,24 @@ const REPLY_CUTS: usize = 3;
 const MAX_CLIMBS: usize = 32;
 /// Most plans scored by the opponent's climb in one reply search (E019).
 const REPLY_EVALS: u64 = 300;
+/// The trainings from which a plan is long (E040): its replies are searched
+/// with [`LONG_REPLY_EVALS`], [`LONG_REPLY_CUTS`] and [`LONG_CUT_LENGTH`].
+/// `None`: never (v018).
+pub const LONG_PLAN: Option<usize> = None;
+/// Most plans scored by the opponent's climb against a long plan (E040).
+const LONG_REPLY_EVALS: u64 = 300;
+/// The opponent's best cuts tried against a long plan (E040).
+const LONG_REPLY_CUTS: usize = 3;
+/// Longest of those cuts, in trainings (E040).
+const LONG_CUT_LENGTH: usize = CUT_LENGTH;
+
+/// The number of trainings in `commands`.
+fn trainings(commands: &[Command]) -> usize {
+    commands
+        .iter()
+        .filter(|c| matches!(c, Command::Train { .. }))
+        .count()
+}
 /// Where between the soft and the hard limit the middle game's climbs stop
 /// (E027): at 36 ms of a 40 ms turn rather than 24; the rest is for the
 /// final choice and its check.
@@ -346,8 +364,15 @@ impl Search {
 
     /// The replies of the opponent to the plan that ends in `end`: its
     /// lethal chain, its best cuts, bronze's greedy turn and its own plan
-    /// (one climb), on the state after our turn ends.
-    fn replies(&self, end: &State) -> Vec<Vec<Command>> {
+    /// (one climb), on the state after our turn ends. A plan of `trained`
+    /// trainings or more, from [`LONG_PLAN`], gets a deeper search (E040).
+    fn replies(&self, end: &State, trained: usize) -> Vec<Vec<Command>> {
+        let long = LONG_PLAN.is_some_and(|from| trained >= from);
+        let (evals, count, length) = if long {
+            (LONG_REPLY_EVALS, LONG_REPLY_CUTS, LONG_CUT_LENGTH)
+        } else {
+            (REPLY_EVALS, REPLY_CUTS, CUT_LENGTH)
+        };
         let mut next = end.clone();
         next.end_turn();
         let mut out = Vec::new();
@@ -359,7 +384,7 @@ impl Search {
         if let Some(chain) = chain_to(&next, HQ[self.me], gold) {
             out.push(chain.commands);
         }
-        for cut in cuts(&next, CUT_LENGTH, gold, REPLY_CUTS) {
+        for cut in cuts(&next, length, gold, count) {
             out.push(cut.commands);
         }
         let mut greedy = Vec::new();
@@ -370,7 +395,7 @@ impl Search {
         let mut theirs = Search {
             me: opponent,
             limit: Limit {
-                max_evals: REPLY_EVALS,
+                max_evals: evals,
                 ..self.limit
             },
             evals: 0,
@@ -382,9 +407,10 @@ impl Search {
         out
     }
 
-    /// The replies to the plan that ends in `end`, each with its damage.
-    fn answers(&self, end: &State) -> Vec<Reply> {
-        self.replies(end)
+    /// The replies to the plan of `commands` that ends in `end`, each with
+    /// its damage.
+    fn answers(&self, end: &State, commands: &[Command]) -> Vec<Reply> {
+        self.replies(end, trainings(commands))
             .into_iter()
             .map(|commands| {
                 let damage = eval(&after_reply(end, &commands), self.me);
@@ -499,7 +525,7 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
         let mut plan = plan;
         let mut more = false;
         if !stop && !same {
-            let found = search.answers(&plan.end);
+            let found = search.answers(&plan.end, &plan.commands);
             more = remember(&found, &mut memory);
             plan.own = Some(found);
         }
@@ -570,7 +596,7 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
         if !VERIFY || plans[index].own.is_some() || late() {
             break;
         }
-        let found = search.answers(&plans[index].end);
+        let found = search.answers(&plans[index].end, &plans[index].commands);
         plans[index].own = Some(found);
         thought.checks += 1;
         scores[index] = Some(search.final_score(&plans[index], &memory));
