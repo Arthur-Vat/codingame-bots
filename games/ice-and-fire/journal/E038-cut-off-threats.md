@@ -76,8 +76,8 @@ those of its largest single cut; the weight is a cell's, in quarters.
 | largest, 8 | `d57c2c4` | **−25.7 [−38.2, −13.2]** | 46.3% |
 | largest, 12 | `03e9937` | **−37.1 [−49.8, −24.4]** | 44.7% |
 
-Every variant lost; the owner's rule for a screening where all variants
-are clearly weaker is to stop without a release.
+Every variant lost, so the experiment stops here without a release (the
+skill `run-experiment`, step 3: "if all are, stop").
 
 ## What was learned
 
