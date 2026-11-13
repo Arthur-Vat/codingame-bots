@@ -52,8 +52,8 @@ Against `ice-and-fire-v018` on GitHub (`screen.yml`, one calibrated
 runner per variant and shard at CodinGame's speed and real limit, ADR
 0048; no timeout, crash or invalid answer). "Defenders" are level-2
 trainings on the exposed joints that cut off at least the given number
-of cells (0: every exposed empty cell); "towers" those offered at joints
-that cut off at least the given number.
+of cells, or on every exposed empty cell (`DEFENDER_MIN_CUT` 0);
+"towers" those offered at joints that cut off at least the given number.
 
 First round, run 43485504659, seed 41041, 800 pairs each over two runners:
 
@@ -75,7 +75,10 @@ four runners: t4 +2.4 [−4.3, +9.1] (50.3%), d2jt4 −0.0 [−6.8, +6.8]
 Offering defenders and towers at the joints the enemy can take changed
 little: the search had the choices and did not gain by them, so the
 leak in efficiency against the top 10 is not a lack of defensive
-actions. The study of our replies to the top 10's long chains (E042's
-entry) points instead at their standing threat on our HQ. The owner's
-choice before the confirmation ("Confirm the 3 leaders (Recommended)")
-was to send a leader that held to the SPRT and drop the rest; none held.
+actions. The study of our replies to the top 10's long chains points instead at
+their standing threat on our HQ: after 28% of their long chains they
+could pay for a chain to our HQ at their next turn (we after 4% of ours),
+and the cuts that would have punished them mostly left our HQ open; E042
+tries that next. The owner's
+choice before the confirmation ("Confirm the 3 leaders (Recommended)",
+three leaders across E040 and E041) was to send a leader that held to the SPRT and drop the rest; none held.
