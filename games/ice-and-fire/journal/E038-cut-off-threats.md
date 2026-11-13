@@ -1,7 +1,7 @@
 ---
 id: E038
 date: 2026-11-13
-pull_request: "pending"
+pull_request: "#299"
 parent: ice-and-fire-v018
 hypothesis: In v014's CodinGame games against the top 10, 31% of the gold we spent on trainings was dead after the opponent's next ply (18% for the top 10), and 46% of our long chains that cut 3 or more cells lost three quarters of their units the next turn (26% for the top 10), mostly to one capture at a joint that cut our chain off (median 4 cells cut off); v018's threatened cells count only the cells the enemy can take, not those its capture cuts off, so counting the cells cut off makes the search keep its chains holdable and beats v018.
 change: None released. Screening only: the plan bot's evaluation also counting, for each side, the active cells the enemy cuts off from the HQ by taking one of the cells it can take at its next turn (all such cuts, or the largest), at a weight of their own.
