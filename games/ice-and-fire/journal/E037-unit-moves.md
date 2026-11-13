@@ -6,11 +6,11 @@ parent: ice-and-fire-v016
 hypothesis: v016's threatened cells (E023) are those the enemy's chains of trainings reach for its gold plus income, so a unit at the front threatens nothing though its move costs no gold, while the top 10 of CodinGame remove 0.53 of enemy value per gold spent on units against our 0.35 and win the exchange (+30 against our -20 at turn 15), and most large cuts use moves (E019); letting the enemy's units step first in that reach makes the search value forward units and guard against them, and beats v016.
 change: In the plan bot's evaluation (and its tower guard), the enemy's units of at least a chosen level on its active cells step first onto every neighbour they may enter, at no cost, before its chains of trainings, when the cells it can take at its next turn are found; the weight of a threatened cell is screened with it.
 release: ice-and-fire-v017
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +15.0 [+4.1, +26.0] at CodinGame's limits
+pairs: 1040
+full_time: +15.0 [+4.1, +26.0] (the SPRT's own, ADR 0042), 2 timeouts of v017 in 2,080 games (v016 1), slowest answer 617.0 ms (the first turn)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -87,3 +87,26 @@ level 2, q 5.
 E035 and E036 screened at the same time: their best variants (E035 three
 quarters of the gold, about +13; E036 one turn of upkeep for level 2 and
 3, about +10) are to be screened again on top of this candidate.
+
+## SPRT
+
+Accepted on the pull request (run 43457643321, at 381c033), at CodinGame's
+speed and real limit, in blocks of 10 pairs over 8 calibrated runners:
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v017 vs ice-and-fire-v016: 2080 games, 1040 complete pairs
+  ice-and-fire-v017: 1085 wins, 0 draws, 995 losses (score 52.2%)
+  Elo of ice-and-fire-v017 over ice-and-fire-v016: +15.0 [+4.1, +26.0] (95%, from pairs)
+  pairs by ice-and-fire-v017's points (0, 1/2, 1, 3/2, 2): [118, 0, 759, 0, 163]
+  ice-and-fire-v017 faults: 2 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v016 faults: 1 timeouts, 0 crashes, 0 invalid answers
+  slowest answer: ice-and-fire-v017 617.0 ms, ice-and-fire-v016 614.4 ms
+Checked 13 rounds of 8 blocks (104 blocks counted, 72 left out)
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.22 (bounds -2.94, 2.94) after 1040 pairs
+Verdict: ACCEPTED: ice-and-fire-v017 is stronger than ice-and-fire-v016
+```
+
+The SPRT's +15.0 is below the screening's +22 over 2,400 pairs, as in
+E034 (+31.0 against about +39): the leader of a screening is chosen for
+its luck as well.
