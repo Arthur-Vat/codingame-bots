@@ -1,16 +1,16 @@
 ---
 id: E033
 date: 2026-11-12
-pull_request: pending
+pull_request: "#293"
 parent: ice-and-fire-v014
 hypothesis: The top 10 of CodinGame build a mine in about a fifth of their games at every turn from turn 9, once their territory is large, and v014 almost never does, because its evaluation scores a mine below the gold it costs; counting a mine above its income, where the enemy cannot take it at once and the more so the larger its side's territory, makes the search build mines in the middle game and beats v014 (candidate `ice-and-fire-v015`).
 change: The plan bot's evaluation adds, for each of a side's mines on an active cell that the enemy cannot take at its next turn, a quarter of that side's active cells.
 release: ice-and-fire-v015
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +11.4 [+2.3, +20.5] at CodinGame's limits
+pairs: 1680
+full_time: +11.4 [+2.3, +20.5] (the SPRT's own, ADR 0042), no timeout in 3,360 games, slowest answer 530.7 ms (the first turn)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -193,3 +193,26 @@ three estimates that do not differ. Frozen by `scripts/new-release.sh`
 - **A local look of 150 pairs misleads.** "Safe 1, 10" scored +27.9
   locally and −0.4 over 800 pairs on GitHub. A screening run of 800 pairs
   for six variants takes 11 minutes there.
+
+## SPRT
+
+Accepted on the pull request (run 43268453908, at eed6789), at CodinGame's
+speed and real limit, in blocks of 10 pairs over 8 calibrated runners
+(time scales 0.811 to 0.862):
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v015 vs ice-and-fire-v014: 3360 games, 1680 complete pairs
+  ice-and-fire-v015: 1735 wins, 0 draws, 1625 losses (score 51.6%)
+  Elo of ice-and-fire-v015 over ice-and-fire-v014: +11.4 [+2.3, +20.5] (95%, from pairs)
+  pairs by ice-and-fire-v015's points (0, 1/2, 1, 3/2, 2): [226, 0, 1173, 0, 281]
+  ice-and-fire-v015 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v014 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  slowest answer: ice-and-fire-v015 530.7 ms, ice-and-fire-v014 531.6 ms
+Checked 21 rounds of 8 blocks (168 blocks counted, 24 left out)
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 2.95 (bounds -2.94, 2.94) after 1680 pairs
+Verdict: ACCEPTED: ice-and-fire-v015 is stronger than ice-and-fire-v014
+```
+
+The SPRT's +11.4 matches the screening's +11.2 over 8,800 pairs. The
+nightly league rates the release.
