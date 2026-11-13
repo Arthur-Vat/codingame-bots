@@ -58,13 +58,13 @@ fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64) -> 
 /// each of our empty active cells that the enemy can take at its next turn
 /// and whose loss cuts off at least [`DEFENDER_MIN_CUT`] cells. `None`:
 /// none (v018), where a training on our own cell is offered at level 1 only.
-pub const DEFENDER_LEVEL: Option<u8> = Some(2);
+pub const DEFENDER_LEVEL: Option<u8> = None;
 /// The cells a defender's cell must cut off when lost (0: any exposed cell).
-pub const DEFENDER_MIN_CUT: i64 = 0;
+pub const DEFENDER_MIN_CUT: i64 = 1;
 /// A tower is also offered on our free cells on or next to a cell the enemy
 /// can take at its next turn and whose loss cuts off at least this many
 /// cells (E041). `None`: no such tower (v018).
-pub const TOWER_MIN_CUT: Option<i64> = None;
+pub const TOWER_MIN_CUT: Option<i64> = Some(4);
 
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
