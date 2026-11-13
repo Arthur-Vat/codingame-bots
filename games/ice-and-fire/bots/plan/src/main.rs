@@ -114,14 +114,14 @@ const OPENING_TURNS: usize = 7;
 /// What the opening's plans maximize: the solo planner's weights, written
 /// out (E010).
 const OBJECTIVE: Objective = Objective {
-    cells: 4,
+    cells: 6,
     income: 3,
     gold: 1,
     cut: 2,
     joints: 2,
     tips: 2,
     reach: 6,
-    voronoi: 1,
+    voronoi: 3,
 };
 
 /// The opening uses a mine spot only when the enemy's territory is more than
