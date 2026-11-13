@@ -267,7 +267,7 @@ pub fn strong_units(state: &State, seat: usize) -> i64 {
 pub const HQ_BONUS: i64 = 0;
 /// Halves of the gold left after paying for that chain that count too, up
 /// to [`HQ_MARGIN_CAP`] (E042).
-pub const HQ_MARGIN_HALVES: i64 = 0;
+pub const HQ_MARGIN_HALVES: i64 = 4;
 /// The most of that gold counted.
 pub const HQ_MARGIN_CAP: i64 = 100;
 
