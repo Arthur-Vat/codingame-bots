@@ -1,7 +1,7 @@
 ---
 id: E044
 date: 2026-11-13
-pull_request: "pending"
+pull_request: "#312"
 parent: ice-and-fire-v020
 hypothesis: In the collected CodinGame games, the cells we lose on a threatened turn are mostly cut off (61%), our defence (towers on the border in 60% of cases, on a joint in 22%) holds the cells it guards but only 6% of the cells we then lose were in its zone, and our losses are the same whether we defend or not (4.8 and 4.6 cells), while the top 10 put towers on joints (35%) and lose less when they defend (2.3 against 3.2 cells); the search already finds the opponent's replies that enter our territory, so offering blockers on the cells those replies enter (towers there or next to them, or a level-2 unit there) lets it defend where the enemy strikes and beats v020.
 change: The plan bot's search is also offered, at every step of a climb, a tower on each of our free cells that the opponent's remembered replies enter (towers next to them and level-2 trainings screened).
