@@ -199,7 +199,7 @@ fn twos(state: &State, seat: usize) -> i64 {
 /// How the pressure term counts (E035): the quarters of a side's gold
 /// toward its chain to the enemy HQ, and the term's lowest value.
 pub const PRESSURE: Pressure = Pressure {
-    gold_quarters: 4,
+    gold_quarters: 0,
     max: 200,
 };
 
