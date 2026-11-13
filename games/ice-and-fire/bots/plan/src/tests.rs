@@ -72,6 +72,32 @@ fn position_with_spots(
     State::read(spots, &turn, League::Bronze, 10).expect("a valid position")
 }
 
+/// The shared evaluation as the bot reads it: its margins count the moves
+/// of the units of at least `MARGIN_MOVER_LEVEL` (E043), and the standing
+/// threat on each HQ (E042) is added.
+fn bot_shared(state: &State, seat: usize) -> i64 {
+    use crate::eval::{standing, MARGIN_MOVER_LEVEL};
+    use ice_and_fire_engine::Bits;
+    let movers = |side: usize| {
+        let mut bits = Bits::EMPTY;
+        for cell in (state.units(side) & state.active(side)).iter() {
+            if state
+                .unit_level(cell)
+                .is_some_and(|level| level >= MARGIN_MOVER_LEVEL)
+            {
+                bits |= Bits::cell(cell);
+            }
+        }
+        bits
+    };
+    let (score, margins) = ice_and_fire_tactics::eval::evaluate_with_movers(
+        state,
+        seat,
+        [movers(seat), movers(1 - seat)],
+    );
+    score + standing(margins[0]) - standing(margins[1])
+}
+
 /// The standing threat term of `seat`'s score (E042): its own less the
 /// enemy's.
 fn standing_term(state: &State, seat: usize) -> i64 {
@@ -478,8 +504,7 @@ fn a_level_two_unit_counts_less_than_its_cost() {
     ];
     for (level, discount) in [(1, 0), (2, crate::eval::LEVEL2_DISCOUNT)] {
         let state = position(rows, [30, 20], &[(0, 1, level, 2, 0)]);
-        let shared =
-            ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+        let shared = bot_shared(&state, 0) + crate::eval::shape(&state, 0);
         assert_eq!(crate::eval::eval(&state, 0), shared - discount);
     }
 }
@@ -546,18 +571,18 @@ fn a_side_that_cannot_pay_its_upkeep_counts_its_units_as_lost() {
     let back = 2 * 20;
     let state = position(rows, [5, 20], &[(0, 1, 3, 2, 0)]);
     assert_eq!(state.income(0), -17);
-    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+    let shared = bot_shared(&state, 0) + crate::eval::shape(&state, 0);
     assert_eq!(crate::eval::eval(&state, 0), shared - 2 * 30 + back);
     // With the gold to pay it, nothing is taken.
     let state = position(rows, [17, 20], &[(0, 1, 3, 2, 0)]);
-    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+    let shared = bot_shared(&state, 0) + crate::eval::shape(&state, 0);
     assert_eq!(crate::eval::eval(&state, 0), shared + back);
     // Blue's debt counts for red; so does the discount of its level-2 unit
     // (E020).
     rows[0] = "O...........";
     let state = position(rows, [5, 0], &[(1, 1, 2, 11, 10)]);
     assert_eq!(state.income(1), 2 - 4);
-    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+    let shared = bot_shared(&state, 0) + crate::eval::shape(&state, 0);
     assert_eq!(
         crate::eval::eval(&state, 0),
         shared + 2 * 20 + crate::eval::LEVEL2_DISCOUNT
