@@ -50,7 +50,7 @@ nothing.
 `bots/plan/src/search.rs`: `blockers`, called at every step of a climb,
 adds to the actions, for each of our active cells that a reply in the
 search's memory enters by a training or a move: with `BLOCK_TOWERS` a
-tower on it if it is free (and with `BLOCK_NEIGHBOURS` on our free cells
+tower on it if it is free and not a mine spot (and with `BLOCK_NEIGHBOURS` on our free cells
 next to it), with `BLOCK_LEVEL` a training at that level on it if it is
 empty; each once (`blockers_of`). All off in v020, which the base commit
 keeps. A test checks the blockers of a reply on a line. The candidate
