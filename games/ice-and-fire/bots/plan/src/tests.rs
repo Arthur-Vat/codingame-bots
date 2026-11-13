@@ -837,6 +837,9 @@ fn the_opening_builds_no_mine() {
             }
             state.play_turn(&commands);
         }
-        assert!(opening_turns >= 4, "seed {seed}: {opening_turns} opening turns");
+        assert!(
+            opening_turns >= 4,
+            "seed {seed}: {opening_turns} opening turns"
+        );
     }
 }
