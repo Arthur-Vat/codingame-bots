@@ -1,7 +1,7 @@
 ---
 id: E035
 date: 2026-11-13
-pull_request: "pending"
+pull_request: "#297"
 parent: ice-and-fire-v016
 hypothesis: v016's pressure term counts a side's gold toward its chain to the enemy HQ on top of the gold's own value, so while that chain is within 200 gold of reach each gold kept scores twice and spending looks costly; v014 kept 53% of its gold in the middle game against the top 10's 37% (46% in its wins, 54% in its losses); counting less of the gold in that term, or only near the HQ, makes the search spend and beats v016.
 change: None released. Screening only: the plan bot's evaluation counting a share of a side's gold (0 to all, in quarters) in the pressure term, whose lowest value was also raised from -200 in some variants.
