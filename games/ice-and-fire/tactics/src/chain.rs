@@ -33,8 +33,15 @@ pub struct Reach {
 /// cells first reached at each of the next costs, and the search stops at
 /// `target`.
 pub fn cost_to(state: &State, seat: usize, moves: bool, target: usize) -> i64 {
+    cost_to_moving(state, seat, movers(state, seat, moves), target)
+}
+
+/// [`cost_to`] where the units of `seat` on the cells `movers` (whether or
+/// not `seat` is to act) each step first onto every neighbour their level
+/// may enter, at no cost, as in [`reach_within_moving`].
+pub fn cost_to_moving(state: &State, seat: usize, movers: Bits, target: usize) -> i64 {
     let mut cost = UNREACHABLE;
-    flood(state, seat, moves, |step, new| {
+    flood_from(state, seat, movers, |step, new| {
         if new.test(target) {
             cost = 10 * step as i64;
         }
@@ -67,13 +74,6 @@ pub fn reach_within_moving(state: &State, seat: usize, movers: Bits, budget: i64
     reached.and_not(state.active(seat))
 }
 
-/// The bitboard search of [`cost_to`]: calls `visit(step, cells)` with the
-/// cells first reached at the cost of `step` steps of 10 gold, cheapest
-/// first, until `visit` returns true or no cell is left.
-fn flood(state: &State, seat: usize, moves: bool, visit: impl FnMut(usize, Bits) -> bool) {
-    flood_from(state, seat, movers(state, seat, moves), visit);
-}
-
 /// The units that step first in a search with `moves`: the movable units of
 /// `seat` when it is to act, else none.
 fn movers(state: &State, seat: usize, moves: bool) -> Bits {
@@ -84,7 +84,10 @@ fn movers(state: &State, seat: usize, moves: bool) -> Bits {
     }
 }
 
-/// [`flood`] where the units of `seat` on the cells `movers` step first.
+/// The bitboard search of [`cost_to`]: calls `visit(step, cells)` with the
+/// cells first reached at the cost of `step` steps of 10 gold, cheapest
+/// first, until `visit` returns true or no cell is left. The units of
+/// `seat` on the cells `movers` step first, at no cost.
 fn flood_from(
     state: &State,
     seat: usize,

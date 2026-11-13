@@ -42,6 +42,10 @@
 //!   HQ at their next turn (we after 4% of ours), so that punishing their
 //!   chain would leave our HQ open; the pressure term stops counting once a
 //!   side can pay. A side that can pays counts [`standing`] more.
+//! - **Moves toward the HQ** (E043): the chain to the enemy HQ behind the
+//!   pressure term and [`standing`] left moves out; with
+//!   [`MARGIN_MOVER_LEVEL`], a side's units of that level or more on its
+//!   active cells step first, at no cost, as in E037's reach.
 //! - **Upkeep of strong units** (E036): the shared evaluation counts income
 //!   three times, and income is net of upkeep, so a level-3 unit (upkeep 20)
 //!   costs 60 there and a level-2 unit (upkeep 4) 12, beyond their training
@@ -51,7 +55,7 @@
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::reach_within_moving;
-use ice_and_fire_tactics::eval::evaluate_with_margins;
+use ice_and_fire_tactics::eval::evaluate_with_movers;
 
 /// The lowest level of a unit whose moves count in [`exposed`] (E037): 1 to
 /// 3, or 4 for none (v016). Level 2 won the screening.
@@ -64,15 +68,18 @@ pub const THREAT_QUARTERS: i64 = 5;
 /// The units of `seat` whose moves count in [`exposed`]: those on its active
 /// cells of at least [`MOVER_LEVEL`], all of which may move at its next turn.
 fn movers(state: &State, seat: usize) -> Bits {
+    movers_from(state, seat, MOVER_LEVEL)
+}
+
+/// The units of `seat` on its active cells of at least level `from` (none
+/// when `from` is above 3).
+fn movers_from(state: &State, seat: usize, from: u8) -> Bits {
     let mut movers = Bits::EMPTY;
-    if MOVER_LEVEL > 3 {
+    if from > 3 {
         return movers;
     }
     for cell in (state.units(seat) & state.active(seat)).iter() {
-        if state
-            .unit_level(cell)
-            .is_some_and(|level| level >= MOVER_LEVEL)
-        {
+        if state.unit_level(cell).is_some_and(|level| level >= from) {
             movers |= Bits::cell(cell);
         }
     }
@@ -281,9 +288,18 @@ pub fn standing(margin: i64) -> i64 {
     HQ_BONUS + HQ_MARGIN_HALVES * margin.min(HQ_MARGIN_CAP) / 2
 }
 
+/// The lowest level of a unit whose moves count in the chain to the enemy
+/// HQ of the pressure term and of [`standing`] (E043): 1 to 3, or 4 for
+/// none (v019).
+pub const MARGIN_MOVER_LEVEL: u8 = 4;
+
 /// The score of `state` for `seat`, higher is better for it.
 pub fn eval(state: &State, seat: usize) -> i64 {
-    let (score, margins) = evaluate_with_margins(state, seat);
+    let movers = [
+        movers_from(state, seat, MARGIN_MOVER_LEVEL),
+        movers_from(state, 1 - seat, MARGIN_MOVER_LEVEL),
+    ];
+    let (score, margins) = evaluate_with_movers(state, seat, movers);
     let score = score + standing(margins[0]) - standing(margins[1]);
     if state.outcome().is_some() {
         return score;

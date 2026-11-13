@@ -3,9 +3,9 @@
 //! The weights are placeholders, to be tuned by later experiments (with the
 //! SPRT, one change at a time); they are not fitted to anything yet.
 
-use ice_and_fire_engine::{Outcome, State, HQ};
+use ice_and_fire_engine::{Bits, Outcome, State, HQ};
 
-use crate::chain::{cost_to, UNREACHABLE};
+use crate::chain::{cost_to, cost_to_moving, UNREACHABLE};
 
 /// Score of a won or lost game.
 pub const WIN: i64 = 1_000_000;
@@ -33,7 +33,21 @@ fn side(state: &State, seat: usize) -> i64 {
 /// chain of trainings to the enemy HQ: negative when it cannot pay,
 /// `i64::MIN` when no chain reaches the HQ.
 pub fn margin(state: &State, seat: usize) -> i64 {
-    let cost = cost_to(state, seat, false, HQ[1 - seat]);
+    from_cost(state, seat, cost_to(state, seat, false, HQ[1 - seat]))
+}
+
+/// [`margin`] where the units of `seat` on the cells `movers` step first
+/// ([`cost_to_moving`]).
+pub fn margin_moving(state: &State, seat: usize, movers: Bits) -> i64 {
+    from_cost(
+        state,
+        seat,
+        cost_to_moving(state, seat, movers, HQ[1 - seat]),
+    )
+}
+
+/// The margin of `seat` whose chain to the enemy HQ costs `cost`.
+fn from_cost(state: &State, seat: usize, cost: i64) -> i64 {
     if cost == UNREACHABLE {
         return i64::MIN;
     }
@@ -64,6 +78,13 @@ pub fn evaluate(state: &State, seat: usize) -> i64 {
 /// [`evaluate`], and the [`margin`] of `seat` and of the other seat, as the
 /// pressure term found them (both 0 for a finished game).
 pub fn evaluate_with_margins(state: &State, seat: usize) -> (i64, [i64; 2]) {
+    evaluate_with_movers(state, seat, [Bits::EMPTY; 2])
+}
+
+/// [`evaluate_with_margins`] where the margins count the moves of the units
+/// on `movers[0]` (of `seat`) and `movers[1]` (of the other seat), as
+/// [`margin_moving`] does.
+pub fn evaluate_with_movers(state: &State, seat: usize, movers: [Bits; 2]) -> (i64, [i64; 2]) {
     let other = 1 - seat;
     match state.outcome() {
         Some(Outcome::Win(winner)) => return (if winner == seat { WIN } else { -WIN }, [0, 0]),
@@ -78,7 +99,10 @@ pub fn evaluate_with_margins(state: &State, seat: usize) -> (i64, [i64; 2]) {
             score -= WIN / 2;
         }
     }
-    let margins = [margin(state, seat), margin(state, other)];
+    let margins = [
+        margin_moving(state, seat, movers[0]),
+        margin_moving(state, other, movers[1]),
+    ];
     (score + pressure(margins[0]) - pressure(margins[1]), margins)
 }
 

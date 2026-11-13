@@ -526,3 +526,21 @@ fn reach_within_moving_steps_the_units_it_is_given() {
     }
     assert!(moved > 100, "{moved} reaches changed by moves");
 }
+
+#[test]
+fn cost_to_moving_is_cost_to_without_movers_and_never_more_with_them() {
+    let mut cheaper = 0;
+    for seed in 0..20 {
+        for state in crate::test_util::random_positions(seed, League::Bronze, &[0, 5, 15, 30]) {
+            for seat in 0..2 {
+                let target = HQ[1 - seat];
+                let still = cost_to(&state, seat, false, target);
+                assert_eq!(cost_to_moving(&state, seat, Bits::EMPTY, target), still);
+                let moving = cost_to_moving(&state, seat, state.units(seat), target);
+                assert!(moving <= still, "{moving} > {still}");
+                cheaper += usize::from(moving < still);
+            }
+        }
+    }
+    assert!(cheaper > 20, "{cheaper} chains made cheaper by moves");
+}
