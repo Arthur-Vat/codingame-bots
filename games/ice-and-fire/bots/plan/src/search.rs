@@ -142,7 +142,7 @@ pub const BLOCK_TOWERS: bool = true;
 pub const BLOCK_NEIGHBOURS: bool = false;
 /// A training at this level on those cells when they are empty (`None`:
 /// none).
-pub const BLOCK_LEVEL: Option<u8> = Some(1);
+pub const BLOCK_LEVEL: Option<u8> = None;
 
 /// Adds to `out` the blockers of the replies of `memory` (E044), as
 /// [`BLOCK_TOWERS`], [`BLOCK_NEIGHBOURS`] and [`BLOCK_LEVEL`] say.
