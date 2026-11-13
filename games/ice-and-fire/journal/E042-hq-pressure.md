@@ -6,11 +6,11 @@ parent: ice-and-fire-v018
 hypothesis: In v014's CodinGame games the top 10, after 28% of their long chains (4 or more trainings), could pay at their next turn for a chain of trainings to our HQ (we after 4% of ours), and the cuts that would have killed three quarters of those chains mostly left our HQ open (122 of 296 lost by force in v018's search); v018's pressure term stops counting once a side can pay for that chain, so counting a standing threat on the enemy HQ makes the search keep one, which ties the enemy to its defence and protects our chains, and beats v018.
 change: The plan bot's evaluation counts a side that can pay, at its next turn, for its cheapest chain of trainings to the enemy HQ the gold it would have left after paying, up to 100 (flat bonuses and other shares screened).
 release: ice-and-fire-v019
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +20.3 [+6.6, +34.0] at CodinGame's limits
+pairs: 480
+full_time: +20.3 [+6.6, +34.0] (the SPRT's own, ADR 0042), 1 timeout of v019 in 960 games (v018 none), slowest answer 520.0 ms (the first turn)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -90,3 +90,25 @@ The leader's neighbours, run 43491005932, seed 42044, 800 pairs each:
 Every form gained something, the more so as the bonus grows with the
 gold left; the leader held on new pairs, and its neighbours scored
 alike. The candidate is m2, the form with 2,400 pairs.
+
+## SPRT
+
+Accepted on the pull request (run 43494036748, at 69e9fc30), at CodinGame's
+speed and real limit, in blocks of 10 pairs over 8 calibrated runners:
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v019 vs ice-and-fire-v018: 960 games, 480 complete pairs
+  ice-and-fire-v019: 508 wins, 0 draws, 452 losses (score 52.9%)
+  Elo of ice-and-fire-v019 over ice-and-fire-v018: +20.3 [+6.6, +34.0] (95%, from pairs)
+  pairs by ice-and-fire-v019's points (0, 1/2, 1, 3/2, 2): [33, 0, 386, 0, 61]
+  ice-and-fire-v019 faults: 1 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v018 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  slowest answer: ice-and-fire-v019 520.0 ms, ice-and-fire-v018 522.5 ms
+Checked 6 rounds of 8 blocks (48 blocks counted, 64 left out)
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.15 (bounds -2.94, 2.94) after 480 pairs
+Verdict: ACCEPTED: ice-and-fire-v019 is stronger than ice-and-fire-v018
+```
+
+The SPRT's +20.3 is above the screening's +11 over 2,400 pairs; its
+interval holds both.
