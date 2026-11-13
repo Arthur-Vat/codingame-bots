@@ -53,7 +53,7 @@ pub(super) fn observe(search: &Search, root: &State, memory: &[Reply], best: Opt
     let played = PLAYED.with(|p| p.borrow().clone()).map(|commands| {
         let mut end = root.clone();
         let accepted: Vec<Command> = commands.into_iter().filter(|&c| end.apply(c)).collect();
-        let own = search.answers(&end, &accepted);
+        let own = search.answers(&end);
         let plan = Plan {
             commands: accepted,
             end,
