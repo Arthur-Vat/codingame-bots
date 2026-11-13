@@ -1015,3 +1015,80 @@ fn an_enemy_unit_of_level_two_moves_toward_our_hq() {
         + THREAT_QUARTERS * (threatened(&state, 1) - threatened(&state, 0)) / 4;
     assert_eq!(eval(&state, 0), expected);
 }
+
+#[test]
+fn the_cells_a_reply_enters_get_blockers() {
+    use crate::search::blockers_of;
+    use ice_and_fire_engine::Command;
+    // E044: red's line from its HQ to (5, 0); a reply of blue's trains on
+    // (3, 0) and moves onto (4, 0): towers on those two, on their free
+    // neighbours with `neighbours`, and level-2 trainings on them.
+    let rows = [
+        "OOOOOO......",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "...........X",
+        "...........X",
+    ];
+    let state = position(rows, [100, 20], &[]);
+    let reply = [
+        Command::Train {
+            level: 1,
+            x: 3,
+            y: 0,
+        },
+        Command::Move { id: 9, x: 4, y: 0 },
+        Command::Train {
+            level: 1,
+            x: 7,
+            y: 7,
+        },
+    ];
+    let names = |settings| {
+        let mut out = Vec::new();
+        blockers_of(&state, std::iter::once(&reply[..]), settings, &mut out);
+        let mut names: Vec<String> = out
+            .iter()
+            .map(|action| ice_and_fire_engine::answer_line(action.commands()))
+            .collect();
+        names.sort();
+        names
+    };
+    assert_eq!(
+        names((true, false, None)),
+        ["BUILD TOWER 3 0", "BUILD TOWER 4 0"]
+    );
+    assert_eq!(
+        names((true, true, None)),
+        [
+            "BUILD TOWER 2 0",
+            "BUILD TOWER 3 0",
+            "BUILD TOWER 4 0",
+            "BUILD TOWER 5 0"
+        ]
+    );
+    assert_eq!(
+        names((false, false, Some(2))),
+        ["TRAIN 2 3 0", "TRAIN 2 4 0"]
+    );
+    assert!(names((false, false, None)).is_empty());
+    // An action already offered is not offered twice.
+    let mut out = vec![crate::actions::Action::One(Command::BuildTower {
+        x: 3,
+        y: 0,
+    })];
+    blockers_of(
+        &state,
+        std::iter::once(&reply[..]),
+        (true, false, None),
+        &mut out,
+    );
+    assert_eq!(out.len(), 2);
+}

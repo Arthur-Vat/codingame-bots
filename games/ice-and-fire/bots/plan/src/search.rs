@@ -36,7 +36,8 @@ use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
 use std::time::Instant;
 
-use ice_and_fire_engine::{Command, Outcome, State, HQ};
+use ice_and_fire_engine::state::BUILD_COST;
+use ice_and_fire_engine::{Bits, Command, Outcome, State, HQ, SIZE};
 use ice_and_fire_opening::planned::Planned;
 use ice_and_fire_policy::greedy_turn;
 use ice_and_fire_tactics::chain::chain_to;
@@ -131,6 +132,85 @@ struct Search {
     /// The actions of the climbs' root, generated once: every climb of a
     /// search starts from the same state.
     root_actions: Option<Vec<Action>>,
+}
+
+/// The blockers offered (E044): towers on our cells that the opponent's
+/// remembered replies enter.
+pub const BLOCK_TOWERS: bool = false;
+/// Towers also on our free cells next to those cells (a tower guards its
+/// neighbours).
+pub const BLOCK_NEIGHBOURS: bool = false;
+/// A training at this level on those cells when they are empty (`None`:
+/// none).
+pub const BLOCK_LEVEL: Option<u8> = None;
+
+/// Adds to `out` the blockers of the replies of `memory` (E044), as
+/// [`BLOCK_TOWERS`], [`BLOCK_NEIGHBOURS`] and [`BLOCK_LEVEL`] say.
+fn blockers(state: &State, memory: &[Reply], out: &mut Vec<Action>) {
+    if !BLOCK_TOWERS && BLOCK_LEVEL.is_none() {
+        return;
+    }
+    let replies = memory.iter().map(|reply| reply.commands.as_slice());
+    blockers_of(
+        state,
+        replies,
+        (BLOCK_TOWERS, BLOCK_NEIGHBOURS, BLOCK_LEVEL),
+        out,
+    );
+}
+
+/// Adds to `out` the blockers of the cells of the player to act in `state`
+/// that `replies` enter by a training or a move (E044): with `towers`,
+/// towers on them (and with `neighbours`, on our free cells next to them);
+/// with a `level`, a training at that level on those that are empty; each
+/// unless `out` holds the same action already.
+pub(crate) fn blockers_of<'a>(
+    state: &State,
+    replies: impl Iterator<Item = &'a [Command]>,
+    (towers, neighbours, level): (bool, bool, Option<u8>),
+    out: &mut Vec<Action>,
+) {
+    let me = state.to_act();
+    let mine = state.active(me);
+    let mut entered = Bits::EMPTY;
+    for reply in replies {
+        for command in reply {
+            if let Command::Train { x, y, .. } | Command::Move { x, y, .. } = *command {
+                let cell = usize::from(y) * SIZE + usize::from(x);
+                if mine.test(cell) {
+                    entered |= Bits::cell(cell);
+                }
+            }
+        }
+    }
+    if entered.is_empty() {
+        return;
+    }
+    let free = state.empty_cells() & mine;
+    let gold = state.gold(me);
+    let push = |command: Command, out: &mut Vec<Action>| {
+        if !out.iter().any(|a| a.commands() == [command]) {
+            out.push(Action::One(command));
+        }
+    };
+    if towers && gold >= BUILD_COST && state.league().allows_towers() {
+        let mut cells = entered;
+        if neighbours {
+            cells |= entered.neighbours();
+        }
+        for cell in (cells & free).and_not(state.map().spots).iter() {
+            let (x, y) = xy(cell);
+            push(Command::BuildTower { x, y }, out);
+        }
+    }
+    if let Some(level) = level.filter(|&level| level <= state.league().max_level()) {
+        if gold >= 10 * i64::from(level) {
+            for cell in (entered & free).iter() {
+                let (x, y) = xy(cell);
+                push(Command::Train { level, x, y }, out);
+            }
+        }
+    }
 }
 
 /// Whether every command of `commands` is accepted in order by `state`.
@@ -295,6 +375,7 @@ impl Search {
             } else {
                 generate(&cur, &mut actions);
             }
+            blockers(&cur, memory, &mut actions);
             order.clear();
             for (index, action) in actions.iter().enumerate() {
                 let k = key(action.commands());
