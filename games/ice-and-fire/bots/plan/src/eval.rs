@@ -200,7 +200,7 @@ fn twos(state: &State, seat: usize) -> i64 {
 /// toward its chain to the enemy HQ, and the term's lowest value.
 pub const PRESSURE: Pressure = Pressure {
     gold_quarters: 4,
-    max: 100,
+    max: 50,
 };
 
 /// The shared evaluation with the bot's pressure term ([`PRESSURE`]).
