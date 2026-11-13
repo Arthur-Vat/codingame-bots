@@ -6,11 +6,11 @@ parent: ice-and-fire-v019
 hypothesis: v019's pressure term and its standing threat (E042) price a side's chain of trainings to the enemy HQ without its units' moves, which cost no gold, while E037 found that counting the moves of level-2 and level-3 units in the cells a side can take gained +15; counting those moves in the chain to the HQ as well prices threats as the top 10 make them and beats v019.
 change: In the plan bot's evaluation, the chain to the enemy HQ behind the pressure term and the standing threat lets each side's level-2 and level-3 units on its active cells step first, at no cost (levels 1 to 3, and larger shares of E042's margin, screened).
 release: ice-and-fire-v020
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +29.9 [+14.2, +45.6] at CodinGame's limits
+pairs: 560
+full_time: +29.9 [+14.2, +45.6] (the SPRT's own, ADR 0042), no fault of either side in 1,120 games, slowest answer 502.9 ms (the first turn)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -84,3 +84,25 @@ Neighbours and a control, run 43501610241, seed 43045, 800 pairs each:
 The control (a larger share without moves) gained nothing, and l2h4's
 first-round +20.0 fell to +5.6: the gain comes from the moves. The
 candidate is l2, the simplest form, which held in both rounds.
+
+## SPRT
+
+Accepted on the pull request (run 43504462794, at d0610da), at CodinGame's
+speed and real limit, in blocks of 10 pairs over 8 calibrated runners:
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v020 vs ice-and-fire-v019: 1120 games, 560 complete pairs
+  ice-and-fire-v020: 608 wins, 0 draws, 512 losses (score 54.3%)
+  Elo of ice-and-fire-v020 over ice-and-fire-v019: +29.9 [+14.2, +45.6] (95%, from pairs)
+  pairs by ice-and-fire-v020's points (0, 1/2, 1, 3/2, 2): [60, 0, 392, 0, 108]
+  ice-and-fire-v020 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v019 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  slowest answer: ice-and-fire-v020 502.9 ms, ice-and-fire-v019 503.4 ms
+Checked 7 rounds of 8 blocks (56 blocks counted, 64 left out)
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.93 (bounds -2.94, 2.94) after 560 pairs
+Verdict: ACCEPTED: ice-and-fire-v020 is stronger than ice-and-fire-v019
+```
+
+The SPRT's +29.9 is above the screening's +11 over 2,400 pairs, as
+E042's was; its interval holds both.
