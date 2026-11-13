@@ -30,9 +30,9 @@ turn by turn with a beam search over our next 7 turns, as if the enemy
 passed. Its score of the position reached weighs cells 4, income 3, gold
 1, closeness to the enemy HQ 6, and the land nearer our cells than the
 enemy's (`voronoi`) only 1; its purchases buy a mine whenever it pays back
-more than a training by the horizon. E033 left it unchanged: v015 builds a
-mine at its own turn 6 in 29% of games and at turn 7 in 67% to 68%, as
-v014 does. In the report the rest of Legend builds that early mine in
+more than a training by the horizon. E033 left it unchanged: in E033's local
+matches with game records (seed 33040), v015 built a mine at its own
+turn 6 in 29% of games and at turn 7 in 67% to 68%, as v014 did. In the report the rest of Legend builds that early mine in
 about 6% of games, and from turn 10 our wins and losses differ most in
 cells and voronoi. The report could not tell whether the early mine hurts
 (it goes with the map), and earlier changes to the opening were dropped
@@ -136,8 +136,8 @@ time scale 0.575, tolerance 7 ms: +39.5 [+2.2, +77.8], no fault), v016
 built no mine before its own turn 8, and its first mine at its turn 11 in
 the median game (247 of 300 games), then one in 18% to 22% of games at
 every turn from its turn 10 to 15, about as many a game as v015 (3.21
-against 3.16). v015 built its first at turn 7 (35% of games at turn 6,
-68% at turn 7).
+against 3.16). v015, in these games, built its first at turn 7 (a mine in
+35% of games at turn 6, 68% at turn 7).
 
 ## What was learned
 
