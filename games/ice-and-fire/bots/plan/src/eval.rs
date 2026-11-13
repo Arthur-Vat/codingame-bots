@@ -264,10 +264,10 @@ pub fn strong_units(state: &State, seat: usize) -> i64 {
 /// What a side that can pay, at its next turn, for its chain of trainings to
 /// the enemy HQ counts more (E042): the enemy must keep defending. 0 for
 /// nothing (v018).
-pub const HQ_BONUS: i64 = 80;
+pub const HQ_BONUS: i64 = 0;
 /// Halves of the gold left after paying for that chain that count too, up
 /// to [`HQ_MARGIN_CAP`] (E042).
-pub const HQ_MARGIN_HALVES: i64 = 0;
+pub const HQ_MARGIN_HALVES: i64 = 1;
 /// The most of that gold counted.
 pub const HQ_MARGIN_CAP: i64 = 100;
 
