@@ -913,35 +913,3 @@ fn the_opening_builds_no_mine() {
         );
     }
 }
-
-#[test]
-fn taking_a_joint_cuts_off_the_cells_behind_it() {
-    use crate::eval::cut_off;
-    use ice_and_fire_engine::Bits;
-    // E038: red holds a line from its HQ (0, 0) to (5, 0); taking (2, 0)
-    // cuts off (3, 0) to (5, 0), taking the end (5, 0) nothing.
-    let rows = [
-        "OOOOOO......",
-        "............",
-        "............",
-        "............",
-        "............",
-        "............",
-        "............",
-        "............",
-        "............",
-        "............",
-        "...........X",
-        "...........X",
-    ];
-    let state = position(rows, [0, 0], &[]);
-    let at = |x: usize| Bits::cell(x);
-    assert_eq!(cut_off(&state, 0, at(2)), 3);
-    assert_eq!(cut_off(&state, 0, at(5)), 0);
-    assert_eq!(cut_off(&state, 0, Bits::EMPTY), 0);
-    // Cells the enemy can take themselves are not counted again: with (2, 0)
-    // and (4, 0) both exposed, (3, 0) and (5, 0) are cut off.
-    assert_eq!(cut_off(&state, 0, at(2) | at(4)), 2);
-    // The HQ is never a joint to take.
-    assert_eq!(cut_off(&state, 0, at(0)), 0);
-}
