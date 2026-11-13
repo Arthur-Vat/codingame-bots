@@ -121,13 +121,13 @@ const OBJECTIVE: Objective = Objective {
     joints: 2,
     tips: 2,
     reach: 6,
-    voronoi: 1,
+    voronoi: 3,
 };
 
 /// The opening uses a mine spot only when the enemy's territory is more than
 /// this many steps from it (v003's 3; `u8::MAX`: no mine in the opening,
 /// E034).
-const OPENING_SAFE_SPOT: u8 = 3;
+const OPENING_SAFE_SPOT: u8 = 255;
 
 /// The opening: v003's opening with the solo planner's weight sets, planned
 /// over [`OPENING_TURNS`] of our turns within the turn's time.
