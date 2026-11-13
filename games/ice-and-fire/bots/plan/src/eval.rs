@@ -30,6 +30,12 @@
 //!   is large. A mine on an active cell that the enemy cannot take at its
 //!   next turn counts one more for every [`MINE_PER_CELLS`] active cells of
 //!   its side ([`mine_bonus`]): little on a small territory, 9 at 36 cells.
+//! - **Upkeep of strong units** (E036): the shared evaluation counts income
+//!   three times, and income is net of upkeep, so a level-3 unit (upkeep 20)
+//!   costs 60 there and a level-2 unit (upkeep 4) 12, beyond their training
+//!   cost: a level-3 training scores about -50 before what it takes. Each
+//!   level-2 and level-3 unit on an active cell gives back the upkeep of
+//!   the turns beyond [`UPKEEP_TURNS`].
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::reach_within;
@@ -183,12 +189,33 @@ fn debt(state: &State, seat: usize) -> i64 {
 /// How much less than its training cost a level-2 unit is worth (E020).
 pub const LEVEL2_DISCOUNT: i64 = 15;
 
-/// The level-2 units of `seat` on active cells.
-fn twos(state: &State, seat: usize) -> i64 {
-    (state.units(seat) & state.active(seat))
-        .iter()
-        .filter(|&cell| state.unit_level(cell) == Some(2))
-        .count() as i64
+/// The turns of upkeep the evaluation charges for a level-2 and a level-3
+/// unit (E036); the shared evaluation charges 3, its weight of income.
+pub const UPKEEP_TURNS: [i64; 2] = [3, 3];
+
+/// The upkeep of a level-2 and a level-3 unit (RULES.md, "Income").
+const UPKEEP: [i64; 2] = [4, 20];
+
+/// The level-2 and level-3 units of `seat` on active cells.
+fn strong(state: &State, seat: usize) -> [i64; 2] {
+    let mut count = [0; 2];
+    for cell in (state.units(seat) & state.active(seat)).iter() {
+        match state.unit_level(cell) {
+            Some(2) => count[0] += 1,
+            Some(3) => count[1] += 1,
+            _ => {}
+        }
+    }
+    count
+}
+
+/// What the level-2 and level-3 units of `seat` count beyond the shared
+/// evaluation: less [`LEVEL2_DISCOUNT`] each level 2 (E020), plus the
+/// upkeep of the turns beyond [`UPKEEP_TURNS`] (E036).
+pub fn strong_units(state: &State, seat: usize) -> i64 {
+    let [twos, threes] = strong(state, seat);
+    let back = |level: usize| (3 - UPKEEP_TURNS[level]) * UPKEEP[level];
+    -LEVEL2_DISCOUNT * twos + back(0) * twos + back(1) * threes
 }
 
 /// The score of `state` for `seat`, higher is better for it.
@@ -205,7 +232,8 @@ pub fn eval(state: &State, seat: usize) -> i64 {
     score - 2 * debt(state, seat)
         + 2 * debt(state, 1 - seat)
         + shape(state, seat)
-        + LEVEL2_DISCOUNT * (twos(state, 1 - seat) - twos(state, seat))
+        + strong_units(state, seat)
+        - strong_units(state, 1 - seat)
         + 7 * threats / 4
         + mines(state, seat, ours)
         - mines(state, 1 - seat, theirs)
