@@ -6,11 +6,11 @@ parent: ice-and-fire-v017
 hypothesis: v016's evaluation counts income three times and income is net of upkeep, so a level-3 training scores about -50 (-30 gold, +30 unit, -57 income, +4 cell) and a level-2 one about -20 before what they take, while the top 10 of CodinGame train more of both (Pduhard- 2.6 level-3 units a game against our 1.0; level-2 units twice as often as us) and our search scores their level-3 turns 109 below its own choice and their level-2 turns 29; charging the upkeep of strong units over fewer turns makes the search use them and beats v017 (E037).
 change: The plan bot's evaluation gives back, for each level-3 unit on an active cell, two of the three turns of upkeep that its weight of income charges (40 a unit); level-2 units and E020's discount are unchanged. Screened from 3 to 0 turns for each level, with the discount kept or lowered.
 release: ice-and-fire-v018
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +7.6 [+2.1, +13.1] at CodinGame's limits
+pairs: 2800
+full_time: +7.6 [+2.1, +13.1] (the SPRT's own, ADR 0042), 2 timeouts of v018 in 5,600 games (v017 none), slowest answer 504.5 ms (the first turn)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -91,3 +91,28 @@ The two best on top of E037's candidate (`ice-and-fire-v017`), run
 Charging a level-3 unit no upkeep at all (l3t0) lost; one turn was best,
 and the level-2 change added nothing once v017 counted the moves of
 level-2 units. The candidate is l3t1 on v017.
+
+## SPRT
+
+Accepted on the pull request (run 43464288756, at 9fbf20d), at CodinGame's
+speed and real limit, in blocks of 10 pairs over 8 calibrated runners:
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v018 vs ice-and-fire-v017: 5600 games, 2800 complete pairs
+  ice-and-fire-v018: 2861 wins, 0 draws, 2739 losses (score 51.1%)
+  Elo of ice-and-fire-v018 over ice-and-fire-v017: +7.6 [+2.1, +13.1] (95%, from pairs)
+  pairs by ice-and-fire-v018's points (0, 1/2, 1, 3/2, 2): [227, 0, 2285, 0, 288]
+  ice-and-fire-v018 faults: 2 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v017 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  slowest answer: ice-and-fire-v018 504.5 ms, ice-and-fire-v017 505.8 ms
+Checked 35 rounds of 8 blocks (280 blocks counted, 24 left out)
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.25 (bounds -2.94, 2.94) after 2800 pairs
+Verdict: ACCEPTED: ice-and-fire-v018 is stronger than ice-and-fire-v017
+```
+
+A small gain, close to its screening on v017 (+8.5), which needed 2,800
+pairs to settle. E035, screened next on top of this candidate (three
+quarters of the gold in the pressure term, commit `1a9c301`, run
+43464481930, seed 35038, 1,600 pairs), scored −6.5 [−15.8, +2.8] against
+it, after +14.3 and +11.9 against v016 and +8.5 against v017.
