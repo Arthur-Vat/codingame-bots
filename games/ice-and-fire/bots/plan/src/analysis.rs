@@ -88,8 +88,10 @@ pub const TOWER_VALUE: i64 = 10;
 
 /// The shared evaluation's pressure term of `seat`: 0 when its gold and
 /// income pay for its cheapest chain to the enemy HQ, else minus the
-/// shortfall, at least `-MAX_PRESSURE`. A copy of the private
-/// `ice_and_fire_tactics::eval::pressure`, which the tests check.
+/// shortfall, at least `-MAX_PRESSURE`: the private
+/// `ice_and_fire_tactics::eval::pressure` of the side's margin, rebuilt
+/// here and checked by the tests. The bot's standing threat (E042), which
+/// counts the margin beyond 0, is not part of it: `NoPressure` leaves it.
 pub fn pressure(state: &State, seat: usize) -> i64 {
     let cost = cost_to(state, seat, false, HQ[1 - seat]);
     if cost == UNREACHABLE {
