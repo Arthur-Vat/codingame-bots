@@ -136,7 +136,7 @@ struct Search {
 
 /// The blockers offered (E044): towers on our cells that the opponent's
 /// remembered replies enter.
-pub const BLOCK_TOWERS: bool = false;
+pub const BLOCK_TOWERS: bool = true;
 /// Towers also on our free cells next to those cells (a tower guards its
 /// neighbours).
 pub const BLOCK_NEIGHBOURS: bool = false;
