@@ -937,8 +937,8 @@ fn the_opening_builds_no_mine() {
 fn a_side_that_can_pay_for_its_chain_to_the_enemy_hq_holds_a_threat() {
     use crate::eval::{standing, HQ_BONUS, HQ_MARGIN_CAP, HQ_MARGIN_HALVES};
     use ice_and_fire_tactics::eval::{evaluate, evaluate_with_margins, margin};
-    // E042: nothing while the side cannot pay; the bonus and half the gold
-    // left, up to the cap, once it can.
+    // E042: nothing while the side cannot pay; once it can, the bonus and
+    // HQ_MARGIN_HALVES halves of the gold left, up to the cap.
     assert_eq!(standing(-1), 0);
     assert_eq!(standing(i64::MIN), 0);
     assert_eq!(standing(0), HQ_BONUS);
