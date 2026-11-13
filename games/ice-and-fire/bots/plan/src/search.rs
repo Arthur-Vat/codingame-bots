@@ -64,9 +64,9 @@ pub const LONG_PLAN: Option<usize> = Some(4);
 /// Most plans scored by the opponent's climb against a long plan (E040).
 const LONG_REPLY_EVALS: u64 = 300;
 /// The opponent's best cuts tried against a long plan (E040).
-const LONG_REPLY_CUTS: usize = 6;
+const LONG_REPLY_CUTS: usize = 3;
 /// Longest of those cuts, in trainings (E040).
-const LONG_CUT_LENGTH: usize = CUT_LENGTH;
+const LONG_CUT_LENGTH: usize = 7;
 
 /// The number of trainings in `commands`.
 fn trainings(commands: &[Command]) -> usize {
