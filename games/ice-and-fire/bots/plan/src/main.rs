@@ -129,7 +129,7 @@ const OBJECTIVE: Objective = Objective {
 /// The opening uses a mine spot only when the enemy's territory is more than
 /// this many steps from it: `u8::MAX`, so it builds no mine (E034; v003's
 /// opening used 3). The middle game's search builds them (E033).
-const OPENING_SAFE_SPOT: u8 = 5;
+const OPENING_SAFE_SPOT: u8 = 8;
 
 /// The opening: v003's opening with the solo planner's weight sets, planned
 /// over [`OPENING_TURNS`] of our turns within the turn's time.
