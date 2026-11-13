@@ -62,9 +62,9 @@ const REPLY_EVALS: u64 = 300;
 /// `None`: never (v018).
 pub const LONG_PLAN: Option<usize> = Some(4);
 /// Most plans scored by the opponent's climb against a long plan (E040).
-const LONG_REPLY_EVALS: u64 = 300;
+const LONG_REPLY_EVALS: u64 = 1200;
 /// The opponent's best cuts tried against a long plan (E040).
-const LONG_REPLY_CUTS: usize = 3;
+const LONG_REPLY_CUTS: usize = 6;
 /// Longest of those cuts, in trainings (E040).
 const LONG_CUT_LENGTH: usize = 7;
 
