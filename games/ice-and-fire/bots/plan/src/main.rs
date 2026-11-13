@@ -115,7 +115,7 @@ const OPENING_TURNS: usize = 7;
 /// out (E010).
 const OBJECTIVE: Objective = Objective {
     cells: 4,
-    income: 1,
+    income: 3,
     gold: 1,
     cut: 2,
     joints: 2,
