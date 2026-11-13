@@ -54,6 +54,7 @@ Iteration: one experiment per pull request ([journal](journal/README.md)).
 - [x] E042, a standing threat on the enemy HQ, after the study of chains and trades in v014's CodinGame games (E038 to E041, the study's other experiments, dropped): a side that can pay at its next turn for its chain to the enemy HQ counts the gold it would have left, up to 100, as `ice-and-fire-v019` through the SPRT against v018: accepted, +20.3 Elo ([E042](journal/E042-hq-pressure.md), #304)
 - [x] E043, units' moves in the chain to the enemy HQ, after E042: the chain behind the pressure term and the standing threat lets each side's level-2 and level-3 units step first at no cost, as `ice-and-fire-v020` through the SPRT against v019: accepted, +29.9 Elo ([E043](journal/E043-moving-margin.md), #307)
 - [x] E044, blockers of the remembered replies, after a study of defensive turns in the collected CodinGame games: the search is also offered a tower on each of our free cells that the opponent's remembered replies enter, as `ice-and-fire-v021` through the SPRT against v020: accepted, +31.4 Elo ([E044](journal/E044-blockers.md), #312)
+- [x] E045, no units on our own cells, after a study of the gold spent per turn in the collected CodinGame games: the search is offered no training on our own empty active cells, as `ice-and-fire-v022` through the SPRT against v021: accepted, +30.5 Elo ([E045](journal/E045-own-cell-units.md), #314)
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 
