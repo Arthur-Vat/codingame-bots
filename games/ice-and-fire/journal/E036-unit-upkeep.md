@@ -11,7 +11,7 @@ elo: +7.6 [+2.1, +13.1] at CodinGame's limits
 pairs: 2800
 full_time: +7.6 [+2.1, +13.1] (the SPRT's own, ADR 0042), 2 timeouts of v018 in 5,600 games (v017 none), slowest answer 504.5 ms (the first turn)
 decision: promoted
-cg_rank: not reported
+cg_rank: Legend, 18th of 87 (18th of 925 overall), 2026-11-13: submitted through the API on the owner's approval (submission 41709589)
 ---
 
 Asked by the owner on 2026-11-13 ("Can you do 1, 2, 3 in parallel?"),
