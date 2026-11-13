@@ -114,7 +114,7 @@ const OPENING_TURNS: usize = 7;
 /// What the opening's plans maximize: the solo planner's weights, written
 /// out (E010).
 const OBJECTIVE: Objective = Objective {
-    cells: 6,
+    cells: 4,
     income: 3,
     gold: 1,
     cut: 2,
