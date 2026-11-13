@@ -808,3 +808,38 @@ fn climbs_out_of_first_actions_go_on_from_the_others() {
     }
     assert!(forced > 0, "no position reached the forced climbs");
 }
+
+#[test]
+fn the_opening_builds_no_mine() {
+    // E034: on the referee's maps, both seats play the bot's turns from the
+    // start (opening then middle game, a few tries a turn); no command of
+    // a turn the opening played is a mine.
+    for seed in 1..=4 {
+        let map = generate(seed, RefereeLeague::Bronze);
+        let mut state = State::new(&map.void, &map.mine_spots, League::Bronze);
+        let mut openings = [opening(), opening()];
+        let mut opening_turns = 0;
+        for _ in 0..24 {
+            if state.outcome().is_some() {
+                break;
+            }
+            let seat = state.to_act();
+            let in_opening = openings[seat].playing(&state);
+            let commands = think(&state, evals(50), &mut openings[seat]).commands;
+            if in_opening {
+                opening_turns += 1;
+                assert!(
+                    !commands
+                        .iter()
+                        .any(|c| matches!(c, Command::BuildMine { .. })),
+                    "seed {seed}: the opening built a mine: {commands:?}"
+                );
+            }
+            state.play_turn(&commands);
+        }
+        assert!(
+            opening_turns >= 4,
+            "seed {seed}: {opening_turns} opening turns"
+        );
+    }
+}
