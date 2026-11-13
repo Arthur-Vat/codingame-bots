@@ -1,7 +1,7 @@
 ---
 id: E039
 date: 2026-11-13
-pull_request: "pending"
+pull_request: "#300"
 parent: ice-and-fire-v018
 hypothesis: In v014's CodinGame games against the top 10, 31% of the gold we spent on trainings was dead after the opponent's next ply (18% for the top 10), and 37% of our long chains (4 or more trainings in a ply) lost three quarters of their units the next turn (25% for the top 10), while v018's evaluation counts a unit its whole training cost until it dies; counting less the units the enemy can kill at its next turn, those on cells it can take and those it would cut off, makes the search train units that live and beats v018.
 change: None released. Screening only: the plan bot's evaluation counting each side's units on cells the enemy can take at its next turn (and, in some variants, on the cells such a capture cuts off) a share of their training cost less.
