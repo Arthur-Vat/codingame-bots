@@ -1,7 +1,7 @@
 ---
 id: E037
 date: 2026-11-13
-pull_request: "pending"
+pull_request: "#295"
 parent: ice-and-fire-v016
 hypothesis: v016's threatened cells (E023) are those the enemy's chains of trainings reach for its gold plus income, so a unit at the front threatens nothing though its move costs no gold, while the top 10 of CodinGame remove 0.53 of enemy value per gold spent on units against our 0.35 and win the exchange (+30 against our -20 at turn 15), and most large cuts use moves (E019); letting the enemy's units step first in that reach makes the search value forward units and guard against them, and beats v016.
 change: In the plan bot's evaluation (and its tower guard), the enemy's units of at least a chosen level on its active cells step first onto every neighbour they may enter, at no cost, before its chains of trainings, when the cells it can take at its next turn are found; the weight of a threatened cell is screened with it.
