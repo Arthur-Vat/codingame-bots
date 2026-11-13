@@ -115,7 +115,7 @@ const OPENING_TURNS: usize = 7;
 /// out (E010).
 const OBJECTIVE: Objective = Objective {
     cells: 4,
-    income: 3,
+    income: 2,
     gold: 1,
     cut: 2,
     joints: 2,
@@ -127,7 +127,7 @@ const OBJECTIVE: Objective = Objective {
 /// The opening uses a mine spot only when the enemy's territory is more than
 /// this many steps from it (v003's 3; `u8::MAX`: no mine in the opening,
 /// E034).
-const OPENING_SAFE_SPOT: u8 = 3;
+const OPENING_SAFE_SPOT: u8 = 255;
 
 /// The opening: v003's opening with the solo planner's weight sets, planned
 /// over [`OPENING_TURNS`] of our turns within the turn's time.
