@@ -52,6 +52,12 @@ fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64) -> 
     hq_guard && cost_to(&after, enemy, false, HQ[me]) > chain
 }
 
+/// Which of our own empty active cells get a training offered (E045): 0,
+/// all of them (v021); 1, those next to a cell that is not active for us;
+/// 2, none (E045's screening). E044's blockers may still offer a unit on a
+/// cell a reply enters.
+pub const OWN_CELLS: u8 = 2;
+
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
 /// Longest cut, in trainings: 5 since E014 (4 before).
@@ -105,15 +111,26 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
         }
     }
 
-    // Trainings, at the lowest level that may enter the cell.
+    // Trainings, at the lowest level that may enter the cell; on our own
+    // cells as OWN_CELLS says (E045).
     let gold = state.gold(me);
+    // Our inactive cells stay offered: a training there joins them again.
+    let active = state.active(me);
     let near = state.near_active(me);
+    let trainable = match OWN_CELLS {
+        0 => near,
+        1 => {
+            let border = state.map().valid.and_not(active).neighbours() & active;
+            near.and_not(active) | border
+        }
+        _ => near.and_not(active),
+    };
     for level in 1..=max {
         let cost = 10 * i64::from(level);
         if gold < cost {
             break;
         }
-        let mut cells = near & enter[usize::from(level)];
+        let mut cells = trainable & enter[usize::from(level)];
         for lower in 1..level {
             cells = cells.and_not(enter[usize::from(lower)]);
         }
