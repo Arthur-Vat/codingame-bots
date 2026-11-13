@@ -1,16 +1,16 @@
 ---
 id: E034
 date: 2026-11-13
-pull_request: pending
+pull_request: "#294"
 parent: ice-and-fire-v015
 hypothesis: v015's opening builds a mine early (at its turn 6 or 7 in most games, where the rest of Legend trains) and plans its turns by a score that weighs income heavily; an opening that favours expansion, with no mine and income weighed less than land, reaches the middle game with more land and beats v015 (candidate `ice-and-fire-v016`).
 change: The opening uses no mine spot (its safe spot set to 255) and its planner's score weighs cells 3 and income 1 rather than 4 and 3 (gold 1, voronoi 1 and reach 6 unchanged).
 release: ice-and-fire-v016
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +31.0 [+13.1, +49.1] at CodinGame's limits
+pairs: 640
+full_time: +31.0 [+13.1, +49.1] (the SPRT's own, ADR 0042), no fault of v016 in 1,280 games (v015 1 timeout), slowest answer 626.6 ms (the first turn)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -157,3 +157,26 @@ against 3.16). v015 built its first at turn 7 (35% of games at turn 6,
 - **Screening many variants in parallel.** 25 variants in five runs on
   GitHub took about an hour; the first round's leader dropped
   from +43.7 to +21.7 on new pairs, hence the confirmations.
+
+## SPRT
+
+Accepted on the pull request (run 43434902614, at aeb6787), at CodinGame's
+speed and real limit, in blocks of 10 pairs over 8 calibrated runners:
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v016 vs ice-and-fire-v015: 1280 games, 640 complete pairs
+  ice-and-fire-v016: 697 wins, 0 draws, 583 losses (score 54.5%)
+  Elo of ice-and-fire-v016 over ice-and-fire-v015: +31.0 [+13.1, +49.1] (95%, from pairs)
+  pairs by ice-and-fire-v016's points (0, 1/2, 1, 3/2, 2): [114, 0, 355, 0, 171]
+  ice-and-fire-v016 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v015 faults: 1 timeouts, 0 crashes, 0 invalid answers
+  slowest answer: ice-and-fire-v016 626.6 ms, ice-and-fire-v015 627.6 ms
+Checked 8 rounds of 8 blocks (64 blocks counted, 16 left out)
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.14 (bounds -2.94, 2.94) after 640 pairs
+Verdict: ACCEPTED: ice-and-fire-v016 is stronger than ice-and-fire-v015
+```
+
+The SPRT's +31.0 is within the screening's +39 over 2,400 pairs (an SPRT
+that stops early on a lucky run tends to read high, the screening's chosen
+leader too). The nightly league rates the release.

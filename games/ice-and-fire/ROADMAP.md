@@ -48,7 +48,7 @@ Iteration: one experiment per pull request ([journal](journal/README.md)).
 - [x] The league's 105 stored pairings replayed at those settings (League replay run 41204625632, 15 shards in 52 minutes, owner's go-ahead "Start the replay (Recommended)"): the new `league.jsonl` and `LEADERBOARD.md`, same order of the bots
 - [ ] E032: the plan bot's hard limit at 56 ms by its clock, every phase bounded, screened and tested at the calibrated settings against v014
 - [x] E033, mines in the middle game, the first experiment proposed by the report on 2,177 CodinGame games: a mine the enemy cannot take at its next turn counted a quarter of its side's active cells above its income, as `ice-and-fire-v015` through the SPRT against v014: accepted, +11.4 Elo ([E033](journal/E033-middle-game-mines.md), #293)
-- [ ] E034, an opening for expansion, after the owner's question on E033: no mine in the opening and its planner weighing cells 3 and income 1 rather than 4 and 3, as `ice-and-fire-v016` through the SPRT against v015 ([E034](journal/E034-expansion-opening.md))
+- [x] E034, an opening for expansion, after the owner's question on E033: no mine in the opening and its planner weighing cells 3 and income 1 rather than 4 and 3, as `ice-and-fire-v016` through the SPRT against v015: accepted, +31.0 Elo ([E034](journal/E034-expansion-opening.md), #294)
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 
