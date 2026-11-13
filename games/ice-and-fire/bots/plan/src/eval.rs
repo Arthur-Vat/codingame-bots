@@ -187,7 +187,7 @@ fn debt(state: &State, seat: usize) -> i64 {
 }
 
 /// How much less than its training cost a level-2 unit is worth (E020).
-pub const LEVEL2_DISCOUNT: i64 = 5;
+pub const LEVEL2_DISCOUNT: i64 = 15;
 
 /// The turns of upkeep the evaluation charges for a level-2 and a level-3
 /// unit (E036); the shared evaluation charges 3, its weight of income.
