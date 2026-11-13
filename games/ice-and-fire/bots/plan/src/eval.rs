@@ -275,7 +275,7 @@ pub const HQ_BONUS: i64 = 0;
 /// Halves of the gold left after paying for that chain that count too (2,
 /// all of it, won the screening), up
 /// to [`HQ_MARGIN_CAP`] (E042).
-pub const HQ_MARGIN_HALVES: i64 = 4;
+pub const HQ_MARGIN_HALVES: i64 = 6;
 /// The most of that gold counted.
 pub const HQ_MARGIN_CAP: i64 = 100;
 
@@ -291,7 +291,7 @@ pub fn standing(margin: i64) -> i64 {
 /// The lowest level of a unit whose moves count in the chain to the enemy
 /// HQ of the pressure term and of [`standing`] (E043): 1 to 3, or 4 for
 /// none (v019).
-pub const MARGIN_MOVER_LEVEL: u8 = 3;
+pub const MARGIN_MOVER_LEVEL: u8 = 2;
 
 /// The score of `state` for `seat`, higher is better for it.
 pub fn eval(state: &State, seat: usize) -> i64 {
