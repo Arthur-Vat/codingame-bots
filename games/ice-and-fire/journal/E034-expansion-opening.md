@@ -76,3 +76,25 @@ First round, runs 43425890486 (seed 34001) and 43425893737 (seed 34002):
 | gold 0 | `f5f5660` | +2.2 [−12.4, +16.8] | 50.3% |
 | no mine, income 1 | `adaed51` | **+43.7 [+27.9, +59.6]** | 56.2% |
 | no mine, cells 6, voronoi 3 | `a858da1` | −4.8 [−20.6, +11.0] | 49.3% |
+
+Second round, run 43428591718 (seed 34003), the leader's neighbours:
+
+| Variant | Commit | Elo against v015 | Score |
+| --- | --- | --- | ---: |
+| no mine, income 0 | `f92e99b` | **+29.6 [+13.9, +45.4]** | 54.2% |
+| no mine, income 2 | `dba8742` | **+20.4 [+4.8, +36.2]** | 52.9% |
+| no mine, income 1, gold 0 | `109a217` | **−24.8 [−40.1, −9.6]** | 46.4% |
+| no mine, income 1, reach 4 | `e3b05f4` | **+27.4 [+11.9, +43.0]** | 53.9% |
+| no mine, income 1, reach 9 | `12b46b1` | +1.7 [−13.5, +17.0] | 50.2% |
+| safe 5, income 1 | `6d7a788` | −3.5 [−17.5, +10.6] | 49.5% |
+| no mine, income 1, cells 3 | `1b4b119` | **+39.7 [+24.4, +55.1]** | 55.7% |
+| income 0 | `e9956aa` | −11.7 [−25.8, +2.3] | 48.3% |
+
+Confirmation of the first round's three best, run 43428595394 (seed
+34004), 1,600 pairs each over four runners:
+
+| Variant | Commit | Elo against v015 | Score | All its pairs |
+| --- | --- | --- | ---: | --- |
+| no mine, income 1 | `adaed51` | **+21.7 [+10.8, +32.7]** | 53.1% | about +29 over 2,400 |
+| no mine | `03b96a3` | **+20.4 [+9.2, +31.7]** | 52.9% | about +21 over 2,400 |
+| income 1 | `8e67817` | **+18.3 [+7.8, +28.8]** | 52.6% | about +19 over 2,400 |
