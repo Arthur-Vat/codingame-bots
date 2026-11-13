@@ -72,6 +72,14 @@ fn position_with_spots(
     State::read(spots, &turn, League::Bronze, 10).expect("a valid position")
 }
 
+/// The standing threat term of `seat`'s score (E042): its own less the
+/// enemy's.
+fn standing_term(state: &State, seat: usize) -> i64 {
+    use crate::eval::standing;
+    use ice_and_fire_tactics::eval::margin;
+    standing(margin(state, seat)) - standing(margin(state, 1 - seat))
+}
+
 /// Red holds the top row and the right column down to (11, 9); blue's HQ is
 /// alone at (11, 11) and (11, 10) is neutral.
 const CORRIDOR: [&str; 12] = [
@@ -599,8 +607,11 @@ fn cells_the_enemy_can_take_next_turn_count_less() {
     // Red (income 21) threatens blue's one cell, its HQ, for 20.
     assert_eq!(threatened(&state, 1), 1);
     // Each threatened cell costs its side THREAT_QUARTERS / 4 (E023: 7/4,
-    // 0.25 of a cell's value of 7; E037: 5/4).
-    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+    // 0.25 of a cell's value of 7; E037: 5/4). Red's standing threat on
+    // blue's HQ counts too (E042).
+    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0)
+        + crate::eval::shape(&state, 0)
+        + standing_term(&state, 0);
     assert_eq!(
         eval(&state, 0),
         shared + crate::eval::THREAT_QUARTERS * (1 - 2) / 4
@@ -670,6 +681,7 @@ fn a_mine_counts_more_with_a_larger_territory() {
         eval(state, seat)
             - ice_and_fire_tactics::eval::evaluate(state, seat)
             - crate::eval::shape(state, seat)
+            - standing_term(state, seat)
     };
     // Red holds 21 cells of the corridor and blue its HQ alone. Blue (20
     // gold, income 1) reaches (11, 9) for 20, and red blue's HQ: one
@@ -919,4 +931,27 @@ fn the_opening_builds_no_mine() {
             "seed {seed}: {opening_turns} opening turns"
         );
     }
+}
+
+#[test]
+fn a_side_that_can_pay_for_its_chain_to_the_enemy_hq_holds_a_threat() {
+    use crate::eval::{standing, HQ_BONUS, HQ_MARGIN_CAP, HQ_MARGIN_HALVES};
+    use ice_and_fire_tactics::eval::{evaluate, evaluate_with_margins, margin};
+    // E042: nothing while the side cannot pay; the bonus and half the gold
+    // left, up to the cap, once it can.
+    assert_eq!(standing(-1), 0);
+    assert_eq!(standing(i64::MIN), 0);
+    assert_eq!(standing(0), HQ_BONUS);
+    assert_eq!(
+        standing(10 * HQ_MARGIN_CAP),
+        HQ_BONUS + HQ_MARGIN_HALVES * HQ_MARGIN_CAP / 2
+    );
+    // On the corridor, red (income 21) pays 20 for blue's HQ: its margin is
+    // its gold and income less 20; blue cannot reach red's HQ for 30.
+    let state = position(CORRIDOR, [0, 30], &[]);
+    assert_eq!(margin(&state, 0), 21 - 20);
+    assert!(margin(&state, 1) < 0);
+    let (score, margins) = evaluate_with_margins(&state, 0);
+    assert_eq!(score, evaluate(&state, 0));
+    assert_eq!(margins, [margin(&state, 0), margin(&state, 1)]);
 }

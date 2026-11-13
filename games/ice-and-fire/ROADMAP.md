@@ -51,6 +51,7 @@ Iteration: one experiment per pull request ([journal](journal/README.md)).
 - [x] E034, an opening for expansion, after the owner's question on E033: no mine in the opening and its planner weighing cells 3 and income 1 rather than 4 and 3, as `ice-and-fire-v016` through the SPRT against v015: accepted, +31.0 Elo ([E034](journal/E034-expansion-opening.md), #294)
 - [x] E037, units' moves in the threatened cells, one of three middle-game experiments run in parallel (E035, gold in the pressure term; E036, upkeep of strong units): the enemy's units of level 2 or 3 step first, for free, in the cells it can take at its next turn, each counted 5/4 rather than 7/4, as `ice-and-fire-v017` through the SPRT against v016: accepted, +15.0 Elo ([E037](journal/E037-unit-moves.md), #295)
 - [x] E036, upkeep of strong units, the second of the three middle-game experiments: a level-3 unit charged one turn of upkeep rather than three, as `ice-and-fire-v018` through the SPRT against v017: accepted, +7.6 Elo ([E036](journal/E036-unit-upkeep.md), #296)
+- [x] E042, a standing threat on the enemy HQ, after the study of chains and trades in v014's CodinGame games (E038 to E041, the study's other experiments, dropped): a side that can pay at its next turn for its chain to the enemy HQ counts the gold it would have left, up to 100, as `ice-and-fire-v019` through the SPRT against v018: accepted, +20.3 Elo ([E042](journal/E042-hq-pressure.md), #304)
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 
