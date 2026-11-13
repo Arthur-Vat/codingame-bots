@@ -1,7 +1,7 @@
 ---
 id: E036
 date: 2026-11-13
-pull_request: "pending"
+pull_request: "#296"
 parent: ice-and-fire-v017
 hypothesis: v016's evaluation counts income three times and income is net of upkeep, so a level-3 training scores about -50 (-30 gold, +30 unit, -57 income, +4 cell) and a level-2 one about -20 before what they take, while the top 10 of CodinGame train more of both (Pduhard- 2.6 level-3 units a game against our 1.0; level-2 units twice as often as us) and our search scores their level-3 turns 109 below its own choice and their level-2 turns 29; charging the upkeep of strong units over fewer turns makes the search use them and beats v017 (E037).
 change: The plan bot's evaluation gives back, for each level-3 unit on an active cell, two of the three turns of upkeep that its weight of income charges (40 a unit); level-2 units and E020's discount are unchanged. Screened from 3 to 0 turns for each level, with the discount kept or lowered.
