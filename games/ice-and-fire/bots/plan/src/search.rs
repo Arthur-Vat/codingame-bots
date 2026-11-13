@@ -136,13 +136,13 @@ struct Search {
 
 /// The blockers offered (E044): towers on our cells that the opponent's
 /// remembered replies enter.
-pub const BLOCK_TOWERS: bool = true;
+pub const BLOCK_TOWERS: bool = false;
 /// Towers also on our free cells next to those cells (a tower guards its
 /// neighbours).
-pub const BLOCK_NEIGHBOURS: bool = true;
+pub const BLOCK_NEIGHBOURS: bool = false;
 /// A training at this level on those cells when they are empty (`None`:
 /// none).
-pub const BLOCK_LEVEL: Option<u8> = None;
+pub const BLOCK_LEVEL: Option<u8> = Some(2);
 
 /// Adds to `out` the blockers of the replies of `memory` (E044), as
 /// [`BLOCK_TOWERS`], [`BLOCK_NEIGHBOURS`] and [`BLOCK_LEVEL`] say.
