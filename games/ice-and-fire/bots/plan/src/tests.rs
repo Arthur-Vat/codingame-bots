@@ -30,6 +30,17 @@ fn evals(max_evals: u64) -> Limit {
 /// cells, `X`/`x` blue's), the gold of both and the units (owner, id, level,
 /// x, y). No building but the HQs.
 fn position(rows: [&str; 12], gold: [i64; 2], units: &[(u8, u32, u8, u8, u8)]) -> State {
+    position_with_spots("0\n", rows, gold, units)
+}
+
+/// [`position`] on a map whose mine spots are `spots`, the initial input's
+/// text: their count, then a line `x y` for each.
+fn position_with_spots(
+    spots: &str,
+    rows: [&str; 12],
+    gold: [i64; 2],
+    units: &[(u8, u32, u8, u8, u8)],
+) -> State {
     let mut income = [0i64; 2];
     let mut text = String::new();
     for row in rows {
@@ -58,7 +69,7 @@ fn position(rows: [&str; 12], gold: [i64; 2], units: &[(u8, u32, u8, u8, u8)]) -
     for (owner, id, level, x, y) in units {
         turn.push_str(&format!("{owner} {id} {level} {x} {y}\n"));
     }
-    State::read("0\n", &turn, League::Bronze, 10).expect("a valid position")
+    State::read(spots, &turn, League::Bronze, 10).expect("a valid position")
 }
 
 /// Red holds the top row and the right column down to (11, 9); blue's HQ is
@@ -565,6 +576,65 @@ fn cells_the_enemy_can_take_next_turn_count_less() {
     ];
     let state = position(rows, [30, 20], &[]);
     assert_eq!((threatened(&state, 0), threatened(&state, 1)), (0, 0));
+}
+
+#[test]
+fn a_mine_counts_more_with_a_larger_territory() {
+    use crate::eval::{eval, mine_bonus, threatened};
+    // E033: a mine counts one more than its income for every 4 active cells
+    // of its side.
+    assert_eq!(
+        [3, 4, 21, 36, 48].map(mine_bonus),
+        [0, 1, 5, 9, 12],
+        "the bonus by territory"
+    );
+    // What the bot's evaluation adds to the shared one and the shape term.
+    let own = |state: &State, seat: usize| {
+        eval(state, seat)
+            - ice_and_fire_tactics::eval::evaluate(state, seat)
+            - crate::eval::shape(state, seat)
+    };
+    // Red holds 21 cells of the corridor and blue its HQ alone. Blue (20
+    // gold, income 1) reaches (11, 9) for 20, and red blue's HQ: one
+    // threatened cell each, so without a mine the bot's terms add nothing.
+    let spots = "2\n5 0\n11 9\n";
+    let start = position_with_spots(spots, CORRIDOR, [30, 20], &[]);
+    assert_eq!((threatened(&start, 0), threatened(&start, 1)), (1, 1));
+    assert_eq!(own(&start, 0), 0);
+    // A mine on (5, 0), out of blue's reach: the shared evaluation counts
+    // what it changes (15 gold less, 4 of income more), the bot's own adds
+    // the bonus of a side with 21 cells, and takes as much from blue's
+    // score.
+    let mut state = start.clone();
+    let income = state.income(0);
+    assert!(state.apply(Command::BuildMine { x: 5, y: 0 }));
+    assert_eq!((state.gold(0), state.income(0)), (15, income + 4));
+    assert_eq!((threatened(&state, 0), threatened(&state, 1)), (1, 1));
+    assert_eq!(own(&state, 0), 5);
+    assert_eq!(own(&state, 1), -5);
+    // A mine on (11, 9), which blue can take at its next turn, adds nothing.
+    let mut state = start.clone();
+    assert!(state.apply(Command::BuildMine { x: 11, y: 9 }));
+    assert_eq!((threatened(&state, 0), threatened(&state, 1)), (1, 1));
+    assert_eq!(own(&state, 0), 0);
+    // On a territory of 3 cells a mine counts nothing more either.
+    let rows = [
+        "OOO.........",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "...........X",
+        "...........X",
+    ];
+    let mut state = position_with_spots("1\n1 0\n", rows, [30, 20], &[]);
+    assert!(state.apply(Command::BuildMine { x: 1, y: 0 }));
+    assert_eq!(own(&state, 0), 0);
 }
 
 /// The towers among the actions of the player to act.

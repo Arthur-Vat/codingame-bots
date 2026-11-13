@@ -23,6 +23,13 @@
 //!   quarter of the time, so a cell it can take at its next turn counts 0.75
 //!   of a cell's value (4 as a cell, 3 as its income): [`threatened`] cells
 //!   cost a side `7 / 4` each.
+//! - **Mines** (E033): the shared evaluation counts a mine as its income of
+//!   4, three times, 12 against the 15 gold it costs, so a climb rarely
+//!   gained by building one, while the top 10 of CodinGame build one in a
+//!   fifth of their games at every turn from turn 9, once their territory
+//!   is large. A mine on an active cell that the enemy cannot take at its
+//!   next turn counts one more for every [`MINE_PER_CELLS`] active cells of
+//!   its side ([`mine_bonus`]): little on a small territory, 9 at 36 cells.
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::reach_within;
@@ -31,10 +38,35 @@ use ice_and_fire_tactics::eval::evaluate;
 /// The active cells of `seat` that the enemy can take at its next turn:
 /// those its chains of trainings reach for its gold plus its income (moves
 /// left out, as in the pressure term).
-pub fn threatened(state: &State, seat: usize) -> i64 {
+fn exposed(state: &State, seat: usize) -> Bits {
     let enemy = 1 - seat;
     let budget = state.gold(enemy) + state.income(enemy);
-    i64::from((reach_within(state, enemy, false, budget) & state.active(seat)).count())
+    reach_within(state, enemy, false, budget) & state.active(seat)
+}
+
+/// The number of active cells of `seat` that the enemy can take at its next
+/// turn ([`exposed`]).
+pub fn threatened(state: &State, seat: usize) -> i64 {
+    i64::from(exposed(state, seat).count())
+}
+
+/// The active cells of a side for which each of its mines counts one more
+/// than its income (E033).
+pub const MINE_PER_CELLS: i64 = 4;
+
+/// What each mine of a side with `cells` active cells counts beyond its
+/// income.
+pub fn mine_bonus(cells: i64) -> i64 {
+    cells / MINE_PER_CELLS
+}
+
+/// What the mines of `seat` count beyond their income: [`mine_bonus`] for
+/// each on its active cells that the enemy cannot take at its next turn.
+/// `exposed` is `exposed(state, seat)`.
+fn mines(state: &State, seat: usize, exposed: Bits) -> i64 {
+    let active = state.active(seat);
+    let mines = (state.mines() & active).and_not(exposed);
+    mine_bonus(i64::from(active.count())) * i64::from(mines.count())
 }
 
 /// The weight of a joint and of a cell that one capture cuts off.
@@ -167,9 +199,14 @@ pub fn eval(state: &State, seat: usize) -> i64 {
     }
     #[cfg(feature = "analysis")]
     let score = score - crate::analysis::removed(state, seat);
+    let ours = exposed(state, seat);
+    let theirs = exposed(state, 1 - seat);
+    let threats = i64::from(theirs.count()) - i64::from(ours.count());
     score - 2 * debt(state, seat)
         + 2 * debt(state, 1 - seat)
         + shape(state, seat)
         + LEVEL2_DISCOUNT * (twos(state, 1 - seat) - twos(state, seat))
-        + 7 * (threatened(state, 1 - seat) - threatened(state, seat)) / 4
+        + 7 * threats / 4
+        + mines(state, seat, ours)
+        - mines(state, 1 - seat, theirs)
 }
