@@ -4,8 +4,8 @@ date: 2026-11-13
 pull_request: "pending"
 parent: ice-and-fire-v018
 hypothesis: In v014's CodinGame games the top 10, after 28% of their long chains (4 or more trainings), could pay at their next turn for a chain of trainings to our HQ (we after 4% of ours), and the cuts that would have killed three quarters of those chains mostly left our HQ open (122 of 296 lost by force in v018's search); v018's pressure term stops counting once a side can pay for that chain, so counting a standing threat on the enemy HQ makes the search keep one, which ties the enemy to its defence and protects our chains, and beats v018.
-change: The plan bot's evaluation counts a side that can pay, at its next turn, for its cheapest chain of trainings to the enemy HQ a bonus, flat or growing with the gold it would have left.
-release: pending
+change: The plan bot's evaluation counts a side that can pay, at its next turn, for its cheapest chain of trainings to the enemy HQ the gold it would have left after paying, up to 100 (flat bonuses and other shares screened).
+release: ice-and-fire-v019
 sprt: pending
 elo: pending
 pairs: pending
@@ -44,7 +44,49 @@ more). `bots/plan/src/eval.rs`: `standing(margin)`, 0 for a side that
 cannot pay, else `HQ_BONUS` plus `HQ_MARGIN_HALVES` halves of the margin
 up to `HQ_MARGIN_CAP` (100); it counts for each side (both 0 in v018,
 which the base commit keeps). A test checks the bonus and the margins.
+The candidate sets `HQ_MARGIN_HALVES` to 2 (all of the gold left, up to
+100) and no flat bonus, as the screened commit `140d284`; two older tests
+that add up the evaluation's terms on the corridor, where red can pay for
+blue's HQ, now count this term too. The candidate's minified bundle is
+byte for byte the bundle of `140d284` (41,581 characters).
 
 ## Screening
 
-Pending.
+All against `ice-and-fire-v018` on GitHub (`screen.yml`, one calibrated
+runner per variant and shard at CodinGame's speed and real limit, ADR
+0048; no timeout, crash or invalid answer). "Bonus" is `HQ_BONUS`,
+"share" the share of the gold left counted (`HQ_MARGIN_HALVES` halves),
+"cap" the most of it counted.
+
+First round, run 43488592743, seed 42042, 800 pairs each over two runners:
+
+| Variant | Commit | Bonus | Share, cap | Elo against v018 | Score |
+| --- | --- | ---: | --- | --- | ---: |
+| b20 | `e0483e3` | 20 | none | −0.4 [−9.8, +8.9] | 49.9% |
+| b40 | `cab35b0` | 40 | none | +1.7 [−8.0, +11.5] | 50.2% |
+| b80 | `f071d9b` | 80 | none | +7.8 [−1.9, +17.6] | 51.1% |
+| m1 | `f82e977` | 0 | half, 100 | +7.4 [−1.7, +16.5] | 51.1% |
+| m2 | `140d284` | 0 | all, 100 | **+10.9 [+1.2, +20.5]** | 51.6% |
+| b20m1 | `8dcd7c7` | 20 | half, 100 | +5.6 [−3.7, +15.0] | 50.8% |
+| b40m1 | `af3f1dc` | 40 | half, 100 | +3.0 [−5.7, +11.8] | 50.4% |
+
+The three best again, run 43491001609, seed 42043, 1,600 pairs each over
+four runners:
+
+| Variant | Commit | Elo against v018 | Score | Both rounds, 2,400 pairs |
+| --- | --- | --- | ---: | --- |
+| m2 | `140d284` | **+11.7 [+5.1, +18.4]** | 51.7% | about +11 |
+| b80 | `f071d9b` | +4.1 [−2.6, +10.9] | 50.6% | about +5 |
+| m1 | `f82e977` | **+6.3 [+0.4, +12.2]** | 50.9% | about +7 |
+
+The leader's neighbours, run 43491005932, seed 42044, 800 pairs each:
+
+| Variant | Commit | Bonus | Share, cap | Elo against v018 | Score |
+| --- | --- | ---: | --- | --- | ---: |
+| m4 | `7fd721d` | 0 | double, 100 | **+12.6 [+3.0, +22.2]** | 51.8% |
+| m2c200 | `db510ff` | 0 | all, 200 | +7.8 [−0.7, +16.3] | 51.1% |
+| b40m2 | `4ef171e` | 40 | all, 100 | **+10.0 [+0.8, +19.2]** | 51.4% |
+
+Every form gained something, the more so as the bonus grows with the
+gold left; the leader held on new pairs, and its neighbours scored
+alike. The candidate is m2, the form with 2,400 pairs.

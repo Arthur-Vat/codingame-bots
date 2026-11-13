@@ -265,9 +265,10 @@ pub fn strong_units(state: &State, seat: usize) -> i64 {
 /// the enemy HQ counts more (E042): the enemy must keep defending. 0 for
 /// nothing (v018).
 pub const HQ_BONUS: i64 = 0;
-/// Halves of the gold left after paying for that chain that count too, up
+/// Halves of the gold left after paying for that chain that count too (2,
+/// all of it, won the screening), up
 /// to [`HQ_MARGIN_CAP`] (E042).
-pub const HQ_MARGIN_HALVES: i64 = 0;
+pub const HQ_MARGIN_HALVES: i64 = 2;
 /// The most of that gold counted.
 pub const HQ_MARGIN_CAP: i64 = 100;
 
