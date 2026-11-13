@@ -477,6 +477,38 @@ fn a_level_two_unit_counts_less_than_its_cost() {
 }
 
 #[test]
+fn a_level_three_unit_is_charged_one_turn_of_upkeep() {
+    use crate::eval::{strong_units, LEVEL2_DISCOUNT, UPKEEP_TURNS};
+    // E036: the shared evaluation charges three turns of upkeep through its
+    // weight of income; a level-3 unit is charged one (its upkeep of 20
+    // given back twice), a level-2 unit three, less E020's discount.
+    assert_eq!(UPKEEP_TURNS, [3, 1]);
+    let rows = [
+        "OOOO........",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "...........X",
+        "...........X",
+    ];
+    let units = |level: u8| position(rows, [100, 20], &[(0, 1, level, 2, 0)]);
+    assert_eq!(strong_units(&units(1), 0), 0);
+    assert_eq!(strong_units(&units(2), 0), -LEVEL2_DISCOUNT);
+    assert_eq!(strong_units(&units(3), 0), 2 * 20);
+    // Each side's term counts for it and against the other.
+    let state = units(3);
+    let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
+    assert_eq!(crate::eval::eval(&state, 0) - shared, 2 * 20);
+    assert_eq!(crate::eval::eval(&state, 1) + shared, -2 * 20);
+}
+
+#[test]
 fn a_side_that_cannot_pay_its_upkeep_counts_its_units_as_lost() {
     // Red holds 3 cells and a level 3 unit: income 3 - 20 = -17, and 5 gold
     // cannot pay it, so the unit dies at red's next start of turn.
@@ -494,14 +526,17 @@ fn a_side_that_cannot_pay_its_upkeep_counts_its_units_as_lost() {
         "...........X",
         "...........X",
     ];
+    // The level-3 unit's upkeep beyond its turns (E036) is given back
+    // whether or not it can be paid.
+    let back = crate::eval::strong_units(&position(rows, [17, 20], &[(0, 1, 3, 2, 0)]), 0);
     let state = position(rows, [5, 20], &[(0, 1, 3, 2, 0)]);
     assert_eq!(state.income(0), -17);
     let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
-    assert_eq!(crate::eval::eval(&state, 0), shared - 2 * 30);
+    assert_eq!(crate::eval::eval(&state, 0), shared - 2 * 30 + back);
     // With the gold to pay it, nothing is taken.
     let state = position(rows, [17, 20], &[(0, 1, 3, 2, 0)]);
     let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
-    assert_eq!(crate::eval::eval(&state, 0), shared);
+    assert_eq!(crate::eval::eval(&state, 0), shared + back);
     // Blue's debt counts for red; so does the discount of its level-2 unit
     // (E020).
     rows[0] = "O...........";
