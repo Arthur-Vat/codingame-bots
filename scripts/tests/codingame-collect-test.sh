@@ -131,6 +131,13 @@ jobs: {}
 EOF2
 contains "an on: with a trigger on its line" "$(problems "$tmp_dir/one-line.yml")" "the on: line holds triggers in one line"
 
+# The Release workflow starts the collection for the game it plays (ADR 0059):
+# its COLLECTED_GAME is the collection's GAME, a game with releases.
+collect_game="$(sed -n 's/^  GAME: *"\{0,1\}\([a-z0-9-]*\)"\{0,1\} *$/\1/p' .github/workflows/codingame-collect.yml | head -n 1)"
+release_game="$(sed -n 's/^  COLLECTED_GAME: *"\{0,1\}\([a-z0-9-]*\)"\{0,1\} *$/\1/p' .github/workflows/release.yml | head -n 1)"
+same "the Release workflow's COLLECTED_GAME is the collection's GAME" "$collect_game" "$release_game"
+same "the collected game has releases" yes "$([[ -n $collect_game && -d games/$collect_game/releases ]] && echo yes || echo no)"
+
 # --- scripts/codingame-summary.sh ---------------------------------------------
 
 summary="$repo_root/scripts/codingame-summary.sh"

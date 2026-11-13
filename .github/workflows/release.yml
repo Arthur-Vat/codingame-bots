@@ -14,7 +14,11 @@ on:
 
 permissions:
   contents: write # to create tags and releases
-  actions: write # to start the CodinGame collection with a new release (ADR 0059)
+
+env:
+  # The game the CodinGame collection plays: the GAME of codingame-collect.yml
+  # (scripts/tests/codingame-collect-test.sh checks that they agree).
+  COLLECTED_GAME: ice-and-fire
 
 defaults:
   run:
@@ -27,6 +31,8 @@ jobs:
     name: GitHub release of each new version
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    outputs:
+      collect: ${{ steps.collect.outputs.collect }}
     steps:
       - uses: actions/checkout@v7
       - name: Create the missing releases
@@ -58,13 +64,26 @@ jobs:
             scripts/annotate.sh run "Release $tag" gh release create "$tag" "${assets[@]}" --target "$GITHUB_SHA" --title "$tag" --notes "$notes"
             echo "$game" >>"$RUNNER_TEMP/released-games"
           done
-      - name: Start the CodinGame collection with a new release
+      - name: Whether a release of the collected game was published
+        id: collect
+        run: |
+          if grep -qx -- "$COLLECTED_GAME" "$RUNNER_TEMP/released-games" 2>/dev/null; then
+            echo "collect=true" >>"$GITHUB_OUTPUT"
+          fi
+
+  collect:
+    # A run of the collection with the new release (ADR 0059): a run already
+    # going stops before its next game, and this one waits for it. A job of
+    # its own, so that only it may start workflows.
+    name: Start the CodinGame collection with the new release
+    needs: release
+    if: needs.release.outputs.collect == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write # to dispatch codingame-collect.yml
+    steps:
+      - name: Dispatch codingame-collect.yml on main
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          # The collection plays one game (its GAME); a run already going
-          # stops before its next game and this one waits for it (ADR 0059).
-          collected="$(sed -n 's/^  GAME: \(.*\)$/\1/p' .github/workflows/codingame-collect.yml | head -n 1)"
-          if [ -n "$collected" ] && grep -qx -- "$collected" "$RUNNER_TEMP/released-games" 2>/dev/null; then
-            scripts/annotate.sh run "Start the CodinGame collection" gh workflow run codingame-collect.yml --ref main -f play=true
-          fi
+        run: gh workflow run codingame-collect.yml --repo "$GITHUB_REPOSITORY" --ref main -f play=true

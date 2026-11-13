@@ -936,7 +936,18 @@ run batch toy "$release_file" --opponents Gamma --games-per-opponent 3 --name tl
 expect "later release exit" "$rc" 0
 expect "later release: one game, then the stop" "$(($(posts) - before))" 1
 expect "later release leaves the rest planned" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/tlater.json")" "done,planned,planned"
-unset CODINGAME_NEWEST_RELEASE CODINGAME_NEWER_EVERY
+# With the default interval (300 s), main is read once before the first
+# game: a release that arrives after it does not stop the second game.
+unset CODINGAME_NEWER_EVERY
+rm -f "$tmp_dir/calls"
+enqueue "$post_name" 01 200 "$(done_reply 5801 "$(tglog 9801 seed=1 Gamma 33 0 '[300,100]')" 5 20)"
+enqueue "$post_name" 02 200 "$(done_reply 5802 "$(tglog 9802 seed=2 Gamma 33 0 '[300,100]')" 4 10)"
+before="$(posts)"
+run batch toy "$release_file" --opponents Gamma --games-per-opponent 2 --name tinterval --until-newer-release --play --data "$bdata"
+expect "interval exit" "$rc" 0
+expect "interval: both games" "$(($(posts) - before))" 2
+expect "interval: main read once" "$(cat "$tmp_dir/calls")" 1
+unset CODINGAME_NEWEST_RELEASE
 run fetch toy --until-newer-release
 expect "until-newer-release is for batch only" "$rc" 2
 
