@@ -920,3 +920,26 @@ fn the_opening_builds_no_mine() {
         );
     }
 }
+
+#[test]
+fn a_side_that_can_pay_for_its_chain_to_the_enemy_hq_holds_a_threat() {
+    use crate::eval::{standing, HQ_BONUS, HQ_MARGIN_CAP, HQ_MARGIN_HALVES};
+    use ice_and_fire_tactics::eval::{evaluate, evaluate_with_margins, margin};
+    // E042: nothing while the side cannot pay; the bonus and half the gold
+    // left, up to the cap, once it can.
+    assert_eq!(standing(-1), 0);
+    assert_eq!(standing(i64::MIN), 0);
+    assert_eq!(standing(0), HQ_BONUS);
+    assert_eq!(
+        standing(10 * HQ_MARGIN_CAP),
+        HQ_BONUS + HQ_MARGIN_HALVES * HQ_MARGIN_CAP / 2
+    );
+    // On the corridor, red (income 21) pays 20 for blue's HQ: its margin is
+    // its gold and income less 20; blue cannot reach red's HQ for 30.
+    let state = position(CORRIDOR, [0, 30], &[]);
+    assert_eq!(margin(&state, 0), 21 - 20);
+    assert!(margin(&state, 1) < 0);
+    let (score, margins) = evaluate_with_margins(&state, 0);
+    assert_eq!(score, evaluate(&state, 0));
+    assert_eq!(margins, [margin(&state, 0), margin(&state, 1)]);
+}

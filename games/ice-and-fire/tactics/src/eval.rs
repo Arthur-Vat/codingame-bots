@@ -29,15 +29,22 @@ fn side(state: &State, seat: usize) -> i64 {
         + 10 * i64::from((state.towers() & active).count())
 }
 
-/// How far `seat` is from affording the chain to the enemy HQ: 0 when its
-/// gold and income pay for it, else minus the shortfall, at least
-/// `-MAX_PRESSURE`.
-fn pressure(state: &State, seat: usize) -> i64 {
+/// What `seat`'s gold and income leave once it has paid for its cheapest
+/// chain of trainings to the enemy HQ: negative when it cannot pay,
+/// `i64::MIN` when no chain reaches the HQ.
+pub fn margin(state: &State, seat: usize) -> i64 {
     let cost = cost_to(state, seat, false, HQ[1 - seat]);
     if cost == UNREACHABLE {
-        return -MAX_PRESSURE;
+        return i64::MIN;
     }
-    (state.gold(seat) + state.income(seat) - cost).clamp(-MAX_PRESSURE, 0)
+    state.gold(seat) + state.income(seat) - cost
+}
+
+/// The pressure term of a side whose [`margin`] is `margin`: 0 when it pays
+/// for the chain to the enemy HQ, else minus the shortfall, at least
+/// `-MAX_PRESSURE`.
+fn pressure(margin: i64) -> i64 {
+    margin.clamp(-MAX_PRESSURE, 0)
 }
 
 /// A static score of `state` for `seat`, higher is better for it.
@@ -51,10 +58,16 @@ fn pressure(state: &State, seat: usize) -> i64 {
 /// chain to the other's HQ, at most 200). Without the threat term the score
 /// of one seat is the other's negated.
 pub fn evaluate(state: &State, seat: usize) -> i64 {
+    evaluate_with_margins(state, seat).0
+}
+
+/// [`evaluate`], and the [`margin`] of `seat` and of the other seat, as the
+/// pressure term found them (both 0 for a finished game).
+pub fn evaluate_with_margins(state: &State, seat: usize) -> (i64, [i64; 2]) {
     let other = 1 - seat;
     match state.outcome() {
-        Some(Outcome::Win(winner)) => return if winner == seat { WIN } else { -WIN },
-        Some(Outcome::Draw) => return 0,
+        Some(Outcome::Win(winner)) => return (if winner == seat { WIN } else { -WIN }, [0, 0]),
+        Some(Outcome::Draw) => return (0, [0, 0]),
         None => {}
     }
     let mut score = side(state, seat) - side(state, other);
@@ -65,7 +78,8 @@ pub fn evaluate(state: &State, seat: usize) -> i64 {
             score -= WIN / 2;
         }
     }
-    score + pressure(state, seat) - pressure(state, other)
+    let margins = [margin(state, seat), margin(state, other)];
+    (score + pressure(margins[0]) - pressure(margins[1]), margins)
 }
 
 #[cfg(test)]

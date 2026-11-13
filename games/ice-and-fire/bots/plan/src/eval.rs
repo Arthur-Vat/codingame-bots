@@ -37,6 +37,11 @@
 //!   neighbour they may enter, as `ice_and_fire_tactics::chain::Reach` lets
 //!   units do, and the chains go on from there; a threatened cell costs
 //!   [`THREAT_QUARTERS`] quarters.
+//! - **Standing threat** (E042): in v014's CodinGame games the top 10 could
+//!   pay, after 28% of their long chains, for a chain of trainings to our
+//!   HQ at their next turn (we after 4% of ours), so that punishing their
+//!   chain would leave our HQ open; the pressure term stops counting once a
+//!   side can pay. A side that can pays counts [`standing`] more.
 //! - **Upkeep of strong units** (E036): the shared evaluation counts income
 //!   three times, and income is net of upkeep, so a level-3 unit (upkeep 20)
 //!   costs 60 there and a level-2 unit (upkeep 4) 12, beyond their training
@@ -46,7 +51,7 @@
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::reach_within_moving;
-use ice_and_fire_tactics::eval::evaluate;
+use ice_and_fire_tactics::eval::evaluate_with_margins;
 
 /// The lowest level of a unit whose moves count in [`exposed`] (E037): 1 to
 /// 3, or 4 for none (v016). Level 2 won the screening.
@@ -256,9 +261,29 @@ pub fn strong_units(state: &State, seat: usize) -> i64 {
     -LEVEL2_DISCOUNT * twos + back(0) * twos + back(1) * threes
 }
 
+/// What a side that can pay, at its next turn, for its chain of trainings to
+/// the enemy HQ counts more (E042): the enemy must keep defending. 0 for
+/// nothing (v018).
+pub const HQ_BONUS: i64 = 0;
+/// Halves of the gold left after paying for that chain that count too, up
+/// to [`HQ_MARGIN_CAP`] (E042).
+pub const HQ_MARGIN_HALVES: i64 = 0;
+/// The most of that gold counted.
+pub const HQ_MARGIN_CAP: i64 = 100;
+
+/// What a side whose margin (`ice_and_fire_tactics::eval::margin`) is
+/// `margin` counts for its standing threat on the enemy HQ (E042).
+pub fn standing(margin: i64) -> i64 {
+    if margin < 0 {
+        return 0;
+    }
+    HQ_BONUS + HQ_MARGIN_HALVES * margin.min(HQ_MARGIN_CAP) / 2
+}
+
 /// The score of `state` for `seat`, higher is better for it.
 pub fn eval(state: &State, seat: usize) -> i64 {
-    let score = evaluate(state, seat);
+    let (score, margins) = evaluate_with_margins(state, seat);
+    let score = score + standing(margins[0]) - standing(margins[1]);
     if state.outcome().is_some() {
         return score;
     }
