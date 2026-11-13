@@ -3,9 +3,9 @@ id: E034
 date: 2026-11-13
 pull_request: pending
 parent: ice-and-fire-v015
-hypothesis: v015's opening builds a mine early (at its turn 6 or 7 in most games, where the rest of Legend trains) and plans its turns by a score that weighs income and gold more than the land nearer us than the enemy; an opening that favours expansion, by fewer or no mines or by a larger weight for that land (`voronoi`), cells or a smaller one for income, reaches the middle game with more land and beats v015.
-change: Screening only so far: the opening's mines (a mine spot used only farther from the enemy, or none) and the weights of the solo planner's score (cells, income, gold, voronoi), one variant each.
-release: pending
+hypothesis: v015's opening builds a mine early (at its turn 6 or 7 in most games, where the rest of Legend trains) and plans its turns by a score that weighs income heavily; an opening that favours expansion, with no mine and income weighed less than land, reaches the middle game with more land and beats v015 (candidate `ice-and-fire-v016`).
+change: The opening uses no mine spot (its safe spot set to 255) and its planner's score weighs cells 3 and income 1 rather than 4 and 3 (gold 1, voronoi 1 and reach 6 unchanged).
+release: ice-and-fire-v016
 sprt: pending
 elo: pending
 pairs: pending
@@ -40,12 +40,24 @@ cells and voronoi. The report could not tell whether the early mine hurts
 
 ## The change
 
-`bots/plan/src/main.rs`: `OPENING_SAFE_SPOT` sets the opening's
-`safe_spot` (a mine spot is used only when the enemy's territory is more
-than that many steps away) in every weight set: v003's 3, 5 for fewer and
-later mines, 255 for none in the opening; and the planner's `OBJECTIVE`.
-At 3 and with v015's weights the bot plays as v015. The middle game is
-unchanged, E033's mines included.
+`bots/plan/src/main.rs`:
+
+- `OPENING_SAFE_SPOT`, new, sets the opening's `safe_spot` (a mine spot is
+  used only when the enemy's territory is more than that many steps away)
+  in every weight set of the planner: `u8::MAX`, so the opening builds no
+  mine (v003's 3 before). The middle game's search still builds them, and
+  E033 makes it build them on a large territory.
+- `OBJECTIVE`, the planner's score of the position at the end of the early
+  game: cells 3 and income 1, rather than 4 and 3; gold 1, voronoi 1,
+  reach 6 and the shape terms unchanged.
+
+A test plays the bot's turns from the start of four of the referee's maps
+and checks that no turn of the opening builds a mine; with v015's safe
+spot it fails at seed 1 (a mine at (1, 0)).
+
+The candidate's code plays the same games as the screened commit
+`1b4b119` at 500 fixed tries (12 games against v015, 511 turns, compared
+as `scripts/check-minified.sh` compares records).
 
 ## Screening
 
@@ -98,3 +110,50 @@ Confirmation of the first round's three best, run 43428595394 (seed
 | no mine, income 1 | `adaed51` | **+21.7 [+10.8, +32.7]** | 53.1% | about +29 over 2,400 |
 | no mine | `03b96a3` | **+20.4 [+9.2, +31.7]** | 52.9% | about +21 over 2,400 |
 | income 1 | `8e67817` | **+18.3 [+7.8, +28.8]** | 52.6% | about +19 over 2,400 |
+
+
+Second confirmation, run 43431048562 (seed 34005), 1,600 pairs each over
+four runners:
+
+| Variant | Commit | Elo against v015 | Score | All its pairs |
+| --- | --- | --- | ---: | --- |
+| no mine, income 1, cells 3 | `1b4b119` | **+38.8 [+27.4, +50.4]** | 55.6% | about +39 over 2,400 |
+| no mine, income 0 | `f92e99b` | **+22.4 [+11.1, +33.7]** | 53.2% | about +25 over 2,400 |
+| no mine, income 1, reach 4 | `e3b05f4` | **+32.9 [+21.6, +44.2]** | 54.7% | about +31 over 2,400 |
+| no mine, income 1, cells 3, reach 4 | `98c4051` | **+39.5 [+28.1, +50.9]** | 55.7% | 1,600 only |
+
+Every match on GitHub was free of timeouts, crashes and invalid answers.
+
+## The candidate
+
+`ice-and-fire-v016`: no mine in the opening, income 1, cells 3, the best
+over 2,400 pairs (+39.7, then +38.8); adding reach 4 scored the same and
+is one change more. Frozen by `scripts/new-release.sh` (41,005
+characters; the same answers as its readable copy in 4 games).
+
+In a local match against v015 with game records (150 pairs, seed 34010,
+time scale 0.575, tolerance 7 ms: +39.5 [+2.2, +77.8], no fault), v016
+built no mine before its own turn 8, and its first mine at its turn 11 in
+the median game (247 of 300 games), then one in 18% to 22% of games at
+every turn from its turn 10 to 15, about as many a game as v015 (3.21
+against 3.16). v015 built its first at turn 7 (35% of games at turn 6,
+68% at turn 7).
+
+## What was learned
+
+- **The early mine was the cost, not the mine.** Without it the bot builds
+  as many mines a game, four turns later, once its territory is larger:
+  the pattern the report found for the top 10 (a mine in about 20% of
+  games at every turn from turn 9). No mine alone was +20 (2,400 pairs).
+- **Land, yes; voronoi weight, no.** Weighing income less (1, or 0 with no
+  mine) and cells a little less scored +18 to +39: the planner's score
+  then leans on what it already counts as expansion, the pull toward the
+  enemy HQ (reach 6) and the land nearer us (voronoi 1). Raising voronoi
+  itself to 3, 6 or 10 was level to clearly weaker (+1, −17, −29), and
+  cancelled the gain of no mine or of income 1 when added to them; cells 6
+  was level to weaker too. Gold must stay (gold 0, −25 with no mine).
+- **The two halves add up, partly.** No mine (+20) and income 1 (+19)
+  gave +29 together, and +39 with cells 3.
+- **Screening many variants in parallel.** 25 variants in five runs on
+  GitHub took about an hour; the first round's leader dropped
+  from +43.7 to +21.7 on new pairs, hence the confirmations.
