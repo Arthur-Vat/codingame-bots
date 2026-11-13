@@ -44,9 +44,15 @@
 //!   level-2 and level-3 unit on an active cell gives back the upkeep of
 //!   the turns beyond [`UPKEEP_TURNS`].
 
+//! - **Pressure** (E035): the shared pressure term counts a side's gold
+//!   toward its chain to the enemy HQ, on top of the gold's own value, so
+//!   while the chain is within reach each gold kept counts twice and
+//!   spending looks costly; [`PRESSURE`] sets the share of the gold it
+//!   counts and its lowest value.
+
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::reach_within_moving;
-use ice_and_fire_tactics::eval::evaluate;
+use ice_and_fire_tactics::eval::{evaluate_with, Pressure};
 
 /// The lowest level of a unit whose moves count in [`exposed`] (E037): 1 to
 /// 3, or 4 for none (v016). Level 2 won the screening.
@@ -256,9 +262,21 @@ pub fn strong_units(state: &State, seat: usize) -> i64 {
     -LEVEL2_DISCOUNT * twos + back(0) * twos + back(1) * threes
 }
 
+/// How the pressure term counts (E035): the quarters of a side's gold
+/// toward its chain to the enemy HQ, and the term's lowest value.
+pub const PRESSURE: Pressure = Pressure {
+    gold_quarters: 3,
+    max: 200,
+};
+
+/// The shared evaluation with the bot's pressure term ([`PRESSURE`]).
+pub fn shared(state: &State, seat: usize) -> i64 {
+    evaluate_with(state, seat, PRESSURE)
+}
+
 /// The score of `state` for `seat`, higher is better for it.
 pub fn eval(state: &State, seat: usize) -> i64 {
-    let score = evaluate(state, seat);
+    let score = shared(state, seat);
     if state.outcome().is_some() {
         return score;
     }
