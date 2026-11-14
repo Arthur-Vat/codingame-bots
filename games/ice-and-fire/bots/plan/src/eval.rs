@@ -137,7 +137,7 @@ fn mines(state: &State, seat: usize, exposed: Bits) -> i64 {
 pub const EARLY_MINE_TURN: u32 = 12;
 
 /// What a safe mine counts more until [`EARLY_MINE_TURN`] (E058).
-pub const EARLY_MINE_BONUS: i64 = 4;
+pub const EARLY_MINE_BONUS: i64 = 8;
 
 /// The active cells for which a safe mine counts one more until
 /// [`EARLY_MINE_TURN`] (E058): [`MINE_PER_CELLS`] in v024.
