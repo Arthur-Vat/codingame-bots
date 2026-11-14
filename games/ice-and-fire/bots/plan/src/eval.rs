@@ -300,7 +300,7 @@ pub const BEHIND_CELLS: Option<i64> = Some(-3);
 
 /// The quarters of its gold that the pressure term of a side behind by
 /// [`BEHIND_CELLS`] counts (E049).
-pub const BEHIND_GOLD_QUARTERS: i64 = 2;
+pub const BEHIND_GOLD_QUARTERS: i64 = 3;
 
 /// The lowest value of the shared pressure term
 /// (`ice_and_fire_tactics::eval`).
