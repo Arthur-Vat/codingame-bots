@@ -1,7 +1,7 @@
 ---
 id: E062
 date: 2026-11-14
-pull_request: "#NN"
+pull_request: "#336"
 parent: ice-and-fire-v026
 hypothesis: In v026's CodinGame games its first mine comes early (built by turn 8 in 54% of its games as red, 94% by turn 10; the top 10 40% and 60%, the leader zasmu 14% and 62%), in the turns when the middle of the map is won, where the top 10 hold about twice its cells by turn 12; starting E058's early mine bonus at turn 10 or 11 rather than at once keeps that gold for units during the race for the middle, and beats v026.
 change: None released. Screening only: the plan bot's evaluation counting E058's early bonus for a safe mine only from game turn 10 or 11 (until 15, as before), for both sides or only for red's mines.
