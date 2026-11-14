@@ -140,7 +140,7 @@ const OPENING_SAFE_SPOT: u8 = u8::MAX;
 const OPENING_CROWD: i64 = 2;
 
 /// [`OPENING_CROWD`] when we play blue (E057): `None` for the same (v024).
-const OPENING_BLUE_CROWD: Option<i64> = Some(6);
+const OPENING_BLUE_CROWD: Option<i64> = Some(8);
 
 /// The game turn by which a purchase of the opening must pay back
 /// (`Params::horizon`, E056): 15 in v023, as in v003's opening; 18 won the
