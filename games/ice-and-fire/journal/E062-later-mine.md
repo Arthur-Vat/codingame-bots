@@ -74,6 +74,18 @@ pairs each over four runners (no fault):
 | f11 | `d6ee50f` | 11, 11 | −1.3 [−10.9, +8.3] |
 
 r10 held its lead (+9.1 then +8.5, about +8.7 over 2,400 pairs); f11 did
-not. Starting the bonus later for red's mines only fits the study: as red,
+not. A third run with r10's neighbours (red only), run 43627207056, seed
+62064, 1,600 pairs each over four runners (one timeout of v026, no other
+fault):
+
+| Variant | Commit | From | Elo against v026 |
+| --- | --- | --- | --- |
+| r10 | `9689619` | 10, 0 | +4.3 [−4.3, +12.9] |
+| r11 | `b554afe` | 11, 0 | +2.6 [−6.5, +11.7] |
+| r9 | `86d091d` | 9, 0 | −1.1 [−7.4, +5.2] |
+
+Over its three runs (4,000 pairs) r10 scores about +7 (the pairs-weighted
+mean of +9.1, +8.5 and +4.3); its neighbours r9 and r11 do not confirm a
+trend. Starting the bonus later for red's mines only fits the study: as red,
 v026 built its first mine by turn 8 in 54% of its games, the leader in
 14%; as blue the two are close (37% and 34%).
