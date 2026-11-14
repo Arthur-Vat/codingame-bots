@@ -1,16 +1,16 @@
 ---
 id: E051
 date: 2026-11-14
-pull_request: "pending"
+pull_request: "#324"
 parent: ice-and-fire-v022
 hypothesis: In the first 10 turns of the collected CodinGame games our units stand next to another of ours far more often than the top 10's (73% against 37% at turn 4 as red, 74% against 39% at turn 8 as blue), and by turn 10 a fifth of them have no free cell next to them (the top 10 a tenth); the opening's rules value a free cell by its free neighbours, its nearness to the enemy and our own cells next to it, never by our units already there, so lowering a cell's value for each of our units next to it spreads them, each finds a new cell every turn, and beats v022.
 change: The opening's rules (`ice_and_fire_opening::econ`) value a cell 2, 4, 8 or 16 less for each of our units next to it, where this turn's moves and trainings so far put them.
-release: pending
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+release: ice-and-fire-v023 (with E052's 9-turn opening, through E055)
+sprt: accepted, through E055
+elo: +65.9 [+41.0, +91.5] at CodinGame's limits, E055's candidate
+pairs: 320
+full_time: see E055
+decision: promoted, through E055
 cg_rank: not reported
 ---
 
@@ -80,4 +80,32 @@ weight set of the opening (0: v022, which the base commit keeps).
 
 ## Screening
 
-Pending.
+Against `ice-and-fire-v022` on GitHub (`screen.yml`, one calibrated
+runner per variant and shard at CodinGame's speed and real limit, ADR
+0048; no timeout, crash or invalid answer). "Crowd" is `OPENING_CROWD`.
+
+First round, run 43575398743, seed 51051, 800 pairs each over two runners:
+
+| Variant | Commit | Crowd | Elo against v022 | Score |
+| --- | --- | ---: | --- | ---: |
+| c2 | `bed25bc` | 2 | **+32.7 [+17.7, +47.7]** | 54.7% |
+| c4 | `e336cf4` | 4 | **+17.8 [+1.6, +34.1]** | 52.6% |
+| c8 | `da76fb7` | 8 | −8.7 [−24.6, +7.2] | 48.8% |
+| c16 | `e5a7c63` | 16 | **−56.1 [−72.4, −39.9]** | 42.0% |
+
+The leader again with its neighbours, run 43576849849, seed 51052, 1,600
+pairs each over four runners:
+
+| Variant | Commit | Crowd | Elo against v022 | Score | Both rounds |
+| --- | --- | ---: | --- | ---: | --- |
+| c2 | `bed25bc` | 2 | **+30.0 [+19.9, +40.3]** | 54.3% | about +31 over 2,400 pairs |
+| c3 | `6d51672` | 3 | **+27.9 [+16.3, +39.4]** | 54.0% | |
+| c1 | `9fe71c3` | 1 | **+9.8 [+0.4, +19.1]** | 51.4% | |
+
+A light penalty spreads the units and gains; a heavy one breaks the
+territory's shape and loses. The owner chose to combine the best of E051
+and of E052 (the opening planned over 9 turns) before an SPRT: E055
+screened them together, and its candidate `ice-and-fire-v023` (crowd 2,
+9 turns, 45 ms a turn) was accepted, +65.9 [+41.0, +91.5] against v022
+([E055](E055-spread-and-horizon.md)). E053 (choke points) and E054
+(opening mines), run in parallel, gained nothing.
