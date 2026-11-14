@@ -1,16 +1,16 @@
 ---
 id: E060
 date: 2026-11-14
-pull_request: "pending"
+pull_request: "#332"
 parent: ice-and-fire-v025
-hypothesis: At game turns 11 to 20 of our ranking games against the top 10, their units walk through their own land toward free or enemy cells 1.5 to 2 times as often as ours (12 to 15 unit-turns a game against 7 to 9), ours stand still next to free land more often (14 against 9 to 10) and take about 9 fewer cells a game; against the top 1, zasmu, his walks that end in a capture are twice as many and longer (4.0 a game, 2.0 turns, against our 2.0 and 1.3). The middle game scores a plan on the position after one turn, where a step toward free land changes nothing; charging each unit for its distance to the nearest cell not its side's makes each step of such a walk worth it, so idle units walk to the land they can take, and beats v025.
+hypothesis: At game turns 11 to 20 of our ranking games against the top 10, their units walk through their own land toward free or enemy cells 1.5 to 2 times as often as ours (12 to 15 unit-turns a game against 7 to 9), ours stand still next to free land more often (14 against 9 to 10) and take 6 to 9 fewer cells a game; against the top 1, zasmu, his walks that end in a capture are twice as many and longer (4.0 a game, 2.0 turns, against our 2.0 and 1.3). The middle game scores a plan on the position after one turn, where a step toward free land changes nothing; charging each unit for its distance to the nearest cell not its side's makes each step of such a walk worth it, so idle units walk to the land they can take, and beats v025.
 change: The plan bot's evaluation charges each unit of a side on its active cells 1, 2, 3 or 4 for every step beyond the first to the nearest cell not its side's, capped at 4 or 6 steps, for units of every level or level 1 only.
 release: ice-and-fire-v026
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +59.2 [+36.4, +82.6] at CodinGame's limits
+pairs: 320
+full_time: +59.2 [+36.4, +82.6] (the SPRT's own, ADR 0042), no fault of v026 in 640 games (1 timeout of v025)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -79,10 +79,26 @@ Every form gained about +50 or more: units that walk toward the land they
 can take, as the top bots' do, are worth more than any weight of the term.
 The candidate is s2 (`IDLE_STEP = 2`, `IDLE_CAP = 4`, every level), whose
 bundle is the same, byte for byte, as the screened commit's. The term
-costs the search about 15% of its speed (41.6 tries a millisecond at a
-fixed number of tries, against v025's 48.5), which the screenings, at
-CodinGame's speed, include.
+costs about 8% of one evaluation (0.14 of 1.77 µs over 600 positions, the
+review's timing); the determinism check's rate at 500 tries showed v026
+about 15% slower, but at 2,000 and 8,000 tries it was not, and the
+screenings, at CodinGame's speed, include the cost.
 
 ## SPRT
 
-Pending.
+Accepted on the pull request (run 43609146259, at 73b62b0b), at
+CodinGame's speed and real limit, in blocks of 10 pairs over 8 calibrated
+runners:
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v026 vs ice-and-fire-v025: 640 games, 320 complete pairs
+  ice-and-fire-v026: 374 wins, 0 draws, 266 losses (score 58.4%)
+  Elo of ice-and-fire-v026 over ice-and-fire-v025: +59.2 [+36.4, +82.6] (95%, from pairs)
+  pairs by ice-and-fire-v026's points (0, 1/2, 1, 3/2, 2): [33, 0, 200, 0, 87]
+  ice-and-fire-v026 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v025 faults: 1 timeouts, 0 crashes, 0 invalid answers
+Checked 4 rounds of 8 blocks (32 blocks counted, 72 left out)
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 4.10 (bounds -2.94, 2.94) after 320 pairs
+Verdict: ACCEPTED: ice-and-fire-v026 is stronger than ice-and-fire-v025
+```
