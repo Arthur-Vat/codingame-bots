@@ -112,6 +112,42 @@ Examples of the largest in v026's games (CodinGame replays): [921571527](https:/
 
 **What follows.** The structure these replies exploit is a *cheapest cut*: the set of our cells whose capture, at its price (10 for an empty cell, 20 or 30 for one held by a unit, 30 through a tower), separates the most land from our HQ. A max-flow on our territory's graph (144 cells) finds exactly and fast the cheapest set of cells whose capture isolates a *given* region from our HQ, double links included; trying candidate regions (for example each region beyond our joints and thin links, or the land within a few steps of the enemy's) against the opponent's gold would say what it can sever next turn. It leaves out the chain of trainings needed to reach the cut cells, which would have to be added to the price. It could serve both as a term of the evaluation (the land the opponent can afford to cut off, beyond the single joints counted today) and as a reply generator (the cut cells, then the chain of trainings that reaches them). This is a proposal, not tested: E064 showed that adding replies costs more than it saves unless they are the ones a strong opponent plays.
 
+## 3c. A measure of the threat: the cheapest affordable cut
+
+Asked by the owner on 2026-11-14 ("Validate the measure first"): before any experiment, does the cheapest cut of our territory the opponent can pay predict the large misses better than what the search and the evaluation see today? `ice-and-fire-review`'s module `mincut` computes it at the end of each of our turns, with the opponent's gold at its start of turn: for each of our active cells, a max-flow over our territory gives the cheapest set of cells whose capture separates it from our HQ (double links included); the cut removes those cells and all it disconnects; the measure is the most cells removed by a cut the gold pays for. Two prices of a capture were tried:
+
+- **the way free**: the cell's capture price alone (10 empty, 20 a level-1 unit, 30 a level-2 or 3 unit or a cell a tower holds or protects);
+- **the way paid** (`reach_prices`): that price plus the cheapest chain of trainings from the enemy's active land to a neighbour of the cell (neutral cells 10, ours at their price), or nothing at all when an enemy unit next to the cell can step onto it.
+
+The area under the ROC curve (0.5: no better than chance) over the 8,264 normal plies, for the 160 large misses and for the 378 replies that removed 10 or more of our cells:
+
+| Predictor, at the end of our turn | Large miss | Reply removes 10+ cells |
+| --- | ---: | ---: |
+| Cheapest affordable cut, the way paid | **0.743** | 0.867 |
+| The search's cut finder (its largest cut) | 0.688 | 0.817 |
+| The larger of the two | **0.743** | **0.880** |
+| The way-paid cut less the finder's | 0.651 | 0.625 |
+| Best affordable single capture | 0.605 | 0.677 |
+| Largest single-capture cut, any price (the evaluation's shape term) | 0.599 | 0.661 |
+| Cheapest affordable cut, the way free | 0.597 | 0.614 |
+
+By the way-paid cut's size:
+
+| Cut removes | Plies | Reply removes 10+ cells | Large miss | Game lost |
+| --- | ---: | ---: | ---: | ---: |
+| 0 (none affordable) | 2,552 | 0% | 0.5% | 40% |
+| 1 to 4 | 3,290 | 2% | 1.2% | 51% |
+| 5 to 9 | 1,819 | 7% | 3.8% | 55% |
+| 10 to 14 | 427 | 28% | 5.4% | 59% |
+| 15 or more | 176 | 42% | 8.5% | 66% |
+
+- **The way must be paid.** With the way free, nearly all our land is cuttable (median 35 cells for the large misses), and the measure predicts little: the two cells next to our HQ cut everything, but the opponent cannot reach them.
+- **With the way paid, it is the best single predictor** of the large misses and of large removals, ahead of the search's own cut finder, and it adds to it (0.880 for the two together). Large misses are 17 times as frequent where it finds a cut of 15 cells or more as where it finds none.
+- **It does not catch them all**: its cut is at least as large as the real one in 27% of the large misses (median 6 cells against 11 removed). Each cut cell pays for its own way from the enemy's land, so two links reached by one chain are charged twice; a model that charges a shared path once would see more.
+- **It adds little to the result beyond the evaluation**: at an equal evaluation after our turn (game turns 8 to 24), plies with a cut of 5 cells or more were lost as often as those without, or up to 9 points more (50 to 150: 51% against 42%).
+
+What would follow, as an experiment for the owner: use the way-paid cheapest cut as one more modeled reply (the chains of trainings to its cells, then their captures), rather than as a term of the evaluation, which it would slow (a shortest-path pass and up to one max-flow per active cell for every plan scored).
+
 ## 4. The evaluation against the result
 
 Share of games lost, by the evaluation after the reply, game turns 8 to 17:

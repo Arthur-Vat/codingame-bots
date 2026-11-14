@@ -19,6 +19,7 @@
 mod bank;
 mod codingame;
 mod judge;
+mod mincut;
 mod opening;
 mod profiles;
 mod profiling;

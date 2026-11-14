@@ -286,6 +286,22 @@ pub struct Shape {
     pub captured_depth: i64,
     pub captured_hq_steps: i64,
     pub towers_captured: i64,
+    /// The cut of our territory removing the most cells that the
+    /// opponent's gold at its start pays for (`mincut::best_affordable`,
+    /// which ignores the chain needed to reach the cut): the cells it
+    /// removes and those it captures; 0 when none is affordable.
+    pub cheap_cut: i64,
+    pub cheap_cut_links: i64,
+    /// The most cells one capture the opponent can pay removes (a joint
+    /// and what it cuts off, or a lone cell): the single weak points the
+    /// evaluation's shape term counts, priced.
+    pub cheap_joint: i64,
+    /// [`Shape::cheap_cut`] with the way to the cut paid
+    /// (`mincut::reach_prices`: a cell an enemy unit can step onto is free,
+    /// any other costs its price plus the cheapest chain of trainings from
+    /// the enemy's land to it): cells removed and captured.
+    pub reach_cut: i64,
+    pub reach_cut_links: i64,
 }
 
 /// The shape of `reply`, played from `start` (the opponent to act after our
@@ -349,6 +365,21 @@ pub fn shape(before: &State, start: &State, reply: &[Command], me: usize) -> Sha
         .unwrap_or(-1);
     let towers = start.towers() & active;
     out.towers_captured = i64::from((towers & captured).count());
+    let budget = start.gold(them);
+    if let Some(cut) = crate::mincut::best_affordable(start, me, budget) {
+        out.cheap_cut = cut.cells;
+        out.cheap_cut_links = cut.links;
+    }
+    let prices = crate::mincut::reach_prices(start, me);
+    if let Some(cut) = crate::mincut::best_with(start, me, budget, &prices) {
+        out.reach_cut = cut.cells;
+        out.reach_cut_links = cut.links;
+    }
+    for cell in active.iter() {
+        if cell != ice_and_fire_engine::HQ[me] && crate::mincut::price(start, me, cell) <= budget {
+            out.cheap_joint = out.cheap_joint.max(severed[cell] + 1);
+        }
+    }
     out.towers = i64::from(towers.count());
     out.towers_lost = i64::from((towers & removed).count());
     out
@@ -636,7 +667,7 @@ pub fn run(request: &Request) -> Result<String, String> {
 
 /// One row a ply.
 pub fn rows_csv(rows: &[Row]) -> String {
-    let mut out = String::from("game_id,ply,turn,seat,opponent,top,won,turns_left,expected,actual,pass,surprise,modeled,modeled_best,same_reply,taken,cut,units_lost,train1,train2,train3,moves,towers,mines,spent,hq,hq_margin,without_moves,finder,finder_wide,gold,income,cells,units,opp_gold,opp_income,opp_cells,opp_units,new_lost,joints,joint_max,joint_hit,depth,hq_steps,gold_left,opp_gold_before,towers_held,towers_lost,move_captures,captured_depth,captured_hq_steps,towers_captured,reply\n");
+    let mut out = String::from("game_id,ply,turn,seat,opponent,top,won,turns_left,expected,actual,pass,surprise,modeled,modeled_best,same_reply,taken,cut,units_lost,train1,train2,train3,moves,towers,mines,spent,hq,hq_margin,without_moves,finder,finder_wide,gold,income,cells,units,opp_gold,opp_income,opp_cells,opp_units,new_lost,joints,joint_max,joint_hit,depth,hq_steps,gold_left,opp_gold_before,towers_held,towers_lost,move_captures,captured_depth,captured_hq_steps,towers_captured,cheap_cut,cheap_cut_links,cheap_joint,reach_cut,reach_cut_links,reply\n");
     for r in rows {
         let e = &r.effect;
         let j = &r.judged;
@@ -696,6 +727,11 @@ pub fn rows_csv(rows: &[Row]) -> String {
                     h.captured_depth,
                     h.captured_hq_steps,
                     h.towers_captured,
+                    h.cheap_cut,
+                    h.cheap_cut_links,
+                    h.cheap_joint,
+                    h.reach_cut,
+                    h.reach_cut_links,
                 ]
                 .map(|v| v.to_string())
                 .join(",")
