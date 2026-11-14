@@ -141,11 +141,11 @@ const OPENING_CROWD: i64 = 2;
 
 /// The game turn by which a purchase of the opening must pay back
 /// (`Params::horizon`, E056): 15 in v023, as in v003's opening.
-const OPENING_HORIZON: i64 = 21;
+const OPENING_HORIZON: i64 = 15;
 
 /// The cells a unit is expected to take after the territories meet
 /// (`Params::after_contact`, E056): 0 in v023.
-const OPENING_AFTER_CONTACT: i64 = 0;
+const OPENING_AFTER_CONTACT: i64 = 2;
 
 /// The widest beam of the opening's plans when a turn has no deadline
 /// (`CG_FIXED_ITERS`, tests only; on CodinGame the plans search until the
