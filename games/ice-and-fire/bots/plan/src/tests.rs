@@ -717,21 +717,23 @@ fn a_mine_counts_more_with_a_larger_territory() {
     assert_eq!(own(&start, 0), 0);
     // A mine on (5, 0), out of blue's reach: the shared evaluation counts
     // what it changes (15 gold less, 4 of income more), the bot's own adds
-    // the bonus of a side with 21 cells, and takes as much from blue's
-    // score.
+    // the bonus of a side with 21 cells (5), and E058's 6 since the
+    // position is read early in the game (by turn 15), and takes as much
+    // from blue's score.
     let mut state = start.clone();
     let income = state.income(0);
     assert!(state.apply(Command::BuildMine { x: 5, y: 0 }));
     assert_eq!((state.gold(0), state.income(0)), (15, income + 4));
     assert_eq!((threatened(&state, 0), threatened(&state, 1)), (1, 1));
-    assert_eq!(own(&state, 0), 5);
-    assert_eq!(own(&state, 1), -5);
+    assert_eq!(own(&state, 0), 5 + 6);
+    assert_eq!(own(&state, 1), -(5 + 6));
     // A mine on (11, 9), which blue can take at its next turn, adds nothing.
     let mut state = start.clone();
     assert!(state.apply(Command::BuildMine { x: 11, y: 9 }));
     assert_eq!((threatened(&state, 0), threatened(&state, 1)), (1, 1));
     assert_eq!(own(&state, 0), 0);
-    // On a territory of 3 cells a mine counts nothing more either.
+    // On a territory of 3 cells E033's bonus is nothing: the mine counts
+    // only E058's 6 early in the game.
     let rows = [
         "OOO.........",
         "............",
@@ -748,7 +750,7 @@ fn a_mine_counts_more_with_a_larger_territory() {
     ];
     let mut state = position_with_spots("1\n1 0\n", rows, [30, 20], &[]);
     assert!(state.apply(Command::BuildMine { x: 1, y: 0 }));
-    assert_eq!(own(&state, 0), 0);
+    assert_eq!(own(&state, 0), 6);
 }
 
 /// The towers among the actions of the player to act.
@@ -1125,4 +1127,28 @@ fn the_opening_buys_units_that_pay_back_by_turn_18() {
     assert_eq!(crate::OPENING_HORIZON, 18);
     assert!(unit_return(18 - 6, 1) > 0);
     assert!(unit_return(15 - 6, 1) <= 0);
+}
+
+#[test]
+fn a_safe_mine_counts_more_early_in_the_middle_game() {
+    use crate::eval::{eval, threatened, EARLY_MINE_BONUS, EARLY_MINE_PER_CELLS, EARLY_MINE_TURN};
+    // E058: until game turn 15 a safe mine counts 6 more than E033's bonus.
+    assert_eq!((EARLY_MINE_TURN, EARLY_MINE_BONUS), (15, 6));
+    assert_eq!(EARLY_MINE_PER_CELLS, crate::eval::MINE_PER_CELLS);
+    // As in `a_mine_counts_more_with_a_larger_territory`: a mine on (5, 0),
+    // out of blue's reach, with red's 21 cells. The position is read at
+    // game turn 0, so the early bonus applies: 21 / 4 + 6 = 11.
+    let own = |state: &State, seat: usize| {
+        eval(state, seat)
+            - ice_and_fire_tactics::eval::evaluate(state, seat)
+            - crate::eval::shape(state, seat)
+            - standing_term(state, seat)
+    };
+    let spots = "2\n5 0\n11 9\n";
+    let start = position_with_spots(spots, CORRIDOR, [30, 20], &[]);
+    assert!(start.game_turn() <= EARLY_MINE_TURN);
+    let mut state = start.clone();
+    assert!(state.apply(Command::BuildMine { x: 5, y: 0 }));
+    assert_eq!((threatened(&state, 0), threatened(&state, 1)), (1, 1));
+    assert_eq!(own(&state, 0) - own(&start, 0), 21 / 4 + 6);
 }
