@@ -75,7 +75,7 @@ pub const DEEP_EVALS: u64 = 150;
 pub const DEEP_CUTS: usize = 1;
 /// Whether a plan is chosen by the sum of its final score and its two-turn
 /// score, rather than by the two-turn score alone.
-pub const DEEP_BLEND: bool = false;
+pub const DEEP_BLEND: bool = true;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
