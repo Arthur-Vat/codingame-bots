@@ -119,14 +119,14 @@ const OPENING_TURNS: usize = 9;
 /// out (E010), with cells 3 and income 1 rather than 4 and 3 (E034): the
 /// opening spends on land rather than on income.
 const OBJECTIVE: Objective = Objective {
-    cells: 3,
-    income: 1,
-    gold: 0,
-    cut: 2,
-    joints: 2,
-    tips: 2,
-    reach: 6,
-    voronoi: 1,
+    cells: 6,
+    income: 2,
+    gold: 1,
+    cut: 4,
+    joints: 4,
+    tips: 4,
+    reach: 12,
+    voronoi: 2,
 };
 
 /// The opening uses a mine spot only when the enemy's territory is more than
