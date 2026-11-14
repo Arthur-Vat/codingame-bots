@@ -1,7 +1,7 @@
 ---
 id: E063
 date: 2026-11-14
-pull_request: "#NN"
+pull_request: "#338"
 parent: ice-and-fire-v026
 hypothesis: The search scores a plan by the worst of the opponent replies it models, and in v026's CodinGame games it models about twice the damage the real reply does (the real reply is worse than every modeled one in about 1 ply in 10); at an equal evaluation our losses hold more gold and less land than our wins, as a search that over-defends would; scoring a plan by a blend of its worst reply and the opponent passing makes the search pay less for threats that do not come, and beats v026.
 change: None released. Screening only: the plan bot's search scoring a plan by 3, 2 or 1 quarters of its worst modeled reply and the rest of the evaluation if the opponent passes (4 quarters, the worst alone, in v026).
