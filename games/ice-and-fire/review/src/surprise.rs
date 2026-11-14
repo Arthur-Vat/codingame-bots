@@ -28,6 +28,7 @@ use crate::bank::block_reply;
 use crate::profiles::{newest_snapshot, prepare, read_index, read_ranks, Request as Base};
 use crate::replay::{replay, Game};
 use crate::trace::hq_cost;
+use ice_and_fire_opening::econ::distances;
 use ice_and_fire_opening::middle;
 use ice_and_fire_tactics::cut::cuts;
 use ice_and_fire_tactics::eval::WIN;
@@ -250,6 +251,109 @@ pub fn effect(start: &State, reply: &[Command], me: usize) -> Effect {
     e
 }
 
+/// The shape of the threat a reply carried out, for the study of the
+/// replies the search missed.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Shape {
+    /// Of our active cells the reply removed (taken or cut off), those we
+    /// did not own at the start of our turn: land just taken.
+    pub new_lost: i64,
+    /// Our active cells, at the end of our turn, whose capture alone cuts
+    /// others off from our HQ (joints), and the most cells one cuts off.
+    pub joints: i64,
+    pub joint_max: i64,
+    /// The most cells cut off by one capture among the cells the reply took
+    /// (0 when it took no joint).
+    pub joint_hit: i64,
+    /// The most steps from the enemy's land, before the reply, to a cell it
+    /// removed: how deep it reached.
+    pub depth: i64,
+    /// The fewest steps from our HQ to a cell it removed.
+    pub hq_steps: i64,
+    /// Gold at the reply's start: ours (left after our turn) and the
+    /// opponent's.
+    pub our_gold: i64,
+    pub opp_gold: i64,
+    /// Our towers on active cells at the end of our turn, and those on the
+    /// cells the reply removed.
+    pub towers: i64,
+    pub towers_lost: i64,
+    /// The reply's moves that stepped onto a cell of ours.
+    pub move_captures: i64,
+    /// The same measures over the cells the reply captured only (not those
+    /// it cut off): the most steps from the enemy's land, the fewest from
+    /// our HQ, and our towers among them.
+    pub captured_depth: i64,
+    pub captured_hq_steps: i64,
+    pub towers_captured: i64,
+}
+
+/// The shape of `reply`, played from `start` (the opponent to act after our
+/// turn), against `me`, whose turn started at `before`.
+pub fn shape(before: &State, start: &State, reply: &[Command], me: usize) -> Shape {
+    let them = 1 - me;
+    let mut state = start.clone();
+    let mut out = Shape {
+        our_gold: start.gold(me),
+        opp_gold: start.gold(them),
+        ..Shape::default()
+    };
+    for &command in reply {
+        if state.outcome().is_some() {
+            break;
+        }
+        // A move goes one step toward its target: it is counted by the
+        // cell the unit lands on.
+        let units = state.units(them);
+        let accepted = state.apply(command);
+        if accepted && matches!(command, Command::Move { .. }) {
+            let landed = state.units(them).and_not(units);
+            out.move_captures += i64::from((landed & start.owned(me)).count());
+        }
+    }
+    let active = start.active(me);
+    let removed = active.and_not(state.active(me));
+    out.new_lost = i64::from(removed.and_not(before.owned(me)).count());
+    let severed = ice_and_fire_opening::solo::severed(start, me);
+    for cell in active.iter() {
+        if severed[cell] > 0 {
+            out.joints += 1;
+            out.joint_max = out.joint_max.max(severed[cell]);
+        }
+    }
+    for cell in (removed & state.owned(them)).iter() {
+        out.joint_hit = out.joint_hit.max(severed[cell]);
+    }
+    let from_enemy = distances(start, start.owned(them));
+    let from_hq = distances(start, Bits::cell(ice_and_fire_engine::HQ[me]));
+    out.hq_steps = removed
+        .iter()
+        .map(|c| i64::from(from_hq[c]))
+        .min()
+        .unwrap_or(-1);
+    out.depth = removed
+        .iter()
+        .map(|c| i64::from(from_enemy[c]))
+        .max()
+        .unwrap_or(-1);
+    let captured = removed & state.owned(them);
+    out.captured_depth = captured
+        .iter()
+        .map(|c| i64::from(from_enemy[c]))
+        .max()
+        .unwrap_or(-1);
+    out.captured_hq_steps = captured
+        .iter()
+        .map(|c| i64::from(from_hq[c]))
+        .min()
+        .unwrap_or(-1);
+    let towers = start.towers() & active;
+    out.towers_captured = i64::from((towers & captured).count());
+    out.towers = i64::from(towers.count());
+    out.towers_lost = i64::from((towers & removed).count());
+    out
+}
+
 /// One of our plies, with what the bot said and what the reply did.
 #[derive(Clone, Debug)]
 pub struct Row {
@@ -266,6 +370,7 @@ pub struct Row {
     pub turns_left: u32,
     pub judged: Judged,
     pub effect: Effect,
+    pub shape: Shape,
     pub reply: String,
 }
 
@@ -511,6 +616,7 @@ pub fn run(request: &Request) -> Result<String, String> {
             turns_left: last_turn.saturating_sub(turn),
             judged: judged.clone(),
             effect: effect(start, reply, *seat),
+            shape: shape(&game.steps[p.ply].state, start, reply, *seat),
             reply: answer_line(reply),
         });
     }
@@ -530,13 +636,13 @@ pub fn run(request: &Request) -> Result<String, String> {
 
 /// One row a ply.
 pub fn rows_csv(rows: &[Row]) -> String {
-    let mut out = String::from("game_id,ply,turn,seat,opponent,top,won,turns_left,expected,actual,pass,surprise,modeled,modeled_best,same_reply,taken,cut,units_lost,train1,train2,train3,moves,towers,mines,spent,hq,hq_margin,without_moves,finder,finder_wide,gold,income,cells,units,opp_gold,opp_income,opp_cells,opp_units,reply\n");
+    let mut out = String::from("game_id,ply,turn,seat,opponent,top,won,turns_left,expected,actual,pass,surprise,modeled,modeled_best,same_reply,taken,cut,units_lost,train1,train2,train3,moves,towers,mines,spent,hq,hq_margin,without_moves,finder,finder_wide,gold,income,cells,units,opp_gold,opp_income,opp_cells,opp_units,new_lost,joints,joint_max,joint_hit,depth,hq_steps,gold_left,opp_gold_before,towers_held,towers_lost,move_captures,captured_depth,captured_hq_steps,towers_captured,reply\n");
     for r in rows {
         let e = &r.effect;
         let j = &r.judged;
         let _ = writeln!(
             out,
-            "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},\"{}\"",
+            "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},\"{}\"",
             r.game_id,
             r.ply,
             r.turn,
@@ -573,6 +679,27 @@ pub fn rows_csv(rows: &[Row]) -> String {
                 .map(i64::to_string)
                 .collect::<Vec<_>>()
                 .join(","),
+            {
+                let h = &r.shape;
+                [
+                    h.new_lost,
+                    h.joints,
+                    h.joint_max,
+                    h.joint_hit,
+                    h.depth,
+                    h.hq_steps,
+                    h.our_gold,
+                    h.opp_gold,
+                    h.towers,
+                    h.towers_lost,
+                    h.move_captures,
+                    h.captured_depth,
+                    h.captured_hq_steps,
+                    h.towers_captured,
+                ]
+                .map(|v| v.to_string())
+                .join(",")
+            },
             r.reply.replace('"', "'")
         );
     }

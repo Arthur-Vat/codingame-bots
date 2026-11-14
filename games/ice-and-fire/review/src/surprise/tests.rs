@@ -81,10 +81,54 @@ fn the_csv_has_a_row_a_ply() {
         )
         .expect("read"),
         effect: Effect::default(),
+        shape: Shape::default(),
         reply: "WAIT".to_string(),
     };
     assert_eq!(row.surprise(), -60);
     let csv = rows_csv(&[row]);
     assert_eq!(csv.lines().count(), 2);
     assert!(csv.lines().nth(1).expect("a row").contains(",-60,"));
+}
+
+#[test]
+fn the_shape_of_a_capture_at_the_tip_of_a_line() {
+    // As in the effect test: a red trail ends at a unit next to blue's.
+    let mut state = State::new(&[false; ice_and_fire_engine::CELLS], &[], League::Bronze);
+    let unit = |s: &State, seat: usize| s.units(seat).iter().next();
+    for _ in 0..40 {
+        let seat = state.to_act();
+        let (start, target) = if seat == 0 {
+            ((1, 0), (5, 5))
+        } else {
+            ((10, 11), (6, 5))
+        };
+        let commands = match unit(&state, seat).and_then(|c| state.unit_id(c)) {
+            None => vec![Command::Train {
+                level: 1,
+                x: start.0,
+                y: start.1,
+            }],
+            Some(id) => vec![Command::Move {
+                id,
+                x: target.0,
+                y: target.1,
+            }],
+        };
+        state.play_turn(&commands);
+    }
+    let before = state.clone();
+    state.end_turn();
+    let red = unit(&state, 0).expect("a red unit");
+    let (x, y) = ((red % 12) as u8, (red / 12) as u8);
+    let s = shape(&before, &state, &[Command::Train { level: 2, x, y }], 0);
+    // The tip of a line is no joint; the trail's other cells are.
+    assert_eq!(s.joint_hit, 0);
+    assert!(s.joints > 0);
+    assert_eq!(
+        (s.towers, s.towers_lost, s.move_captures, s.new_lost),
+        (0, 0, 0, 0)
+    );
+    assert_eq!(s.depth, 1);
+    assert!(s.hq_steps > 5);
+    assert_eq!(s.opp_gold, state.gold(1));
 }
