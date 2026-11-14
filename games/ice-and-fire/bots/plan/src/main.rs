@@ -66,7 +66,7 @@ use crate::search::Limit;
 
 /// The time of a turn at CodinGame's limits, milliseconds: 50 ms, less a
 /// margin for the input, the output and a busy machine.
-const BUDGET_MS: f64 = 40.0;
+const BUDGET_MS: f64 = 45.0;
 /// The first turn's time, of CodinGame's 1,000 ms (E010); the opening's
 /// plan stops at 76% of it, about 610 ms.
 const FIRST_BUDGET_MS: f64 = 800.0;
