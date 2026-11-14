@@ -60,8 +60,8 @@ The less the worst reply counts, the more the bot loses, steeply.
   about half the modeled damage on average. Giving a quarter of the score
   to the opponent passing is already no better, half loses 42 Elo, three
   quarters 134. The worst-case score is what keeps the plans safe against
-  the replies a strong opponent does find: pessimism is not the cause of
-  our losing land.
+  the replies a strong opponent does find: this blend, at least, does
+  not win back the land we lose.
 - The overconfidence study's other reading stands: what the search misses
   is rare large cuts it cannot construct (E064 tries to model them).
 
