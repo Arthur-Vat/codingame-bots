@@ -133,7 +133,7 @@ const OBJECTIVE: Objective = Objective {
 
 /// The weight of each neutral cell the opening's plans reach before the
 /// enemy can (E061, `solo::race_halves`): 0 in v026.
-const OPENING_RACE: i64 = 2;
+const OPENING_RACE: i64 = 0;
 
 /// The game turns the enemy is taken to need beyond its steps from its HQ
 /// to reach a cell (E061).
@@ -142,10 +142,10 @@ const OPENING_RACE_OFFSET: i64 = 0;
 /// How much more the opening's rules value a cell the enemy could reach at
 /// most [`OPENING_RULES_RACE_SLACK`] turns after we can (E061,
 /// `econ::Params::race`): 0 in v026.
-const OPENING_RULES_RACE: i64 = 2;
+const OPENING_RULES_RACE: i64 = 0;
 
 /// The turns to spare under which a cell is urgent (E061).
-const OPENING_RULES_RACE_SLACK: i64 = 1;
+const OPENING_RULES_RACE_SLACK: i64 = 0;
 
 /// The opening uses a mine spot only when the enemy's territory is more than
 /// this many steps from it: `u8::MAX`, so it builds no mine (E034; v003's
