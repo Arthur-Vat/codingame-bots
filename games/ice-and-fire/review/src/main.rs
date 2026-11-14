@@ -11,12 +11,14 @@
 //! ice-and-fire-review codingame --out DIR [--kind ranking] [--strict] LOG.json... > check.md
 //! ice-and-fire-review codingame-report --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--our-seat 0|1] [--top N] --out DIR
 //! ice-and-fire-review codingame-moments --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--our-seat 0|1] [--top N] [--examples K] [--out DIR] > moments.md
+//! ice-and-fire-review codingame-opening --data DIR --me NAME [--kinds ranking,test] [--our-seat 0|1] [--top N] [--turns T] > opening.md
 //! ice-and-fire-review codingame-judge --data DIR --me NAME --judge BIN [--release NAME] [--players A,B | --top N] [--tries N] [--limit PLIES] [--jobs N] --out DIR
 //! ```
 
 mod bank;
 mod codingame;
 mod judge;
+mod opening;
 mod profiles;
 mod profiling;
 mod replay;
@@ -238,6 +240,43 @@ enum Command {
         /// this folder, instead of printing the Markdown report.
         #[arg(long)]
         out: Option<PathBuf>,
+    },
+    /// Prints the opening study of the CodinGame games (stage S0 of the
+    /// goal-directed opening): by seat, for our releases, the top players
+    /// and the others, what each unit turn did (took a cell, or why not),
+    /// what the trainings took afterwards, and the cells held in each zone
+    /// of the map. Reads the data directory as `codingame-report`.
+    CodingameOpening {
+        /// The game's data directory, for example `data/ice-and-fire`.
+        #[arg(long)]
+        data: PathBuf,
+        /// Our nickname on CodinGame, for games whose index has no seat.
+        #[arg(long)]
+        me: String,
+        /// The kinds of games to use, separated by commas.
+        #[arg(long, value_delimiter = ',', default_values_t = ["ranking".to_string(), "test".to_string(), "replay".to_string()])]
+        kinds: Vec<String>,
+        /// Only the games of this batch.
+        #[arg(long)]
+        batch: Option<String>,
+        /// Only our games played by this release (see `codingame-report`).
+        #[arg(long)]
+        release: Option<String>,
+        /// Only the games in which we sat in this seat (see `codingame-report`).
+        #[arg(long)]
+        our_seat: Option<usize>,
+        /// The top N of the snapshot form a group of their own.
+        #[arg(long, default_value_t = 10)]
+        top: usize,
+        /// The last game turn studied.
+        #[arg(long, default_value_t = 12)]
+        turns: u32,
+        /// The leaderboard snapshot, instead of the newest in the data directory.
+        #[arg(long)]
+        leaderboard: Option<PathBuf>,
+        /// Games replayed at the same time.
+        #[arg(long, default_value_t = 4)]
+        jobs: usize,
     },
     /// Writes, to a folder, for every ply of chosen CodinGame players, what the plan
     /// bot's search would play there and how it scores its own plan and the
@@ -511,6 +550,36 @@ fn run(cli: Cli) -> Result<(), String> {
                 },
                 examples,
                 out.as_deref(),
+            )?;
+            print!("{text}");
+            Ok(())
+        }
+        Command::CodingameOpening {
+            data,
+            me,
+            kinds,
+            batch,
+            release,
+            our_seat,
+            top,
+            turns,
+            leaderboard,
+            jobs,
+        } => {
+            let text = opening::run(
+                &profiles::Request {
+                    data,
+                    me,
+                    kinds,
+                    batch,
+                    release,
+                    our_seat,
+                    top,
+                    players: Vec::new(),
+                    leaderboard,
+                    jobs,
+                },
+                turns,
             )?;
             print!("{text}");
             Ok(())
