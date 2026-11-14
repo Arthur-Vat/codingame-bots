@@ -1,0 +1,1 @@
+{"game_id":921348636,"game_options":"seed=-535018977311340740","agents":[{"index":0,"name":"teccles","agent_id":2431241},{"index":1,"name":"Tarleya","agent_id":6881380,"me":true}],"frames":[{"frame":0},{"frame":1,"agent":0,"summary":"$0 timeout!"}],"scores":[-1.0,20.0],"ranking":[1,0],"tooltips":[{"frame":1,"text":"$0 timeout!"}]}
