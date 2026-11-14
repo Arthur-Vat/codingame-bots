@@ -65,6 +65,23 @@ pub const MOVER_LEVEL: u8 = 2;
 /// of a cell's value of 7), 5 since E037, which finds more of them.
 pub const THREAT_QUARTERS: i64 = 5;
 
+/// What a threatened cell costs its side, in quarters, from game turn
+/// [`EXPOSURE_TURNS`]`.0` to `.1` (E059): [`THREAT_QUARTERS`] in v024.
+pub const EXPOSURE_QUARTERS: i64 = THREAT_QUARTERS;
+
+/// The game turns of [`EXPOSURE_QUARTERS`] (E059).
+pub const EXPOSURE_TURNS: (u32, u32) = (10, 15);
+
+/// What a threatened cell costs in `state`, in quarters (E037, E059).
+fn threat_quarters(state: &State) -> i64 {
+    let turn = state.game_turn();
+    if turn >= EXPOSURE_TURNS.0 && turn <= EXPOSURE_TURNS.1 {
+        EXPOSURE_QUARTERS
+    } else {
+        THREAT_QUARTERS
+    }
+}
+
 /// The units of `seat` whose moves count in [`exposed`]: those on its active
 /// cells of at least [`MOVER_LEVEL`], all of which may move at its next turn.
 fn movers(state: &State, seat: usize) -> Bits {
@@ -314,7 +331,7 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         + shape(state, seat)
         + strong_units(state, seat)
         - strong_units(state, 1 - seat)
-        + THREAT_QUARTERS * threats / 4
+        + threat_quarters(state) * threats / 4
         + mines(state, seat, ours)
         - mines(state, 1 - seat, theirs)
 }
