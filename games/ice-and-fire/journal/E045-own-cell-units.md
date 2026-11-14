@@ -11,7 +11,7 @@ elo: +30.5 [+14.1, +47.0] at CodinGame's limits
 pairs: 400
 full_time: +30.5 [+14.1, +47.0] (the SPRT's own, ADR 0042), 3 timeouts of v022 in 800 games (v021 none), slowest answer 625.2 ms (v022's first turn)
 decision: promoted
-cg_rank: not reported
+cg_rank: Legend, 10th of 87 (10th of 926 overall), 2026-11-14: submitted through the API on the owner's approval (submission 41710997)
 ---
 
 Asked by the owner on 2026-11-14 ("Go on with #2 in parallel"), the
