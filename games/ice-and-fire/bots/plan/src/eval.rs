@@ -72,7 +72,7 @@ pub const LEAD_CELLS: Option<i64> = Some(3);
 
 /// What a threatened cell of a side that leads by [`LEAD_CELLS`] costs, in
 /// quarters (E047).
-pub const LEAD_THREAT_QUARTERS: i64 = 8;
+pub const LEAD_THREAT_QUARTERS: i64 = 12;
 
 /// The lead of `seat` in active cells: its active cells less the enemy's.
 fn lead(state: &State, seat: usize) -> i64 {
