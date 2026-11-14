@@ -70,7 +70,7 @@ pub const THREAT_QUARTERS: i64 = 5;
 pub const EXPOSURE_QUARTERS: i64 = 7;
 
 /// The game turns of [`EXPOSURE_QUARTERS`] (E059).
-pub const EXPOSURE_TURNS: (u32, u32) = (0, 200);
+pub const EXPOSURE_TURNS: (u32, u32) = (10, 15);
 
 /// What a threatened cell costs in `state`, in quarters (E037, E059).
 fn threat_quarters(state: &State) -> i64 {
