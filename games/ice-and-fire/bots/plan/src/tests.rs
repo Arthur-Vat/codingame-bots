@@ -106,28 +106,6 @@ fn standing_term(state: &State, seat: usize) -> i64 {
     standing(margin(state, seat)) - standing(margin(state, 1 - seat))
 }
 
-/// The term of E049 in `seat`'s score: what the pressure term of a side
-/// behind by `BEHIND_CELLS` active cells loses when it counts
-/// `BEHIND_GOLD_QUARTERS` quarters of its gold, its own less the enemy's
-/// (margins without the units' moves, as in [`standing_term`]).
-fn behind_term(state: &State, seat: usize) -> i64 {
-    use crate::eval::{BEHIND_CELLS, BEHIND_GOLD_QUARTERS};
-    use ice_and_fire_tactics::eval::margin;
-    let side = |side: usize| {
-        let lead =
-            i64::from(state.active(side).count()) - i64::from(state.active(1 - side).count());
-        let margin = margin(state, side);
-        match BEHIND_CELLS {
-            Some(cells) if margin != i64::MIN && lead <= cells => {
-                let cut = (4 - BEHIND_GOLD_QUARTERS) * state.gold(side) / 4;
-                (margin - cut).clamp(-200, 0) - margin.clamp(-200, 0)
-            }
-            _ => 0,
-        }
-    };
-    side(seat) - side(1 - seat)
-}
-
 /// Red holds the top row and the right column down to (11, 9); blue's HQ is
 /// alone at (11, 11) and (11, 10) is neutral.
 const CORRIDOR: [&str; 12] = [
@@ -655,12 +633,10 @@ fn cells_the_enemy_can_take_next_turn_count_less() {
     assert_eq!(threatened(&state, 1), 1);
     // Each threatened cell costs its side THREAT_QUARTERS / 4 (E023: 7/4,
     // 0.25 of a cell's value of 7; E037: 5/4). Red's standing threat on
-    // blue's HQ counts too (E042), and blue, far behind, counts less of its
-    // gold toward red's HQ (E049).
+    // blue's HQ counts too (E042).
     let shared = ice_and_fire_tactics::eval::evaluate(&state, 0)
         + crate::eval::shape(&state, 0)
-        + standing_term(&state, 0)
-        + behind_term(&state, 0);
+        + standing_term(&state, 0);
     assert_eq!(
         eval(&state, 0),
         shared + crate::eval::THREAT_QUARTERS * (1 - 2) / 4
@@ -731,7 +707,6 @@ fn a_mine_counts_more_with_a_larger_territory() {
             - ice_and_fire_tactics::eval::evaluate(state, seat)
             - crate::eval::shape(state, seat)
             - standing_term(state, seat)
-            - behind_term(state, seat)
     };
     // Red holds 21 cells of the corridor and blue its HQ alone. Blue (20
     // gold, income 1) reaches (11, 9) for 20, and red blue's HQ: one
@@ -1139,54 +1114,4 @@ fn no_training_is_offered_on_our_own_active_cells() {
     }
     assert!(trainings > 0, "no training at all");
     assert_eq!(towers_offered(&state), vec![(11, 9)]);
-}
-
-#[test]
-fn a_side_behind_counts_less_of_its_gold_toward_the_enemy_hq() {
-    use crate::eval::{
-        eval, shape, threatened, BEHIND_CELLS, BEHIND_GOLD_QUARTERS, THREAT_QUARTERS,
-    };
-    use ice_and_fire_tactics::eval::margin;
-    // E049: a side behind by 5 active cells or more counts three quarters
-    // of its gold in the shared pressure term.
-    assert_eq!((BEHIND_CELLS, BEHIND_GOLD_QUARTERS), (Some(-5), 3));
-    // Blue holds its HQ alone against red's 21 cells, and its chain to red's
-    // HQ along the corridor is within 200 gold of its 100 and income 1.
-    let state = position(CORRIDOR, [0, 100], &[]);
-    let blue = margin(&state, 1);
-    assert!((-200..0).contains(&blue), "blue's margin {blue}");
-    let pressure = |margin: i64| margin.clamp(-200, 0);
-    let cut = pressure(blue - 100 / 4) - pressure(blue);
-    assert!(cut < 0);
-    // The bot's evaluation is the shared one with E042's standing threat,
-    // the shape term and the threatened cells (no unit, no mine, no debt
-    // here), and blue's cut: red, ahead, keeps all of its gold.
-    for seat in [0, 1] {
-        let threats = threatened(&state, 1 - seat) - threatened(&state, seat);
-        let rest = bot_shared(&state, seat) + shape(&state, seat) + THREAT_QUARTERS * threats / 4;
-        let sign = if seat == 1 { 1 } else { -1 };
-        assert_eq!(eval(&state, seat) - rest, sign * cut, "seat {seat}");
-    }
-    // Behind by fewer than 5 cells, nothing changes: red holds 4 cells,
-    // blue 3.
-    let rows = [
-        "OOOO.......#",
-        "###.......##",
-        "###.......##",
-        "###.......##",
-        "###.......##",
-        "###.......##",
-        "###.......##",
-        "###.......##",
-        "###.......##",
-        "###........#",
-        "###.......XX",
-        "###.......#X",
-    ];
-    let near = position(rows, [0, 100], &[]);
-    let blue = margin(&near, 1);
-    assert!((-200..0).contains(&blue), "blue's margin {blue}");
-    let threats = threatened(&near, 0) - threatened(&near, 1);
-    let rest = bot_shared(&near, 1) + shape(&near, 1) + THREAT_QUARTERS * threats / 4;
-    assert_eq!(eval(&near, 1), rest);
 }

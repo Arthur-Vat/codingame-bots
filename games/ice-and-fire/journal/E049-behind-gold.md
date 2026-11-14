@@ -1,17 +1,17 @@
 ---
 id: E049
 date: 2026-11-14
-pull_request: "pending"
+pull_request: "#319"
 parent: ice-and-fire-v022
 hypothesis: From turn 7, v019 to v021's gold counts twice in the evaluation in 93% to 100% of its turns (the shared pressure term counts it toward the chain to the enemy HQ while that chain is within 200 gold, E042's standing threat beyond), and behind by 3 active cells or more it holds a median 61 gold at turns 13 to 20 and spends 18 a turn where the top 1 spends 33; E035 found counting less of that gold everywhere lost, as it values the threat on the HQ, so counting a half or three quarters of it only for a side that is behind by 3 or 8 cells, which is far from winning by a strike, makes the search spend when it must and beats v022.
-change: The plan bot's evaluation counts only 1, 2 or 3 quarters of a side's gold in the shared pressure term when the side is behind by at least 3 or 8 active cells.
-release: ice-and-fire-v023
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
-cg_rank: not reported
+change: None released. Screening and an SPRT only: the plan bot's evaluation counting only 1, 2 or 3 quarters of a side's gold in the shared pressure term when the side is behind by at least 1, 3, 5 or 8 active cells; the candidate counted 3 quarters from 5 cells behind.
+release: none
+sprt: inconclusive
+elo: +6.0 [+2.0, +9.9] at CodinGame's limits
+pairs: 8000
+full_time: +6.0 [+2.0, +9.9] (the SPRT's own, ADR 0042), no fault of either side in 16,000 games
+decision: dropped
+cg_rank: none
 ---
 
 Asked by the owner on 2026-11-14 ("Merge 316, and go on with all
@@ -85,10 +85,42 @@ pairs each over four runners:
 
 Only a small cut gained, as in E035, and only for a side clearly behind:
 from a deficit of 1 cell it gained nothing, from 3 or 5 cells about +10 to
-+14; half the gold or less lost. The candidate is b5g3 (`BEHIND_CELLS =
-Some(-5)`, `BEHIND_GOLD_QUARTERS = 3`), the best on 1,600 pairs, whose
-bundle is the same, byte for byte, as the screened commit's.
++14; half the gold or less lost. The candidate was b5g3 (`BEHIND_CELLS =
+Some(-5)`, `BEHIND_GOLD_QUARTERS = 3`), the best on 1,600 pairs, frozen
+as `ice-and-fire-v023`, whose bundle was the same, byte for byte, as the
+screened commit's.
 
 ## SPRT
 
-Pending.
+Inconclusive on the pull request (run 43572487157, at 38d311d2), at
+CodinGame's speed and real limit, in blocks of 10 pairs over 8 calibrated
+runners, after the cap of 8,000 pairs (ADR 0020), which counts as a
+failure (ADR 0012):
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v023 vs ice-and-fire-v022: 16000 games, 8000 complete pairs
+  ice-and-fire-v023: 8137 wins, 0 draws, 7863 losses (score 50.9%)
+  Elo of ice-and-fire-v023 over ice-and-fire-v022: +6.0 [+2.0, +9.9] (95%, from pairs)
+  pairs by ice-and-fire-v023's points (0, 1/2, 1, 3/2, 2): [1007, 0, 5849, 0, 1144]
+  ice-and-fire-v023 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v022 faults: 0 timeouts, 0 crashes, 0 invalid answers
+Checked 100 rounds of 8 blocks (800 blocks counted)
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 2.35 (bounds -2.94, 2.94) after 8000 pairs
+Verdict: INCONCLUSIVE after 8000 pairs
+```
+
+The release, its readable copy and the bot change were removed: the pull
+request holds the journal entry alone.
+
+## What was learned
+
+Counting less of a side's gold toward the enemy HQ when it is far behind
+gains something, about +6 Elo (the interval excludes 0), but less than the
+10 the SPRT asks for; the screening's +14 on 1,600 pairs was the high end
+of its interval, as is usual for the best of several variants. Only a
+small cut for a side clearly behind helps, as in E035: the gold the
+pressure term counts is mostly a real threat, and our idle gold in the
+losses to the top 10 is not mainly this term's doing. A larger lever is
+needed for the gap the reviews of v022's losses show (mines by turn 10,
+level-3 upkeep), and this one could join another change later.
