@@ -60,6 +60,8 @@ fn the_effect_counts_cells_taken_and_units_killed() {
     let hit = effect(&state, &[Command::Train { level: 2, x, y }], 0);
     assert_eq!((hit.trainings, hit.spent), ([0, 1, 0], 20));
     assert_eq!((hit.taken, hit.cut, hit.units_lost), (1, 0, 10));
+    // A training needs no move: the same damage without moves.
+    assert_eq!(hit.without_moves, 1);
     assert!(hit.hq_margin.is_some());
 }
 

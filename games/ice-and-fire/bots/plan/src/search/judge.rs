@@ -34,9 +34,10 @@ pub struct Judged {
     /// The state after the played plan's commands that the rules accept.
     pub played_end: Option<State>,
     /// The replies the played plan's score is the worst of (the final
-    /// memory, then the plan's own replies), each with the evaluation after
-    /// it from the searching side: what the search expects the opponent may
-    /// do.
+    /// memory, then the plan's own replies, each once; with an empty memory
+    /// first the end of our turn with no reply, as `rate` scores it), each
+    /// with the evaluation after it from the searching side: what the search
+    /// expects the opponent may do.
     pub modeled: Vec<(Vec<Command>, i64)>,
 }
 
@@ -64,7 +65,16 @@ pub(super) fn observe(search: &Search, root: &State, memory: &[Reply], best: Opt
         let mut end = root.clone();
         let accepted: Vec<Command> = commands.into_iter().filter(|&c| end.apply(c)).collect();
         let own = search.answers(&end);
+        // What `final_score` takes the minimum of: with an empty memory,
+        // `rate` scores the end of our turn itself (no reply); then each
+        // reply of the memory and of the plan's own, counted once.
+        if memory.is_empty() {
+            modeled.push((Vec::new(), eval(&end, search.me)));
+        }
         for reply in memory.iter().chain(own.iter()) {
+            if modeled.iter().any(|(c, _)| *c == reply.commands) {
+                continue;
+            }
             let damage = eval(&super::after_reply(&end, &reply.commands), search.me);
             modeled.push((reply.commands.clone(), damage));
         }

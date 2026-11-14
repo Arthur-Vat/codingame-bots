@@ -4,7 +4,7 @@ Asked by the owner on 2026-11-14: "I would like to have an analysis of the time 
 
 Written by Claude from the rows of `ice-and-fire-review codingame-surprise` (README, "Review").
 
-**In short:** on the turn it plays, the search is not overconfident about the opponent's reply. It is pessimistic: it expects about twice the damage the real reply does. The real reply is worse than every modeled one in about 1 ply in 10, and by 50 or more (three units, twelve cells) in 2%. Those large misses are almost all cuts made with unit moves, which the cut finder behind the modeled replies does not search; games with one were lost 71% of the time, against 47% without. Threats on our HQ are almost never a surprise of one turn: they appear after a slow decline, in positions the evaluation already scored well behind. Where the evaluation is overconfident is against the top 10: at an equal evaluation we lose about two games in three, with more gold and less land than in the games we win.
+**In short:** on the turn it plays, the search is not overconfident about the opponent's reply. It is pessimistic: it expects about twice the damage the real reply does. The real reply is worse than every modeled one in about 1 ply in 10, and by 50 or more (three units, twelve cells) in 2%. Those large misses are large cuts (13 of our cells removed on average, against 2 in other replies) that the modeled replies could not hold: about half needed unit moves, which the cut finder behind the modeled replies does not make, and most of the rest were beyond that finder's reach; games with one were lost 71% of the time, against 47% without. Threats on our HQ are almost never a surprise of one turn: they appear after a slow decline, in positions the evaluation already scored well behind. Where the evaluation is overconfident is against the top 10: at an equal evaluation we lose about two games in three, with more gold and less land than in the games we win.
 
 ## What is measured
 
@@ -47,19 +47,31 @@ The modeled damage ranks the plies fairly well (Spearman correlation with the ac
 | −100 to −200 | 1,342 | −135 | −76 | 11% | 16% |
 | beyond −200 | 341 | −296 | −194 | 9% | 9% |
 
-(The modeled damage is a worst case, so some of the gap is the nature of a minimum; but the opponent's reply is not that worst case in about 90% of plies.) Against the top 10 the modeled and actual damage are a little larger (−70 and −36) than against the others (−62 and −25); in our losses than in our wins (−82 and −43, against −54 and −23); the share of surprises of −20 or less is 4.6% against the top 10, 3.3% against the others, 5.0% in losses, 3.5% in wins.
+The buckets hold 8,194 of the 8,264 normal plies: in the other 70, the modeled worst reply scores above the pass (expected > pass). The ratio of modeled to actual damage runs from about 1.5 to 3, and in the first bucket the reply even leaves us better off than a pass on average (the evaluation counts our income at our next start of turn either way, and a reply's purchases can cost the opponent more than they take). The modeled damage is a worst case, so some of the gap is the nature of a minimum; but the opponent's reply is not that worst case in about 90% of plies. Against the top 10 the modeled and actual damage are a little larger (−70 and −36) than against the others (−62 and −25); in our losses than in our wins (−82 and −43, against −54 and −23); the share of surprises of −20 or less is 4.6% against the top 10, 3.3% against the others, 5.0% in losses, 3.5% in wins.
 
 ## 3. The large misses
 
-The 159 normal plies with a surprise of −50 or less (2%), next to the rest (v026's games for the first rows, all four releases for the last line):
+The 159 normal plies with a surprise of −50 or less (2%), next to the rest (v026's games, the command's report):
 
-| Plies (v026) | Count | Cells taken | Cells cut off | Units lost | Trainings | Moves | Some cut | Real reply among the modeled |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Surprise ≤ −50 | 27 | 3.6 | 8.4 | 43 | 3.3 | 4.0 | 93% | 0% |
-| −50 to 0 | 141 | 1.4 | 1.4 | 15 | 1.1 | 3.5 | 47% | 0% |
-| 0 or more | 1,217 | 1.0 | 0.9 | 10 | 0.9 | 4.0 | 30% | 6% |
+| Plies (v026) | Count | Cells taken | Cells cut off | Units lost | Trainings | Moves | Some cut |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Surprise ≤ −50 | 27 | 3.6 | 8.4 | 43 | 3.3 | 4.0 | 93% |
+| −50 to 0 | 141 | 1.4 | 1.4 | 15 | 1.1 | 3.5 | 47% |
+| 0 or more | 1,217 | 1.0 | 0.9 | 10 | 0.9 | 4.0 | 30% |
 
-Over the four releases, 144 of the 159 large misses cut cells off, 131 used unit moves, and 49 trained a level-3 unit. The modeled cuts come from the cut finder (`ice_and_fire_tactics::cut`), which searches chains of trainings only; cuts that need a unit's move are seen only if the opponent's short climb or its greedy turn happens to find them. Games with a large miss (or an unforeseen HQ threat) were lost 71% of the time (167 games), against 47% without (550 games).
+Units move in nearly every reply, so moves alone do not tell the large misses apart; their size does (over the four releases, 12.9 of our cells removed on average, against 1.9 in replies that did not surprise). A real reply that surprises is almost never one of the modeled ones (0% of the large surprises, 1% of the small ones): had it been modeled, its value could not fall below the worst modeled one, except when the same commands come in another order, or a pass meets the no-reply value of an empty memory, which is taken before the opponent's income.
+
+Why the modeled replies did not hold them, read on the board for each reply (all four releases; the causes are tested in this order): a reply *needs its moves* when, played without them (its trainings and buildings alone, in order), it removes fewer than half the cells; otherwise the cut finder is run from the reply's start with the opponent's gold, as the search runs it (chains of up to 5 trainings, its 3 best cuts) and wider (up to 8 trainings, 20 cuts), and compared with the cells the reply removed.
+
+| Cause | Surprise ≤ −50 (159) | −50 to 0 (662) | 0 or more (7,420) |
+| --- | ---: | ---: | ---: |
+| No cell of ours removed | 6% | 35% | 49% |
+| Moves needed | 48% | 33% | 22% |
+| Trainings alone; the search's cut finder finds as many cells | 6% | 17% | 22% |
+| Trainings alone; only the wider finder finds as many | 11% | 5% | 4% |
+| Trainings alone; neither finder finds as many | 28% | 11% | 3% |
+
+So the large misses are cuts the modeled replies could not contain for two reasons, in about equal parts: they needed unit moves before the trainings (48%, twice the share in other replies), or they were cuts of trainings alone that the cut finder does not reach even when widened (28%, against 3%), or reaches only when widened (11%). In 49 of the 159 the reply trained a level-3 unit (8% of other replies), and in 20 it trained more than 5 units (0.5% of others). Games with a large miss (or an unforeseen HQ threat) were lost 71% of the time (167 games), against 47% without (550 games).
 
 ## 4. The evaluation against the result
 
@@ -84,15 +96,18 @@ Fitted to the result (a logistic fit on these four differences, turns 8 to 17), 
 
 ## What follows
 
-The owner's intuition holds for a narrow case and not in general. The search does not misjudge the usual reply: it overrates it. What it misses are **cuts made with moves**, rare but costly, and the slow loss of land that makes our HQ indefensible a few turns later, which the evaluation sees as a material deficit but not as the danger it is against the top 10.
+The owner's intuition holds for a narrow case and not in general. The search does not misjudge the usual reply: it overrates it. What it misses are **large cuts its cut finder cannot make** (after unit moves, or beyond its reach), rare but costly, and the slow loss of land that makes our HQ indefensible a few turns later, which the evaluation sees as a material deficit but not as the danger it is against the top 10.
 
 Proposals, each an experiment screened against v026 (the owner's choice):
 
-1. **Move-and-cut replies** (medium; the time roadmap's "move-and-cut plans"): add to the modeled replies the cuts that start with one or two unit moves, for example the cut finder run from the state after each enemy unit's best move toward our land. Aimed at the large misses: 2% of plies, in games lost 71% of the time. It costs search time.
+1. **Wider cut replies** (medium; the time roadmap's "move-and-cut plans"): add to the modeled replies (a) cuts that start with unit moves, for example the cut finder run after each enemy unit's step toward our land, and (b) a cut finder that reaches further than chains of 5 trainings. First, a study of the 45 large misses that no finder reaches (what shape their cut has) would say what (b) needs. Aimed at the large misses: 2% of plies, in games lost 71% of the time. It costs search time.
 2. **A less pessimistic reply score** (small, one constant): score a plan by a mix of its worst modeled reply and its pass value (or second-worst reply), so that the search stops paying for threats that do not come. The modeled damage is twice the real one, and at an equal evaluation our losses hold more gold and less land, which is what a search that over-defends would do. Risk: more real large misses; screen two or three mixes.
 3. **Not proposed:** refitting the evaluation's weights to results (E017), or a land term in the middle game (E061 lost).
 
 ## Limits
+
+- Sections 2 and 4 (the damage buckets, the rank correlation, the fit, the tables by turn) and the four-release totals of section 3 were computed from the command's `rows.csv` with short scratch scripts, not by the command; its report gives the tables for one run.
+- A modeled reply is listed once even when the memory and the plan's own replies both hold it; with an empty memory the search scores the end of our turn itself, which then counts as a modeled outcome.
 
 - The search judged each ply with 600 tries and no deadline; on CodinGame it searched until its 45 ms deadline, so its plans and its memory of replies may differ.
 - v023 to v025's positions are judged by v026's search, not by the bot that played them.

@@ -29,6 +29,7 @@ use crate::profiles::{newest_snapshot, prepare, read_index, read_ranks, Request 
 use crate::replay::{replay, Game};
 use crate::trace::hq_cost;
 use ice_and_fire_opening::middle;
+use ice_and_fire_tactics::cut::cuts;
 use ice_and_fire_tactics::eval::WIN;
 
 /// What `codingame-surprise` is asked.
@@ -57,6 +58,11 @@ pub const CAP: i64 = 1000;
 /// evaluation counts `WIN / 2` against the side to act when the opponent
 /// can pay a chain of trainings to its HQ, and `WIN` for a game won.
 pub const THREAT: i64 = WIN / 4;
+/// The cut finder as the search runs it for replies: chains of up to 5
+/// trainings, the 3 best (`CUT_LENGTH`, `REPLY_CUTS` in the plan bot).
+pub const NARROW: (usize, usize) = (5, 3);
+/// The cut finder wider: up to 8 trainings, the 20 best.
+pub const WIDE: (usize, usize) = (8, 20);
 
 /// What kind of ply a row is, by its expected and actual values.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -134,6 +140,14 @@ pub struct Effect {
     pub taken: i64,
     /// Our active cells at the end of our turn that the reply cut off.
     pub cut: i64,
+    /// `taken` plus `cut` when the reply is played without its moves (its
+    /// trainings and buildings alone, in order): how much of the damage the
+    /// trainings did without the units' steps.
+    pub without_moves: i64,
+    /// The most cells (taken or cut off) of a cut the cut finder finds from
+    /// the reply's start with the opponent's gold: as the search models
+    /// replies ([`NARROW`]), and wider ([`WIDE`]).
+    pub finder: [i64; 2],
     /// The training cost (10 a level) of our units it killed or cut off.
     pub units_lost: i64,
     /// The reply's trainings by level.
@@ -200,6 +214,23 @@ pub fn effect(start: &State, reply: &[Command], me: usize) -> Effect {
     );
     let alive = state.units(me) & state.active(me);
     e.units_lost = unit_value(start, units.and_not(alive));
+    let mut alone = start.clone();
+    for &command in reply {
+        if alone.outcome().is_some() {
+            break;
+        }
+        if !matches!(command, Command::Move { .. }) {
+            alone.apply(command);
+        }
+    }
+    e.without_moves = i64::from(active.and_not(alone.active(me)).count());
+    for (slot, (length, limit)) in [NARROW, WIDE].into_iter().enumerate() {
+        e.finder[slot] = cuts(start, length, gold, limit)
+            .iter()
+            .map(|c| c.cells)
+            .max()
+            .unwrap_or(0);
+    }
     if !e.hq {
         let mut next = state.clone();
         next.end_turn();
@@ -238,6 +269,35 @@ pub struct Row {
     pub reply: String,
 }
 
+/// Why the search's modeled replies did not hold a reply's damage, as far
+/// as the board shows it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Cause {
+    /// The reply removed none of our cells.
+    NoCell,
+    /// Without its moves, the reply removes less than half the cells.
+    Moves,
+    /// Its trainings alone remove them, and the cut finder as the search
+    /// runs it finds a cut of at least as many cells.
+    Found,
+    /// Only the wider cut finder ([`WIDE`]) finds as many.
+    Wider,
+    /// Neither finds as many.
+    Neither,
+}
+
+impl Cause {
+    pub fn name(self) -> &'static str {
+        match self {
+            Cause::NoCell => "no cell of ours removed",
+            Cause::Moves => "moves needed (without them, under half the cells)",
+            Cause::Found => "trainings alone; the search's cut finder finds as many cells",
+            Cause::Wider => "trainings alone; only the wider cut finder finds as many",
+            Cause::Neither => "trainings alone; neither finder finds as many",
+        }
+    }
+}
+
 impl Row {
     pub fn kind(&self) -> Kind {
         let (e, a) = (self.judged.expected, self.judged.actual);
@@ -247,6 +307,22 @@ impl Row {
             (true, false) => Kind::ThreatAvoided,
             (false, false) if e.abs() < THREAT && a.abs() < THREAT => Kind::Normal,
             (false, false) => Kind::Other,
+        }
+    }
+
+    pub fn cause(&self) -> Cause {
+        let e = &self.effect;
+        let removed = e.taken + e.cut;
+        if removed == 0 {
+            Cause::NoCell
+        } else if 2 * e.without_moves < removed {
+            Cause::Moves
+        } else if e.finder[0] >= removed {
+            Cause::Found
+        } else if e.finder[1] >= removed {
+            Cause::Wider
+        } else {
+            Cause::Neither
         }
     }
 
@@ -454,13 +530,13 @@ pub fn run(request: &Request) -> Result<String, String> {
 
 /// One row a ply.
 pub fn rows_csv(rows: &[Row]) -> String {
-    let mut out = String::from("game_id,ply,turn,seat,opponent,top,won,turns_left,expected,actual,pass,surprise,modeled,modeled_best,same_reply,taken,cut,units_lost,train1,train2,train3,moves,towers,mines,spent,hq,hq_margin,gold,income,cells,units,opp_gold,opp_income,opp_cells,opp_units,reply\n");
+    let mut out = String::from("game_id,ply,turn,seat,opponent,top,won,turns_left,expected,actual,pass,surprise,modeled,modeled_best,same_reply,taken,cut,units_lost,train1,train2,train3,moves,towers,mines,spent,hq,hq_margin,without_moves,finder,finder_wide,gold,income,cells,units,opp_gold,opp_income,opp_cells,opp_units,reply\n");
     for r in rows {
         let e = &r.effect;
         let j = &r.judged;
         let _ = writeln!(
             out,
-            "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},\"{}\"",
+            "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},\"{}\"",
             r.game_id,
             r.ply,
             r.turn,
@@ -488,6 +564,9 @@ pub fn rows_csv(rows: &[Row]) -> String {
             e.spent,
             e.hq,
             e.hq_margin.map_or(String::new(), |m| m.to_string()),
+            e.without_moves,
+            e.finder[0],
+            e.finder[1],
             e.material
                 .iter()
                 .flatten()
@@ -654,6 +733,32 @@ pub fn report(
                     .count(),
                 g.len()
             )
+        );
+    }
+    let _ = writeln!(md, "\n## Why the modeled replies missed it\n\nThe search's cut finder searches chains of trainings only ({} trainings at most, its {} best cuts); the wider finder {} and {}. The causes are read on the board, in this order.\n\n| Cause | Large (≤ −50) | Small (−50 to 0) | None (≥ 0) |\n| --- | ---: | ---: | ---: |", NARROW.0, NARROW.1, WIDE.0, WIDE.1);
+    let causes = [
+        Cause::NoCell,
+        Cause::Moves,
+        Cause::Found,
+        Cause::Wider,
+        Cause::Neither,
+    ];
+    for cause in causes {
+        let mut cells = Vec::new();
+        for (_, f) in &sets {
+            let g: Vec<&Row> = rows.iter().filter(|r| f(r)).collect();
+            cells.push(share(
+                g.iter().filter(|r| r.cause() == cause).count(),
+                g.len(),
+            ));
+        }
+        let _ = writeln!(
+            md,
+            "| {} | {} | {} | {} |",
+            cause.name(),
+            cells[0],
+            cells[1],
+            cells[2]
         );
     }
     // Games: a large surprise and the result.
