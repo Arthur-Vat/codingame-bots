@@ -9,9 +9,16 @@
 //!   speed --positions FILE [--tries 600] [--reps 3] [--answers OUT] [--expect FILE]
 //! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
 //!   judge --positions FILE [--tries 600]
+//! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
+//!   surprise --positions FILE [--tries 600]
 //! ```
 //!
 //! `speed` (the [`speed`] module) times the search alone on a bank.
+//!
+//! `surprise` (the [`surprise`] module) compares, on each position that
+//! carries the answer played and the opponent's reply to it (a `reply`
+//! line after `played`), what the search expected of the played plan with
+//! what the real reply did to it.
 //!
 //! `judge` (the [`judge`] module) compares, on each position of a bank that
 //! carries the answer a player played, the plan the search chooses with it,
@@ -41,6 +48,7 @@
 
 pub mod judge;
 pub mod speed;
+pub mod surprise;
 
 #[cfg(test)]
 mod tests;
@@ -126,6 +134,7 @@ pub fn removed(state: &State, seat: usize) -> i64 {
 }
 
 /// One position of a bank.
+#[derive(Clone)]
 pub struct Position {
     pub name: String,
     pub ply: usize,
@@ -135,6 +144,9 @@ pub struct Position {
     /// The answer a player played from here, if the block says (its
     /// `played` line).
     pub played: Option<String>,
+    /// The opponent's answer to it, if the block says (its `reply` line,
+    /// after `played`).
+    pub reply: Option<String>,
 }
 
 impl Position {
@@ -171,14 +183,21 @@ pub fn read_bank(text: &str) -> Result<Vec<Position>, String> {
         };
         let initial = part("turn")?;
         let mut turn = part("end")?;
-        // An optional last line before `end`: the answer played.
-        let mut played = None;
-        let body = turn.trim_end_matches('\n');
-        let cut = body.rfind('\n').map_or(0, |i| i + 1);
-        if let Some(answer) = body[cut..].strip_prefix("played ") {
-            played = Some(answer.trim().to_string());
-            turn.truncate(cut);
-        }
+        // Optional last lines before `end`: the answer played, then the
+        // opponent's reply to it.
+        let mut last = |prefix: &str| {
+            let body = turn.trim_end_matches('\n');
+            let cut = body.rfind('\n').map_or(0, |i| i + 1);
+            let found = body[cut..]
+                .strip_prefix(prefix)
+                .map(|a| a.trim().to_string());
+            if found.is_some() {
+                turn.truncate(cut);
+            }
+            found
+        };
+        let reply = last("reply ");
+        let played = last("played ");
         out.push(Position {
             name: words[1].to_string(),
             ply,
@@ -186,6 +205,7 @@ pub fn read_bank(text: &str) -> Result<Vec<Position>, String> {
             initial,
             turn,
             played,
+            reply,
         });
     }
     Ok(out)
@@ -515,6 +535,18 @@ pub fn main_if_asked() {
             }
             Err(err) => {
                 eprintln!("plan judge: {err}");
+                std::process::exit(2);
+            }
+        }
+    }
+    if args.first().map(String::as_str) == Some("surprise") {
+        match surprise::run(&args[1..]) {
+            Ok(text) => {
+                print!("{text}");
+                std::process::exit(0);
+            }
+            Err(err) => {
+                eprintln!("plan surprise: {err}");
                 std::process::exit(2);
             }
         }

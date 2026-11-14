@@ -12,6 +12,7 @@
 //! ice-and-fire-review codingame-report --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--our-seat 0|1] [--top N] --out DIR
 //! ice-and-fire-review codingame-moments --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--our-seat 0|1] [--top N] [--examples K] [--out DIR] > moments.md
 //! ice-and-fire-review codingame-opening --data DIR --me NAME [--kinds ranking,test] [--batch B] [--release NAME] [--our-seat 0|1] [--top N] [--turns T] [--leaderboard FILE] [--jobs N] > opening.md
+//! ice-and-fire-review codingame-surprise --data DIR --me NAME --judge BIN [--release NAME] [--top N] [--tries N] [--limit PLIES] [--jobs N] [--leaderboard FILE] --out DIR
 //! ice-and-fire-review codingame-judge --data DIR --me NAME --judge BIN [--release NAME] [--players A,B | --top N] [--tries N] [--limit PLIES] [--jobs N] --out DIR
 //! ```
 
@@ -24,6 +25,7 @@ mod profiling;
 mod replay;
 mod screening;
 mod study;
+mod surprise;
 #[cfg(test)]
 mod test_util;
 mod trace;
@@ -277,6 +279,45 @@ enum Command {
         /// Games replayed at the same time.
         #[arg(long, default_value_t = 4)]
         jobs: usize,
+    },
+    /// Writes, to a folder, where our bot was overconfident in its CodinGame
+    /// games: at each of our plies, the score the plan bot's search expected
+    /// for the turn played (the worst over the opponent replies it models)
+    /// against the evaluation after the opponent's real reply, with what that
+    /// reply did on the board (`rows.csv`, a row a ply, and `README.md`, the
+    /// report). Games are read as `codingame-report` reads them.
+    CodingameSurprise {
+        /// The game's data directory, for example `data/ice-and-fire`.
+        #[arg(long)]
+        data: PathBuf,
+        /// Our nickname on CodinGame, for games whose index has no seat.
+        #[arg(long)]
+        me: String,
+        /// The plan bot built with `--features analysis`
+        /// (`target/release/ice-and-fire-bot-plan`).
+        #[arg(long)]
+        judge: PathBuf,
+        /// Only our games played by this release (see `codingame-report`).
+        #[arg(long)]
+        release: Option<String>,
+        /// Opponents in the top N of the snapshot are marked in the rows.
+        #[arg(long, default_value_t = 10)]
+        top: usize,
+        /// Tries of each search.
+        #[arg(long, default_value_t = 600)]
+        tries: u64,
+        /// At most this many plies, spread over the whole list.
+        #[arg(long)]
+        limit: Option<usize>,
+        /// Runs of the bot at the same time.
+        #[arg(long, default_value_t = 4)]
+        jobs: usize,
+        /// The leaderboard snapshot, instead of the newest in the data directory.
+        #[arg(long)]
+        leaderboard: Option<PathBuf>,
+        /// The folder to write to, created if missing.
+        #[arg(long)]
+        out: PathBuf,
     },
     /// Writes, to a folder, for every ply of chosen CodinGame players, what the plan
     /// bot's search would play there and how it scores its own plan and the
@@ -582,6 +623,33 @@ fn run(cli: Cli) -> Result<(), String> {
                 turns,
             )?;
             print!("{text}");
+            Ok(())
+        }
+        Command::CodingameSurprise {
+            data,
+            me,
+            judge,
+            release,
+            top,
+            tries,
+            limit,
+            jobs,
+            leaderboard,
+            out,
+        } => {
+            let text = surprise::run(&surprise::Request {
+                data,
+                me,
+                judge,
+                release,
+                top,
+                tries,
+                limit,
+                jobs,
+                leaderboard,
+                out,
+            })?;
+            eprint!("{text}");
             Ok(())
         }
         Command::CodingameJudge {
