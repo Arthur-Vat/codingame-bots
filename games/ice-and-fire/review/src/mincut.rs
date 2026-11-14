@@ -254,7 +254,8 @@ pub fn cut_to(state: &State, seat: usize, target: usize, budget: i64) -> Option<
     cut_with(state, seat, target, budget, &prices)
 }
 
-/// [`cut_to`] with each cell's capture priced by `prices`.
+/// [`cut_to`] with each cell's capture priced by `prices` ([`target_cut`]
+/// on `seat`'s active cells).
 pub fn cut_with(
     state: &State,
     seat: usize,
@@ -262,54 +263,10 @@ pub fn cut_with(
     budget: i64,
     prices: &[i64; CELLS],
 ) -> Option<Cut> {
-    let active = state.active(seat);
-    let hq = HQ[seat];
-    if target == hq || !active.test(target) || !active.test(hq) {
-        return None;
-    }
-    // Node 2c is the cell's entry, 2c + 1 its exit.
-    let mut flow = Flow::new(2 * CELLS);
-    for cell in active.iter() {
-        let through = if cell == hq || cell == target {
-            INFINITE
-        } else {
-            prices[cell]
-        };
-        flow.edge(2 * cell, 2 * cell + 1, through);
-        for next in (Bits::cell(cell).neighbours() & active).iter() {
-            flow.edge(2 * cell + 1, 2 * next, INFINITE);
-        }
-    }
-    let cost = flow.run(2 * target + 1, 2 * hq, budget);
-    if cost >= budget {
-        return None;
-    }
-    // Of the cheapest cuts, the one nearest the HQ, which removes the most:
-    // a cell is cut when its exit still reaches the HQ in the residual
-    // graph and its entry does not.
-    let side = flow.reaching(2 * hq);
-    let mut cut = Bits::EMPTY;
-    for cell in active.iter() {
-        if side[2 * cell + 1] && !side[2 * cell] {
-            cut.set(cell);
-        }
-    }
-    // A free cell (price 0) meets that test whether the cut needs it or
-    // not: keep it only when the target stays joined to the HQ without it.
-    for cell in cut.iter() {
-        if prices[cell] == 0 && cell != target {
-            let mut fewer = cut;
-            fewer.clear(cell);
-            if !joined(active.and_not(fewer), hq).test(target) {
-                cut = fewer;
-            }
-        }
-    }
-    let joined = joined(active.and_not(cut), hq);
-    Some(Cut {
-        cost,
-        cells: i64::from(active.and_not(joined).count()),
-        links: i64::from(cut.count()),
+    target_cut(state.active(seat), HQ[seat], target, budget, prices).map(|t| Cut {
+        cost: t.cost,
+        cells: i64::from(t.removed.count()),
+        links: i64::from(t.captured.count()),
     })
 }
 

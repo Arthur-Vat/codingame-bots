@@ -154,7 +154,7 @@ The owner then asked (2026-11-14) why the cheapest cut, whether the gold counts 
 
 - **A budget-aware cut** (`mincut::lambda_cut`, `best_lambda`): every cell of ours cut off is worth λ, and one min-cut finds the captures that best trade their price against λ × cells removed (several regions at once); λ is swept over 16 values and each cut split into its regions, of which every affordable subset is tried. Unlike the per-cell cut, it can choose a dearer cut nearer our HQ that removes more.
 - **Several cuts in a row** (`mincut::several`): the best affordable cut, then the best on what is left with the gold left, up to 4.
-- **Two turns' gold**: the opponent's gold at its start of turn plus one more turn of its income, for a strike after banking; also tested against a large miss at our *next* ply.
+- **Two turns' gold**: every budget above already counts the income of the opponent's coming turn (its gold at its start of turn, after the income is paid); this one adds one more turn of its income, for a strike after banking, and is also tested against a large miss at our *next* ply.
 
 | Measure, at the end of our turn | Large miss | Reply removes 10+ cells | Larger of it and the finder: large miss | Large misses it reaches | Large miss at our next ply |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -171,7 +171,7 @@ The owner then asked (2026-11-14) why the cheapest cut, whether the gold counts 
 - **Two turns' gold helps a little**, and best for a strike one turn later (0.610 against 0.550 for the finder); it reaches 40% of the large misses' size, but with more gold than the opponent had.
 - **The budget-aware cut does worse**, for a known reason: one min-cut a λ finds only the cuts with the best ratio of land to gold, so a small affordable cut is never offered when a large unaffordable one has a better ratio; it found nothing in half the plies where the per-cell cut found an affordable one. A budget-constrained cut needs another method.
 
-**Can the large misses be predicted at all from the position?** A logistic model on every measure available at the end of our turn (the cuts above, the finder narrow and wide, joints, both sides' gold and the opponent's income, our towers, the turn, the seat, whether the opponent is in the top 10, the search's expected and pass values), cross-validated by game in 5 folds:
+**Can the large misses be predicted at all from the position?** A logistic model on every measure available at the end of our turn (the cuts above, the finder narrow and wide, joints, both sides' gold and the opponent's income, our towers, the turn, the seat, whether the opponent is in the top 10, the search's expected and pass values), cross-validated by game in 5 folds (over 8,241 plies: the 23 normal plies whose pass value holds the evaluation's HQ term are left out, as in section 2's comparisons, which leaves 159 of the 160 large misses):
 
 | Event | Events | The finder alone | All measures |
 | --- | ---: | ---: | ---: |
