@@ -1115,3 +1115,14 @@ fn no_training_is_offered_on_our_own_active_cells() {
     assert!(trainings > 0, "no training at all");
     assert_eq!(towers_offered(&state), vec![(11, 9)]);
 }
+
+#[test]
+fn the_opening_buys_units_that_pay_back_by_turn_18() {
+    use ice_and_fire_opening::econ::unit_return;
+    // E056: the opening's purchases must pay back by game turn 18 (15 in
+    // v023). A unit trained at game turn 6 that takes one new cell pays
+    // back by turn 18, not by turn 15.
+    assert_eq!(crate::OPENING_HORIZON, 18);
+    assert!(unit_return(18 - 6, 1) > 0);
+    assert!(unit_return(15 - 6, 1) <= 0);
+}
