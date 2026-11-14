@@ -62,4 +62,17 @@ it heads for once an enemy grows, which only games show.
 
 ## Screening
 
-Pending.
+Against `ice-and-fire-v026` on GitHub (`screen.yml`, one calibrated
+runner per variant and shard at CodinGame's speed and real limit, ADR
+0048; no timeout, crash or invalid answer). Run 43623544558, seed 61061,
+800 pairs each over two runners:
+
+| Variant | Commit | Objective race | Rules pull, slack | Elo against v026 |
+| --- | --- | ---: | --- | --- |
+| o2 | `8611e3b` | 2 | none | +6.1 [−9.0, +21.2] |
+| o2p2 | `5448281` | 2 | 2, 1 | −0.9 [−16.6, +14.8] |
+| p2 | `a3d8f90` | 0 | 2, 1 | −6.5 [−20.8, +7.7] |
+| o4 | `7ad03af` | 4 | none | −13.5 [−30.1, +3.1] |
+
+No variant gained significantly; the larger objective weight leans
+weaker, and the rules' pull does not help.
