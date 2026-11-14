@@ -280,6 +280,12 @@ pub struct Shape {
     pub towers_lost: i64,
     /// The reply's moves that stepped onto a cell of ours.
     pub move_captures: i64,
+    /// The same measures over the cells the reply captured only (not those
+    /// it cut off): the most steps from the enemy's land, the fewest from
+    /// our HQ, and our towers among them.
+    pub captured_depth: i64,
+    pub captured_hq_steps: i64,
+    pub towers_captured: i64,
 }
 
 /// The shape of `reply`, played from `start` (the opponent to act after our
@@ -330,7 +336,19 @@ pub fn shape(before: &State, start: &State, reply: &[Command], me: usize) -> Sha
         .map(|c| i64::from(from_enemy[c]))
         .max()
         .unwrap_or(-1);
+    let captured = removed & state.owned(them);
+    out.captured_depth = captured
+        .iter()
+        .map(|c| i64::from(from_enemy[c]))
+        .max()
+        .unwrap_or(-1);
+    out.captured_hq_steps = captured
+        .iter()
+        .map(|c| i64::from(from_hq[c]))
+        .min()
+        .unwrap_or(-1);
     let towers = start.towers() & active;
+    out.towers_captured = i64::from((towers & captured).count());
     out.towers = i64::from(towers.count());
     out.towers_lost = i64::from((towers & removed).count());
     out
@@ -618,7 +636,7 @@ pub fn run(request: &Request) -> Result<String, String> {
 
 /// One row a ply.
 pub fn rows_csv(rows: &[Row]) -> String {
-    let mut out = String::from("game_id,ply,turn,seat,opponent,top,won,turns_left,expected,actual,pass,surprise,modeled,modeled_best,same_reply,taken,cut,units_lost,train1,train2,train3,moves,towers,mines,spent,hq,hq_margin,without_moves,finder,finder_wide,gold,income,cells,units,opp_gold,opp_income,opp_cells,opp_units,new_lost,joints,joint_max,joint_hit,depth,hq_steps,gold_left,opp_gold_before,towers_held,towers_lost,move_captures,reply\n");
+    let mut out = String::from("game_id,ply,turn,seat,opponent,top,won,turns_left,expected,actual,pass,surprise,modeled,modeled_best,same_reply,taken,cut,units_lost,train1,train2,train3,moves,towers,mines,spent,hq,hq_margin,without_moves,finder,finder_wide,gold,income,cells,units,opp_gold,opp_income,opp_cells,opp_units,new_lost,joints,joint_max,joint_hit,depth,hq_steps,gold_left,opp_gold_before,towers_held,towers_lost,move_captures,captured_depth,captured_hq_steps,towers_captured,reply\n");
     for r in rows {
         let e = &r.effect;
         let j = &r.judged;
@@ -675,6 +693,9 @@ pub fn rows_csv(rows: &[Row]) -> String {
                     h.towers,
                     h.towers_lost,
                     h.move_captures,
+                    h.captured_depth,
+                    h.captured_hq_steps,
+                    h.towers_captured,
                 ]
                 .map(|v| v.to_string())
                 .join(",")
