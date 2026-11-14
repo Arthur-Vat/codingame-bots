@@ -67,28 +67,3 @@ fn the_anytime_plan_is_never_worse_than_its_first_beam() {
     assert!(rated(&anytime) >= rated(&first));
     assert!(rated(&anytime) >= rated(&[]));
 }
-
-#[test]
-fn the_race_counts_the_neutral_land_we_reach_before_the_enemy() {
-    use super::race_halves;
-    use ice_and_fire_engine::{League, State};
-    let state = State::new(&[false; ice_and_fire_engine::CELLS], &[], League::Bronze);
-    let neutral = i64::from(
-        state
-            .map()
-            .valid
-            .and_not(state.owned(0) | state.owned(1))
-            .count(),
-    );
-    // An enemy there at once leaves us nothing; a later enemy leaves more,
-    // but never more than the land nearer our land than its land.
-    let (early, even, late) = (
-        race_halves(&state, 0, -100),
-        race_halves(&state, 0, 0),
-        race_halves(&state, 0, 100),
-    );
-    assert_eq!(early, 0);
-    assert!(0 < even && even <= late && late < 2 * neutral);
-    // Blue, with its extra cell, wins at least as much at the same turn.
-    assert!(race_halves(&state, 1, 0) >= even);
-}

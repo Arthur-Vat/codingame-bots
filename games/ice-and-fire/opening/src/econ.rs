@@ -41,9 +41,6 @@ const UNIT_COST: i64 = 10;
 /// steps from it.
 const SAFE_SPOT: u8 = 3;
 
-/// The steps from an urgent cell within which the race pulls (E061).
-pub const RACE_REACH: i64 = 6;
-
 /// The opening's weights. [`Params::V003`] are those of `ice-and-fire-v003`,
 /// which [`turn`] plays.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -88,13 +85,6 @@ pub struct Params {
     /// after this turn's moves and trainings so far (E051), so that units
     /// spread and each finds a free cell at its next turn.
     pub crowd: i64,
-    /// This much more for each step a cell is nearer an urgent cell than
-    /// [`RACE_REACH`] (E061): a free cell the enemy, taken to grow a step a
-    /// turn from its HQ, could reach at most [`Params::race_slack`] turns
-    /// after our land can. Units then head for the land they can still win
-    /// before the enemy, rather than by nearness alone.
-    pub race: i64,
-    pub race_slack: i64,
 }
 
 impl Params {
@@ -116,8 +106,6 @@ impl Params {
         inside: 0,
         toward: 0,
         crowd: 0,
-        race: 0,
-        race_slack: 0,
     };
 
     /// These weights with the shape terms `group`, `thin` and `spot` (E010).
@@ -195,10 +183,6 @@ struct Turn<'a> {
     spots: Bits,
     /// Our units, where this turn's commands so far put them (E051).
     units: Bits,
-    /// Steps from the free cells we can still take before the enemy can
-    /// reach them, with at most [`Params::race_slack`] turns to spare
-    /// (E061); `u8::MAX` everywhere when the weight is 0.
-    to_urgent: [u8; CELLS],
 }
 
 impl Turn<'_> {
@@ -214,35 +198,9 @@ impl Turn<'_> {
                 side.set(cell);
             }
         }
-        let mut urgent = Bits::EMPTY;
-        if params.race != 0 {
-            let now = i64::from(state.game_turn());
-            for cell in free.iter() {
-                if mine[cell] == u8::MAX {
-                    continue;
-                }
-                let us = now + i64::from(mine[cell]) - 1;
-                let mut them = i64::MAX;
-                if to_hq[cell] != u8::MAX {
-                    them = i64::from(to_hq[cell]);
-                }
-                if theirs[cell] != u8::MAX {
-                    them = them.min(now + i64::from(theirs[cell]) - 1);
-                }
-                if (0..=params.race_slack).contains(&(them - us)) {
-                    urgent.set(cell);
-                }
-            }
-        }
-        let to_urgent = if urgent.is_empty() {
-            [u8::MAX; CELLS]
-        } else {
-            distances(state, urgent)
-        };
         Turn {
             params,
             me,
-            to_urgent,
             theirs,
             to_hq,
             free,
@@ -274,9 +232,7 @@ impl Turn<'_> {
         let stuck = if open == 0 { p.inside } else { 0 };
         let toward = p.toward * (22 - i64::from(self.to_hq[cell].min(22)));
         let crowd = p.crowd * i64::from((Bits::cell(cell).neighbours() & self.units).count());
-        let race = p.race * (RACE_REACH - i64::from(self.to_urgent[cell]).min(RACE_REACH));
-        race + p.open * open + p.contest * contest - hq + p.group * own - line + spot - stuck
-            + toward
+        p.open * open + p.contest * contest - hq + p.group * own - line + spot - stuck + toward
             - crowd
     }
 

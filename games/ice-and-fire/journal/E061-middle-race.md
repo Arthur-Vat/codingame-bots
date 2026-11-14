@@ -3,8 +3,8 @@ id: E061
 date: 2026-11-14
 pull_request: "#NN"
 parent: ice-and-fire-v026
-hypothesis: v026's opening plans as if the opponent passed, so it values land against the enemy's land as it is, not as it will be; alone it reaches the middle of the map as the top 10 do (1.7 cells at turn 8 as red), but against them it holds 0.6 (they 1.6) and by turn 12 half their middle; counting the land we can still reach before the enemy, who grows a step a turn from its HQ, in the plans' objective or in the rules that pick each unit's cell, takes more of the middle and beats v026.
-change: The opening's objective counts each neutral cell our land reaches before the enemy can (`solo::race_halves`), or its rules pull units toward the free cells the enemy could reach at most 1 or 2 turns after us (`econ::Params::race`), or both.
+hypothesis: Against the top 10, v026 holds about 1 middle cell fewer at turn 8 and about 4 fewer at turn 12 (the middle: within 2 steps of even between the HQs), with the same land on its own side; most of that gap opens in the middle game, whose evaluation has no term for the land not yet taken; counting the neutral land each side's land reaches first (the race) in the middle game's evaluation takes more of the middle and beats v026. A first form in the opening's plans gained nothing.
+change: The plan bot's evaluation counts 1 to 3 for each neutral cell our active land reaches before the enemy's, less the same for the enemy's (a tie half), in every turn or until game turn 15.
 release: none
 sprt: pending
 elo: none
@@ -41,7 +41,7 @@ so both their objective (the Voronoi share against the enemy's land as it
 is) and their rules (each cell's nearness to the enemy's land as it is)
 see an enemy that never grows.
 
-## The change
+## First form: the opening
 
 - `opening/src/solo.rs`: `Objective::race` and `race_offset`, and
   `race_halves`: each neutral cell our active land reaches (on game turn
@@ -75,4 +75,32 @@ runner per variant and shard at CodinGame's speed and real limit, ADR
 | o4 | `7ad03af` | 4 | none | −13.5 [−30.1, +3.1] |
 
 No variant gained significantly; the larger objective weight leans
-weaker, and the rules' pull does not help.
+weaker, and the rules' pull does not help. The code stays reachable in the
+branch's commits (the variants above, and `1420a35`, the base); it was
+removed from the branch afterwards.
+
+## Second form: the middle game
+
+Asked by the owner on 2026-11-14 ("Rethink the term", then "Yes,
+middle-game race"). Why the first form could change little: at turn 8, the
+end of the opening, the top 10 lead v026 by 1 middle cell (red 1.6 against
+0.6, blue 2.9 against 2.2); by turn 12 by about 4 (8.1 against 4.3, 10.4
+against 6.8), and their whole lead in active cells (35.1 against 31.3,
+37.2 against 31.2) is in the middle. Most of the gap opens after the
+opening, when the middle game's search plays. Its evaluation counts what
+each side holds (gold, income, active cells, units, towers, threats, shape,
+mines, E060's idle units), but nothing for the neutral land still to take,
+which is most of the middle at turns 8 to 12; no journal entry tried a
+Voronoi or race term in the middle game.
+
+`bots/plan/src/eval.rs`: `race_halves`, a flood of both sides' active land
+over neutral cells, a step at a time and at once, each cell to the side
+that reaches it first (a tie half), our halves less the enemy's; `RACE_CELL`
+(what a cell counts; 0: v026, which the base commit keeps) and
+`RACE_UNTIL` (the last game turn it counts; `None`: every turn). A held
+active cell counts 4 in the shared evaluation, so a cell won in the race is
+worth a quarter to three quarters of one held.
+
+### Screening
+
+Pending.

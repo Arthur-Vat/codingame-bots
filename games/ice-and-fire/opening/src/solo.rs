@@ -78,12 +78,6 @@ pub struct Objective {
     pub tips: i64,
     pub reach: i64,
     pub voronoi: i64,
-    /// Each neutral cell our land reaches before the enemy can (E061,
-    /// [`race_halves`]; a tie counts half): 0 in v026.
-    pub race: i64,
-    /// The enemy is taken to reach a cell on the game turn of its steps from
-    /// the enemy HQ plus this ([`race_halves`]).
-    pub race_offset: i64,
 }
 
 impl Objective {
@@ -103,8 +97,6 @@ impl Objective {
         tips: 2,
         reach: 6,
         voronoi: 1,
-        race: 0,
-        race_offset: 0,
     };
 }
 
@@ -189,49 +181,6 @@ pub fn value(state: &State, seat: usize, objective: &Objective) -> i64 {
         - o.tips * s.tips
         - o.reach * s.reach.min(30)
         + o.voronoi * s.voronoi
-        + if o.race == 0 {
-            0
-        } else {
-            o.race * race_halves(state, seat, o.race_offset) / 2
-        }
-}
-
-/// The race for the land still neutral (E061), in halves: 2 for each
-/// neutral cell `seat`'s active cells reach before the enemy can, 1 on a
-/// tie. Our land reaches a cell `d` steps away on game turn `t + d − 1`
-/// (`t` the turn of `state`: a unit next to it takes it this turn). The
-/// enemy is taken to grow a step a turn from its HQ whatever it does, so
-/// it reaches a cell on the game turn of its steps from the enemy HQ plus
-/// `offset`, or sooner from the land it already holds. Unlike the Voronoi
-/// share, which compares our land with the enemy's land as it is, this
-/// counts only the cells we can still win once the enemy has grown: in a
-/// plan where the opponent passes, the enemy does not grow.
-pub fn race_halves(state: &State, seat: usize, offset: i64) -> i64 {
-    let ours = econ::distances(state, state.active(seat));
-    let from_hq = econ::distances(state, Bits::cell(HQ[1 - seat]));
-    let theirs = econ::distances(state, state.owned(1 - seat));
-    let turn = i64::from(state.game_turn());
-    let neutral = state.map().valid.and_not(state.owned(0) | state.owned(1));
-    let mut halves = 0;
-    for cell in neutral.iter() {
-        if ours[cell] == u8::MAX {
-            continue;
-        }
-        let us = turn + i64::from(ours[cell]) - 1;
-        let mut them = i64::MAX;
-        if from_hq[cell] != u8::MAX {
-            them = them.min(i64::from(from_hq[cell]) + offset);
-        }
-        if theirs[cell] != u8::MAX {
-            them = them.min(turn + i64::from(theirs[cell]) - 1);
-        }
-        halves += match us.cmp(&them) {
-            std::cmp::Ordering::Less => 2,
-            std::cmp::Ordering::Equal => 1,
-            std::cmp::Ordering::Greater => 0,
-        };
-    }
-    halves
 }
 
 /// Our `commands`, then the opponent passes: our next start of turn.

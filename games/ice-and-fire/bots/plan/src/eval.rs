@@ -354,6 +354,47 @@ fn idle(state: &State, seat: usize) -> i64 {
     IDLE_STEP * steps
 }
 
+/// What each neutral cell a side's active land reaches before the enemy's
+/// counts in the evaluation (E061; a tie half): 0 in v026.
+pub const RACE_CELL: i64 = 0;
+
+/// The last game turn on which [`RACE_CELL`] counts (E061): `None` for
+/// every turn.
+pub const RACE_UNTIL: Option<u32> = None;
+
+/// The race for the neutral land (E061), in halves for `seat` less the
+/// other side's: both sides' active land grows a step at a time over
+/// neutral cells, at once; each neutral cell goes to the side that reaches
+/// it first, half to each on a tie. Cells beyond the enemy's land are not
+/// reached through it.
+pub fn race_halves(state: &State, seat: usize) -> i64 {
+    let free = state.map().valid.and_not(state.owned(0) | state.owned(1));
+    let mut reached = [state.active(seat), state.active(1 - seat)];
+    let mut claimed = Bits::EMPTY;
+    let mut halves = 0;
+    loop {
+        let ours = reached[0].neighbours() & free.and_not(claimed);
+        let theirs = reached[1].neighbours() & free.and_not(claimed);
+        if ours.is_empty() && theirs.is_empty() {
+            return halves;
+        }
+        let both = ours & theirs;
+        halves +=
+            2 * i64::from(ours.and_not(both).count()) - 2 * i64::from(theirs.and_not(both).count());
+        claimed |= ours | theirs;
+        reached[0] |= ours;
+        reached[1] |= theirs;
+    }
+}
+
+/// [`RACE_CELL`] times the race, until [`RACE_UNTIL`].
+fn race(state: &State, seat: usize) -> i64 {
+    if RACE_CELL == 0 || RACE_UNTIL.is_some_and(|last| state.game_turn() > last) {
+        return 0;
+    }
+    RACE_CELL * race_halves(state, seat) / 2
+}
+
 /// The score of `state` for `seat`, higher is better for it.
 pub fn eval(state: &State, seat: usize) -> i64 {
     let movers = [
@@ -380,4 +421,5 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         + THREAT_QUARTERS * threats / 4
         + mines(state, seat, ours)
         - mines(state, 1 - seat, theirs)
+        + race(state, seat)
 }
