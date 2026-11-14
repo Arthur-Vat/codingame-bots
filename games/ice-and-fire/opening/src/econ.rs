@@ -81,6 +81,10 @@ pub struct Params {
     /// This much more for each step nearer the enemy HQ than 22 (the
     /// longest distance on the map, roughly), to head toward it.
     pub toward: i64,
+    /// This much less for each of our units next to the cell, at its place
+    /// after this turn's moves and trainings so far (E051), so that units
+    /// spread and each finds a free cell at its next turn.
+    pub crowd: i64,
 }
 
 impl Params {
@@ -101,6 +105,7 @@ impl Params {
         spot: 0,
         inside: 0,
         toward: 0,
+        crowd: 0,
     };
 
     /// These weights with the shape terms `group`, `thin` and `spot` (E010).
@@ -176,6 +181,8 @@ struct Turn<'a> {
     ours: Bits,
     /// The mine spots.
     spots: Bits,
+    /// Our units, where this turn's commands so far put them (E051).
+    units: Bits,
 }
 
 impl Turn<'_> {
@@ -200,6 +207,7 @@ impl Turn<'_> {
             side,
             ours: state.owned(me),
             spots: state.map().spots,
+            units: state.units(me),
         }
     }
 
@@ -223,7 +231,9 @@ impl Turn<'_> {
         let spot = if self.spots.test(cell) { p.spot } else { 0 };
         let stuck = if open == 0 { p.inside } else { 0 };
         let toward = p.toward * (22 - i64::from(self.to_hq[cell].min(22)));
+        let crowd = p.crowd * i64::from((Bits::cell(cell).neighbours() & self.units).count());
         p.open * open + p.contest * contest - hq + p.group * own - line + spot - stuck + toward
+            - crowd
     }
 
     /// The cell of `cells` worth most, the lowest index on a tie.
@@ -237,6 +247,7 @@ impl Turn<'_> {
         self.free.clear(cell);
         self.side.clear(cell);
         self.ours.set(cell);
+        self.units.set(cell);
     }
 }
 
@@ -334,9 +345,14 @@ fn moves(state: &mut State, turn: &mut Turn<'_>, out: &mut Vec<Command>) {
         let Some((_, from)) = pick else {
             break;
         };
+        // The unit does not crowd the cell it leaves (E051).
+        turn.units.clear(from);
         match turn.best(Bits::cell(from).neighbours() & turn.free & enter) {
             Some(to) if step(state, from, to, out) => turn.claim(to),
-            _ => idle.push(from),
+            _ => {
+                turn.units.set(from);
+                idle.push(from);
+            }
         }
     }
     for from in idle {
