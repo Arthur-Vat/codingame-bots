@@ -316,10 +316,10 @@ pub const MARGIN_MOVER_LEVEL: u8 = 2;
 /// side's costs that side, beyond the first (E060): 0 for nothing (v025).
 /// A walk through our own land toward free or enemy cells then raises the
 /// score at each step, as the top bots' units walk for several turns.
-pub const IDLE_STEP: i64 = 2;
+pub const IDLE_STEP: i64 = 0;
 
 /// The farthest distance counted (E060).
-pub const IDLE_CAP: i64 = 6;
+pub const IDLE_CAP: i64 = 4;
 
 /// The highest level of a unit counted (E060).
 pub const IDLE_LEVEL: u8 = 3;
