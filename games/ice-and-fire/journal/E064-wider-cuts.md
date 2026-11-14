@@ -61,8 +61,8 @@ The move-first cuts lose; the longer cuts alone are level.
 - **Modeling more threats does not pay by itself.** The move-first cuts
   lost 13 to 18 Elo, whatever their number; the longer cuts alone were
   level. With one timeout in 1,600 games, the time limit is not the cause:
-  the replies added are more often than not threats a strong opponent does
-  not carry out, and defending against each of them (the worst reply
+  the replies added may be, more often than not, threats a strong opponent
+  does not carry out (not measured), and defending against each of them (the worst reply
   counts in full: E063) costs the plan more than the rare large cut does.
   A reply that a unit's step toward our HQ opens is a crude model of the
   cuts the study found.
