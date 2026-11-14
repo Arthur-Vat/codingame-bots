@@ -131,6 +131,12 @@ const OBJECTIVE: Objective = Objective {
 /// opening used 3). The middle game's search builds them (E033).
 const OPENING_SAFE_SPOT: u8 = u8::MAX;
 
+/// How much more a cell of a narrow passage between the HQs is worth to the
+/// opening's moves and trainings, and the most cells such a passage has
+/// (E053): 0 in v022.
+const OPENING_CHOKE: i64 = 0;
+const OPENING_CHOKE_WIDTH: u8 = 2;
+
 /// The opening: v003's opening with the solo planner's weight sets, planned
 /// over [`OPENING_TURNS`] of our turns within the turn's time.
 fn opening() -> Planned {
@@ -148,6 +154,8 @@ fn opening_of(width: usize) -> Planned {
         .iter()
         .map(|&params| Params {
             safe_spot: OPENING_SAFE_SPOT,
+            choke: OPENING_CHOKE,
+            choke_width: OPENING_CHOKE_WIDTH,
             ..params
         })
         .collect();

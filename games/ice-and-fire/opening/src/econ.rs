@@ -81,6 +81,11 @@ pub struct Params {
     /// This much more for each step nearer the enemy HQ than 22 (the
     /// longest distance on the map, roughly), to head toward it.
     pub toward: i64,
+    /// This much more for a cell of a narrow passage between the HQs
+    /// ([`choke_cells`] of at most `choke_width` cells, E053), so that our
+    /// side is there first.
+    pub choke: i64,
+    pub choke_width: u8,
 }
 
 impl Params {
@@ -101,6 +106,8 @@ impl Params {
         spot: 0,
         inside: 0,
         toward: 0,
+        choke: 0,
+        choke_width: 2,
     };
 
     /// These weights with the shape terms `group`, `thin` and `spot` (E010).
@@ -159,6 +166,36 @@ pub fn gap(state: &State) -> u8 {
         .unwrap_or(u8::MAX)
 }
 
+/// The narrow passages between the HQs (E053): the cells on paths between
+/// them at most 2 steps longer than the shortest, in the layers (cells at
+/// the same distance from red's HQ) within 3 steps of the middle that hold
+/// at most `width` such cells.
+pub fn choke_cells(state: &State, width: u8) -> Bits {
+    let map = state.map();
+    let total = map.distance(HQ[0], HQ[1]);
+    let mut out = Bits::EMPTY;
+    if total == u8::MAX || total < 8 {
+        return out;
+    }
+    let mut layers = [Bits::EMPTY; 64];
+    for cell in map.valid.iter() {
+        let (a, b) = (map.distance(HQ[0], cell), map.distance(HQ[1], cell));
+        if a != u8::MAX && b != u8::MAX && u16::from(a) + u16::from(b) <= u16::from(total) + 2 {
+            if let Some(layer) = layers.get_mut(usize::from(a)) {
+                layer.set(cell);
+            }
+        }
+    }
+    let middle = usize::from(total / 2);
+    for layer in &layers[middle - 3..=middle + 3] {
+        let count = layer.count();
+        if count > 0 && count <= u32::from(width) {
+            out |= *layer;
+        }
+    }
+    out
+}
+
 /// What one turn of the opening knows about the map.
 struct Turn<'a> {
     params: &'a Params,
@@ -176,6 +213,8 @@ struct Turn<'a> {
     ours: Bits,
     /// The mine spots.
     spots: Bits,
+    /// The narrow passages between the HQs (E053), when `params.choke` is on.
+    choke: Bits,
 }
 
 impl Turn<'_> {
@@ -200,6 +239,11 @@ impl Turn<'_> {
             side,
             ours: state.owned(me),
             spots: state.map().spots,
+            choke: if params.choke != 0 {
+                choke_cells(state, params.choke_width)
+            } else {
+                Bits::EMPTY
+            },
         }
     }
 
@@ -223,7 +267,10 @@ impl Turn<'_> {
         let spot = if self.spots.test(cell) { p.spot } else { 0 };
         let stuck = if open == 0 { p.inside } else { 0 };
         let toward = p.toward * (22 - i64::from(self.to_hq[cell].min(22)));
-        p.open * open + p.contest * contest - hq + p.group * own - line + spot - stuck + toward
+        let choke = if self.choke.test(cell) { p.choke } else { 0 };
+        p.open * open + p.contest * contest - hq + p.group * own - line + spot - stuck
+            + toward
+            + choke
     }
 
     /// The cell of `cells` worth most, the lowest index on a tie.
