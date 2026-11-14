@@ -35,7 +35,7 @@ A threat on our HQ appears in 393 games, 369 of them lost: nearly every loss (36
 
 | Plies | Below expected | ≤ −20 | ≤ −50 | 5% | 25% | Median | 75% | 95% |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 8,264 | 12% | 4.2% | 1.9% | −15 | +7 | +26 | +53 | +124 |
+| 8,264 | 10% | 4.2% | 1.9% | −15 | +7 | +26 | +53 | +124 |
 
 The modeled damage ranks the plies fairly well (Spearman correlation with the actual damage 0.60), but it is about twice the damage done, at every level of danger:
 
@@ -47,11 +47,11 @@ The modeled damage ranks the plies fairly well (Spearman correlation with the ac
 | −100 to −200 | 1,342 | −135 | −76 | 11% | 16% |
 | beyond −200 | 341 | −296 | −194 | 9% | 9% |
 
-The buckets hold 8,194 of the 8,264 normal plies: in the other 70, the modeled worst reply scores above the pass (expected > pass). The ratio of modeled to actual damage runs from about 1.5 to 3, and in the first bucket the reply even leaves us better off than a pass on average (the evaluation counts our income at our next start of turn either way, and a reply's purchases can cost the opponent more than they take). The modeled damage is a worst case, so some of the gap is the nature of a minimum; but the opponent's reply is not that worst case in about 90% of plies. Against the top 10 the modeled and actual damage are a little larger (−70 and −36) than against the others (−62 and −25); in our losses than in our wins (−82 and −43, against −54 and −23); the share of surprises of −20 or less is 4.6% against the top 10, 3.3% against the others, 5.0% in losses, 3.5% in wins.
+The buckets hold 8,194 of the 8,264 normal plies: 23 whose pass value holds the HQ term are left out (here and in the comparisons by opponent and result below), and in 47 the modeled worst reply scores above the pass (expected > pass). The ratio of modeled to actual damage runs from about 1.5 to 3, and in the first bucket the reply even leaves us better off than a pass on average (the evaluation counts our income at our next start of turn either way, and a reply's purchases can cost the opponent more than they take). The modeled damage is a worst case, so some of the gap is the nature of a minimum; but the opponent's reply is not that worst case in about 90% of plies. Against the top 10 the modeled and actual damage are a little larger (−70 and −36) than against the others (−62 and −25); in our losses than in our wins (−82 and −43, against −54 and −23); the share of surprises of −20 or less is 4.6% against the top 10, 3.3% against the others, 5.0% in losses, 3.5% in wins.
 
 ## 3. The large misses
 
-The 159 normal plies with a surprise of −50 or less (2%), next to the rest (v026's games, the command's report):
+The 160 normal plies with a surprise of −50 or less (1.9%), next to the rest (v026's games, the command's report):
 
 | Plies (v026) | Count | Cells taken | Cells cut off | Units lost | Trainings | Moves | Some cut |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -59,19 +59,19 @@ The 159 normal plies with a surprise of −50 or less (2%), next to the rest (v0
 | −50 to 0 | 141 | 1.4 | 1.4 | 15 | 1.1 | 3.5 | 47% |
 | 0 or more | 1,217 | 1.0 | 0.9 | 10 | 0.9 | 4.0 | 30% |
 
-Units move in nearly every reply, so moves alone do not tell the large misses apart; their size does (over the four releases, 12.9 of our cells removed on average, against 1.9 in replies that did not surprise). A real reply that surprises is almost never one of the modeled ones (0% of the large surprises, 1% of the small ones): had it been modeled, its value could not fall below the worst modeled one, except when the same commands come in another order, or a pass meets the no-reply value of an empty memory, which is taken before the opponent's income.
+Units move in nearly every reply, so moves alone do not tell the large misses apart; their size does (over the four releases, 13.0 of our cells removed on average, against 1.9 in replies that did not surprise). A real reply that surprises is almost never one of the modeled ones (0% of the large surprises, 1% of the small ones): had it been modeled, its value could not fall below the worst modeled one, except when the same commands come in another order, or a pass meets the no-reply value of an empty memory, which is taken before the opponent's income.
 
 Why the modeled replies did not hold them, read on the board for each reply (all four releases; the causes are tested in this order): a reply *needs its moves* when, played without them (its trainings and buildings alone, in order), it removes fewer than half the cells; otherwise the cut finder is run from the reply's start with the opponent's gold, as the search runs it (chains of up to 5 trainings, its 3 best cuts) and wider (up to 8 trainings, 20 cuts), and compared with the cells the reply removed.
 
-| Cause | Surprise ≤ −50 (159) | −50 to 0 (662) | 0 or more (7,420) |
+| Cause | Surprise ≤ −50 (160) | −50 to 0 (662) | 0 or more (7,442) |
 | --- | ---: | ---: | ---: |
-| No cell of ours removed | 6% | 35% | 49% |
-| Moves needed | 48% | 33% | 22% |
+| No cell of ours removed | 6% | 35% | 48% |
+| Moves needed | 49% | 33% | 22% |
 | Trainings alone; the search's cut finder finds as many cells | 6% | 17% | 22% |
 | Trainings alone; only the wider finder finds as many | 11% | 5% | 4% |
 | Trainings alone; neither finder finds as many | 28% | 11% | 3% |
 
-So the large misses are cuts the modeled replies could not contain for two reasons, in about equal parts: they needed unit moves before the trainings (48%, twice the share in other replies), or they were cuts of trainings alone that the cut finder does not reach even when widened (28%, against 3%), or reaches only when widened (11%). In 49 of the 159 the reply trained a level-3 unit (8% of other replies), and in 20 it trained more than 5 units (0.5% of others). Games with a large miss (or an unforeseen HQ threat) were lost 71% of the time (167 games), against 47% without (550 games).
+So the large misses are cuts the modeled replies could not contain for two reasons, in about equal parts: they needed unit moves before the trainings (49%, twice the share in other replies), or they were cuts of trainings alone that the cut finder does not reach even when widened (28%, against 3%), or reaches only when widened (11%). In 50 of the 160 the reply trained a level-3 unit (8% of the replies that did not surprise), and in 21 it trained more than 5 units (0.5%). Games with a large miss (or an unforeseen HQ threat) were lost 71% of the time (167 games), against 47% without (550 games).
 
 ## 4. The evaluation against the result
 
