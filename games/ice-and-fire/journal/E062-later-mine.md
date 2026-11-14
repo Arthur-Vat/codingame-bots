@@ -49,4 +49,18 @@ counts E033's bonus alone (one per 4 active cells).
 
 ## Screening
 
-Pending.
+Against `ice-and-fire-v026` on GitHub (`screen.yml`, one calibrated
+runner per variant and shard at CodinGame's speed and real limit, ADR
+0048; one timeout of r10 in 1,600 games, no other fault). "From" is
+`EARLY_MINE_FROM`, red's then blue's. Run 43622840090, seed 62062, 800
+pairs each over two runners:
+
+| Variant | Commit | From | Elo against v026 |
+| --- | --- | --- | --- |
+| r10 | `9689619` | 10, 0 | +9.1 [−3.0, +21.3] |
+| f11 | `d6ee50f` | 11, 11 | +9.1 [−4.0, +22.3] |
+| f9 | `f953b37` | 9, 9 | +2.6 [−6.1, +11.3] |
+| f10 | `8df4870` | 10, 10 | −9.6 [−23.4, +4.2] |
+
+No variant gained significantly, and f10 below its neighbours f9 and f11
+suggests noise rather than a trend.
