@@ -1,7 +1,7 @@
 ---
 id: E064
 date: 2026-11-14
-pull_request: "#NN"
+pull_request: "#339"
 parent: ice-and-fire-v026
 hypothesis: In v026's CodinGame games the opponent's real reply is worse than every reply the search models by 50 or more in about 2% of our plies, games with such a miss were lost 71% of the time (47% without), and these misses are large cuts that the modeled replies cannot hold, about half because they need unit moves before the trainings and most of the rest because they lie beyond the cut finder's chains of 5 trainings; modeling longer cuts, and cuts after an enemy unit's step toward our HQ, makes the search defend against them, and beats v026.
 change: None released. Screening only: the plan bot's search modeling the opponent's cuts as chains of up to 8 trainings rather than 5, or adds for the 2 or 4 enemy units nearest our HQ a reply made of the unit's step toward it then the best cut from there, or both.
