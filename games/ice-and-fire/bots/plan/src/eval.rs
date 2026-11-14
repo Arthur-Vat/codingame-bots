@@ -293,6 +293,22 @@ pub fn standing(margin: i64) -> i64 {
 /// none (v019). Level 2 won the screening.
 pub const MARGIN_MOVER_LEVEL: u8 = 2;
 
+/// The income below which each gold of a side's income counts
+/// [`LOW_INCOME_TURNS`] more times (E050): `None` for no floor (v022).
+pub const INCOME_FLOOR: Option<i64> = None;
+
+/// How many more times each gold of income below [`INCOME_FLOOR`] counts
+/// (E050).
+pub const LOW_INCOME_TURNS: i64 = 3;
+
+/// What the income of `seat` below [`INCOME_FLOOR`] costs it (E050).
+fn low_income(state: &State, seat: usize) -> i64 {
+    match INCOME_FLOOR {
+        Some(floor) => LOW_INCOME_TURNS * (floor - state.income(seat)).max(0),
+        None => 0,
+    }
+}
+
 /// The score of `state` for `seat`, higher is better for it.
 pub fn eval(state: &State, seat: usize) -> i64 {
     let movers = [
@@ -314,6 +330,8 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         + shape(state, seat)
         + strong_units(state, seat)
         - strong_units(state, 1 - seat)
+        - low_income(state, seat)
+        + low_income(state, 1 - seat)
         + THREAT_QUARTERS * threats / 4
         + mines(state, seat, ours)
         - mines(state, 1 - seat, theirs)
