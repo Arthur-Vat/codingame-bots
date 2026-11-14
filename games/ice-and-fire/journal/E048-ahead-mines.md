@@ -1,17 +1,17 @@
 ---
 id: E048
 date: 2026-11-14
-pull_request: "pending"
+pull_request: "#318"
 parent: ice-and-fire-v022
 hypothesis: When ahead by 8 active cells or more, v019 to v021 put a quarter of their gold in mines (E033's bonus grows with the territory) where the top 10 of CodinGame put a sixth and the top 1 a tenth after turn 12, spending on towers instead; capping that bonus, or counting it per 6 cells or not at all once ahead, leaves the gold for land and towers and beats v022.
-change: The plan bot's evaluation caps E033's mine bonus at 4 or 6, or counts it one per 6 active cells or not at all for a side that leads by at least 3 or 8 active cells.
-release: pending
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
-cg_rank: not reported
+change: None released. Screening only: the plan bot's evaluation caps E033's mine bonus at 4 or 6, or counts it one per 6 active cells or not at all for a side that leads by at least 3 or 8 active cells.
+release: none
+sprt: not run: lost in screening
+elo: none
+pairs: none
+full_time: none
+decision: dropped
+cg_rank: none
 ---
 
 Asked by the owner on 2026-11-14 ("Merge 316, and go on with all
@@ -51,4 +51,27 @@ keeps v022.
 
 ## Screening
 
-Pending.
+Against `ice-and-fire-v022` on GitHub (`screen.yml`, one calibrated
+runner per variant and shard at CodinGame's speed and real limit, ADR
+0048; no timeout, crash or invalid answer).
+
+Run 43569161619, seed 48048, 800 pairs each over two runners:
+
+| Variant | Commit | Cap | Once ahead by | Mine bonus then | Elo against v022 | Score |
+| --- | --- | --- | ---: | --- | --- | ---: |
+| a8n | `3951600` | none | 8 | none | −4.3 [−14.6, +5.9] | 49.4% |
+| a8p6 | `a6e6443` | none | 8 | one per 6 cells | −4.8 [−14.0, +4.4] | 49.3% |
+| a3p6 | `573139e` | none | 3 | one per 6 cells | **−13.9 [−24.8, −3.0]** | 48.0% |
+| c6 | `0d01c2b` | 6 | never | | **−40.6 [−52.1, −29.1]** | 44.2% |
+| c4 | `37320e2` | 4 | never | | **−45.4 [−57.6, −33.4]** | 43.5% |
+
+No variant gained; none was confirmed.
+
+## What was learned
+
+Capping E033's bonus whatever the lead lost about 40: mines on a large
+territory pay. Counting them less only once well ahead changed nothing
+measurable, so our larger share of mines when ahead is not what loses
+games; it is spent once the game is mostly won (we win 90% to 97% of the
+turns played ahead by 8 cells or more). The knob was removed: the pull
+request holds the journal entry alone.
