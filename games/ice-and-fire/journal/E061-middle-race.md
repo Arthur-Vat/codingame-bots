@@ -103,4 +103,16 @@ worth a quarter to three quarters of one held.
 
 ### Screening
 
-Pending.
+Against `ice-and-fire-v026` on GitHub, as above. Run 43625801764, seed
+61062, 800 pairs each over two runners (no fault):
+
+| Variant | Commit | A cell in the race | Until | Elo against v026 |
+| --- | --- | ---: | --- | --- |
+| m1 | `c5f430d` | 1 | every turn | +3.0 [−10.7, +16.8] |
+| m2 | `f90989d` | 2 | every turn | **−34.0 [−48.4, −19.6]** |
+| m2t15 | `33cba59` | 2 | turn 15 | **−33.5 [−48.3, −18.9]** |
+| m3 | `99b3f2f` | 3 | every turn | **−65.9 [−81.6, −50.5]** |
+
+The race in the middle game's evaluation loses, the more the larger its
+weight, and as much when it stops at turn 15: the loss comes in the turns
+when the middle is contested. At 1 a cell it does nothing.
