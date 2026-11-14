@@ -1204,10 +1204,3 @@ fn a_unit_far_from_land_to_take_costs_its_side() {
     assert_eq!(eval(&near, 0) - eval(&far, 0), 8 - 4);
     assert_eq!(eval(&near, 1) - eval(&far, 1), -(8 - 4));
 }
-
-#[test]
-fn a_plan_is_scored_by_its_worst_modeled_reply_alone() {
-    // E063: v026 scores a plan by its worst modeled reply, not blended with
-    // the opponent passing.
-    assert_eq!(crate::search::WORST_QUARTERS, 4);
-}

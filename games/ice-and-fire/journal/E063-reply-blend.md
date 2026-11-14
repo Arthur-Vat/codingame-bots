@@ -4,13 +4,13 @@ date: 2026-11-14
 pull_request: "#NN"
 parent: ice-and-fire-v026
 hypothesis: The search scores a plan by the worst of the opponent replies it models, and in v026's CodinGame games it models about twice the damage the real reply does (the real reply is worse than every modeled one in about 1 ply in 10); at an equal evaluation our losses hold more gold and less land than our wins, as a search that over-defends would; scoring a plan by a blend of its worst reply and the opponent passing makes the search pay less for threats that do not come, and beats v026.
-change: The plan bot's search scores a plan by 3, 2 or 1 quarters of its worst modeled reply and the rest of the evaluation if the opponent passes (4 quarters, the worst alone, in v026).
+change: None released. Screening only: the plan bot's search scoring a plan by 3, 2 or 1 quarters of its worst modeled reply and the rest of the evaluation if the opponent passes (4 quarters, the worst alone, in v026).
 release: none
-sprt: pending
+sprt: not run: no gain in screening
 elo: none
 pairs: none
 full_time: none
-decision: pending
+decision: dropped
 cg_rank: none
 ---
 
@@ -52,3 +52,20 @@ runner per variant and shard at CodinGame's speed and real limit, ADR
 | w1 | `cd05b74` | 1/4 | 3/4 | **−133.9 [−150.5, −118.0]** |
 
 The less the worst reply counts, the more the bot loses, steeply.
+
+## What was learned
+
+- **Planning against the worst modeled reply is right**, although the
+  opponent's real reply is that bad in only about 1 ply in 10 and does
+  about half the modeled damage on average. Giving a quarter of the score
+  to the opponent passing is already no better, half loses 42 Elo, three
+  quarters 134. The worst-case score is what keeps the plans safe against
+  the replies a strong opponent does find: pessimism is not the cause of
+  our losing land.
+- The overconfidence study's other reading stands: what the search misses
+  is rare large cuts it cannot construct (E064 tries to model them).
+
+The code stays reachable in this pull request's commits (the base
+`8b1b9de` and the variants above); the branch's head holds the journal
+entry alone. Dropped by the owner on 2026-11-14 ("Drop E063").
+
