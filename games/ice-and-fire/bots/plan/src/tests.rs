@@ -1204,3 +1204,11 @@ fn a_unit_far_from_land_to_take_costs_its_side() {
     assert_eq!(eval(&near, 0) - eval(&far, 0), 8 - 4);
     assert_eq!(eval(&near, 1) - eval(&far, 1), -(8 - 4));
 }
+
+#[test]
+fn the_replies_search_cuts_of_five_trainings_without_moves() {
+    // E064: v026 searches the opponent's cuts as chains of up to 5
+    // trainings, with no unit's step first.
+    assert_eq!(crate::search::REPLY_CUT_LENGTH, 5);
+    assert_eq!(crate::search::MOVE_CUTS, 0);
+}
