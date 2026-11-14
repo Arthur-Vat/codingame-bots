@@ -73,6 +73,43 @@ Why the modeled replies did not hold them, read on the board for each reply (all
 
 So the large misses are cuts the modeled replies could not contain for two reasons, in about equal parts: they needed unit moves before the trainings (49%, twice the share in other replies), or they were cuts of trainings alone that the cut finder does not reach even when widened (28%, against 3%), or reaches only when widened (11%). In 50 of the 160 the reply trained a level-3 unit (8% of the replies that did not surprise), and in 21 it trained more than 5 units (0.5%). Games with a large miss (or an unforeseen HQ threat) were lost 71% of the time (167 games), against 47% without (550 games).
 
+## 3b. The shape of the large misses
+
+Asked by the owner on 2026-11-14 ("try to characterize those missed threats"). The 160 large misses, next to the 2,220 replies that also cut cells off but did not surprise, and the 5,884 other replies (all four releases, normal plies). A **joint** is one of our active cells whose capture alone cuts others off from our HQ (`solo::severed`, the shape the evaluation counts); *depth* is the most steps from the enemy's land, before the reply, to a cell the reply removed.
+
+| Measure | Large misses | Cuts that did not surprise | Other replies |
+| --- | ---: | ---: | ---: |
+| Our cells removed (mean), of which cut off | 13.0, 9.4 | 5.2, 3.0 | 0.8, 0.2 |
+| Our cells it captured to do so (mean) | 3.6 | 2.2 | |
+| It cut cells off without capturing a joint (a double link broken) | 38% | 11% | |
+| It captured a joint | 54% | 89% | 6% |
+| Cells that joint cut off (mean, when one was captured) | 6.3 | 2.9 | 2.8 |
+| Our joints at the end of our turn (mean) | 6.2 | 5.3 | 4.0 |
+| Depth (median steps behind our front) | 3 | 2 | 1 |
+| Nearest removed cell to our HQ (median steps) | 7 | 10 | 10 |
+| Removed cells we had taken in our last turn | 22% | 34% | 25% |
+| A tower of ours lost | 38% | 18% | 5% |
+| Level-3 trainings (mean) | 0.4 | 0.2 | 0.0 |
+| Trainings (mean) | 3.3 | 1.8 | 0.5 |
+| Opponent's gold at its turn (median) | 46 | 40 | 37 |
+| Share of it spent | 78% | 66% | 37% |
+| Opponent spent 10 gold or less the turn before | 26% | 17% | |
+| Our gold left after our turn (median) | 8 | 8 | 14 |
+| Our towers on active cells (mean) | 2.6 | 2.7 | 2.6 |
+
+What sets the large misses apart:
+
+- **They break double links.** Only 54% of them capture a joint, against 89% of ordinary cuts; 38% cut a region off without capturing any single weak point, by capturing several cells (3.6 on average) that together sever it. The evaluation's shape term counts joints and the largest region one capture cuts off; it does not see a region held by two or three thin links, and the cut finder, which searches single chains of trainings from the enemy's land, finds such cuts only when one chain happens to cross all the links.
+- **They reach deep, through our defences.** They remove cells 3 steps behind our front (2 for ordinary cuts), within 7 steps of our HQ (10): established land, not land just taken (22% of the cells removed were taken in our last turn, fewer than in ordinary cuts). A tower of ours falls in 38% of them (18% in ordinary cuts), and they train 0.4 level-3 units each on average (0.2).
+- **They are paid for with banked gold.** The opponent holds 46 gold (40 before ordinary cuts) and spends 78% of it; in a quarter of them it spent 10 gold or less the turn before.
+- **Our side looks ordinary:** the same gold left (8) and towers (2.6) as before ordinary cuts, a few more joints (6.2 against 5.3).
+- **Some opponents do it more:** _iahelka in 4.0% of our plies against it, Waffle3z 2.5%, Pduhard- 2.3%, karliso and _iaz 2.0%, zasmu 1.3%, reCurse 0.9% (opponents with 300 plies or more).
+- **They are mostly isolated:** 15 of the 160 follow another at our previous ply; 22 games have two or more.
+
+Examples of the largest in v026's games (CodinGame replays): [921571527](https://www.codingame.com/replay/921571527) turns 12 and 13 against karliso (29 then 25 cells removed, with 114 then 51 gold, 1 and 3 towers lost), [921571436](https://www.codingame.com/replay/921571436) turns 10 and 11 against _iahelka (22 cells removed at turn 10 without capturing a joint), [921571992](https://www.codingame.com/replay/921571992) turn 23 against Pduhard-.
+
+**What follows.** The structure these replies exploit is a *cheapest cut*: the set of our cells whose capture, at its price (10 for an empty cell, 20 or 30 for one held by a unit, 30 through a tower), separates the most land from our HQ. That is a minimum vertex cut on our territory's graph, which a max-flow finds exactly and fast on 144 cells; with the opponent's gold it says what it can sever next turn, double links included. It could serve both as a term of the evaluation (the land the opponent can afford to cut off, beyond the single joints counted today) and as a reply generator (the cut cells, then the chain of trainings that reaches them). This is a proposal, not tested: E064 showed that adding replies costs more than it saves unless they are the ones a strong opponent plays.
+
 ## 4. The evaluation against the result
 
 Share of games lost, by the evaluation after the reply, game turns 8 to 17:
