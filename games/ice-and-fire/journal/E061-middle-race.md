@@ -1,7 +1,7 @@
 ---
 id: E061
 date: 2026-11-14
-pull_request: "#NN"
+pull_request: "#335"
 parent: ice-and-fire-v026
 hypothesis: Against the top 10, v026 holds about 1 middle cell fewer at turn 8 and about 4 fewer at turn 12 (the middle: within 2 steps of even between the HQs), with the same land on its own side; most of that gap opens in the middle game, whose evaluation has no term for the land not yet taken; counting the neutral land each side's land reaches first (the race) in the middle game's evaluation takes more of the middle and beats v026. A first form in the opening's plans gained nothing.
 change: None released. Screening only: the plan bot's evaluation counting 1 to 3 for each neutral cell our active land reaches before the enemy's, less the same for the enemy's (a tie half), in every turn or until game turn 15; first, the opening's plans counting the land they reach before a growing enemy.
