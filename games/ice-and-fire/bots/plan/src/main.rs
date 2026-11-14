@@ -131,6 +131,10 @@ const OBJECTIVE: Objective = Objective {
 /// opening used 3). The middle game's search builds them (E033).
 const OPENING_SAFE_SPOT: u8 = u8::MAX;
 
+/// The first game turn on which the opening builds a mine (E054): 0, any,
+/// in v022, which builds none ([`OPENING_SAFE_SPOT`]).
+const OPENING_MINE_FROM: u32 = 0;
+
 /// The opening: v003's opening with the solo planner's weight sets, planned
 /// over [`OPENING_TURNS`] of our turns within the turn's time.
 fn opening() -> Planned {
@@ -148,6 +152,7 @@ fn opening_of(width: usize) -> Planned {
         .iter()
         .map(|&params| Params {
             safe_spot: OPENING_SAFE_SPOT,
+            mine_from: OPENING_MINE_FROM,
             ..params
         })
         .collect();

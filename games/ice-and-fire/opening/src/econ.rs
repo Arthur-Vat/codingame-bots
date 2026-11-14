@@ -81,6 +81,8 @@ pub struct Params {
     /// This much more for each step nearer the enemy HQ than 22 (the
     /// longest distance on the map, roughly), to head toward it.
     pub toward: i64,
+    /// The first game turn on which a mine is built (E054): 0 for any.
+    pub mine_from: u32,
 }
 
 impl Params {
@@ -101,6 +103,7 @@ impl Params {
         spot: 0,
         inside: 0,
         toward: 0,
+        mine_from: 0,
     };
 
     /// These weights with the shape terms `group`, `thin` and `spot` (E010).
@@ -399,6 +402,7 @@ fn mine_spot(state: &State, turn: &Turn<'_>) -> Option<usize> {
     (state.map().spots & state.active(me) & state.empty_cells())
         .iter()
         .filter(|&spot| turn.theirs[spot] > turn.params.safe_spot)
+        .filter(|_| state.game_turn() >= turn.params.mine_from)
         .min_by_key(|&spot| (state.map().distance(HQ[me], spot), spot))
 }
 
