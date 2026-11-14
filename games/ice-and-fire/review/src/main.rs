@@ -11,7 +11,7 @@
 //! ice-and-fire-review codingame --out DIR [--kind ranking] [--strict] LOG.json... > check.md
 //! ice-and-fire-review codingame-report --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--our-seat 0|1] [--top N] --out DIR
 //! ice-and-fire-review codingame-moments --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--our-seat 0|1] [--top N] [--examples K] [--out DIR] > moments.md
-//! ice-and-fire-review codingame-opening --data DIR --me NAME [--kinds ranking,test] [--our-seat 0|1] [--top N] [--turns T] > opening.md
+//! ice-and-fire-review codingame-opening --data DIR --me NAME [--kinds ranking,test] [--batch B] [--release NAME] [--our-seat 0|1] [--top N] [--turns T] [--leaderboard FILE] [--jobs N] > opening.md
 //! ice-and-fire-review codingame-judge --data DIR --me NAME --judge BIN [--release NAME] [--players A,B | --top N] [--tries N] [--limit PLIES] [--jobs N] --out DIR
 //! ```
 
