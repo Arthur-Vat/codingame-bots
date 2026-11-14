@@ -64,3 +64,16 @@ pairs each over two runners:
 
 No variant gained significantly, and f10 below its neighbours f9 and f11
 suggests noise rather than a trend.
+
+The two leaders again on a new seed, run 43624891394, seed 62063, 1,600
+pairs each over four runners (no fault):
+
+| Variant | Commit | From | Elo against v026 |
+| --- | --- | --- | --- |
+| r10 | `9689619` | 10, 0 | +8.5 [−0.1, +17.0] |
+| f11 | `d6ee50f` | 11, 11 | −1.3 [−10.9, +8.3] |
+
+r10 held its lead (+9.1 then +8.5, about +8.7 over 2,400 pairs); f11 did
+not. Starting the bonus later for red's mines only fits the study: as red,
+v026 built its first mine by turn 8 in 54% of its games, the leader in
+14%; as blue the two are close (37% and 34%).
