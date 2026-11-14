@@ -66,7 +66,7 @@ use crate::search::Limit;
 
 /// The time of a turn at CodinGame's limits, milliseconds: 50 ms, less a
 /// margin for the input, the output and a busy machine.
-const BUDGET_MS: f64 = 45.0;
+const BUDGET_MS: f64 = 40.0;
 /// The first turn's time, of CodinGame's 1,000 ms (E010); the opening's
 /// plan stops at 76% of it, about 610 ms.
 const FIRST_BUDGET_MS: f64 = 800.0;
@@ -133,7 +133,7 @@ const OPENING_SAFE_SPOT: u8 = u8::MAX;
 
 /// How much less a cell is worth to the opening's moves and trainings for
 /// each of our units next to it (E051): 0 in v022.
-const OPENING_CROWD: i64 = 2;
+const OPENING_CROWD: i64 = 3;
 
 /// The opening: v003's opening with the solo planner's weight sets, planned
 /// over [`OPENING_TURNS`] of our turns within the turn's time.
