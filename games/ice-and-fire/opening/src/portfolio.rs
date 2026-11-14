@@ -24,7 +24,6 @@ const fn set(w: [i64; 10]) -> Params {
         spot: 0,
         inside: 0,
         toward: 0,
-        mine_from: 0,
     }
 }
 
