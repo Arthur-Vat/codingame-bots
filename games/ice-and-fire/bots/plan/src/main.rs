@@ -69,7 +69,7 @@ use crate::search::Limit;
 const BUDGET_MS: f64 = 40.0;
 /// The first turn's time, of CodinGame's 1,000 ms (E010); the opening's
 /// plan stops at 76% of it, about 610 ms.
-const FIRST_BUDGET_MS: f64 = 900.0;
+const FIRST_BUDGET_MS: f64 = 950.0;
 
 /// The share of the budget that the soft limit marks: the opening's choice
 /// stops 40% of the way from it to the hard limit, and the middle game's
