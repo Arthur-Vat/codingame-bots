@@ -319,10 +319,10 @@ pub const MARGIN_MOVER_LEVEL: u8 = 2;
 pub const IDLE_STEP: i64 = 2;
 
 /// The farthest distance counted (E060).
-pub const IDLE_CAP: i64 = 4;
+pub const IDLE_CAP: i64 = 6;
 
 /// The highest level of a unit counted (E060).
-pub const IDLE_LEVEL: u8 = 1;
+pub const IDLE_LEVEL: u8 = 3;
 
 /// What the units of `seat` on its active cells cost it for standing away
 /// from the cells that are not its own (E060).
