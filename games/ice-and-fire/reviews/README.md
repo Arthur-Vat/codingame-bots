@@ -8,3 +8,4 @@ Each batch's folder holds its README (bots, seed, results, the tool's commit), t
 | --- | --- | ---: | --- | --- |
 | [2026-10-23-v004-v003](2026-10-23-v004-v003/) | v004 against v003 | 20 | 10 wins each | [summary](2026-10-23-v004-v003/summary.md) |
 | [2026-10-23-v005-v004-metrics](2026-10-23-v005-v004-metrics/) | v005 against v004 (metrics report) | 1,000 | v005 567, v004 433 | [summary](2026-10-23-v005-v004-metrics/summary.md) |
+| [2026-11-14-v022-zasmu-losses](2026-11-14-v022-zasmu-losses/) | v022's CodinGame losses to zasmu, the top 1 (10 as red, 10 as blue) | 20 | 20 losses (chosen) | [summary](2026-11-14-v022-zasmu-losses/summary.md) |

@@ -1,0 +1,102 @@
+{
+  "name": "blue-ranking-921352754",
+  "players": [
+    "zasmu",
+    "v022"
+  ],
+  "winner": 0,
+  "end": "the rules ended the game",
+  "plies": 39,
+  "last_turn": 20,
+  "middle": 13,
+  "endgame": 28,
+  "lead": "material",
+  "metrics": [
+    "gold",
+    "income",
+    "upkeep",
+    "cells",
+    "cut_off",
+    "units",
+    "army",
+    "mines",
+    "towers",
+    "voronoi",
+    "exposed30",
+    "exposed50",
+    "can_cut",
+    "hq_gap",
+    "material",
+    "gross_income",
+    "free_spots",
+    "level1",
+    "level2",
+    "level3",
+    "joints",
+    "max_cut",
+    "total_cut",
+    "line_ends",
+    "reach",
+    "frontier",
+    "border",
+    "room",
+    "far_cells",
+    "spread",
+    "frontier_joints",
+    "empty_joints",
+    "guarded_joints",
+    "frontier_units",
+    "inner_units",
+    "units_lost",
+    "contact",
+    "hq_guard",
+    "frontier_towers",
+    "tower_cover",
+    "spent_units",
+    "spent_buildings",
+    "kept_share",
+    "moves",
+    "trains",
+    "builds",
+    "captured",
+    "lost",
+    "cells_change",
+    "material_change",
+    "cum_neutral",
+    "cum_captured",
+    "cum_killed",
+    "cum_killed_fight",
+    "cum_killed_cut",
+    "cum_lost",
+    "exchange"
+  ],
+  "none": {
+    "hq_gap": 999
+  },
+  "moments": [
+    {
+      "ply": 16,
+      "kind": "swing",
+      "favours": 1,
+      "text": "the lead moved 86 material towards blue over the last turn, to blue 84"
+    },
+    {
+      "ply": 18,
+      "kind": "lead change",
+      "favours": 0,
+      "text": "red now leads by 45 material, at the start of turn 10"
+    },
+    {
+      "ply": 28,
+      "kind": "large cut",
+      "favours": 0,
+      "text": "red took blue's cells from 36 to 4"
+    },
+    {
+      "ply": 36,
+      "kind": "swing",
+      "favours": 0,
+      "text": "the lead moved 102 material towards red over the last turn, to red 256"
+    }
+  ]
+}
