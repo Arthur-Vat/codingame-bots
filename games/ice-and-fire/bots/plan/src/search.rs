@@ -61,21 +61,21 @@ const REPLY_EVALS: u64 = 300;
 /// Where between the soft and the hard limit the middle game's climbs stop
 /// (E027): at 36 ms of a 40 ms turn rather than 24; the rest is for the
 /// final choice and its check.
-const CLIMB_SHARE: f64 = 0.75;
+const CLIMB_SHARE: f64 = 0.5;
 
 /// The plans, best first by the final score, that the two-turn check scores
 /// again (E065); 0 for no check.
-pub const DEEP_PLANS: usize = 4;
+pub const DEEP_PLANS: usize = 5;
 /// The replies to each of them, worst first, that the check plays on.
-pub const DEEP_REPLIES: usize = 2;
+pub const DEEP_REPLIES: usize = 3;
 /// Most plans scored by our follow-up climb after a reply.
-pub const DEEP_EVALS: u64 = 60;
+pub const DEEP_EVALS: u64 = 150;
 /// The opponent's best cuts tried after our follow-up, with the gold of its
 /// next turn.
 pub const DEEP_CUTS: usize = 1;
 /// Whether a plan is chosen by the sum of its final score and its two-turn
 /// score, rather than by the two-turn score alone.
-pub const DEEP_BLEND: bool = true;
+pub const DEEP_BLEND: bool = false;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
