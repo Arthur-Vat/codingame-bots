@@ -1188,3 +1188,19 @@ fn a_safe_mine_counts_more_early_in_the_middle_game() {
         assert_eq!(own(&state, 0) - own(&start, 0), bonus, "turn {turn}");
     }
 }
+
+#[test]
+fn a_unit_far_from_land_to_take_costs_its_side() {
+    use crate::eval::{eval, IDLE_CAP, IDLE_LEVEL, IDLE_STEP};
+    // E060: each unit costs its side 2 for every step beyond the first to
+    // the nearest cell that is not its side's, counted up to 4 steps.
+    assert_eq!((IDLE_STEP, IDLE_CAP, IDLE_LEVEL), (2, 4, 3));
+    // Red's corridor: the nearest cell not red's is the neutral (11, 10). A
+    // unit on (11, 7) is 3 steps from it (2 x 2 = 4); one on (5, 0) is far
+    // beyond 4 steps (4 x 2 = 8). Neither changes what blue can take, nor
+    // anything else the evaluation counts.
+    let near = position(CORRIDOR, [0, 20], &[(0, 1, 1, 11, 7)]);
+    let far = position(CORRIDOR, [0, 20], &[(0, 1, 1, 5, 0)]);
+    assert_eq!(eval(&near, 0) - eval(&far, 0), 8 - 4);
+    assert_eq!(eval(&near, 1) - eval(&far, 1), -(8 - 4));
+}

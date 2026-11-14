@@ -312,6 +312,48 @@ pub fn standing(margin: i64) -> i64 {
 /// none (v019). Level 2 won the screening.
 pub const MARGIN_MOVER_LEVEL: u8 = 2;
 
+/// What each step of a unit's distance to the nearest cell that is not its
+/// side's costs that side, beyond the first (E060): 0 for nothing (v025).
+/// A walk through our own land toward free or enemy cells then raises the
+/// score at each step, as the top bots' units walk for several turns; 2 won
+/// the screening (1, 3 and 4 did a little less).
+pub const IDLE_STEP: i64 = 2;
+
+/// The farthest distance counted (E060).
+pub const IDLE_CAP: i64 = 4;
+
+/// The highest level of a unit counted (E060).
+pub const IDLE_LEVEL: u8 = 3;
+
+/// What the units of `seat` on its active cells cost it for standing away
+/// from the cells that are not its own (E060).
+fn idle(state: &State, seat: usize) -> i64 {
+    if IDLE_STEP == 0 {
+        return 0;
+    }
+    let valid = state.map().valid;
+    let mut units = Bits::EMPTY;
+    for cell in (state.units(seat) & state.active(seat)).iter() {
+        if state
+            .unit_level(cell)
+            .is_some_and(|level| level <= IDLE_LEVEL)
+        {
+            units |= Bits::cell(cell);
+        }
+    }
+    let mut within = valid.and_not(state.owned(seat));
+    let mut counted = Bits::EMPTY;
+    let mut steps = 0;
+    for distance in 1..=IDLE_CAP {
+        within = (within | within.neighbours()) & valid;
+        let here = (units & within).and_not(counted);
+        steps += (distance - 1) * i64::from(here.count());
+        counted |= here;
+    }
+    steps += IDLE_CAP * i64::from(units.and_not(counted).count());
+    IDLE_STEP * steps
+}
+
 /// The score of `state` for `seat`, higher is better for it.
 pub fn eval(state: &State, seat: usize) -> i64 {
     let movers = [
@@ -333,6 +375,8 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         + shape(state, seat)
         + strong_units(state, seat)
         - strong_units(state, 1 - seat)
+        - idle(state, seat)
+        + idle(state, 1 - seat)
         + THREAT_QUARTERS * threats / 4
         + mines(state, seat, ours)
         - mines(state, 1 - seat, theirs)
