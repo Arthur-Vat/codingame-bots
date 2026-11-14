@@ -54,12 +54,6 @@ pub mod judge;
 const MEMORY_CAP: usize = 8;
 /// The opponent's best cuts added to the memory after a climb.
 const REPLY_CUTS: usize = 3;
-/// The longest cut, in trainings, the opponent's replies are searched with
-/// (E064): `CUT_LENGTH` (5) in v026.
-pub const REPLY_CUT_LENGTH: usize = CUT_LENGTH;
-/// The enemy units nearest our HQ whose step toward it is tried before a
-/// cut in the opponent's replies (E064): 0 in v026.
-pub const MOVE_CUTS: usize = 0;
 /// Most climbs in one turn.
 const MAX_CLIMBS: usize = 32;
 /// Most plans scored by the opponent's climb in one reply search (E019).
@@ -446,38 +440,8 @@ impl Search {
         if let Some(chain) = chain_to(&next, HQ[self.me], gold) {
             out.push(chain.commands);
         }
-        for cut in cuts(&next, REPLY_CUT_LENGTH, gold, REPLY_CUTS) {
+        for cut in cuts(&next, CUT_LENGTH, gold, REPLY_CUTS) {
             out.push(cut.commands);
-        }
-        // E064: cuts that start with an enemy unit's step toward our HQ,
-        // for the units nearest it.
-        if MOVE_CUTS != 0 {
-            let mut units: Vec<usize> = (next.movable_units() & next.units(opponent))
-                .iter()
-                .collect();
-            units.sort_by_key(|&cell| next.map().distance(cell, HQ[self.me]));
-            let (x, y) = xy(HQ[self.me]);
-            for &cell in units.iter().take(MOVE_CUTS) {
-                let Some(id) = next.unit_id(cell) else {
-                    continue;
-                };
-                let step = Command::Move { id, x, y };
-                let mut moved = next.clone();
-                if !moved.apply(step) {
-                    continue;
-                }
-                let mut commands = vec![step];
-                if moved.outcome().is_none() {
-                    let budget = moved.gold(opponent);
-                    if let Some(cut) = cuts(&moved, REPLY_CUT_LENGTH, budget, 1).into_iter().next()
-                    {
-                        commands.extend(cut.commands);
-                    }
-                }
-                if commands.len() > 1 || moved.outcome().is_some() {
-                    out.push(commands);
-                }
-            }
         }
         let mut greedy = Vec::new();
         greedy_turn(&next, &mut greedy);

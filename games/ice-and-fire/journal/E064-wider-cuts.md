@@ -4,13 +4,13 @@ date: 2026-11-14
 pull_request: "#NN"
 parent: ice-and-fire-v026
 hypothesis: In v026's CodinGame games the opponent's real reply is worse than every reply the search models by 50 or more in about 2% of our plies, games with such a miss were lost 71% of the time (47% without), and these misses are large cuts that the modeled replies cannot hold, about half because they need unit moves before the trainings and most of the rest because they lie beyond the cut finder's chains of 5 trainings; modeling longer cuts, and cuts after an enemy unit's step toward our HQ, makes the search defend against them, and beats v026.
-change: The plan bot's search models the opponent's cuts as chains of up to 8 trainings rather than 5, or adds for the 2 or 4 enemy units nearest our HQ a reply made of the unit's step toward it then the best cut from there, or both.
+change: None released. Screening only: the plan bot's search modeling the opponent's cuts as chains of up to 8 trainings rather than 5, or adds for the 2 or 4 enemy units nearest our HQ a reply made of the unit's step toward it then the best cut from there, or both.
 release: none
-sprt: pending
+sprt: not run: no gain in screening
 elo: none
 pairs: none
 full_time: none
-decision: pending
+decision: dropped
 cg_rank: none
 ---
 
@@ -55,3 +55,22 @@ runner per variant and shard at CodinGame's speed and real limit, ADR
 | m2 | `79d3add` | 5 | 2 | **−18.3 [−31.2, −5.4]** |
 
 The move-first cuts lose; the longer cuts alone are level.
+
+## What was learned
+
+- **Modeling more threats does not pay by itself.** The move-first cuts
+  lost 13 to 18 Elo, whatever their number; the longer cuts alone were
+  level. With one timeout in 1,600 games, the time limit is not the cause:
+  the replies added are more often than not threats a strong opponent does
+  not carry out, and defending against each of them (the worst reply
+  counts in full: E063) costs the plan more than the rare large cut does.
+  A reply that a unit's step toward our HQ opens is a crude model of the
+  cuts the study found.
+- **The large misses stay a known blind spot** (about 2% of our plies, in
+  games lost 71% of the time): what they need is a better guess of which
+  cut the opponent will choose, not more cuts in the memory.
+
+The code stays reachable in this pull request's commits (the base
+`ed79e44` and the variants above); the branch's head holds the journal
+entry alone. Dropped by the owner on 2026-11-14 ("Drop E064").
+
