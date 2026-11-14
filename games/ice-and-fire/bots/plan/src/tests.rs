@@ -41,6 +41,17 @@ fn position_with_spots(
     gold: [i64; 2],
     units: &[(u8, u32, u8, u8, u8)],
 ) -> State {
+    position_at(10, spots, rows, gold, units)
+}
+
+/// [`position_with_spots`] read at game turn `turn`.
+fn position_at(
+    turn_number: u32,
+    spots: &str,
+    rows: [&str; 12],
+    gold: [i64; 2],
+    units: &[(u8, u32, u8, u8, u8)],
+) -> State {
     let mut income = [0i64; 2];
     let mut text = String::new();
     for row in rows {
@@ -69,7 +80,7 @@ fn position_with_spots(
     for (owner, id, level, x, y) in units {
         turn.push_str(&format!("{owner} {id} {level} {x} {y}\n"));
     }
-    State::read(spots, &turn, League::Bronze, 10).expect("a valid position")
+    State::read(spots, &turn, League::Bronze, turn_number).expect("a valid position")
 }
 
 /// The shared evaluation as the bot reads it: its margins count the moves
@@ -1136,8 +1147,8 @@ fn a_safe_mine_counts_more_early_in_the_middle_game() {
     assert_eq!((EARLY_MINE_TURN, EARLY_MINE_BONUS), (15, 6));
     assert_eq!(EARLY_MINE_PER_CELLS, crate::eval::MINE_PER_CELLS);
     // As in `a_mine_counts_more_with_a_larger_territory`: a mine on (5, 0),
-    // out of blue's reach, with red's 21 cells. The position is read at
-    // game turn 0, so the early bonus applies: 21 / 4 + 6 = 11.
+    // out of blue's reach, with red's 21 cells: 21 / 4 + 6 = 11 until game
+    // turn 15, E033's 21 / 4 = 5 alone from turn 16.
     let own = |state: &State, seat: usize| {
         eval(state, seat)
             - ice_and_fire_tactics::eval::evaluate(state, seat)
@@ -1145,10 +1156,35 @@ fn a_safe_mine_counts_more_early_in_the_middle_game() {
             - standing_term(state, seat)
     };
     let spots = "2\n5 0\n11 9\n";
-    let start = position_with_spots(spots, CORRIDOR, [30, 20], &[]);
-    assert!(start.game_turn() <= EARLY_MINE_TURN);
-    let mut state = start.clone();
-    assert!(state.apply(Command::BuildMine { x: 5, y: 0 }));
-    assert_eq!((threatened(&state, 0), threatened(&state, 1)), (1, 1));
-    assert_eq!(own(&state, 0) - own(&start, 0), 21 / 4 + 6);
+    for (turn, bonus) in [(15, 21 / 4 + 6), (16, 21 / 4)] {
+        let start = position_at(turn, spots, CORRIDOR, [30, 20], &[]);
+        assert_eq!(start.game_turn(), turn);
+        let mut state = start.clone();
+        assert!(state.apply(Command::BuildMine { x: 5, y: 0 }));
+        assert_eq!((threatened(&state, 0), threatened(&state, 1)), (1, 1));
+        assert_eq!(own(&state, 0) - own(&start, 0), bonus, "turn {turn}");
+        assert_eq!(own(&state, 1) - own(&start, 1), -bonus, "turn {turn}");
+    }
+    // On a territory of 3 cells E033's bonus is nothing: the mine counts 6
+    // at turn 15 and nothing at turn 16.
+    let rows = [
+        "OOO.........",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "...........X",
+        "...........X",
+    ];
+    for (turn, bonus) in [(15, 6), (16, 0)] {
+        let start = position_at(turn, "1\n1 0\n", rows, [30, 20], &[]);
+        let mut state = start.clone();
+        assert!(state.apply(Command::BuildMine { x: 1, y: 0 }));
+        assert_eq!(own(&state, 0) - own(&start, 0), bonus, "turn {turn}");
+    }
 }
