@@ -118,12 +118,12 @@ pub fn mine_bonus(cells: i64) -> i64 {
 
 /// The most a mine counts beyond its income (E048): `None` for no cap
 /// (v022).
-pub const MINE_BONUS_CAP: Option<i64> = Some(4);
+pub const MINE_BONUS_CAP: Option<i64> = None;
 
 /// The lead in active cells from which a side's mines count one more per
 /// [`AHEAD_MINE_PER_CELLS`] active cells rather than per [`MINE_PER_CELLS`]
 /// (E048): `None` for never (v022).
-pub const MINE_LEAD: Option<i64> = None;
+pub const MINE_LEAD: Option<i64> = Some(8);
 
 /// The active cells for which a mine of a side that leads by [`MINE_LEAD`]
 /// counts one more than its income (E048).
