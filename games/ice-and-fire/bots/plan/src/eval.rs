@@ -315,8 +315,9 @@ pub const MARGIN_MOVER_LEVEL: u8 = 2;
 /// What each step of a unit's distance to the nearest cell that is not its
 /// side's costs that side, beyond the first (E060): 0 for nothing (v025).
 /// A walk through our own land toward free or enemy cells then raises the
-/// score at each step, as the top bots' units walk for several turns.
-pub const IDLE_STEP: i64 = 0;
+/// score at each step, as the top bots' units walk for several turns; 2 won
+/// the screening (1, 3 and 4 did a little less).
+pub const IDLE_STEP: i64 = 2;
 
 /// The farthest distance counted (E060).
 pub const IDLE_CAP: i64 = 4;
