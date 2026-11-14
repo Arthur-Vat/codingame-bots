@@ -66,7 +66,7 @@ use crate::search::Limit;
 
 /// The time of a turn at CodinGame's limits, milliseconds: 50 ms, less a
 /// margin for the input, the output and a busy machine.
-const BUDGET_MS: f64 = 40.0;
+const BUDGET_MS: f64 = 45.0;
 /// The first turn's time, of CodinGame's 1,000 ms (E010); the opening's
 /// plan stops at 76% of it, about 610 ms.
 const FIRST_BUDGET_MS: f64 = 800.0;
@@ -110,7 +110,7 @@ fn limit(start: Instant, turn: u32) -> Limit {
 
 /// The number of our turns an opening plan covers: the middle game starts
 /// at our eighth turn in the median game (E010).
-const OPENING_TURNS: usize = 9;
+const OPENING_TURNS: usize = 7;
 
 /// What the opening's plans maximize: the solo planner's weights, written
 /// out (E010), with cells 3 and income 1 rather than 4 and 3 (E034): the
