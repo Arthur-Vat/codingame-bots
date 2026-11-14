@@ -123,7 +123,7 @@ fn mines(state: &State, seat: usize, exposed: Bits) -> i64 {
     let active = state.active(seat);
     let mines = (state.mines() & active).and_not(exposed);
     let cells = i64::from(active.count());
-    let bonus = if (EARLY_MINE_FROM[seat]..=EARLY_MINE_TURN).contains(&state.game_turn()) {
+    let bonus = if state.game_turn() <= EARLY_MINE_TURN {
         cells / EARLY_MINE_PER_CELLS + EARLY_MINE_BONUS
     } else {
         mine_bonus(cells)
@@ -135,12 +135,6 @@ fn mines(state: &State, seat: usize, exposed: Bits) -> i64 {
 /// and one more per [`EARLY_MINE_PER_CELLS`] active cells (E058): 0 for
 /// none (v024); 15 won the screening (12 and 18 did less).
 pub const EARLY_MINE_TURN: u32 = 15;
-
-/// The first game turn on which a safe mine of a side counts the early
-/// bonus, red's then blue's (E062): 0 for both in v026, so that the bonus
-/// runs from the start; a later start keeps the gold for units while the
-/// middle of the map is taken.
-pub const EARLY_MINE_FROM: [u32; 2] = [0, 0];
 
 /// What a safe mine counts more until [`EARLY_MINE_TURN`] (E058): 6 won the
 /// screening (4 and 8 did less).

@@ -4,13 +4,13 @@ date: 2026-11-14
 pull_request: "#NN"
 parent: ice-and-fire-v026
 hypothesis: In v026's CodinGame games its first mine comes early (built by turn 8 in 54% of its games as red, 94% by turn 10; the top 10 40% and 60%, the leader zasmu 14% and 62%), in the turns when the middle of the map is won, where the top 10 hold about twice its cells by turn 12; starting E058's early mine bonus at turn 10 or 11 rather than at once keeps that gold for units during the race for the middle, and beats v026.
-change: The plan bot's evaluation counts E058's early bonus for a safe mine only from game turn 10 or 11 (until 15, as before), for both sides or only for red's mines.
+change: None released. Screening only: the plan bot's evaluation counting E058's early bonus for a safe mine only from game turn 10 or 11 (until 15, as before), for both sides or only for red's mines.
 release: none
-sprt: pending
+sprt: not run: gain too small for an SPRT (owner's choice)
 elo: none
 pairs: none
 full_time: none
-decision: pending
+decision: dropped
 cg_rank: none
 ---
 
@@ -89,3 +89,26 @@ mean of +9.1, +8.5 and +4.3); its neighbours r9 and r11 do not confirm a
 trend. Starting the bonus later for red's mines only fits the study: as red,
 v026 built its first mine by turn 8 in 54% of its games, the leader in
 14%; as blue the two are close (37% and 34%).
+
+## Decision
+
+Dropped by the owner on 2026-11-14 ("Drop E062"): r10's gain, about +7
+over 4,000 pairs in three screenings, falling from +9 to +4, is too small
+to spend an SPRT on, and its neighbours (r9, r11) show no trend.
+
+## What was learned
+
+- **The first mine's turn is not where the middle is lost.** v026 builds
+  its first mine earlier than the top 10 and the leader, but delaying
+  E058's bonus by a few turns changes the result little either way: from
+  turn 10 for red only is a little ahead, from turn 10 for both seats a
+  little behind, from turn 9 or 11 level.
+- **Noise at 800 pairs is about ±12 Elo**: f10 at −9.6 between f9 at
+  +2.6 and f11 at +9.1 in the first round, f11 from +9.1 to −1.3 when
+  confirmed. Leaders of a first round of 800 pairs should be confirmed
+  before any conclusion, as here.
+
+The code stays reachable in this pull request's commits (the base
+`ab0fd44` and the variants above); the branch's head holds the journal
+entry alone.
+
