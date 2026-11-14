@@ -131,6 +131,10 @@ const OBJECTIVE: Objective = Objective {
 /// opening used 3). The middle game's search builds them (E033).
 const OPENING_SAFE_SPOT: u8 = u8::MAX;
 
+/// How much less a cell is worth to the opening's moves and trainings for
+/// each of our units next to it (E051): 0 in v022.
+const OPENING_CROWD: i64 = 0;
+
 /// The opening: v003's opening with the solo planner's weight sets, planned
 /// over [`OPENING_TURNS`] of our turns within the turn's time.
 fn opening() -> Planned {
@@ -148,6 +152,7 @@ fn opening_of(width: usize) -> Planned {
         .iter()
         .map(|&params| Params {
             safe_spot: OPENING_SAFE_SPOT,
+            crowd: OPENING_CROWD,
             ..params
         })
         .collect();
