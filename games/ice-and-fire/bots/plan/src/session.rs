@@ -28,12 +28,14 @@ pub fn play(
             Ok(state) => {
                 let thought = think(&state, limit(start, turn), &mut opening);
                 eprintln!(
-                    "turn {turn}: climbs {} tries {} memory {} checks {} forced {} {:?}",
+                    "turn {turn}: climbs {} tries {} memory {} checks {} forced {} deep {} swapped {} {:?}",
                     thought.climbs,
                     thought.evals,
                     thought.memory,
                     thought.checks,
                     thought.forced,
+                    thought.deep,
+                    thought.swapped,
                     start.elapsed()
                 );
                 answer_line(&thought.commands)
