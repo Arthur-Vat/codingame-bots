@@ -68,7 +68,7 @@ pub const THREAT_QUARTERS: i64 = 5;
 /// The lead in active cells from which a side's threatened cells cost
 /// [`LEAD_THREAT_QUARTERS`] quarters rather than [`THREAT_QUARTERS`] (E047):
 /// `None` for never (v022).
-pub const LEAD_CELLS: Option<i64> = None;
+pub const LEAD_CELLS: Option<i64> = Some(3);
 
 /// What a threatened cell of a side that leads by [`LEAD_CELLS`] costs, in
 /// quarters (E047).
