@@ -42,4 +42,16 @@ that cost.
 
 ## Screening
 
-Pending.
+Against `ice-and-fire-v026` on GitHub (`screen.yml`, one calibrated
+runner per variant and shard at CodinGame's speed and real limit, ADR
+0048; one timeout of L8m2 in 1,600 games, no other fault). Run
+43631259516, seed 64064, 800 pairs each over two runners:
+
+| Variant | Commit | Cut length | Move cuts | Elo against v026 |
+| --- | --- | ---: | ---: | --- |
+| L8 | `82fa136` | 8 | 0 | −4.3 [−13.3, +4.6] |
+| L8m2 | `2d86754` | 8 | 2 | **−12.6 [−24.9, −0.3]** |
+| m4 | `c2e876f` | 5 | 4 | **−14.8 [−27.6, −2.0]** |
+| m2 | `79d3add` | 5 | 2 | **−18.3 [−31.2, −5.4]** |
+
+The move-first cuts lose; the longer cuts alone are level.
