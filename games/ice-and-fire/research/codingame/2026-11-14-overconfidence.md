@@ -203,7 +203,9 @@ Asked by the owner on 2026-11-14 ("If they are predictable and already seen why 
 - **Within the search's view no plan closed it for less than it cost**: its best plan is the one played, and we already held 4 towers (2 elsewhere) against an opponent with 54 gold and level-3 units.
 - By kind: 35% began far behind (−150 or less at our start), 25% had no gold left for a tower after our turn, 22% were trades (our turn gained three quarters of the damage or more), 18% had gold for a tower but the search judged it not worth it. In the games we won, these rounds netted +29; in those we lost, −85.
 
-So the large removals the search sees are mostly not losses of a turn: they are the price of positions already weak (a stretched territory held by double links, an opponent banking against our empty purse). One question is left: the search climbs one action at a time and could miss a defence that needs several actions at once; a run with ten times its tries on these positions would tell.
+**Would more search find a parry?** The search climbs one action at a time and could miss a defence that needs several at once. The plan bot's `judge` mode searched the 250 positions with 600 tries (as the judge runs it) and with 6,000: on the 245 whose scores are material, the best plan's score rose by 0 in the median (the same plan in 68%), by 20 or more in 9% of them and by 50 or more in 4%; ten times the search finds no parry the usual search misses, as far as the evaluation can tell.
+
+So the large removals the search sees are mostly not losses of a turn: they are the price of positions already weak (a stretched territory held by double links, an opponent banking against our empty purse), which the land race of the opening study and the evaluation's optimism against the top 10 (section 4) describe earlier in the game.
 
 ## 4. The evaluation against the result
 
