@@ -1146,6 +1146,7 @@ fn a_safe_mine_counts_more_early_in_the_middle_game() {
     // E058: until game turn 15 a safe mine counts 6 more than E033's bonus.
     assert_eq!((EARLY_MINE_TURN, EARLY_MINE_BONUS), (15, 6));
     assert_eq!(EARLY_MINE_PER_CELLS, crate::eval::MINE_PER_CELLS);
+    assert_eq!(crate::eval::EARLY_MINE_FROM, [0, 0]);
     // As in `a_mine_counts_more_with_a_larger_territory`: a mine on (5, 0),
     // out of blue's reach, with red's 21 cells: 21 / 4 + 6 = 11 until game
     // turn 15, E033's 21 / 4 = 5 alone from turn 16.
