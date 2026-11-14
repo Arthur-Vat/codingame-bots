@@ -133,7 +133,7 @@ const OBJECTIVE: Objective = Objective {
 
 /// The weight of each neutral cell the opening's plans reach before the
 /// enemy can (E061, `solo::race_halves`): 0 in v026.
-const OPENING_RACE: i64 = 0;
+const OPENING_RACE: i64 = 2;
 
 /// The game turns the enemy is taken to need beyond its steps from its HQ
 /// to reach a cell (E061).
