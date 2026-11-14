@@ -94,6 +94,19 @@ pub fn block_played(game: &Game, ply: usize) -> String {
     block_with(game, ply, true)
 }
 
+/// The block of `ply` with its `played` line, then a `reply` line with the
+/// next ply's answer (the opponent's reply), for the plan bot's `surprise`;
+/// `None` when the game has no next ply.
+pub fn block_reply(game: &Game, ply: usize) -> Option<String> {
+    let next = game.steps.get(ply + 1)?;
+    let block = block_with(game, ply, true);
+    let body = block.strip_suffix("end\n")?;
+    Some(format!(
+        "{body}reply {}\nend\n",
+        answer_line(&next.commands)
+    ))
+}
+
 fn block_with(game: &Game, ply: usize, played: bool) -> String {
     let state = &game.steps[ply].state;
     let seat = state.to_act();

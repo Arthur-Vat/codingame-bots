@@ -15,6 +15,7 @@ use std::cell::RefCell;
 use ice_and_fire_engine::{Command, State};
 
 use super::{Plan, Reply, Search};
+use crate::eval::eval;
 
 thread_local! {
     /// The plan to score on this thread's next search, if any.
@@ -24,12 +25,19 @@ thread_local! {
 }
 
 /// The scores of one search.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct Judged {
     /// The score of the plan the search chose.
     pub ours: i64,
     /// The score of the played plan, if one was given.
     pub played: Option<i64>,
+    /// The state after the played plan's commands that the rules accept.
+    pub played_end: Option<State>,
+    /// The replies the played plan's score is the worst of (the final
+    /// memory, then the plan's own replies), each with the evaluation after
+    /// it from the searching side: what the search expects the opponent may
+    /// do.
+    pub modeled: Vec<(Vec<Command>, i64)>,
 }
 
 /// Sets the played plan the next search on this thread scores.
@@ -50,10 +58,17 @@ pub(super) fn observe(search: &Search, root: &State, memory: &[Reply], best: Opt
     let Some((ours, _)) = best else {
         return;
     };
+    let mut played_end = None;
+    let mut modeled = Vec::new();
     let played = PLAYED.with(|p| p.borrow().clone()).map(|commands| {
         let mut end = root.clone();
         let accepted: Vec<Command> = commands.into_iter().filter(|&c| end.apply(c)).collect();
         let own = search.answers(&end);
+        for reply in memory.iter().chain(own.iter()) {
+            let damage = eval(&super::after_reply(&end, &reply.commands), search.me);
+            modeled.push((reply.commands.clone(), damage));
+        }
+        played_end = Some(end.clone());
         let plan = Plan {
             commands: accepted,
             end,
@@ -62,5 +77,12 @@ pub(super) fn observe(search: &Search, root: &State, memory: &[Reply], best: Opt
         };
         search.final_score(&plan, memory)
     });
-    JUDGED.with(|j| *j.borrow_mut() = Some(Judged { ours, played }));
+    JUDGED.with(|j| {
+        *j.borrow_mut() = Some(Judged {
+            ours,
+            played,
+            played_end,
+            modeled,
+        })
+    });
 }

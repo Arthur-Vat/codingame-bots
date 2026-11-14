@@ -70,6 +70,7 @@ fn the_search_scores_its_own_plan_as_a_played_one() {
             initial: position.initial.clone(),
             turn: position.turn.clone(),
             played: Some(answer_line(&ours.ours)),
+            reply: None,
         };
         let again = judge(&played, 60).expect("judged");
         assert_eq!(again.ours, ours.ours, "the search repeats");
