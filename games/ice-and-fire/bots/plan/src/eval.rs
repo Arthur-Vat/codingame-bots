@@ -295,12 +295,12 @@ pub const MARGIN_MOVER_LEVEL: u8 = 2;
 
 /// The lead in active cells at or below which a side's pressure term counts
 /// only [`BEHIND_GOLD_QUARTERS`] quarters of its gold (E049): `None` for
-/// never (v022).
-pub const BEHIND_CELLS: Option<i64> = None;
+/// never (v022); behind by 5 or more won the screening.
+pub const BEHIND_CELLS: Option<i64> = Some(-5);
 
 /// The quarters of its gold that the pressure term of a side behind by
-/// [`BEHIND_CELLS`] counts (E049).
-pub const BEHIND_GOLD_QUARTERS: i64 = 2;
+/// [`BEHIND_CELLS`] counts (E049): three quarters won the screening.
+pub const BEHIND_GOLD_QUARTERS: i64 = 3;
 
 /// The lowest value of the shared pressure term
 /// (`ice_and_fire_tactics::eval`).
