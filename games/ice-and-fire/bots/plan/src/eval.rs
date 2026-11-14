@@ -140,7 +140,7 @@ pub const EARLY_MINE_TURN: u32 = 15;
 /// bonus, red's then blue's (E062): 0 for both in v026, so that the bonus
 /// runs from the start; a later start keeps the gold for units while the
 /// middle of the map is taken.
-pub const EARLY_MINE_FROM: [u32; 2] = [10, 0];
+pub const EARLY_MINE_FROM: [u32; 2] = [0, 0];
 
 /// What a safe mine counts more until [`EARLY_MINE_TURN`] (E058): 6 won the
 /// screening (4 and 8 did less).
