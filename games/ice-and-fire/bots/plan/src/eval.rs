@@ -293,6 +293,37 @@ pub fn standing(margin: i64) -> i64 {
 /// none (v019). Level 2 won the screening.
 pub const MARGIN_MOVER_LEVEL: u8 = 2;
 
+/// The lead in active cells at or below which a side's pressure term counts
+/// only [`BEHIND_GOLD_QUARTERS`] quarters of its gold (E049): `None` for
+/// never (v022).
+pub const BEHIND_CELLS: Option<i64> = None;
+
+/// The quarters of its gold that the pressure term of a side behind by
+/// [`BEHIND_CELLS`] counts (E049).
+pub const BEHIND_GOLD_QUARTERS: i64 = 2;
+
+/// The lowest value of the shared pressure term
+/// (`ice_and_fire_tactics::eval`).
+const MAX_PRESSURE: i64 = 200;
+
+/// The lead of `seat` in active cells: its active cells less the enemy's.
+fn lead(state: &State, seat: usize) -> i64 {
+    i64::from(state.active(seat).count()) - i64::from(state.active(1 - seat).count())
+}
+
+/// What the pressure term of `seat`, whose margin to the enemy HQ is
+/// `margin`, loses when it counts only [`BEHIND_GOLD_QUARTERS`] of its gold
+/// (E049): 0 unless `seat` is behind by [`BEHIND_CELLS`].
+fn behind_gold(state: &State, seat: usize, margin: i64) -> i64 {
+    match BEHIND_CELLS {
+        Some(cells) if margin != i64::MIN && lead(state, seat) <= cells => {
+            let cut = (4 - BEHIND_GOLD_QUARTERS) * state.gold(seat) / 4;
+            (margin - cut).clamp(-MAX_PRESSURE, 0) - margin.clamp(-MAX_PRESSURE, 0)
+        }
+        _ => 0,
+    }
+}
+
 /// The score of `state` for `seat`, higher is better for it.
 pub fn eval(state: &State, seat: usize) -> i64 {
     let movers = [
@@ -309,7 +340,9 @@ pub fn eval(state: &State, seat: usize) -> i64 {
     let ours = exposed(state, seat);
     let theirs = exposed(state, 1 - seat);
     let threats = i64::from(theirs.count()) - i64::from(ours.count());
-    score - 2 * debt(state, seat)
+    score + behind_gold(state, seat, margins[0])
+        - behind_gold(state, 1 - seat, margins[1])
+        - 2 * debt(state, seat)
         + 2 * debt(state, 1 - seat)
         + shape(state, seat)
         + strong_units(state, seat)
