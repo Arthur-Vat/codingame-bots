@@ -1,5 +1,5 @@
 //! The cheapest cuts of a side's territory, for the study of the threats
-//! its search misses (`codingame-surprise`, the note's section 3b).
+//! its search misses (`codingame-surprise`, the note's section 3c).
 //!
 //! A cut is a set of the side's active cells whose capture disconnects
 //! others from its HQ. Each cell has a capture price: what the cheapest
@@ -10,9 +10,12 @@
 //! from the HQ, however many paths join them. The cut removes its own cells
 //! and every cell it leaves disconnected.
 //!
-//! This ignores that the enemy must reach the cut cells: a training enters
-//! only a cell next to its own territory, so a cut deep inside ours costs
-//! more than its cells' prices. The measure overstates such cuts.
+//! With [`price`] alone ([`cut_to`], [`best_affordable`]) this ignores that
+//! the enemy must reach the cut cells: a training enters only a cell next
+//! to its own territory, so a cut deep inside ours costs more than its
+//! cells' prices. [`reach_prices`] adds the way there, and makes the cells
+//! an enemy unit can step onto free; a free cell joins a cut only when the
+//! cut needs it.
 
 use std::collections::VecDeque;
 
@@ -49,12 +52,15 @@ pub fn reach_prices(state: &State, seat: usize) -> [i64; CELLS] {
     let active = state.active(seat);
     let mut step = [INFINITE; CELLS];
     for cell in valid.iter() {
-        step[cell] = if state.owned(enemy).test(cell) {
+        step[cell] = if state.active(enemy).test(cell) {
             0
         } else if active.test(cell) {
             price(state, seat, cell)
         } else {
-            // A neutral cell, or one of `seat`'s cut off: a level-1 unit.
+            // A neutral cell, one of `seat`'s cut off, or one of the enemy's
+            // own inactive cells (retaken by a training; one that holds
+            // the enemy's unit or building cannot be, which this ignores):
+            // a level-1 unit.
             10
         };
     }
@@ -94,7 +100,9 @@ pub fn reach_prices(state: &State, seat: usize) -> [i64; CELLS] {
             .map(|n| dist[n])
             .min()
             .unwrap_or(INFINITE);
-        // `dist[n]` already counts `n`'s own price when `n` is ours.
+        // `dist[n]` already counts `n`'s own price when `n` is ours. A
+        // level-3 unit may also enter a protected cell; it is left out here,
+        // so the step-in is counted only where any level may make it.
         let walk_in = !protected.test(cell)
             && (Bits::cell(cell).neighbours() & movers).iter().any(|u| {
                 let level = state.unit_level(u).unwrap_or(0);
@@ -120,6 +128,18 @@ pub struct Cut {
     pub cells: i64,
     /// The cells captured (the cut's size).
     pub links: i64,
+}
+
+/// The cells of `cells` joined to `hq` through `cells`.
+fn joined(cells: Bits, hq: usize) -> Bits {
+    let mut reached = Bits::cell(hq) & cells;
+    loop {
+        let next = (reached | reached.neighbours()) & cells;
+        if next == reached {
+            return reached;
+        }
+        reached = next;
+    }
 }
 
 /// A small max-flow graph (Edmonds-Karp on adjacency lists).
@@ -257,16 +277,18 @@ pub fn cut_with(
             cut.set(cell);
         }
     }
-    // What stays joined to the HQ once the cut is captured.
-    let left = active.and_not(cut);
-    let mut joined = Bits::cell(hq);
-    loop {
-        let next = (joined | joined.neighbours()) & left;
-        if next == joined {
-            break;
+    // A free cell (price 0) meets that test whether the cut needs it or
+    // not: keep it only when the target stays joined to the HQ without it.
+    for cell in cut.iter() {
+        if prices[cell] == 0 && cell != target {
+            let mut fewer = cut;
+            fewer.clear(cell);
+            if !joined(active.and_not(fewer), hq).test(target) {
+                cut = fewer;
+            }
         }
-        joined = next;
     }
+    let joined = joined(active.and_not(cut), hq);
     Some(Cut {
         cost,
         cells: i64::from(active.and_not(joined).count()),

@@ -119,14 +119,16 @@ Asked by the owner on 2026-11-14 ("Validate the measure first"): before any expe
 - **the way free**: the cell's capture price alone (10 empty, 20 a level-1 unit, 30 a level-2 or 3 unit or a cell a tower holds or protects);
 - **the way paid** (`reach_prices`): that price plus the cheapest chain of trainings from the enemy's active land to a neighbour of the cell (neutral cells 10, ours at their price), or nothing at all when an enemy unit next to the cell can step onto it.
 
+A free cell joins a cut only when the cut needs it (a first version counted every free cell on our HQ's side, which inflated the measure; the review of the pull request found it).
+
 The area under the ROC curve (0.5: no better than chance) over the 8,264 normal plies, for the 160 large misses and for the 378 replies that removed 10 or more of our cells:
 
 | Predictor, at the end of our turn | Large miss | Reply removes 10+ cells |
 | --- | ---: | ---: |
-| Cheapest affordable cut, the way paid | **0.743** | 0.867 |
+| Cheapest affordable cut, the way paid | 0.700 | 0.847 |
 | The search's cut finder (its largest cut) | 0.688 | 0.817 |
-| The larger of the two | **0.743** | **0.880** |
-| The way-paid cut less the finder's | 0.651 | 0.625 |
+| The larger of the two | 0.703 | 0.859 |
+| The way-paid cut less the finder's | 0.561 | 0.557 |
 | Best affordable single capture | 0.605 | 0.677 |
 | Largest single-capture cut, any price (the evaluation's shape term) | 0.599 | 0.661 |
 | Cheapest affordable cut, the way free | 0.597 | 0.614 |
@@ -135,18 +137,18 @@ By the way-paid cut's size:
 
 | Cut removes | Plies | Reply removes 10+ cells | Large miss | Game lost |
 | --- | ---: | ---: | ---: | ---: |
-| 0 (none affordable) | 2,552 | 0% | 0.5% | 40% |
-| 1 to 4 | 3,290 | 2% | 1.2% | 51% |
-| 5 to 9 | 1,819 | 7% | 3.8% | 55% |
-| 10 to 14 | 427 | 28% | 5.4% | 59% |
-| 15 or more | 176 | 42% | 8.5% | 66% |
+| 0 (none affordable) | 2,588 | 0% | 0.5% | 40% |
+| 1 to 4 | 3,583 | 2% | 1.6% | 52% |
+| 5 to 9 | 1,610 | 9% | 4.2% | 55% |
+| 10 to 14 | 350 | 28% | 4.3% | 59% |
+| 15 or more | 133 | 40% | 3.8% | 68% |
 
-- **The way must be paid.** With the way free, nearly all our land is cuttable (median 35 cells for the large misses), and the measure predicts little: the two cells next to our HQ cut everything, but the opponent cannot reach them.
-- **With the way paid, it is the best single predictor** of the large misses and of large removals, ahead of the search's own cut finder, and it adds to it (0.880 for the two together). Large misses are 17 times as frequent where it finds a cut of 15 cells or more as where it finds none.
-- **It does not catch them all**: its cut is at least as large as the real one in 27% of the large misses (median 6 cells against 11 removed). Each cut cell pays for its own way from the enemy's land, so two links reached by one chain are charged twice; a model that charges a shared path once would see more.
-- **It adds little to the result beyond the evaluation**: at an equal evaluation after our turn (game turns 8 to 24), plies with a cut of 5 cells or more were lost as often as those without, or up to 9 points more (50 to 150: 51% against 42%).
+- **The way must be paid.** With it free, nearly all our land is cuttable (median 35 cells for the large misses) and the measure predicts little: the two cells next to our HQ cut everything, but the opponent cannot reach them.
+- **With the way paid, it is about as good as the search's own cut finder, not better** (0.700 against 0.688 for the large misses), and it adds almost nothing to it (0.703 together). It ranks large removals well (0.847), as the finder does (0.817): where both see a large cut, the search already models it and the reply rarely surprises.
+- **It does not see the large misses**: its cut is at least as large as the real one in only 14% of them (median 5 cells against 11 removed), and the share of large misses levels off at about 4% whatever its size. Each cut cell pays for its own way from the enemy's land, so two links reached by one chain are charged twice; even so, the replies that surprise the search are mostly not the cheapest cuts a structural measure finds at the end of our turn.
+- **It adds little to the result beyond the evaluation**: at an equal evaluation after our turn (game turns 8 to 24), plies with a cut of 5 cells or more were lost from 5 points less to 8 points more often than those without.
 
-What would follow, as an experiment for the owner: use the way-paid cheapest cut as one more modeled reply (the chains of trainings to its cells, then their captures), rather than as a term of the evaluation, which it would slow (a shortest-path pass and up to one max-flow per active cell for every plan scored).
+So the validation does not support an experiment built on this measure as it stands: a reply made from it would mostly duplicate the cuts the search already models. What the large misses have in common (section 3b: double links, deep captures, a bigger bank spent at once) is not captured by the cheapest affordable cut at the end of our turn.
 
 ## 4. The evaluation against the result
 
