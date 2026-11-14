@@ -7,6 +7,8 @@ Stage S0 of the goal-directed opening (O1), asked by the owner on 2026-11-14 ("O
 
 A third question is whether the opening's current search would do better with more time (the headroom).
 
+**In short:** our units do not get in each other's way (0% to 3% of unit turns, as for the top 10); up to turn 7 our opening matches the top 10's in cells and in unit use; more search time changes nothing. The gap is the race for the middle of the map from turn 7 to turn 12: alone, our opening reaches the middle as the top 10 do, but against them it arrives second, and after contact more of our units stand one step behind the land. The leader, zasmu, wins that race earlier still: 2.4 middle cells at turn 8 as red, against the top 10's 1.3 and our 0.6.
+
 Written by Claude from the outputs of the commands below.
 
 ## Data and commands
@@ -73,7 +75,7 @@ Shares of unit turns, v026's games (the top 10's rows from the same games: 22 as
 | blue | top 10 | 10 | 55% | 8% | 2% | 5% | 1% | 18% | 11% |
 
 - By turn 10 v026's units spend 6.4 unit turns a game taking nothing (20% to 21% of their turns), the top 10's 4.0 as red (13%) and 5.2 as blue (15%) in the same games. v024 and v025: 5.4 to 7.5 (18% to 23%).
-- The difference is in two kinds of idle turns, both after turn 7. **Free:** at turns 9 and 10, 8% to 10% of our unit turns stand next to neutral land and do not take it, against 3% to 7% for the top 10 (4% to 5% over the whole data). In most of them the land is not next to the enemy (*free by the enemy* is 0% to 3%), so it is not caution at the front. **Enclosed near:** 17% to 28% against 7% to 18%: units one step from land they do not reach.
+- The difference is in two kinds of idle turns, both after turn 7. **Free:** at turns 9 and 10, 8% to 10% of our unit turns stand next to neutral land and do not take it, against 3% to 7% for the top 10 (4% to 5% over the whole data). In most of them the land is not next to the enemy (*free by the enemy* is 0% to 3%). The leader does it as often as we do (section 6), so this may be a choice, such as holding a front, rather than a waste. **Enclosed near:** 17% to 28% against 7% to 18%: units one step from land they do not reach.
 - *Beaten* stays at 1% to 3% for both: even after contact, our units seldom lose their cell to one another.
 
 ## 4. Trainings
@@ -93,19 +95,58 @@ As blue, the top 10's trainings of turns 5 to 7 take 0.6 more cells each: they a
 
 v026 builds a mine by turn 8 in 54% of its games as red (top 10: 23%) and by turn 10 in 94% (55%); as blue 37% and 74% (31% and 52%). Since E058 our first mine comes earlier than the top 10's, at 15 gold, 1.5 units, in the turns when the middle is decided.
 
-## 6. Headroom of the opening's search
+## 6. The leader, zasmu
 
-HEADROOM
+zasmu, first on the snapshot, as a group of its own (`--top 1`). It played few games against v024 to v026 (3 to 9 a release and seat), so its rows come from all its games in the data (29 as red, 352 as blue), most of them against v014; the top 10's rows here come from the whole data too, for the same reason, and v026's from its own games. Columns *middle lost* depend on the opponent and are left out.
+
+| Seat | Who | Turn | Active cells | Home held | Middle held | Mine built so far |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| red | zasmu | 8 | 22.1 | 19.8 | 2.4 | 14% |
+| red | top 10 | 8 | 21.2 | 20.0 | 1.3 | 40% |
+| red | v026 | 8 | 20.4 | 19.9 | 0.6 | 54% |
+| red | zasmu | 12 | 35.9 | 27.2 | 9.0 | 83% |
+| red | top 10 | 12 | 33.0 | 26.4 | 7.2 | 73% |
+| red | v026 | 12 | 31.3 | 26.9 | 4.3 | 97% |
+| blue | zasmu | 8 | 24.6 | 20.8 | 3.9 | 34% |
+| blue | top 10 | 8 | 24.5 | 21.2 | 3.4 | 31% |
+| blue | v026 | 8 | 23.1 | 21.3 | 2.2 | 37% |
+| blue | zasmu | 12 | 41.2 | 27.9 | 11.3 | 91% |
+| blue | top 10 | 12 | 38.5 | 26.7 | 10.6 | 66% |
+| blue | v026 | 12 | 31.2 | 25.7 | 6.8 | 88% |
+
+- **zasmu wins the middle earlier still.** At turn 8, the end of the opening, it holds 2.4 middle cells as red (top 10 1.3, v026 0.6) and 3.9 as blue (3.4, 2.2), with the same home as everyone. By turn 12 it holds 2 to 3 cells more than the top 10 and 5 to 10 more than v026.
+- **Its units are not more efficient than ours in the way section 3 measures.** Unit turns idle by turn 10: 3.8 a game as red (12%), 4.7 as blue (13%), a little below the top 10 and v026. But it leaves units next to quiet free land as often as v026 does (*free*: 11% to 12% at turns 9 to 11 as red, 8% as blue). Where it differs is *enclosed near*: 12% to 18% as red and 15% to 21% as blue at turns 9 to 11, against v026's 19% to 28%. Its units stay at the edge of the land, not one step behind it.
+- **Its trainings take more land**: those of turns 5 to 7 take 2.48 cells each as red and 3.03 as blue (v026 2.32 and 2.33), those of turns 8 to 10 1.31 and 1.32 (v026 1.02 and 0.85).
+- **Its first mine is late as red** (14% by turn 8, against v026's 54%) and in between as blue.
+
+## 7. Headroom of the opening's search
+
+v026's opening played alone on source maps 1 to 100 (the opponent passing), its first plan searched for the bot's own 608 ms or 4 and 16 times longer, measured at the start of turn 8 (means over 100 sides; the last column is the gain in the plans' objective over 608 ms, paired by map, with its 95% interval). *Rules* is the default weights alone, with no search.
+
+| Seat | First plan | Cells | Income | Gold | Middle held | Objective | Over 608 ms |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
+| red | rules | 19.5 | 14.4 | 17.6 | 0.3 | 58.7 | |
+| red | 608 ms | 22.1 | 16.5 | 19.4 | 1.7 | 102.3 | |
+| red | 2,400 ms | 22.2 | 16.5 | 18.9 | 1.8 | 101.8 | −0.5 ± 0.6 |
+| red | 9,600 ms | 22.2 | 16.5 | 18.8 | 1.8 | 99.8 | −2.5 ± 1.3 |
+| blue | rules | 24.4 | 18.5 | 25.7 | 1.9 | 95.0 | |
+| blue | 608 ms | 25.1 | 19.2 | 28.4 | 3.7 | 136.3 | |
+| blue | 2,400 ms | 25.2 | 19.4 | 28.2 | 3.8 | 137.3 | +1.0 ± 1.0 |
+| blue | 9,600 ms | 25.3 | 19.4 | 28.5 | 4.0 | 137.3 | +0.9 ± 1.3 |
+
+- **The search over weight sets is saturated.** Sixteen times more time changes the position at turn 8 by a tenth of a cell. (The objective can fall with more time because the plans are rated at the end of their 9 turns, not at turn 8.) Searching harder within the 27 weight sets and 8 ways of buying has nothing left to give.
+- **The search itself is worth a lot**: over the rules alone, +2.6 cells and +1.4 middle cells as red, and about +40 on the objective in both seats.
+- **Alone, our opening reaches the middle as the top 10 do in real games** (red 1.7 middle cells at turn 8, the top 10 1.6; blue 3.7 against 2.9). In real games against the top 10 it holds 0.6 and 2.2. The plan is made as if the opponent passed, and in real games the opponent takes part of that middle first (it holds 3.0 middle cells by our turn 8 as red, 3.4 as blue). An opening that knows when the enemy will arrive would choose other cells.
 
 ## What follows for O1
 
 - **The coupling of units is not where we lose.** Units in each other's way cost 0% to 3% of unit turns, for us as for the top 10. A planner that makes units' paths jointly would fix a waste we hardly have.
-- **The opening up to turn 7 matches the top 10's in cells and unit use.** The difference at turn 8 is where the land is: about one middle cell.
-- **The gap is the race for the middle, from turn 7 to turn 12.** It spans the end of the opening and the first turns of the middle game. In those turns our units stand next to land they could take (free) or one step from it (enclosed near) twice as often as the top 10's, our trainings take less land, and our mines come earlier.
+- **The opening up to turn 7 matches the top 10's in cells and unit use, and its search is saturated.** The difference at turn 8 is where the land is: about one middle cell, which our plan aims at but the enemy takes first.
+- **The gap is the race for the middle, from turn 7 to turn 12**, and the leader shows it most. It spans the end of the opening and the first turns of the middle game. In those turns more of our units stand one step behind the land (enclosed near), our trainings take less land, and our mines come earlier; the leader's units stay at the edge, its trainings take the most land, and its first mine as red is the latest.
 
 So S1 as proposed (a path planner for the opening, scored by today's objective) aims at the part that already works. A goal-directed plan still fits, but its goal is the middle at turns 8 to 12, with the enemy's arrival times, not more cells in our home by turn 8. The proposals that follow from the data:
 
-1. **S2 first, inside the current opening** (medium): count each middle cell by when we reach it against when the enemy can (a deadline), so that the opening's plans head for the middle before turn 8. The pull toward the enemy HQ (`reach`) and the Voronoi weight did not do this (E034, E053); a deadline measures the race itself.
-2. **The hand-over** (small to medium): the middle game's search leaves units next to quiet free land. A study of those plies with the judge (`codingame-judge`) would say whether its evaluation does not value the cell, or its climb does not offer the move.
+1. **S2 first, inside the current opening** (medium): count each middle cell by when we reach it against when the enemy can (a deadline: its arrival time with the enemy's opening mirrored, S3), so that the opening's plans head for the middle cells they can still win before turn 8. The pull toward the enemy HQ (`reach`) and the Voronoi weight did not do this (E034, E053); a deadline measures the race itself.
+2. **The hand-over** (small to medium): after contact our units stand one step behind the land more often than the leader's. A study of those plies with the judge (`codingame-judge`) would say whether the middle game's evaluation or its climb keeps them there.
 3. **Mines and the middle** (small): a screening of the first mine a few turns later than v026 (E058's bonus until turn 12 rather than 15), since it competes with units for the middle.
 4. **S1 later, if at all**: the path planner pays only once the goal is known; it can then carry S2's deadlines through contact.
