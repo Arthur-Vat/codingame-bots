@@ -56,6 +56,7 @@ Iteration: one experiment per pull request ([journal](journal/README.md)).
 - [x] E044, blockers of the remembered replies, after a study of defensive turns in the collected CodinGame games: the search is also offered a tower on each of our free cells that the opponent's remembered replies enter, as `ice-and-fire-v021` through the SPRT against v020: accepted, +31.4 Elo ([E044](journal/E044-blockers.md), #312)
 - [x] E045, no units on our own cells, after a study of the gold spent per turn in the collected CodinGame games: the search is offered no training on our own empty active cells, as `ice-and-fire-v022` through the SPRT against v021: accepted, +30.5 Elo ([E045](journal/E045-own-cell-units.md), #314)
 - [x] E055, the opening's units spread and its plan over 9 turns, after a study of the first 10 turns against the top 10 (E051 and E052 combined; E046 to E050, E053 and E054 dropped): a cell worth 2 less to the opening for each of our units next to it, the plan over 9 of our turns rather than 7 and 45 ms a turn rather than 40, as `ice-and-fire-v023` through the SPRT against v022: accepted, +44.5 Elo (a first run +65.9) ([E055](journal/E055-spread-and-horizon.md), #324)
+- [x] E056, spending in the opening on top of v023's spread units (gold weighed less lost again): the opening's purchases pay back by game turn 18 rather than 15, as `ice-and-fire-v024` through the SPRT against v023: accepted, +19.7 Elo ([E056](journal/E056-opening-spend-v023.md), #326)
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 

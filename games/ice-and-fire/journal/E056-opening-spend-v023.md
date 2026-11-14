@@ -1,16 +1,16 @@
 ---
 id: E056
 date: 2026-11-14
-pull_request: "pending"
+pull_request: "#326"
 parent: ice-and-fire-v023
 hypothesis: The top 10 spend more than we do at turns 6 and 7 (11 and 16 gold as red against our 5 and 8); E046 found that weighing gold less in our opening lost (about -50), but its units crowded each other, so that more units took no more land; with v023's units spread (E051, E055), each new unit finds a cell of its own, so spending more in the opening (gold weighed less in the plan, or trainings that pay back by a later turn, or units expected to take more cells after contact) takes more land and beats v023.
 change: The opening's plan weighs gold 0 or half as much as v023 (every other weight doubled), or its purchases count a unit as paying back by game turn 18 or 21 rather than 15, or a unit as taking 2 cells after the territories meet rather than 0.
 release: ice-and-fire-v024
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +19.7 [+6.9, +32.7] at CodinGame's limits
+pairs: 1040
+full_time: +19.7 [+6.9, +32.7] (the SPRT's own, ADR 0042), no fault of either side in 2,080 games
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -72,4 +72,21 @@ screened commit's.
 
 ## SPRT
 
-Pending.
+Accepted on the pull request (run 43591624972, at 88a28071), at
+CodinGame's speed and real limit, in blocks of 10 pairs over 8 calibrated
+runners:
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v024 vs ice-and-fire-v023: 2080 games, 1040 complete pairs
+  ice-and-fire-v024: 1099 wins, 0 draws, 981 losses (score 52.8%)
+  Elo of ice-and-fire-v024 over ice-and-fire-v023: +19.7 [+6.9, +32.7] (95%, from pairs)
+  pairs by ice-and-fire-v024's points (0, 1/2, 1, 3/2, 2): [165, 0, 651, 0, 224]
+  ice-and-fire-v024 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v023 faults: 0 timeouts, 0 crashes, 0 invalid answers
+Checked 13 rounds of 8 blocks (104 blocks counted, 64 left out)
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.42 (bounds -2.94, 2.94) after 1040 pairs
+Verdict: ACCEPTED: ice-and-fire-v024 is stronger than ice-and-fire-v023
+```
+
+The sharp peak held: about +20 in the SPRT, as in both screenings.
