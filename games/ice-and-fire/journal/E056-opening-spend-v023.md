@@ -11,7 +11,7 @@ elo: +19.7 [+6.9, +32.7] at CodinGame's limits
 pairs: 1040
 full_time: +19.7 [+6.9, +32.7] (the SPRT's own, ADR 0042), no fault of either side in 2,080 games
 decision: promoted
-cg_rank: not reported
+cg_rank: Legend, 7th of 88 (7th of 926 overall), 2026-11-14: submitted through the API on the owner's approval (submission 41713744)
 ---
 
 Asked by the owner on 2026-11-14 (a form after v023: "Spend more on v023
