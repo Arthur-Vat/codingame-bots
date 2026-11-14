@@ -295,11 +295,11 @@ pub const MARGIN_MOVER_LEVEL: u8 = 2;
 
 /// The income below which each gold of a side's income counts
 /// [`LOW_INCOME_TURNS`] more times (E050): `None` for no floor (v022).
-pub const INCOME_FLOOR: Option<i64> = Some(10);
+pub const INCOME_FLOOR: Option<i64> = None;
 
 /// How many more times each gold of income below [`INCOME_FLOOR`] counts
 /// (E050).
-pub const LOW_INCOME_TURNS: i64 = 6;
+pub const LOW_INCOME_TURNS: i64 = 3;
 
 /// What the income of `seat` below [`INCOME_FLOOR`] costs it (E050).
 fn low_income(state: &State, seat: usize) -> i64 {
