@@ -1,0 +1,76 @@
+---
+id: E047
+date: 2026-11-14
+pull_request: "#317"
+parent: ice-and-fire-v022
+hypothesis: Once ahead, the top 10 of CodinGame spend about a third of their gold on towers and the top 1 two thirds (turns 13 to 20), where v019 to v021 spend about a tenth when ahead by 8 cells or more and put a quarter in mines; a threatened cell of a side that leads costs it more in the evaluation, so that the search guards what it took with towers, and beats v022.
+change: None released. Screening only: the plan bot's evaluation charges each threatened cell of a side that leads by at least 3 or 8 active cells 8 or 12 quarters rather than 5 (THREAT_QUARTERS, E037).
+release: none
+sprt: not run: lost in screening
+elo: none
+pairs: none
+full_time: none
+decision: dropped
+cg_rank: none
+---
+
+Asked by the owner on 2026-11-14 ("Merge 316, and go on with all
+proposals in parallel"), one of three experiments run in parallel on
+`ice-and-fire-v022` (E047 to E049) after a study of the spending of each
+side by its lead in active cells, in the collected CodinGame games, and
+of the top 1 (zasmu) in its 297 games against us.
+
+## Why
+
+A scratch scan of every turn from turn 7 (the gold held and spent, what
+it bought, both sides' active cells and the margin to the enemy HQ), split
+by the lead in active cells at the start of the turn. The top 10 appear
+only in their games against us, and most of zasmu's against v014; its
+spending was alike against v014 and against v019 to v021.
+
+| Share of the gold spent | v019 to v021 | Top 10 | zasmu |
+| --- | ---: | ---: | ---: |
+| Towers, turns 7 to 12, ahead by 8 or more | 11% | 34% | 38% (ahead by 3 or more) |
+| Towers, turns 13 to 20, ahead by 8 or more | 10% | 32% | 66% (ahead by 3 or more) |
+| Mines, turns 7 to 12, ahead by 8 or more | 28% | 17% | 21% (ahead by 3 or more) |
+| Mines, turns 13 to 20, ahead by 8 or more | 25% | 14% | 10% (ahead by 3 or more) |
+| Gold spent a turn, turns 13 to 20 | 17.5 | 26 to 31 | 33.1 |
+
+The evaluation counts a threatened cell, one the enemy can take at its
+next turn, 5 quarters below a safe one (E023, E037), whoever leads. A
+side that leads has more to lose and less need to take more; the top 10
+then spend on towers.
+
+## The change
+
+`bots/plan/src/eval.rs`: `LEAD_CELLS`, the lead in active cells from which
+a side's threatened cells cost `LEAD_THREAT_QUARTERS` quarters each rather
+than `THREAT_QUARTERS` (`None`: never, v022, which the base commit keeps).
+
+## Screening
+
+Against `ice-and-fire-v022` on GitHub (`screen.yml`, one calibrated
+runner per variant and shard at CodinGame's speed and real limit, ADR
+0048; one timeout of n3q12's opponent, no other fault).
+
+Run 43569159380, seed 47047, 800 pairs each over two runners:
+
+| Variant | Commit | Lead from | Quarters | Elo against v022 | Score |
+| --- | --- | ---: | ---: | --- | ---: |
+| n8q8 | `d3727b0` | 8 | 8 | **−33.5 [−45.2, −21.9]** | 45.2% |
+| n3q8 | `0cf250e` | 3 | 8 | **−59.2 [−72.8, −45.8]** | 41.6% |
+| n8q12 | `7ac21c5` | 8 | 12 | **−89.7 [−103.0, −76.6]** | 37.4% |
+| n3q12 | `2e24859` | 3 | 12 | **−140.5 [−156.2, −125.3]** | 30.8% |
+
+Every variant lost, the more so as a threatened cell cost more and as the
+lead that triggers it was smaller; none was confirmed.
+
+## What was learned
+
+A side that leads usually leads because it has just taken cells at the
+front, and those are the cells the enemy can take back: charging more for
+them stops the search from expanding rather than making it build towers.
+The top 10's share of towers once ahead does not come from how much a
+threatened cell costs them; copying a share through an evaluation weight
+lost, as E046 did for the opening's spending. The knob was removed: the
+pull request holds the journal entry alone.
