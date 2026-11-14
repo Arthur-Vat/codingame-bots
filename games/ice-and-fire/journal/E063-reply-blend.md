@@ -40,4 +40,15 @@ the worst reply so that it still stops early.
 
 ## Screening
 
-Pending.
+Against `ice-and-fire-v026` on GitHub (`screen.yml`, one calibrated
+runner per variant and shard at CodinGame's speed and real limit, ADR
+0048; no fault). "Worst" is `WORST_QUARTERS`. Run 43631102635, seed 63063,
+800 pairs each over two runners:
+
+| Variant | Commit | Worst reply | Pass | Elo against v026 |
+| --- | --- | ---: | ---: | --- |
+| w3 | `f7eec96` | 3/4 | 1/4 | −5.2 [−18.6, +8.2] |
+| w2 | `a52a39b` | 1/2 | 1/2 | **−41.9 [−56.3, −27.6]** |
+| w1 | `cd05b74` | 1/4 | 3/4 | **−133.9 [−150.5, −118.0]** |
+
+The less the worst reply counts, the more the bot loses, steeply.
