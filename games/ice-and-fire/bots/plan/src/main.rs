@@ -133,7 +133,7 @@ const OPENING_SAFE_SPOT: u8 = 3;
 
 /// The first game turn on which the opening builds a mine (E054): 0, any,
 /// in v022, which builds none ([`OPENING_SAFE_SPOT`]).
-const OPENING_MINE_FROM: u32 = 6;
+const OPENING_MINE_FROM: u32 = 7;
 
 /// The opening: v003's opening with the solo planner's weight sets, planned
 /// over [`OPENING_TURNS`] of our turns within the turn's time.
