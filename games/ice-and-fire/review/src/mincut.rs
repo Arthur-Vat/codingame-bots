@@ -206,6 +206,23 @@ impl Flow {
         total
     }
 
+    /// The nodes reachable from `s` in the residual graph.
+    fn reachable(&self, s: usize) -> Vec<bool> {
+        let mut seen = vec![false; self.head.len()];
+        seen[s] = true;
+        let mut queue = VecDeque::from([s]);
+        while let Some(v) = queue.pop_front() {
+            for &e in &self.head[v] {
+                let w = self.to[e];
+                if self.cap[e] > 0 && !seen[w] {
+                    seen[w] = true;
+                    queue.push_back(w);
+                }
+            }
+        }
+        seen
+    }
+
     /// The nodes that reach `t` in the residual graph.
     fn reaching(&self, t: usize) -> Vec<bool> {
         let mut seen = vec![false; self.head.len()];
@@ -320,6 +337,240 @@ pub fn best_with(state: &State, seat: usize, budget: i64, prices: &[i64; CELLS])
         }
     }
     best
+}
+
+/// A cut on a territory: its cost, the cells captured, the cells removed
+/// (those captured and those left without a path to the HQ).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Taken {
+    pub cost: i64,
+    pub captured: Bits,
+    pub removed: Bits,
+}
+
+impl Taken {
+    fn of(active: Bits, hq: usize, captured: Bits, prices: &[i64; CELLS]) -> Taken {
+        let removed = active.and_not(joined(active.and_not(captured), hq));
+        let cost = captured.iter().map(|c| prices[c]).sum();
+        Taken {
+            cost,
+            captured,
+            removed,
+        }
+    }
+
+    /// Drops from the cut the free cells (price 0) that remove nothing but
+    /// themselves: an enemy unit can step onto them, but that is a capture,
+    /// not a cut, and one unit cannot make them all.
+    fn pruned(self, active: Bits, hq: usize, prices: &[i64; CELLS]) -> Taken {
+        let mut out = self;
+        for cell in self.captured.iter() {
+            if prices[cell] != 0 {
+                continue;
+            }
+            let mut fewer = out.captured;
+            fewer.clear(cell);
+            let other = Taken::of(active, hq, fewer, prices);
+            if other.removed.count() + 1 >= out.removed.count() {
+                out = other;
+            }
+        }
+        out
+    }
+}
+
+/// The cut on `active` (joined to `hq`) that maximizes `lambda` for each
+/// cell removed less the capture prices: one min-cut, where a source pays
+/// `lambda` to every cell and the cut either captures a cell (its price) or
+/// gives up its `lambda` by leaving it joined to the HQ. A larger `lambda`
+/// buys more land at a higher price; several regions may go at once.
+pub fn lambda_cut(active: Bits, hq: usize, lambda: i64, prices: &[i64; CELLS]) -> Taken {
+    if !active.test(hq) {
+        return Taken::of(active, hq, Bits::EMPTY, prices);
+    }
+    let source = 2 * CELLS;
+    let mut flow = Flow::new(2 * CELLS + 1);
+    for cell in active.iter() {
+        let through = if cell == hq { INFINITE } else { prices[cell] };
+        flow.edge(2 * cell, 2 * cell + 1, through);
+        if cell != hq {
+            flow.edge(source, 2 * cell, lambda);
+        }
+        for next in (Bits::cell(cell).neighbours() & active).iter() {
+            flow.edge(2 * cell + 1, 2 * next, INFINITE);
+        }
+    }
+    flow.run(source, 2 * hq, INFINITE);
+    let side = flow.reachable(source);
+    let mut captured = Bits::EMPTY;
+    for cell in active.iter() {
+        if side[2 * cell] && !side[2 * cell + 1] {
+            captured.set(cell);
+        }
+    }
+    Taken::of(active, hq, captured, prices).pruned(active, hq, prices)
+}
+
+/// The values of `lambda` [`best_lambda`] tries, in gold a cell.
+pub const LAMBDAS: [i64; 16] = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 60, 100];
+
+/// Most regions of one cut whose subsets [`best_lambda`] tries.
+const MAX_REGIONS: usize = 10;
+
+/// The connected groups of `cells`.
+fn regions(cells: Bits) -> Vec<Bits> {
+    let mut left = cells;
+    let mut out = Vec::new();
+    while let Some(seed) = left.iter().next() {
+        let mut region = Bits::cell(seed);
+        loop {
+            let next = (region | region.neighbours()) & left;
+            if next == region {
+                break;
+            }
+            region = next;
+        }
+        left = left.and_not(region);
+        out.push(region);
+    }
+    out
+}
+
+/// The [`lambda_cut`]s over [`LAMBDAS`], each split into its separate
+/// regions (a min-cut takes regions of equal worth all or none at a given
+/// `lambda`): of every subset of a cut's regions, the one removing the most
+/// cells for at most `budget` (the cheapest on a tie); `None` when none
+/// removes a cell.
+pub fn best_lambda(active: Bits, hq: usize, budget: i64, prices: &[i64; CELLS]) -> Option<Taken> {
+    let mut best: Option<Taken> = None;
+    let key = |t: &Taken| (t.removed.count(), -t.cost);
+    let mut seen: Vec<Bits> = Vec::new();
+    for lambda in LAMBDAS {
+        let cut = lambda_cut(active, hq, lambda, prices);
+        if cut.removed.is_empty() || seen.contains(&cut.captured) {
+            continue;
+        }
+        seen.push(cut.captured);
+        let parts: Vec<Bits> = regions(cut.removed)
+            .into_iter()
+            .map(|region| region & cut.captured)
+            .filter(|part| !part.is_empty())
+            .take(MAX_REGIONS)
+            .collect();
+        for mask in 1u32..(1 << parts.len()) {
+            let mut captured = Bits::EMPTY;
+            for (i, part) in parts.iter().enumerate() {
+                if mask & (1 << i) != 0 {
+                    captured |= *part;
+                }
+            }
+            let taken = Taken::of(active, hq, captured, prices);
+            if taken.cost > budget || taken.removed.is_empty() {
+                continue;
+            }
+            if best.as_ref().is_none_or(|b| key(&taken) > key(b)) {
+                best = Some(taken);
+            }
+        }
+    }
+    best
+}
+
+/// The cheapest cut on `active` separating `target` from `hq` (nearest the
+/// HQ of the cheapest), if it costs less than `budget`.
+pub fn target_cut(
+    active: Bits,
+    hq: usize,
+    target: usize,
+    budget: i64,
+    prices: &[i64; CELLS],
+) -> Option<Taken> {
+    if target == hq || !active.test(target) || !active.test(hq) {
+        return None;
+    }
+    let mut flow = Flow::new(2 * CELLS);
+    for cell in active.iter() {
+        let through = if cell == hq || cell == target {
+            INFINITE
+        } else {
+            prices[cell]
+        };
+        flow.edge(2 * cell, 2 * cell + 1, through);
+        for next in (Bits::cell(cell).neighbours() & active).iter() {
+            flow.edge(2 * cell + 1, 2 * next, INFINITE);
+        }
+    }
+    let cost = flow.run(2 * target + 1, 2 * hq, budget);
+    if cost >= budget {
+        return None;
+    }
+    let side = flow.reaching(2 * hq);
+    let mut captured = Bits::EMPTY;
+    for cell in active.iter() {
+        if side[2 * cell + 1] && !side[2 * cell] {
+            captured.set(cell);
+        }
+    }
+    for cell in captured.iter() {
+        if prices[cell] == 0 {
+            let mut fewer = captured;
+            fewer.clear(cell);
+            if !joined(active.and_not(fewer), hq).test(target) {
+                captured = fewer;
+            }
+        }
+    }
+    Some(Taken::of(active, hq, captured, prices))
+}
+
+/// The [`target_cut`] removing the most cells for at most `budget`.
+pub fn best_target(active: Bits, hq: usize, budget: i64, prices: &[i64; CELLS]) -> Option<Taken> {
+    let mut best: Option<Taken> = None;
+    for target in active.iter() {
+        let Some(cut) = target_cut(active, hq, target, budget + 1, prices) else {
+            continue;
+        };
+        let key = |t: &Taken| (t.removed.count(), -t.cost);
+        if best.as_ref().is_none_or(|b| key(&cut) > key(b)) {
+            best = Some(cut);
+        }
+    }
+    best
+}
+
+/// How a cut is chosen.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Kind {
+    /// The cheapest cut to each cell, the best affordable ([`best_target`]).
+    Target,
+    /// The budget-aware cut ([`best_lambda`]).
+    Lambda,
+}
+
+/// Up to `rounds` cuts in a row, each the best affordable on what the ones
+/// before left, with the gold they left: the cells removed in all, and the
+/// cuts made. The prices are not updated as the enemy's land grows.
+pub fn several(
+    active: Bits,
+    hq: usize,
+    budget: i64,
+    prices: &[i64; CELLS],
+    kind: Kind,
+    rounds: usize,
+) -> (i64, i64) {
+    let (mut land, mut gold, mut removed, mut cuts) = (active, budget, 0, 0);
+    for _ in 0..rounds {
+        let cut = match kind {
+            Kind::Target => best_target(land, hq, gold, prices),
+            Kind::Lambda => best_lambda(land, hq, gold, prices),
+        };
+        let Some(cut) = cut else { break };
+        removed += i64::from(cut.removed.count());
+        cuts += 1;
+        gold -= cut.cost;
+        land = land.and_not(cut.removed);
+    }
+    (removed, cuts)
 }
 
 #[cfg(test)]

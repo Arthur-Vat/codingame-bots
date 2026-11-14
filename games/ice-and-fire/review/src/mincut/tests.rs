@@ -1,4 +1,4 @@
-use ice_and_fire_engine::{Command, League, State};
+use ice_and_fire_engine::{Bits, Command, League, State, CELLS};
 
 use super::*;
 
@@ -116,4 +116,51 @@ fn a_free_cell_joins_a_cut_only_when_the_cut_needs_it() {
     prices[1] = 0;
     let cut = cut_with(&state, 0, 4, 1000, &prices).expect("a cut");
     assert_eq!((cut.cost, cut.links, cut.cells), (0, 1, 5));
+}
+
+/// Red with two branches from its HQ, along row 0 and column 0, 4 cells
+/// each, every cell priced 20.
+fn two_branches() -> (Bits, [i64; CELLS]) {
+    let mut active = Bits::cell(0);
+    let mut prices = [INFINITE; CELLS];
+    for i in 1..5 {
+        active.set(i);
+        active.set(12 * i);
+        prices[i] = 20;
+        prices[12 * i] = 20;
+    }
+    (active, prices)
+}
+
+#[test]
+fn the_lambda_cut_buys_both_branches_at_once() {
+    let (active, prices) = two_branches();
+    // One branch for 20: either way, 4 cells.
+    let one = best_target(active, 0, 39, &prices).expect("a cut");
+    assert_eq!((one.cost, one.removed.count()), (20, 4));
+    let lambda = best_lambda(active, 0, 39, &prices).expect("a cut");
+    assert_eq!((lambda.cost, lambda.removed.count()), (20, 4));
+    // Both for 40, in one lambda cut.
+    let both = best_lambda(active, 0, 40, &prices).expect("a cut");
+    assert_eq!(
+        (both.cost, both.captured.count(), both.removed.count()),
+        (40, 2, 8)
+    );
+    // Or in two cuts in a row.
+    assert_eq!(several(active, 0, 40, &prices, Kind::Target, 4), (8, 2));
+    assert_eq!(several(active, 0, 40, &prices, Kind::Lambda, 4).0, 8);
+    // Nothing for 19.
+    assert_eq!(best_lambda(active, 0, 19, &prices), None);
+    assert_eq!(several(active, 0, 19, &prices, Kind::Target, 4), (0, 0));
+}
+
+#[test]
+fn a_free_cell_alone_is_no_cut() {
+    let (active, mut prices) = two_branches();
+    // The tip of a branch is free: alone it removes only itself.
+    prices[4] = 0;
+    let cut = lambda_cut(active, 0, 100, &prices);
+    assert!(!cut.captured.test(4) || cut.removed.count() > 1);
+    // With no gold, nothing is a cut.
+    assert_eq!(best_lambda(active, 0, 0, &prices), None);
 }

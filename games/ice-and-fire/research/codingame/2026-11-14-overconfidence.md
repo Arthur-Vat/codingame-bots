@@ -148,7 +148,39 @@ By the way-paid cut's size:
 - **It does not see the large misses**: its cut is at least as large as the real one in only 14% of them (median 5 cells against 11 removed), and the share of large misses levels off at about 4% whatever its size. Each cut cell pays for its own way from the enemy's land, so two links reached by one chain are charged twice; even so, the replies that surprise the search are mostly not the cheapest cuts a structural measure finds at the end of our turn.
 - **It adds little to the result beyond the evaluation**: at an equal evaluation after our turn (game turns 8 to 24), plies with a cut of 5 cells or more were lost from 5 points less to 8 points more often than those without.
 
-So the validation does not support an experiment built on this measure as it stands: a reply made from it would mostly duplicate the cuts the search already models. What the large misses have in common (section 3b: double links, deep captures, a bigger bank spent at once) is not captured by the cheapest affordable cut at the end of our turn.
+### Other cuts, other budgets
+
+The owner then asked (2026-11-14) why the cheapest cut, whether the gold counts the income, and why a single cut, and to try various approaches. Four more measures, all with the way paid:
+
+- **A budget-aware cut** (`mincut::lambda_cut`, `best_lambda`): every cell of ours cut off is worth λ, and one min-cut finds the captures that best trade their price against λ × cells removed (several regions at once); λ is swept over 16 values and each cut split into its regions, of which every affordable subset is tried. Unlike the per-cell cut, it can choose a dearer cut nearer our HQ that removes more.
+- **Several cuts in a row** (`mincut::several`): the best affordable cut, then the best on what is left with the gold left, up to 4.
+- **Two turns' gold**: the opponent's gold at its start of turn plus one more turn of its income, for a strike after banking; also tested against a large miss at our *next* ply.
+
+| Measure, at the end of our turn | Large miss | Reply removes 10+ cells | Larger of it and the finder: large miss | Large misses it reaches | Large miss at our next ply |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| The search's cut finder | 0.688 | 0.817 | 0.688 | 15% | 0.550 |
+| Per-cell cut (above) | 0.700 | 0.847 | 0.703 | 14% | 0.594 |
+| Up to 4 per-cell cuts | 0.701 | 0.852 | 0.704 | 14% | 0.591 |
+| Per-cell cut, two turns' gold | **0.709** | 0.850 | 0.708 | 40% | **0.610** |
+| Budget-aware cut | 0.571 | 0.712 | 0.685 | 11% | 0.507 |
+| Up to 4 budget-aware cuts | 0.571 | 0.711 | 0.685 | 11% | 0.507 |
+| Budget-aware cut, two turns' gold | 0.621 | 0.743 | 0.703 | 25% | 0.524 |
+| The evaluation's single-capture shape | 0.599 | 0.661 | 0.634 | 39% | 0.474 |
+
+- **Several cuts add nothing** over the best one.
+- **Two turns' gold helps a little**, and best for a strike one turn later (0.610 against 0.550 for the finder); it reaches 40% of the large misses' size, but with more gold than the opponent had.
+- **The budget-aware cut does worse**, for a known reason: one min-cut a λ finds only the cuts with the best ratio of land to gold, so a small affordable cut is never offered when a large unaffordable one has a better ratio; it found nothing in half the plies where the per-cell cut found an affordable one. A budget-constrained cut needs another method.
+
+**Can the large misses be predicted at all from the position?** A logistic model on every measure available at the end of our turn (the cuts above, the finder narrow and wide, joints, both sides' gold and the opponent's income, our towers, the turn, the seat, whether the opponent is in the top 10, the search's expected and pass values), cross-validated by game in 5 folds:
+
+| Event | Events | The finder alone | All measures |
+| --- | ---: | ---: | ---: |
+| Large miss | 159 of 8,241 | 0.685 | 0.733 |
+| Reply removes 10+ cells | 374 of 8,241 | 0.814 | **0.926** |
+
+Large removals are predictable from the position, and the search's finder already sees most of them, which is why most do not surprise it. The large misses are not much more predictable than the finder makes them: what turns a reply into a surprise is mostly not in our position's structure at the end of our turn but in the opponent's choice, and some opponents make it three times as often as others (section 3b).
+
+So the validation does not support an experiment built on these measures: a reply built from them would mostly duplicate the cuts the search already models. What the large misses have in common (section 3b: double links, deep captures, a bigger bank spent at once) is not captured by the cheapest affordable cut at the end of our turn, whichever form it takes.
 
 ## 4. The evaluation against the result
 

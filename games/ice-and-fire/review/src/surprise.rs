@@ -302,6 +302,17 @@ pub struct Shape {
     /// the enemy's land to it): cells removed and captured.
     pub reach_cut: i64,
     pub reach_cut_links: i64,
+    /// Cells removed with the way paid, by other choices of cut, at the
+    /// opponent's gold now (1) and with one more turn of its income (2):
+    /// the budget-aware cut (`mincut::best_lambda`), up to 4 cuts in a row
+    /// of the per-cell kind and of the budget-aware kind
+    /// (`mincut::several`), and the per-cell cut with two turns' gold.
+    pub lambda1: i64,
+    pub several_target1: i64,
+    pub several_lambda1: i64,
+    pub target2: i64,
+    pub lambda2: i64,
+    pub several_lambda2: i64,
 }
 
 /// The shape of `reply`, played from `start` (the opponent to act after our
@@ -374,6 +385,18 @@ pub fn shape(before: &State, start: &State, reply: &[Command], me: usize) -> Sha
     if let Some(cut) = crate::mincut::best_with(start, me, budget, &prices) {
         out.reach_cut = cut.cells;
         out.reach_cut_links = cut.links;
+    }
+    {
+        use crate::mincut::{best_lambda, best_target, several, Kind};
+        let hq = ice_and_fire_engine::HQ[me];
+        let budget2 = budget + start.income(them).max(0);
+        let cells = |t: Option<crate::mincut::Taken>| t.map_or(0, |t| i64::from(t.removed.count()));
+        out.lambda1 = cells(best_lambda(active, hq, budget, &prices));
+        out.several_target1 = several(active, hq, budget, &prices, Kind::Target, 4).0;
+        out.several_lambda1 = several(active, hq, budget, &prices, Kind::Lambda, 4).0;
+        out.target2 = cells(best_target(active, hq, budget2, &prices));
+        out.lambda2 = cells(best_lambda(active, hq, budget2, &prices));
+        out.several_lambda2 = several(active, hq, budget2, &prices, Kind::Lambda, 4).0;
     }
     for cell in active.iter() {
         if cell != ice_and_fire_engine::HQ[me] && crate::mincut::price(start, me, cell) <= budget {
@@ -667,7 +690,7 @@ pub fn run(request: &Request) -> Result<String, String> {
 
 /// One row a ply.
 pub fn rows_csv(rows: &[Row]) -> String {
-    let mut out = String::from("game_id,ply,turn,seat,opponent,top,won,turns_left,expected,actual,pass,surprise,modeled,modeled_best,same_reply,taken,cut,units_lost,train1,train2,train3,moves,towers,mines,spent,hq,hq_margin,without_moves,finder,finder_wide,gold,income,cells,units,opp_gold,opp_income,opp_cells,opp_units,new_lost,joints,joint_max,joint_hit,depth,hq_steps,gold_left,opp_gold_before,towers_held,towers_lost,move_captures,captured_depth,captured_hq_steps,towers_captured,cheap_cut,cheap_cut_links,cheap_joint,reach_cut,reach_cut_links,reply\n");
+    let mut out = String::from("game_id,ply,turn,seat,opponent,top,won,turns_left,expected,actual,pass,surprise,modeled,modeled_best,same_reply,taken,cut,units_lost,train1,train2,train3,moves,towers,mines,spent,hq,hq_margin,without_moves,finder,finder_wide,gold,income,cells,units,opp_gold,opp_income,opp_cells,opp_units,new_lost,joints,joint_max,joint_hit,depth,hq_steps,gold_left,opp_gold_before,towers_held,towers_lost,move_captures,captured_depth,captured_hq_steps,towers_captured,cheap_cut,cheap_cut_links,cheap_joint,reach_cut,reach_cut_links,lambda1,several_target1,several_lambda1,target2,lambda2,several_lambda2,reply\n");
     for r in rows {
         let e = &r.effect;
         let j = &r.judged;
@@ -732,6 +755,12 @@ pub fn rows_csv(rows: &[Row]) -> String {
                     h.cheap_joint,
                     h.reach_cut,
                     h.reach_cut_links,
+                    h.lambda1,
+                    h.several_target1,
+                    h.several_lambda1,
+                    h.target2,
+                    h.lambda2,
+                    h.several_lambda2,
                 ]
                 .map(|v| v.to_string())
                 .join(",")
