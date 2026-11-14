@@ -122,8 +122,26 @@ pub fn mine_bonus(cells: i64) -> i64 {
 fn mines(state: &State, seat: usize, exposed: Bits) -> i64 {
     let active = state.active(seat);
     let mines = (state.mines() & active).and_not(exposed);
-    mine_bonus(i64::from(active.count())) * i64::from(mines.count())
+    let cells = i64::from(active.count());
+    let bonus = if state.game_turn() <= EARLY_MINE_TURN {
+        cells / EARLY_MINE_PER_CELLS + EARLY_MINE_BONUS
+    } else {
+        mine_bonus(cells)
+    };
+    bonus * i64::from(mines.count())
 }
+
+/// The last game turn on which a safe mine counts [`EARLY_MINE_BONUS`] more
+/// and one more per [`EARLY_MINE_PER_CELLS`] active cells (E058): 0 for
+/// none (v024).
+pub const EARLY_MINE_TURN: u32 = 0;
+
+/// What a safe mine counts more until [`EARLY_MINE_TURN`] (E058).
+pub const EARLY_MINE_BONUS: i64 = 0;
+
+/// The active cells for which a safe mine counts one more until
+/// [`EARLY_MINE_TURN`] (E058): [`MINE_PER_CELLS`] in v024.
+pub const EARLY_MINE_PER_CELLS: i64 = MINE_PER_CELLS;
 
 /// The weight of a joint and of a cell that one capture cuts off.
 const SHAPE: i64 = 2;
