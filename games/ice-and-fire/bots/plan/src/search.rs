@@ -50,6 +50,11 @@ use crate::eval::eval;
 #[cfg(feature = "analysis")]
 pub mod judge;
 
+/// The quarters of a plan's score that its worst modeled reply makes
+/// (E063); the rest is the score if the opponent passes. 4 in v026: the
+/// worst reply alone, as the search has always scored a plan.
+pub const WORST_QUARTERS: i64 = 4;
+
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8;
 /// The opponent's best cuts added to the memory after a climb.
@@ -296,14 +301,36 @@ impl Search {
         if memory.is_empty() {
             return eval(end, self.me);
         }
+        if WORST_QUARTERS >= 4 {
+            let mut worst = i64::MAX;
+            for reply in memory {
+                worst = worst.min(eval(&after_reply(end, &reply.commands), self.me));
+                if worst <= bound {
+                    break;
+                }
+            }
+            return worst;
+        }
+        // E063: the worst reply's share, the rest the opponent passing.
+        let pass = eval(&after_reply(end, &[]), self.me);
+        if WORST_QUARTERS <= 0 {
+            return pass;
+        }
+        let rest = 4 - WORST_QUARTERS;
+        // The blend is at most `bound` once the worst is at most this.
+        let worst_bound = if bound == i64::MIN {
+            i64::MIN
+        } else {
+            (4 * bound - rest * pass).div_euclid(WORST_QUARTERS)
+        };
         let mut worst = i64::MAX;
         for reply in memory {
             worst = worst.min(eval(&after_reply(end, &reply.commands), self.me));
-            if worst <= bound {
+            if worst <= worst_bound {
                 break;
             }
         }
-        worst
+        (WORST_QUARTERS * worst + rest * pass).div_euclid(4)
     }
 
     /// One pass over `actions` in `order` from the plan state `cur`: the best
