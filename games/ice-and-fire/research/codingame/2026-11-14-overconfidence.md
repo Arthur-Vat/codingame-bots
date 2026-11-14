@@ -112,6 +112,101 @@ Examples of the largest in v026's games (CodinGame replays): [921571527](https:/
 
 **What follows.** The structure these replies exploit is a *cheapest cut*: the set of our cells whose capture, at its price (10 for an empty cell, 20 or 30 for one held by a unit, 30 through a tower), separates the most land from our HQ. A max-flow on our territory's graph (144 cells) finds exactly and fast the cheapest set of cells whose capture isolates a *given* region from our HQ, double links included; trying candidate regions (for example each region beyond our joints and thin links, or the land within a few steps of the enemy's) against the opponent's gold would say what it can sever next turn. It leaves out the chain of trainings needed to reach the cut cells, which would have to be added to the price. It could serve both as a term of the evaluation (the land the opponent can afford to cut off, beyond the single joints counted today) and as a reply generator (the cut cells, then the chain of trainings that reaches them). This is a proposal, not tested: E064 showed that adding replies costs more than it saves unless they are the ones a strong opponent plays.
 
+## 3c. A measure of the threat: the cheapest affordable cut
+
+Asked by the owner on 2026-11-14 ("Validate the measure first"): before any experiment, does the cheapest cut of our territory the opponent can pay predict the large misses better than what the search and the evaluation see today? `ice-and-fire-review`'s module `mincut` computes it at the end of each of our turns, with the opponent's gold at its start of turn: for each of our active cells, a max-flow over our territory gives the cheapest set of cells whose capture separates it from our HQ (double links included); the cut removes those cells and all it disconnects; the measure is the most cells removed by a cut the gold pays for. Two prices of a capture were tried:
+
+- **the way free**: the cell's capture price alone (10 empty, 20 a level-1 unit, 30 a level-2 or 3 unit or a cell a tower holds or protects);
+- **the way paid** (`reach_prices`): that price plus the cheapest chain of trainings from the enemy's active land to a neighbour of the cell (neutral cells 10, ours at their price), or nothing at all when an enemy unit next to the cell can step onto it.
+
+A free cell joins a cut only when the cut needs it (a first version counted every free cell on our HQ's side, which inflated the measure; the review of the pull request found it).
+
+The area under the ROC curve (0.5: no better than chance) over the 8,264 normal plies, for the 160 large misses and for the 378 replies that removed 10 or more of our cells:
+
+| Predictor, at the end of our turn | Large miss | Reply removes 10+ cells |
+| --- | ---: | ---: |
+| Cheapest affordable cut, the way paid | 0.700 | 0.847 |
+| The search's cut finder (its largest cut) | 0.688 | 0.817 |
+| The larger of the two | 0.703 | 0.859 |
+| The way-paid cut less the finder's | 0.561 | 0.557 |
+| Best affordable single capture | 0.605 | 0.677 |
+| Largest single-capture cut, any price (the evaluation's shape term) | 0.599 | 0.661 |
+| Cheapest affordable cut, the way free | 0.597 | 0.614 |
+
+By the way-paid cut's size:
+
+| Cut removes | Plies | Reply removes 10+ cells | Large miss | Game lost |
+| --- | ---: | ---: | ---: | ---: |
+| 0 (none affordable) | 2,588 | 0% | 0.5% | 40% |
+| 1 to 4 | 3,583 | 2% | 1.6% | 52% |
+| 5 to 9 | 1,610 | 9% | 4.2% | 55% |
+| 10 to 14 | 350 | 28% | 4.3% | 59% |
+| 15 or more | 133 | 40% | 3.8% | 68% |
+
+- **The way must be paid.** With it free, nearly all our land is cuttable (median 35 cells for the large misses) and the measure predicts little: the two cells next to our HQ cut everything, but the opponent cannot reach them.
+- **With the way paid, it is about as good as the search's own cut finder, not better** (0.700 against 0.688 for the large misses), and it adds almost nothing to it (0.703 together). It ranks large removals well (0.847), as the finder does (0.817): where both see a large cut, the search already models it and the reply rarely surprises.
+- **It does not see the large misses**: its cut is at least as large as the real one in only 14% of them (median 5 cells against 11 removed), and the share of large misses levels off at about 4% whatever its size. Each cut cell pays for its own way from the enemy's land, so two links reached by one chain are charged twice; even so, the replies that surprise the search are mostly not the cheapest cuts a structural measure finds at the end of our turn.
+- **It adds little to the result beyond the evaluation**: at an equal evaluation after our turn (game turns 8 to 24), plies with a cut of 5 cells or more were lost from 5 points less to 8 points more often than those without.
+
+### Other cuts, other budgets
+
+The owner then asked (2026-11-14) why the cheapest cut, whether the gold counts the income, and why a single cut, and to try various approaches. Four more measures, all with the way paid:
+
+- **A budget-aware cut** (`mincut::lambda_cut`, `best_lambda`): every cell of ours cut off is worth λ, and one min-cut finds the captures that best trade their price against λ × cells removed (several regions at once); λ is swept over 16 values and each cut split into its regions, of which every affordable subset is tried. Unlike the per-cell cut, it can choose a dearer cut nearer our HQ that removes more.
+- **Several cuts in a row** (`mincut::several`): the best affordable cut, then the best on what is left with the gold left, up to 4.
+- **Two turns' gold**: every budget above already counts the income of the opponent's coming turn (its gold at its start of turn, after the income is paid); this one adds one more turn of its income, for a strike after banking, and is also tested against a large miss at our *next* ply.
+
+| Measure, at the end of our turn | Large miss | Reply removes 10+ cells | Larger of it and the finder: large miss | Large misses it reaches | Large miss at our next ply |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| The search's cut finder | 0.688 | 0.817 | 0.688 | 15% | 0.550 |
+| Per-cell cut (above) | 0.700 | 0.847 | 0.703 | 14% | 0.594 |
+| Up to 4 per-cell cuts | 0.701 | 0.852 | 0.704 | 14% | 0.591 |
+| Per-cell cut, two turns' gold | **0.709** | 0.850 | 0.708 | 40% | **0.610** |
+| Budget-aware cut | 0.571 | 0.712 | 0.685 | 11% | 0.507 |
+| Up to 4 budget-aware cuts | 0.571 | 0.711 | 0.685 | 11% | 0.507 |
+| Budget-aware cut, two turns' gold | 0.621 | 0.743 | 0.703 | 25% | 0.524 |
+| The evaluation's single-capture shape | 0.599 | 0.661 | 0.634 | 39% | 0.474 |
+
+- **Several cuts add nothing** over the best one.
+- **Two turns' gold helps a little**, and best for a strike one turn later (0.610 against 0.550 for the finder); it reaches 40% of the large misses' size, but with more gold than the opponent had.
+- **The budget-aware cut does worse**, for a known reason: one min-cut a λ finds only the cuts with the best ratio of land to gold, so a small affordable cut is never offered when a large unaffordable one has a better ratio; it found nothing in half the plies where the per-cell cut found an affordable one. A budget-constrained cut needs another method.
+
+**Can the large misses be predicted at all from the position?** A logistic model on every measure available at the end of our turn (the cuts above, the finder narrow and wide, joints, both sides' gold and the opponent's income, our towers, the turn, the seat, whether the opponent is in the top 10, the search's expected and pass values), cross-validated by game in 5 folds (over 8,241 plies: the 23 normal plies whose pass value holds the evaluation's HQ term are left out, as in section 2's comparisons, which leaves 159 of the 160 large misses):
+
+| Event | Events | The finder alone | All measures |
+| --- | ---: | ---: | ---: |
+| Large miss | 159 of 8,241 | 0.685 | 0.733 |
+| Reply removes 10+ cells | 374 of 8,241 | 0.814 | **0.926** |
+
+Large removals are predictable from the position, and the search's finder already sees most of them, which is why most do not surprise it. The large misses are not much more predictable than the finder makes them: what turns a reply into a surprise is mostly not in our position's structure at the end of our turn but in the opponent's choice, and some opponents make it three times as often as others (section 3b).
+
+So the validation does not support an experiment built on these measures: a reply built from them would mostly duplicate the cuts the search already models. What the large misses have in common (section 3b: double links, deep captures, a bigger bank spent at once) is not captured by the cheapest affordable cut at the end of our turn, whichever form it takes.
+
+## 3d. The large removals the search foresaw: could we parry?
+
+Asked by the owner on 2026-11-14 ("If they are predictable and already seen why do we lose a lot from them during games? We couldn't parry?"). The 250 normal plies in which the reply removed 10 or more of our cells and the search had expected about that much (surprise above −20), in 174 games, 73% of them lost. `codingame-surprise --pass` judges a pass in place of our answer: what the search would have expected had we done nothing.
+
+| Measure (median) | Foreseen large removals | Other plies |
+| --- | ---: | ---: |
+| Evaluation at our start of turn | −78 | +49 |
+| Our turn's gain (pass − start) | +70 | +29 |
+| Modeled damage, as played (expected − pass) | −168 | −47 |
+| Modeled damage, had we passed | −162 | −73 |
+| Expected, as played / had we passed | −132 / −233 | +40 / −31 |
+| The round's net (actual − start) | −55 | +7 |
+| Our gold left after our turn | 7 | 13 |
+| The opponent's gold at its turn | 54 | 40 |
+| Our towers on active cells | 4 | 2 |
+
+- **In 109 of the 250 (44%), passing would have left the opponent a chain it can pay to our HQ**: our turn went to the HQ's defence, and the land fell instead.
+- **Otherwise the cut was on the board before our turn**: had we passed, the search expects the same damage (−162 against −168). Our plan neither opened it nor closed it: it scored better than passing in 92% of these plies (by 62), by gaining elsewhere (+70, against +29 in other plies).
+- **Within the search's view no plan closed it for less than it cost**: its best plan is the one played, and we already held 4 towers (2 elsewhere) against an opponent with 54 gold and level-3 units.
+- By kind: 35% began far behind (−150 or less at our start), 25% had no gold left for a tower after our turn, 22% were trades (our turn gained three quarters of the damage or more), 18% had gold for a tower but the search judged it not worth it. In the games we won, these rounds netted +29; in those we lost, −85.
+
+**Would more search find a parry?** The search climbs one action at a time and could miss a defence that needs several at once. The plan bot's `judge` mode searched the 250 positions with 600 tries (as the judge runs it) and with 6,000: on the 245 whose scores are material, the best plan's score rose by 0 in the median (the same plan in 68%), by 20 or more in 9% of them and by 50 or more in 4%; ten times the search finds no parry the usual search misses, as far as the evaluation can tell.
+
+So the large removals the search sees are mostly not losses of a turn: they are the price of positions already weak (a stretched territory held by double links, an opponent banking against our empty purse), which the land race of the opening study and the evaluation's optimism against the top 10 (section 4) describe earlier in the game.
+
 ## 4. The evaluation against the result
 
 Share of games lost, by the evaluation after the reply, game turns 8 to 17:
