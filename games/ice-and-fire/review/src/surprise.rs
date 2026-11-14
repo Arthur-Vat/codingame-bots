@@ -48,6 +48,10 @@ pub struct Request {
     pub jobs: usize,
     pub leaderboard: Option<PathBuf>,
     pub out: PathBuf,
+    /// Judge a pass (`WAIT`) in place of our answer: what the search would
+    /// have expected had we done nothing (a counterfactual; the rows' other
+    /// columns still describe the game as played).
+    pub pass: bool,
 }
 
 /// A surprise at or below this is large: about three level-1 units, twelve
@@ -581,7 +585,19 @@ pub fn run(request: &Request) -> Result<String, String> {
             if game.steps[ply].state.to_act() != *seat {
                 continue;
             }
-            if let Some(block) = block_reply(game, ply) {
+            if let Some(mut block) = block_reply(game, ply) {
+                if request.pass {
+                    block = block
+                        .lines()
+                        .map(|line| {
+                            if line.starts_with("played ") {
+                                "played WAIT\n".to_string()
+                            } else {
+                                format!("{line}\n")
+                            }
+                        })
+                        .collect();
+                }
                 pending.push(Pending {
                     game: index,
                     ply,

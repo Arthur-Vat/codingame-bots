@@ -182,6 +182,29 @@ Large removals are predictable from the position, and the search's finder alread
 
 So the validation does not support an experiment built on these measures: a reply built from them would mostly duplicate the cuts the search already models. What the large misses have in common (section 3b: double links, deep captures, a bigger bank spent at once) is not captured by the cheapest affordable cut at the end of our turn, whichever form it takes.
 
+## 3d. The large removals the search foresaw: could we parry?
+
+Asked by the owner on 2026-11-14 ("If they are predictable and already seen why do we lose a lot from them during games? We couldn't parry?"). The 250 normal plies in which the reply removed 10 or more of our cells and the search had expected about that much (surprise above −20), in 174 games, 73% of them lost. `codingame-surprise --pass` judges a pass in place of our answer: what the search would have expected had we done nothing.
+
+| Measure (median) | Foreseen large removals | Other plies |
+| --- | ---: | ---: |
+| Evaluation at our start of turn | −78 | +49 |
+| Our turn's gain (pass − start) | +70 | +29 |
+| Modeled damage, as played (expected − pass) | −168 | −47 |
+| Modeled damage, had we passed | −162 | −73 |
+| Expected, as played / had we passed | −132 / −233 | +40 / −31 |
+| The round's net (actual − start) | −55 | +7 |
+| Our gold left after our turn | 7 | 13 |
+| The opponent's gold at its turn | 54 | 40 |
+| Our towers on active cells | 4 | 2 |
+
+- **In 109 of the 250 (44%), passing would have left the opponent a chain it can pay to our HQ**: our turn went to the HQ's defence, and the land fell instead.
+- **Otherwise the cut was on the board before our turn**: had we passed, the search expects the same damage (−162 against −168). Our plan neither opened it nor closed it: it scored better than passing in 92% of these plies (by 62), by gaining elsewhere (+70, against +29 in other plies).
+- **Within the search's view no plan closed it for less than it cost**: its best plan is the one played, and we already held 4 towers (2 elsewhere) against an opponent with 54 gold and level-3 units.
+- By kind: 35% began far behind (−150 or less at our start), 25% had no gold left for a tower after our turn, 22% were trades (our turn gained three quarters of the damage or more), 18% had gold for a tower but the search judged it not worth it. In the games we won, these rounds netted +29; in those we lost, −85.
+
+So the large removals the search sees are mostly not losses of a turn: they are the price of positions already weak (a stretched territory held by double links, an opponent banking against our empty purse). One question is left: the search climbs one action at a time and could miss a defence that needs several actions at once; a run with ten times its tries on these positions would tell.
+
 ## 4. The evaluation against the result
 
 Share of games lost, by the evaluation after the reply, game turns 8 to 17:
