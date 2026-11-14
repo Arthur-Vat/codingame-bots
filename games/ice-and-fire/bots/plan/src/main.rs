@@ -110,7 +110,7 @@ fn limit(start: Instant, turn: u32) -> Limit {
 
 /// The number of our turns an opening plan covers: the middle game starts
 /// at our eighth turn in the median game (E010).
-const OPENING_TURNS: usize = 7;
+const OPENING_TURNS: usize = 9;
 
 /// What the opening's plans maximize: the solo planner's weights, written
 /// out (E010), with cells 3 and income 1 rather than 4 and 3 (E034): the
@@ -133,7 +133,7 @@ const OPENING_SAFE_SPOT: u8 = u8::MAX;
 
 /// How much less a cell is worth to the opening's moves and trainings for
 /// each of our units next to it (E051): 0 in v022.
-const OPENING_CROWD: i64 = 2;
+const OPENING_CROWD: i64 = 0;
 
 /// The opening: v003's opening with the solo planner's weight sets, planned
 /// over [`OPENING_TURNS`] of our turns within the turn's time.
