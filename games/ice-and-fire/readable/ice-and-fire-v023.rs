@@ -1360,10 +1360,17 @@ const OPENING_SAFE_SPOT: u8 = u8::MAX;
 /// did less, 8 and 16 lost).
 const OPENING_CROWD: i64 = 2;
 
+/// The widest beam of the opening's plans when a turn has no deadline
+/// (`CG_FIXED_ITERS`, tests only; on CodinGame the plans search until the
+/// turn's deadline, whatever this is): 64 before E055, whose 9-turn plans
+/// made an untimed replan take about 1.5 s, near the 2.5 s the arena gives
+/// an answer in the determinism check (`scripts/check-determinism.sh`).
+const OPENING_MAX_WIDTH: usize = 32;
+
 /// The opening: v003's opening with the solo planner's weight sets, planned
 /// over [`OPENING_TURNS`] of our turns within the turn's time.
 fn opening() -> Planned {
-    opening_of(64)
+    opening_of(OPENING_MAX_WIDTH)
 }
 
 /// The opening with beams up to `width` when a turn has no deadline.

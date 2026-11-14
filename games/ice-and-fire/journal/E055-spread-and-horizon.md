@@ -6,11 +6,11 @@ parent: ice-and-fire-v022
 hypothesis: E051 (our units spread in the opening, each of our units next to a cell lowering its value by 2) and E052 (the opening planned over 9 of our turns rather than 7) each gained about +25 to +30 against v022 on 2,400 pairs, by different means (how units move, how far the plan looks); together they gain more than either, and beat v022.
 change: The opening's rules value a cell 2 or 3 less for each of our units next to it (E051) and the opening plans 9 of our turns (E052), with 40 or 45 ms a turn.
 release: ice-and-fire-v023
-sprt: accepted
-elo: +65.9 [+41.0, +91.5] at CodinGame's limits
-pairs: 320
-full_time: +65.9 [+41.0, +91.5] (the SPRT's own, ADR 0042), no fault of either side in 640 games
-decision: promoted
+sprt: pending (a first run accepted the bundle before the fix below, +65.9 [+41.0, +91.5])
+elo: pending
+pairs: pending
+full_time: pending
+decision: pending
 cg_rank: not reported
 ---
 
@@ -60,14 +60,24 @@ Run 43578164479, seed 55055, 1,600 pairs each over four runners:
 The two changes add up: spread units alone about +46 in this run, the
 9-turn plan alone +22, both +54, and 45 ms a turn on top +61. The
 candidate is c2t9b45 (`OPENING_CROWD = 2`, `OPENING_TURNS = 9`,
-`BUDGET_MS = 45.0`), whose bundle is the same, byte for byte, as the
-screened commit's.
+`BUDGET_MS = 45.0`).
+
+CI's determinism check (`scripts/check-determinism.sh`: two runs at a
+fixed number of tries, where a turn has no deadline, at a time scale of
+50) failed once on the first frozen bundle: without a deadline the
+opening replans with beams up to 64 wide, which over 9 turns took about
+1.5 s around turn 7 (7 turns: 1.0 s), near the 2.5 s the arena then gives
+an answer. The candidate caps that width at 32 (`OPENING_MAX_WIDTH`),
+which matters only without a deadline (slowest such answer 773 ms); with
+a deadline, as on CodinGame and in every screening and SPRT, the plans
+search until it whatever the width. So the candidate differs from the
+screened commit in that constant, and v023 was frozen again.
 
 ## SPRT
 
-Accepted on the pull request (run 43579853180, at 1890fbf6), at
-CodinGame's speed and real limit, in blocks of 10 pairs over 8 calibrated
-runners:
+A first SPRT accepted the bundle frozen before the width fix (run
+43579853180, at 1890fbf6), at CodinGame's speed and real limit, in blocks
+of 10 pairs over 8 calibrated runners:
 
 ```
 Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
@@ -81,3 +91,5 @@ Checked 4 rounds of 8 blocks (32 blocks counted, 56 left out)
 SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.90 (bounds -2.94, 2.94) after 320 pairs
 Verdict: ACCEPTED: ice-and-fire-v023 is stronger than ice-and-fire-v022
 ```
+
+The SPRT of the candidate as frozen again: pending.
