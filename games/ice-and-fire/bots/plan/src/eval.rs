@@ -123,11 +123,11 @@ pub const MINE_BONUS_CAP: Option<i64> = None;
 /// The lead in active cells from which a side's mines count one more per
 /// [`AHEAD_MINE_PER_CELLS`] active cells rather than per [`MINE_PER_CELLS`]
 /// (E048): `None` for never (v022).
-pub const MINE_LEAD: Option<i64> = Some(8);
+pub const MINE_LEAD: Option<i64> = None;
 
 /// The active cells for which a mine of a side that leads by [`MINE_LEAD`]
 /// counts one more than its income (E048).
-pub const AHEAD_MINE_PER_CELLS: i64 = 1000;
+pub const AHEAD_MINE_PER_CELLS: i64 = 6;
 
 /// The lead of `seat` in active cells: its active cells less the enemy's.
 fn lead(state: &State, seat: usize) -> i64 {
