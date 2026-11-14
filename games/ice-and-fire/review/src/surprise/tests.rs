@@ -91,6 +91,55 @@ fn the_csv_has_a_row_a_ply() {
 }
 
 #[test]
+fn the_report_has_the_row_of_the_release() {
+    // Three normal plies of two games, one lost: a large miss, a large
+    // removal the search foresaw, and a quiet ply.
+    let row = |game_id, won, actual: i64, cut| Row {
+        game_id,
+        ply: 2,
+        turn: 9,
+        seat: 0,
+        opponent: "x".to_string(),
+        top: false,
+        won,
+        turns_left: 5,
+        judged: parse_line(&format!(
+            "1\t2\texpected=0\tactual={actual}\tpass=10\tmodeled=3\tmodeled_best=5\tsame_reply=no"
+        ))
+        .expect("read"),
+        effect: Effect {
+            cut,
+            ..Effect::default()
+        },
+        shape: Shape::default(),
+        reply: "WAIT".to_string(),
+    };
+    let rows = [
+        row(1, false, -60, 12),
+        row(1, false, -5, 10),
+        row(2, true, 4, 0),
+    ];
+    let request = Request {
+        data: "data".into(),
+        me: "me".to_string(),
+        judge: "judge".into(),
+        release: Some("ice-and-fire-v026".to_string()),
+        top: 10,
+        tries: 600,
+        limit: None,
+        jobs: 1,
+        leaderboard: None,
+        out: "out".into(),
+        pass: false,
+    };
+    let md = report(&rows, &request, 2, 0, 0);
+    assert!(
+        md.contains("| ice-and-fire-v026 | 2 | 50% | 3 | 3 | 1 (33.3%) | 1 (33.3%) | 0 (0.0%) |"),
+        "{md}"
+    );
+}
+
+#[test]
 fn the_shape_of_a_capture_at_the_tip_of_a_line() {
     // As in the effect test: a red trail ends at a unit next to blue's.
     let mut state = State::new(&[false; ice_and_fire_engine::CELLS], &[], League::Bronze);
