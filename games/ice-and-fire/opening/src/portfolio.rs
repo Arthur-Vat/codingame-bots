@@ -25,7 +25,6 @@ const fn set(w: [i64; 10]) -> Params {
         inside: 0,
         toward: 0,
         crowd: 0,
-        blue_crowd: None,
     }
 }
 

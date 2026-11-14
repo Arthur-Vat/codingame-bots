@@ -139,9 +139,6 @@ const OPENING_SAFE_SPOT: u8 = u8::MAX;
 /// did less, 8 and 16 lost).
 const OPENING_CROWD: i64 = 2;
 
-/// [`OPENING_CROWD`] when we play blue (E057): `None` for the same (v024).
-const OPENING_BLUE_CROWD: Option<i64> = None;
-
 /// The game turn by which a purchase of the opening must pay back
 /// (`Params::horizon`, E056): 15 in v023, as in v003's opening; 18 won the
 /// screening (17 and 19 did not gain, 21 lost), so that the opening buys a
@@ -177,7 +174,6 @@ fn opening_of(width: usize) -> Planned {
         .map(|&params| Params {
             safe_spot: OPENING_SAFE_SPOT,
             crowd: OPENING_CROWD,
-            blue_crowd: OPENING_BLUE_CROWD,
             horizon: OPENING_HORIZON,
             after_contact: OPENING_AFTER_CONTACT,
             ..params
