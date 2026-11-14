@@ -67,7 +67,7 @@ pub const THREAT_QUARTERS: i64 = 5;
 
 /// What a threatened cell costs its side, in quarters, from game turn
 /// [`EXPOSURE_TURNS`]`.0` to `.1` (E059): [`THREAT_QUARTERS`] in v024.
-pub const EXPOSURE_QUARTERS: i64 = 7;
+pub const EXPOSURE_QUARTERS: i64 = 8;
 
 /// The game turns of [`EXPOSURE_QUARTERS`] (E059).
 pub const EXPOSURE_TURNS: (u32, u32) = (10, 15);
