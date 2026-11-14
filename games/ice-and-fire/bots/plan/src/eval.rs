@@ -116,13 +116,44 @@ pub fn mine_bonus(cells: i64) -> i64 {
     cells / MINE_PER_CELLS
 }
 
-/// What the mines of `seat` count beyond their income: [`mine_bonus`] for
-/// each on its active cells that the enemy cannot take at its next turn.
-/// `exposed` is `exposed(state, seat)`.
+/// The most a mine counts beyond its income (E048): `None` for no cap
+/// (v022).
+pub const MINE_BONUS_CAP: Option<i64> = None;
+
+/// The lead in active cells from which a side's mines count one more per
+/// [`AHEAD_MINE_PER_CELLS`] active cells rather than per [`MINE_PER_CELLS`]
+/// (E048): `None` for never (v022).
+pub const MINE_LEAD: Option<i64> = None;
+
+/// The active cells for which a mine of a side that leads by [`MINE_LEAD`]
+/// counts one more than its income (E048).
+pub const AHEAD_MINE_PER_CELLS: i64 = 6;
+
+/// The lead of `seat` in active cells: its active cells less the enemy's.
+fn lead(state: &State, seat: usize) -> i64 {
+    i64::from(state.active(seat).count()) - i64::from(state.active(1 - seat).count())
+}
+
+/// What each mine of `seat` counts beyond its income (E033, E048).
+fn seat_mine_bonus(state: &State, seat: usize) -> i64 {
+    let cells = i64::from(state.active(seat).count());
+    let bonus = match MINE_LEAD {
+        Some(from) if lead(state, seat) >= from => cells / AHEAD_MINE_PER_CELLS,
+        _ => mine_bonus(cells),
+    };
+    match MINE_BONUS_CAP {
+        Some(cap) => bonus.min(cap),
+        None => bonus,
+    }
+}
+
+/// What the mines of `seat` count beyond their income: [`seat_mine_bonus`]
+/// for each on its active cells that the enemy cannot take at its next
+/// turn. `exposed` is `exposed(state, seat)`.
 fn mines(state: &State, seat: usize, exposed: Bits) -> i64 {
     let active = state.active(seat);
     let mines = (state.mines() & active).and_not(exposed);
-    mine_bonus(i64::from(active.count())) * i64::from(mines.count())
+    seat_mine_bonus(state, seat) * i64::from(mines.count())
 }
 
 /// The weight of a joint and of a cell that one capture cuts off.
