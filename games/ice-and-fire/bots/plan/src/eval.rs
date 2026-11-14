@@ -356,11 +356,11 @@ fn idle(state: &State, seat: usize) -> i64 {
 
 /// What each neutral cell a side's active land reaches before the enemy's
 /// counts in the evaluation (E061; a tie half): 0 in v026.
-pub const RACE_CELL: i64 = 2;
+pub const RACE_CELL: i64 = 0;
 
 /// The last game turn on which [`RACE_CELL`] counts (E061): `None` for
 /// every turn.
-pub const RACE_UNTIL: Option<u32> = Some(15);
+pub const RACE_UNTIL: Option<u32> = None;
 
 /// The race for the neutral land (E061), in halves for `seat` less the
 /// other side's: both sides' active land grows a step at a time over
