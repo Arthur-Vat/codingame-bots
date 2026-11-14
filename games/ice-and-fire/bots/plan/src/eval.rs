@@ -241,7 +241,7 @@ pub const LEVEL2_DISCOUNT: i64 = 15;
 
 /// The turns of upkeep the evaluation charges for a level-2 and a level-3
 /// unit (E036); the shared evaluation charges 3, its weight of income.
-pub const UPKEEP_TURNS: [i64; 2] = [3, 3];
+pub const UPKEEP_TURNS: [i64; 2] = [3, 1];
 
 /// The upkeep of a level-2 and a level-3 unit (RULES.md, "Income").
 const UPKEEP: [i64; 2] = [4, 20];
@@ -295,7 +295,7 @@ pub const MARGIN_MOVER_LEVEL: u8 = 2;
 
 /// The income below which each gold of a side's income counts
 /// [`LOW_INCOME_TURNS`] more times (E050): `None` for no floor (v022).
-pub const INCOME_FLOOR: Option<i64> = None;
+pub const INCOME_FLOOR: Option<i64> = Some(10);
 
 /// How many more times each gold of income below [`INCOME_FLOOR`] counts
 /// (E050).
