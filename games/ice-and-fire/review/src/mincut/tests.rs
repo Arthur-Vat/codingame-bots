@@ -104,7 +104,11 @@ fn a_free_cell_joins_a_cut_only_when_the_cut_needs_it() {
     let cut = cut_with(&state, 0, 4, 1000, &prices).expect("a cut");
     assert_eq!((cut.cost, cut.links, cut.cells), (20, 1, 5));
     // A free cell on the HQ's side, (0, 1), is no part of the cut.
-    assert!(state.apply(Command::Train { level: 1, x: 0, y: 1 }));
+    assert!(state.apply(Command::Train {
+        level: 1,
+        x: 0,
+        y: 1
+    }));
     prices[12] = 0;
     let cut = cut_with(&state, 0, 4, 1000, &prices).expect("a cut");
     assert_eq!((cut.cost, cut.links, cut.cells), (20, 1, 5));
