@@ -56,7 +56,7 @@ const MEMORY_CAP: usize = 8;
 const REPLY_CUTS: usize = 3;
 /// The longest cut, in trainings, the opponent's replies are searched with
 /// (E064): `CUT_LENGTH` (5) in v026.
-pub const REPLY_CUT_LENGTH: usize = CUT_LENGTH;
+pub const REPLY_CUT_LENGTH: usize = 8;
 /// The enemy units nearest our HQ whose step toward it is tried before a
 /// cut in the opponent's replies (E064): 0 in v026.
 pub const MOVE_CUTS: usize = 0;
