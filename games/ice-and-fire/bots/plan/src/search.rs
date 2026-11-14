@@ -53,7 +53,7 @@ pub mod judge;
 /// The quarters of a plan's score that its worst modeled reply makes
 /// (E063); the rest is the score if the opponent passes. 4 in v026: the
 /// worst reply alone, as the search has always scored a plan.
-pub const WORST_QUARTERS: i64 = 3;
+pub const WORST_QUARTERS: i64 = 2;
 
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8;
