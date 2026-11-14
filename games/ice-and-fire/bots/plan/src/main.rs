@@ -8,12 +8,13 @@
 //! a chain of trainings to an enemy cell) it plays the opening
 //! (`ice_and_fire_opening::planned` with the solo planner, E010): v003's
 //! opening by rules, with weights for a compact shape and a pull toward the
-//! enemy HQ chosen turn by turn by a beam search over our next 7 turns as if
+//! enemy HQ chosen turn by turn by a beam search over our next 9 turns as if
 //! the opponent passed (`ice_and_fire_opening::solo`), which rates the
 //! territory, the income and the gold, less the cells one capture would cut
 //! off, the joints and the ends of lines, plus the land nearer us than the
 //! enemy and the progress toward its HQ; it builds no mine and weighs land
-//! above income (E034). The plan is made on the first turn,
+//! above income (E034), and a cell is worth less for each of our units next
+//! to it, so that units spread (E051). The plan is made on the first turn,
 //! kept while our side of the board is as predicted, and made again within
 //! the turn's time otherwise. Else it climbs: from
 //! the start of the turn it keeps adding the single action (a move, a
@@ -36,7 +37,7 @@
 //! (Bronze). Each command sent was accepted by the engine, in order, on a
 //! scratch copy of the state. A turn whose text does not read as a state is
 //! answered with `WAIT`; a bad count line or input that ends in the middle of
-//! a turn ends the bot with exit code 1. The time budget of a turn is 40 ms
+//! a turn ends the bot with exit code 1. The time budget of a turn is 45 ms
 //! times `CG_TIME_SCALE`, 800 ms on the first turn (of CodinGame's 1,000
 //! ms), of which the opening's plan takes about 610 ms. With `CG_FIXED_ITERS`
 //! set to a positive number (tests only, never on CodinGame) a turn has no
@@ -65,8 +66,9 @@ use ice_and_fire_opening::solo::{self, Objective};
 use crate::search::Limit;
 
 /// The time of a turn at CodinGame's limits, milliseconds: 50 ms, less a
-/// margin for the input, the output and a busy machine.
-const BUDGET_MS: f64 = 40.0;
+/// margin for the input, the output and a busy machine; 40 before E055,
+/// which found no timeout at 45 on calibrated runners.
+const BUDGET_MS: f64 = 45.0;
 /// The first turn's time, of CodinGame's 1,000 ms (E010); the opening's
 /// plan stops at 76% of it, about 610 ms.
 const FIRST_BUDGET_MS: f64 = 800.0;
@@ -109,8 +111,9 @@ fn limit(start: Instant, turn: u32) -> Limit {
 }
 
 /// The number of our turns an opening plan covers: the middle game starts
-/// at our eighth turn in the median game (E010).
-const OPENING_TURNS: usize = 7;
+/// at our eighth turn in the median game (E010); 9, two beyond, won the
+/// screening (E052, E055; 8 and 10 did less).
+const OPENING_TURNS: usize = 9;
 
 /// What the opening's plans maximize: the solo planner's weights, written
 /// out (E010), with cells 3 and income 1 rather than 4 and 3 (E034): the
@@ -132,8 +135,9 @@ const OBJECTIVE: Objective = Objective {
 const OPENING_SAFE_SPOT: u8 = u8::MAX;
 
 /// How much less a cell is worth to the opening's moves and trainings for
-/// each of our units next to it (E051): 0 in v022.
-const OPENING_CROWD: i64 = 0;
+/// each of our units next to it (E051): 0 in v022; 2 won the screening (4
+/// did less, 8 and 16 lost).
+const OPENING_CROWD: i64 = 2;
 
 /// The opening: v003's opening with the solo planner's weight sets, planned
 /// over [`OPENING_TURNS`] of our turns within the turn's time.

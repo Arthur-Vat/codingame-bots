@@ -2,7 +2,7 @@ use ice_and_fire_engine::{Bits, Command, League, State, HQ, SIZE};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::League as RefereeLeague;
 
-use super::{distances, gap, turn, unit_return, GAP};
+use super::{distances, gap, turn, turn_with, unit_return, Buy, Params, GAP};
 
 /// The start of the game on the referee's Bronze map of `seed`.
 fn start(seed: u64) -> State {
@@ -186,4 +186,44 @@ fn distances_and_gap_count_steps_over_the_map() {
     );
     // At the start, red owns its HQ and blue (11, 11) and (11, 10).
     assert_eq!(gap(&state), state.map().distance(HQ[0], at(11, 10)));
+}
+
+#[test]
+fn the_crowd_term_spreads_the_units() {
+    // E051: each of our units next to a cell lowers its value by `crowd`,
+    // so that units stand next to each other less often. Both sides play
+    // the opening's rules with the plan bot's usual shape weights for 6
+    // turns each on 40 maps.
+    let next_to_share = |crowd: i64| {
+        let params = Params {
+            crowd,
+            ..Params::V003.with_shape(2, 3, 0).with_course(4, 1)
+        };
+        let (mut next_to, mut units) = (0usize, 0usize);
+        for seed in 1..=40 {
+            let mut state = start(seed);
+            for _ in 0..12 {
+                if state.outcome().is_some() || gap(&state) <= GAP {
+                    break;
+                }
+                let me = state.to_act();
+                state.play_turn(&turn_with(&state, &params, Buy::Payback));
+                let ours = state.units(me);
+                units += ours.count() as usize;
+                next_to += ours
+                    .iter()
+                    .filter(|&cell| !(Bits::cell(cell).neighbours() & ours).is_empty())
+                    .count();
+            }
+        }
+        (next_to, units)
+    };
+    let (spread, spread_units) = next_to_share(2);
+    let (packed, packed_units) = next_to_share(0);
+    assert!(spread_units > 0 && packed_units > 0);
+    // spread / spread_units < packed / packed_units, without division.
+    assert!(
+        spread * packed_units < packed * spread_units,
+        "crowd 2: {spread} of {spread_units}, crowd 0: {packed} of {packed_units}"
+    );
 }
