@@ -36,7 +36,10 @@ first mine earlier than they do:
 | blue | top 10 | 31% | 54% | 66% |
 | blue | zasmu | 34% | 73% | 91% |
 
-(Top 10 and zasmu from all their collected games, most against v014.)
+(v026 from its own games; the top 10 and zasmu from all their collected
+games, most against v014, by `codingame-opening --top 10` and `--top 1`:
+the S0 note's section 6 shows turns 8 and 12, its section 5 the top 10 in
+v026's games alone, which differ.)
 E058's screening found that ending the bonus at turn 12 rather than 15 did
 less; this experiment moves its start instead.
 
