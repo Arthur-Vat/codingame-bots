@@ -357,8 +357,8 @@ fn takes_a_cheap_gain_the_hill_climb_must_find() {
 #[test]
 fn the_limit_of_a_turn_follows_the_time_scale() {
     let scale = cg_core::time::time_scale().min(100.0);
-    // 800 ms on the first turn, 40 ms on the others.
-    for (turn, ms) in [(1, 0.800), (2, 0.040), (30, 0.040)] {
+    // 800 ms on the first turn, 45 ms on the others (40 before E055).
+    for (turn, ms) in [(1, 0.800), (2, 0.045), (30, 0.045)] {
         let start = Instant::now();
         let limit = crate::limit(start, turn);
         let (soft, hard) = (limit.soft.unwrap(), limit.hard.unwrap());
