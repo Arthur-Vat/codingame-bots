@@ -4,13 +4,13 @@ date: 2026-11-14
 pull_request: "#NN"
 parent: ice-and-fire-v026
 hypothesis: Against the top 10, v026 holds about 1 middle cell fewer at turn 8 and about 4 fewer at turn 12 (the middle: within 2 steps of even between the HQs), with the same land on its own side; most of that gap opens in the middle game, whose evaluation has no term for the land not yet taken; counting the neutral land each side's land reaches first (the race) in the middle game's evaluation takes more of the middle and beats v026. A first form in the opening's plans gained nothing.
-change: The plan bot's evaluation counts 1 to 3 for each neutral cell our active land reaches before the enemy's, less the same for the enemy's (a tie half), in every turn or until game turn 15.
+change: None released. Screening only: the plan bot's evaluation counting 1 to 3 for each neutral cell our active land reaches before the enemy's, less the same for the enemy's (a tie half), in every turn or until game turn 15; first, the opening's plans counting the land they reach before a growing enemy.
 release: none
-sprt: pending
+sprt: not run: no gain in screening
 elo: none
 pairs: none
 full_time: none
-decision: pending
+decision: dropped
 cg_rank: none
 ---
 
@@ -116,3 +116,26 @@ Against `ice-and-fire-v026` on GitHub, as above. Run 43625801764, seed
 The race in the middle game's evaluation loses, the more the larger its
 weight, and as much when it stops at turn 15: the loss comes in the turns
 when the middle is contested. At 1 a cell it does nothing.
+
+## What was learned
+
+- **The gap is not a missing term for the land to take.** Counting it in
+  the opening's plans changed little (their choice among 27 weight sets
+  and 8 ways of buying moved the middle held by under a cell, alone);
+  counting it in the middle game lost, the more the larger its weight.
+  At 2 a cell, half of a held cell, the search already gives up held land
+  or gold for land it may reach first, which the enemy then takes or cuts.
+- **A Voronoi-like race is a poor proxy when contact has begun:** it
+  counts land that units cannot hold, and the plan search, which scores
+  one turn and the enemy's replies, cannot see that the cells will be
+  contested.
+- **What the top 10 do in turns 8 to 12 is still open.** Their units stay
+  at the edge of the land (study S0, section 6), their trainings take more
+  land, and their first mine as red comes later (E062 tests the last).
+  Measures of how they win the middle cells (by moves, trainings or cuts,
+  and from where) would come before another term.
+
+The code stays reachable in this pull request's commits: the opening form
+at `1420a35` and its variants, the middle-game form at `a8c97e6` and its
+variants. The branch's head holds the journal entry alone.
+

@@ -1204,24 +1204,3 @@ fn a_unit_far_from_land_to_take_costs_its_side() {
     assert_eq!(eval(&near, 0) - eval(&far, 0), 8 - 4);
     assert_eq!(eval(&near, 1) - eval(&far, 1), -(8 - 4));
 }
-
-#[test]
-fn the_race_gives_each_neutral_cell_to_the_land_that_reaches_it_first() {
-    use crate::eval::{race_halves, RACE_CELL, RACE_UNTIL};
-    use ice_and_fire_engine::{League, State};
-    // E061: v026 counts no race.
-    assert_eq!((RACE_CELL, RACE_UNTIL), (0, None));
-    let mut state = State::new(&[false; ice_and_fire_engine::CELLS], &[], League::Bronze);
-    // At the start blue holds one more cell, so it wins the race by the
-    // cells nearer its two cells than red's HQ.
-    let start = race_halves(&state, 1);
-    assert!(start > 0);
-    assert_eq!(race_halves(&state, 0), -start);
-    // A red unit trained next to its HQ wins red some of that land back.
-    assert!(state.apply(ice_and_fire_engine::Command::Train {
-        level: 1,
-        x: 1,
-        y: 0
-    }));
-    assert!(race_halves(&state, 0) > -start);
-}
