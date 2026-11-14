@@ -119,14 +119,14 @@ const OPENING_TURNS: usize = 9;
 /// out (E010), with cells 3 and income 1 rather than 4 and 3 (E034): the
 /// opening spends on land rather than on income.
 const OBJECTIVE: Objective = Objective {
-    cells: 6,
-    income: 2,
+    cells: 3,
+    income: 1,
     gold: 1,
-    cut: 4,
-    joints: 4,
-    tips: 4,
-    reach: 12,
-    voronoi: 2,
+    cut: 2,
+    joints: 2,
+    tips: 2,
+    reach: 6,
+    voronoi: 1,
 };
 
 /// The opening uses a mine spot only when the enemy's territory is more than
@@ -141,7 +141,7 @@ const OPENING_CROWD: i64 = 2;
 
 /// The game turn by which a purchase of the opening must pay back
 /// (`Params::horizon`, E056): 15 in v023, as in v003's opening.
-const OPENING_HORIZON: i64 = 15;
+const OPENING_HORIZON: i64 = 18;
 
 /// The cells a unit is expected to take after the territories meet
 /// (`Params::after_contact`, E056): 0 in v023.
