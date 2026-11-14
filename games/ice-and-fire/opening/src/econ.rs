@@ -85,6 +85,9 @@ pub struct Params {
     /// after this turn's moves and trainings so far (E051), so that units
     /// spread and each finds a free cell at its next turn.
     pub crowd: i64,
+    /// [`Params::crowd`] when our side is blue, the second player, which
+    /// starts with two cells in its corner (E057); `None`: `crowd` too.
+    pub blue_crowd: Option<i64>,
 }
 
 impl Params {
@@ -106,6 +109,7 @@ impl Params {
         inside: 0,
         toward: 0,
         crowd: 0,
+        blue_crowd: None,
     };
 
     /// These weights with the shape terms `group`, `thin` and `spot` (E010).
@@ -231,7 +235,11 @@ impl Turn<'_> {
         let spot = if self.spots.test(cell) { p.spot } else { 0 };
         let stuck = if open == 0 { p.inside } else { 0 };
         let toward = p.toward * (22 - i64::from(self.to_hq[cell].min(22)));
-        let crowd = p.crowd * i64::from((Bits::cell(cell).neighbours() & self.units).count());
+        let weight = match p.blue_crowd {
+            Some(blue) if self.me == 1 => blue,
+            _ => p.crowd,
+        };
+        let crowd = weight * i64::from((Bits::cell(cell).neighbours() & self.units).count());
         p.open * open + p.contest * contest - hq + p.group * own - line + spot - stuck + toward
             - crowd
     }
