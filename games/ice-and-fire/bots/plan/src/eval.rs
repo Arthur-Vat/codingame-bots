@@ -65,6 +65,28 @@ pub const MOVER_LEVEL: u8 = 2;
 /// of a cell's value of 7), 5 since E037, which finds more of them.
 pub const THREAT_QUARTERS: i64 = 5;
 
+/// The lead in active cells from which a side's threatened cells cost
+/// [`LEAD_THREAT_QUARTERS`] quarters rather than [`THREAT_QUARTERS`] (E047):
+/// `None` for never (v022).
+pub const LEAD_CELLS: Option<i64> = None;
+
+/// What a threatened cell of a side that leads by [`LEAD_CELLS`] costs, in
+/// quarters (E047).
+pub const LEAD_THREAT_QUARTERS: i64 = 8;
+
+/// The lead of `seat` in active cells: its active cells less the enemy's.
+fn lead(state: &State, seat: usize) -> i64 {
+    i64::from(state.active(seat).count()) - i64::from(state.active(1 - seat).count())
+}
+
+/// What a threatened cell of `seat` costs it, in quarters (E037, E047).
+fn threat_quarters(state: &State, seat: usize) -> i64 {
+    match LEAD_CELLS {
+        Some(cells) if lead(state, seat) >= cells => LEAD_THREAT_QUARTERS,
+        _ => THREAT_QUARTERS,
+    }
+}
+
 /// The units of `seat` whose moves count in [`exposed`]: those on its active
 /// cells of at least [`MOVER_LEVEL`], all of which may move at its next turn.
 fn movers(state: &State, seat: usize) -> Bits {
@@ -308,13 +330,14 @@ pub fn eval(state: &State, seat: usize) -> i64 {
     let score = score - crate::analysis::removed(state, seat);
     let ours = exposed(state, seat);
     let theirs = exposed(state, 1 - seat);
-    let threats = i64::from(theirs.count()) - i64::from(ours.count());
+    let threats = threat_quarters(state, 1 - seat) * i64::from(theirs.count())
+        - threat_quarters(state, seat) * i64::from(ours.count());
     score - 2 * debt(state, seat)
         + 2 * debt(state, 1 - seat)
         + shape(state, seat)
         + strong_units(state, seat)
         - strong_units(state, 1 - seat)
-        + THREAT_QUARTERS * threats / 4
+        + threats / 4
         + mines(state, seat, ours)
         - mines(state, 1 - seat, theirs)
 }
