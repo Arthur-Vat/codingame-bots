@@ -1204,3 +1204,24 @@ fn a_unit_far_from_land_to_take_costs_its_side() {
     assert_eq!(eval(&near, 0) - eval(&far, 0), 8 - 4);
     assert_eq!(eval(&near, 1) - eval(&far, 1), -(8 - 4));
 }
+
+#[test]
+fn a_unit_facing_only_cells_it_cannot_enter_counts_as_far() {
+    use crate::eval::{idle, IDLE_ENTER, IDLE_STEP};
+    // E066: the distance is to the nearest cell the unit may enter. Red's
+    // corridor ends at (11, 9), next to blue's (11, 10). A level-1 unit of
+    // red on (11, 9) may enter that cell while it is empty, and costs
+    // nothing. With a blue level-1 unit on it, which a level-1 unit cannot
+    // beat, the nearest cell red's unit may enter is blue's HQ behind it,
+    // two steps away (steps are counted over any cell): it costs one step.
+    // A level-2 unit of red beats the blue unit and costs nothing.
+    assert_eq!((IDLE_ENTER, IDLE_STEP), (1, 2));
+    let mut rows = CORRIDOR;
+    rows[10] = "###########X";
+    let free = position(rows, [0, 20], &[(0, 1, 1, 11, 9)]);
+    assert_eq!(idle(&free, 0), 0);
+    let blocked = position(rows, [0, 20], &[(0, 1, 1, 11, 9), (1, 2, 1, 11, 10)]);
+    assert_eq!(idle(&blocked, 0), IDLE_STEP);
+    let stronger = position(rows, [0, 20], &[(0, 1, 2, 11, 9), (1, 2, 1, 11, 10)]);
+    assert_eq!(idle(&stronger, 0), 0);
+}

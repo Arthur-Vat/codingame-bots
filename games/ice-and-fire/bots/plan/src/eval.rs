@@ -325,32 +325,53 @@ pub const IDLE_CAP: i64 = 4;
 /// The highest level of a unit counted (E060).
 pub const IDLE_LEVEL: u8 = 3;
 
+/// Which cells a unit's distance is measured to (E066): 0, every cell not
+/// its side's (v026); 1, those a unit of its level may enter, so that a
+/// unit facing only towers or units it cannot beat counts as standing away
+/// from land to take; 2, the same for level-1 units only.
+pub const IDLE_ENTER: u8 = 1;
+
 /// What the units of `seat` on its active cells cost it for standing away
-/// from the cells that are not its own (E060).
-fn idle(state: &State, seat: usize) -> i64 {
+/// from the cells that are not its own (E060), or from those of them they
+/// may enter (E066, [`IDLE_ENTER`]).
+pub(crate) fn idle(state: &State, seat: usize) -> i64 {
     if IDLE_STEP == 0 {
         return 0;
     }
     let valid = state.map().valid;
-    let mut units = Bits::EMPTY;
+    let mut units = [Bits::EMPTY; 3];
     for cell in (state.units(seat) & state.active(seat)).iter() {
-        if state
-            .unit_level(cell)
-            .is_some_and(|level| level <= IDLE_LEVEL)
-        {
-            units |= Bits::cell(cell);
+        if let Some(level) = state.unit_level(cell).filter(|&l| l <= IDLE_LEVEL) {
+            // Without E066's targets every level shares the first group.
+            let group = match IDLE_ENTER {
+                0 => 0,
+                1 => usize::from(level) - 1,
+                _ => usize::from(level > 1),
+            };
+            units[group] |= Bits::cell(cell);
         }
     }
-    let mut within = valid.and_not(state.owned(seat));
-    let mut counted = Bits::EMPTY;
+    let free = valid.and_not(state.owned(seat));
     let mut steps = 0;
-    for distance in 1..=IDLE_CAP {
-        within = (within | within.neighbours()) & valid;
-        let here = (units & within).and_not(counted);
-        steps += (distance - 1) * i64::from(here.count());
-        counted |= here;
+    for (group, &units) in units.iter().enumerate() {
+        if units.is_empty() {
+            continue;
+        }
+        let targets = match (IDLE_ENTER, group) {
+            (0, _) | (2, 1) => free,
+            // The group is the level less one (with 2: level 1 alone).
+            _ => free & state.enterable(seat, group as u8 + 1),
+        };
+        let mut within = targets;
+        let mut counted = Bits::EMPTY;
+        for distance in 1..=IDLE_CAP {
+            within = (within | within.neighbours()) & valid;
+            let here = (units & within).and_not(counted);
+            steps += (distance - 1) * i64::from(here.count());
+            counted |= here;
+        }
+        steps += IDLE_CAP * i64::from(units.and_not(counted).count());
     }
-    steps += IDLE_CAP * i64::from(units.and_not(counted).count());
     IDLE_STEP * steps
 }
 
