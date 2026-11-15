@@ -65,7 +65,7 @@ const CLIMB_SHARE: f64 = 0.75;
 
 /// The plans, best first by the final score, that the two-turn check scores
 /// again (E065); 0 for no check.
-pub const DEEP_PLANS: usize = 3;
+pub const DEEP_PLANS: usize = 2;
 /// The replies to each of them, worst first, that the check plays on.
 pub const DEEP_REPLIES: usize = 1;
 /// Most plans scored by our follow-up climb after a reply.
@@ -78,7 +78,7 @@ pub const DEEP_CUTS: usize = 1;
 pub const DEEP_BLEND: bool = true;
 /// By how much another plan's value in the check must beat the chosen
 /// plan's for it to be played instead.
-pub const DEEP_MARGIN: i64 = 20;
+pub const DEEP_MARGIN: i64 = 0;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
