@@ -65,9 +65,9 @@ const CLIMB_SHARE: f64 = 0.75;
 
 /// The plans, best first by the final score, that the two-turn check scores
 /// again (E065); 0 for no check.
-pub const DEEP_PLANS: usize = 3;
+pub const DEEP_PLANS: usize = 4;
 /// The replies to each of them, worst first, that the check plays on.
-pub const DEEP_REPLIES: usize = 1;
+pub const DEEP_REPLIES: usize = 2;
 /// Most plans scored by our follow-up climb after a reply.
 pub const DEEP_EVALS: u64 = 60;
 /// The opponent's best cuts tried after our follow-up, with the gold of its
@@ -75,7 +75,10 @@ pub const DEEP_EVALS: u64 = 60;
 pub const DEEP_CUTS: usize = 1;
 /// Whether a plan is chosen by the sum of its final score and its two-turn
 /// score, rather than by the two-turn score alone.
-pub const DEEP_BLEND: bool = true;
+pub const DEEP_BLEND: bool = false;
+/// By how much another plan's value in the check must beat the chosen
+/// plan's for it to be played instead.
+pub const DEEP_MARGIN: i64 = 20;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
@@ -766,7 +769,16 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
             } else {
                 deep
             };
-            if top.is_none_or(|(best, _)| value > best) {
+            // The chosen plan comes first; another must beat it by more
+            // than the margin, and the best so far.
+            let floor = top.map_or(i64::MIN, |(best, at)| {
+                if at == chosen {
+                    best.saturating_add(DEEP_MARGIN)
+                } else {
+                    best
+                }
+            });
+            if top.is_none() || value > floor {
                 top = Some((value, index));
             }
         }
