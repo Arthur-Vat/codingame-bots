@@ -66,13 +66,13 @@ const CLIMB_SHARE: f64 = 0.75;
 /// The game turn from which the search plays whatever the opening would do
 /// (E067): `None` for never (v026, where the opening plays until we can
 /// pay a chain of trainings to an enemy cell).
-pub const HANDOVER_TURN: Option<u32> = None;
+pub const HANDOVER_TURN: Option<u32> = Some(7);
 /// Whether the search also takes over, for good, at the first turn the
 /// opening would buy nothing while we hold [`HANDOVER_GOLD`] or more, from
 /// game turn [`HANDOVER_IDLE_FROM`] (E067).
-pub const HANDOVER_IDLE: bool = true;
+pub const HANDOVER_IDLE: bool = false;
 /// The gold of a level-1 training.
-pub const HANDOVER_GOLD: i64 = 15;
+pub const HANDOVER_GOLD: i64 = 10;
 pub const HANDOVER_IDLE_FROM: u32 = 6;
 
 /// When the search stops.
