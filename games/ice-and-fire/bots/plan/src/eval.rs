@@ -317,10 +317,10 @@ pub const MARGIN_MOVER_LEVEL: u8 = 2;
 /// A walk through our own land toward free or enemy cells then raises the
 /// score at each step, as the top bots' units walk for several turns; 2 won
 /// the screening (1, 3 and 4 did a little less).
-pub const IDLE_STEP: i64 = 3;
+pub const IDLE_STEP: i64 = 2;
 
 /// The farthest distance counted (E060).
-pub const IDLE_CAP: i64 = 4;
+pub const IDLE_CAP: i64 = 6;
 
 /// The highest level of a unit counted (E060).
 pub const IDLE_LEVEL: u8 = 3;
