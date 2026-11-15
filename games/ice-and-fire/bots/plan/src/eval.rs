@@ -329,7 +329,7 @@ pub const IDLE_LEVEL: u8 = 3;
 /// its side's (v026); 1, those a unit of its level may enter, so that a
 /// unit facing only towers or units it cannot beat counts as standing away
 /// from land to take; 2, the same for level-1 units only.
-pub const IDLE_ENTER: u8 = 1;
+pub const IDLE_ENTER: u8 = 2;
 
 /// What the units of `seat` on its active cells cost it for standing away
 /// from the cells that are not its own (E060), or from those of them they
