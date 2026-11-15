@@ -899,23 +899,23 @@ pub fn report(
         quantile(&s, 0.95)
     );
     // One row a release, kept in the game's table of releases.
-    let lost_games = {
-        let mut games: BTreeMap<u64, bool> = BTreeMap::new();
-        for r in all {
-            games.insert(r.game_id, r.won);
-        }
-        share(games.values().filter(|&&won| !won).count(), games.len())
-    };
+    // The games counted are those with a judged ply, as the share lost.
+    let mut judged: BTreeMap<u64, bool> = BTreeMap::new();
+    for r in all {
+        judged.insert(r.game_id, r.won);
+    }
+    let judged_games = judged.len();
+    let lost_games = share(judged.values().filter(|&&won| !won).count(), judged_games);
     let large = count(&|r| r.surprise() <= LARGE);
     let foreseen = count(&|r| r.effect.taken + r.effect.cut >= REMOVAL && r.surprise() > FORESEEN);
     let missed = all
         .iter()
         .filter(|r| r.kind() == Kind::ThreatMissed)
         .count();
-    let _ = writeln!(md, "## The release's check\n\nThe row of this run for the table of releases (`research/codingame/surprise-by-release.md`): a *large miss* is a normal ply with a surprise of {LARGE} or less; a *foreseen large removal* a normal ply whose reply removed {REMOVAL} or more of our cells with a surprise above {FORESEEN}.\n\n| Release | Games | Lost | Plies | Normal plies | Large misses | Foreseen large removals | HQ threats not foreseen |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
+    let _ = writeln!(md, "## The release's check\n\nThe row of this run for the table of releases (`research/codingame/surprise-by-release.md`): the games are those with a judged ply; a *large miss* is a normal ply with a surprise of {LARGE} or less; a *foreseen large removal* a normal ply whose reply removed {REMOVAL} or more of our cells with a surprise above {FORESEEN}.\n\n| Release | Games | Lost | Plies | Normal plies | Large misses | Foreseen large removals | HQ threats not foreseen |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
     let _ = writeln!(
         md,
-        "| {} | {games} | {lost_games} | {} | {n} | {large} ({}) | {foreseen} ({}) | {missed} ({}) |\n",
+        "| {} | {judged_games} | {lost_games} | {} | {n} | {large} ({}) | {foreseen} ({}) | {missed} ({}) |\n",
         request.release.as_deref().unwrap_or("all"),
         all.len(),
         share1(large, n),

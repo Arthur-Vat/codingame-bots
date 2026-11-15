@@ -12,9 +12,9 @@ The opponents differ from one release to the next (a release's ranking games, th
 
 | Release | Games | Lost | Plies | Normal plies | Large misses | Foreseen large removals | HQ threats not foreseen | Data | Judge |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| ice-and-fire-v023 | 308 | 51% | 4053 | 3514 | 63 (1.8%) | 102 (2.9%) | 19 (0.5%) | 0992ae7 | v026 |
-| ice-and-fire-v024 | 133 | 60% | 1877 | 1605 | 29 (1.8%) | 51 (3.2%) | 17 (0.9%) | 0992ae7 | v026 |
-| ice-and-fire-v025 | 159 | 47% | 2015 | 1760 | 41 (2.3%) | 64 (3.6%) | 13 (0.6%) | 0992ae7 | v026 |
-| ice-and-fire-v026 | 221 | 51% | 2992 | 2636 | 50 (1.9%) | 62 (2.4%) | 7 (0.2%) | 0992ae7 | v026 |
+| ice-and-fire-v023 | 306 | 51% | 4053 | 3514 | 63 (1.8%) | 102 (2.9%) | 19 (0.5%) | 0992ae7 | v026 (main at 6a22ae3) |
+| ice-and-fire-v024 | 131 | 60% | 1877 | 1605 | 29 (1.8%) | 51 (3.2%) | 17 (0.9%) | 0992ae7 | v026 (main at 6a22ae3) |
+| ice-and-fire-v025 | 157 | 47% | 2015 | 1760 | 41 (2.3%) | 64 (3.6%) | 13 (0.6%) | 0992ae7 | v026 (main at 6a22ae3) |
+| ice-and-fire-v026 | 220 | 51% | 2992 | 2636 | 50 (1.9%) | 62 (2.4%) | 7 (0.2%) | 0992ae7 | v026 (main at 6a22ae3) |
 
-*Data* is the commit of the data branch read; *Judge* the release whose search judged the plies (v023 to v025 were judged by v026's, as in the note; from v026 on, each release by its own).
+*Games* are those with a judged ply (a game that ends before the middle game has none). *Data* is the commit of the data branch read; *Judge* the release whose search judged the plies: these four rows by main's build at 6a22ae3, whose search is v026's (the bot's mode `surprise` came after the tag `ice-and-fire-v026`, and v023 to v025 were judged by v026's search in the note too); from v027 on, each release by the build of its own tag.

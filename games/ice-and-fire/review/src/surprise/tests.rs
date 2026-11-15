@@ -92,9 +92,11 @@ fn the_csv_has_a_row_a_ply() {
 
 #[test]
 fn the_report_has_the_row_of_the_release() {
-    // Three normal plies of two games, one lost: a large miss, a large
-    // removal the search foresaw, and a quiet ply.
-    let row = |game_id, won, actual: i64, cut| Row {
+    // Four plies of two games, one lost: a large miss, a large removal the
+    // search foresaw (cells taken and cut off together), a quiet ply, and
+    // a threat on our HQ the search did not foresee, which is not a normal
+    // ply: it counts among all plies only.
+    let row = |game_id, won, actual: i64, taken, cut| Row {
         game_id,
         ply: 2,
         turn: 9,
@@ -108,6 +110,7 @@ fn the_report_has_the_row_of_the_release() {
         ))
         .expect("read"),
         effect: Effect {
+            taken,
             cut,
             ..Effect::default()
         },
@@ -115,10 +118,12 @@ fn the_report_has_the_row_of_the_release() {
         reply: "WAIT".to_string(),
     };
     let rows = [
-        row(1, false, -60, 12),
-        row(1, false, -5, 10),
-        row(2, true, 4, 0),
+        row(1, false, -60, 0, 12),
+        row(1, false, -5, 4, 6),
+        row(2, true, 4, 0, 0),
+        row(1, false, -THREAT, 0, 20),
     ];
+    assert_eq!(rows[3].kind(), Kind::ThreatMissed);
     let request = Request {
         data: "data".into(),
         me: "me".to_string(),
@@ -132,9 +137,10 @@ fn the_report_has_the_row_of_the_release() {
         out: "out".into(),
         pass: false,
     };
-    let md = report(&rows, &request, 2, 0, 0);
+    // A third game was read and had no judged ply: it is not counted.
+    let md = report(&rows, &request, 3, 0, 0);
     assert!(
-        md.contains("| ice-and-fire-v026 | 2 | 50% | 3 | 3 | 1 (33.3%) | 1 (33.3%) | 0 (0.0%) |"),
+        md.contains("| ice-and-fire-v026 | 2 | 50% | 4 | 3 | 1 (33.3%) | 1 (33.3%) | 1 (25.0%) |"),
         "{md}"
     );
 }
