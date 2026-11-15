@@ -46,3 +46,20 @@ opening ends for good (`Planned::end`) and the search plays the turn in
 the time left; `HANDOVER_TURN` ends the opening at a fixed game turn.
 The search offers towers where they guard something (E026), so blue's
 tower at turn 7 is its choice.
+
+## Screening
+
+Against `ice-and-fire-v026` on GitHub (`screen.yml`, one calibrated
+runner per variant and shard at CodinGame's speed and real limit, ADR
+0048; no timeout, crash or invalid answer).
+
+First round, run 43707210397, seed 67067, 800 pairs each over two runners:
+
+| Variant | Commit | The search plays from | Elo against v026 | Score |
+| --- | --- | --- | --- | ---: |
+| d | `f94e6c3` | game turn 7 | **+23.9 [+7.7, +40.2]** | 53.4% |
+| c | `e0eefd7` | the opening's first turn without a purchase with 15 gold, from turn 6 | +13.0 [−3.0, +29.1] | 51.9% |
+| a | `320d38c` | the same with 10 gold | +12.6 [−3.6, +28.9] | 51.8% |
+| e | `a95ce33` | game turn 8 | +6.1 [−3.4, +15.6] | 50.9% |
+| b | `c191c64` | the first turn without a purchase with 10 gold, from turn 7 | +5.6 [−9.7, +21.1] | 50.8% |
+| f | `7c92e87` | the same from turn 4 | +0.4 [−15.2, +16.1] | 50.1% |
