@@ -78,7 +78,7 @@ pub const DEEP_CUTS: usize = 1;
 pub const DEEP_BLEND: bool = false;
 /// By how much another plan's value in the check must beat the chosen
 /// plan's for it to be played instead.
-pub const DEEP_MARGIN: i64 = 20;
+pub const DEEP_MARGIN: i64 = 50;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
