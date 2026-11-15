@@ -65,7 +65,7 @@ const CLIMB_SHARE: f64 = 0.75;
 
 /// The plans, best first by the final score, that the two-turn check scores
 /// again (E065); 0 for no check.
-pub const DEEP_PLANS: usize = 5;
+pub const DEEP_PLANS: usize = 3;
 /// The replies to each of them, worst first, that the check plays on.
 pub const DEEP_REPLIES: usize = 1;
 /// Most plans scored by our follow-up climb after a reply.
