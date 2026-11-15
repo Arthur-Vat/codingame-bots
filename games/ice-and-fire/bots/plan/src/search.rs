@@ -72,8 +72,8 @@ pub const HANDOVER_TURN: Option<u32> = None;
 /// game turn [`HANDOVER_IDLE_FROM`] (E067).
 pub const HANDOVER_IDLE: bool = true;
 /// The gold of a level-1 training.
-pub const HANDOVER_GOLD: i64 = 10;
-pub const HANDOVER_IDLE_FROM: u32 = 7;
+pub const HANDOVER_GOLD: i64 = 15;
+pub const HANDOVER_IDLE_FROM: u32 = 6;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
