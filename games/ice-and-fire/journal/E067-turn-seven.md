@@ -63,3 +63,17 @@ First round, run 43707210397, seed 67067, 800 pairs each over two runners:
 | e | `a95ce33` | game turn 8 | +6.1 [−3.4, +15.6] | 50.9% |
 | b | `c191c64` | the first turn without a purchase with 10 gold, from turn 7 | +5.6 [−9.7, +21.1] | 50.8% |
 | f | `7c92e87` | the same from turn 4 | +0.4 [−15.2, +16.1] | 50.1% |
+
+The leader again with its neighbours, run 43708114034, seed 67068, 1,600
+pairs each over four runners (one timeout of g and one of v026 in 9,600
+games):
+
+| Variant | Commit | The search plays from | Elo against v026 | Score | Both rounds |
+| --- | --- | --- | --- | ---: | --- |
+| d | `f94e6c3` | game turn 7 | **+29.4 [+17.9, +41.0]** | 54.2% | about +28 over 2,400 pairs |
+| h | `f569432` | game turn 7, or turn 6 when the opening buys nothing with 10 gold | **+25.9 [+14.5, +37.3]** | 53.7% | |
+| g | `04e9b9d` | game turn 6 | **−26.8 [−38.3, −15.3]** | 46.2% | |
+
+Turn 7 gains in both rounds; turn 6 loses as much, and turn 8 is level:
+the opening's sixth turn, which buys in 97% of our games, is worth
+keeping, and its seventh, which buys nothing, is not.
