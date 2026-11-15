@@ -73,7 +73,7 @@ pub const HANDOVER_TURN: Option<u32> = None;
 pub const HANDOVER_IDLE: bool = true;
 /// The gold of a level-1 training.
 pub const HANDOVER_GOLD: i64 = 10;
-pub const HANDOVER_IDLE_FROM: u32 = 4;
+pub const HANDOVER_IDLE_FROM: u32 = 6;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
