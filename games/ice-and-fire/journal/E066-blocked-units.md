@@ -42,3 +42,22 @@ units are grouped by level and each group's distance is measured to the
 cells not its side's that `State::enterable` gives a unit of that level;
 with 2, only for level-1 units. Steps are still counted over any cell of
 the map, so a wall is not walked around.
+
+## Screening
+
+Against `ice-and-fire-v026` on GitHub (`screen.yml`, one calibrated
+runner per variant and shard at CodinGame's speed and real limit, ADR
+0048). Run 43704463006, seed 66066, 800 pairs each over two runners (one
+timeout of c and one of v026 in 8,000 games, no other fault). "Units" are
+those whose distance is measured to cells they may enter (`IDLE_ENTER`),
+"step" is `IDLE_STEP`, "cap" `IDLE_CAP`:
+
+| Variant | Commit | Units | Step | Cap | Elo against v026 |
+| --- | --- | --- | ---: | ---: | --- |
+| a | `2411ab6` | all | 2 | 4 | −0.0 [−12.8, +12.8] |
+| b | `69af671` | level 1 | 2 | 4 | −0.4 [−13.0, +12.1] |
+| c | `34b465d` | all | 3 | 4 | +6.5 [−7.1, +20.2] |
+| d | `fc6c4a2` | all | 2 | 6 | +1.3 [−12.0, +14.6] |
+| e | `c04d502` | all | 1 | 4 | −5.2 [−18.8, +8.4] |
+
+No variant is outside its interval; the mean of the five is +0.4.
