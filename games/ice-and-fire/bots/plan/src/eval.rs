@@ -317,7 +317,7 @@ pub const MARGIN_MOVER_LEVEL: u8 = 2;
 /// A walk through our own land toward free or enemy cells then raises the
 /// score at each step, as the top bots' units walk for several turns; 2 won
 /// the screening (1, 3 and 4 did a little less).
-pub const IDLE_STEP: i64 = 2;
+pub const IDLE_STEP: i64 = 3;
 
 /// The farthest distance counted (E060).
 pub const IDLE_CAP: i64 = 4;
@@ -329,7 +329,7 @@ pub const IDLE_LEVEL: u8 = 3;
 /// its side's (v026); 1, those a unit of its level may enter, so that a
 /// unit facing only towers or units it cannot beat counts as standing away
 /// from land to take; 2, the same for level-1 units only.
-pub const IDLE_ENTER: u8 = 2;
+pub const IDLE_ENTER: u8 = 1;
 
 /// What the units of `seat` on its active cells cost it for standing away
 /// from the cells that are not its own (E060), or from those of them they
