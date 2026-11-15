@@ -85,7 +85,7 @@ v026):
 | e2 | `b5e96b9` | 3 | 1 | sum | 0 | −7.8 [−20.7, +5.0] |
 
 No variant is outside its interval, and e played twice gives +8.7 then
-−7.8: over the twelve runs (9,600 pairs) the mean is +0.1. The check is
+−7.8: over the twelve runs (9,600 pairs) the mean is −0.1. The check is
 not too slow: a variant's median answer is 1.5 to 3 ms longer than
 v026's on the same runner (it uses the time v026 leaves before the hard
 limit), with one timeout in 19,200 games.
