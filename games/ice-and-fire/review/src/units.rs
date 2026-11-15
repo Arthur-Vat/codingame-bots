@@ -3,8 +3,9 @@
 //! our releases and their opponents (the top players of the snapshot, or
 //! the others), by seat and phase of the game, as CSV.
 //!
-//! A unit turn is one of [`KINDS`]: the unit took a neutral cell, took an
-//! empty enemy cell, killed a unit, moved inside its side's land, or
+//! A unit turn is one of [`KINDS`]: the unit took a neutral cell (any cell
+//! that is neither active for its side nor the enemy's, so a cell of its
+//! side cut off from its HQ counts), took an empty enemy cell, killed a unit, moved inside its side's land, or
 //! stayed. A unit that stayed is read at the end of its side's turn: it
 //! could still take a neutral cell next to it, or only an enemy one; it is
 //! *blocked* when it is next to cells that are not its side's and may enter
@@ -20,7 +21,7 @@ use ice_and_fire_engine::{Bits, Command, State};
 use serde_json::Value;
 
 use crate::profiles::{newest_snapshot, prepare, read_index, read_ranks, Request};
-use crate::replay::{replay, Game};
+use crate::replay::{replay, Step};
 
 /// The kinds of unit turn, in the order of the counts.
 pub const KINDS: [&str; 9] = [
@@ -94,8 +95,10 @@ fn takes(state: &State, seat: usize, cell: usize) -> Bits {
     Bits::cell(cell).neighbours() & valid.and_not(state.active(seat)) & state.enterable(seat, level)
 }
 
-fn scan(game: &Game, sums: &mut BTreeMap<(usize, &'static str), Sum>) {
-    for step in &game.steps {
+/// Adds the unit turns of `steps`, the plies of one game, to `sums`, by
+/// seat and phase.
+fn scan(steps: &[Step], sums: &mut BTreeMap<(usize, &'static str), Sum>) {
+    for step in steps {
         let start = &step.state;
         let seat = start.to_act();
         let sum = sums.entry((seat, phase(start.game_turn()))).or_default();
@@ -240,7 +243,7 @@ pub fn run(request: &Request) -> Result<String, String> {
         };
         let game = replay(&meta.game_id.to_string(), record);
         let mut sums = BTreeMap::new();
-        scan(&game, &mut sums);
+        scan(&game.steps, &mut sums);
         for ((seat, phase), sum) in sums {
             let group = if seat == ours {
                 format!("{release} vs {against}")

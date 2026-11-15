@@ -1,7 +1,7 @@
 ---
 id: E066
 date: 2026-11-15
-pull_request: pending
+pull_request: "#345"
 parent: ice-and-fire-v026
 hypothesis: In v025's and v026's CodinGame games against the top 5, a quarter of our unit turns at game turns 11 to 17 are units that stay next to cells that are not ours and that they cannot enter (two thirds of them face an enemy unit, nine in ten are level 1), against 17% of the top 5's in the same seat, whose units move through their own land more often; E060's term counts such a unit as next to land to take, so measuring a unit's distance to the nearest cell it may enter makes blocked units walk to land they can take, and beats v026.
 change: None released. Screening only: the plan bot's evaluation measures E060's distance of a unit to the nearest cell not its side's that a unit of its level may enter (not behind a tower for levels 1 and 2, not held by a unit it cannot beat), rather than to any cell not its side's.
@@ -61,6 +61,8 @@ those whose distance is measured to cells they may enter (`IDLE_ENTER`),
 | e | `c04d502` | all | 1 | 4 | −5.2 [−18.8, +8.4] |
 
 No variant is outside its interval; the mean of the five is +0.4.
+(The branch's commit `261002a`, "variant a2", holds a's constants again
+and was not screened.)
 
 ## What was learned
 

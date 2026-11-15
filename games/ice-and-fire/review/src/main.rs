@@ -313,9 +313,6 @@ enum Command {
         /// The leaderboard snapshot, instead of the newest in the data directory.
         #[arg(long)]
         leaderboard: Option<PathBuf>,
-        /// Games replayed at the same time.
-        #[arg(long, default_value_t = 4)]
-        jobs: usize,
     },
     /// Writes, to a folder, where our bot was overconfident in its CodinGame
     /// games: at each of our plies, the score the plan bot's search expected
@@ -646,7 +643,6 @@ fn run(cli: Cli) -> Result<(), String> {
             our_seat,
             top,
             leaderboard,
-            jobs,
         } => {
             let text = units::run(&profiles::Request {
                 data,
@@ -658,7 +654,7 @@ fn run(cli: Cli) -> Result<(), String> {
                 top,
                 players: Vec::new(),
                 leaderboard,
-                jobs,
+                jobs: 1,
             })?;
             print!("{text}");
             Ok(())
