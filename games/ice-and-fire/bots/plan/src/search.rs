@@ -63,23 +63,6 @@ const REPLY_EVALS: u64 = 300;
 /// final choice and its check.
 const CLIMB_SHARE: f64 = 0.75;
 
-/// The plans, best first by the final score, that the two-turn check scores
-/// again (E065); 0 for no check.
-pub const DEEP_PLANS: usize = 3;
-/// The replies to each of them, worst first, that the check plays on.
-pub const DEEP_REPLIES: usize = 1;
-/// Most plans scored by our follow-up climb after a reply.
-pub const DEEP_EVALS: u64 = 60;
-/// The opponent's best cuts tried after our follow-up, with the gold of its
-/// next turn.
-pub const DEEP_CUTS: usize = 1;
-/// Whether a plan is chosen by the sum of its final score and its two-turn
-/// score, rather than by the two-turn score alone.
-pub const DEEP_BLEND: bool = true;
-/// By how much another plan's value in the check must beat the chosen
-/// plan's for it to be played instead.
-pub const DEEP_MARGIN: i64 = 0;
-
 /// When the search stops.
 #[derive(Clone, Copy)]
 pub struct Limit {
@@ -111,10 +94,6 @@ pub struct Thought {
     /// Whether the climbs ran out of first actions and were then forced to
     /// start with each of the others (E029).
     pub forced: usize,
-    /// Plans scored by the two-turn check (E065).
-    pub deep: usize,
-    /// Whether the two-turn check changed the plan played.
-    pub swapped: bool,
 }
 
 /// Whether the plan played must have had its own replies searched (E027).
@@ -523,73 +502,6 @@ impl Search {
             _ => score,
         }
     }
-
-    /// The two-turn score of `plan` (E065): the worst, over its
-    /// [`DEEP_REPLIES`] worst replies of `memory` and its own (a pass when
-    /// it has none), of what is left after the reply, our follow-up and the
-    /// opponent's next strike ([`Search::follow`]).
-    fn deep_score(&self, plan: &Plan, memory: &[Reply]) -> i64 {
-        if plan.end.outcome() == Some(Outcome::Win(self.me)) {
-            return WIN;
-        }
-        let mut replies: Vec<(i64, &[Command])> = Vec::new();
-        for reply in memory.iter().chain(plan.own.iter().flatten()) {
-            if replies.iter().any(|&(_, known)| known == reply.commands) {
-                continue;
-            }
-            let value = eval(&after_reply(&plan.end, &reply.commands), self.me);
-            replies.push((value, &reply.commands));
-        }
-        if replies.is_empty() {
-            replies.push((0, &[]));
-        }
-        // Stable: the reply found first stays first on a tie.
-        replies.sort_by_key(|&(value, _)| value);
-        replies
-            .iter()
-            .take(DEEP_REPLIES)
-            .map(|&(_, reply)| self.follow(&after_reply(&plan.end, reply)))
-            .min()
-            .unwrap_or(i64::MIN)
-    }
-
-    /// What `start`, the start of a turn of ours, is worth two plies on: we
-    /// play a quick climb of up to [`DEEP_EVALS`] tries against no reply,
-    /// then the opponent, with the gold of that turn, passes, plays its
-    /// chain to our HQ or one of its [`DEEP_CUTS`] best cuts, whichever
-    /// leaves us the lowest evaluation at our next start of turn.
-    fn follow(&self, start: &State) -> i64 {
-        if start.outcome().is_some() {
-            return eval(start, self.me);
-        }
-        let mut ours = Search {
-            me: self.me,
-            limit: Limit {
-                max_evals: DEEP_EVALS,
-                ..self.limit
-            },
-            evals: 0,
-            hints: Gains::default(),
-            root_actions: None,
-        };
-        let end = ours.climb(start, &[], &[], false).end;
-        if end.outcome() == Some(Outcome::Win(self.me)) {
-            return WIN;
-        }
-        let mut next = end.clone();
-        next.end_turn();
-        let mut worst = eval(&after_reply(&end, &[]), self.me);
-        if next.outcome().is_some() {
-            return worst;
-        }
-        let gold = next.gold(next.to_act());
-        let chain = chain_to(&next, HQ[self.me], gold).map(|chain| chain.commands);
-        let cuts = cuts(&next, CUT_LENGTH, gold, DEEP_CUTS);
-        for strike in chain.iter().chain(cuts.iter().map(|cut| &cut.commands)) {
-            worst = worst.min(eval(&after_reply(&end, strike), self.me));
-        }
-        worst
-    }
 }
 
 /// Adds the replies `found` that the memory does not hold, then keeps the
@@ -747,47 +659,6 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
     }
     #[cfg(feature = "analysis")]
     judge::observe(&search, state, &memory, best);
-    // The two-turn check (E065): the best plans by the final score, the
-    // chosen one first, are scored two plies further while time remains,
-    // and the best of those is played; the chosen one stays on a tie.
-    if let Some((_, chosen)) = best.filter(|_| DEEP_PLANS > 0 && plans.len() > 1) {
-        let mut order: Vec<(i64, usize)> = scores
-            .iter()
-            .enumerate()
-            .filter_map(|(index, score)| score.map(|score| (score, index)))
-            .collect();
-        order.sort_by_key(|&(score, index)| (index != chosen, -score, usize::MAX - index));
-        let mut top: Option<(i64, usize)> = None;
-        for &(score, index) in order.iter().take(DEEP_PLANS) {
-            if late() {
-                break;
-            }
-            let deep = search.deep_score(&plans[index], &memory);
-            thought.deep += 1;
-            let value = if DEEP_BLEND {
-                deep.saturating_add(score)
-            } else {
-                deep
-            };
-            // The chosen plan comes first; another must beat it by more
-            // than the margin, and the best so far.
-            let floor = top.map_or(i64::MIN, |(best, at)| {
-                if at == chosen {
-                    best.saturating_add(DEEP_MARGIN)
-                } else {
-                    best
-                }
-            });
-            if top.is_none() || value > floor {
-                top = Some((value, index));
-            }
-        }
-        // A check the time cut before its second plan changes nothing.
-        if let Some((_, index)) = top.filter(|_| thought.deep > 1) {
-            thought.swapped = index != chosen;
-            best = best.map(|(score, _)| (scores[index].unwrap_or(score), index));
-        }
-    }
     if let Some((_, index)) = best {
         // Each command is checked once more, in order, on a scratch copy.
         let mut scratch = state.clone();

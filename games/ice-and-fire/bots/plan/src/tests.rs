@@ -1204,33 +1204,3 @@ fn a_unit_far_from_land_to_take_costs_its_side() {
     assert_eq!(eval(&near, 0) - eval(&far, 0), 8 - 4);
     assert_eq!(eval(&near, 1) - eval(&far, 1), -(8 - 4));
 }
-
-#[test]
-fn the_best_plans_are_scored_two_plies_further() {
-    // E065: with several plans found, the best of them by the final score
-    // are scored again after the worst replies, our follow-up and the
-    // opponent's next strike; a search cut on its first climb has one plan
-    // and no check.
-    let state = &positions(2, &[30])[1];
-    let thought = think(state, evals(1_000_000), &mut opening());
-    assert!(thought.plans > crate::search::DEEP_PLANS);
-    assert_eq!(thought.deep, crate::search::DEEP_PLANS);
-    let short = think(state, evals(5), &mut opening());
-    assert_eq!(short.plans, 1);
-    assert_eq!(short.deep, 0);
-    assert!(!short.swapped);
-    // Over many positions the check changes some plans, and what is played
-    // is still accepted in order.
-    let mut swapped = 0;
-    for seed in 0..14 {
-        for state in positions(seed, &PHASES) {
-            let thought = think(&state, evals(2_000), &mut opening());
-            swapped += usize::from(thought.swapped);
-            let mut scratch = state.clone();
-            for &command in &thought.commands {
-                assert!(scratch.apply(command), "seed {seed}: {command:?} refused");
-            }
-        }
-    }
-    assert!(swapped > 0);
-}

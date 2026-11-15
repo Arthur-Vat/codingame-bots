@@ -4,14 +4,14 @@ date: 2026-11-14
 pull_request: pending
 parent: ice-and-fire-v026
 hypothesis: The middle game's search judges a plan one reply deep, and the large removals it foresees are the price of positions built earlier (stretched land, the opponent banking gold); scoring its best few plans two plies further (the worst replies, our quick follow-up, then the opponent's best cut with its next turn's gold) before choosing chooses plans whose position holds one turn longer, and beats v026.
-change: The plan bot's final choice scores its best plans by the final score again, each after its worst replies, a short climb of ours and the opponent's chain to our HQ or best cut with the gold of its next turn, and plays the best of them.
+change: None released. Screening only: the plan bot's final choice scores its best plans by the final score again, each after its worst replies, a short climb of ours and the opponent's chain to our HQ or best cut with the gold of its next turn, and plays the best of them.
 release: none
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
-cg_rank: not reported
+sprt: not run: no gain in screening
+elo: none
+pairs: none
+full_time: none
+decision: dropped
+cg_rank: none
 ---
 
 Asked by the owner on 2026-11-14 ("the two-turn check of the final choice
@@ -89,3 +89,23 @@ No variant is outside its interval, and e played twice gives +8.7 then
 not too slow: a variant's median answer is 1.5 to 3 ms longer than
 v026's on the same runner (it uses the time v026 leaves before the hard
 limit), with one timeout in 19,200 games.
+
+## What was learned
+
+- **Looking one turn further for the best few plans does not pay in this
+  form.** The check changes the plan played often (in 83 of the 200
+  positions of the speed bank for the variant a, 70 for e), yet no
+  variant gains: the two-turn score, made of a climb of ours against no
+  reply and one cut of the opponent's, tells the search's best plans
+  apart no better than the final score does. Larger checks (c, d) and
+  margins (f to i) changed nothing.
+- **Time is not what limits it**: the check fits in the 4.5 ms the turn
+  leaves after the climbs. The owner's condition for a defence reserve
+  ("only if that check is too slow") is not met, so none was started.
+- The follow-up of ours does not defend (it climbs against no reply),
+  which may make every plan look alike two plies on; a follow-up against
+  the opponent's cuts was not tried.
+
+The code stays reachable in this pull request's commits (the variants
+above; `df7ede0` holds the last one, e2); the branch's head holds the
+journal entry alone. Dropped by the owner on 2026-11-15 ("Drop E065").
