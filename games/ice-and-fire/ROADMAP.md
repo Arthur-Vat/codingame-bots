@@ -59,6 +59,7 @@ Iteration: one experiment per pull request ([journal](journal/README.md)).
 - [x] E056, spending in the opening on top of v023's spread units (gold weighed less lost again): the opening's purchases pay back by game turn 18 rather than 15, as `ice-and-fire-v024` through the SPRT against v023: accepted, +19.7 Elo ([E056](journal/E056-opening-spend-v023.md), #326)
 - [x] E058, mines early in the middle game, after the study of v023's CodinGame games (E057, blue's opening, and E059, exposure before the cut, dropped): a safe mine counts 6 more until game turn 15, as `ice-and-fire-v025` through the SPRT against v024: accepted, +15.6 Elo ([E058](journal/E058-early-mines.md), #331)
 - [x] E060, idle units, after an analysis of income, upkeep and units in v024's and v025's CodinGame games (units that walk to free land, as the top 1's do): each unit costs its side 2 for every step beyond the first to the nearest cell not its side's, up to 4 steps, as `ice-and-fire-v026` through the SPRT against v025: accepted, +59.2 Elo ([E060](journal/E060-idle-units.md), #332)
+- [ ] E067, game turn 7 played by the search, after an analysis of v025's and v026's CodinGame games against the top 5 in both seats (E065, a two-turn check of the final choice, and E066, blocked units, dropped): the opening ends at game turn 6 at the latest, as `ice-and-fire-v027` through the SPRT against v026: pending ([E067](journal/E067-turn-seven.md))
 
 Approach and first bot: the list in the [playbook](../../docs/NEW_GAME.md).
 

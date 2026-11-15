@@ -951,9 +951,9 @@ fn the_opening_builds_no_mine() {
                 break;
             }
             let seat = state.to_act();
-            let in_opening = openings[seat].playing(&state);
-            let commands = think(&state, evals(50), &mut openings[seat]).commands;
-            if in_opening {
+            let thought = think(&state, evals(50), &mut openings[seat]);
+            let commands = thought.commands;
+            if thought.opening {
                 opening_turns += 1;
                 assert!(
                     !commands
@@ -1203,4 +1203,91 @@ fn a_unit_far_from_land_to_take_costs_its_side() {
     let far = position(CORRIDOR, [0, 20], &[(0, 1, 1, 5, 0)]);
     assert_eq!(eval(&near, 0) - eval(&far, 0), 8 - 4);
     assert_eq!(eval(&near, 1) - eval(&far, 1), -(8 - 4));
+}
+
+#[test]
+fn the_search_takes_over_when_the_opening_would_keep_its_gold() {
+    use crate::search::{HANDOVER_GOLD, HANDOVER_IDLE, HANDOVER_IDLE_FROM};
+    // E067: on the referee's maps, from the hand-over's first turn, no turn
+    // that the opening played keeps the gold of a training without buying,
+    // and once the search has played, the opening never plays again.
+    if !HANDOVER_IDLE {
+        return;
+    }
+    let mut handed = 0;
+    for seed in 1..=6 {
+        let map = generate(seed, RefereeLeague::Bronze);
+        let mut state = State::new(&map.void, &map.mine_spots, League::Bronze);
+        let mut openings = [opening(), opening()];
+        let mut searched = [false; 2];
+        for _ in 0..24 {
+            if state.outcome().is_some() {
+                break;
+            }
+            let seat = state.to_act();
+            let thought = think(&state, evals(50), &mut openings[seat]);
+            let buys = thought.commands.iter().any(|c| {
+                matches!(
+                    c,
+                    Command::Train { .. } | Command::BuildMine { .. } | Command::BuildTower { .. }
+                )
+            });
+            if thought.opening {
+                assert!(!searched[seat], "seed {seed}: the opening played again");
+                let rich = state.gold(seat) >= HANDOVER_GOLD;
+                let late = state.game_turn() >= HANDOVER_IDLE_FROM;
+                assert!(buys || !rich || !late, "seed {seed}: gold kept");
+            } else {
+                if !searched[seat] && !crate::tests::middle(&state) {
+                    handed += 1;
+                }
+                searched[seat] = true;
+            }
+            state.play_turn(&thought.commands);
+        }
+    }
+    assert!(handed > 0, "no hand-over before the middle game");
+}
+
+/// Whether the middle game has begun for the player to act.
+fn middle(state: &State) -> bool {
+    ice_and_fire_opening::middle::reached(state)
+}
+
+#[test]
+fn the_search_plays_from_game_turn_seven() {
+    use crate::search::HANDOVER_TURN;
+    // E067: on the referee's maps the opening plays no turn from game turn
+    // 7 on, even before the middle game, and every earlier turn of the
+    // opening's while it has not ended; some game reaches turn 7 before its
+    // middle game, so the rule does change who plays.
+    assert_eq!(HANDOVER_TURN, Some(7));
+    let mut handed = 0;
+    for seed in 1..=6 {
+        let map = generate(seed, RefereeLeague::Bronze);
+        let mut state = State::new(&map.void, &map.mine_spots, League::Bronze);
+        let mut openings = [opening(), opening()];
+        let mut searched = [false; 2];
+        for _ in 0..24 {
+            if state.outcome().is_some() {
+                break;
+            }
+            let seat = state.to_act();
+            let early = state.game_turn() < 7;
+            let before_middle = !middle(&state);
+            let thought = think(&state, evals(50), &mut openings[seat]);
+            if thought.opening {
+                assert!(early, "seed {seed}: the opening played turn 7 or later");
+                assert!(!searched[seat], "seed {seed}: the opening played again");
+            } else {
+                if !searched[seat] && before_middle {
+                    assert!(!early, "seed {seed}: the search played too soon");
+                    handed += 1;
+                }
+                searched[seat] = true;
+            }
+            state.play_turn(&thought.commands);
+        }
+    }
+    assert!(handed > 0, "no hand-over before the middle game");
 }
