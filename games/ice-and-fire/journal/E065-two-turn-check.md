@@ -1,7 +1,7 @@
 ---
 id: E065
 date: 2026-11-14
-pull_request: pending
+pull_request: "#342"
 parent: ice-and-fire-v026
 hypothesis: The middle game's search judges a plan one reply deep, and the large removals it foresees are the price of positions built earlier (stretched land, the opponent banking gold); scoring its best few plans two plies further (the worst replies, our quick follow-up, then the opponent's best cut with its next turn's gold) before choosing chooses plans whose position holds one turn longer, and beats v026.
 change: None released. Screening only: the plan bot's final choice scores its best plans by the final score again, each after its worst replies, a short climb of ours and the opponent's chain to our HQ or best cut with the gold of its next turn, and plays the best of them.
