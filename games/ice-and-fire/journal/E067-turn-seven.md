@@ -1,16 +1,16 @@
 ---
 id: E067
 date: 2026-11-15
-pull_request: pending
+pull_request: "#344"
 parent: ice-and-fire-v026
 hypothesis: In v025's and v026's CodinGame games against the top 5 we hold 13 to 16 gold at game turn 7 and keep 65% (red) to 88% (blue) of it, where the top 5 in the same seat keep 14% to 24% (the red ones train, the blue ones build a tower in 59% of their games); the opening plays that turn in over 90% of our games and buys nothing in 84% (red) to 100% (blue) of them, since its purchases must pay back before the territories meet, while the search, when it plays turn 7, trains 1.7 units and at turn 8 builds a tower in half of blue's games; handing the turn to the search when the opening would keep the gold of a training spends that gold a turn sooner, and beats v026.
 change: The plan bot's search plays, and the opening ends for good, from game turn 7 (screened also: from the first turn at which the opening's turn buys nothing while we hold 10 or 15 gold, and from game turns 6 and 8).
 release: ice-and-fire-v027
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +32.7 [+14.8, +50.7] at CodinGame's limits
+pairs: 640
+full_time: +32.7 [+14.8, +50.7] (the SPRT's own, ADR 0042), 2 timeouts of v027 in 1,280 games (1 of v026)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -84,4 +84,30 @@ frozen as `ice-and-fire-v027` on the owner's choice ("Freeze and SPRT
 
 ## SPRT
 
-Pending.
+Run 43710672780 on the pull request, at c3d0ce9 (the SPRT comment's
+summary):
+
+```
+SPRT against ice-and-fire-v026, in blocks of 10 pairs over 8 runners:
+ice-and-fire-v027 vs ice-and-fire-v026: 1280 games, 640 complete pairs
+  ice-and-fire-v027: 700 wins, 0 draws, 580 losses (score 54.7%)
+  Elo of ice-and-fire-v027 over ice-and-fire-v026: +32.7 [+14.8, +50.7] (95%, from pairs)
+  pairs by ice-and-fire-v027's points (0, 1/2, 1, 3/2, 2): [112, 0, 356, 0, 172]
+  ice-and-fire-v027 faults: 2 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v026 faults: 1 timeouts, 0 crashes, 0 invalid answers
+  slowest answer: ice-and-fire-v027 507.3 ms, ice-and-fire-v026 508.0 ms
+Checked 8 rounds of 8 blocks (64 blocks counted, 40 left out)
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.36 (bounds -2.94, 2.94) after 640 pairs
+Verdict: ACCEPTED: ice-and-fire-v027 is stronger than ice-and-fire-v026
+```
+
+The smoke test against the random bot: 200 wins of 200, no fault.
+
+## What was learned
+
+- **Who plays a turn mattered more than how the opening buys.** Three
+  experiments on the opening's purchases (E034, E046, E056) left its
+  seventh turn without a purchase; giving that turn to the search gained
+  about +30, and giving it the sixth lost as much.
+- The finding came from our own debug lines in the collected games (who
+  played each turn and what it bought), not from the opponents' play.
