@@ -57,6 +57,10 @@ pub struct Request {
 /// A surprise at or below this is large: about three level-1 units, twelve
 /// active cells, or 50 gold.
 pub const LARGE: i64 = -50;
+/// A reply removing this many of our cells or more is a large removal.
+pub const REMOVAL: i64 = 10;
+/// A large removal is foreseen when its surprise is above this.
+pub const FORESEEN: i64 = -20;
 /// Surprises are capped here in means and quantiles.
 pub const CAP: i64 = 1000;
 /// A value beyond this is the evaluation's HQ term, not material: the
@@ -804,6 +808,15 @@ fn share(part: usize, all: usize) -> String {
     }
 }
 
+/// `part` of `all` as a percentage with one decimal.
+fn share1(part: usize, all: usize) -> String {
+    if all == 0 {
+        "-".to_string()
+    } else {
+        format!("{:.1}%", 100.0 * part as f64 / all as f64)
+    }
+}
+
 /// The value at quantile `q` of sorted `values`.
 fn quantile(sorted: &[i64], q: f64) -> i64 {
     if sorted.is_empty() {
@@ -884,6 +897,30 @@ pub fn report(
         quantile(&s, 0.5),
         quantile(&s, 0.75),
         quantile(&s, 0.95)
+    );
+    // One row a release, kept in the game's table of releases.
+    // The games counted are those with a judged ply, as the share lost.
+    let mut judged: BTreeMap<u64, bool> = BTreeMap::new();
+    for r in all {
+        judged.insert(r.game_id, r.won);
+    }
+    let judged_games = judged.len();
+    let lost_games = share(judged.values().filter(|&&won| !won).count(), judged_games);
+    let large = count(&|r| r.surprise() <= LARGE);
+    let foreseen = count(&|r| r.effect.taken + r.effect.cut >= REMOVAL && r.surprise() > FORESEEN);
+    let missed = all
+        .iter()
+        .filter(|r| r.kind() == Kind::ThreatMissed)
+        .count();
+    let _ = writeln!(md, "## The release's check\n\nThe row of this run for the table of releases (`research/codingame/surprise-by-release.md`): the games are those with a judged ply; a *large miss* is a normal ply with a surprise of {LARGE} or less; a *foreseen large removal* a normal ply whose reply removed {REMOVAL} or more of our cells with a surprise above {FORESEEN}.\n\n| Release | Games | Lost | Plies | Normal plies | Large misses | Foreseen large removals | HQ threats not foreseen |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
+    let _ = writeln!(
+        md,
+        "| {} | {judged_games} | {lost_games} | {} | {n} | {large} ({}) | {foreseen} ({}) | {missed} ({}) |\n",
+        request.release.as_deref().unwrap_or("all"),
+        all.len(),
+        share1(large, n),
+        share1(foreseen, n),
+        share1(missed, all.len()),
     );
     let _ = writeln!(md, "## By game turn and seat\n\n| Seat | Turns | Plies | Mean surprise | ≤ −50 | Mean expected − pass (the damage modeled) | Mean actual − pass (the damage done) |\n| ---: | --- | ---: | ---: | ---: | ---: | ---: |");
     let mut groups: BTreeMap<(usize, &str), Vec<&Row>> = BTreeMap::new();

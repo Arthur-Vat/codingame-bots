@@ -26,3 +26,22 @@ When a submission's ranking ends, or when the owner reports a rank of his own ac
 - the roadmap's "Ongoing" row when the league or a milestone changes.
 
 Never guess a rank or a league: record what `/progress` says, and if the owner's report is unclear, ask.
+
+## The release's check (A Code of Ice and Fire)
+
+Once the collection holds the release's games (its ranking games and a first day of test games: about 100 games or more; skill `collect-games`), run `codingame-surprise` on them, judged by the release's own search, and add its row to `games/ice-and-fire/research/codingame/surprise-by-release.md`, in the pull request that records the rank or one of its own (light review):
+
+```sh
+W="$(mktemp -d)"; DATA="$W/data"; SRC="$W/src"; OUT="$W/out"
+git fetch --depth=1 origin claude/codingame-games && git worktree add "$DATA" FETCH_HEAD
+git worktree add "$SRC" ice-and-fire-vNNN   # the release's tag: its own search judges
+(cd "$SRC" && cargo build --release -p ice-and-fire-bot-plan --features analysis)
+cargo build --release -p ice-and-fire-review
+target/release/ice-and-fire-review codingame-surprise --data "$DATA/ice-and-fire" --me Tarleya \
+  --judge "$SRC/target/release/ice-and-fire-bot-plan" --release ice-and-fire-vNNN --jobs 4 --out "$OUT"
+git worktree remove --force "$DATA"; git worktree remove --force "$SRC"
+```
+
+The bot's mode `surprise` came after `ice-and-fire-v026`, so the tags up to v026 cannot judge: the table's first rows were judged by main's build while its search was v026's.
+
+The row is the table of the section "The release's check" in `$OUT/README.md`; add the data branch's commit and the judge. It takes about a minute. Tell the owner the row beside the previous release's (large misses, foreseen large removals, HQ threats not foreseen): a rise is a finding to report, not a reason to withdraw a release that passed its SPRT.
