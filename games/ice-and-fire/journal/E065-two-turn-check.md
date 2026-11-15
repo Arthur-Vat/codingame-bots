@@ -107,5 +107,5 @@ limit), with one timeout in 19,200 games.
   the opponent's cuts was not tried.
 
 The code stays reachable in this pull request's commits (the variants
-above; `df7ede0` holds the last one, e2); the branch's head holds the
+above; `b5e96b9` is the last one, e2); the branch's head holds the
 journal entry alone. Dropped by the owner on 2026-11-15 ("Drop E065").
