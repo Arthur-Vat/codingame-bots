@@ -30,6 +30,7 @@ mod surprise;
 #[cfg(test)]
 mod test_util;
 mod trace;
+mod units;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -274,6 +275,36 @@ enum Command {
         /// The last game turn studied.
         #[arg(long, default_value_t = 12)]
         turns: u32,
+        /// The leaderboard snapshot, instead of the newest in the data directory.
+        #[arg(long)]
+        leaderboard: Option<PathBuf>,
+        /// Games replayed at the same time.
+        #[arg(long, default_value_t = 4)]
+        jobs: usize,
+    },
+    /// A scan of unit turns (scratch study).
+    CodingameUnits {
+        /// The game's data directory, for example `data/ice-and-fire`.
+        #[arg(long)]
+        data: PathBuf,
+        /// Our nickname on CodinGame, for games whose index has no seat.
+        #[arg(long)]
+        me: String,
+        /// The kinds of games to use, separated by commas.
+        #[arg(long, value_delimiter = ',', default_values_t = ["ranking".to_string(), "test".to_string(), "replay".to_string()])]
+        kinds: Vec<String>,
+        /// Only the games of this batch.
+        #[arg(long)]
+        batch: Option<String>,
+        /// Only our games played by this release (see `codingame-report`).
+        #[arg(long)]
+        release: Option<String>,
+        /// Only the games in which we sat in this seat (see `codingame-report`).
+        #[arg(long)]
+        our_seat: Option<usize>,
+        /// The top N of the snapshot form a group of their own.
+        #[arg(long, default_value_t = 10)]
+        top: usize,
         /// The leaderboard snapshot, instead of the newest in the data directory.
         #[arg(long)]
         leaderboard: Option<PathBuf>,
@@ -598,6 +629,32 @@ fn run(cli: Cli) -> Result<(), String> {
                 examples,
                 out.as_deref(),
             )?;
+            print!("{text}");
+            Ok(())
+        }
+        Command::CodingameUnits {
+            data,
+            me,
+            kinds,
+            batch,
+            release,
+            our_seat,
+            top,
+            leaderboard,
+            jobs,
+        } => {
+            let text = units::run(&profiles::Request {
+                data,
+                me,
+                kinds,
+                batch,
+                release,
+                our_seat,
+                top,
+                players: Vec::new(),
+                leaderboard,
+                jobs,
+            })?;
             print!("{text}");
             Ok(())
         }
