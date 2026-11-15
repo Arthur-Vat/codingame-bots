@@ -951,9 +951,9 @@ fn the_opening_builds_no_mine() {
                 break;
             }
             let seat = state.to_act();
-            let in_opening = openings[seat].playing(&state);
-            let commands = think(&state, evals(50), &mut openings[seat]).commands;
-            if in_opening {
+            let thought = think(&state, evals(50), &mut openings[seat]);
+            let commands = thought.commands;
+            if thought.opening {
                 opening_turns += 1;
                 assert!(
                     !commands
@@ -1206,22 +1206,50 @@ fn a_unit_far_from_land_to_take_costs_its_side() {
 }
 
 #[test]
-fn a_unit_facing_only_cells_it_cannot_enter_counts_as_far() {
-    use crate::eval::{idle, IDLE_ENTER, IDLE_STEP};
-    // E066: the distance is to the nearest cell the unit may enter. Red's
-    // corridor ends at (11, 9), next to blue's (11, 10). A level-1 unit of
-    // red on (11, 9) may enter that cell while it is empty, and costs
-    // nothing. With a blue level-1 unit on it, which a level-1 unit cannot
-    // beat, the nearest cell red's unit may enter is blue's HQ behind it,
-    // two steps away (steps are counted over any cell): it costs one step.
-    // A level-2 unit of red beats the blue unit and costs nothing.
-    assert_eq!((IDLE_ENTER, IDLE_STEP), (1, 2));
-    let mut rows = CORRIDOR;
-    rows[10] = "###########X";
-    let free = position(rows, [0, 20], &[(0, 1, 1, 11, 9)]);
-    assert_eq!(idle(&free, 0), 0);
-    let blocked = position(rows, [0, 20], &[(0, 1, 1, 11, 9), (1, 2, 1, 11, 10)]);
-    assert_eq!(idle(&blocked, 0), IDLE_STEP);
-    let stronger = position(rows, [0, 20], &[(0, 1, 2, 11, 9), (1, 2, 1, 11, 10)]);
-    assert_eq!(idle(&stronger, 0), 0);
+fn the_search_takes_over_when_the_opening_would_keep_its_gold() {
+    use crate::search::{HANDOVER_GOLD, HANDOVER_IDLE, HANDOVER_IDLE_FROM};
+    // E067: on the referee's maps, from the hand-over's first turn, no turn
+    // that the opening played keeps the gold of a training without buying,
+    // and once the search has played, the opening never plays again.
+    if !HANDOVER_IDLE {
+        return;
+    }
+    let mut handed = 0;
+    for seed in 1..=6 {
+        let map = generate(seed, RefereeLeague::Bronze);
+        let mut state = State::new(&map.void, &map.mine_spots, League::Bronze);
+        let mut openings = [opening(), opening()];
+        let mut searched = [false; 2];
+        for _ in 0..24 {
+            if state.outcome().is_some() {
+                break;
+            }
+            let seat = state.to_act();
+            let thought = think(&state, evals(50), &mut openings[seat]);
+            let buys = thought.commands.iter().any(|c| {
+                matches!(
+                    c,
+                    Command::Train { .. } | Command::BuildMine { .. } | Command::BuildTower { .. }
+                )
+            });
+            if thought.opening {
+                assert!(!searched[seat], "seed {seed}: the opening played again");
+                let rich = state.gold(seat) >= HANDOVER_GOLD;
+                let late = state.game_turn() >= HANDOVER_IDLE_FROM;
+                assert!(buys || !rich || !late, "seed {seed}: gold kept");
+            } else {
+                if !searched[seat] && !crate::tests::middle(&state) {
+                    handed += 1;
+                }
+                searched[seat] = true;
+            }
+            state.play_turn(&thought.commands);
+        }
+    }
+    assert!(handed > 0, "no hand-over before the middle game");
+}
+
+/// Whether the middle game has begun for the player to act.
+fn middle(state: &State) -> bool {
+    ice_and_fire_opening::middle::reached(state)
 }

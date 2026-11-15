@@ -63,6 +63,18 @@ const REPLY_EVALS: u64 = 300;
 /// final choice and its check.
 const CLIMB_SHARE: f64 = 0.75;
 
+/// The game turn from which the search plays whatever the opening would do
+/// (E067): `None` for never (v026, where the opening plays until we can
+/// pay a chain of trainings to an enemy cell).
+pub const HANDOVER_TURN: Option<u32> = None;
+/// Whether the search also takes over, for good, at the first turn the
+/// opening would buy nothing while we hold [`HANDOVER_GOLD`] or more, from
+/// game turn [`HANDOVER_IDLE_FROM`] (E067).
+pub const HANDOVER_IDLE: bool = true;
+/// The gold of a level-1 training.
+pub const HANDOVER_GOLD: i64 = 10;
+pub const HANDOVER_IDLE_FROM: u32 = 6;
+
 /// When the search stops.
 #[derive(Clone, Copy)]
 pub struct Limit {
@@ -94,6 +106,8 @@ pub struct Thought {
     /// Whether the climbs ran out of first actions and were then forced to
     /// start with each of the others (E029).
     pub forced: usize,
+    /// Whether the opening played the turn.
+    pub opening: bool,
 }
 
 /// Whether the plan played must have had its own replies searched (E027).
@@ -537,11 +551,30 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
         (Some(soft), Some(hard)) => Some(soft + (hard - soft).mul_f64(share)),
         _ => None,
     };
+    if HANDOVER_TURN.is_some_and(|turn| state.game_turn() >= turn) {
+        opening.end();
+    }
     if opening.playing(state) {
         // The opening's choice stops at 76% of the turn: the hard limit is
         // the whole budget.
-        thought.commands = opening.turn(state, at(0.4));
-        return thought;
+        let commands = opening.turn(state, at(0.4));
+        let buys = commands.iter().any(|command| {
+            matches!(
+                command,
+                Command::Train { .. } | Command::BuildMine { .. } | Command::BuildTower { .. }
+            )
+        });
+        let idle = HANDOVER_IDLE
+            && !buys
+            && state.game_turn() >= HANDOVER_IDLE_FROM
+            && state.gold(me) >= HANDOVER_GOLD;
+        if !idle {
+            thought.opening = true;
+            thought.commands = commands;
+            return thought;
+        }
+        // The opening would keep its gold: the search plays from here on.
+        opening.end();
     }
     let mut search = Search {
         me,

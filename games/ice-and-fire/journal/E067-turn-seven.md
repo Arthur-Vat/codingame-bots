@@ -1,0 +1,48 @@
+---
+id: E067
+date: 2026-11-15
+pull_request: pending
+parent: ice-and-fire-v026
+hypothesis: In v025's and v026's CodinGame games against the top 5 we hold 13 to 16 gold at game turn 7 and keep 65% (red) to 88% (blue) of it, where the top 5 in the same seat keep 14% to 24% (the red ones train, the blue ones build a tower in 59% of their games); the opening plays that turn in over 90% of our games and buys nothing in 84% (red) to 100% (blue) of them, since its purchases must pay back before the territories meet, while the search, when it plays turn 7, trains 1.7 units and at turn 8 builds a tower in half of blue's games; handing the turn to the search when the opening would keep the gold of a training spends that gold a turn sooner, and beats v026.
+change: The plan bot's search plays, and the opening ends for good, from the first turn at which the opening's turn buys nothing while we hold 10 gold or more (from game turn 6), or from a fixed game turn.
+release: none
+sprt: pending
+elo: pending
+pairs: pending
+full_time: pending
+decision: pending
+cg_rank: not reported
+---
+
+Asked by the owner on 2026-11-15 ("Go on with ideas 1 and 2 together":
+spending at turn 7, and blue's tower at turn 7), after the analysis of
+v025's and v026's games against the top 5 in both seats.
+
+## Why
+
+From our debug lines in v026's 176 games against the top 5 (the opening
+plays a turn when its line says 0 climbs):
+
+| Game turn | Seat | Played by | Turns | Trainings a turn | Towers a turn | Without a purchase |
+| ---: | --- | --- | ---: | ---: | ---: | ---: |
+| 6 | red | opening | 160 | 0.97 | 0 | 3% |
+| 7 | red | opening | 145 | 0.19 | 0 | 84% |
+| 7 | red | search | 15 | 1.73 | 0 | 0% |
+| 8 | red | search | 141 | 1.10 | 0.22 | 1% |
+| 7 | blue | opening | 15 | 0 | 0 | 100% |
+| 8 | blue | search | 15 | 1.13 | 0.53 | 7% |
+
+The opening's purchases were tuned in E034, E046 and E056: buying more by
+its own rule (a later payback, units expected to take cells after
+contact, gold weighed less) lost, except a payback at turn 18. This
+experiment leaves the rule alone and changes who plays the turn.
+
+## The change
+
+`bots/plan/src/search.rs`, `think`: with `HANDOVER_IDLE`, when the
+opening's turn holds no training and no building, the game turn is at
+least `HANDOVER_IDLE_FROM` and we hold `HANDOVER_GOLD` or more, the
+opening ends for good (`Planned::end`) and the search plays the turn in
+the time left; `HANDOVER_TURN` ends the opening at a fixed game turn.
+The search offers towers where they guard something (E026), so blue's
+tower at turn 7 is its choice.
