@@ -246,11 +246,6 @@ enum Command {
         #[arg(long)]
         out: Option<PathBuf>,
     },
-    /// Prints the opening study of the CodinGame games (stage S0 of the
-    /// goal-directed opening): by seat, for our releases, the top players
-    /// and the others, what each unit turn did (took a cell, or why not),
-    /// what the trainings took afterwards, and the cells held in each zone
-    /// of the map. Reads the data directory as `codingame-report`.
     /// Prints, as Markdown, the style measures of the zasmu study
     /// (research/codingame/2026-11-18-zasmu-strategy.md) for each group and
     /// seat: each player of `--players`, the rest of the top N of the
@@ -281,6 +276,11 @@ enum Command {
         #[arg(long, default_value_t = 4)]
         jobs: usize,
     },
+    /// Prints the opening study of the CodinGame games (stage S0 of the
+    /// goal-directed opening): by seat, for our releases, the top players
+    /// and the others, what each unit turn did (took a cell, or why not),
+    /// what the trainings took afterwards, and the cells held in each zone
+    /// of the map. Reads the data directory as `codingame-report`.
     CodingameOpening {
         /// The game's data directory, for example `data/ice-and-fire`.
         #[arg(long)]

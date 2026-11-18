@@ -106,14 +106,22 @@ const MEASURES: [Measure; 32] = [
     ),
     m(ECONOMY, "Mines on the board at turn 12", Summary::Mean),
     m(ECONOMY, "Mines on the board at turn 20", Summary::Mean),
-    m(ECONOMY, "Mines built then lost by the end", Summary::Mean),
+    m(
+        ECONOMY,
+        "Share of the mines built that are lost by the end",
+        Summary::Mean,
+    ),
     m(ECONOMY, "Gross income at turn 20", Summary::Mean),
     m(
         STRIKE,
-        "Largest cut, share of the enemy's active cells",
+        "Cut of most cells, its share of the enemy's active cells",
         Summary::Median,
     ),
-    m(STRIKE, "Gold before the largest cut", Summary::Median),
+    m(
+        STRIKE,
+        "Gold before that cut (when it took a cell)",
+        Summary::Median,
+    ),
     m(
         STRIKE,
         "Gold 2 own turns before a cut of 15+ cells",
@@ -121,7 +129,7 @@ const MEASURES: [Measure; 32] = [
     ),
     m(
         STRIKE,
-        "Trainings and buildings on the turn before it",
+        "Trainings and buildings on the turn before a cut of 15+ cells",
         Summary::Mean,
     ),
     m(
@@ -291,6 +299,24 @@ fn nearest_training(state: &State, seat: usize, cell: usize) -> Option<bool> {
     Some(map.distance(cell, target) <= best)
 }
 
+/// The unit value of `victim` that a ply of the player to act at `start`
+/// removed: its units killed by `commands`, and those left on cells that
+/// are no longer active at `after`, the start of `victim`'s next ply (they
+/// die there). Units lost to `victim`'s own debt at that start of turn are
+/// not counted.
+fn removed(start: &State, commands: &[Command], after: &State, victim: usize) -> i64 {
+    let mut sim = start.clone();
+    for &command in commands {
+        sim.apply(command);
+    }
+    let alive: i64 = (sim.units(victim) & after.active(victim))
+        .iter()
+        .filter_map(|cell| sim.unit_level(cell))
+        .map(|level| 10 * i64::from(level))
+        .sum();
+    unit_value(start, victim) - alive
+}
+
 fn mean(values: &[f64]) -> Option<f64> {
     (!values.is_empty()).then(|| values.iter().sum::<f64>() / values.len() as f64)
 }
@@ -326,6 +352,8 @@ pub fn sides(game: &Game) -> [Side; 2] {
         // The largest cut: (cells, share, ply index in `plies`).
         let mut largest: Option<(u32, f64, usize)> = None;
         let mut paid_since: Option<u32> = None;
+        // Trainings and buildings carried out, per ply of `plies`.
+        let mut spent = vec![0u32; plies.len()];
         for (k, &i) in plies.iter().enumerate() {
             let start = starts[i];
             let next = starts[i + 1];
@@ -337,6 +365,12 @@ pub fn sides(game: &Game) -> [Side; 2] {
                 let before = sim.clone();
                 if !sim.apply(command) {
                     continue;
+                }
+                if matches!(
+                    command,
+                    Command::Train { .. } | Command::BuildMine { .. } | Command::BuildTower { .. }
+                ) {
+                    spent[k] += 1;
                 }
                 match command {
                     Command::Move { .. } if (10..=12).contains(&turn) => {
@@ -402,7 +436,7 @@ pub fn sides(game: &Game) -> [Side; 2] {
                 }
             }
             // What the ply did to the enemy, by the start of its next ply.
-            let killed = unit_value(start, enemy) - unit_value(next, enemy);
+            let killed = removed(start, &game.steps[i].commands, next, enemy);
             if turn > 10 {
                 plies_after_10 += 1;
                 fights += u32::from(killed > 0);
@@ -414,8 +448,8 @@ pub fn sides(game: &Game) -> [Side; 2] {
             }
             // What the reply did to us.
             if (11..=20).contains(&turn) {
-                if let Some(&after) = starts.get(i + 2) {
-                    lost_in_reply.push((unit_value(next, seat) - unit_value(after, seat)) as f64);
+                if let (Some(&after), Some(reply)) = (starts.get(i + 2), game.steps.get(i + 1)) {
+                    lost_in_reply.push(removed(next, &reply.commands, after, seat) as f64);
                 }
             }
             // Gold toward the chain to the enemy HQ.
@@ -451,24 +485,14 @@ pub fn sides(game: &Game) -> [Side; 2] {
         if let Some((cells, share, k)) = largest {
             let start = starts[plies[k]];
             v[CUT_SHARE] = Some(share);
-            v[CUT_GOLD] = Some(start.gold(seat) as f64);
+            if cells > 0 {
+                v[CUT_GOLD] = Some(start.gold(seat) as f64);
+            }
             if cells >= BANK_CUT && k >= 2 {
                 v[BANK_2] = Some(starts[plies[k - 2]].gold(seat) as f64);
             }
             if cells >= BANK_CUT && k >= 1 {
-                let spending = game.steps[plies[k - 1]]
-                    .commands
-                    .iter()
-                    .filter(|c| {
-                        matches!(
-                            c,
-                            Command::Train { .. }
-                                | Command::BuildMine { .. }
-                                | Command::BuildTower { .. }
-                        )
-                    })
-                    .count();
-                v[BANK_SPENDING] = Some(spending as f64);
+                v[BANK_SPENDING] = Some(f64::from(spent[k - 1]));
             }
         }
         if winner == Some(seat) {

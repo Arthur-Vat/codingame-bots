@@ -29,37 +29,113 @@ fn the_two_shares_of_the_land_add_up_and_blue_starts_ahead() {
     assert!(blue > red);
 }
 
+/// The cell at (x, y).
+fn at(x: u8, y: u8) -> usize {
+    usize::from(y) * 12 + usize::from(x)
+}
+
+/// The open map after each side trained two units next to its HQ and
+/// walked them toward the enemy HQ until `until` holds at red's turn.
+fn walk(until: impl Fn(&State) -> bool) -> State {
+    let mut state = open_state();
+    for _ in 0..120 {
+        let seat = state.to_act();
+        if seat == 0 && until(&state) {
+            return state;
+        }
+        let (target, near) = if seat == 0 {
+            (HQ[1], [(1, 0), (0, 1)])
+        } else {
+            (HQ[0], [(10, 11), (11, 10)])
+        };
+        let mut commands = Vec::new();
+        if state.game_turn() == 1 {
+            for (x, y) in near {
+                commands.push(Command::Train { level: 1, x, y });
+            }
+        }
+        for cell in state.units(seat).iter() {
+            if let Some(id) = state.unit_id(cell) {
+                let (x, y) = ((target % 12) as u8, (target / 12) as u8);
+                commands.push(Command::Move { id, x, y });
+            }
+        }
+        state.play_turn(&commands);
+    }
+    panic!("the walk never reached its state");
+}
+
+/// [`walk`] until the two lands touch.
+fn contact() -> State {
+    walk(|state| frontier(state, 0).0 > 0)
+}
+
 #[test]
 fn a_tower_guards_its_cell_and_its_neighbours_on_the_frontier() {
+    let state = contact();
+    let front = state.active(0) & state.owned(1).neighbours();
+    assert_eq!(frontier(&state, 0), (front.count(), 0));
+    // A tower on an empty active cell of red's on or next to the frontier.
+    let near_front = front | front.neighbours();
+    let cell = (state.active(0) & near_front & state.empty_cells())
+        .iter()
+        .next()
+        .expect("an empty cell near the frontier");
+    assert!(state.gold(0) >= 15, "red can pay for a tower");
+    let mut after = state.clone();
+    let (x, y) = ((cell % 12) as u8, (cell / 12) as u8);
+    assert!(after.apply(Command::BuildTower { x, y }));
+    let zone = Bits::cell(cell) | Bits::cell(cell).neighbours();
+    assert_eq!(frontier(&after, 0), (front.count(), (front & zone).count()));
+    assert!(frontier(&after, 0).1 > 0);
+}
+
+#[test]
+fn units_and_upkeep_count_by_level() {
+    let state = contact();
+    let units = state.units(0) & state.active(0);
+    assert_eq!(upkeep(&state, 0), i64::from(units.count()));
+    assert_eq!(
+        unit_value(&state, 0),
+        10 * i64::from(state.units(0).count())
+    );
+}
+
+#[test]
+fn a_kill_is_removed_and_a_pass_removes_nothing() {
+    // Until a blue unit stands next to red's land.
+    let state = walk(|state| !(state.units(1) & state.active(0).neighbours()).is_empty());
+    let mut next = state.clone();
+    next.play_turn(&[]);
+    assert_eq!(removed(&state, &[], &next, 1), 0);
+    // A level 2 training onto a blue unit next to red's land kills it.
+    let cell = (state.units(1) & state.active(0).neighbours())
+        .iter()
+        .next()
+        .expect("a blue unit next to red's land");
+    assert!(state.gold(0) >= 20, "red can pay for a level 2 unit");
+    let (x, y) = ((cell % 12) as u8, (cell / 12) as u8);
+    let commands = [Command::Train { level: 2, x, y }];
+    let mut next = state.clone();
+    next.play_turn(&commands);
+    assert!(removed(&state, &commands, &next, 1) >= 10);
+}
+
+#[test]
+fn nearest_training_compares_with_every_trainable_cell() {
     let mut state = open_state();
-    // Red takes (1, 0) and (2, 0) by trainings, with the gold of a few turns.
-    for _ in 0..20 {
-        state.play_turn(&[]);
-    }
+    // Red's trainable cells at the start: (1, 0) and (0, 1), both 21 steps
+    // from blue's HQ.
+    assert_eq!(nearest_training(&state, 0, at(1, 0)), Some(true));
+    assert_eq!(nearest_training(&state, 0, at(0, 1)), Some(true));
+    // With (1, 0) taken, (2, 0) and (1, 1) are nearer than (0, 1).
     assert!(state.apply(Command::Train {
         level: 1,
         x: 1,
         y: 0
     }));
-    assert!(state.apply(Command::Train {
-        level: 1,
-        x: 2,
-        y: 0
-    }));
-    // No enemy cell is next to red's land yet: no frontier.
-    assert_eq!(frontier(&state, 0), (0, 0));
-    // Upkeep: two level 1 units on active cells.
-    assert_eq!(upkeep(&state, 0), 2);
-    assert_eq!(unit_value(&state, 0), 20);
-}
-
-#[test]
-fn nearest_training_compares_with_every_trainable_cell() {
-    let state = open_state();
-    // Red's trainable cells at the start: (1, 0) and (0, 1), both 21 steps
-    // from blue's HQ.
-    assert_eq!(nearest_training(&state, 0, 1), Some(true));
-    assert_eq!(nearest_training(&state, 0, 12), Some(true));
+    assert_eq!(nearest_training(&state, 0, at(0, 1)), Some(false));
+    assert_eq!(nearest_training(&state, 0, at(1, 1)), Some(true));
 }
 
 /// A game on the open map: red trains at (1, 0) on its first turn, then
@@ -104,7 +180,8 @@ fn a_short_game_gives_the_sides_their_measures() {
     // Turn 10 was reached by both; neither holds a centre cell.
     assert!(red.values[VORONOI_10].is_some());
     assert_eq!(blue.values[CENTRE_10], Some(0.0));
-    // No turn 20, and nobody won.
+    // No cut: no gold before one. No turn 20, and nobody won.
+    assert_eq!(red.values[CUT_GOLD], None);
     assert_eq!(red.values[UPKEEP], None);
     assert_eq!(red.values[WIN_TURN], None);
     assert_eq!(blue.values[LOSS_WARNING], None);
