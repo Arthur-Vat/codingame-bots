@@ -6,7 +6,7 @@ The owner asked, on 2026-11-18, for a check of what he saw in the top player's g
 
 - The games of the data branch `claude/codingame-games` (df48af6): 6,246 games replayed with our engine. Only our own games exist, so **every zasmu game is a game against us**: 540 games (zasmu won 502 of them, 93%), 502 as blue (467 of them test games, where CodinGame seats us first) and 38 as red. The same agent played all of them (agent 6803523, 2026-11-07 to 11-18).
 - Three groups, always compared within one seat: **Z** = zasmu; **T** = the other players ranked 2 to 6 on 2026-11-18 (karliso, Pduhard-, _iaz, _iahelka, reCurse), 2,711 games against us (T won 72% as blue); **U** = our bot. For the U figures the opponent is in Z or T, and from the middle-game tables on, only v026 games are used (916 as red, 16 as blue). Z and T played the same opponent (us), so the difference between them is zasmu's own play; both are biased by what our bot does.
-- A scratch exporter in the review tool (not committed) wrote each ply's board, units, buildings and commands; Python scripts in the session's scratchpad measured the rest. "Turn" means game turn; each figure is a mean per game at the start of the side's ply unless stated.
+- A scratch exporter in the review tool (not committed) wrote each ply's board, units, buildings and commands; Python scripts in the session's scratchpad measured the rest. "Turn" means game turn; each figure is a mean per game at the start of the side's ply unless stated, over the games still running at that turn (so late-turn figures describe the longer games).
 - Limits: zasmu's play against other bots is not in the data; the "chokepoint" measure is crude (cells on the shortest HQ-to-HQ paths that carry at least 40% of them); enemy cells cut off cannot be attributed to single commands, because the engine recomputes active cells at its own times inside a turn (the unit economics below therefore count captures and kills, not cuts).
 
 ## Verdicts
@@ -33,7 +33,7 @@ Zasmu's main difference from every other top player.
 | | Z blue | Z red | T blue | us (v026, red) |
 | --- | --- | --- | --- | --- |
 | Towers built per game | 16.6 | 19.4 | 4.9 | 5.9 |
-| Towers on the board, turn 15 / 20 / 25 / 30 | 6 / 15 / 24 / 28 | 5 / 12 / 22 / 29 | 3 / 4 / 5 / 5 | 3 / 5 / 6 / 6 |
+| Towers on the board, turn 15 / 20 / 25 / 30 (games still running) | 6 / 15 / 24 / 28 | 5 / 12 / 22 / 29 | 3 / 4 / 5 / 5 | 3 / 5 / 6 / 6 |
 | Frontier cells protected by a tower (on or next to one), turn 15 / 20 / 25 | 73% / 83% / 84% | 65% / 78% / 88% | 49% / 50% / 52% | 50% / 53% / 56% |
 
 Its towers stand 8 to 11 steps from its HQ and 1 to 4 steps from our land: a wall along the front, built from turn 13 to 19 (quartiles). A tower costs 15 gold once and no upkeep; behind the wall, level 1 units hold the land (they live 4 to 5 of its turns, against 2 to 3 for T and us) and its upkeep stays at 17 to 19% of gross income for the whole game. Only a level 3 unit can enter a protected cell, and our level 3 units cost 20 gold a turn.
@@ -78,16 +78,16 @@ Per unit trained, over its life (blue for Z and T, red for us; level 1 kills not
 | Unit value killed, Z / T / us | 0 | 11 / 12 / 12 | 5 / 8 / 10 |
 | Upkeep paid over its life, Z / T / us | 6 / 5 / 5 | 14 / 15 / 13 | 7 / 24 / 22 |
 | Cells per 10 gold (cost + upkeep), Z / T / us | 2.2 / 2.5 / 2.1 | 0.6 / 0.7 / 0.6 | 0.3 / 0.3 / 0.3 |
-| Life in own turns (median), Z / T / us | 4 / 3 / 2 | 0 / 2 / 2 | 0 / 0 / 0 |
+| Life in own turns (median; the upkeep above is a mean, so a few long-lived units carry it), Z / T / us | 4 / 3 / 2 | 0 / 2 / 2 | 0 / 0 / 0 |
 
 - **Level 1** is the land unit: about 3.5 cells for 15 gold in all. A cell held earns 1 gold a turn, so a level 1 unit that takes 3 cells and lives 4 turns has paid itself back after about 4 to 5 turns of holding them.
-- **Level 2** takes one enemy cell and kills one unit (worth 10) per training; at 4 gold a turn it loses money unless the kill or the cut is worth it. Its value is in cuts, which these counts do not include.
+- **Level 2** takes about 2 cells, most of them enemy cells, and kills about 11 gold of units per training; at 4 gold a turn it loses money unless the kill or the cut is worth it. Its value is in cuts, which these counts do not include.
 - **Level 3** is a one-turn tool: it passes towers and kills anything, but at 20 gold a turn, keeping one alive for 5 turns costs 130 gold. Zasmu trains 3 to 5 per game, nearly all in the winning ply (upkeep paid: 7), and keeps ~0.1 on the board; T and we keep them (upkeep paid: 22 to 24).
 - **Mine:** 15 gold for +4 a turn, paid back in 4 turns, but only while it stays; ours are lost three times as often as zasmu's. **Tower:** 15 gold, no upkeep; zasmu's wall replaces the units others keep at the front.
 
 ## What this means for our bot
 
-1. **The early game is not where zasmu beats the other top players**: up to turn 10 Z and T are alike. Our opening gap (Voronoi 0.40 against 0.57, centre cells 0.6 against 3) is a gap to all top players, and the earlier lessons stand (making the opening buy more lost three times; changing who plays turn 7 gained, E067). The train-at-the-most-advanced-cell rule is the one opening trait where zasmu stands out.
+1. **The early game is not where zasmu beats the other top players**: up to turn 10 Z and T are alike. Our opening gap (Voronoi 0.40 against 0.57, centre cells 0.6 against 3) is a gap to all top players, and the earlier lessons stand (making the opening buy more lost three times; changing who plays turn 7 gained, E067 in #344). The train-at-the-most-advanced-cell rule is the one opening trait where zasmu stands out.
 2. **The middle game is where zasmu pulls away**: from turn 10 to 20 its cells (34 → 51) and gross income (37 → 65) keep growing while T levels off (50) and we stall (47). It does this with towers instead of units (upkeep 18%), mines on safe spots, and few fights.
 3. **The late game is a plan over several turns**: bank for ~2 to 3 turns, then a ~190-gold training chain from 9 cells away. Our one-turn search cannot want this unless something values gold toward the chain, and it cannot defend against it unless it looks at the opponent's gold over more than one turn.
 
@@ -116,4 +116,4 @@ Only now revisit the opening, judged by the middle game that follows. Experiment
 **Level 6 — Adapt to the opponent.**
 With all of the above in place: recognise bankers (opponent gold rising over 2 turns with few actions) and wall early; against opponents without walls, strike earlier with fewer level 3 units; against walls, plan level 3 cuts. Targets: win rate against each of the top 5 in the batch, per opponent.
 
-Levels 1 to 3 can run in any order among themselves; level 4 needs 1 and 3 (banking with an open front loses, as the overconfidence study showed: our big losses came from weak positions and an opponent banking 54 gold against our 7); level 5 is last on purpose, since four opening experiments were already dropped.
+Levels 1 to 3 can run in any order among themselves; level 4 needs 1 and 3 (banking with an open front loses, as the [overconfidence study](2026-11-14-overconfidence.md) showed: our big losses came from weak positions and an opponent banking 54 gold against our 7); level 5 is last on purpose, since four opening experiments were already dropped.
