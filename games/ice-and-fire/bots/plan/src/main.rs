@@ -5,7 +5,8 @@
 //!
 //! A turn is a list of commands, the plan. The bot first looks for a lethal
 //! move or chain of trainings and plays it. Until the middle game (it can pay
-//! a chain of trainings to an enemy cell) it plays the opening
+//! a chain of trainings to an enemy cell), and at most to game turn 6 (E067:
+//! the opening buys nothing at turn 7, the search does), it plays the opening
 //! (`ice_and_fire_opening::planned` with the solo planner, E010): v003's
 //! opening by rules, with weights for a compact shape and a pull toward the
 //! enemy HQ chosen turn by turn by a beam search over our next 9 turns as if
