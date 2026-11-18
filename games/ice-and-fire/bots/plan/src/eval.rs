@@ -52,6 +52,11 @@
 //!   cost: a level-3 training scores about -50 before what it takes. Each
 //!   level-2 and level-3 unit on an active cell gives back the upkeep of
 //!   the turns beyond [`UPKEEP_TURNS`].
+//! - **Tower wall** (E068): in its CodinGame games against us, zasmu guards
+//!   75 to 85% of its frontier cells with towers (the other top players and
+//!   we about 50%) and keeps its upkeep low. Each active cell of a side next
+//!   to an enemy cell that is one of its active towers or next to one counts
+//!   [`WALL`] more ([`wall`]).
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::reach_within_moving;
@@ -354,6 +359,28 @@ fn idle(state: &State, seat: usize) -> i64 {
     IDLE_STEP * steps
 }
 
+/// What each frontier cell of a side guarded by one of its towers counts
+/// (E068): 0 for nothing (v027).
+pub const WALL: i64 = 4;
+
+/// The active cells of `seat` next to an enemy cell (its frontier), and
+/// those of them that are an active tower of `seat`'s or next to one.
+pub fn frontier(state: &State, seat: usize) -> (Bits, Bits) {
+    let active = state.active(seat);
+    let front = active & state.owned(1 - seat).neighbours();
+    let towers = state.towers() & active;
+    (front, front & (towers | towers.neighbours()))
+}
+
+/// What the tower wall of `seat` counts (E068): [`WALL`] for each of its
+/// frontier cells guarded by one of its towers.
+fn wall(state: &State, seat: usize) -> i64 {
+    if WALL == 0 {
+        return 0;
+    }
+    WALL * i64::from(frontier(state, seat).1.count())
+}
+
 /// The score of `state` for `seat`, higher is better for it.
 pub fn eval(state: &State, seat: usize) -> i64 {
     let movers = [
@@ -380,4 +407,6 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         + THREAT_QUARTERS * threats / 4
         + mines(state, seat, ours)
         - mines(state, 1 - seat, theirs)
+        + wall(state, seat)
+        - wall(state, 1 - seat)
 }
