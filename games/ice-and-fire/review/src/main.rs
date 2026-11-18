@@ -13,6 +13,7 @@
 //! ice-and-fire-review codingame-moments --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--our-seat 0|1] [--top N] [--examples K] [--out DIR] > moments.md
 //! ice-and-fire-review codingame-opening --data DIR --me NAME [--kinds ranking,test] [--batch B] [--release NAME] [--our-seat 0|1] [--top N] [--turns T] [--leaderboard FILE] [--jobs N] > opening.md
 //! ice-and-fire-review codingame-surprise --data DIR --me NAME --judge BIN [--release NAME] [--top N] [--tries N] [--limit PLIES] [--jobs N] [--leaderboard FILE] [--pass] --out DIR
+//! ice-and-fire-review codingame-style --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--players A,B] [--top N] [--leaderboard FILE] [--jobs N] > style.md
 //! ice-and-fire-review codingame-judge --data DIR --me NAME --judge BIN [--release NAME] [--players A,B | --top N] [--tries N] [--limit PLIES] [--jobs N] --out DIR
 //! ```
 
@@ -26,6 +27,7 @@ mod profiling;
 mod replay;
 mod screening;
 mod study;
+mod style;
 mod surprise;
 #[cfg(test)]
 mod test_util;
@@ -249,6 +251,36 @@ enum Command {
     /// and the others, what each unit turn did (took a cell, or why not),
     /// what the trainings took afterwards, and the cells held in each zone
     /// of the map. Reads the data directory as `codingame-report`.
+    /// Prints, as Markdown, the style measures of the zasmu study
+    /// (research/codingame/2026-11-18-zasmu-strategy.md) for each group and
+    /// seat: each player of `--players`, the rest of the top N of the
+    /// leaderboard snapshot, and our releases in games against them.
+    CodingameStyle {
+        /// The game's data directory, for example `data/ice-and-fire`.
+        #[arg(long)]
+        data: PathBuf,
+        /// Our nickname on CodinGame, for games whose index has no seat.
+        #[arg(long)]
+        me: String,
+        /// The kinds of games to use, separated by commas.
+        #[arg(long, value_delimiter = ',', default_values_t = ["ranking".to_string(), "test".to_string(), "replay".to_string()])]
+        kinds: Vec<String>,
+        /// Only our games played by this release (see `codingame-report`).
+        #[arg(long)]
+        release: Option<String>,
+        /// Players who each form a group, separated by commas.
+        #[arg(long, value_delimiter = ',')]
+        players: Vec<String>,
+        /// The rest of the top N of the snapshot form one group (0: none).
+        #[arg(long, default_value_t = 6)]
+        top: usize,
+        /// The leaderboard snapshot, instead of the newest in the data directory.
+        #[arg(long)]
+        leaderboard: Option<PathBuf>,
+        /// Games replayed at the same time.
+        #[arg(long, default_value_t = 4)]
+        jobs: usize,
+    },
     CodingameOpening {
         /// The game's data directory, for example `data/ice-and-fire`.
         #[arg(long)]
@@ -598,6 +630,31 @@ fn run(cli: Cli) -> Result<(), String> {
                 examples,
                 out.as_deref(),
             )?;
+            print!("{text}");
+            Ok(())
+        }
+        Command::CodingameStyle {
+            data,
+            me,
+            kinds,
+            release,
+            players,
+            top,
+            leaderboard,
+            jobs,
+        } => {
+            let text = style::run(&profiles::Request {
+                data,
+                me,
+                kinds,
+                batch: None,
+                release,
+                our_seat: None,
+                top,
+                players,
+                leaderboard,
+                jobs,
+            })?;
             print!("{text}");
             Ok(())
         }
