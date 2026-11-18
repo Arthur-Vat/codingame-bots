@@ -361,7 +361,7 @@ fn idle(state: &State, seat: usize) -> i64 {
 
 /// What each frontier cell of a side guarded by one of its towers counts
 /// (E068): 0 for nothing (v027).
-pub const WALL: i64 = 10;
+pub const WALL: i64 = 8;
 
 /// The active cells of `seat` next to an enemy cell (its frontier), and
 /// those of them that are an active tower of `seat`'s or next to one.
