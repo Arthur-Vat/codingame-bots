@@ -47,3 +47,25 @@ Four variants against v027, each 800 pairs on `screen.yml`:
 | w4 | 4 | true |
 | w6 | 6 | true |
 | w4f | 4 | false (E026's towers only) |
+
+### First screening (2026-11-18, run 44399254464)
+
+800 pairs each against v027, 4 shards, no faults:
+
+| Variant | Commit | Elo over v027 [95%] |
+| --- | --- | --- |
+| w2 | `fa55bcb` | +13.5 [-0.4, +27.4] |
+| w4 | `d0cf4ab` | +30.0 [+15.4, +44.8] |
+| w6 | `f950936` | +45.4 [+30.8, +60.2] |
+| w4f | `d47d1a4` | +42.8 [+28.3, +57.4] |
+
+The gain grows with `WALL`. At `WALL` 4, keeping E026's filter beats offering a tower on every frontier cell by about 13 Elo: the wider offer seems to cost search time or to tempt the search into towers that guard nothing threatened. The owner chose a second screening ("Second screening", form): `WALL` 6, 8 and 10 with the filter, and 8 with the wider offer.
+
+### Second screening (run 44405127201)
+
+| Variant | Commit | Elo over v027 [95%] |
+| --- | --- | --- |
+| w6f | `9d2438c` | pending |
+| w8f | `8609dba` | pending |
+| w10f | `73c7367` | pending |
+| w8 | `b82612f` | pending |
