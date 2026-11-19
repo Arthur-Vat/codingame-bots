@@ -62,6 +62,8 @@ The owner chose (forms, 2026-11-19): the early score and duels cut at turn 12 as
 
 ### Phase 1: how zasmu takes the middle
 
+**Status (2026-11-19):** done ([2026-11-19-middle-chokes.md](2026-11-19-middle-chokes.md), command `codingame-middle`): zasmu does not walk better than v029 (both reach chokes with no detour, from about 2 steps); it is earlier (a middle choke by turn 7 in 93-94% of games, v029 64% / 85% from the same starts), trains onto the chokes twice as often, takes 4.1-4.5 a game by turn 12 (v029 2.7-3.5) and spends its gold on it by turn 12. Its Voronoi lead over v029 by turns 10 to 12 comes mostly from neutral land as red and about evenly from neutral land and our cells as blue. Seven planner requirements, each with a measure.
+
 Which units reach the middle chokes, from which turn, along which paths; how its trainings follow (the cell nearest the enemy, the gold it keeps); how the map's middle (few or many chokes) and the seat change it. The result is a list of what the planner must be able to do, each with a measure.
 
 ### Phase 2: a two-sided early planner
@@ -73,6 +75,16 @@ A search dedicated to game turns 1 to about 12, replacing the opening (its 27 we
 - plans scored by the early score at turn 12.
 
 Judged by duels cut at turn 12 against v029 and other bots in both seats, then the turn-10 measures against the target.
+
+**Steps, revised on 2026-11-19** after phase 1 ([2026-11-19-middle-chokes.md](2026-11-19-middle-chokes.md), its seven requirements) and the owner's points on the early-game claims of the zasmu study ([2026-11-18-zasmu-strategy.md](2026-11-18-zasmu-strategy.md), its verdict table); added at his choice (form: "Into #367, then merge"). Each step is an experiment of its own, judged as above, and built beside the current opening behind a switch so that the cut arena compares them:
+
+1. **Joint frontier assignment.** The owner's points: units should work together, so their goals are not chosen one by one; and not all units should aim at the same cell: the units behind the front should cover a wide frontier. So the targets are the middle chokes plus cells spaced along the Voronoi frontier, one unit for each, and the assignment is solved jointly each turn (least total arrival turns), with the possible trainings at the frontier cells counted as units, so that a training from the front can take a choke while a unit already near covers another target (requirements 1 to 3: a middle choke by turn 7, trainings onto the chokes, trainings at the frontier cell nearest the middle). No penalty for a thin or easily cut shape before about turn 10: the zasmu study found that shape does no harm early (one captured cell would cut off 15 of zasmu's cells at turn 8, but its exposed frontier cells cut off 1), and our opening's compactness term is what keeps our land small.
+2. **The gold spent by turn 12** on that land and those chokes, without losing land elsewhere (requirements 4 and 5).
+3. **The two-sided search** above: plans against an opponent that expands, so that the spread is checked against the enemy's units, and enemy cells are taken from turn 8 (requirement 7).
+4. **The handover** to the middle game (phase 4 below).
+5. **Optional, later: an adaptive choice among openings.** Several candidate openings computed on turn 1 and one chosen around turns 4 to 7 from how the opponent expands. Deferred: zasmu's first 4 turns do not depend on its opponent and it reacts from turn 5 (the zasmu study), which a planner that plans again every turn against the opponent it sees already does. This step is taken only if the cut duels or the suite show the planner misreading some opponents.
+
+Left out of this rework, as the zasmu study judged them: the count of TRAIN and MOVE actions (all top players play many; it is to be watched, not optimised), the land left behind the front and the land the opponent will not claim (the middle game's, or the Voronoi race's own).
 
 ### Phase 3: a learned early value
 
