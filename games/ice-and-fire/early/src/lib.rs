@@ -8,8 +8,8 @@
 //!   zasmu-likeness score (phase 0 of the early-game plan,
 //!   `games/ice-and-fire/research/codingame/2026-11-19-early-game.md`): how
 //!   much a side's position looks like zasmu's own at the same game turn and
-//!   seat, as the log-odds of a logistic regression fitted on the CodinGame
-//!   games (`ice-and-fire-review early-fit`).
+//!   seat, as the log-likelihood ratio of a logistic regression fitted on the
+//!   CodinGame games (`ice-and-fire-review early-fit`).
 
 pub mod score;
 pub mod zones;

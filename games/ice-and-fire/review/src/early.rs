@@ -16,9 +16,9 @@
 //! - `voronoi`: its share of the cells nearer its land than the enemy's, over
 //!   the cells nearer one side;
 //! - `mid_chokes`: its share of the choke cells of the middle band
-//!   ([`MIDDLE`](ice_and_fire_early::zones::MIDDLE)), the contested ones; 0 too on a map whose band has none,
-//!   which `map_mid_chokes` (their number) tells apart.
-//!
+//!   ([`MIDDLE`](ice_and_fire_early::zones::MIDDLE)), the contested ones; 0
+//!   too on a map whose band has none, which `map_mid_chokes` (their
+//!   number) tells apart;
 //! - `units`, `l2`, `l3`: its units, and those of level 2 and 3;
 //! - `gold`, `income`: its gold and income as the turn's input shows them;
 //! - `owned`, `mines`, `towers`: its cells (active or not), its mines and

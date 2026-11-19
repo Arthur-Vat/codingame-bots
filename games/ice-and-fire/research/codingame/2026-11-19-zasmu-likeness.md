@@ -5,7 +5,7 @@ Phase 0 of the early-game rework ([2026-11-19-early-game.md](2026-11-19-early-ga
 ## The score
 
 - **Features** of a side at the start of its ply ([`early/src/score.rs`](../../early/src/score.rs)): its active cells, Voronoi share, share of the middle chokes (on maps with at least 2 of them; 0 elsewhere), units and those of level 2 and 3, gold, income, cells, mines, towers, centre cells, steps to the centre (at most 20), share of all the chokes, and two features of the map (its valid cells, and whether it has 2 or more middle chokes), so that maps that zasmu met more often do not count as zasmu-like.
-- **Model:** for each seat, a logistic regression on standardized features with an L2 penalty (scikit-learn's default `C = 1`; the Rust fit's weights are within about 0.01 of scikit-learn's), telling zasmu's sides from the other players' sides at the start of their ply of game turn 12. Our own sides are left out of the fit. The score is the log-odds: higher is more like zasmu. `ice-and-fire-review early-fit` fits it from the data branch and writes [`early/src/score/weights.rs`](../../early/src/score/weights.rs).
+- **Model:** for each seat, a logistic regression on standardized features with an L2 penalty (scikit-learn's default `C = 1`; the Rust fit's weights are within about 0.01 of scikit-learn's), telling zasmu's sides from the other players' sides at the start of their ply of game turn 12. Our own sides are left out of the fit. The score is the log-likelihood ratio, the model's log-odds less its seat's prior log-odds (the log-odds of zasmu among the seat's fitted sides: −2.90 red, −2.25 blue), so that red's and blue's scores compare: higher is more like zasmu. `ice-and-fire-review early-fit` fits it from the data branch and writes [`early/src/score/weights.rs`](../../early/src/score/weights.rs).
 - **Data:** the data branch `claude/codingame-games` at 5788694 (7,030 ranking and test games, all against our releases). Fitted sides at turn 12: red 1,021 (53 of them zasmu's), blue 5,992 (571 zasmu's). Red is thin: CodinGame's test games always seat the tested bot first, so zasmu plays red only in ranking games.
 - **Turn 12, alone:** fits at turns 8 to 11 tell zasmu apart less well and predict the winner less well (below), and summing the scores of turns 8 to 12 predicted the winner worse than turn 12 alone (AUC 0.741 against 0.810 in the games without zasmu).
 
@@ -20,7 +20,7 @@ Cross-validated AUC (5 folds by game) of zasmu's sides against the other players
 | All features | 0.721 / 0.760 | 0.753 / 0.759 | 0.766 / 0.787 | 0.790 / 0.828 | 0.803 / 0.814 |
 | Territory only (active cells, Voronoi, middle chokes) | 0.621 / 0.590 | 0.664 / 0.578 | 0.690 / 0.649 | 0.739 / 0.713 | 0.715 / 0.675 |
 
-The mean score at turn 12 by group (log-odds; out of fold for the fitted players, red / blue): zasmu −2.19 / −1.59; the players ranked 2 to 7 −3.61 / −3.02; the other players −4.16 / −3.14; v029 −4.03 / −2.88; v028 −4.13 / −3.12; v026 −4.38 / −3.01; v014 −5.79 / −4.28. Our releases climb in the order of their strength, and v029 stands with the other players, below the players ranked 2 to 7.
+The mean score at turn 12 by group (out of fold for the fitted players, red / blue): zasmu +0.71 / +0.66; the players ranked 2 to 7 −0.71 / −0.77; the other players −1.26 / −0.89; v029 −1.13 / −0.63; v028 −1.23 / −0.87; v026 −1.48 / −0.76; v014 −2.89 / −2.03. Our releases climb in the order of their strength, and v029 stands with the other players, below the players ranked 2 to 7.
 
 ## Does it predict wins on CodinGame?
 
@@ -54,19 +54,21 @@ It predicts the full game's winner in self-play, better than the active cells ov
 
 | Pairing | Full games (100 pairs) | Cut at turn 12 (200 pairs) |
 | --- | --- | --- |
-| v029 vs v026 | +139.0 [+90.1, +193.8] | +75.9 [+47.4, +105.4] |
-| v029 vs v014 | +346.1 [+282.8, +434.2] | +304.8 [+262.7, +355.5] |
-| v029 vs v020 | +354.5 [+287.2, +451.1] | +186.2 [+154.1, +221.6] |
-| v026 vs v022 | +139.0 [+86.8, +197.9] | +88.7 [+55.9, +123.3] |
-| v022 vs v014 | +135.0 [+87.7, +187.6] | +123.0 [+92.0, +156.1] |
+| v029 vs v026 | +139.0 [+90.1, +193.8] | +107.5 [+70.8, +146.8] |
+| v029 vs v014 | +346.1 [+282.8, +434.2] | +288.1 [+249.3, +333.8] |
+| v029 vs v020 | +354.5 [+287.2, +451.1] | +232.8 [+194.9, +276.2] |
+| v026 vs v022 | +139.0 [+86.8, +197.9] | +149.3 [+114.6, +187.0] |
+| v022 vs v014 | +135.0 [+87.7, +187.6] | +105.6 [+73.2, +140.0] |
 
-Every pairing comes out in the order of full games, with smaller margins (the middle game, where v029's gains over v020 partly lie, is cut off). The 2,000 cut games took 406 s on 4 CPUs, against about 36 minutes for the 1,000 full games: about a tenth of a full game's time, so about five times the evidence in the same time for v029 against v026.
+Every pairing comes out in the order of full games, with margins a little smaller on the whole (the middle game, where v029's gains over v020 partly lie, is cut off). The cut games take about a tenth of a full game's time (2,000 of them in 406 s on 4 CPUs, against about 36 minutes for the 1,000 full games), so about six times the evidence (squared z-score) in the same time for v029 against v026.
+
+**The seats.** The review of the pull request found that the first version compared the two seats' log-odds, whose priors differ by 0.65 in blue's favour only because CodinGame seats its test games so: in a mirror match of v029, blue won 75% of the cut games, against 65% of 80 full games, and 50 of 60 pairs split. With the priors taken away (the score above), blue wins 66% of a cut mirror of 400 games (151 of 200 pairs split), and 56% to 66% of the cut games of the five pairings, against 50% to 64% of their full games. Blue's real edge in this game stays, as it should; the seat-swapped pairs of the arena cancel it.
 
 ## Limits
 
 - **Every CodinGame game is against us,** so "zasmu's positions" are zasmu's positions against our releases, and the other players' are theirs against us. Red's model rests on 53 of zasmu's games.
 - **It is a likeness, not a value.** A planner tuned to it could reach positions that look like zasmu's at turn 12 (gold spent, much land) and lose later, which is why a candidate it favours still goes through the SPRT on full games (the plan's acceptance), and why `early-check` should be run again on the planner's own full games.
-- **The cut arena compresses margins**, more for pairings whose difference lies in the middle game: it measures early-game progress, not strength.
+- **The cut arena compresses margins**, more for pairings whose difference lies in the middle game: it measures early-game progress, not strength. Many of its pairs split one game each, as blue's edge decides close positions.
 
 ## Reproduce
 

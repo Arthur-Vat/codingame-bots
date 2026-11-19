@@ -178,11 +178,18 @@ pub fn fit(xs: &[[f64; FEATURES]], ys: &[bool]) -> Model {
             break;
         }
     }
+    let positives = ys.iter().filter(|&&y| y).count() as f64;
+    let negatives = ys.len() as f64 - positives;
     Model {
         mean,
         scale,
         weight: std::array::from_fn(|i| theta[i + 1]),
         bias: theta[0],
+        prior: if positives > 0.0 && negatives > 0.0 {
+            (positives / negatives).ln()
+        } else {
+            0.0
+        },
     }
 }
 
@@ -280,11 +287,11 @@ pub fn run(request: &Request, reference: &str, turn: u32) -> Result<([Model; 2],
                 .iter()
                 .filter(|&&i| samples[i].game_id % FOLDS == fold)
             {
-                scores[i] = model.logit(&samples[i].x);
+                scores[i] = model.likeness(&samples[i].x);
             }
         }
         for i in (0..samples.len()).filter(|&i| samples[i].seat == seat && samples[i].ours) {
-            scores[i] = models[seat].logit(&samples[i].x);
+            scores[i] = models[seat].likeness(&samples[i].x);
         }
         let held: Vec<f64> = fitted.iter().map(|&i| scores[i]).collect();
         let _ = writeln!(
@@ -309,7 +316,7 @@ pub fn run(request: &Request, reference: &str, turn: u32) -> Result<([Model; 2],
     let score_of = |s: &Sample| scores[index_of[&(s.game_id, s.seat)]];
     let _ = writeln!(
         report,
-        "\nDoes the red-minus-blue difference at game turn {turn} predict red's win (AUC)?\n\n| Games | Games | Zasmu-likeness | Active cells |\n| --- | ---: | ---: | ---: |"
+        "\nDoes the red-minus-blue difference at game turn {turn} predict red's win (AUC)?\n\n| Games | Count | Zasmu-likeness | Active cells |\n| --- | ---: | ---: | ---: |"
     );
     for (label, with) in [("without the reference player", false), ("with it", true)] {
         let keep = |id: u64| with_reference.contains(&id) == with;
@@ -343,11 +350,12 @@ pub fn weights_source(models: &[Model; 2], turn: u32, reference: &str) -> String
     for model in models {
         let _ = writeln!(
             out,
-            "    Model {{\n        mean: [{}],\n        scale: [{}],\n        weight: [{}],\n        bias: {:e},\n    }},",
+            "    Model {{\n        mean: [{}],\n        scale: [{}],\n        weight: [{}],\n        bias: {:e},\n        prior: {:e},\n    }},",
             list(&model.mean),
             list(&model.scale),
             list(&model.weight),
-            model.bias
+            model.bias,
+            model.prior
         );
     }
     out.push_str("];\n\nconst _: () = assert!(FEATURES == 16);\n");
@@ -380,7 +388,9 @@ pub fn check(paths: &[PathBuf], jobs: usize) -> Result<String, String> {
         pair.sort();
         for key in [format!("{} vs {}", pair[0], pair[1]), "all".to_string()] {
             let entry = by_pairing.entry(key).or_default();
-            entry.0.push(MODELS[0].logit(&red) - MODELS[1].logit(&blue));
+            entry
+                .0
+                .push(MODELS[0].likeness(&red) - MODELS[1].likeness(&blue));
             entry.1.push(red[0] - blue[0]);
             entry.2.push(w == 0);
         }

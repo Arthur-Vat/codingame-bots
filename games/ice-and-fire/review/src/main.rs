@@ -283,9 +283,6 @@ enum Command {
         #[arg(long, default_value_t = 4)]
         jobs: usize,
     },
-    /// Prints, as CSV, the early game's territory measures of each side of
-    /// the CodinGame games (active cells, centre cells, steps to the centre,
-    /// share of the choke cells, Voronoi share), a row a side and game turn.
     /// Prints, as CSV, the same early-game measures as `codingame-early`
     /// for arena records, a row a side and game turn, each side's group
     /// its bot's name.
@@ -328,7 +325,9 @@ enum Command {
     },
     /// Prints whether the zasmu-likeness difference at its game turn
     /// predicts the full game's winner in arena records (AUC), beside the
-    /// difference of active cells, by pairing and for all.
+    /// difference of active cells, by pairing and for all. Give it records
+    /// of full games (`ice-and-fire-arena`): the cut arena's records carry
+    /// the scored winner.
     EarlyCheck {
         /// Records replayed at the same time.
         #[arg(long, default_value_t = 4)]
@@ -337,6 +336,9 @@ enum Command {
         #[arg(required = true)]
         records: Vec<PathBuf>,
     },
+    /// Prints, as CSV, the early game's territory measures of each side of
+    /// the CodinGame games (active cells, centre cells, steps to the centre,
+    /// share of the choke cells, Voronoi share, units, gold, income, buildings), a row a side and game turn.
     CodingameEarly {
         /// The game's data directory, for example `data/ice-and-fire`.
         #[arg(long)]

@@ -1,8 +1,9 @@
 //! A side's early-game features and the zasmu-likeness score.
 //!
 //! The score of a side at the start of its ply of game turn
-//! [`SCORE_TURN`] is the log-odds, by a logistic regression of its seat,
-//! that the position is zasmu's rather than another player's: fitted by
+//! [`SCORE_TURN`] is the log-likelihood ratio, by a logistic regression of
+//! its seat, that the position is zasmu's rather than another player's (the
+//! log-odds less the seat's prior log-odds): fitted by
 //! `ice-and-fire-review early-fit` on the CodinGame games of the data branch
 //! (all against our releases; our own sides left out), which writes
 //! `score/weights.rs`. The owner chose it as the judge of the early game on
@@ -100,6 +101,11 @@ pub struct Model {
     pub scale: [f64; FEATURES],
     pub weight: [f64; FEATURES],
     pub bias: f64,
+    /// The log-odds of the reference player among the sides the model was
+    /// fitted on (its prior): the seats' priors differ (CodinGame's test
+    /// games seat the tested bot red, so zasmu is red far less often), so
+    /// scores of the two seats compare only once it is taken away.
+    pub prior: f64,
 }
 
 impl Model {
@@ -111,13 +117,20 @@ impl Model {
         }
         sum
     }
+
+    /// The log-likelihood ratio of `x`: its log-odds less the prior, which
+    /// compares across the seats' models.
+    pub fn likeness(&self, x: &[f64; FEATURES]) -> f64 {
+        self.logit(x) - self.prior
+    }
 }
 
 /// `seat`'s zasmu-likeness in `state`, meant for the start of its ply of
-/// game turn [`SCORE_TURN`]: the log-odds of its seat's model (`MODELS`,
-/// red then blue). Higher is more like zasmu.
+/// game turn [`SCORE_TURN`]: the log-likelihood ratio of its seat's model
+/// (`MODELS`, red then blue), so that red's and blue's compare. Higher is
+/// more like zasmu.
 pub fn zasmu_likeness(state: &State, seat: usize, zones: &Zones) -> f64 {
-    MODELS[seat].logit(&features(state, seat, zones))
+    MODELS[seat].likeness(&features(state, seat, zones))
 }
 
 #[cfg(test)]

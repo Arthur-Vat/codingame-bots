@@ -25,7 +25,8 @@ fn the_features_of_a_new_game() {
     }
 }
 
-/// The log-odds is the bias plus the weighted standardized features.
+/// The log-odds is the bias plus the weighted standardized features; the
+/// likeness takes the prior away.
 #[test]
 fn the_logit_standardizes_then_weighs() {
     let mut model = Model {
@@ -33,9 +34,11 @@ fn the_logit_standardizes_then_weighs() {
         scale: [2.0; FEATURES],
         weight: [0.0; FEATURES],
         bias: 0.5,
+        prior: -2.0,
     };
     model.weight[0] = 3.0;
     let mut x = [1.0; FEATURES];
     x[0] = 5.0;
     assert!((model.logit(&x) - (0.5 + 3.0 * 2.0)).abs() < 1e-12);
+    assert!((model.likeness(&x) - (2.5 + 3.0 * 2.0)).abs() < 1e-12);
 }
