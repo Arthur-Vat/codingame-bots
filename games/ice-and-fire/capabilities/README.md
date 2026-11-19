@@ -64,7 +64,7 @@ What they say:
 
 ### Suite v2: zasmu's positions
 
-Suite v2, 2026-11-19, the same settings and binaries as above. Each test's verdicts are in [`results-v2-zasmu-2026-11-19.csv`](results-v2-zasmu-2026-11-19.csv). Every position was answered by zasmu in a game against us; the bots answer from zasmu's seat.
+Suite v2, 2026-11-19, the same settings and binaries as above. Each test's verdicts are in [`results-v2-zasmu-2026-11-19.csv`](results-v2-zasmu-2026-11-19.csv). Every position was answered by zasmu in a game against us (the data branch holds only our own games); the bots answer from zasmu's seat.
 
 | Capability | Tests | v028 | v027 | v026 | v001 | zasmu |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -75,7 +75,7 @@ Suite v2, 2026-11-19, the same settings and binaries as above. Each test's verdi
 | defend-2 | 100 | 96% | 96% | 96% | 50% | 62% |
 | wall | 100 | 51% | 46% | 44% | 19% | 100% (reference) |
 
-Over every candidate position of the data, not only the suites' draws, the players' own answers pass these shares (positions in brackets; each player's own positions, so the columns are not the same positions):
+Over every candidate position of the data, not only the suites' draws, the players' own answers pass these shares (positions in brackets; each player's own positions, so the columns are not the same positions). They come from a one-off run, not from a committed file; to reproduce them, draw every candidate (`codingame-capability-suite --per 1000000 --per-game 1000000`, wall tests left out) and score any bot on it: the report's "Played" columns are these rates.
 
 | Capability | zasmu | us (`Tarleya`) | Other players |
 | --- | ---: | ---: | ---: |
