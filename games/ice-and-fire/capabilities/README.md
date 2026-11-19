@@ -133,3 +133,20 @@ What they say:
 - **v028 saves a strike one turn ahead less often than the releases before it**: 55% of its 286 save-1 positions, against 62 to 66% for v019 to v026 (and 72 to 76% for zasmu in the suites). The towers spend gold that a strike would need: a likely cost of the wall term, and the gap stage B is for. Its defence against a strike one turn away is its best (52%), within the noise of 83 positions.
 - **The opening is unchanged**: Voronoi share at turn 10 and moves a ply at turns 10-12 stay well below the top 6, as before E068.
 
+### The sparring bot
+
+The bot [`sparring`](../bots/sparring/) (stage A, piece 2) is built to play in zasmu's style, and the plan checks it with these tests: a high save-1, a low save-2 and a high wall rate. Same settings as above (`--tries 600`), 2026-11-19; each test's verdicts are in [`results-v1-sparring-2026-11-19.csv`](results-v1-sparring-2026-11-19.csv) and [`results-v2-zasmu-sparring-2026-11-19.csv`](results-v2-zasmu-sparring-2026-11-19.csv). The other columns are copied from the tables above.
+
+| Capability | Suite v2: sparring | zasmu | v028 | v001 | Suite v1: sparring | v028 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| finish | 100% | 100% | 100% | 100% | 100% | 100% |
+| save-1 | 88% | 71% | 51% | 88% | 88% | 42% |
+| save-2 | 37% | 43% | 69% | 55% | 37% | 65% |
+| defend-1 | 78% | 81% | 78% | 78% | 69% | 66% |
+| defend-2 | 66% | 62% | 96% | 50% | 61% | 77% |
+| wall | 48% | 100% (reference) | 51% | 19% | 64% | 63% |
+
+- **Its saving has zasmu's profile.** It keeps a strike affordable next turn more often than zasmu (88% against 71%), and two turns ahead about as rarely (37% against 43%), as zasmu's spend-then-bank does. Its defence is close to zasmu's (78% and 66% against 81% and 62%).
+- **Its wall is v028's, not zasmu's.** 48% on zasmu's positions and 64% on suite v1, level with v028 (51% and 63%), well above the banker v001 (19% and 25%). Its towers are chosen by the very measure the wall test applies (the cells within reach of the enemy's gold), so this rate does not judge the rule independently. Before that choice (a tower where it guarded the most front cells) it passed 27 to 34%.
+- **It is weak.** Over 100 seat-swapped pairs on our machines it beats the banker (`ice-and-fire-v001`) by +56 Elo [+4, +111], but loses all 200 games to v028, which trains about twice as many level 1 units a game (13.6 against 7.3); its games against v028 last 27 plies (median), with 6.0 towers built a game against v028's 2.1. It takes the banker's cuts: without them it lost to the banker by 127 Elo.
+
