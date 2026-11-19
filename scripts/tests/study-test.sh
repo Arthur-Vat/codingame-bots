@@ -31,6 +31,8 @@ repo="$tmp_dir/repo"
 mkdir -p "$repo/scripts" "$repo/games/ice-and-fire/opening/examples" "$repo/games/ice-and-fire/openings"
 cp "$repo_root/scripts/study.sh" "$repo/scripts/"
 touch "$repo/games/ice-and-fire/openings/suite-v1.tsv" "$repo/games/ice-and-fire/openings/suite-v2.tsv"
+mkdir -p "$repo/games/ice-and-fire/research/plans"
+touch "$repo/games/ice-and-fire/research/plans/run-1.tsv"
 git_in() { git -C "$repo" -c user.name=t -c user.email=t@example.com "$@"; }
 git_in init -q
 git_in add -A
@@ -73,6 +75,9 @@ contains "good" "$output" "ref=claude/work"
 contains "good" "$output" "study=oracle"
 contains "good" "$output" "shards=4"
 contains "good: the suite by default" "$output" "args=--suite games/ice-and-fire/openings/suite-v1.tsv --player zasmu --per-seat 50 --turns 6,7,8 --cap 1000000"
+run "--limit 20000 --from games/ice-and-fire/research/plans/run-1.tsv"
+expect "limit and plans to start from: status" "$status" 0
+contains "limit and plans to start from" "$output" "args=--suite games/ice-and-fire/openings/suite-v1.tsv --limit 20000 --from games/ice-and-fire/research/plans/run-1.tsv"
 run "--suite games/ice-and-fire/openings/suite-v2.tsv" REF="${first:0:7}" SHARDS=1
 expect "short sha, another suite: status" "$status" 0
 contains "short sha" "$output" "sha=$first"
@@ -112,6 +117,10 @@ bad "cap too large" "--cap must be" "--cap 10000001"
 bad "suite outside the folder" "--suite must be" "--suite games/ice-and-fire/x.tsv"
 bad "suite with .." "--suite must be" "--suite games/ice-and-fire/openings/..x.tsv"
 bad "missing suite" "does not exist" "--suite games/ice-and-fire/openings/suite-v9.tsv"
+bad "limit 0" "--limit must be" "--limit 0"
+bad "plans outside the game" "--from must be" "--from games/uttt/x.tsv"
+bad "plans with .." "--from must be" "--from games/ice-and-fire/../x.tsv"
+bad "missing plans" "does not exist" "--from games/ice-and-fire/research/plans/run-2.tsv"
 bad "a line break in the arguments" "args may hold only" $'--player a\n::error::x'
 
 # ---- run checks its own inputs ----
@@ -137,6 +146,8 @@ printf 'seed,seat\n1,0\n2,1\n' >"$results/oracle-0.csv"
 printf 'seed,seat\n3,0\n' >"$results/oracle-2.csv"
 touch "$results/oracle-0.done" "$results/oracle-2.done"
 echo "# shard 0" >"$results/oracle-0.md"
+printf 'seed\tplan\n1\tWAIT\n' >"$results/oracle-0.plans.tsv"
+printf 'seed\tplan\n3\tTRAIN 1 1 0\n4\tWAIT\n' >"$results/oracle-2.plans.tsv"
 collect "$results" "$tmp_dir/out" REF=claude/work SHA="$work" ARGS="--turns 6" RUN_ID=42
 expect "collect, a shard missing: status" "$status" 1
 contains "collect" "$output" "::notice title=Study oracle::3 rows; 2 of 3 shards whole"
@@ -147,6 +158,8 @@ readme="$(cat "$tmp_dir/out/README.md")"
 contains "collect: README run" "$readme" "# Study oracle, run 42"
 contains "collect: README code" "$readme" "- Code: claude/work at $work"
 contains "collect: README shards" "$readme" "whole: 0 2; partial (failed or out of time, rows kept): none; missing: 1"
+expect "collect: the plans under one header" "$(cat "$tmp_dir/out/oracle.plans.tsv")" "$(printf 'seed\tplan\n1\tWAIT\n3\tTRAIN 1 1 0\n4\tWAIT')"
+contains "collect: README plans" "$readme" "- Plans: 3 in oracle.plans.tsv"
 # Shard 1's rows without its mark: it failed or ran out of time.
 printf 'seed,seat\n4,1\n' >"$results/oracle-1.csv"
 collect "$results" "$tmp_dir/out2"
@@ -165,6 +178,11 @@ contains "collect, other columns" "$output" "shard 1's columns differ"
 collect "$results" "$tmp_dir/out5" SHARDS=21
 expect "collect, 21 shards: status" "$status" 1
 contains "collect, 21 shards" "$output" "SHARDS must be a number from 1 to 20"
+printf 'seed,seat\n4,1\n' >"$results/oracle-1.csv"
+printf 'other\tplan\n4\tWAIT\n' >"$results/oracle-1.plans.tsv"
+collect "$results" "$tmp_dir/out6"
+expect "collect, other plan columns: status" "$status" 1
+contains "collect, other plan columns" "$output" "shard 1's plan columns differ"
 
 echo "study-test: $checks checks, $failures failures"
 ((failures == 0))
