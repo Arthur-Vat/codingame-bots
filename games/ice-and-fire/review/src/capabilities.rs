@@ -322,6 +322,8 @@ pub struct SuiteRequest {
     pub per: usize,
     pub per_game: usize,
     pub seed: u64,
+    /// Only the positions this player answered, if set.
+    pub mover: Option<String>,
 }
 
 /// The suite drawn from the data directory, as text, and a summary of the
@@ -332,7 +334,11 @@ pub fn run_suite(request: &SuiteRequest) -> Result<(String, String), String> {
     let (games, left_out) = load_games(base, &entries);
     let mut all = Vec::new();
     for (id, game) in &games {
-        all.extend(candidates(game, *id, &request.reference));
+        all.extend(
+            candidates(game, *id, &request.reference)
+                .into_iter()
+                .filter(|t| request.mover.as_ref().is_none_or(|m| *m == t.mover)),
+        );
     }
     let mut counts: BTreeMap<Capability, usize> = BTreeMap::new();
     for t in &all {
@@ -354,12 +360,16 @@ pub fn run_suite(request: &SuiteRequest) -> Result<(String, String), String> {
     let comment = format!(
         "Capability tests of A Code of Ice and Fire (games/ice-and-fire/capabilities/README.md).\n\
          Drawn by `ice-and-fire-review codingame-capability-suite` from {} games of the data branch:\n\
-         up to {} tests a capability, at most {} a game, seed {}, wall reference {}.",
+         up to {} tests a capability, at most {} a game, seed {}, wall reference {}{}.",
         games.len(),
         request.per,
         request.per_game,
         request.seed,
-        request.reference
+        request.reference,
+        request
+            .mover
+            .as_ref()
+            .map_or(String::new(), |m| format!(", only positions answered by {m}"))
     );
     Ok((suite_text(&comment, &tests), summary))
 }

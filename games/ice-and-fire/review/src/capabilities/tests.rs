@@ -278,6 +278,7 @@ mod end_to_end {
             per: 100,
             per_game: 100,
             seed: 1,
+            mover: None,
         })
         .expect("a suite");
         assert!(
@@ -293,6 +294,21 @@ mod end_to_end {
             .iter()
             .filter(|t| t.capability == Capability::Wall)
             .all(|t| t.mover == "Gabbek"));
+        // A draw of one mover's positions keeps that mover's tests only.
+        let (only, _) = run_suite(&SuiteRequest {
+            base: base(&dir),
+            reference: "Gabbek".to_string(),
+            per: 100,
+            per_game: 100,
+            seed: 1,
+            mover: Some("Tarleya".to_string()),
+        })
+        .expect("a suite");
+        let only = read_suite(&only).expect("the suite reads back");
+        let ours: Vec<&Test> = tests.iter().filter(|t| t.mover == "Tarleya").collect();
+        assert!(!ours.is_empty());
+        assert_eq!(only.iter().collect::<Vec<_>>(), ours);
+
         let suite = dir.join("suite.tsv");
         fs::write(&suite, &text).expect("suite");
 
@@ -329,6 +345,7 @@ mod end_to_end {
             per: 3,
             per_game: 3,
             seed: 1,
+            mover: None,
         })
         .expect("a suite");
         let suite = dir.join("suite.tsv");

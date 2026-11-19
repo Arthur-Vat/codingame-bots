@@ -25,14 +25,16 @@ What the properties leave out:
 
 ## The suite
 
-[`suite-v1.tsv`](suite-v1.tsv) has 600 tests: up to 100 per capability, at most 2 per game, drawn at random (seed 20261119) from the 6,550 games of the data branch `claude/codingame-games` at f137bcd that our engine replays as CodinGame did (4 others were left out). Candidates by capability: finish 5,001; save-1 15,132; save-2 32,108; defend-1 10,428; defend-2 27,474; wall 3,012. Each line is a test: capability, CodinGame game id, ply (from 0, in the replayed game), game turn, and the player who answered in the game. The suite is frozen, so scores can be compared across bots. A new suite is a new file (`suite-v2.tsv`), never an edit of this one.
+[`suite-v1.tsv`](suite-v1.tsv) has 600 tests: up to 100 per capability, at most 2 per game, drawn at random (seed 20261119) from the 6,550 games of the data branch `claude/codingame-games` at f137bcd that our engine replays as CodinGame did (4 others were left out). Candidates by capability: finish 5,001; save-1 15,132; save-2 32,108; defend-1 10,428; defend-2 27,474; wall 3,012. Each line is a test: capability, CodinGame game id, ply (from 0, in the replayed game), game turn, and the player who answered in the game. The suite is frozen, so scores can be compared across bots. A new suite is a new file, never an edit of an existing one.
 
 Of the 600 tests, 243 were answered in the game by us (`Tarleya`), 130 by zasmu (100 of them the wall tests), and the rest by 20 other players.
+
+[`suite-v2-zasmu.tsv`](suite-v2-zasmu.tsv) (owner, 2026-11-19: suite v1 drew too few of zasmu's save and defend positions to read) holds only positions that zasmu answered, drawn from the same games with the same rules and seed (`--mover zasmu`): 600 tests from 367 games, 100 per capability. zasmu's candidates: finish 451; save-1 1,019; save-2 3,553; defend-1 105 (in 79 games: we seldom threaten it); defend-2 667; wall 3,012. On it, our bots answer the very positions zasmu answered, all from games against us, so they are compared with zasmu on equal terms.
 
 ## Running it
 
 ```sh
-cargo run --release -p ice-and-fire-review -- codingame-capability-suite --data DATA --me Tarleya [--reference zasmu] [--per 100] [--per-game 2] [--seed 20261119] [--jobs 4] > suite.tsv
+cargo run --release -p ice-and-fire-review -- codingame-capability-suite --data DATA --me Tarleya [--reference zasmu] [--per 100] [--per-game 2] [--seed 20261119] [--mover PLAYER] [--jobs 4] > suite.tsv
 cargo run --release -p ice-and-fire-review -- codingame-capabilities --data DATA --me Tarleya --suite games/ice-and-fire/capabilities/suite-v1.tsv --bot NAME=BINARY [--bot ...] [--tries 600] [--csv FILE] [--jobs 4] > capabilities.md
 ```
 
@@ -42,7 +44,7 @@ The report has one row per capability: each bot's pass rate, then the rate of th
 
 ## Results
 
-Suite v1, 2026-11-19, `--tries 600`, the releases compiled from `releases/` with `rustc --edition 2021 -O` (1.90.0). Each test's verdicts are in [`results-v1-2026-11-19.csv`](results-v1-2026-11-19.csv). "Played" is the answers the players sent in the games. In `Played by zasmu`, the save and defend columns rest on 0 to 9 tests, too few to read.
+Suite v1, 2026-11-19, `--tries 600`, the releases compiled from `releases/` with `rustc --edition 2021 -O` (1.90.0). Each test's verdicts are in [`results-v1-2026-11-19.csv`](results-v1-2026-11-19.csv). "Played" is the answers the players sent in the games. In `Played by zasmu`, the save and defend columns rest on 0 to 9 tests, too few to read: suite v2 below answers that.
 
 | Capability | Tests | v028 | v027 | v026 | v001 | Played, all | Played by zasmu | Played by Tarleya | Played by others |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
