@@ -15,6 +15,7 @@
 //! ice-and-fire-review codingame-units --data DIR --me NAME [--kinds ranking,test] [--batch B] [--release NAME] [--our-seat 0|1] [--top N] [--leaderboard FILE] > units.csv
 //! ice-and-fire-review codingame-surprise --data DIR --me NAME --judge BIN [--release NAME] [--top N] [--tries N] [--limit PLIES] [--jobs N] [--leaderboard FILE] [--pass] --out DIR
 //! ice-and-fire-review codingame-style --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--players A,B] [--top N] [--leaderboard FILE] [--jobs N] > style.md
+//! ice-and-fire-review codingame-early --data DIR --me NAME [--kinds ranking,test] [--turns T] > early.csv
 //! ice-and-fire-review codingame-capability-suite --data DIR --me NAME [--reference PLAYER] [--per N] [--per-game N] [--seed S] [--mover PLAYER] [--kinds ranking,test] [--release NAME] [--jobs N] > suite.tsv
 //! ice-and-fire-review codingame-capabilities --data DIR --me NAME --suite FILE [--bot NAME=COMMAND...] [--tries N] [--reference PLAYER] [--csv FILE] [--jobs N] > capabilities.md
 //! ice-and-fire-review codingame-judge --data DIR --me NAME --judge BIN [--release NAME] [--players A,B | --top N] [--tries N] [--limit PLIES] [--jobs N] --out DIR
@@ -23,6 +24,7 @@
 mod bank;
 mod capabilities;
 mod codingame;
+mod early;
 mod judge;
 mod mincut;
 mod opening;
@@ -280,6 +282,23 @@ enum Command {
         /// Games replayed at the same time.
         #[arg(long, default_value_t = 4)]
         jobs: usize,
+    },
+    /// Prints, as CSV, the early game's territory measures of each side of
+    /// the CodinGame games (active cells, centre cells, steps to the centre,
+    /// share of the choke cells, Voronoi share), a row a side and game turn.
+    CodingameEarly {
+        /// The game's data directory, for example `data/ice-and-fire`.
+        #[arg(long)]
+        data: PathBuf,
+        /// Our nickname on CodinGame, for games whose index has no seat.
+        #[arg(long)]
+        me: String,
+        /// The kinds of games to use, separated by commas.
+        #[arg(long, value_delimiter = ',', default_values_t = ["ranking".to_string(), "test".to_string(), "replay".to_string()])]
+        kinds: Vec<String>,
+        /// The last game turn written.
+        #[arg(long, default_value_t = 15)]
+        turns: u32,
     },
     /// Prints a suite of capability tests drawn from the CodinGame games
     /// (`games/ice-and-fire/capabilities/README.md`): positions where a side
@@ -759,6 +778,22 @@ fn run(cli: Cli) -> Result<(), String> {
                 leaderboard,
                 jobs,
             })?;
+            print!("{text}");
+            Ok(())
+        }
+        Command::CodingameEarly {
+            data,
+            me,
+            kinds,
+            turns,
+        } => {
+            let text = early::run(
+                &profiles::Request {
+                    kinds,
+                    ..every_game(data, me, 1)
+                },
+                turns,
+            )?;
             print!("{text}");
             Ok(())
         }
