@@ -15,7 +15,7 @@
 //! ice-and-fire-review codingame-units --data DIR --me NAME [--kinds ranking,test] [--batch B] [--release NAME] [--our-seat 0|1] [--top N] [--leaderboard FILE] > units.csv
 //! ice-and-fire-review codingame-surprise --data DIR --me NAME --judge BIN [--release NAME] [--top N] [--tries N] [--limit PLIES] [--jobs N] [--leaderboard FILE] [--pass] --out DIR
 //! ice-and-fire-review codingame-style --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--players A,B] [--top N] [--leaderboard FILE] [--jobs N] > style.md
-//! ice-and-fire-review codingame-capability-suite --data DIR --me NAME [--reference PLAYER] [--per N] [--per-game N] [--seed S] [--jobs N] > suite.tsv
+//! ice-and-fire-review codingame-capability-suite --data DIR --me NAME [--reference PLAYER] [--per N] [--per-game N] [--seed S] [--mover PLAYER] [--jobs N] > suite.tsv
 //! ice-and-fire-review codingame-capabilities --data DIR --me NAME --suite FILE --bot NAME=COMMAND... [--tries N] [--reference PLAYER] [--csv FILE] [--jobs N] > capabilities.md
 //! ice-and-fire-review codingame-judge --data DIR --me NAME --judge BIN [--release NAME] [--players A,B | --top N] [--tries N] [--limit PLIES] [--jobs N] --out DIR
 //! ```
@@ -305,6 +305,9 @@ enum Command {
         /// The seed of the draw.
         #[arg(long, default_value_t = 20261119)]
         seed: u64,
+        /// Only the positions this player answered in the games.
+        #[arg(long)]
+        mover: Option<String>,
         /// Games replayed at the same time.
         #[arg(long, default_value_t = 4)]
         jobs: usize,
@@ -759,6 +762,7 @@ fn run(cli: Cli) -> Result<(), String> {
             per,
             per_game,
             seed,
+            mover,
             jobs,
         } => {
             let (text, summary) = capabilities::run_suite(&capabilities::SuiteRequest {
@@ -767,6 +771,7 @@ fn run(cli: Cli) -> Result<(), String> {
                 per,
                 per_game,
                 seed,
+                mover,
             })?;
             eprintln!("{summary}");
             print!("{text}");

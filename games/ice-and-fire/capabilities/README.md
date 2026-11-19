@@ -25,14 +25,16 @@ What the properties leave out:
 
 ## The suite
 
-[`suite-v1.tsv`](suite-v1.tsv) has 600 tests: up to 100 per capability, at most 2 per game, drawn at random (seed 20261119) from the 6,550 games of the data branch `claude/codingame-games` at f137bcd that our engine replays as CodinGame did (4 others were left out). Candidates by capability: finish 5,001; save-1 15,132; save-2 32,108; defend-1 10,428; defend-2 27,474; wall 3,012. Each line is a test: capability, CodinGame game id, ply (from 0, in the replayed game), game turn, and the player who answered in the game. The suite is frozen, so scores can be compared across bots. A new suite is a new file (`suite-v2.tsv`), never an edit of this one.
+[`suite-v1.tsv`](suite-v1.tsv) has 600 tests: up to 100 per capability, at most 2 per game, drawn at random (seed 20261119) from the 6,550 games of the data branch `claude/codingame-games` at f137bcd that our engine replays as CodinGame did (4 others were left out). Candidates by capability: finish 5,001; save-1 15,132; save-2 32,108; defend-1 10,428; defend-2 27,474; wall 3,012. Each line is a test: capability, CodinGame game id, ply (from 0, in the replayed game), game turn, and the player who answered in the game. The suite is frozen, so scores can be compared across bots. A new suite is a new file, never an edit of an existing one.
 
 Of the 600 tests, 243 were answered in the game by us (`Tarleya`), 130 by zasmu (100 of them the wall tests), and the rest by 20 other players.
+
+[`suite-v2-zasmu.tsv`](suite-v2-zasmu.tsv) (owner, 2026-11-19: suite v1 drew too few of zasmu's save and defend positions to read) holds only positions that zasmu answered, drawn from the same games with the same rules and seed (`--mover zasmu`): 600 tests from 367 games, 100 per capability. zasmu's candidates: finish 451; save-1 1,019; save-2 3,553; defend-1 105 (in 79 games: we seldom threaten it); defend-2 667; wall 3,012. On it, our bots answer the very positions zasmu answered, all from games against us, so they are compared with zasmu on equal terms.
 
 ## Running it
 
 ```sh
-cargo run --release -p ice-and-fire-review -- codingame-capability-suite --data DATA --me Tarleya [--reference zasmu] [--per 100] [--per-game 2] [--seed 20261119] [--jobs 4] > suite.tsv
+cargo run --release -p ice-and-fire-review -- codingame-capability-suite --data DATA --me Tarleya [--reference zasmu] [--per 100] [--per-game 2] [--seed 20261119] [--mover PLAYER] [--jobs 4] > suite.tsv
 cargo run --release -p ice-and-fire-review -- codingame-capabilities --data DATA --me Tarleya --suite games/ice-and-fire/capabilities/suite-v1.tsv --bot NAME=BINARY [--bot ...] [--tries 600] [--csv FILE] [--jobs 4] > capabilities.md
 ```
 
@@ -42,7 +44,7 @@ The report has one row per capability: each bot's pass rate, then the rate of th
 
 ## Results
 
-Suite v1, 2026-11-19, `--tries 600`, the releases compiled from `releases/` with `rustc --edition 2021 -O` (1.90.0). Each test's verdicts are in [`results-v1-2026-11-19.csv`](results-v1-2026-11-19.csv). "Played" is the answers the players sent in the games. In `Played by zasmu`, the save and defend columns rest on 0 to 9 tests, too few to read.
+Suite v1, 2026-11-19, `--tries 600`, the releases compiled from `releases/` with `rustc --edition 2021 -O` (1.90.0). Each test's verdicts are in [`results-v1-2026-11-19.csv`](results-v1-2026-11-19.csv). "Played" is the answers the players sent in the games. In `Played by zasmu`, the save and defend columns rest on 0 to 9 tests, too few to read: suite v2 below answers that.
 
 | Capability | Tests | v028 | v027 | v026 | v001 | Played, all | Played by zasmu | Played by Tarleya | Played by others |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -59,3 +61,33 @@ What they say:
 - **Our search spends the strike it could make next turn.** On save-1, v026 to v028 keep the strike affordable in 42 to 44% of the tests. v001 (`banker`) does in 88%: its one rule is to keep gold for a winning chain affordable next turn. This is the gap stage B is for. A save rate needs the defend rate beside it, since hoarding passes every save test. v001's 29% on defend-2 shows what that rule costs.
 - **Defence is the same in v026 to v028**: 66 to 67% on defend-1 and 76 to 77% on defend-2. Some defend-1 positions may have no defence at all; the players' own answers pass 58%.
 - **The wall test sees E068.** The wall rate rises from v026 (51%) to v027 (57%) and to v028 (63%). E068 is v028's tower wall term; v027 changed who plays turn 7. So the test measures the behaviour E068 aimed at, without self-play. It still sits well below zasmu's own answers, which pass by construction.
+
+### Suite v2: zasmu's positions
+
+Suite v2, 2026-11-19, the same settings and binaries as above. Each test's verdicts are in [`results-v2-zasmu-2026-11-19.csv`](results-v2-zasmu-2026-11-19.csv). Every position was answered by zasmu in a game against us (the data branch holds only our own games); the bots answer from zasmu's seat.
+
+| Capability | Tests | v028 | v027 | v026 | v001 | zasmu |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| finish | 100 | 100% | 100% | 100% | 100% | 100% |
+| save-1 | 100 | 51% | 50% | 50% | 88% | 71% |
+| save-2 | 100 | 69% | 75% | 75% | 55% | 43% |
+| defend-1 | 100 | 78% | 79% | 79% | 78% | 81% |
+| defend-2 | 100 | 96% | 96% | 96% | 50% | 62% |
+| wall | 100 | 51% | 46% | 44% | 19% | 100% (reference) |
+
+Over every candidate position of the data, not only the suites' draws, the players' own answers pass these shares (positions in brackets; each player's own positions, so the columns are not the same positions). They come from a one-off run, not from a committed file; to reproduce them, draw every candidate (`codingame-capability-suite --per 1000000 --per-game 1000000`, wall tests left out) and score any bot on it: the report's "Played" columns are these rates.
+
+| Capability | zasmu | us (`Tarleya`) | Other players |
+| --- | ---: | ---: | ---: |
+| finish | 100% (451) | 100% (1,851) | 99% (2,699) |
+| save-1 | 76% (1,019) | 53% (7,349) | 70% (6,764) |
+| save-2 | 48% (3,553) | 62% (11,981) | 65% (16,574) |
+| defend-1 | 82% (105) | 48% (5,854) | 59% (4,469) |
+| defend-2 | 69% (667) | 62% (15,958) | 51% (10,849) |
+
+What suite v2 adds:
+
+- **Saving one turn ahead is the gap, on zasmu's own positions too.** zasmu keeps a strike affordable next turn in 71% of these tests (76% over all its positions). v026 to v028 do in 50 to 51%.
+- **zasmu does not save two turns ahead.** On save-2 it passes 43% (48% over all its positions), less than our releases (69 to 75%) and less than every other group. It spends until about two turns before the strike and then banks, as the study found ("The strike"). So save-2 is not a target in itself; stage B should aim at save-1 and at when to start saving.
+- **Defence against a strike one turn away is level with zasmu**, on positions where it was threatened: 78 to 79% against 81%. Against a threat two turns away our releases defend in 96% of the tests, zasmu in 62%. zasmu leads in most of these games, so it may afford to ignore a distant threat; whether our 96% costs us elsewhere is not something a one-ply test can tell.
+- **The wall rate rises the same way as on suite v1**: v026 44%, v027 46%, v028 51%.
