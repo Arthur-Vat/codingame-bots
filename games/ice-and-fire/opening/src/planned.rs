@@ -85,6 +85,11 @@ impl Planned {
         !self.over
     }
 
+    /// Ends the opening for good, as the middle game does (E067).
+    pub fn end(&mut self) {
+        self.over = true;
+    }
+
     /// The commands of our turn in `state`: the plan's next step, after a new
     /// plan if needed, searched until `deadline`.
     pub fn turn(&mut self, state: &State, deadline: Option<Instant>) -> Vec<Command> {

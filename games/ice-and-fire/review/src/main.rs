@@ -12,6 +12,7 @@
 //! ice-and-fire-review codingame-report --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--our-seat 0|1] [--top N] --out DIR
 //! ice-and-fire-review codingame-moments --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--our-seat 0|1] [--top N] [--examples K] [--out DIR] > moments.md
 //! ice-and-fire-review codingame-opening --data DIR --me NAME [--kinds ranking,test] [--batch B] [--release NAME] [--our-seat 0|1] [--top N] [--turns T] [--leaderboard FILE] [--jobs N] > opening.md
+//! ice-and-fire-review codingame-units --data DIR --me NAME [--kinds ranking,test] [--batch B] [--release NAME] [--our-seat 0|1] [--top N] [--leaderboard FILE] > units.csv
 //! ice-and-fire-review codingame-surprise --data DIR --me NAME --judge BIN [--release NAME] [--top N] [--tries N] [--limit PLIES] [--jobs N] [--leaderboard FILE] [--pass] --out DIR
 //! ice-and-fire-review codingame-style --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--players A,B] [--top N] [--leaderboard FILE] [--jobs N] > style.md
 //! ice-and-fire-review codingame-judge --data DIR --me NAME --judge BIN [--release NAME] [--players A,B | --top N] [--tries N] [--limit PLIES] [--jobs N] --out DIR
@@ -32,6 +33,7 @@ mod surprise;
 #[cfg(test)]
 mod test_util;
 mod trace;
+mod units;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -312,6 +314,37 @@ enum Command {
         /// Games replayed at the same time.
         #[arg(long, default_value_t = 4)]
         jobs: usize,
+    },
+    /// Prints, as CSV, what each unit that may move did in a turn of the
+    /// CodinGame games (it took a cell, moved inside its side's land, or
+    /// stayed, and then whether it could take a cell, was blocked or stood
+    /// inside), by group, seat and phase. Reads the data directory as
+    /// `codingame-report`.
+    CodingameUnits {
+        /// The game's data directory, for example `data/ice-and-fire`.
+        #[arg(long)]
+        data: PathBuf,
+        /// Our nickname on CodinGame, for games whose index has no seat.
+        #[arg(long)]
+        me: String,
+        /// The kinds of games to use, separated by commas.
+        #[arg(long, value_delimiter = ',', default_values_t = ["ranking".to_string(), "test".to_string(), "replay".to_string()])]
+        kinds: Vec<String>,
+        /// Only the games of this batch.
+        #[arg(long)]
+        batch: Option<String>,
+        /// Only our games played by this release (see `codingame-report`).
+        #[arg(long)]
+        release: Option<String>,
+        /// Only the games in which we sat in this seat (see `codingame-report`).
+        #[arg(long)]
+        our_seat: Option<usize>,
+        /// The top N of the snapshot form a group of their own.
+        #[arg(long, default_value_t = 10)]
+        top: usize,
+        /// The leaderboard snapshot, instead of the newest in the data directory.
+        #[arg(long)]
+        leaderboard: Option<PathBuf>,
     },
     /// Writes, to a folder, where our bot was overconfident in its CodinGame
     /// games: at each of our plies, the score the plan bot's search expected
@@ -654,6 +687,31 @@ fn run(cli: Cli) -> Result<(), String> {
                 players,
                 leaderboard,
                 jobs,
+            })?;
+            print!("{text}");
+            Ok(())
+        }
+        Command::CodingameUnits {
+            data,
+            me,
+            kinds,
+            batch,
+            release,
+            our_seat,
+            top,
+            leaderboard,
+        } => {
+            let text = units::run(&profiles::Request {
+                data,
+                me,
+                kinds,
+                batch,
+                release,
+                our_seat,
+                top,
+                players: Vec::new(),
+                leaderboard,
+                jobs: 1,
             })?;
             print!("{text}");
             Ok(())

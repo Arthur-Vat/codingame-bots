@@ -1,0 +1,80 @@
+---
+id: E066
+date: 2026-11-15
+pull_request: "#345"
+parent: ice-and-fire-v026
+hypothesis: In v025's and v026's CodinGame games against the top 5, a quarter of our unit turns at game turns 11 to 17 are units that stay next to cells that are not ours and that they cannot enter (two thirds of them face an enemy unit, nine in ten are level 1), against 17% of the top 5's in the same seat, whose units move through their own land more often; E060's term counts such a unit as next to land to take, so measuring a unit's distance to the nearest cell it may enter makes blocked units walk to land they can take, and beats v026.
+change: None released. Screening only: the plan bot's evaluation measures E060's distance of a unit to the nearest cell not its side's that a unit of its level may enter (not behind a tower for levels 1 and 2, not held by a unit it cannot beat), rather than to any cell not its side's.
+release: none
+sprt: not run: no gain in screening
+elo: none
+pairs: none
+full_time: none
+decision: dropped
+cg_rank: none
+---
+
+Asked by the owner on 2026-11-15 ("Start it now"), after the scan of unit
+turns in the CodinGame games (`ice-and-fire-review codingame-units`,
+added by this pull request) that he asked for to find why our units move less
+than the top players' (0.3 to 0.4 moves a unit against 0.6 to 0.7 from
+game turn 11).
+
+## Why
+
+The scan classifies each turn of a unit that may move, for us and for the
+top 5 in the same seat (v025, 22 games a seat; shares of unit turns at
+game turns 11 to 13, ours against theirs, red then blue): stayed 51%
+against 26%, 56% against 26%; of which stayed though it could take a
+cell 7% against 5%, 12% against 8% (mostly with an enemy unit within two
+steps); stayed next to cells not ours, none of which it may enter, 25%
+against 17% in both seats; stayed inside our land 20% against 4%, 20%
+against 1% (v026, with E060: 9% against 4%). The search does not miss
+captures; the units that stand still have nothing to take where they
+are. E060 made the units inside walk; a unit at a wall of towers or of
+units it cannot beat still costs nothing, since a cell not ours is next
+to it.
+
+## The change
+
+`bots/plan/src/eval.rs`, `idle`: `IDLE_ENTER` (0: v026). With 1, the
+units are grouped by level and each group's distance is measured to the
+cells not its side's that `State::enterable` gives a unit of that level;
+with 2, only for level-1 units. Steps are still counted over any cell of
+the map, so a wall is not walked around.
+
+## Screening
+
+Against `ice-and-fire-v026` on GitHub (`screen.yml`, one calibrated
+runner per variant and shard at CodinGame's speed and real limit, ADR
+0048). Run 43704463006, seed 66066, 800 pairs each over two runners (one
+timeout of c and one of v026 in 8,000 games, no other fault). "Units" are
+those whose distance is measured to cells they may enter (`IDLE_ENTER`),
+"step" is `IDLE_STEP`, "cap" `IDLE_CAP`:
+
+| Variant | Commit | Units | Step | Cap | Elo against v026 |
+| --- | --- | --- | ---: | ---: | --- |
+| a | `2411ab6` | all | 2 | 4 | −0.0 [−12.8, +12.8] |
+| b | `69af671` | level 1 | 2 | 4 | −0.4 [−13.0, +12.1] |
+| c | `34b465d` | all | 3 | 4 | +6.5 [−7.1, +20.2] |
+| d | `fc6c4a2` | all | 2 | 6 | +1.3 [−12.0, +14.6] |
+| e | `c04d502` | all | 1 | 4 | −5.2 [−18.8, +8.4] |
+
+No variant is outside its interval; the mean of the five is +0.4.
+(The branch's commit `261002a`, "variant a2", holds a's constants again
+and was not screened.)
+
+## What was learned
+
+- **Units at a wall are not what self-play rewards moving.** Counting a
+  blocked unit as away from land changed nothing at any weight; a unit
+  facing an enemy unit also holds the cell it stands on, and the steps
+  are counted through the wall, so the term does not say where to go.
+- The scan's other findings stand: our units have less neutral land to
+  take than the top 5's (the opening's shape), and the opening buys
+  nothing at game turn 7.
+
+The code stays reachable in this pull request's commits (the variants
+above); the branch's head holds the journal entry and the scan.
+Dropped on the owner's choice of the next experiment, 2026-11-15 ("Go on
+with ideas 1 and 2 together", after the recommendation to drop E066).
