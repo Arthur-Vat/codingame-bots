@@ -15,10 +15,13 @@
 //! ice-and-fire-review codingame-units --data DIR --me NAME [--kinds ranking,test] [--batch B] [--release NAME] [--our-seat 0|1] [--top N] [--leaderboard FILE] > units.csv
 //! ice-and-fire-review codingame-surprise --data DIR --me NAME --judge BIN [--release NAME] [--top N] [--tries N] [--limit PLIES] [--jobs N] [--leaderboard FILE] [--pass] --out DIR
 //! ice-and-fire-review codingame-style --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--players A,B] [--top N] [--leaderboard FILE] [--jobs N] > style.md
+//! ice-and-fire-review codingame-capability-suite --data DIR --me NAME [--reference PLAYER] [--per N] [--per-game N] [--seed S] [--jobs N] > suite.tsv
+//! ice-and-fire-review codingame-capabilities --data DIR --me NAME --suite FILE --bot NAME=COMMAND... [--tries N] [--reference PLAYER] [--csv FILE] [--jobs N] > capabilities.md
 //! ice-and-fire-review codingame-judge --data DIR --me NAME --judge BIN [--release NAME] [--players A,B | --top N] [--tries N] [--limit PLIES] [--jobs N] --out DIR
 //! ```
 
 mod bank;
+mod capabilities;
 mod codingame;
 mod judge;
 mod mincut;
@@ -275,6 +278,64 @@ enum Command {
         #[arg(long)]
         leaderboard: Option<PathBuf>,
         /// Games replayed at the same time.
+        #[arg(long, default_value_t = 4)]
+        jobs: usize,
+    },
+    /// Prints a suite of capability tests drawn from the CodinGame games
+    /// (`games/ice-and-fire/capabilities/README.md`): positions where a side
+    /// can finish, should save toward its strike, should defend against
+    /// the opponent's, or where the reference player built a wall, one test
+    /// a line. Reads the data directory as `codingame-report`.
+    CodingameCapabilitySuite {
+        /// The game's data directory, for example `data/ice-and-fire`.
+        #[arg(long)]
+        data: PathBuf,
+        /// Our nickname on CodinGame, for games whose index has no seat.
+        #[arg(long)]
+        me: String,
+        /// The player whose answers alone make wall tests.
+        #[arg(long, default_value = "zasmu")]
+        reference: String,
+        /// The most tests of each capability.
+        #[arg(long, default_value_t = 100)]
+        per: usize,
+        /// The most tests of each capability from one game.
+        #[arg(long, default_value_t = 2)]
+        per_game: usize,
+        /// The seed of the draw.
+        #[arg(long, default_value_t = 20261119)]
+        seed: u64,
+        /// Games replayed at the same time.
+        #[arg(long, default_value_t = 4)]
+        jobs: usize,
+    },
+    /// Prints, for each bot, the share of a suite's capability tests it
+    /// passes, beside the answers the players sent in the games. Each bot
+    /// takes the mover's seat and is fed the game's inputs from its first
+    /// turn up to the test.
+    CodingameCapabilities {
+        /// The game's data directory, for example `data/ice-and-fire`.
+        #[arg(long)]
+        data: PathBuf,
+        /// Our nickname on CodinGame, for games whose index has no seat.
+        #[arg(long)]
+        me: String,
+        /// The suite, as `codingame-capability-suite` wrote it.
+        #[arg(long)]
+        suite: PathBuf,
+        /// A bot to test, `NAME=COMMAND`; may be repeated.
+        #[arg(long = "bot", required = true)]
+        bots: Vec<String>,
+        /// The bots' `CG_FIXED_ITERS` (0: their own clock).
+        #[arg(long, default_value_t = 600)]
+        tries: u64,
+        /// The reference player of the suite's wall tests.
+        #[arg(long, default_value = "zasmu")]
+        reference: String,
+        /// Also write one row a test, with each bot's verdict, as CSV here.
+        #[arg(long)]
+        csv: Option<PathBuf>,
+        /// Bots run at the same time.
         #[arg(long, default_value_t = 4)]
         jobs: usize,
     },
@@ -691,6 +752,47 @@ fn run(cli: Cli) -> Result<(), String> {
             print!("{text}");
             Ok(())
         }
+        Command::CodingameCapabilitySuite {
+            data,
+            me,
+            reference,
+            per,
+            per_game,
+            seed,
+            jobs,
+        } => {
+            let (text, summary) = capabilities::run_suite(&capabilities::SuiteRequest {
+                base: every_game(data, me, jobs),
+                reference,
+                per,
+                per_game,
+                seed,
+            })?;
+            eprintln!("{summary}");
+            print!("{text}");
+            Ok(())
+        }
+        Command::CodingameCapabilities {
+            data,
+            me,
+            suite,
+            bots,
+            tries,
+            reference,
+            csv,
+            jobs,
+        } => {
+            let text = capabilities::run(&capabilities::Request {
+                base: every_game(data, me, jobs),
+                suite,
+                bots,
+                tries,
+                reference,
+                csv,
+            })?;
+            print!("{text}");
+            Ok(())
+        }
         Command::CodingameUnits {
             data,
             me,
@@ -811,6 +913,22 @@ fn run(cli: Cli) -> Result<(), String> {
             print!("{}", summarize(&games, &notes, &problems));
             Ok(())
         }
+    }
+}
+
+/// A request for every game of the data directory, of every kind.
+fn every_game(data: PathBuf, me: String, jobs: usize) -> profiles::Request {
+    profiles::Request {
+        data,
+        me,
+        kinds: Vec::new(),
+        batch: None,
+        release: None,
+        our_seat: None,
+        top: 0,
+        players: Vec::new(),
+        leaderboard: None,
+        jobs,
     }
 }
 

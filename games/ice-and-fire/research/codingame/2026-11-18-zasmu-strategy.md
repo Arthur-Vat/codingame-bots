@@ -112,6 +112,8 @@ Before new capabilities, a way to see them and to judge them without self-play.
    - 2 towers hold a front that units cannot.
 
    Each test checks a property of the answer, not one exact move. Examples: gold kept at or above a level; towers that raise the opponent's chain cost by a given amount; the HQ taken within k turns in a scripted continuation. A bot's score is its pass rate per capability, reported by a command of the review tool. zasmu's own decisions in those positions are the reference, where it played them.
+
+   *Done (2026-11-19): the commands `codingame-capability-suite` and `codingame-capabilities`, the frozen suite v1 (600 tests: finish, save, defend, wall) and the scores of our releases, in [capabilities/README.md](../../capabilities/README.md). The continuation property is not in v1.*
 2. **A sparring bot in zasmu's style.** A baseline bot built by hand from the study's numbers: hold the front with towers, mines on safe spots, save gold toward the cheapest chain to the enemy HQ, strike when it is affordable. It joins the screenings and the league, so that self-play includes the style that beats us. Its first version is simple; it improves as stages B to E give it better parts.
 3. **Test batches against the top players.** At each stage's end, a batch of CodinGame test games against zasmu and the top 5 on the fixed maps (`scripts/codingame.sh batch --opponents`), on the owner's approval. It is read with `codingame-style` and compared with the release before.
 
