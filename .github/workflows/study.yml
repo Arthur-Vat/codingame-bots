@@ -1,0 +1,176 @@
+name: Study
+
+# A research computation on the repository's own code, too long for a session,
+# split over runners (scripts/study.sh holds the logic). A session dispatches it
+# with a study of the script's list, the ref whose tree holds the study's code,
+# the study's arguments and a number of shards. Each shard builds the study
+# from a worktree of the ref and runs its share; the last job gathers the
+# shards' files and commits them to a new branch claude/study/<run id>, which a
+# session fetches (sessions cannot download artifacts). Nothing else is
+# written to GitHub.
+#
+# Inputs (all text, checked by `plan` before anything is built):
+#   study   one of the studies in scripts/study.sh (today: oracle)
+#   ref     a commit SHA (7 to 40 hex digits), a branch or a tag of this
+#           repository, whose tree holds the study's code
+#   args    the study's arguments, separated by spaces, checked by the
+#           study's own rules in scripts/study.sh
+#   shards  runners, 1 to 20 (default 8)
+#
+# Started by a session, for example:
+#   gh api -X POST repos/Arthur-Vat/codingame-bots/actions/workflows/study.yml/dispatches \
+#     -f ref=main -f 'inputs[study]=oracle' -f 'inputs[ref]=claude/some-branch' \
+#     -f 'inputs[args]=--player zasmu --per-seat 50 --turns 6,7,8' -f 'inputs[shards]=12'
+# The dispatched ref supplies this workflow and the scripts; `ref` supplies the
+# study's code.
+#
+# plan:    checks the inputs, resolves the ref and makes the matrix.
+# run:     one runner per shard.
+# collect: gathers the shards' files and commits them to claude/study/<run id>.
+
+on:
+  workflow_dispatch:
+    inputs:
+      study:
+        description: "Study, one of scripts/study.sh's list (oracle)"
+        type: string
+        required: true
+      ref:
+        description: "Commit SHA, branch or tag whose tree holds the study's code"
+        type: string
+        required: true
+      args:
+        description: "The study's arguments, separated by spaces"
+        type: string
+        required: false
+        default: ""
+      shards:
+        description: "Runners, 1 to 20"
+        type: string
+        required: false
+        default: "8"
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Fails a step when any command of a pipeline fails, not only the last.
+    shell: bash
+
+env:
+  # CodinGame's Rust compiler (docs/CODINGAME.md, ADR 0010), as everywhere.
+  CG_RUST: "1.90.0"
+  CARGO_TERM_COLOR: always
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      study: ${{ steps.plan.outputs.study }}
+      sha: ${{ steps.plan.outputs.sha }}
+      args: ${{ steps.plan.outputs.args }}
+      shards: ${{ steps.plan.outputs.shards }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Every branch and tag, to resolve the ref.
+          fetch-depth: 0
+      - name: Check the inputs and plan the matrix
+        id: plan
+        env:
+          # Text from whoever dispatched the run: checked by the script before
+          # it reaches a path or a command.
+          STUDY: ${{ inputs.study }}
+          REF: ${{ inputs.ref }}
+          ARGS: ${{ inputs.args }}
+          SHARDS: ${{ inputs.shards }}
+        run: scripts/study.sh plan
+
+  run:
+    name: "Run (${{ matrix.shard }})"
+    needs: plan
+    runs-on: ubuntu-latest
+    # GitHub's limit is 360 minutes.
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      STUDY: ${{ needs.plan.outputs.study }}
+      SHA: ${{ needs.plan.outputs.sha }}
+      ARGS: ${{ needs.plan.outputs.args }}
+      SHARDS: ${{ needs.plan.outputs.shards }}
+      SHARD: ${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The study's commit may be on another branch.
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1, master on 2026-11-06
+        with:
+          toolchain: ${{ env.CG_RUST }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: study
+          save-if: ${{ strategy.job-index == 0 }}
+      - name: Build and run the shard
+        run: scripts/annotate.sh run "Study $STUDY ($SHARD)" scripts/study.sh run "$STUDY" "$SHA" "$SHARD" "$SHARDS" "$ARGS"
+      - name: Keep the shard's files
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: study-${{ matrix.shard }}
+          path: target/study/out/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  collect:
+    name: Collect
+    needs: [plan, run]
+    if: ${{ always() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      # To push the claude/study/<run id> branch with the results.
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        # No artifact at all (every shard failed) is reported by the script.
+        continue-on-error: true
+        with:
+          pattern: study-*
+          path: target/study-results
+          merge-multiple: true
+      - name: Gather the shards and commit them to claude/study/${{ github.run_id }}
+        env:
+          STUDY: ${{ needs.plan.outputs.study }}
+          REF: ${{ inputs.ref }}
+          SHA: ${{ needs.plan.outputs.sha }}
+          ARGS: ${{ needs.plan.outputs.args }}
+          SHARDS: ${{ needs.plan.outputs.shards }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          mkdir -p target/study-results
+          out="study/$RUN_ID"
+          status=0
+          scripts/study.sh collect "$STUDY" target/study-results "$out" || status=$?
+          cat "$out/README.md" >> "$GITHUB_STEP_SUMMARY"
+          branch="claude/study/$RUN_ID"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add "$out"
+          git commit -m "docs(repo): study $STUDY from run $RUN_ID"
+          # Job logs are not readable everywhere; an annotation is.
+          if ! output="$(git push origin "$branch" 2>&1)"; then
+            echo "::error title=Push failed::${output//$'\n'/ | }"
+            exit 1
+          fi
+          echo "::notice title=Study branch::$branch"
+          exit "$status"

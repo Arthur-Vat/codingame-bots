@@ -19,7 +19,7 @@ Every bot change is judged by CI: unit tests, a check that the bot compiles on C
 - [`games/<game>/`](games/): everything for one game. Its rules (`RULES.md`), a readable referee, a fast engine, an arena binary, a trainer, the bots, the frozen releases, the journal of experiments, the reports of training runs, and the settings of its evaluations.
 - [`studio/`](studio/): the studio, an app to play and review games in the browser (phase 6), run locally or published on GitHub Pages at <https://arthur-vat.github.io/codingame-bots/> (rules and bots in the browser as WebAssembly). Its front end is in TypeScript, React and Vite, in `studio/web/`.
 - [`docs/`](docs/): architecture, roadmap, workflow, CodinGame facts, and the decision records in `docs/adr/`.
-- [`scripts/`](scripts/): bundling and checking bots, making and checking releases, the SPRT, the league, pruning finished branches, checking the docs, reporting CI failures as annotations, labelling pull requests, deciding which CI checks run, and the hooks of Claude's sessions (which agents may start, the tools a cloud session installs).
+- [`scripts/`](scripts/): bundling and checking bots, making and checking releases, the SPRT, the league, pruning finished branches, studies on GitHub, checking the docs, reporting CI failures as annotations, labelling pull requests, deciding which CI checks run, and the hooks of Claude's sessions (which agents may start, the tools a cloud session installs).
 - [`.claude/`](.claude/): Claude's project agents (implementer, reviewers) and skills (the procedures that repeat).
 - [`.github/workflows/`](.github/workflows/):
   - `ci.yml`: format, lint, tests, bot checks, dependency licenses, docs and scripts, the studio; each runs only for the areas and games a pull request changes ([ADR 0029](docs/adr/0029-ci-scoped-by-area-and-game.md)).
@@ -32,6 +32,7 @@ Every bot change is judged by CI: unit tests, a check that the bot compiles on C
   - `league-weekly.yml`: started every Thursday by the weekly Claude task, a branch `claude/league-results-<date>` made from `main` with the results of `league-results`, for the weekly pull request.
   - `release.yml`: a GitHub release for each new release file.
   - `train.yml`: self-play and training, started by hand.
+  - `study.yml`: a research computation too long for a session (one of `scripts/study.sh`'s studies), split over runners and dispatched by a session; the results go to a branch `claude/study/<run id>`.
   - `prune-branches.yml`: weekly deletion of finished `claude/` branches.
   - `codingame-collect.yml`: every 3 hours, fetches our CodinGame ranking games and plays the day's test games, with the owner's token kept as a secret (ADR 0058).
   - `archive.yml`: keeps each game's arena games in one artifact, and rebuilds the site ([ADR 0031](docs/adr/0031-arena-games-archive.md)).
