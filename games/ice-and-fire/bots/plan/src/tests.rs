@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use cg_arena::referee::{Answer, GameSetup, Outcome as GameOutcome, Referee};
 use cg_core::rng::Rng;
-use ice_and_fire_engine::{Command, League, Outcome, State, SIZE};
+use ice_and_fire_engine::{Bits, Command, League, Outcome, State, SIZE};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::{IceAndFireReferee, League as RefereeLeague};
 
@@ -893,7 +893,15 @@ fn towers_are_offered_where_a_copy_of_the_state_says_they_guard() {
             if !after.apply(Command::BuildTower { x, y }) {
                 continue;
             }
-            let guards = crate::eval::threatened(&after, me) < threats
+            // E068: a tower that would guard a frontier cell of ours not yet
+            // guarded is offered too.
+            let walls = crate::actions::WALL_TOWERS && {
+                let (front, guarded) = crate::eval::frontier(&state, me);
+                let zone = Bits::cell(cell) | Bits::cell(cell).neighbours();
+                !(zone & front.and_not(guarded)).is_empty()
+            };
+            let guards = walls
+                || crate::eval::threatened(&after, me) < threats
                 || (crate::actions::HQ_GUARD
                     && chain <= state.gold(enemy) + 2 * state.income(enemy).max(0)
                     && cost_to(&after, enemy, false, HQ[me]) > chain);
@@ -1290,4 +1298,32 @@ fn the_search_plays_from_game_turn_seven() {
         }
     }
     assert!(handed > 0, "no hand-over before the middle game");
+}
+
+#[test]
+fn a_tower_counts_wall_for_each_frontier_cell_it_guards() {
+    // E068: the wall term counts WALL for each active cell of a side next
+    // to an enemy cell that is one of its active towers or next to one.
+    use crate::eval::frontier;
+    let mut checked = 0;
+    for state in many_positions() {
+        if state.outcome().is_some() {
+            continue;
+        }
+        for seat in 0..2 {
+            let (front, guarded) = frontier(&state, seat);
+            let towers = state.towers() & state.active(seat);
+            let mut want = 0;
+            for cell in front.iter() {
+                let zone = Bits::cell(cell) | Bits::cell(cell).neighbours();
+                if !(zone & towers).is_empty() {
+                    want += 1;
+                }
+            }
+            assert_eq!(guarded.count(), want);
+            assert!(guarded.and_not(front).is_empty());
+            checked += usize::from(want > 0);
+        }
+    }
+    assert!(checked > 0, "no guarded frontier in the positions");
 }

@@ -52,6 +52,10 @@ fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64) -> 
     hq_guard && cost_to(&after, enemy, false, HQ[me]) > chain
 }
 
+/// Whether a tower is also offered on each free border cell that would
+/// guard a frontier cell of ours not yet guarded (E068's tower wall).
+pub const WALL_TOWERS: bool = false;
+
 /// Which of our own empty active cells get a training offered (E045): 0,
 /// all of them (v021); 1, those next to a cell that is not active for us;
 /// 2, none (E045's screening). E044's blockers may still offer a unit on a
@@ -157,10 +161,17 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
             let reach = crate::eval::reach(state, 1 - me);
             let threats = i64::from((reach & state.active(me)).count());
             let chain = cost_to(state, 1 - me, false, HQ[me]);
-            for cell in cells
-                .iter()
-                .filter(|&cell| guards(state, cell, threats, reach, chain))
-            {
+            // Frontier cells of ours not yet guarded by a tower (E068).
+            let open = if WALL_TOWERS {
+                let (front, guarded) = crate::eval::frontier(state, me);
+                front.and_not(guarded)
+            } else {
+                Bits::EMPTY
+            };
+            for cell in cells.iter().filter(|&cell| {
+                let zone = Bits::cell(cell) | Bits::cell(cell).neighbours();
+                !(zone & open).is_empty() || guards(state, cell, threats, reach, chain)
+            }) {
                 let (x, y) = xy(cell);
                 out.push(Action::One(Command::BuildTower { x, y }));
             }
