@@ -52,9 +52,9 @@ fn every_command_of_a_game_is_accepted_and_trainings_head_out() {
             }
             state.play_turn(&commands);
         }
-        for seat in 0..2 {
+        for (seat, &hq) in HQ.iter().enumerate() {
             assert!(state.owned(seat).count() > 10, "seed {seed}, seat {seat}");
-            assert!(state.owned(seat).test(HQ[seat]));
+            assert!(state.owned(seat).test(hq));
         }
     }
 }
