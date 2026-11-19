@@ -13,7 +13,7 @@ fn the_zones_are_symmetric_and_the_voronoi_shares_add_up() {
     for seed in 0..20 {
         let map = generate(seed, RefereeLeague::Bronze);
         let state = State::new(&map.void, &map.mine_spots, League::Bronze);
-        let (chokes, centre) = map_zones(&state);
+        let (chokes, centre, middle) = map_zones(&state);
         for cell in 0..CELLS {
             assert_eq!(
                 chokes.test(cell),
@@ -27,6 +27,7 @@ fn the_zones_are_symmetric_and_the_voronoi_shares_add_up() {
             );
         }
         assert!(!centre.is_empty());
+        assert!(centre.and_not(middle).is_empty());
         chokes_seen += chokes.count();
         let (a, b) = (voronoi(&state, 0), voronoi(&state, 1));
         assert!((a + b - 1.0).abs() < 1e-9, "{a} {b}");

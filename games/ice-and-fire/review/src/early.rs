@@ -13,7 +13,9 @@
 //! - `chokes`: its share of the map's choke cells, the cells that at least
 //!   [`CHOKE_SHARE`] of the shortest paths between the two HQs go through;
 //! - `voronoi`: its share of the cells nearer its land than the enemy's, over
-//!   the cells nearer one side.
+//!   the cells nearer one side;
+//! - `mid_chokes`: its share of the choke cells of the middle band
+//!   ([`MIDDLE`]), the contested ones.
 //!
 //! The row also names the player, its group (its release for our games), the
 //! opponent and whether the side won the game.
@@ -32,6 +34,11 @@ use crate::replay::replay;
 /// The share of the shortest HQ-to-HQ paths a cell must carry to be a choke
 /// cell (as in the zasmu study: 40%).
 pub const CHOKE_SHARE: f64 = 0.4;
+
+/// The middle band: cells at most this many steps from even between the two
+/// HQs; its choke cells are the contested ones (the others crowd around the
+/// HQs, where every shortest path starts or ends).
+pub const MIDDLE: u8 = 4;
 
 /// Steps from `sources` to each valid cell, `u8::MAX` where none reaches.
 fn steps_from(state: &State, sources: Bits) -> [u8; CELLS] {
@@ -79,20 +86,25 @@ fn paths_from(state: &State, from: usize) -> ([f64; CELLS], [u8; CELLS]) {
     (count, dist)
 }
 
-/// The map's choke cells (see [`CHOKE_SHARE`]) and its centre cells.
-pub fn map_zones(state: &State) -> (Bits, Bits) {
+/// The map's choke cells (see [`CHOKE_SHARE`]), its centre cells and its
+/// middle band ([`MIDDLE`]).
+pub fn map_zones(state: &State) -> (Bits, Bits, Bits) {
     let (a, da) = paths_from(state, HQ[0]);
     let (b, db) = paths_from(state, HQ[1]);
     let total = a[HQ[1]];
     let length = da[HQ[1]];
     let mut chokes = Bits::EMPTY;
     let mut centre = Bits::EMPTY;
+    let mut middle = Bits::EMPTY;
     for cell in state.map().valid.iter() {
         if da[cell] == u8::MAX || db[cell] == u8::MAX {
             continue;
         }
         if da[cell].abs_diff(db[cell]) <= 1 {
             centre.set(cell);
+        }
+        if da[cell].abs_diff(db[cell]) <= MIDDLE {
+            middle.set(cell);
         }
         let on_path = u16::from(da[cell]) + u16::from(db[cell]) == u16::from(length);
         if total > 0.0
@@ -104,7 +116,7 @@ pub fn map_zones(state: &State) -> (Bits, Bits) {
             chokes.set(cell);
         }
     }
-    (chokes, centre)
+    (chokes, centre, middle)
 }
 
 /// The share of the cells nearer `seat`'s land than the enemy's.
@@ -171,7 +183,7 @@ pub fn run(request: &Request, turns: u32) -> Result<String, String> {
     let (entries, _) = read_index(&index, request)?;
     let release_of = releases(&index)?;
     let mut out = String::from(
-        "game_id,kind,seat,player,group,opponent,won,turn,active,centre,to_centre,chokes,voronoi,map_chokes\n",
+        "game_id,kind,seat,player,group,opponent,won,turn,active,centre,to_centre,chokes,voronoi,map_chokes,mid_chokes,map_mid_chokes\n",
     );
     for entry in &entries {
         let Ok((meta, record)) = prepare(&request.data, entry, &request.me) else {
@@ -191,7 +203,8 @@ pub fn run(request: &Request, turns: u32) -> Result<String, String> {
         let Some(first) = game.steps.first() else {
             continue;
         };
-        let (chokes, centre) = map_zones(&first.state);
+        let (chokes, centre, middle) = map_zones(&first.state);
+        let mid = chokes & middle;
         for step in &game.steps {
             let state = &step.state;
             if state.game_turn() > turns {
@@ -207,6 +220,11 @@ pub fn run(request: &Request, turns: u32) -> Result<String, String> {
                 names[seat].clone()
             };
             let (active, held, to_centre, choke, vor) = measures(state, seat, chokes, centre);
+            let mid_share = if mid.is_empty() {
+                0.0
+            } else {
+                f64::from((state.owned(seat) & mid).count()) / f64::from(mid.count())
+            };
             let won = match winner {
                 Some(w) if w == seat => "1",
                 Some(_) => "0",
@@ -214,13 +232,14 @@ pub fn run(request: &Request, turns: u32) -> Result<String, String> {
             };
             let _ = writeln!(
                 out,
-                "{},{},{seat},{},{group},{},{won},{},{active},{held},{to_centre},{choke:.3},{vor:.3},{}",
+                "{},{},{seat},{},{group},{},{won},{},{active},{held},{to_centre},{choke:.3},{vor:.3},{},{mid_share:.3},{}",
                 meta.game_id,
                 meta.kind,
                 names[seat],
                 names[1 - seat],
                 state.game_turn(),
-                chokes.count()
+                chokes.count(),
+                mid.count()
             );
         }
     }
