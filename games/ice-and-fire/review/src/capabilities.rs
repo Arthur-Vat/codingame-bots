@@ -28,9 +28,10 @@
 //!   incomes no longer pays O's chain recomputed on the new state, or the
 //!   answer took O's HQ.
 //! - **wall**: the reference player (zasmu) was P and built a tower on or
-//!   next to one of its frontier cells. Passes if, after the answer, O can
-//!   take no more of P's active cells with the gold of its next turn than
-//!   after the reference's own answer, or the answer took O's HQ.
+//!   next to one of its frontier cells, and P cannot pay its chain now.
+//!   Passes if, after the answer, O can take no more of P's active cells
+//!   with the gold of its next turn than after the reference's own answer,
+//!   or the answer took O's HQ.
 //!
 //! [research/codingame/2026-11-18-zasmu-strategy.md]: ../../research/codingame/2026-11-18-zasmu-strategy.md
 
@@ -466,7 +467,10 @@ fn answer_groups(
             .collect();
         handles
             .into_iter()
-            .flat_map(|h| h.join().unwrap_or_default())
+            .flat_map(|h| {
+                h.join()
+                    .unwrap_or_else(|panic| std::panic::resume_unwind(panic))
+            })
             .collect()
     })
 }

@@ -13,7 +13,7 @@ P is the side to act and O its opponent. A side's **chain** is its cheapest chai
 | `finish` | P can pay its chain now | P took O's HQ |
 | `save-1`, `save-2` | P cannot pay its chain now but can with k turns of income (the fewest that do, k ≤ 2), and O cannot pay its own chain at its next turn | P's gold plus k incomes still pays P's chain, recomputed on the new state (moves that make it cheaper count) |
 | `defend-1`, `defend-2` | O can pay its chain at its k-th next turn (the first that does, k ≤ 2), and P cannot pay its own now | O's gold at its turn plus k − 1 incomes no longer pays O's chain, recomputed on the new state |
-| `wall` | zasmu was P and built a tower on or next to one of its frontier cells | O's gold at its turn reaches no more of P's active cells than after zasmu's own answer |
+| `wall` | zasmu was P and built a tower on or next to one of its frontier cells, and P cannot pay its chain now | O's gold at its turn reaches no more of P's active cells than after zasmu's own answer |
 
 An answer that takes O's HQ passes every test. A position can test several capabilities (a `save` and a `wall`, say); each is a test of its own, with the same answer.
 
@@ -27,7 +27,7 @@ What the properties leave out:
 
 [`suite-v1.tsv`](suite-v1.tsv) has 600 tests: up to 100 per capability, at most 2 per game, drawn at random (seed 20261119) from the 6,550 games of the data branch `claude/codingame-games` at f137bcd that our engine replays as CodinGame did (4 others were left out). Candidates by capability: finish 5,001; save-1 15,132; save-2 32,108; defend-1 10,428; defend-2 27,474; wall 3,012. Each line is a test: capability, CodinGame game id, ply (from 0, in the replayed game), game turn, and the player who answered in the game. The suite is frozen, so scores can be compared across bots. A new suite is a new file (`suite-v2.tsv`), never an edit of this one.
 
-Of the 600 tests, 243 were answered in the game by us (`Tarleya`), 130 by zasmu (100 of them the wall tests), and the rest by 19 other players.
+Of the 600 tests, 243 were answered in the game by us (`Tarleya`), 130 by zasmu (100 of them the wall tests), and the rest by 20 other players.
 
 ## Running it
 
@@ -42,7 +42,7 @@ The report has one row per capability: each bot's pass rate, then the rate of th
 
 ## Results
 
-Suite v1, 2026-11-19, `--tries 600`, the releases compiled from `releases/` with `rustc --edition 2021 -O` (1.90.0). Each test's verdicts are in [`results-v1-2026-11-19.csv`](results-v1-2026-11-19.csv). "Played" is the answers the players sent in the games. In `Played by zasmu`, the save and defend columns rest on 2 to 9 tests, too few to read.
+Suite v1, 2026-11-19, `--tries 600`, the releases compiled from `releases/` with `rustc --edition 2021 -O` (1.90.0). Each test's verdicts are in [`results-v1-2026-11-19.csv`](results-v1-2026-11-19.csv). "Played" is the answers the players sent in the games. In `Played by zasmu`, the save and defend columns rest on 0 to 9 tests, too few to read.
 
 | Capability | Tests | v028 | v027 | v026 | v001 | Played, all | Played by zasmu | Played by Tarleya | Played by others |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
