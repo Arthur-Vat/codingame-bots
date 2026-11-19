@@ -11,7 +11,7 @@ elo: +71.9 [+46.6, +98.0]
 pairs: 240
 full_time: +71.9 [+46.6, +98.0] (the SPRT's own, at CodinGame's limits)
 decision: promoted
-cg_rank: not reported
+cg_rank: Legend, 4th of 90 (4th of 929 overall), 2026-11-19: submitted through the API on the owner's approval (submission 41759272)
 ---
 
 Asked by the owner on 2026-11-19 (forms): the land gap first ("Land:
@@ -110,4 +110,7 @@ three lost. Submitted through the API on the owner's approval (form,
 2026-11-19) at 12:20 UTC: submission 41759272 (file SHA-256
 45280c53fd2dc91069fa70291354903de212bdb9504113781b40360ae9404c07),
 replacing the probe `ice-and-fire-e069-k1` (4th of 88).
+
+Its ranking ended the same day: 4th of 90 in Legend (score 29.89), 4th of
+929 overall, where v028 had ended 5th of 88.
 
