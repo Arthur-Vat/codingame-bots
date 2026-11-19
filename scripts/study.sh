@@ -45,8 +45,9 @@
 #           10000000), --suite PATH (a .tsv of games/ice-and-fire/openings/ at
 #           SHA; default suite-v1.tsv) and --from PATH (a .tsv under
 #           games/ice-and-fire/ at SHA: plans of an earlier run to start from).
-#           Each shard runs on all the runner's processors and also writes
-#           the best plans it found, STUDY-SHARD.plans.tsv.
+#           Each shard runs on all the runner's processors and, when the
+#           solver at SHA can, also writes the best plans it found,
+#           STUDY-SHARD.plans.tsv.
 #
 # Exit status: 0 on success; 1 for a bad input of `plan`, a failed `run` or a
 # missing shard in `collect`; 2 for a usage error.
@@ -141,7 +142,7 @@ oracle_args() {
       if ! [[ $value =~ ^games/ice-and-fire/[A-Za-z0-9][A-Za-z0-9_./-]{0,199}\.tsv$ ]] || [[ $value == *..* ]]; then
         die "oracle: --from must be a .tsv under games/ice-and-fire/"
       fi
-      git cat-file -e "$sha:$value" 2>/dev/null || die "oracle: $value does not exist at ${sha:0:7}"
+      [[ "$(git cat-file -t "$sha:$value" 2>/dev/null)" == blob ]] || die "oracle: $value does not exist at ${sha:0:7}"
       ;;
     --suite)
       if ! [[ $value =~ ^games/ice-and-fire/openings/[A-Za-z0-9][A-Za-z0-9_.-]{0,59}\.tsv$ ]] || [[ $value == *..* ]]; then
@@ -156,7 +157,7 @@ oracle_args() {
     esac
     kept+=("$flag" "$value")
   done
-  git cat-file -e "$sha:$suite" 2>/dev/null || die "oracle: $suite does not exist at ${sha:0:7}"
+  [[ "$(git cat-file -t "$sha:$suite" 2>/dev/null)" == blob ]] || die "oracle: $suite does not exist at ${sha:0:7}"
   git cat-file -e "$sha:games/ice-and-fire/opening/examples/oracle.rs" 2>/dev/null ||
     die "oracle: games/ice-and-fire/opening/examples/oracle.rs does not exist at ${sha:0:7}"
   CHECKED=(--suite "$suite" "${kept[@]}")
@@ -218,8 +219,13 @@ run() {
     done
     # Stopped before the job's limit, so that the rows written so far
     # (the oracle writes each start's rows as it finishes) are still kept.
+    # The best plans too, when the solver at SHA writes them (since E072's
+    # follow-up; an older one stops on an option it does not know).
+    if git grep -q -e '"--plans"' "$sha" -- games/ice-and-fire/opening/examples/oracle.rs; then
+      argv+=(--plans "$base.plans.tsv")
+    fi
     if ! timeout "$STUDY_MINUTES"m "$target_dir/release/examples/oracle" "${argv[@]}" --jobs "$(nproc)" \
-      --shard "$shard/$shards" --csv "$base.csv" --plans "$base.plans.tsv" >"$base.md" 2>"$base.log"; then
+      --shard "$shard/$shards" --csv "$base.csv" >"$base.md" 2>"$base.log"; then
       tail -n 20 "$base.log" >&2
       die "the oracle failed or ran out of time on shard $shard; its rows so far are kept"
     fi

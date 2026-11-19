@@ -33,6 +33,8 @@ cp "$repo_root/scripts/study.sh" "$repo/scripts/"
 touch "$repo/games/ice-and-fire/openings/suite-v1.tsv" "$repo/games/ice-and-fire/openings/suite-v2.tsv"
 mkdir -p "$repo/games/ice-and-fire/research/plans"
 touch "$repo/games/ice-and-fire/research/plans/run-1.tsv"
+mkdir -p "$repo/games/ice-and-fire/research/folder.tsv"
+touch "$repo/games/ice-and-fire/research/folder.tsv/x"
 git_in() { git -C "$repo" -c user.name=t -c user.email=t@example.com "$@"; }
 git_in init -q
 git_in add -A
@@ -119,7 +121,8 @@ bad "suite with .." "--suite must be" "--suite games/ice-and-fire/openings/..x.t
 bad "missing suite" "does not exist" "--suite games/ice-and-fire/openings/suite-v9.tsv"
 bad "limit 0" "--limit must be" "--limit 0"
 bad "plans outside the game" "--from must be" "--from games/uttt/x.tsv"
-bad "plans with .." "--from must be" "--from games/ice-and-fire/../x.tsv"
+bad "plans with .." "--from must be" "--from games/ice-and-fire/a/../x.tsv"
+bad "plans that are a folder" "does not exist" "--from games/ice-and-fire/research/folder.tsv"
 bad "missing plans" "does not exist" "--from games/ice-and-fire/research/plans/run-2.tsv"
 bad "a line break in the arguments" "args may hold only" $'--player a\n::error::x'
 
@@ -183,6 +186,15 @@ printf 'other\tplan\n4\tWAIT\n' >"$results/oracle-1.plans.tsv"
 collect "$results" "$tmp_dir/out6"
 expect "collect, other plan columns: status" "$status" 1
 contains "collect, other plan columns" "$output" "shard 1's plan columns differ"
+# Shards that wrote no plans: no plans file, no line in the README.
+mkdir -p "$tmp_dir/noplans"
+printf 'seed,seat\n1,0\n' >"$tmp_dir/noplans/oracle-0.csv"
+touch "$tmp_dir/noplans/oracle-0.done"
+collect "$tmp_dir/noplans" "$tmp_dir/out7" SHARDS=1
+expect "collect, no plans: status" "$status" 0
+expect "collect, no plans: no file" "$([[ -e $tmp_dir/out7/oracle.plans.tsv ]] && echo yes || echo no)" no
+checks=$((checks + 1))
+if grep -q 'Plans:' "$tmp_dir/out7/README.md"; then fail "collect, no plans: a Plans line in the README"; fi
 
 echo "study-test: $checks checks, $failures failures"
 ((failures == 0))
