@@ -57,7 +57,7 @@ By the map: on maps with 4 or more middle chokes zasmu takes its first one about
 
 ## Where the land comes from, and zasmu's Voronoi lead
 
-Cumulative cells by the end of game turn 10 and 12, all maps: zasmu in its CodinGame games against our releases (53 red, 572 blue), v029 from zasmu's starts in the suite against the same releases (44 red, 210 starts blue). "From the enemy" is the enemy's cells and the retaken ones together; retaken cells are few (0.03 to 0.09 a turn for every group).
+Cumulative cells by the end of game turn 10 and 12, all maps: zasmu in its CodinGame games against our releases (53 red, 572 blue), v029 from zasmu's starts in the suite against the same releases (44 red, 210 blue starts). "From the enemy" is the enemy's cells and the retaken ones together; retaken cells are few (0.03 to 0.09 a turn for every group, last table).
 
 | | Seat | By turn 10: neutral / from the enemy / lost | By turn 12: neutral / from the enemy / lost |
 | --- | --- | --- | --- |
@@ -82,9 +82,24 @@ Turn by turn, mean cells (neutral / from the enemy / lost):
 | zasmu | blue | 5.1 / 0.0 / 0.0 | 4.8 / 0.5 / 0.2 | 4.1 / 0.9 / 0.3 | 3.8 / 1.3 / 0.5 | 3.4 / 1.1 / 0.7 | 2.7 / 1.3 / 1.1 |
 | v029, zasmu's starts | blue | 5.0 / 0.0 / 0.0 | 4.5 / 0.1 / 0.3 | 3.7 / 0.4 / 0.3 | 3.4 / 0.7 / 0.4 | 3.1 / 1.1 / 0.6 | 2.9 / 1.4 / 0.7 |
 
+Every group in its own CodinGame games and v029 from zasmu's starts, means a turn over turns 1 to 12, and by turn 12 (`codingame-middle`, `early-openings`):
+
+| Group | Seat | Games | Gained a turn: neutral / enemy's / retaken | Lost a turn | By turn 12: neutral / from the enemy / lost | Turn 12: neutral / from the enemy |
+| --- | --- | ---: | --- | ---: | --- | --- |
+| zasmu | red | 53 | 3.35 / 0.32 / 0.07 | 0.35 | 40.2 / 4.7 / 4.2 | 2.7 / 1.4 |
+| zasmu | blue | 572 | 3.47 / 0.35 / 0.08 | 0.24 | 41.6 / 5.1 / 2.8 | 2.7 / 1.3 |
+| ranked 2 to 7, pooled | red | 317 | 3.16 / 0.32 / 0.09 | 0.43 | 38.0 / 4.9 / 5.1 | 2.4 / 1.7 |
+| ranked 2 to 7, pooled | blue | 2,845 | 3.37 / 0.37 / 0.09 | 0.33 | 40.4 / 5.5 / 4.0 | 2.4 / 1.8 |
+| v026 | red | 1,628 | 2.86 / 0.29 / 0.05 | 0.40 | 34.3 / 4.1 / 4.8 | 2.0 / 1.5 |
+| v026 | blue | 89 | 2.92 / 0.37 / 0.14 | 0.44 | 35.0 / 6.1 / 5.3 | 1.6 / 1.3 |
+| v029 | red | 217 | 2.96 / 0.27 / 0.03 | 0.32 | 35.5 / 3.7 / 3.9 | 2.3 / 1.5 |
+| v029 | blue | 81 | 3.06 / 0.36 / 0.06 | 0.31 | 36.7 / 5.1 / 3.7 | 1.9 / 1.6 |
+| v029, zasmu's starts | red | 44 | 3.01 / 0.17 / 0.03 | 0.26 | 36.1 / 2.5 / 3.1 | 2.5 / 0.9 |
+| v029, zasmu's starts | blue | 210 | 3.33 / 0.26 / 0.05 | 0.19 | 40.0 / 3.7 / 2.3 | 2.9 / 1.4 |
+
 For every group (zasmu, the players ranked 2 to 7 pooled, v026, v029, in their CodinGame games, and v029 from the suite), the mean gains from the enemy never exceed the mean neutral gains by turn 12: neutral land is still most of what every side takes, though the two lines close at turns 11 and 12 (zasmu 2.7 against 1.3 to 1.4 a turn; the players ranked 2 to 7 2.4 against 1.7 to 1.8). Taking cells from the enemy starts at turn 8 for everyone. The trainings on cells that are not neutral are nearly all on the enemy's (2.1 to 3.1 a game by turn 12, on maps with middle chokes); zasmu and the other top players train on their own cells 0.07 to 0.10 times a game, our releases never (E045).
 
-**So zasmu's Voronoi lead over v029 by turns 10 to 12 (0.52 / 0.57 against 0.44 / 0.53 at turn 10, 0.53 / 0.59 against 0.45 / 0.55 at turn 12, red / blue) comes mostly from neutral land as red and from both about evenly as blue.** As red, three quarters of its extra cells by turn 10 are neutral (3.1 of 4.0), still four fifths by turn 12; it reaches more neutral land at turns 7 to 10 (5.4, 4.8, 4.3, 3.9 a turn against 4.4, 4.7, 3.5, 2.8). As blue, half of its extra cells by turn 10 are ours (1.6 of 3.1): it starts taking our cells a turn earlier (0.5 at turn 8, 0.9 at turn 9, against 0.1 and 0.4). Its losses are not lower than v029's; it trades more, not less. The Voronoi share counts the cells nearer a side's land than the enemy's, so a cell taken from us both adds to zasmu's land and removes one from ours; cell for cell, those blue captures move the share more than neutral gains do.
+**So zasmu's Voronoi lead over v029 by turns 10 to 12 (0.52 / 0.57 against 0.44 / 0.53 at turn 10, 0.53 / 0.59 against 0.45 / 0.55 at turn 12, red / blue) comes mostly from neutral land as red and from both about evenly as blue.** As red, about three quarters of its extra gains by turn 10 are neutral (3.1 of 4.2), about two thirds by turn 12 (4.1 of 6.3); it reaches more neutral land at turns 7 to 10 (5.4, 4.8, 4.3, 3.9 a turn against 4.4, 4.7, 3.5, 2.8). As blue, half of its extra gains by turn 10 are our cells (1.6 of 3.1): it takes more of them from turn 8 on (0.5 at turn 8 and 0.9 at turn 9, against 0.1 and 0.4), about a turn ahead. Its losses are not lower than v029's; it trades more, not less. The Voronoi share counts the cells nearer a side's land than the enemy's, so a cell taken from us both adds to zasmu's land and removes one from ours; cell for cell, those blue captures move the share more than neutral gains do.
 
 For the planner: requirement 1 (the race to the middle, from more neutral land at turns 7 to 10) is red's gap; as blue, it must also take our cells from turn 8 (requirement 7 below).
 

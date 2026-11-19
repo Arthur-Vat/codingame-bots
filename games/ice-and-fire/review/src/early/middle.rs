@@ -381,8 +381,9 @@ fn pct(part: u32, all: u32) -> String {
     }
 }
 
-/// The report of `codingame-middle`, as Markdown: the players of `players`
-/// one by one, and our releases of `releases` (as the index names them).
+/// The report of `codingame-middle`, as Markdown: the groups of `players`
+/// (a player's name, or `LABEL=P1+P2+...`; see [`parse_group`]) and our
+/// releases of `releases` (as the index names them).
 pub fn run(
     request: &Request,
     players: &[String],
