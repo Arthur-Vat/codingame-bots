@@ -205,6 +205,7 @@ pub fn run_records(paths: &[PathBuf], jobs: usize, turns: u32) -> Result<String,
 }
 
 pub mod fit;
+pub mod suite;
 
 #[cfg(test)]
 mod tests;

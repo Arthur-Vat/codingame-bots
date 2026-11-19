@@ -336,6 +336,53 @@ enum Command {
         #[arg(required = true)]
         records: Vec<PathBuf>,
     },
+    /// Prints an opening suite as TSV: every CodinGame game of the given
+    /// players against one of our releases that reached game turn 12, with
+    /// the player's seat, the map's seed, the release it met, and its early
+    /// measures (active cells, Voronoi share, middle chokes, units, gold) at
+    /// the start of its plies of game turns 5 to 10 and 12, and its
+    /// zasmu-likeness at 12.
+    EarlySuite {
+        /// The game's data directory, for example `data/ice-and-fire`.
+        #[arg(long)]
+        data: PathBuf,
+        /// Our nickname on CodinGame, for games whose index has no seat.
+        #[arg(long)]
+        me: String,
+        /// The kinds of games to use, separated by commas.
+        #[arg(long, value_delimiter = ',', default_values_t = ["ranking".to_string(), "test".to_string()])]
+        kinds: Vec<String>,
+        /// The players whose games make the suite, separated by commas.
+        #[arg(long, value_delimiter = ',', required = true)]
+        players: Vec<String>,
+        /// A comment written at the top of the suite (`#` lines).
+        #[arg(long, default_value = "")]
+        comment: String,
+    },
+    /// Plays a bot from each start of an opening suite (the map, the
+    /// player's seat and the release it met, given as a binary) up to its
+    /// ply of game turn 12, and prints, as Markdown, the players' early
+    /// measures beside the bot's, by player and seat.
+    EarlyOpenings {
+        /// The suite, as `early-suite` wrote it.
+        #[arg(long)]
+        suite: PathBuf,
+        /// The bot, as NAME=COMMAND.
+        #[arg(long)]
+        bot: String,
+        /// A release the players met, as RELEASE=COMMAND with the release's
+        /// name as the suite writes it (`ice-and-fire-v026`); starts whose
+        /// release has none are left out.
+        #[arg(long = "opponent", required = true)]
+        opponents: Vec<String>,
+        /// Multiply the game's time limits, as the arena's option (from
+        /// `scripts/calibrate.sh`).
+        #[arg(long, default_value_t = 1.0)]
+        time_scale: f64,
+        /// Starts played at the same time.
+        #[arg(long, default_value_t = 4)]
+        jobs: usize,
+    },
     /// Prints, as CSV, the early game's territory measures of each side of
     /// the CodinGame games (active cells, centre cells, steps to the centre,
     /// share of the choke cells, Voronoi share, units, gold, income, buildings), a row a side and game turn.
@@ -867,6 +914,45 @@ fn run(cli: Cli) -> Result<(), String> {
         }
         Command::EarlyCheck { jobs, records } => {
             print!("{}", early::fit::check(&sorted(records), jobs)?);
+            Ok(())
+        }
+        Command::EarlySuite {
+            data,
+            me,
+            kinds,
+            players,
+            comment,
+        } => {
+            let text = early::suite::suite(
+                &profiles::Request {
+                    kinds,
+                    ..every_game(data, me, 1)
+                },
+                &players,
+                &comment,
+            )?;
+            print!("{text}");
+            Ok(())
+        }
+        Command::EarlyOpenings {
+            suite,
+            bot,
+            opponents,
+            time_scale,
+            jobs,
+        } => {
+            let suite_text =
+                std::fs::read_to_string(&suite).map_err(|e| format!("{}: {e}", suite.display()))?;
+            print!(
+                "{}",
+                early::suite::openings(&early::suite::OpeningsRequest {
+                    suite_text,
+                    bot,
+                    opponents,
+                    time_scale,
+                    jobs,
+                })?
+            );
             Ok(())
         }
         Command::CodingameEarly {
