@@ -53,6 +53,8 @@ The owner chose (forms, 2026-11-19): the early score and duels cut at turn 12 as
 
 ### Phase 0: an early-game judge
 
+**Status (2026-11-19):** steps 1 to 3 done, with the early score as a *zasmu-likeness* score at the owner's choice ([2026-11-19-zasmu-likeness.md](2026-11-19-zasmu-likeness.md)): it predicts the winner on CodinGame (AUC 0.81 in the games without zasmu, active cells alone 0.85) and in self-play full games (0.89, active cells 0.87), and duels cut at turn 12 (`ice-and-fire-arena-early`) rank five pairings of releases as full games do, in about a tenth of the time. Step 4, the opening suites, follows.
+
 1. **An early score:** a win probability fitted on the CodinGame positions of game turns 10 to 12 (both sides' active cells, Voronoi share, middle chokes, units and their levels, gold and income), calibrated, and checked on held-out games.
 2. **Duels cut at game turn 12:** an arena mode that ends a game at turn 12 and scores it with the early score; screenings and an SPRT-like test on it, many times faster than full games.
 3. **Validation before use:** in self-play between our releases, the early score's difference at turn 12 must predict the full game's winner (its AUC reported against the full-game result); if it does not, the judge is not used and the plan stops here for the owner's decision.

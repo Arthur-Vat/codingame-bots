@@ -14,6 +14,7 @@ cg-arena.workspace = true
 cg-core.workspace = true
 cg-review.workspace = true
 clap.workspace = true
+ice-and-fire-early.workspace = true
 ice-and-fire-engine.workspace = true
 ice-and-fire-opening.workspace = true
 ice-and-fire-referee.workspace = true

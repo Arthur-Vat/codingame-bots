@@ -1,0 +1,21 @@
+[package]
+name = "ice-and-fire-early"
+description = "The early game of A Code of Ice and Fire in measures: the map's zones (choke cells, centre, middle band), a side's territory, units and gold, and the zasmu-likeness score fitted on CodinGame games. Standard library only."
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+# Only workspace crates: the bundler can copy this crate into bots.
+[dependencies]
+ice-and-fire-engine.workspace = true
+
+# Used by the tests only; never part of a bot.
+[dev-dependencies]
+ice-and-fire-referee.workspace = true
+
+[lints]
+workspace = true

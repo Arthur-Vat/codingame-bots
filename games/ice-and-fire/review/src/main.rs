@@ -286,6 +286,57 @@ enum Command {
     /// Prints, as CSV, the early game's territory measures of each side of
     /// the CodinGame games (active cells, centre cells, steps to the centre,
     /// share of the choke cells, Voronoi share), a row a side and game turn.
+    /// Prints, as CSV, the same early-game measures as `codingame-early`
+    /// for arena records, a row a side and game turn, each side's group
+    /// its bot's name.
+    Early {
+        /// The last game turn written.
+        #[arg(long, default_value_t = 15)]
+        turns: u32,
+        /// Records replayed at the same time.
+        #[arg(long, default_value_t = 4)]
+        jobs: usize,
+        /// Game records written by the arena (`--records`).
+        #[arg(required = true)]
+        records: Vec<PathBuf>,
+    },
+    /// Fits the zasmu-likeness score (the early-game judge) on the CodinGame
+    /// games: for each seat, a logistic regression that tells the reference
+    /// player's sides from the other players' at the start of their ply of
+    /// the game turn; prints the report (cross-validated AUC, whether the
+    /// score predicts the winner) and writes the models' Rust source.
+    EarlyFit {
+        /// The game's data directory, for example `data/ice-and-fire`.
+        #[arg(long)]
+        data: PathBuf,
+        /// Our nickname on CodinGame, for games whose index has no seat.
+        #[arg(long)]
+        me: String,
+        /// The kinds of games to use, separated by commas.
+        #[arg(long, value_delimiter = ',', default_values_t = ["ranking".to_string(), "test".to_string()])]
+        kinds: Vec<String>,
+        /// The player whose positions the score looks for.
+        #[arg(long, default_value = "zasmu")]
+        reference: String,
+        /// The game turn of the positions.
+        #[arg(long, default_value_t = 12)]
+        turn: u32,
+        /// Where to write the models, for example
+        /// `games/ice-and-fire/early/src/score/weights.rs`.
+        #[arg(long)]
+        weights: Option<PathBuf>,
+    },
+    /// Prints whether the zasmu-likeness difference at its game turn
+    /// predicts the full game's winner in arena records (AUC), beside the
+    /// difference of active cells, by pairing and for all.
+    EarlyCheck {
+        /// Records replayed at the same time.
+        #[arg(long, default_value_t = 4)]
+        jobs: usize,
+        /// Game records written by the arena (`--records`).
+        #[arg(required = true)]
+        records: Vec<PathBuf>,
+    },
     CodingameEarly {
         /// The game's data directory, for example `data/ice-and-fire`.
         #[arg(long)]
@@ -779,6 +830,41 @@ fn run(cli: Cli) -> Result<(), String> {
                 jobs,
             })?;
             print!("{text}");
+            Ok(())
+        }
+        Command::Early {
+            turns,
+            jobs,
+            records,
+        } => {
+            print!("{}", early::run_records(&sorted(records), jobs, turns)?);
+            Ok(())
+        }
+        Command::EarlyFit {
+            data,
+            me,
+            kinds,
+            reference,
+            turn,
+            weights,
+        } => {
+            let (models, report) = early::fit::run(
+                &profiles::Request {
+                    kinds,
+                    ..every_game(data, me, 1)
+                },
+                &reference,
+                turn,
+            )?;
+            if let Some(path) = weights {
+                std::fs::write(&path, early::fit::weights_source(&models, turn, &reference))
+                    .map_err(|e| format!("{}: {e}", path.display()))?;
+            }
+            print!("{report}");
+            Ok(())
+        }
+        Command::EarlyCheck { jobs, records } => {
+            print!("{}", early::fit::check(&sorted(records), jobs)?);
             Ok(())
         }
         Command::CodingameEarly {

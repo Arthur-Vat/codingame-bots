@@ -10,6 +10,7 @@ members = [
     "games/*/policy",
     "games/*/tactics",
     "games/*/opening",
+    "games/*/early",
     "games/*/review",
     "games/*/ladder",
     "games/*/trainer",
@@ -43,6 +44,7 @@ cg-pack = { path = "crates/cg-pack" }
 cg-packer = { path = "crates/cg-packer" }
 cg-review = { path = "crates/cg-review" }
 cg-search = { path = "crates/cg-search" }
+ice-and-fire-early = { path = "games/ice-and-fire/early" }
 ice-and-fire-engine = { path = "games/ice-and-fire/engine" }
 ice-and-fire-ladder = { path = "games/ice-and-fire/ladder" }
 ice-and-fire-opening = { path = "games/ice-and-fire/opening" }
