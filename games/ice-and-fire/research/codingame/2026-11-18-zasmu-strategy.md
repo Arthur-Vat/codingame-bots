@@ -149,8 +149,8 @@ Mines as a goal behind the held front: which spots, when, given the strike's res
 
 The opening picks a target position at turn 10 (land, centre and chokepoints, units placed to start the wall), chosen for the middle game that the strategic layer plays from it. It is no longer a rule set judged on its own. The study's opening measures are the check: the Voronoi share, the centre cells, and trainings at the most advanced cell.
 
-
 *Replaced on 2026-11-19 by the rework of the early game (the owner's choices, forms): a two-sided early planner judged by duels cut at game turn 12, then a learned early value: [2026-11-19-early-game.md](2026-11-19-early-game.md). The same note finds zasmu's early trait in the race for the middle chokes, which the "Rushes to the chokepoints" verdict above missed because it counted the chokes around the HQs too.*
+
 ### Stage G: choosing goals per opponent
 
 Recognise the opponent's style from its first turns and its gold (a saver, a wall, an attacker) and weigh the goals accordingly. Measured by the win rate against each of the top 5 in the ranking games of the submitted release.
