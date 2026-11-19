@@ -43,3 +43,47 @@ tests on zasmu's positions and by the SPRT against v028.
 cost with every unit stepping first, `cost_to_moving`), on the state the
 plan ends in, before the opponent's replies. A threat on our HQ lifts the
 reserve, as in the banker.
+
+## Capability tests
+
+Suite v2 (zasmu's own positions), `--tries 600`, the bot built from this
+branch with `STRIKE_TURNS` 1 (k1) and 2 (k2), v028 compiled from its
+release file:
+
+| Capability | k1 | k2 | v028 | zasmu |
+| --- | ---: | ---: | ---: | ---: |
+| finish | 100% | 100% | 100% | 100% |
+| save-1 | 100% | 53% | 51% | 71% |
+| save-2 | 69% | 100% | 69% | 43% |
+| defend-1 | 78% | 78% | 78% | 81% |
+| defend-2 | 93% | 94% | 96% | 62% |
+| wall | 49% | 47% | 51% | reference |
+
+Each variant does what its rule enforces, and defence and the wall stay
+within noise of v028's.
+
+## Screening
+
+`screen.yml` run 44510100851, 800 pairs per variant against
+`ice-and-fire-v028`, 2 shards each, at CodinGame's speed and real limit:
+
+| Variant | Ref | Pairs | Elo over v028 [95%] | Score | Faults |
+| --- | --- | ---: | --- | ---: | --- |
+| k1 | `9a44a5c` | 800 | −6.5 [−16.8, +3.7] | 49.1% | none |
+| k2 | `d07e561` (branch `claude/ice-and-fire-e069-k2`) | 800 | −65.0 [−78.4, −51.8] | 40.8% | none |
+
+k2 is clearly weaker: two turns of saving hand v028 two turns of
+spending. k1 is level in self-play, where v028 defends against a strike
+two turns away in 96% of the tests (zasmu 62%), so self-play may hide what
+it is worth against the top players.
+
+## Probe on CodinGame
+
+The owner chose to judge k1 on CodinGame (form, 2026-11-19) and approved
+the probe, under [ADR 0060](../../../docs/adr/0060-probe-submissions.md):
+[`probes/ice-and-fire-e069-k1.rs`](../probes/ice-and-fire-e069-k1.rs),
+the minified bundle of `ice-and-fire-bot-plan` at commit 69ba44f
+(`STRIKE_TURNS` 1; SHA-256
+22cdaf5c730d2e81ff16390b0885aacca767719a159b7d97fb308617c1dff80e), 44,070
+characters; 20 pairs against v028 in the arena, no fault.
+
