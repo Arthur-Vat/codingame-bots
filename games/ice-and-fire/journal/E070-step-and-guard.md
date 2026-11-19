@@ -102,3 +102,12 @@ SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 4.19 (bounds -2.94, 2.94) after 24
 Verdict: ACCEPTED: ice-and-fire-v029 is stronger than ice-and-fire-v028
 ```
 
+## On CodinGame
+
+Three test games against the top 3 (zasmu, karliso, Pduhard-) on
+2026-11-19: no fault, every answer after the first in 43.4 ms or less, all
+three lost. Submitted through the API on the owner's approval (form,
+2026-11-19) at 12:20 UTC: submission 41759272 (file SHA-256
+45280c53fd2dc91069fa70291354903de212bdb9504113781b40360ae9404c07),
+replacing the probe `ice-and-fire-e069-k1` (4th of 88).
+
