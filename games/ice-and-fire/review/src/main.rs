@@ -15,8 +15,8 @@
 //! ice-and-fire-review codingame-units --data DIR --me NAME [--kinds ranking,test] [--batch B] [--release NAME] [--our-seat 0|1] [--top N] [--leaderboard FILE] > units.csv
 //! ice-and-fire-review codingame-surprise --data DIR --me NAME --judge BIN [--release NAME] [--top N] [--tries N] [--limit PLIES] [--jobs N] [--leaderboard FILE] [--pass] --out DIR
 //! ice-and-fire-review codingame-style --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--players A,B] [--top N] [--leaderboard FILE] [--jobs N] > style.md
-//! ice-and-fire-review codingame-capability-suite --data DIR --me NAME [--reference PLAYER] [--per N] [--per-game N] [--seed S] [--mover PLAYER] [--jobs N] > suite.tsv
-//! ice-and-fire-review codingame-capabilities --data DIR --me NAME --suite FILE --bot NAME=COMMAND... [--tries N] [--reference PLAYER] [--csv FILE] [--jobs N] > capabilities.md
+//! ice-and-fire-review codingame-capability-suite --data DIR --me NAME [--reference PLAYER] [--per N] [--per-game N] [--seed S] [--mover PLAYER] [--kinds ranking,test] [--release NAME] [--jobs N] > suite.tsv
+//! ice-and-fire-review codingame-capabilities --data DIR --me NAME --suite FILE [--bot NAME=COMMAND...] [--tries N] [--reference PLAYER] [--csv FILE] [--jobs N] > capabilities.md
 //! ice-and-fire-review codingame-judge --data DIR --me NAME --judge BIN [--release NAME] [--players A,B | --top N] [--tries N] [--limit PLIES] [--jobs N] --out DIR
 //! ```
 
@@ -308,6 +308,12 @@ enum Command {
         /// Only the positions this player answered in the games.
         #[arg(long)]
         mover: Option<String>,
+        /// The kinds of games to draw from, separated by commas.
+        #[arg(long, value_delimiter = ',', default_values_t = ["ranking".to_string(), "test".to_string(), "replay".to_string()])]
+        kinds: Vec<String>,
+        /// Only our games played by this release (see `codingame-report`).
+        #[arg(long)]
+        release: Option<String>,
         /// Games replayed at the same time.
         #[arg(long, default_value_t = 4)]
         jobs: usize,
@@ -315,7 +321,7 @@ enum Command {
     /// Prints, for each bot, the share of a suite's capability tests it
     /// passes, beside the answers the players sent in the games. Each bot
     /// takes the mover's seat and is fed the game's inputs from its first
-    /// turn up to the test.
+    /// turn up to the test. With no bot, only the players' answers.
     CodingameCapabilities {
         /// The game's data directory, for example `data/ice-and-fire`.
         #[arg(long)]
@@ -326,8 +332,9 @@ enum Command {
         /// The suite, as `codingame-capability-suite` wrote it.
         #[arg(long)]
         suite: PathBuf,
-        /// A bot to test, `NAME=COMMAND`; may be repeated.
-        #[arg(long = "bot", required = true)]
+        /// A bot to test, `NAME=COMMAND`; may be repeated; none for the
+        /// players' answers alone.
+        #[arg(long = "bot")]
         bots: Vec<String>,
         /// The bots' `CG_FIXED_ITERS` (0: their own clock).
         #[arg(long, default_value_t = 600)]
@@ -763,10 +770,16 @@ fn run(cli: Cli) -> Result<(), String> {
             per_game,
             seed,
             mover,
+            kinds,
+            release,
             jobs,
         } => {
             let (text, summary) = capabilities::run_suite(&capabilities::SuiteRequest {
-                base: every_game(data, me, jobs),
+                base: profiles::Request {
+                    kinds,
+                    release,
+                    ..every_game(data, me, jobs)
+                },
                 reference,
                 per,
                 per_game,
