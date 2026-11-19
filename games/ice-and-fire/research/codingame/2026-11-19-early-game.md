@@ -62,6 +62,8 @@ The owner chose (forms, 2026-11-19): the early score and duels cut at turn 12 as
 
 ### Phase 1: how zasmu takes the middle
 
+**Status (2026-11-19):** done ([2026-11-19-middle-chokes.md](2026-11-19-middle-chokes.md), command `codingame-middle`): zasmu does not walk better than v029 (both reach chokes with no detour, from about 2 steps); it is earlier (a middle choke by turn 7 in 93-94% of games, v029 68% / 85% from the same starts), trains onto the chokes twice as often, takes 4.1-4.5 a game by turn 12 (v029 2.4-3.5) and spends its gold on it by turn 12. Six planner requirements, each with a measure.
+
 Which units reach the middle chokes, from which turn, along which paths; how its trainings follow (the cell nearest the enemy, the gold it keeps); how the map's middle (few or many chokes) and the seat change it. The result is a list of what the planner must be able to do, each with a measure.
 
 ### Phase 2: a two-sided early planner

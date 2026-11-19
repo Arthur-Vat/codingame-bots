@@ -23,7 +23,9 @@ use ice_and_fire_engine::{League, State};
 use ice_and_fire_referee::map::generate;
 
 use crate::profiles::{prepare, read_index, Request};
-use crate::replay::{replay, Game};
+use crate::replay::{replay, Game, Step};
+
+use super::middle::SideStats;
 
 /// The game turns measured; the last is the zasmu-likeness score's.
 pub const TURNS: [u32; 7] = [5, 6, 7, 8, 9, 10, 12];
@@ -210,16 +212,21 @@ pub fn read_suite(text: &str) -> Result<Vec<Line>, String> {
 /// A start of the suite: map seed, the player's seat, the release met.
 type Start = (u64, usize, String);
 
+/// What the bot did from one start: its values, and how it took the middle
+/// (`None` on a map without middle chokes).
+type Played = (Values, Option<SideStats>);
+
 /// Plays `bot` in `seat` against `opponent` on the map of `seed`, up to
-/// the start of the bot's ply of the last turn of [`TURNS`]; the bot's
-/// values, or why there are none.
+/// the end of the bot's ply of the last turn of [`TURNS`]; the bot's
+/// values (at the start of its plies) and how it took the middle, or why
+/// there are none.
 fn play(
     bot: &BotSpec,
     opponent: &BotSpec,
     settings: &BotSettings,
     seed: u64,
     seat: usize,
-) -> Result<Values, String> {
+) -> Result<Played, String> {
     let map = generate(seed, ice_and_fire_referee::League::Bronze);
     let mut state = State::new(&map.void, &map.mine_spots, League::Bronze);
     let zones = Zones::of(&state);
@@ -228,14 +235,13 @@ fn play(
     players[1 - seat] =
         Some(LiveBot::spawn(opponent, settings).map_err(|e| format!("opponent: {e}"))?);
     let last = TURNS[TURNS.len() - 1];
-    let mut states = Vec::new();
+    let mut steps: Vec<Step> = Vec::new();
     while state.outcome().is_none() {
         let to_act = state.to_act();
-        if to_act == seat {
-            states.push(state.clone());
-            if state.game_turn() == last {
-                break;
-            }
+        // Stop once the bot has played its ply of the last turn: red's
+        // comes before blue's in a turn.
+        if state.game_turn() > last || (state.game_turn() == last && to_act > seat) {
+            break;
         }
         let Some(player) = players[to_act].as_mut() else {
             return Err("no player".to_string());
@@ -255,10 +261,18 @@ fn play(
             .split(';')
             .filter_map(|part| crate::trace::parse(part.trim()))
             .collect();
+        steps.push(Step {
+            state: state.clone(),
+            commands: commands.clone(),
+            ms: None,
+        });
         state.play_turn(&commands);
     }
-    let refs: Vec<&State> = states.iter().collect();
-    side_values(&refs, seat, &zones).ok_or_else(|| "the game ended before turn 12".to_string())
+    let refs: Vec<&State> = steps.iter().map(|s| &s.state).collect();
+    let values = side_values(&refs, seat, &zones)
+        .ok_or_else(|| "the game ended before turn 12".to_string())?;
+    let middle = super::middle::sides(&steps, &state, last).map(|stats| stats[seat].clone());
+    Ok((values, middle))
 }
 
 /// What `early-openings` needs.
@@ -312,7 +326,7 @@ pub fn openings(request: &OpeningsRequest) -> Result<String, String> {
     };
     let jobs = request.jobs.clamp(1, 64);
     let size = starts.len().div_ceil(jobs).max(1);
-    let played: Vec<(Start, Result<Values, String>)> = std::thread::scope(|scope| {
+    let played: Vec<(Start, Result<Played, String>)> = std::thread::scope(|scope| {
         let handles: Vec<_> = starts
             .chunks(size)
             .map(|chunk| {
@@ -338,16 +352,23 @@ pub fn openings(request: &OpeningsRequest) -> Result<String, String> {
     // Group the starts by player and seat; a start whose games were played
     // by several players counts for each.
     let mut groups: BTreeMap<(String, usize), Vec<(Values, Values)>> = BTreeMap::new();
+    let mut middles: BTreeMap<(String, usize), Vec<SideStats>> = BTreeMap::new();
     let mut failed = Vec::new();
     for (start, result) in &played {
         let games = &by_start[start];
         match result {
-            Ok(values) => {
+            Ok((values, middle)) => {
                 let mut by_player: BTreeMap<&str, Vec<&Values>> = BTreeMap::new();
                 for g in games {
                     by_player.entry(&g.player).or_default().push(&g.values);
                 }
                 for (player, rows) in by_player {
+                    if let Some(m) = middle {
+                        middles
+                            .entry((player.to_string(), start.1))
+                            .or_default()
+                            .push(m.clone());
+                    }
                     groups
                         .entry((player.to_string(), start.1))
                         .or_default()
@@ -416,6 +437,40 @@ pub fn openings(request: &OpeningsRequest) -> Result<String, String> {
             a[zl],
             b[zl],
             100.0 * level as f64 / rows.len().max(1) as f64
+        );
+    }
+    let _ = writeln!(
+        out,
+        "\n## The bot taking the middle chokes, from these starts\n\nThe bot's own games, on the starts whose map has middle chokes, up to the end of its ply of turn {}; the players' own figures are those of `codingame-middle`.\n\n| Player's starts | Seat | Starts | First middle choke (mean turn) | Held one by turn 7 | Held at turn {} | Taken by a move / a training | Trainings at gap 0 | Moves toward the middle |\n| --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: |",
+        TURNS[TURNS.len() - 1],
+        TURNS[TURNS.len() - 1]
+    );
+    for ((player, seat), rows) in &middles {
+        let n = rows.len().max(1) as f64;
+        let firsts: Vec<f64> = rows
+            .iter()
+            .filter_map(|r| r.first_mid.map(f64::from))
+            .collect();
+        let gaps: Vec<u32> = rows.iter().flat_map(|r| r.gaps.clone()).collect();
+        let moves: u32 = rows.iter().map(|r| r.moves).sum();
+        let toward: u32 = rows.iter().map(|r| r.toward).sum();
+        let _ = writeln!(
+            out,
+            "| {player} | {} | {} | {:.1} | {:.0}% | {:.2} | {:.2} / {:.2} | {:.0}% | {:.0}% |",
+            ["red", "blue"][*seat],
+            rows.len(),
+            firsts.iter().sum::<f64>() / firsts.len().max(1) as f64,
+            100.0
+                * rows
+                    .iter()
+                    .filter(|r| r.first_mid.is_some_and(|f| f <= 7))
+                    .count() as f64
+                / n,
+            rows.iter().map(|r| r.held).sum::<f64>() / n,
+            rows.iter().map(|r| f64::from(r.by_move)).sum::<f64>() / n,
+            rows.iter().map(|r| f64::from(r.by_training)).sum::<f64>() / n,
+            100.0 * gaps.iter().filter(|&&g| g == 0).count() as f64 / gaps.len().max(1) as f64,
+            100.0 * f64::from(toward) / f64::from(moves.max(1)),
         );
     }
     if !failed.is_empty() {

@@ -336,6 +336,33 @@ enum Command {
         #[arg(required = true)]
         records: Vec<PathBuf>,
     },
+    /// Prints, as Markdown, how the sides take the middle chokes up to a
+    /// game turn (phase 1 of the early-game plan): when they first hold
+    /// one, how each is taken (a move, with the unit's detour, or a
+    /// training) and lost, where they train, where their units head, and
+    /// their gold, for each player of `--players` and each of our releases
+    /// of `--releases`, by seat and by the map's number of middle chokes.
+    CodingameMiddle {
+        /// The game's data directory, for example `data/ice-and-fire`.
+        #[arg(long)]
+        data: PathBuf,
+        /// Our nickname on CodinGame, for games whose index has no seat.
+        #[arg(long)]
+        me: String,
+        /// The kinds of games to use, separated by commas.
+        #[arg(long, value_delimiter = ',', default_values_t = ["ranking".to_string(), "test".to_string()])]
+        kinds: Vec<String>,
+        /// The players reported, one group each, separated by commas.
+        #[arg(long, value_delimiter = ',', required = true)]
+        players: Vec<String>,
+        /// Our releases reported, as the index names them
+        /// (`ice-and-fire-v029`), separated by commas.
+        #[arg(long, value_delimiter = ',')]
+        releases: Vec<String>,
+        /// The last game turn studied.
+        #[arg(long, default_value_t = 12)]
+        turns: u32,
+    },
     /// Prints an opening suite as TSV: every CodinGame game of the given
     /// players against one of our releases that reached game turn 12, with
     /// the player's seat, the map's seed, the release it met, and its early
@@ -914,6 +941,26 @@ fn run(cli: Cli) -> Result<(), String> {
         }
         Command::EarlyCheck { jobs, records } => {
             print!("{}", early::fit::check(&sorted(records), jobs)?);
+            Ok(())
+        }
+        Command::CodingameMiddle {
+            data,
+            me,
+            kinds,
+            players,
+            releases,
+            turns,
+        } => {
+            let text = early::middle::run(
+                &profiles::Request {
+                    kinds,
+                    ..every_game(data, me, 1)
+                },
+                &players,
+                &releases,
+                turns,
+            )?;
+            print!("{text}");
             Ok(())
         }
         Command::EarlySuite {
