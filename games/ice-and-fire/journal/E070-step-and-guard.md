@@ -1,7 +1,7 @@
 ---
 id: E070
 date: 2026-11-19
-pull_request: "#NN"
+pull_request: "#359"
 parent: ice-and-fire-v028
 hypothesis: At turns 8 to 10 against the top 6, v028 takes about 1.2 fewer neutral cells a ply than they do, partly because its units stay beside neutral cells they could take (0.40 a ply as red, against 0.18); its own search scores the step lower in 103 of 126 such positions, mostly because the cell left behind opens to the enemy's level-1 trainings, and its hill climb never tries the step together with a guard on that cell; offering that pair as one action lets the units advance and beats v028.
 change: The plan search is offered a macro action for each unit on a cell of ours the enemy can reach at its next turn and each neutral neighbour it may enter (STEP_GUARD): the step, then a tower on the cell it left (1, released) or a level-1 training there (2, screened weaker).
@@ -71,4 +71,17 @@ the cell left behind are never tried as a pair.
 A freed unit pays only when a tower holds the cell it leaves; a level-1
 unit put there is one more unit standing at the front. The owner chose to
 freeze the tower variant (form, 2026-11-19): `ice-and-fire-v029`.
+
+## Review
+
+Bot tier, an independent reviewer: approve with nits. It checked the
+macro's legality against the engine's `build`, that a failed second
+command never leaves a half-applied plan (the search applies an action on a
+clone), and the speed: 28.0 tries a millisecond against 28.5 on main
+(`speed` example, `speed-bank.txt`, 600 tries), about 1.7% slower per try.
+Kept for the next change to the bot, since the release is frozen: the
+step-and-guard block does not check `allows_towers()` (harmless in Bronze
+and above, wasted tries below) and computes the enemy's reach a second
+time; the test does not check that the moving unit stood on the guarded
+cell; one doc line of `actions.rs` is over 100 columns.
 
