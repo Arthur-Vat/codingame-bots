@@ -18,6 +18,10 @@ With the CodinGame Agent Skill (`docs/CODINGAME.md`, section "API"; the owner ap
 2. Submit the release file unchanged (`POST /puzzles/<pretty_id>/submissions`, language `Rust`), and note its `submission_id` and the file's SHA-256.
 3. Poll `/progress` every few minutes in the background until `percentage` is 100 and `in_progress` is false. Never ask the owner for a rank.
 
+## A probe (ADR 0060)
+
+An experiment's bot that is not a release, submitted on the owner's approval of that probe: freeze its minified bundle at `games/<game>/probes/<game>-eNNN-<variant>.rs` in the experiment's pull request (never changed afterwards), add its line to `codingame-submissions.txt` under that name, and submit the file unchanged as above. Once its ranking ends, record its rank and its games' reading (`--release <name>`) in the experiment's journal entry; if it ranks lower than the release it replaced, submit that release's file again.
+
 ## Recording a rank
 
 When a submission's ranking ends, or when the owner reports a rank of his own accord. In one documentation pull request (light review, skill `review-pr`):

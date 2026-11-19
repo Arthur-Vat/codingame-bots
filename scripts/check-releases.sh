@@ -16,7 +16,9 @@
 #   and renames the rest (ADR 0046);
 #   scripts/check-minified.sh shows that they play the same. Releases made
 #   before ADR 0045 are untouched and need no copy;
-# - a journal entry of the game has the line `release: <game>-vNNN`.
+# - a journal entry of the game has the line `release: <game>-vNNN`;
+# - probe files in games/<game>/probes/ (ADR 0060) never change and are never
+#   deleted, and a new one passes scripts/cg-check.sh.
 #
 # With GAME, only the releases (and readable copies) of games/GAME/ are
 # considered; without, those of every game.
@@ -72,6 +74,25 @@ while IFS=$'\t' read -r change file; do
   fi
   added_readable[$file]=1
 done < <(git diff --name-status --no-renames "$base" HEAD -- "games/$game_filter/readable/*")
+
+# Probe files (ADR 0060), frozen like the releases once merged; a new one
+# must be paste-ready.
+while IFS=$'\t' read -r change file; do
+  [[ -z $file ]] && continue
+  if [[ $change != A ]]; then
+    fail "$file: probe files are frozen, but this branch changes or deletes it ($change)"
+    continue
+  fi
+  if [[ $file != *.rs ]]; then
+    fail "$file: a probe is a .rs file"
+    continue
+  fi
+  if scripts/cg-check.sh "$file"; then
+    echo "ok   $file (probe)"
+  else
+    fail "$file: not paste-ready"
+  fi
+done < <(git diff --name-status --no-renames "$base" HEAD -- "games/$game_filter/probes/*")
 
 if ((${#added[@]} > 0)); then
   cargo build --quiet --release --locked -p cg-bundler
