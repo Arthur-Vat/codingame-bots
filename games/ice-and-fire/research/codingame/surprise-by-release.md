@@ -16,5 +16,8 @@ The opponents differ from one release to the next (a release's ranking games, th
 | ice-and-fire-v024 | 131 | 60% | 1877 | 1605 | 29 (1.8%) | 51 (3.2%) | 17 (0.9%) | 0992ae7 | v026 (main at 6a22ae3) |
 | ice-and-fire-v025 | 157 | 47% | 2015 | 1760 | 41 (2.3%) | 64 (3.6%) | 13 (0.6%) | 0992ae7 | v026 (main at 6a22ae3) |
 | ice-and-fire-v026 | 220 | 51% | 2992 | 2636 | 50 (1.9%) | 62 (2.4%) | 7 (0.2%) | 0992ae7 | v026 (main at 6a22ae3) |
+| ice-and-fire-v028 | 158 | 38% | 2184 | 1982 | 48 (2.4%) | 66 (3.3%) | 16 (0.7%) | e3b20fa | v028 (its tag) |
 
 *Games* are those with a judged ply (a game that ends before the middle game has none). *Data* is the commit of the data branch read; *Judge* the release whose search judged the plies: these four rows by main's build at 6a22ae3, whose search is v026's (the bot's mode `surprise` came after the tag `ice-and-fire-v026`, and v023 to v025 were judged by v026's search in the note too); from v027 on, each release by the build of its own tag.
+
+v028's row reads its 158 ranking games only (1 left out as unusable): the collection had played no test games with it yet. It lost fewer of them (38%) than the earlier releases lost of theirs, with about as many large misses and foreseen large removals as v025, and more HQ threats not foreseen than v026 (0.7% against 0.2%, 16 plies).
