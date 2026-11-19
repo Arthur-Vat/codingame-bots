@@ -14,7 +14,8 @@ use std::time::Instant;
 
 use ice_and_fire_engine::{Bits, Command, State, CELLS, HQ};
 
-use crate::econ::{self, Params};
+use crate::assign;
+use crate::econ::{self, Buy, Params};
 use crate::plan::{side_key, Step, BUYS};
 
 /// The weight sets a plan combines, turn by turn: v003's weights with every
@@ -78,6 +79,12 @@ pub struct Objective {
     pub tips: i64,
     pub reach: i64,
     pub voronoi: i64,
+    /// Each middle choke held (E072; `ice_and_fire_early`'s zones).
+    pub chokes: i64,
+    /// Whether the plans' steps include the joint frontier assignment
+    /// (E072, [`crate::assign`]), with the payback rule and spending all
+    /// the gold.
+    pub assign: bool,
 }
 
 impl Objective {
@@ -97,6 +104,8 @@ impl Objective {
         tips: 2,
         reach: 6,
         voronoi: 1,
+        chokes: 0,
+        assign: false,
     };
 }
 
@@ -173,6 +182,12 @@ pub fn shape(state: &State, seat: usize) -> Shape {
 
 /// The value of `seat`'s position in `state` by `objective`.
 pub fn value(state: &State, seat: usize, objective: &Objective) -> i64 {
+    value_with(state, seat, objective, Bits::EMPTY)
+}
+
+/// [`value`] with the map's middle chokes `middle` for its `chokes` term.
+pub fn value_with(state: &State, seat: usize, objective: &Objective, middle: Bits) -> i64 {
+    let held = i64::from((state.owned(seat) & middle).count());
     let s = shape(state, seat);
     let o = objective;
     o.cells * s.cells + o.income * s.income + o.gold * s.gold
@@ -181,6 +196,7 @@ pub fn value(state: &State, seat: usize, objective: &Objective) -> i64 {
         - o.tips * s.tips
         - o.reach * s.reach.min(30)
         + o.voronoi * s.voronoi
+        + o.chokes * held
 }
 
 /// Our `commands`, then the opponent passes: our next start of turn.
@@ -193,8 +209,25 @@ pub fn advance(state: &State, commands: &[Command]) -> State {
     next
 }
 
+/// The step's weights that stand for the joint frontier assignment (E072),
+/// with the first weight set's payback rule: [`Buy::Payback`] buys by it,
+/// any other purchase spends all the gold.
+pub const ASSIGN: u8 = u8::MAX;
+
 /// The commands of `step` in `state` with the weight `sets`.
 pub fn commands(state: &State, sets: &[Params], step: Step) -> Vec<Command> {
+    if step.weights == ASSIGN {
+        let settings = assign::Settings {
+            params: sets.first().copied().unwrap_or(Params::V003),
+            buy: if step.buy == Buy::Payback {
+                assign::Purchase::Payback
+            } else {
+                assign::Purchase::Affordable
+            },
+            ..assign::Settings::DEFAULT
+        };
+        return assign::turn(state, &settings);
+    }
     econ::turn_with(
         state,
         &sets[usize::from(step.weights) % sets.len()],
@@ -218,8 +251,26 @@ pub fn play(state: &State, sets: &[Params], plan: &[Step], rest: Step, turns: us
 /// The distinct steps tried in `state`: every weight set with every
 /// purchase of [`BUYS`]; steps whose commands repeat an earlier one's are
 /// left out.
-fn steps(state: &State, sets: &[Params]) -> Vec<(Step, Vec<Command>)> {
+fn steps(state: &State, sets: &[Params], assign: bool) -> Vec<(Step, Vec<Command>)> {
     let mut out: Vec<(Step, Vec<Command>)> = Vec::new();
+    if assign {
+        for buy in [
+            Buy::Payback,
+            Buy::Exact {
+                mines: 0,
+                units: u8::MAX,
+            },
+        ] {
+            let step = Step {
+                weights: ASSIGN,
+                buy,
+            };
+            let c = commands(state, sets, step);
+            if !out.iter().any(|(_, other)| *other == c) {
+                out.push((step, c));
+            }
+        }
+    }
     for weights in 0..sets.len().min(usize::from(u8::MAX)) {
         for &buy in &BUYS {
             let step = Step {
@@ -233,6 +284,15 @@ fn steps(state: &State, sets: &[Params]) -> Vec<(Step, Vec<Command>)> {
         }
     }
     out
+}
+
+/// The middle chokes of `state`'s map when `objective` weighs them.
+fn middle_chokes(state: &State, objective: &Objective) -> Bits {
+    if objective.chokes == 0 {
+        Bits::EMPTY
+    } else {
+        ice_and_fire_early::zones::Zones::of(state).middle_chokes()
+    }
 }
 
 /// A beam search over whole turns for `turns` of our turns, `width` nodes a
@@ -250,7 +310,9 @@ pub fn beam(
 ) -> Vec<Step> {
     let me = state.to_act();
     let out_of_time = || deadline.is_some_and(|t| Instant::now() >= t);
-    let rated = |plan: &[Step]| value(&play(state, sets, plan, rest, turns), me, objective);
+    let middle = middle_chokes(state, objective);
+    let rated =
+        |plan: &[Step]| value_with(&play(state, sets, plan, rest, turns), me, objective, middle);
     let mut best: (i64, Vec<Step>) = (rated(&[]), Vec::new());
     let mut frontier: Vec<(State, Vec<Step>)> = vec![(state.clone(), Vec::new())];
     for depth in 0..turns {
@@ -260,11 +322,11 @@ pub fn beam(
             if out_of_time() {
                 break;
             }
-            for (step, c) in steps(node, sets) {
+            for (step, c) in steps(node, sets, objective.assign) {
                 let next = advance(node, &c);
                 let mut child = plan.clone();
                 child.push(step);
-                let v = value(&next, me, objective);
+                let v = value_with(&next, me, objective, middle);
                 let key = side_key(&next, me);
                 match seen.get(&key) {
                     Some(&at) if children[at].0 >= v => {}
@@ -319,7 +381,9 @@ pub fn plan(
     objective: &Objective,
 ) -> Vec<Step> {
     let me = state.to_act();
-    let rated = |plan: &[Step]| value(&play(state, sets, plan, rest, turns), me, objective);
+    let middle = middle_chokes(state, objective);
+    let rated =
+        |plan: &[Step]| value_with(&play(state, sets, plan, rest, turns), me, objective, middle);
     let mut best: (i64, Vec<Step>) = (rated(&[]), Vec::new());
     let mut width = 2;
     loop {

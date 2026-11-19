@@ -37,6 +37,8 @@ const OBJECTIVE: Objective = Objective {
     tips: 2,
     reach: 6,
     voronoi: 1,
+    chokes: 0,
+    assign: false,
 };
 
 /// v026's opening, as the plan bot builds it.

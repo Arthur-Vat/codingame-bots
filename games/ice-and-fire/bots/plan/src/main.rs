@@ -129,6 +129,8 @@ const OBJECTIVE: Objective = Objective {
     tips: 2,
     reach: 6,
     voronoi: 1,
+    chokes: 0,
+    assign: false,
 };
 
 /// The opening uses a mine spot only when the enemy's territory is more than
@@ -160,7 +162,7 @@ const OPENING_MAX_WIDTH: usize = 32;
 
 /// Whether the opening is the joint frontier assignment (E072) rather than
 /// the solo planner's.
-const ASSIGN: bool = true;
+const ASSIGN: bool = false;
 
 /// The joint frontier assignment's settings (E072), its payback rule with
 /// the opening's own weights.
