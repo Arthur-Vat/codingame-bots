@@ -60,6 +60,7 @@ mod session;
 use std::io;
 use std::time::{Duration, Instant};
 
+use ice_and_fire_opening::assign::{self, Purchase};
 use ice_and_fire_opening::econ::Params;
 use ice_and_fire_opening::planned::{Planned, Planner};
 use ice_and_fire_opening::solo::{self, Objective};
@@ -157,9 +158,40 @@ const OPENING_AFTER_CONTACT: i64 = 0;
 /// an answer in the determinism check (`scripts/check-determinism.sh`).
 const OPENING_MAX_WIDTH: usize = 32;
 
-/// The opening: v003's opening with the solo planner's weight sets, planned
-/// over [`OPENING_TURNS`] of our turns within the turn's time.
+/// Whether the opening is the joint frontier assignment (E072) rather than
+/// the solo planner's.
+const ASSIGN: bool = true;
+
+/// The joint frontier assignment's settings (E072), its payback rule with
+/// the opening's own weights.
+const ASSIGN_SETTINGS: assign::Settings = assign::Settings {
+    spacing: 3,
+    slack: 1,
+    choke_bonus: 4,
+    late: 2,
+    extra: 2,
+    detour: 2,
+    take_first: true,
+    reserve: true,
+    fewest_first: true,
+    buy: Purchase::Payback,
+    fill: true,
+    params: Params {
+        safe_spot: OPENING_SAFE_SPOT,
+        crowd: OPENING_CROWD,
+        horizon: OPENING_HORIZON,
+        after_contact: OPENING_AFTER_CONTACT,
+        ..Params::V003
+    },
+};
+
+/// The opening: the joint frontier assignment when [`ASSIGN`] is set, else
+/// v003's opening with the solo planner's weight sets, planned over
+/// [`OPENING_TURNS`] of our turns within the turn's time.
 fn opening() -> Planned {
+    if ASSIGN {
+        return Planned::new(Planner::Assign(ASSIGN_SETTINGS), Vec::new(), Params::V003);
+    }
     opening_of(OPENING_MAX_WIDTH)
 }
 
