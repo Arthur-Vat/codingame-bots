@@ -97,4 +97,7 @@ b0 at turn 6 is v029 itself: its +13.9 is the noise of 200 pairs.
 The assignment and the solo opening's two options stay in the code behind
 their switches, off (`ASSIGN` and `OBJECTIVE` in the plan bot), for the
 exact solver (`opening/examples/oracle.rs`) that compares the openings in
-the study of optimal plans.
+the study of optimal plans. They cost size: the minified plan bot grows
+from 44,089 characters (v029's release) to 52,214, within the limit of
+100,000, since it now carries `assign` and the `ice-and-fire-early` crate,
+though they never run.

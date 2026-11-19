@@ -27,8 +27,9 @@
 //! 2. **The most middle chokes, and the most cells of the middle band
 //!    (within 2 steps of even between the HQs), within 0, 1 and 2 cells of
 //!    the most:** branch and bound, a state cut when the zone cells it
-//!    holds, plus those within the turns left of its land (at most the cells
-//!    it can still take), cannot beat the best found.
+//!    holds, plus those its land can still reach (one step a turn for the
+//!    units and one for each training the gold can pay, [`reach`]; at most
+//!    the cells it can still take), cannot beat the best found.
 //! 3. **The optimal end territories,** distinct sets of cells, counted by a
 //!    breadth-first enumeration while a layer holds at most `--cap` states;
 //!    beyond, the start is reported as having more.
@@ -120,6 +121,19 @@ fn key(state: &State, me: usize) -> Key {
         state.units(me).words(),
         state.gold(me),
     )
+}
+
+/// The most steps `me`'s land can reach beyond its cells in `left` more of
+/// its turns from its start of turn in `state`. In one turn a unit steps
+/// once from the land it stands on, and each training lands next to the
+/// active land, so trainings chained after a unit's step reach one step
+/// further each: at most `left` steps for the units and one for each
+/// training. The trainings are at most the gold, now and from the most
+/// income each later turn can bring (its most cells, [`bound`], upkeep left
+/// out), over a unit's cost.
+fn reach(state: &State, me: usize, left: u32) -> i64 {
+    let income: i64 = (1..left).map(|j| bound(state, me, j)).sum();
+    i64::from(left) + (state.gold(me).max(0) + income) / 10
 }
 
 /// The most active cells `me` can hold after `left` more of its turns (this
@@ -397,10 +411,11 @@ impl Dfs {
         let owned = state.owned(self.me);
         let held = i64::from((owned & zone).count());
         let d = distances(state, owned);
+        let far = reach(state, self.me, left);
         let near = zone
             .and_not(owned)
             .iter()
-            .filter(|&c| d[c] != u8::MAX && u32::from(d[c]) <= left)
+            .filter(|&c| d[c] != u8::MAX && i64::from(d[c]) <= far)
             .count() as i64;
         let room = (bound(state, self.me, left) - i64::from(owned.count())).max(0);
         held + near.min(room)
@@ -652,7 +667,7 @@ fn run(seed: u64, seat: usize, t: u32, cap: usize, player: Option<f64>, open: &O
 /// `--check`: the pruned search and the full one agree on short horizons.
 fn check(starts: &[(u64, usize)]) {
     for &(seed, seat) in starts {
-        for t in [3, 4] {
+        for t in [3, 4, 5] {
             let state = start(seed, seat);
             let (full, _) =
                 solve(&state, seat, t, i64::MIN / 2, false, usize::MAX).expect("no cap");
@@ -681,7 +696,7 @@ fn check(starts: &[(u64, usize)]) {
             let zone = Zones::of(&state).middle_chokes()
                 | (state.map().valid & !Bits::cell(HQ[0]) & !Bits::cell(HQ[1]))
                     .iter()
-                    .filter(|&c| c % 5 == 0)
+                    .filter(|&c| c % 2 == 0)
                     .fold(Bits::EMPTY, |b, c| b | Bits::cell(c));
             for d in 0..2 {
                 let floor = most - d;

@@ -48,7 +48,7 @@ A move that takes no cell costs at least one cell, so such moves are tried only 
 
 Beside it, the same model plays v029's opening (the solo planner, untimed), the same with the assignment's steps (B of [E072](../../journal/E072-frontier-assignment.md)), the opening's rules alone and the assignment alone, and the suite gives zasmu's own active cells at turn T + 1 (its games are two-sided, so that number is only a pointer).
 
-**Checks.** `--check` runs, on 3 and 4 turns of 6 starts, a full enumeration without any cut and asserts that the pruned enumeration and the depth-first searches give the same maximum, the same optimal end states and the same best zone counts within 0 and 1 cells; it passes. A version that kept whole engine states gave the same counts as the one that rebuilds them from their keys (409, 6,580 and 62,393 end states on three of them).
+**Checks.** `--check` runs, on 3, 4 and 5 turns of 6 starts, a full enumeration without any cut and asserts that the pruned enumeration and the depth-first searches give the same maximum, the same optimal end states and the same best zone counts (a zone of every other cell) within 0 and 1 cells; it passes. A first version bounded a state's zone cells by those within one step a turn of its land; on 5 turns it found one zone cell fewer than the full enumeration on one start, since a unit's step and a training beyond it take two steps in a turn. The bound now allows a step for each training the gold can pay. A version that kept whole engine states gave the same counts as the one that rebuilds them from their keys (409, 6,580 and 62,393 end states on three of them).
 
 ## A first look: 4 starts
 
@@ -58,24 +58,24 @@ The full run, zasmu's 44 red and 50 of its blue starts at T = 6, 7 and 8, is abo
 | --- | ---: | ---: | --- | ---: | ---: | ---: |
 | red 1 | 6 | 17 | 129,169 | 17 | 17 | 17 |
 | red 2 | 6 | 17 | 84,509 | 17 | 17 | 17 |
-| blue 1 | 6 | 20 | over a million states | 20 | 20 | 20 |
+| blue 1 | 6 | 20 | more than a million states in a layer (not counted) | 20 | 20 | 20 |
 | blue 2 | 6 | 18 | 775 (517 of them hold a middle choke) | 18 | 18 | 18 |
-| red 1 | 7 | 23 | over a million states | 23 | 23 | 23 |
-| red 2 | 7 | 23 | over a million states | 23 | 23 | 21 |
-| blue 1 | 7 | 26 | over a million states | 26 | 26 | 25 |
+| red 1 | 7 | 23 | more than a million states in a layer (not counted) | 23 | 23 | 23 |
+| red 2 | 7 | 23 | more than a million states in a layer (not counted) | 23 | 23 | 21 |
+| blue 1 | 7 | 26 | more than a million states in a layer (not counted) | 26 | 26 | 25 |
 | blue 2 | 7 | 24 | 2,560 | 23 | 24 | 23 |
-| red 1 | 8 | 30 | over a million states | 30 | 30 | 28 |
-| red 2 | 8 | 30 | over a million states | 30 | 29 | 23 |
-| blue 1 | 8 | 34 | over a million states | 34 | 34 | 30 |
+| red 1 | 8 | 30 | more than a million states in a layer (not counted) | 30 | 30 | 28 |
+| red 2 | 8 | 30 | more than a million states in a layer (not counted) | 30 | 29 | 23 |
+| blue 1 | 8 | 34 | more than a million states in a layer (not counted) | 34 | 34 | 30 |
 | blue 2 | 8 | 32 | 2,294 | 27 | 31 | 27 |
 
 What the pilot suggests, to be checked on the full run:
 
-- **The maximum is massively degenerate:** tens of thousands to over a million different territories hold the most land by turn 6 on most maps. Which of them a side picks is a free choice, so the opening's evaluation decides it.
+- **The maximum looks degenerate:** on the three starts where they were counted, 775 to 129,169 distinct territories hold the most land by turn 6 (2,294 to 2,560 at turns 7 and 8 on the one counted there); the others passed a million states in a layer of the enumeration before its end, their territories not counted. If that holds on the full run, which of them a side picks is a free choice, so the opening's evaluation decides it. Four starts are a pointer, not a rate.
 - **Our opening already holds the most land at turns 6 and 7** on all but one start (one cell short there). At turn 8 it is up to 5 cells short on one start: its plans look 9 turns ahead and do not maximise land at turn 8.
 - **Zasmu, playing two-sided, matches the side-alone maximum at turn 6** on these starts and falls behind it later, as contact begins.
 
-On the one start with middle chokes, the optimum and v029's opening hold as many of them (3 at turn 6, 4 at turn 7); the full run tells how often that holds.
+The pilot's figures on middle chokes are left out: they came from a search whose cut on the zone was too tight (a training chained after a unit's step reaches two steps in one turn), found by the review and fixed before the full run.
 
 ## B: the assignment inside the beam
 
