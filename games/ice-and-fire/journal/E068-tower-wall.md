@@ -4,8 +4,8 @@ date: 2026-11-18
 pull_request: pending
 parent: ice-and-fire-v027
 hypothesis: Zasmu, first on CodinGame, holds its front with a wall of towers (75-85% of its frontier cells guarded at turns 15 to 25, against about 50% for the other top players and for us) and keeps its upkeep at 18% of its gross income; valuing each of our frontier cells guarded by one of our towers, and offering a tower wherever it would guard one, makes the search build that wall, lose fewer units to replies, and beats v027.
-change: The plan bot's evaluation counts WALL for each of a side's active cells next to an enemy cell that is one of its active towers or next to one, and its search is offered a tower on every free border cell that would guard such a cell, besides E026's guarding towers.
-release: none yet
+change: The plan bot's evaluation counts 8 (WALL) for each of a side's active cells next to an enemy cell that is one of its active towers or next to one; the search's towers stay E026's (offering a tower on every free border cell that would guard such a cell, WALL_TOWERS, screened weaker and is off).
+release: ice-and-fire-v028
 sprt: pending
 elo: pending
 pairs: pending
@@ -61,11 +61,17 @@ Four variants against v027, each 800 pairs on `screen.yml`:
 
 The gain grows with `WALL`. At `WALL` 4, keeping E026's filter beats offering a tower on every frontier cell by about 13 Elo: the wider offer seems to cost search time or to tempt the search into towers that guard nothing threatened. The owner chose a second screening ("Second screening", form): `WALL` 6, 8 and 10 with the filter, and 8 with the wider offer.
 
-### Second screening (run 44405127201)
+### Second screening (2026-11-18, run 44405127201)
 
 | Variant | Commit | Elo over v027 [95%] |
 | --- | --- | --- |
-| w6f | `9d2438c` | pending |
-| w8f | `8609dba` | pending |
-| w10f | `73c7367` | pending |
-| w8 | `b82612f` | pending |
+| w6f | `9d2438c` | +39.3 [+24.8, +53.9] |
+| w8f | `8609dba` | +41.9 [+27.2, +56.7] |
+| w10f | `73c7367` | +45.4 [+30.0, +61.0] |
+| w8 | `b82612f` | +27.9 [+13.6, +42.2] |
+
+With E026's filter, `WALL` 4 to 10 form a plateau of about +40, within the noise of each run (±15). The wider offer is weaker and erratic (+30.0, +45.4, +27.9 at 4, 6, 8). The owner chose "W 8, filter kept" (form, 2026-11-19), the middle of the plateau, frozen as `ice-and-fire-v028` (43,714 characters).
+
+## SPRT
+
+Pending.
