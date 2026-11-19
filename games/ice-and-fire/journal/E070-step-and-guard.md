@@ -4,8 +4,8 @@ date: 2026-11-19
 pull_request: "#NN"
 parent: ice-and-fire-v028
 hypothesis: At turns 8 to 10 against the top 6, v028 takes about 1.2 fewer neutral cells a ply than they do, partly because its units stay beside neutral cells they could take (0.40 a ply as red, against 0.18); its own search scores the step lower in 103 of 126 such positions, mostly because the cell left behind opens to the enemy's level-1 trainings, and its hill climb never tries the step together with a guard on that cell; offering that pair as one action lets the units advance and beats v028.
-change: The plan search is offered a macro action for each unit on a cell of ours the enemy can reach at its next turn and each neutral neighbour it may enter (STEP_GUARD): the step, then a tower on the cell it left (1) or a level-1 training there (2).
-release: pending
+change: The plan search is offered a macro action for each unit on a cell of ours the enemy can reach at its next turn and each neutral neighbour it may enter (STEP_GUARD): the step, then a tower on the cell it left (1, released) or a level-1 training there (2, screened weaker).
+release: ice-and-fire-v029
 sprt: pending
 elo: pending
 pairs: pending
@@ -57,3 +57,18 @@ A unit stands on a cell that an enemy level-1 unit cannot enter; stepping
 forward leaves it empty. Zasmu holds its front with towers, which frees its
 units. The hill climb adds one action at a time, so the step and a guard on
 the cell left behind are never tried as a pair.
+
+## Screening
+
+`screen.yml` run 44516824781, 800 pairs per variant against
+`ice-and-fire-v028`, 2 shards each, at CodinGame's speed and real limit:
+
+| Variant | Ref | Pairs | Elo over v028 [95%] | Score | Faults |
+| --- | --- | ---: | --- | ---: | --- |
+| tower (`STEP_GUARD` 1) | `c56c551` | 800 | +38.4 [+24.8, +52.1] | 55.5% | none |
+| refill (`STEP_GUARD` 2) | `14f3ea2` (branch `claude/ice-and-fire-e070-refill`) | 800 | −6.5 [−16.3, +3.3] | 49.1% | none |
+
+A freed unit pays only when a tower holds the cell it leaves; a level-1
+unit put there is one more unit standing at the front. The owner chose to
+freeze the tower variant (form, 2026-11-19): `ice-and-fire-v029`.
+
