@@ -15,7 +15,8 @@
 //! - `voronoi`: its share of the cells nearer its land than the enemy's, over
 //!   the cells nearer one side;
 //! - `mid_chokes`: its share of the choke cells of the middle band
-//!   ([`MIDDLE`]), the contested ones.
+//!   ([`MIDDLE`]), the contested ones; 0 too on a map whose band has none,
+//!   which `map_mid_chokes` (their number) tells apart.
 //!
 //! The row also names the player, its group (its release for our games), the
 //! opponent and whether the side won the game.

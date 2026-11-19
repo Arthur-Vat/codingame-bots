@@ -4,7 +4,7 @@ The owner asked, on 2026-11-19, whether zasmu's early game can be modelled with 
 
 ## Data and method
 
-- `ice-and-fire-review codingame-early` (this note's command) replays the games of the data branch `claude/codingame-games` (at 9a7fa3a plus v029's ranking games: 7,026 ranking and test games) and writes, for each side at the start of each of its plies up to game turn 15: its active cells; its owned cells within one step of even between the HQs (`centre`) and the steps from its land to such a cell; its share of the map's choke cells (cells that at least 40% of the shortest HQ-to-HQ paths go through), all of them and those of the middle band (at most 4 steps from even between the HQs); its Voronoi share (cells nearer its land than the enemy's, over the cells nearer one side); and whether it won.
+- `ice-and-fire-review codingame-early --kinds ranking,test --turns 15` (this note's command) replays the games of the data branch `claude/codingame-games` (at 9a7fa3a plus v029's ranking games: 7,026 ranking and test games) and writes, for each side at the start of each of its plies up to game turn 15: its active cells; its owned cells within one step of even between the HQs (`centre`) and the steps from its land to such a cell; its share of the map's choke cells (cells that at least 40% of the shortest HQ-to-HQ paths go through), all of them and those of the middle band (at most 4 steps from even between the HQs); its Voronoi share (cells nearer its land than the enemy's, over the cells nearer one side); and whether it won.
 - Groups: zasmu; the players ranked 2 to 7 on the 2026-11-19 snapshot other than us (Pduhard-, karliso, _iaz, reCurse, _iahelka); the other players; our releases. Figures are by seat (red is seat 0, which starts with one cell, blue two). Every game is a game against us, so the other players' figures are against our bot; our red rows are mostly test games against the top players.
 - "Predicts the winner" is the AUC of the difference between the two sides at the same turn (0.5 is chance), and for combinations a logistic regression scored by 5-fold cross-validation. These are correlations: stronger players both take more land and win more.
 - The scripts that computed the tables were scratch Python over the command's CSV (not committed).
@@ -30,9 +30,9 @@ The number of active cells carries nearly all of it: added to it, the centre, th
 | v028 | 28.0 / 29.6 | 0.8 / 1.7 | 0.43 / 0.45 | 0.34 / 0.41 |
 | v029 | 28.0 / 30.6 | 0.9 / 2.0 | 0.42 / 0.48 | 0.35 / 0.45 |
 
-(Middle chokes: games on maps with 2 or more of them, 4,249 of the 7,026; 40% of the maps have none at the 40% threshold.)
+(Middle chokes: games on maps with 2 or more of them, 4,249 of the 7,026; the other games' maps have fewer than 2 at the 40% threshold, most of them none.)
 
-A heuristic fitted at turn 10 on the five measures (per unit: active cells +0.194, all-chokes share +1.94, Voronoi share +0.26, centre and steps to the centre about 0), read as the chance to beat an average other player of the same seat: zasmu 67% / 64%, ranked 2 to 7 65% / 58%, v029 57% / 50%, v028 57% / 45%, v014 41% / 47%.
+A heuristic fitted at turn 10 on the five measures (per unit: active cells +0.194, all-chokes share +1.94, Voronoi share +0.26, centre and steps to the centre about 0; the all-chokes weight holds the active cells equal, so it rewards a compact land of the same size, not the chokepoints, see below), read as the chance to beat an average other player of the same seat: zasmu 67% / 64%, ranked 2 to 7 65% / 58%, v029 57% / 50%, v028 57% / 45%, v014 41% / 47%.
 
 ## The centre and the chokepoints
 
@@ -43,7 +43,7 @@ A heuristic fitted at turn 10 on the five measures (per unit: active cells +0.19
 - **All chokes, without the band, mislead:** most choke cells crowd around the HQs, where every shortest path starts or ends, so a compact side holds them early (our releases hold half of them by turn 8 to 10, earlier than the top players) and the share predicts less growth, not more. This is why the zasmu study (2026-11-18) found the chokepoint rush "not supported".
 - **The centre cells** (within one step of even) add nothing to the active cells as a predictor.
 
-So the three measures model the early game well in general (with the active cells first), and zasmu's own early trait is the race for the contested chokes; our gap is about 2 active cells, 0.09 of Voronoi share and a quarter of the middle chokes at turn 10.
+So the three measures model the early game well in general (with the active cells first), and zasmu's own early trait is the race for the contested chokes; our gap to zasmu at turn 10 is 2.5 to 3.3 active cells, 0.10 to 0.13 of Voronoi share and a quarter of the middle chokes (v028 and v029, red and blue).
 
 ## The plan: rework the early game
 
