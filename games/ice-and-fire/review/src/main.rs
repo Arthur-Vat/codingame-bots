@@ -340,8 +340,10 @@ enum Command {
     /// game turn (phase 1 of the early-game plan): when they first hold
     /// one, how each is taken (a move, with the unit's detour, or a
     /// training) and lost, where they train, where their units head, and
-    /// their gold, for each player of `--players` and each of our releases
-    /// of `--releases`, by seat and by the map's number of middle chokes.
+    /// their gold, for each group of `--players` and each of our releases
+    /// of `--releases`, by seat and by the map's number of middle chokes;
+    /// and, on every map, where each side's land comes from turn by turn
+    /// (cells gained from neutral, from the enemy, retaken; cells lost).
     CodingameMiddle {
         /// The game's data directory, for example `data/ice-and-fire`.
         #[arg(long)]
@@ -352,7 +354,8 @@ enum Command {
         /// The kinds of games to use, separated by commas.
         #[arg(long, value_delimiter = ',', default_values_t = ["ranking".to_string(), "test".to_string()])]
         kinds: Vec<String>,
-        /// The players reported, one group each, separated by commas.
+        /// The groups reported, separated by commas: a player's name, or
+        /// `LABEL=P1+P2+...` for several players pooled under a label.
         #[arg(long, value_delimiter = ',', required = true)]
         players: Vec<String>,
         /// Our releases reported, as the index names them
@@ -387,9 +390,10 @@ enum Command {
         comment: String,
     },
     /// Plays a bot from each start of an opening suite (the map, the
-    /// player's seat and the release it met, given as a binary) up to its
-    /// ply of game turn 12, and prints, as Markdown, the players' early
-    /// measures beside the bot's, by player and seat.
+    /// player's seat and the release it met, given as a binary) to the end
+    /// of game turn 12, and prints, as Markdown, the players' early
+    /// measures beside the bot's, by player and seat, then how the bot took
+    /// the middle chokes and where its land came from.
     EarlyOpenings {
         /// The suite, as `early-suite` wrote it.
         #[arg(long)]

@@ -79,3 +79,67 @@ fn a_unit_walked_straight_to_a_middle_choke() {
         }
     );
 }
+
+/// Random games: in every ply, the cells a side takes from the enemy are
+/// those the enemy loses; gains less losses give each side's land at the
+/// end; and some cells are retaken in some game.
+#[test]
+fn land_flows_add_up_in_random_games() {
+    let mut retaken = 0;
+    for seed in 0..30u64 {
+        let map = generate(seed, RefereeLeague::Bronze);
+        let mut state = State::new(&map.void, &map.mine_spots, League::Bronze);
+        let start = [state.owned(0).count(), state.owned(1).count()];
+        let mut rng = cg_core::rng::Rng::new(seed);
+        let mut steps = Vec::new();
+        let mut commands = Vec::new();
+        while state.outcome().is_none() && state.game_turn() <= 30 {
+            commands.clear();
+            state.random_turn(&mut rng, &mut commands);
+            let before = state.clone();
+            state.play_turn(&commands);
+            steps.push(Step {
+                state: before,
+                commands: commands.clone(),
+                ms: None,
+            });
+        }
+        let turns = 30;
+        let f = flows(&steps, &state, turns);
+        for s in 0..2 {
+            for t in 1..=turns as usize {
+                assert_eq!(
+                    f[s].enemy[t] + f[s].retaken[t],
+                    f[1 - s].lost[t],
+                    "seed {seed}"
+                );
+            }
+            let gained: u32 = (1..=turns as usize)
+                .map(|t| f[s].neutral[t] + f[s].enemy[t] + f[s].retaken[t])
+                .sum();
+            let lost: u32 = f[s].lost.iter().sum();
+            if state.outcome().is_none() {
+                assert_eq!(
+                    start[s] + gained - lost,
+                    state.owned(s).count(),
+                    "seed {seed}"
+                );
+            }
+            retaken += f[s].retaken.iter().sum::<u32>();
+        }
+    }
+    assert!(retaken > 0);
+}
+
+/// A pooled group lists its members; a plain name is its own group.
+#[test]
+fn groups_parse() {
+    assert_eq!(
+        parse_group("top=a+b"),
+        ("top".to_string(), vec!["a".to_string(), "b".to_string()])
+    );
+    assert_eq!(
+        parse_group("zasmu"),
+        ("zasmu".to_string(), vec!["zasmu".to_string()])
+    );
+}
