@@ -17,20 +17,24 @@
 # code), ARGS (the study's arguments, separated by spaces) and SHARDS (1 to
 # 20); ARGS may hold only letters, digits, spaces and , / . _ = -. A bad input is an `::error` annotation and exit status 1. Prints, also
 # to $GITHUB_OUTPUT: matrix (a JSON array of the shard numbers), study, sha
-# (REF resolved), args (as checked) and shards.
+# (REF resolved), ref, args (as checked) and shards.
 #
 # run: shard SHARD of SHARDS. Makes a git worktree of SHA in
 # target/study/src, builds the study there (its target directory is this
 # checkout's target/, so that the workflow's cache serves it) and runs it with
-# ARGS on its share, writing target/study/out/STUDY-SHARD.csv (its rows),
-# STUDY-SHARD.md (its report) and STUDY-SHARD.log (its progress).
+# ARGS on its share, for at most STUDY_MINUTES minutes (default 300, within
+# the workflow's 330), writing target/study/out/STUDY-SHARD.csv (its rows),
+# STUDY-SHARD.md (its report), STUDY-SHARD.log (its progress) and, once the
+# study has finished, STUDY-SHARD.done.
 #
 # collect: DIR holds the shards' files (as `run` names them). Writes to OUT:
 # STUDY.csv (every shard's rows under one header), STUDY-SHARD.md for each
 # shard, and README.md (the study, its inputs from the environment: REF, SHA,
-# ARGS, SHARDS, RUN_ID, and the shards found and missing). A `::notice` gives
-# the rows found; a `::warning` names each missing shard (its job failed),
-# which is also exit status 1; the files found are still written.
+# ARGS, SHARDS, RUN_ID, and the shards whole, partial and missing). A
+# `::notice` gives the rows; a `::warning` names each partial shard (rows
+# without the .done mark: it failed or ran out of time; its rows are kept) and
+# each missing one (no rows), either of which is also exit status 1; the files
+# found are still written. Shards whose columns differ are an error.
 #
 # Studies:
 #   oracle  The exact early game of one side alone (E072,
@@ -49,6 +53,10 @@ cd "$(dirname "$0")/.."
 readonly STUDIES="oracle"
 readonly MAX_SHARDS=20
 readonly WORD_RE='^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$'
+# The most minutes a shard's study runs: the workflow's job allows 330, and
+# the build and the upload need the rest. The environment may lower it.
+STUDY_MINUTES="${STUDY_MINUTES:-300}"
+[[ $STUDY_MINUTES =~ ^[1-9][0-9]{0,2}$ ]] || STUDY_MINUTES=300
 
 usage() {
   echo "usage: $0 plan | run STUDY SHA SHARD SHARDS ARGS | collect STUDY DIR OUT" >&2
@@ -159,6 +167,7 @@ plan() {
   "${study}_args" "$sha" "${words[@]}"
   emit "matrix=$(seq 0 $((shards - 1)) | jq -sc .)"
   emit "study=$study"
+  emit "ref=$ref"
   emit "sha=$sha"
   emit "args=${CHECKED[*]}"
   emit "shards=$shards"
@@ -187,7 +196,7 @@ run() {
   case "$study" in
   oracle)
     (cd "$src" && CARGO_TARGET_DIR="$target_dir" cargo build --release --locked -p ice-and-fire-opening --example oracle)
-    rm -f "$base.csv"
+    rm -f "$base.csv" "$base.done"
     # The suite is read from the worktree.
     local argv=() i
     for ((i = 0; i < ${#CHECKED[@]}; i += 2)); do
@@ -197,13 +206,18 @@ run() {
         argv+=("${CHECKED[i]}" "${CHECKED[i + 1]}")
       fi
     done
-    if ! "$target_dir/release/examples/oracle" "${argv[@]}" --jobs "$(nproc)" --shard "$shard/$shards" \
-      --csv "$base.csv" >"$base.md" 2>"$base.log"; then
+    # Stopped before the job's limit, so that the rows written so far
+    # (the oracle writes each start's rows as it finishes) are still kept.
+    if ! timeout "$STUDY_MINUTES"m "$target_dir/release/examples/oracle" "${argv[@]}" --jobs "$(nproc)" \
+      --shard "$shard/$shards" --csv "$base.csv" >"$base.md" 2>"$base.log"; then
       tail -n 20 "$base.log" >&2
-      die "the oracle failed on shard $shard"
+      die "the oracle failed or ran out of time on shard $shard; its rows so far are kept"
     fi
     ;;
   esac
+  # The mark of a whole shard: `collect` reports a shard without it as
+  # partial.
+  touch "$base.done"
   echo "shard $shard of $shards: $(($(wc -l <"$base.csv") - 1)) rows in $base.csv"
 }
 
@@ -212,8 +226,10 @@ collect() {
   local study="$1" dir="$2" dest="$3"
   [[ " $STUDIES " == *" $study "* ]] || die "bad study"
   [[ -d $dir ]] || die "no directory $dir"
-  local shards="${SHARDS:-0}" csv="$dest/$study.csv" header="" rows=0 found=() missing=() k file
-  [[ $shards =~ ^[1-9][0-9]?$ ]] || die "SHARDS must be a number from 1 to $MAX_SHARDS"
+  local shards="${SHARDS:-0}" csv="$dest/$study.csv" header="" rows=0 found=() partial=() missing=() k file
+  if ! [[ $shards =~ ^[1-9][0-9]?$ ]] || ((shards > MAX_SHARDS)); then
+    die "SHARDS must be a number from 1 to $MAX_SHARDS"
+  fi
   mkdir -p "$dest"
   : >"$csv"
   for ((k = 0; k < shards; k++)); do
@@ -222,10 +238,18 @@ collect() {
       missing+=("$k")
       continue
     fi
-    found+=("$k")
+    # Rows of a shard that failed or ran out of time are kept, the shard
+    # reported as partial.
+    if [[ -f $dir/$study-$k.done ]]; then
+      found+=("$k")
+    else
+      partial+=("$k")
+    fi
     if [[ -z $header ]]; then
       header="$(head -n 1 "$file")"
       echo "$header" >"$csv"
+    elif [[ "$(head -n 1 "$file")" != "$header" ]]; then
+      die "shard $k's columns differ from the first shard's"
     fi
     tail -n +2 "$file" >>"$csv"
     rows=$((rows + $(tail -n +2 "$file" | wc -l)))
@@ -240,16 +264,17 @@ collect() {
     echo
     echo "- Code: ${REF:-?} at ${SHA:-?}"
     echo "- Arguments: ${ARGS:-?}"
-    echo "- Shards: $shards; found: ${found[*]:-none}; missing: ${missing[*]:-none}"
+    echo "- Shards: $shards; whole: ${found[*]:-none}; partial (failed or out of time, rows kept): ${partial[*]:-none}; missing: ${missing[*]:-none}"
     echo "- Rows: $rows in $study.csv; each shard's report in $study-K.md"
   } >"$dest/README.md"
-  echo "::notice title=Study $study::$rows rows from ${#found[@]} of $shards shards"
-  if ((${#missing[@]} > 0)); then
-    for k in "${missing[@]}"; do
-      echo "::warning title=Study $study::shard $k has no results (its job failed)"
-    done
-    return 1
-  fi
+  echo "::notice title=Study $study::$rows rows; ${#found[@]} of $shards shards whole"
+  for k in "${partial[@]}"; do
+    echo "::warning title=Study $study::shard $k is partial (it failed or ran out of time); its rows are kept"
+  done
+  for k in "${missing[@]}"; do
+    echo "::warning title=Study $study::shard $k has no results (its job failed)"
+  done
+  ((${#partial[@]} == 0 && ${#missing[@]} == 0))
 }
 
 case "${1:-}" in

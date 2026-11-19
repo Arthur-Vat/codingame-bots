@@ -27,6 +27,10 @@ name: Study
 # plan:    checks the inputs, resolves the ref and makes the matrix.
 # run:     one runner per shard.
 # collect: gathers the shards' files and commits them to claude/study/<run id>.
+# A shard stops its study after 300 minutes, so that its rows so far are still
+# uploaded; collect reports it as partial. The claude/study/<run id> branches
+# have no pull request, so the Prune branches workflow keeps them: delete one
+# by hand once its results are in a pull request.
 
 on:
   workflow_dispatch:
@@ -71,6 +75,7 @@ jobs:
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
       study: ${{ steps.plan.outputs.study }}
+      ref: ${{ steps.plan.outputs.ref }}
       sha: ${{ steps.plan.outputs.sha }}
       args: ${{ steps.plan.outputs.args }}
       shards: ${{ steps.plan.outputs.shards }}
@@ -150,7 +155,7 @@ jobs:
       - name: Gather the shards and commit them to claude/study/${{ github.run_id }}
         env:
           STUDY: ${{ needs.plan.outputs.study }}
-          REF: ${{ inputs.ref }}
+          REF: ${{ needs.plan.outputs.ref }}
           SHA: ${{ needs.plan.outputs.sha }}
           ARGS: ${{ needs.plan.outputs.args }}
           SHARDS: ${{ needs.plan.outputs.shards }}

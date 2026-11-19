@@ -69,6 +69,7 @@ run "--player zasmu --per-seat 50 --turns 6,7,8 --cap 1000000"
 expect "good: status" "$status" 0
 expect "good: matrix" "$(sed -n 's/^matrix=//p' <<<"$output")" "[0,1,2,3]"
 contains "good" "$output" "sha=$work"
+contains "good" "$output" "ref=claude/work"
 contains "good" "$output" "study=oracle"
 contains "good" "$output" "shards=4"
 contains "good: the suite by default" "$output" "args=--suite games/ice-and-fire/openings/suite-v1.tsv --player zasmu --per-seat 50 --turns 6,7,8 --cap 1000000"
@@ -124,27 +125,46 @@ expect "run, short sha: status" "$status" 1
 contains "run, short sha" "$output" "bad sha"
 
 # ---- collect ----
+collect() { # collect <dir> <out> [KEY=value]...: sets output, status
+  local dir="$1" dest="$2"
+  shift 2
+  status=0
+  output="$(cd "$repo" && env SHARDS=3 "$@" scripts/study.sh collect oracle "$dir" "$dest" 2>&1)" || status=$?
+}
 results="$tmp_dir/results"
 mkdir -p "$results"
 printf 'seed,seat\n1,0\n2,1\n' >"$results/oracle-0.csv"
 printf 'seed,seat\n3,0\n' >"$results/oracle-2.csv"
+touch "$results/oracle-0.done" "$results/oracle-2.done"
 echo "# shard 0" >"$results/oracle-0.md"
-status=0
-output="$(cd "$repo" && SHARDS=3 REF=claude/work SHA="$work" ARGS="--turns 6" RUN_ID=42 scripts/study.sh collect oracle "$results" "$tmp_dir/out" 2>&1)" || status=$?
+collect "$results" "$tmp_dir/out" REF=claude/work SHA="$work" ARGS="--turns 6" RUN_ID=42
 expect "collect, a shard missing: status" "$status" 1
-contains "collect" "$output" "::notice title=Study oracle::3 rows from 2 of 3 shards"
+contains "collect" "$output" "::notice title=Study oracle::3 rows; 2 of 3 shards whole"
 contains "collect" "$output" "::warning title=Study oracle::shard 1 has no results"
 expect "collect: one header" "$(cat "$tmp_dir/out/oracle.csv")" "$(printf 'seed,seat\n1,0\n2,1\n3,0')"
 expect "collect: the shard's report" "$(cat "$tmp_dir/out/oracle-0.md")" "# shard 0"
 readme="$(cat "$tmp_dir/out/README.md")"
 contains "collect: README run" "$readme" "# Study oracle, run 42"
 contains "collect: README code" "$readme" "- Code: claude/work at $work"
-contains "collect: README shards" "$readme" "found: 0 2; missing: 1"
+contains "collect: README shards" "$readme" "whole: 0 2; partial (failed or out of time, rows kept): none; missing: 1"
+# Shard 1's rows without its mark: it failed or ran out of time.
 printf 'seed,seat\n4,1\n' >"$results/oracle-1.csv"
-status=0
-output="$(cd "$repo" && SHARDS=3 scripts/study.sh collect oracle "$results" "$tmp_dir/out2" 2>&1)" || status=$?
-expect "collect, every shard: status" "$status" 0
-expect "collect, every shard: rows" "$(($(wc -l <"$tmp_dir/out2/oracle.csv") - 1))" 4
+collect "$results" "$tmp_dir/out2"
+expect "collect, a partial shard: status" "$status" 1
+contains "collect, a partial shard" "$output" "::warning title=Study oracle::shard 1 is partial"
+expect "collect, a partial shard: its rows are kept" "$(($(wc -l <"$tmp_dir/out2/oracle.csv") - 1))" 4
+contains "collect, a partial shard: README" "$(cat "$tmp_dir/out2/README.md")" "partial (failed or out of time, rows kept): 1; missing: none"
+touch "$results/oracle-1.done"
+collect "$results" "$tmp_dir/out3"
+expect "collect, every shard whole: status" "$status" 0
+expect "collect, every shard whole: rows" "$(($(wc -l <"$tmp_dir/out3/oracle.csv") - 1))" 4
+printf 'seed,other\n5,0\n' >"$results/oracle-1.csv"
+collect "$results" "$tmp_dir/out4"
+expect "collect, other columns: status" "$status" 1
+contains "collect, other columns" "$output" "shard 1's columns differ"
+collect "$results" "$tmp_dir/out5" SHARDS=21
+expect "collect, 21 shards: status" "$status" 1
+contains "collect, 21 shards" "$output" "SHARDS must be a number from 1 to 20"
 
 echo "study-test: $checks checks, $failures failures"
 ((failures == 0))
