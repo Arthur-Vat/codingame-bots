@@ -3,14 +3,14 @@ id: E068
 date: 2026-11-18
 pull_request: "#349"
 parent: ice-and-fire-v027
-hypothesis: Zasmu, first on CodinGame, holds its front with a wall of towers (75-85% of its frontier cells guarded at turns 15 to 25, against about 50% for the other top players and for us) and keeps its upkeep at 18% of its gross income; valuing each of our frontier cells guarded by one of our towers, and offering a tower wherever it would guard one, makes the search build that wall, lose fewer units to replies, and beats v027.
+hypothesis: Zasmu, first on CodinGame, holds its front with a wall of towers (75-85% of its frontier cells guarded at turns 15 to 25, against about 50% for the other top players and for us) and keeps its upkeep at 18% of its gross income; valuing each of our frontier cells guarded by one of our towers (offering a tower wherever it would guard one was screened too, and is off in the release) makes the search build that wall, lose fewer units to replies, and beats v027.
 change: The plan bot's evaluation counts 8 (WALL) for each of a side's active cells next to an enemy cell that is one of its active towers or next to one; the search's towers stay E026's (offering a tower on every free border cell that would guard such a cell, WALL_TOWERS, screened weaker and is off).
 release: ice-and-fire-v028
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +41.9 [+20.9, +63.2]
+pairs: 400
+full_time: +41.9 [+20.9, +63.2] (the SPRT's own, at CodinGame's limits)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -74,4 +74,15 @@ With E026's filter, `WALL` 4 to 10 form a plateau of about +40, within the noise
 
 ## SPRT
 
-Pending.
+Run [44475443122](https://github.com/Arthur-Vat/codingame-bots/actions/runs/44475443122), at b9417ea:
+
+```
+ice-and-fire-v028 vs ice-and-fire-v027: 800 games, 400 complete pairs
+  ice-and-fire-v028: 448 wins, 0 draws, 352 losses (score 56.0%)
+  Elo of ice-and-fire-v028 over ice-and-fire-v027: +41.9 [+20.9, +63.2] (95%, from pairs)
+  ice-and-fire-v028 faults: 0 timeouts, 0 crashes, 0 invalid answers
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.24 (bounds -2.94, 2.94) after 400 pairs
+Verdict: ACCEPTED: ice-and-fire-v028 is stronger than ice-and-fire-v027
+```
+
+The SPRT agrees with the screening of w8f (+41.9 both). Kept nit from the bot review: the test `a_tower_counts_wall_for_each_frontier_cell_it_guards` takes the frontier from `frontier` itself and does not check that `eval` uses the term; fix it with the next change to the bot.
