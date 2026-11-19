@@ -1,7 +1,7 @@
 ---
 id: E068
 date: 2026-11-18
-pull_request: pending
+pull_request: "#349"
 parent: ice-and-fire-v027
 hypothesis: Zasmu, first on CodinGame, holds its front with a wall of towers (75-85% of its frontier cells guarded at turns 15 to 25, against about 50% for the other top players and for us) and keeps its upkeep at 18% of its gross income; valuing each of our frontier cells guarded by one of our towers, and offering a tower wherever it would guard one, makes the search build that wall, lose fewer units to replies, and beats v027.
 change: The plan bot's evaluation counts 8 (WALL) for each of a side's active cells next to an enemy cell that is one of its active towers or next to one; the search's towers stay E026's (offering a tower on every free border cell that would guard such a cell, WALL_TOWERS, screened weaker and is off).
