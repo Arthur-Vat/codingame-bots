@@ -1,7 +1,7 @@
 ---
 id: E071
 date: 2026-11-19
-pull_request: "#NN"
+pull_request: "#362"
 parent: ice-and-fire-v029
 hypothesis: E069's strike reserve (keep a strike on the enemy HQ affordable next turn) was level with v028 in self-play and ranked one place higher on CodinGame; on top of v029, whose units now advance behind towers, it beats v029.
 change: STRIKE_TURNS 1 in the plan search (E069's reserve) on v029.
