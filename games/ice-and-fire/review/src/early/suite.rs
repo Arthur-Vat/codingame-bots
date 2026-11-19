@@ -9,7 +9,7 @@
 //! game's map, up to the start of the bot's ply of turn 12, and reports
 //! both sides' measures by player and seat. Each start (map, seat and
 //! release) is played once, however many games of the suite share it (the
-//! CodinGame test games replay ten maps).
+//! CodinGame test games replay a few dozen maps).
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -145,12 +145,18 @@ pub fn suite(request: &Request, players: &[String], comment: &str) -> Result<Str
         });
     }
     lines.sort_by_key(|l| l.game_id);
+    Ok(format_suite(&lines, comment))
+}
+
+/// The text of a suite: `comment` as `#` lines, the header, then a line a
+/// game.
+pub fn format_suite(lines: &[Line], comment: &str) -> String {
     let mut out = String::new();
     for c in comment.lines() {
         let _ = writeln!(out, "# {c}");
     }
     let _ = writeln!(out, "{}", header());
-    for l in &lines {
+    for l in lines {
         let values: Vec<String> = l.values.iter().map(|&v| number(v)).collect();
         let _ = writeln!(
             out,
@@ -164,12 +170,14 @@ pub fn suite(request: &Request, players: &[String], comment: &str) -> Result<Str
             values.join("\t")
         );
     }
-    Ok(out)
+    out
 }
 
 /// Reads a suite written by [`suite`].
 pub fn read_suite(text: &str) -> Result<Vec<Line>, String> {
-    let mut lines = text.lines().filter(|l| !l.starts_with('#'));
+    let mut lines = text
+        .lines()
+        .filter(|l| !l.starts_with('#') && !l.trim().is_empty());
     let head = lines.next().ok_or("the suite is empty")?;
     if head != header() {
         return Err("the suite's header is not this tool's".to_string());
@@ -241,7 +249,7 @@ fn play(
         let limit = Duration::from_secs(if first { 60 } else { 20 });
         let (lines, _) = player
             .ask(&input, 1, limit)
-            .map_err(|e| format!("seat {to_act}, turn {}: {e:?}", state.game_turn()))?;
+            .map_err(|e| format!("seat {to_act}, turn {}: {e}", state.game_turn()))?;
         let line = lines.first().map(String::as_str).unwrap_or("");
         let commands: Vec<_> = line
             .split(';')

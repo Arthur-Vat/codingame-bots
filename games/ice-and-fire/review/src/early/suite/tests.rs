@@ -1,7 +1,7 @@
 use super::*;
 
-/// A suite written and read back gives the same lines; a foreign header is
-/// refused.
+/// A suite written and read back gives the same lines (whole values bare,
+/// three decimals at most); a foreign header is refused.
 #[test]
 fn a_suite_reads_back() {
     let width = TURNS.len() * MEASURES.len() + 1;
@@ -14,16 +14,14 @@ fn a_suite_reads_back() {
         opponent: "ice-and-fire-v026".to_string(),
         values: (0..width).map(|i| i as f64 / 4.0).collect(),
     };
-    let values: Vec<String> = line.values.iter().map(|&v| number(v)).collect();
     assert_eq!(
         (number(3.0), number(0.25)),
         ("3".to_string(), "0.250".to_string())
     );
-    let text = format!(
-        "# a comment\n{}\n42\ttest\t7\t1\tzasmu\tice-and-fire-v026\t{}\n",
-        header(),
-        values.join("\t")
-    );
+    let text = format_suite(std::slice::from_ref(&line), "a comment\nand another");
+    assert!(text.starts_with("# a comment\n# and another\n"));
+    // Blank lines are skipped.
+    let text = format!("{text}\n");
     assert_eq!(read_suite(&text).unwrap(), vec![line]);
     assert!(read_suite("game_id\tother\n").is_err());
 }
