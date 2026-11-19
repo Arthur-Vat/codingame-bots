@@ -6,11 +6,11 @@ parent: ice-and-fire-v028
 hypothesis: At turns 8 to 10 against the top 6, v028 takes about 1.2 fewer neutral cells a ply than they do, partly because its units stay beside neutral cells they could take (0.40 a ply as red, against 0.18); its own search scores the step lower in 103 of 126 such positions, mostly because the cell left behind opens to the enemy's level-1 trainings, and its hill climb never tries the step together with a guard on that cell; offering that pair as one action lets the units advance and beats v028.
 change: The plan search is offered a macro action for each unit on a cell of ours the enemy can reach at its next turn and each neutral neighbour it may enter (STEP_GUARD): the step, then a tower on the cell it left (1, released) or a level-1 training there (2, screened weaker).
 release: ice-and-fire-v029
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +71.9 [+46.6, +98.0]
+pairs: 240
+full_time: +71.9 [+46.6, +98.0] (the SPRT's own, at CodinGame's limits)
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -84,4 +84,21 @@ step-and-guard block does not check `allows_towers()` (harmless in Bronze
 and above, wasted tries below) and computes the enemy's reach a second
 time; the test does not check that the moving unit stood on the guarded
 cell; one doc line of `actions.rs` is over 100 columns.
+
+## SPRT
+
+SPRT run 44520605622 at 32adfd5, in blocks of 10 pairs over 8 calibrated
+runners (ADR 0049):
+
+```
+Smoke test: ice-and-fire-v029 vs random: 200 wins of 200, 0 faults
+ice-and-fire-v029 vs ice-and-fire-v028: 480 games, 240 complete pairs
+  ice-and-fire-v029: 289 wins, 0 draws, 191 losses (score 60.2%)
+  Elo of ice-and-fire-v029 over ice-and-fire-v028: +71.9 [+46.6, +98.0] (95%, from pairs)
+  pairs by ice-and-fire-v029's points (0, 1/2, 1, 3/2, 2): [18, 0, 155, 0, 67]
+  ice-and-fire-v029 faults: 1 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v028 faults: 2 timeouts, 0 crashes, 0 invalid answers
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 4.19 (bounds -2.94, 2.94) after 240 pairs
+Verdict: ACCEPTED: ice-and-fire-v029 is stronger than ice-and-fire-v028
+```
 
