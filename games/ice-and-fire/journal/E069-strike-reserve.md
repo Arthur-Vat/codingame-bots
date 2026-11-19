@@ -85,5 +85,8 @@ the probe, under [ADR 0060](../../../docs/adr/0060-probe-submissions.md):
 the minified bundle of `ice-and-fire-bot-plan` at commit 69ba44f
 (`STRIKE_TURNS` 1; SHA-256
 22cdaf5c730d2e81ff16390b0885aacca767719a159b7d97fb308617c1dff80e), 44,070
-characters; 20 pairs against v028 in the arena, no fault.
+characters; 20 pairs against v028 in the arena, no fault. Three test games on CodinGame against the top 3 (zasmu, karliso,
+Pduhard-), 2026-11-19: no fault, every answer after the first in 45 ms or
+less, all three lost. Submitted through the API on 2026-11-19 at 11:28 UTC:
+submission 41758936, replacing `ice-and-fire-v028` (5th of 88 in Legend).
 
