@@ -11,7 +11,7 @@ elo: +41.9 [+20.9, +63.2]
 pairs: 400
 full_time: +41.9 [+20.9, +63.2] (the SPRT's own, at CodinGame's limits)
 decision: promoted
-cg_rank: not reported
+cg_rank: Legend, 5th of 88 (5th of 929 overall), 2026-11-19: submitted through the API on the owner's approval (submission 41757430)
 ---
 
 Asked by the owner on 2026-11-18: curriculum level 1 of the zasmu study
