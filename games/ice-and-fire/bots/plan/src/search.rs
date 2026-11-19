@@ -40,7 +40,7 @@ use ice_and_fire_engine::state::BUILD_COST;
 use ice_and_fire_engine::{Bits, Command, Outcome, State, HQ, SIZE};
 use ice_and_fire_opening::planned::Planned;
 use ice_and_fire_policy::greedy_turn;
-use ice_and_fire_tactics::chain::chain_to;
+use ice_and_fire_tactics::chain::{chain_to, cost_to, cost_to_moving, UNREACHABLE};
 use ice_and_fire_tactics::cut::cuts;
 use ice_and_fire_tactics::eval::WIN;
 
@@ -146,7 +146,17 @@ struct Search {
     /// The actions of the climbs' root, generated once: every climb of a
     /// search starts from the same state.
     root_actions: Option<Vec<Action>>,
+    /// Whether the strike reserve holds this turn (E069).
+    strike: bool,
 }
+
+/// The strike reserve (E069, stage B of the curriculum in
+/// `research/codingame/2026-11-18-zasmu-strategy.md`): when, at the start of
+/// the turn, no strike of the opponent's threatens our HQ and our chain of
+/// trainings to the enemy HQ (all our units stepping first) is affordable
+/// with our gold plus this many turns of income, the search plays no plan
+/// that leaves it unaffordable within as many turns. 0 for none (v028).
+pub const STRIKE_TURNS: i64 = 1;
 
 /// The blockers offered (E044): towers on our cells that the opponent's
 /// remembered replies enter. Towers alone won the screening.
@@ -287,7 +297,40 @@ fn lethal(state: &State) -> Option<Vec<Command>> {
     (apply_all(&mut trial, &chain.commands) && wins(&trial)).then_some(chain.commands)
 }
 
+/// Whether `seat`'s chain of trainings to the enemy HQ, all its units
+/// stepping first, is affordable in `state` with its gold plus `turns`
+/// turns of income (E069).
+pub(crate) fn strike_within(state: &State, seat: usize, turns: i64) -> bool {
+    let cost = cost_to_moving(state, seat, state.units(seat), HQ[1 - seat]);
+    cost != UNREACHABLE && state.gold(seat) + turns * state.income(seat) >= cost
+}
+
+/// Whether the strike reserve holds in `state`, the start of a turn of the
+/// player to act (E069): [`STRIKE_TURNS`] is not 0, the opponent cannot take
+/// our HQ at its next turn whatever we do, and our strike is affordable
+/// within [`STRIKE_TURNS`] turns.
+pub(crate) fn strike_reserve(state: &State) -> bool {
+    let me = state.to_act();
+    if STRIKE_TURNS == 0 || state.outcome().is_some() {
+        return false;
+    }
+    let mut next = state.clone();
+    next.end_turn();
+    let threatened =
+        next.outcome().is_none() && cost_to(&next, 1 - me, true, HQ[me]) <= next.gold(1 - me);
+    !threatened && strike_within(state, me, STRIKE_TURNS)
+}
+
 impl Search {
+    /// Whether the plan whose state is `end` breaks the strike reserve
+    /// (E069): the reserve holds this turn, the plan does not win, and it
+    /// leaves our strike unaffordable within [`STRIKE_TURNS`] turns.
+    fn breaks_reserve(&self, end: &State) -> bool {
+        self.strike
+            && end.outcome() != Some(Outcome::Win(self.me))
+            && !strike_within(end, self.me, STRIKE_TURNS)
+    }
+
     /// Whether the climbs must stop.
     fn spent(&self) -> bool {
         self.evals >= self.limit.max_evals || self.limit.soft.is_some_and(|t| Instant::now() >= t)
@@ -352,7 +395,7 @@ impl Search {
             done[index] = true;
             let commands = actions[index].commands();
             let mut next = cur.clone();
-            if !apply_all(&mut next, commands) {
+            if !apply_all(&mut next, commands) || self.breaks_reserve(&next) {
                 gains.insert(key(commands), i64::MIN / 4);
                 continue;
             }
@@ -471,6 +514,8 @@ impl Search {
             evals: 0,
             hints: Gains::default(),
             root_actions: None,
+            // The opponent's model keeps no reserve, as before E069.
+            strike: false,
         };
         out.push(theirs.climb(&next, &[], &[], true).commands);
         out.retain(|commands| !commands.is_empty());
@@ -492,7 +537,7 @@ impl Search {
     /// when the rules refuse it.
     fn forced(&mut self, root: &State, action: &Action, memory: &[Reply]) -> Option<Plan> {
         let mut after = root.clone();
-        if !apply_all(&mut after, action.commands()) {
+        if !apply_all(&mut after, action.commands()) || self.breaks_reserve(&after) {
             return None;
         }
         self.evals += 1;
@@ -585,6 +630,7 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
         evals: 0,
         hints: Gains::default(),
         root_actions: None,
+        strike: strike_reserve(state),
     };
     let mut memory = Vec::new();
     let mut plans: Vec<Plan> = Vec::new();
