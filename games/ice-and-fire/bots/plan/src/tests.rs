@@ -1329,6 +1329,39 @@ fn a_tower_counts_wall_for_each_frontier_cell_it_guards() {
 }
 
 #[test]
+fn the_strike_reserve_keeps_a_strike_affordable_next_turn() {
+    // E069: when the reserve holds at the start of the turn, the plan played
+    // wins or leaves our chain to the enemy HQ affordable within
+    // STRIKE_TURNS turns of income.
+    use crate::search::{strike_reserve, strike_within, STRIKE_TURNS};
+    let mut checked = 0;
+    for state in many_positions() {
+        if state.outcome().is_some() || !strike_reserve(&state) {
+            continue;
+        }
+        let thought = think(&state, evals(300), &mut opening());
+        if thought.opening {
+            continue;
+        }
+        let mut end = state.clone();
+        for &command in &thought.commands {
+            assert!(end.apply(command), "{command:?} refused");
+        }
+        let me = state.to_act();
+        assert!(
+            end.outcome() == Some(Outcome::Win(me)) || strike_within(&end, me, STRIKE_TURNS),
+            "{:?}",
+            thought.commands
+        );
+        checked += 1;
+    }
+    assert!(
+        checked > 0 || STRIKE_TURNS == 0,
+        "no position with a reserve"
+    );
+}
+
+#[test]
 fn step_and_guard_steps_into_a_neutral_cell_and_guards_the_cell_left() {
     // E070: a unit steps from a cell the enemy can reach into a neutral
     // cell, then the cell it left gets a tower (1) or a level-1 unit (2).
