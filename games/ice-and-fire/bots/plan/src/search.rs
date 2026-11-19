@@ -155,8 +155,9 @@ struct Search {
 /// the turn, no strike of the opponent's threatens our HQ and our chain of
 /// trainings to the enemy HQ (all our units stepping first) is affordable
 /// with our gold plus this many turns of income, the search plays no plan
-/// that leaves it unaffordable within as many turns. 0 for none (v028).
-pub const STRIKE_TURNS: i64 = 1;
+/// that leaves it unaffordable within as many turns. 0 for none (v028,
+/// v029); 1 was the probe of E069.
+pub const STRIKE_TURNS: i64 = 0;
 
 /// The blockers offered (E044): towers on our cells that the opponent's
 /// remembered replies enter. Towers alone won the screening.

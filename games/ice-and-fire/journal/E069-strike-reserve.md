@@ -1,17 +1,17 @@
 ---
 id: E069
 date: 2026-11-19
-pull_request: "#NN"
+pull_request: "#361"
 parent: ice-and-fire-v028
 hypothesis: On zasmu's own positions our releases keep a strike on the enemy HQ affordable next turn in about half the tests (save-1 50-51%, zasmu 71%) and v028 does so in 55% of its CodinGame positions (v019-v026 62-66%); a search that may not spend a strike it could make next turn, as zasmu banks before its one cut, wins more games by that strike and beats v028.
 change: When no strike of the opponent's threatens our HQ at the start of the turn and our chain of trainings to the enemy HQ (all our units stepping first) is affordable with our gold plus STRIKE_TURNS turns of income, the plan search refuses every action (and every forced first action) after which it no longer is, unless it wins; the opponent's modelled climb keeps no reserve.
-release: pending
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
-cg_rank: not reported
+release: none
+sprt: not run: level in screening, judged on CodinGame as a probe
+elo: none
+pairs: none
+full_time: none
+decision: dropped
+cg_rank: Legend, 4th of 88 (4th of 929 overall), 2026-11-19, as the probe ice-and-fire-e069-k1 (submission 41758936)
 ---
 
 Asked by the owner on 2026-11-19, after the sparring bot was dropped
@@ -89,4 +89,46 @@ characters; 20 pairs against v028 in the arena, no fault. Three test games on Co
 Pduhard-), 2026-11-19: no fault, every answer after the first in 45 ms or
 less, all three lost. Submitted through the API on 2026-11-19 at 11:28 UTC:
 submission 41758936, replacing `ice-and-fire-v028` (5th of 88 in Legend).
+
+## The probe's ranking games
+
+The ranking ended on 2026-11-19: **4th of 88** in Legend (score 29.88),
+where `ice-and-fire-v028` had ended 5th (29.37). Its 159 ranking games were
+fetched to the data branch (`scripts/codingame.sh fetch --submission
+41758936`, then `--backfill-releases` from this branch, which holds the
+probe's submission line; data branch 9a7fa3a). Read like v028's 159:
+
+| In its ranking games | k1 | v028 |
+| --- | ---: | ---: |
+| save-1, its own positions | 100% (217) | 55% (286) |
+| save-2 | 63% (464) | 62% (418) |
+| defend-1 | 54% (93) | 52% (83) |
+| defend-2 | 71% (362) | 69% (287) |
+| finish | 97% (67) | 99% (74) |
+| Wins: the opponent's income at the winning ply (median, red / blue) | 23 / 21 | 3 / 9 |
+| Wins: distance from its land to the enemy HQ before it (median, red / blue) | 6.5 / 5 | 3 / 4 |
+| Games won | 94 of 159 (59%) | 99 of 159 (62%) |
+| against the top 6 of the snapshot | 29 of 78 (37%) | 27 of 64 (42%) |
+| against the others | 65 of 81 (80%) | 72 of 95 (76%) |
+
+(capability tests: `codingame-capability-suite --kinds ranking --release
+... --per 1000000 --per-game 1000000`, then `codingame-capabilities` with
+no bot; strike rows: `codingame-style --kinds ranking --release ...`.)
+
+The reserve did what it was built for: k1 kept its strike in every
+position it could, and it won as zasmu does, striking from farther away
+while the opponent's income was still high, rather than finishing an
+opponent already broken. It did not win more: one place higher in one
+ranking, and win rates within noise of v028's against different mixes of
+opponents. Self-play, where it was level, did not hide a gain that the
+ranking games show.
+
+## Decision
+
+The owner chose (form, 2026-11-19) to try the reserve again on top of
+`ice-and-fire-v029` (E070) as a new experiment. This one is closed:
+`STRIKE_TURNS` stays in the plan bot at 0, which plays exactly as v029
+(the same answers on the 200 positions of `speed-bank.txt` at 600 tries),
+and the probe file stays in `probes/` (ADR 0060). After the probe,
+v029 was submitted in its place (submission 41759272, #360).
 

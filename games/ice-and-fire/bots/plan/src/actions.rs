@@ -5,8 +5,9 @@
 //! higher level only where it kills a unit or passes a tower), each tower on a
 //! border cell that guards something (E026, [`guards`]) and each mine on a
 //! mine spot. Macro actions: the best few cuts
-//! of the enemy's territory and the lethal chain of trainings, if there is
-//! one. Every action is checked by applying it on a clone, so a list may hold
+//! of the enemy's territory, the lethal chain of trainings, if there is
+//! one, and with [`STEP_GUARD`] a step into a neutral cell with a guard on
+//! the cell left behind (E070). Every action is checked by applying it on a clone, so a list may hold
 //! some that the rules refuse.
 
 use ice_and_fire_engine::state::BUILD_COST;
@@ -61,6 +62,13 @@ pub const WALL_TOWERS: bool = false;
 /// 2, none (E045's screening). E044's blockers may still offer a unit on a
 /// cell a reply enters.
 pub const OWN_CELLS: u8 = 2;
+
+/// The step-and-guard macro action (E070): a unit steps into a neutral cell
+/// from a cell of ours the enemy can reach at its next turn, and that cell
+/// is guarded at once, so that a unit that holds the front can advance.
+/// 0: none (v028); 1: a tower on the cell it leaves; 2: a level-1 training
+/// on the cell it leaves.
+pub const STEP_GUARD: u8 = 1;
 
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
@@ -174,6 +182,43 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
             }) {
                 let (x, y) = xy(cell);
                 out.push(Action::One(Command::BuildTower { x, y }));
+            }
+        }
+    }
+
+    // Step and guard (E070): the step, then the cell left behind guarded.
+    let guard_cost = match STEP_GUARD {
+        1 => BUILD_COST,
+        2 => 10,
+        _ => i64::MAX,
+    };
+    if gold >= guard_cost {
+        let reach = crate::eval::reach(state, 1 - me);
+        let neutral = state
+            .map()
+            .valid
+            .and_not(state.owned(me) | state.owned(1 - me));
+        for from in (state.movable_units() & reach).iter() {
+            let Some((id, level)) = state.unit_at(from) else {
+                continue;
+            };
+            let steps = Bits::cell(from).neighbours() & enter[usize::from(level)] & neutral;
+            let (fx, fy) = xy(from);
+            let guard = if STEP_GUARD == 1 {
+                if state.map().spots.test(from) {
+                    continue;
+                }
+                Command::BuildTower { x: fx, y: fy }
+            } else {
+                Command::Train {
+                    level: 1,
+                    x: fx,
+                    y: fy,
+                }
+            };
+            for to in steps.iter() {
+                let (x, y) = xy(to);
+                out.push(Action::Many(vec![Command::Move { id, x, y }, guard]));
             }
         }
     }

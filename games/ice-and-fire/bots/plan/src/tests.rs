@@ -1360,3 +1360,41 @@ fn the_strike_reserve_keeps_a_strike_affordable_next_turn() {
         "no position with a reserve"
     );
 }
+
+#[test]
+fn step_and_guard_steps_into_a_neutral_cell_and_guards_the_cell_left() {
+    // E070: a unit steps from a cell the enemy can reach into a neutral
+    // cell, then the cell it left gets a tower (1) or a level-1 unit (2).
+    use crate::actions::STEP_GUARD;
+    let mut found = 0;
+    for state in many_positions() {
+        let mut actions = Vec::new();
+        actions_of(&state, &mut actions);
+        let me = state.to_act();
+        for action in &actions {
+            let Action::Many(commands) = action else {
+                continue;
+            };
+            let [Command::Move { x, y, .. }, guard] = commands[..] else {
+                continue;
+            };
+            let to = usize::from(y) * SIZE + usize::from(x);
+            let (gx, gy) = match guard {
+                Command::BuildTower { x, y } if STEP_GUARD == 1 => (x, y),
+                Command::Train { level: 1, x, y } if STEP_GUARD == 2 => (x, y),
+                _ => continue,
+            };
+            let from = usize::from(gy) * SIZE + usize::from(gx);
+            assert!(!state.owned(me).test(to) && !state.owned(1 - me).test(to));
+            assert!(crate::eval::reach(&state, 1 - me).test(from));
+            let mut after = state.clone();
+            assert!(
+                after.apply(commands[0]) && after.apply(commands[1]),
+                "{commands:?}"
+            );
+            assert!(after.owned(me).test(to));
+            found += 1;
+        }
+    }
+    assert!(found > 0 || STEP_GUARD == 0, "no step and guard offered");
+}
