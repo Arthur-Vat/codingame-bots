@@ -1,6 +1,6 @@
 # 0047. CodinGame's public API for test games, submissions and ranks
 
-- Status: accepted (owner, 2026-10-31); decision 2 superseded for the token of the daily collection by [0058](0058-codingame-collection-on-github-actions.md)
+- Status: accepted (owner, 2026-10-31); decision 2 superseded for the token of the daily collection by [0058](0058-codingame-collection-on-github-actions.md); decision 4 superseded for probes by [0060](0060-probe-submissions.md)
 - Date: 2026-10-31
 - Supersedes: [0009](0009-manual-submission.md) (the owner pastes each release); [0036](0036-ranks-optional.md), decision 1 (ranks reported by the owner)
 - Scope: framework
