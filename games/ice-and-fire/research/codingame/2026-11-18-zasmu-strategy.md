@@ -91,29 +91,62 @@ Per unit trained, over its life (blue for Z and T, red for us; level 1 kills not
 2. **The middle game is where zasmu pulls away**: from turn 10 to 20 its cells (34 → 51) and gross income (37 → 65) keep growing while T levels off (50) and we stall (47). It does this with towers instead of units (upkeep 18%), mines on safe spots, and few fights.
 3. **The late game is a plan over several turns**: bank for ~2 to 3 turns, then a ~190-gold training chain from 9 cells away. Our one-turn search cannot want this unless something values gold toward the chain, and it cannot defend against it unless it looks at the opponent's gold over more than one turn.
 
-## Long-term plan: a curriculum
+## Long-term plan: a curriculum of capabilities
 
-Each level builds on the ones before it and has a measurable target taken from zasmu's numbers above. A level is reached by one or more experiments (one per pull request, screened against the current release, then the SPRT, as in `docs/WORKFLOW.md`); not every level needs a release. Because self-play can hide what only strong opponents punish, each level's last candidate is also checked with a test batch against zasmu and the top 5 on the 10 fixed maps (the collection's batch, `scripts/codingame.sh batch --opponents`), on the owner's approval.
+*Rewritten on 2026-11-19 at the owner's request. The first version was a list of levels by game phase, each reached by new evaluation terms screened against our last release. That is the method of E003 to E067: hill-climbing in parameter space, judged by our own previous bot, which can only find what beats ourselves. The owner asked for a curriculum precisely to avoid such a local optimum. Its levels 0 and 1 were done before the rewrite: level 0 is the command `codingame-style` (#347), and level 1 is E068 (`ice-and-fire-v028`, the tower wall as an evaluation term, +41.9 over v027, #349).*
 
-**Level 0 — Measure what zasmu does (no change to the bot).**
-Make this note's measures review commands instead of scratch scripts: towers on the board, frontier cells protected, upkeep share, mines lost, gold banked before the largest cut, the distance of the winning chain, and, for both sides each turn, the cost of the cheapest chain to the enemy HQ against gold plus income over the next 1 to 3 turns. Add them to `codingame-report` so every release is compared with zasmu on them. Target: the tables above are produced by one command.
+### Principles
 
-**Level 1 — Hold the front with towers, not units.**
-Our towers (6 a game) only guard where the opponent can threaten now (E026). Experiments: value a tower by the frontier cells it protects; prefer a tower to keeping a level 2 or 3 unit at the front; let the evaluation count upkeep over several turns rather than the income of this turn alone. Targets: frontier protected ≥ 75% at turn 20, upkeep ≤ 25% of gross income, unit value lost per opponent reply at turns 11 to 20 near 8 (now 14).
+- **A stage adds a capability, not a weight.** It is something the bot could not do before: plan over several turns, save toward a goal, defend against a threat that is still two turns away. A stage builds on the ones before it, and each later stage uses the earlier ones' machinery.
+- **Each capability has its own test, judged outside self-play.** A stage ends when its capability passes its tests and holds up against strong opponents, not when an SPRT against our last release accepts. That SPRT stays, as a check that nothing regressed.
+- **Weights come last.** Within a stage the parameters get sensible values only. They are tuned once its capability works, so that tuning does not lock in the structure before it is complete.
+- **Measure the behaviour, not only the result.** Each candidate's games are read with `codingame-style` (and the capability tests), to check that the behaviour aimed at appears. Example: does v028 actually build a wall?
 
-**Level 2 — An economy behind the wall.**
-With a held front, mines are safe. Experiments: the first mine around turn 9 on the safest free spot; a safe spot (behind towers, or 3 or more steps from enemy land) worth more than an exposed one; no mine on an exposed spot. Targets: 3 or more mines on the board at turn 20, under 10% of mines lost, gross income ≥ 60 at turn 20.
+### Stage A: an outside judge
 
-**Level 3 — Do not die to a strike.**
-Before we bank, we must survive opponents who do (zasmu kills us from 9 cells away while our income is 23). Experiments: a threat term on the opponent's chain to our HQ against its gold plus 2 or 3 turns of income (now only the next turn), answered by towers on that chain's path; this also teaches the bot what a wall is worth. Targets: fewer losses to a single cut of 100% of our land in the zasmu batch; the opponent's margin over its chain to our HQ kept negative over 2 turns.
+Before new capabilities, a way to see them and to judge them without self-play.
 
-**Level 4 — Bank and strike.**
-The capability that most separates zasmu. A turn-level plan: each turn, compute our chain cost C to the enemy HQ and the turns k until gold plus k incomes reach it; while k ≤ 3 and our front is held (levels 1 and 3), switch to banking: spend only on defence and on captures that pay back before the strike, and strike when gold reaches C (the existing lethal finder plays it). Experiments: the horizon k (2, 3, 4), the safety margin over C, how the opponent's expected towers raise C. Targets: largest cut 100% in most wins, from 7 or more cells away, with gold ≥ 150 before it.
+1. **Capability tests.** Positions taken from the collected games, each with one decision that a capability decides. Examples:
+   - our chain to the enemy HQ is affordable in 2 turns if we save, and not if we spend;
+   - the opponent is saving and its chain to our HQ will be affordable in 2 turns: defend now;
+   - 2 towers hold a front that units cannot.
 
-**Level 5 — An opening that feeds this middle game.**
-Only now revisit the opening, judged by the middle game that follows. Experiments: train at the trainable cell nearest the enemy HQ (zasmu 74%, us 49%); a Voronoi or centre target at turn 7 to 10 instead of more purchases; a few candidate openings per map, chosen by turn 5 from the opponent's first moves (zasmu's own play does not depend on ours before turn 5). Targets: Voronoi share ≥ 0.55 and 2 or more centre cells at turn 10.
+   Each test checks a property of the answer, not one exact move. Examples: gold kept at or above a level; towers that raise the opponent's chain cost by a given amount; the HQ taken within k turns in a scripted continuation. A bot's score is its pass rate per capability, reported by a command of the review tool. zasmu's own decisions in those positions are the reference, where it played them.
+2. **A sparring bot in zasmu's style.** A baseline bot built by hand from the study's numbers: hold the front with towers, mines on safe spots, save gold toward the cheapest chain to the enemy HQ, strike when it is affordable. It joins the screenings and the league, so that self-play includes the style that beats us. Its first version is simple; it improves as stages B to E give it better parts.
+3. **Test batches against the top players.** At each stage's end, a batch of CodinGame test games against zasmu and the top 5 on the fixed maps (`scripts/codingame.sh batch --opponents`), on the owner's approval. It is read with `codingame-style` and compared with the release before.
 
-**Level 6 — Adapt to the opponent.**
-With all of the above in place: recognise bankers (opponent gold rising over 2 turns with few actions) and wall early; against opponents without walls, strike earlier with fewer level 3 units; against walls, plan level 3 cuts. Targets: win rate against each of the top 5 in the batch, per opponent.
+When the tests and the sparring bot exist, the owner decides whether a stage's acceptance (the SPRT plus the capability tests and the batch) becomes a rule; if so, it goes into an ADR.
 
-Levels 1 to 3 can run in any order among themselves; level 4 needs 1 and 3 (banking with an open front loses, as the [overconfidence study](2026-11-14-overconfidence.md) showed: our big losses came from weak positions and an opponent banking 54 gold against our 7); level 5 is last on purpose, since four opening experiments were already dropped.
+### Stage B: a strategic layer; first goal, the strike
+
+A plan over several turns above the existing search. Each turn it picks a goal and constraints, and the search plays the turn within them: a gold reserve, towers it must build, cells it must take or keep.
+
+The first goal is the strike: save toward our cheapest chain to the enemy HQ when gold plus k incomes reach its cost (k ≤ 3), keep that reserve, then play the chain (the existing lethal finder). It comes first because its success is exact and measurable:
+- the capability tests for saving and striking;
+- in the games, the share of wins by one cut of the whole enemy land, from 7 or more cells away (zasmu: 100%, from 9).
+
+### Stage C: defend against a strike
+
+The same machinery from the other side. Follow the opponent's gold plus k incomes against its chain to our HQ, and when a strike comes within reach, set a goal that raises that chain's cost (towers on its path, units that block it) before the turn it becomes affordable. Measured by:
+- the capability tests for defence;
+- in the zasmu batch, the losses to one cut of our whole land (now most of them: zasmu's cut of most cells took 100% of our active cells in the median game, see "The strike").
+
+### Stage D: hold the front
+
+The tower wall as a goal of the strategic layer, rather than a weight. The frontier cells to guard, chosen for the strike (B) and the defence (C) they allow, and units released from the front. E068's term becomes one of the tools. Measured by the frontier cells guarded (zasmu 75 to 85%), the upkeep share (18%) and the units lost per reply (7 to 8).
+
+### Stage E: an economy behind the wall
+
+Mines as a goal behind the held front: which spots, when, given the strike's reserve. Measured by mines on the board and the share lost (zasmu 3.4 at turn 20, 6% lost), and by gross income at turn 20.
+
+### Stage F: an opening toward a target position
+
+The opening picks a target position at turn 10 (land, centre and chokepoints, units placed to start the wall), chosen for the middle game that the strategic layer plays from it. It is no longer a rule set judged on its own. The study's opening measures are the check: the Voronoi share, the centre cells, and trainings at the most advanced cell.
+
+### Stage G: choosing goals per opponent
+
+Recognise the opponent's style from its first turns and its gold (a saver, a wall, an attacker) and weigh the goals accordingly. Measured by the win rate against each of the top 5 in the batch.
+
+### Then tuning
+
+Once a stage's capability passes its tests, its parameters are tuned (screenings, the SPRT), and the stage's last candidate is checked against the top players.
