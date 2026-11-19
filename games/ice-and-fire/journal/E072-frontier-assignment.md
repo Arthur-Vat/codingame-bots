@@ -1,7 +1,7 @@
 ---
 id: E072
 date: 2026-11-19
-pull_request: "#NN"
+pull_request: "#369"
 parent: ice-and-fire-v029
 hypothesis: Matching our units and the trainings we can pay to the middle chokes and to cells spread along the Voronoi frontier, all at once each turn (step 1 of phase 2 of the early-game plan), takes the middle earlier than v029's opening and wins the duels cut at game turn 12.
 change: A joint frontier assignment (ice_and_fire_opening::assign, the Hungarian method on arrival turns) played as the opening (A), or offered to the solo opening's beam as extra steps beside a weight on the middle chokes (B), each behind a switch that is off in the bot.
