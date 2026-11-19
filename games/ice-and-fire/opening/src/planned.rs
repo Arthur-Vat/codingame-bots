@@ -13,6 +13,7 @@ use std::time::Instant;
 
 use ice_and_fire_engine::{Command, State};
 
+use crate::assign;
 use crate::econ::{Buy, Params};
 use crate::plan::{self, side_key, Context, Step};
 use crate::rollout::{choose, CAP};
@@ -38,6 +39,9 @@ pub enum Planner {
         width: usize,
         objective: Objective,
     },
+    /// E072: [`assign::turn`] every turn, no plan kept; the opening ends
+    /// only at the middle game.
+    Assign(assign::Settings),
 }
 
 /// The opening's memory between turns.
@@ -77,7 +81,7 @@ impl Planned {
     /// prediction, on track to its end, has reached the middle game (at the
     /// enemy's start of turn, which we do not see).
     pub fn playing(&mut self, state: &State) -> bool {
-        let solo = matches!(self.planner, Planner::Solo { .. });
+        let solo = matches!(self.planner, Planner::Solo { .. } | Planner::Assign(_));
         let predicted = !solo && self.plans > 0 && self.played >= self.expected.len();
         if !self.over && (predicted || crate::middle::reached(state)) {
             self.over = true;
@@ -103,6 +107,11 @@ impl Planned {
             deadline,
             settings: Settings::DEFAULT,
         };
+        if let Planner::Assign(settings) = self.planner {
+            self.plans += 1;
+            self.played += 1;
+            return assign::turn(state, &settings);
+        }
         let me = state.to_act();
         let on_track = self.expected.get(self.played) == Some(&side_key(state, me));
         if !on_track {
@@ -133,6 +142,7 @@ impl Planned {
                     steps.resize(turns, rest);
                     steps
                 }
+                Planner::Assign(_) => Vec::new(),
             };
             self.expected = match self.planner {
                 Planner::Solo { .. } => solo_keys(state, &self.sets, &self.plan),

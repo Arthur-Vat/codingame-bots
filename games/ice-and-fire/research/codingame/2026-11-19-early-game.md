@@ -68,6 +68,8 @@ Which units reach the middle chokes, from which turn, along which paths; how its
 
 ### Phase 2: a two-sided early planner
 
+**Status (2026-11-19):** step 1 tried and dropped ([E072](../../journal/E072-frontier-assignment.md)): the joint assignment lost as the opening (−21 to −121 in the cut duels against v029) and as steps of the solo beam (−42 to −93). At the owner's request the problem was then laid out mathematically and an exact solver of one side's early game written ([2026-11-19-optimal-early-plans.md](2026-11-19-optimal-early-plans.md)): on a pilot of 4 starts the most land by turn 6 is reached by tens of thousands of different territories and v029's opening reaches it, so what to choose among them is the open question; the full run decides the next step.
+
 A search dedicated to game turns 1 to about 12, replacing the opening (its 27 weight sets and its solo plan) and the first turns of the middle-game search:
 
 - on turn 1 (about 1 s), a target position: the middle chokes and the Voronoi frontier to reach, per map and seat;

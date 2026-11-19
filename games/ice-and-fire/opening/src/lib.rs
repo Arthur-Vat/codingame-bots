@@ -3,6 +3,8 @@
 //! E004 and E010, `games/ice-and-fire/research/early-game.md`). Standard library
 //! only, so the bundler can copy it into bots.
 //!
+//! - [`assign`]: the joint frontier assignment (E072): units and trainings
+//!   matched to the middle chokes and cells along the Voronoi frontier.
 //! - [`econ`]: the opening of `ice-and-fire-v003` (E003): units take free
 //!   cells, trainings and mines are bought while they pay back.
 //! - [`middle`]: when the middle game starts: the first start of a player's
@@ -19,6 +21,7 @@
 //! The harness (`examples/early`) plays openings against each other from both
 //! seats of many maps, up to the middle game, and reports the score.
 
+pub mod assign;
 pub mod econ;
 pub mod middle;
 pub mod plan;
