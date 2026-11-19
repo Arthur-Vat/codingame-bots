@@ -93,7 +93,7 @@ Per unit trained, over its life (blue for Z and T, red for us; level 1 kills not
 
 ## Long-term plan: a curriculum of capabilities
 
-*Rewritten on 2026-11-19 at the owner's request ("Rewrite the plan", form). The first version was a list of levels by game phase, each reached by new evaluation terms screened against our last release. That is the method of E003 to E067: hill-climbing in parameter space, judged by our own previous bot, which can only find what beats ourselves. The owner asked for a curriculum precisely to avoid such a local optimum. Its levels 0 and 1 were done before the rewrite: level 0 is the command `codingame-style` (#347), and level 1 is E068 (`ice-and-fire-v028`, the tower wall as an evaluation term, +41.9 over v027, #349).*
+*Rewritten on 2026-11-19 at the owner's request. The first version was a list of levels by game phase, each reached by new evaluation terms screened against our last release. That is the method of E003 to E067: hill-climbing in parameter space, judged by our own previous bot, which can only find what beats ourselves. The owner asked for a curriculum precisely to avoid such a local optimum. Its levels 0 and 1 were done before the rewrite: level 0 is the command `codingame-style` (#347), and level 1 is E068 (`ice-and-fire-v028`, the tower wall as an evaluation term, +41.9 over v027, #349).*
 
 ### Principles
 
@@ -115,7 +115,7 @@ Before new capabilities, a way to see them and to judge them without self-play.
 2. **A sparring bot in zasmu's style.** A baseline bot built by hand from the study's numbers: hold the front with towers, mines on safe spots, save gold toward the cheapest chain to the enemy HQ, strike when it is affordable. It joins the screenings and the league, so that self-play includes the style that beats us. Its first version is simple; it improves as stages B to E give it better parts.
 3. **Test batches against the top players.** At each stage's end, a batch of CodinGame test games against zasmu and the top 5 on the fixed maps (`scripts/codingame.sh batch --opponents`), on the owner's approval. It is read with `codingame-style` and compared with the release before.
 
-Possibly an ADR: the judge of a stage changes from the SPRT alone to the SPRT plus the capability tests and the batch.
+When the tests and the sparring bot exist, the owner decides whether a stage's acceptance (the SPRT plus the capability tests and the batch) becomes a rule; if so, it goes into an ADR.
 
 ### Stage B: a strategic layer; first goal, the strike
 
@@ -129,7 +129,7 @@ The first goal is the strike: save toward our cheapest chain to the enemy HQ whe
 
 The same machinery from the other side. Follow the opponent's gold plus k incomes against its chain to our HQ, and when a strike comes within reach, set a goal that raises that chain's cost (towers on its path, units that block it) before the turn it becomes affordable. Measured by:
 - the capability tests for defence;
-- in the zasmu batch, the losses to one cut of our whole land (now most of them).
+- in the zasmu batch, the losses to one cut of our whole land (now most of them: zasmu's cut of most cells took 100% of our active cells in the median game, see "The strike").
 
 ### Stage D: hold the front
 
