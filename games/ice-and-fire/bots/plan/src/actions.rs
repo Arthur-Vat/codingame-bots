@@ -68,7 +68,7 @@ pub const OWN_CELLS: u8 = 2;
 /// is guarded at once, so that a unit that holds the front can advance.
 /// 0: none (v028); 1: a tower on the cell it leaves; 2: a level-1 training
 /// on the cell it leaves.
-pub const STEP_GUARD: u8 = 1;
+pub const STEP_GUARD: u8 = 2;
 
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
