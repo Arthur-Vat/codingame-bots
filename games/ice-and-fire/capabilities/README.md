@@ -36,10 +36,26 @@ cargo run --release -p ice-and-fire-review -- codingame-capability-suite --data 
 cargo run --release -p ice-and-fire-review -- codingame-capabilities --data DATA --me Tarleya --suite games/ice-and-fire/capabilities/suite-v1.tsv --bot NAME=BINARY [--bot ...] [--tries 600] [--csv FILE] [--jobs 4] > capabilities.md
 ```
 
-`DATA` is the `ice-and-fire` folder of the data branch (for example a worktree: `git worktree add --detach /tmp/data origin/claude/codingame-games`, then `--data /tmp/data/ice-and-fire`). `codingame-capabilities` checks that every test of the suite still stands on the data. Each bot sits in the mover's seat and is sent the game's own inputs, from the initial input and its first turn up to the test's ply. Its answers before that ply are ignored, so its game turn and its memory are as in a real game. It answers with `CG_FIXED_ITERS` (600 tries by default, as `codingame-judge`; 0 for the bot's own clock), so a run can be repeated. A bot that does not answer fails the test, and the report lists it. One bot process serves all the tests of one game and seat. A run of the 600 tests takes about 3 minutes per plan-bot release on 4 cores.
+`DATA` is the `ice-and-fire` folder of the data branch (for example a worktree: `git worktree add --detach /tmp/data origin/claude/codingame-games`, then `--data /tmp/data/ice-and-fire`). `codingame-capabilities` checks that every test of the suite still stands on the data. Each bot sits in the mover's seat and is sent the game's own inputs, from the initial input and its first turn up to the test's ply. Its answers before that ply are ignored, so its game turn and its memory are as in a real game. It answers with `CG_FIXED_ITERS` (600 tries by default, as `codingame-judge`; 0 for the bot's own clock), so a run can be repeated. A bot that does not answer fails the test, and the report lists it. One bot process serves all the tests of one game and seat. A run of the 600 tests takes about 5 minutes per plan-bot release on 4 cores. Two runs give the same verdicts (60 tests of v028 repeated, 0 differences).
 
 The report has one row per capability: each bot's pass rate, then the rate of the answers the players sent in the games (all of them, zasmu's, ours, the others'). `--csv` writes each test's verdicts.
 
 ## Results
 
-RESULTS
+Suite v1, 2026-11-19, `--tries 600`, the releases compiled from `releases/` with `rustc --edition 2021 -O` (1.90.0). Each test's verdicts are in [`results-v1-2026-11-19.csv`](results-v1-2026-11-19.csv). "Played" is the answers the players sent in the games. In `Played by zasmu`, the save and defend columns rest on 2 to 9 tests, too few to read.
+
+| Capability | Tests | v028 | v027 | v026 | v001 | Played, all | Played by zasmu | Played by Tarleya | Played by others |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| finish | 100 | 100% | 99% | 99% | 100% | 100% (100/100) | 100% (12/12) | 100% (36/36) | 100% (52/52) |
+| save-1 | 100 | 42% | 44% | 44% | 88% | 57% (57/100) | 78% (7/9) | 51% (26/51) | 60% (24/40) |
+| save-2 | 100 | 65% | 65% | 65% | 42% | 60% (60/100) | 29% (2/7) | 58% (21/36) | 65% (37/57) |
+| defend-1 | 100 | 66% | 67% | 67% | 68% | 58% (58/100) | - | 56% (31/55) | 60% (27/45) |
+| defend-2 | 100 | 77% | 76% | 76% | 29% | 60% (60/100) | 50% (1/2) | 62% (40/65) | 58% (19/33) |
+| wall | 100 | 63% | 57% | 51% | 25% | 100% (wall reference) | 100% (100/100) | - | - |
+
+What they say:
+
+- **Finish works.** Every bot takes the HQ when its chain is affordable; v026 and v027 miss one test each.
+- **Our search spends the strike it could make next turn.** On save-1, v026 to v028 keep the strike affordable in 42 to 44% of the tests. v001 (`banker`) does in 88%: its one rule is to keep gold for a winning chain affordable next turn. This is the gap stage B is for. A save rate needs the defend rate beside it, since hoarding passes every save test. v001's 29% on defend-2 shows what that rule costs.
+- **Defence is the same in v026 to v028**: 66 to 67% on defend-1 and 76 to 77% on defend-2. Some defend-1 positions may have no defence at all; the players' own answers pass 58%.
+- **The wall test sees E068.** The wall rate rises from v026 (51%) to v027 (57%) and to v028 (63%). E068 is v028's tower wall term; v027 changed who plays turn 7. So the test measures the behaviour E068 aimed at, without self-play. It still sits well below zasmu's own answers, which pass by construction.
