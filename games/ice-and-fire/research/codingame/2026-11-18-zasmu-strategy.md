@@ -115,9 +115,11 @@ Before new capabilities, a way to see them and to judge them without self-play.
 
    *Done (2026-11-19): the commands `codingame-capability-suite` and `codingame-capabilities`, the frozen suite v1 (600 tests: finish, save, defend, wall) and the scores of our releases, in [capabilities/README.md](../../capabilities/README.md). The continuation property is not in v1.*
 2. **A sparring bot in zasmu's style.** A baseline bot built by hand from the study's numbers: hold the front with towers, mines on safe spots, save gold toward the cheapest chain to the enemy HQ, strike when it is affordable. It joins the screenings and the league, so that self-play includes the style that beats us. Its first version is simple; it improves as stages B to E give it better parts.
-3. **Test batches against the top players.** At each stage's end, a batch of CodinGame test games against zasmu and the top 5 on the fixed maps (`scripts/codingame.sh batch --opponents`), on the owner's approval. It is read with `codingame-style` and compared with the release before.
+3. **Each submitted release's ranking games, read.** *(Rewritten 2026-11-19 at the owner's decision: "I prefer to check played games from a submitted bot", instead of test batches against the top players.)* When a release is submitted to CodinGame, the collection fetches its ranking games; they are read through the capability tests (the release's own pass rates, `codingame-capability-suite --release`, then `codingame-capabilities` with no bot) and with `codingame-style --release`, and compared with the releases before. No test games are played for it.
 
-When the tests and the sparring bot exist, the owner decides whether a stage's acceptance (the SPRT plus the capability tests and the batch) becomes a rule; if so, it goes into an ADR.
+   *Done for v014 to v028 (2026-11-19): [capabilities/README.md](../../capabilities/README.md), "Submitted releases, in their ranking games". v028 builds the wall on CodinGame and saves a strike one turn ahead less often than the releases before it (55% against 62 to 66%).*
+
+When the tests and the sparring bot exist, the owner decides whether a stage's acceptance (the SPRT plus the capability tests and the reading of its ranking games) becomes a rule; if so, it goes into an ADR.
 
 ### Stage B: a strategic layer; first goal, the strike
 
@@ -147,7 +149,7 @@ The opening picks a target position at turn 10 (land, centre and chokepoints, un
 
 ### Stage G: choosing goals per opponent
 
-Recognise the opponent's style from its first turns and its gold (a saver, a wall, an attacker) and weigh the goals accordingly. Measured by the win rate against each of the top 5 in the batch.
+Recognise the opponent's style from its first turns and its gold (a saver, a wall, an attacker) and weigh the goals accordingly. Measured by the win rate against each of the top 5 in the ranking games of the submitted release.
 
 ### Then tuning
 
