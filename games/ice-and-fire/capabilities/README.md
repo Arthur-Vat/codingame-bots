@@ -38,6 +38,13 @@ cargo run --release -p ice-and-fire-review -- codingame-capability-suite --data 
 cargo run --release -p ice-and-fire-review -- codingame-capabilities --data DATA --me Tarleya --suite games/ice-and-fire/capabilities/suite-v1.tsv --bot NAME=BINARY [--bot ...] [--tries 600] [--csv FILE] [--jobs 4] > capabilities.md
 ```
 
+To read a submitted release's own answers in its ranking games, draw every candidate of its games and score no bot: the column "Played by Tarleya" is then the release's pass rates, and the other columns its opponents'.
+
+```sh
+cargo run --release -p ice-and-fire-review -- codingame-capability-suite --data DATA --me Tarleya --kinds ranking --release ice-and-fire-v028 --per 1000000 --per-game 1000000 > v028.tsv
+cargo run --release -p ice-and-fire-review -- codingame-capabilities --data DATA --me Tarleya --suite v028.tsv [--csv FILE] > v028.md
+```
+
 `DATA` is the `ice-and-fire` folder of the data branch (for example a worktree: `git worktree add --detach /tmp/data origin/claude/codingame-games`, then `--data /tmp/data/ice-and-fire`). `codingame-capabilities` checks that every test of the suite still stands on the data. Each bot sits in the mover's seat and is sent the game's own inputs, from the initial input and its first turn up to the test's ply. Its answers before that ply are ignored, so its game turn and its memory are as in a real game. It answers with `CG_FIXED_ITERS` (600 tries by default, as `codingame-judge`; 0 for the bot's own clock), so a run can be repeated. A bot that does not answer fails the test, and the report lists it. One bot process serves all the tests of one game and seat. A run of the 600 tests takes about 5 minutes per plan-bot release on 4 cores. Two runs give the same verdicts (60 tests of v028 repeated, 0 differences).
 
 The report has one row per capability: each bot's pass rate, then the rate of the answers the players sent in the games (all of them, zasmu's, ours, the others'). `--csv` writes each test's verdicts.
@@ -91,3 +98,38 @@ What suite v2 adds:
 - **zasmu does not save two turns ahead.** On save-2 it passes 43% (48% over all its positions), less than our releases (69 to 75%) and less than every other group. It spends until about two turns before the strike and then banks, as the study found ("The strike"). So save-2 is not a target in itself; stage B should aim at save-1 and at when to start saving.
 - **Defence against a strike one turn away is level with zasmu**, on positions where it was threatened: 78 to 79% against 81%. Against a threat two turns away our releases defend in 96% of the tests, zasmu in 62%. zasmu leads in most of these games, so it may afford to ignore a distant threat; whether our 96% costs us elsewhere is not something a one-ply test can tell.
 - **The wall rate rises the same way as on suite v1**: v026 44%, v027 46%, v028 51%.
+
+### Submitted releases, in their ranking games
+
+The owner, 2026-11-19: no test batches against the top players; the capability tests read the games each submitted release played on CodinGame instead. Data branch at e3b20fa (v028's 159 ranking games fetched by the collection that day; one replays differently and is left out), every candidate of each release's ranking games, no bot (the commands above). These are the releases' own answers in real games, so the positions differ between releases, and so do the opponents: a rate moves with the opponents a release met as well as with the bot. The wall test has no row: it needs zasmu's answer to the same position. Releases with fewer than 50 ranking games on the data branch (v016, v021, v022) are left out.
+
+| Release | Ranking games | finish | save-1 | save-2 | defend-1 | defend-2 | Opponents: save-1 | Opponents: defend-1 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| v014 | 227 | 97% (127) | 44% (402) | 70% (418) | 45% (111) | 65% (282) | 72% (127) | 42% (213) |
+| v018 | 108 | 96% (47) | 42% (181) | 60% (231) | 47% (81) | 60% (190) | 65% (101) | 46% (85) |
+| v019 | 159 | 100% (64) | 64% (188) | 66% (226) | 44% (119) | 63% (284) | 76% (146) | 57% (145) |
+| v020 | 126 | 100% (58) | 66% (134) | 69% (167) | 38% (77) | 59% (190) | 71% (100) | 46% (106) |
+| v023 | 159 | 100% (72) | 63% (192) | 55% (312) | 46% (94) | 66% (306) | 69% (131) | 49% (139) |
+| v024 | 83 | 100% (25) | 62% (106) | 65% (185) | 47% (66) | 64% (186) | 65% (86) | 68% (77) |
+| v025 | 159 | 100% (64) | 64% (188) | 63% (355) | 47% (94) | 67% (357) | 64% (146) | 56% (146) |
+| v026 | 53 | 100% (19) | 63% (54) | 62% (93) | 47% (49) | 70% (126) | 75% (55) | 52% (40) |
+| v028 | 158 | 99% (74) | 55% (286) | 62% (418) | 52% (83) | 69% (287) | 66% (112) | 56% (168) |
+
+Rates are of the release's own positions (in brackets); the opponents' columns are its opponents' answers in the same games.
+
+Beside them, `codingame-style --kinds ranking --release ice-and-fire-v028` (and v025's for comparison), against the top 6 of the newest leaderboard snapshot in the same games:
+
+| Measure (mean) | v028 red / blue | v025 red / blue | top 6 against v028, red / blue |
+| --- | --- | --- | --- |
+| Towers built a game | 8.8 / 7.4 | 5.6 / 5.2 | 6.5 / 5.8 |
+| Towers on the board at turn 15 | 3.9 / 3.8 | 2.9 / 2.7 | 2.8 / 3.0 |
+| Frontier cells protected by a tower at turn 15 | 0.67 / 0.60 | 0.45 / 0.47 | 0.54 / 0.45 |
+| Voronoi share at turn 10 | 0.41 / 0.43 | 0.39 / 0.41 | 0.52 / 0.56 |
+| Moves a ply at turns 10-12 | 2.9 / 2.9 | 3.0 / 2.2 | 4.6 / 4.8 |
+
+What they say:
+
+- **v028 builds the wall on CodinGame.** It builds more towers than v025 and than the top 6 (8.8 and 7.4 a game) and guards more of its frontier at turn 15 (0.67 and 0.60 of its frontier cells). E068 aimed at this; the suites saw it too (wall rate 51% against v026's 44% on suite v2).
+- **v028 saves a strike one turn ahead less often than the releases before it**: 55% of its 286 save-1 positions, against 62 to 66% for v019 to v026 (and 72 to 76% for zasmu in the suites). The towers spend gold that a strike would need: a likely cost of the wall term, and the gap stage B is for. Its defence against a strike one turn away is its best (52%), within the noise of 83 positions.
+- **The opening is unchanged**: Voronoi share at turn 10 and moves a ply at turns 10-12 stay well below the top 6, as before E068.
+

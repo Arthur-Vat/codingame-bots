@@ -360,7 +360,7 @@ pub fn run_suite(request: &SuiteRequest) -> Result<(String, String), String> {
     let comment = format!(
         "Capability tests of A Code of Ice and Fire (games/ice-and-fire/capabilities/README.md).\n\
          Drawn by `ice-and-fire-review codingame-capability-suite` from {} games of the data branch:\n\
-         up to {} tests a capability, at most {} a game, seed {}, wall reference {}{}.",
+         up to {} tests a capability, at most {} a game, seed {}, wall reference {}{}{}{}.",
         games.len(),
         request.per,
         request.per_game,
@@ -369,7 +369,18 @@ pub fn run_suite(request: &SuiteRequest) -> Result<(String, String), String> {
         request
             .mover
             .as_ref()
-            .map_or(String::new(), |m| format!(", only positions answered by {m}"))
+            .map_or(String::new(), |m| format!(", only positions answered by {m}")),
+        if ["ranking", "test", "replay"]
+            .iter()
+            .all(|k| base.kinds.is_empty() || base.kinds.iter().any(|x| x == k))
+        {
+            String::new()
+        } else {
+            format!(", games of kinds {}", base.kinds.join(","))
+        },
+        base.release
+            .as_ref()
+            .map_or(String::new(), |r| format!(", only our games played by {r}"))
     );
     Ok((suite_text(&comment, &tests), summary))
 }
@@ -674,7 +685,7 @@ fn report(
     let mut out = String::from("# Capability tests\n\n");
     let _ = writeln!(
         out,
-        "Suite `{}`: {} tests from {} games. Bots answered {}; each in the mover's seat, fed the game's inputs from its first turn. \"Played\" is the answers the players sent in the game: all of them, then those of {reference}, of {me} and of the others.\n",
+        "Suite `{}`: {} tests from {} games. {}\"Played\" is the answers the players sent in the game: all of them, then those of {reference}, of {me} and of the others.\n",
         request.suite.display(),
         tests.len(),
         tests
@@ -682,10 +693,15 @@ fn report(
             .map(|t| t.game_id)
             .collect::<std::collections::BTreeSet<_>>()
             .len(),
-        if request.tries > 0 {
-            format!("with `CG_FIXED_ITERS={}`", request.tries)
+        if specs.is_empty() {
+            String::new()
+        } else if request.tries > 0 {
+            format!(
+                "Bots answered with `CG_FIXED_ITERS={}`; each in the mover's seat, fed the game's inputs from its first turn. ",
+                request.tries
+            )
         } else {
-            "on their own clock".to_string()
+            "Bots answered on their own clock; each in the mover's seat, fed the game's inputs from its first turn. ".to_string()
         }
     );
     let _ = write!(out, "| Capability | Tests |");

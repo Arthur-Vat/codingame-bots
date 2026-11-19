@@ -373,4 +373,64 @@ mod end_to_end {
         let err = run(&request(&dir, suite, vec![bot(&dir, "silent", false)])).unwrap_err();
         assert!(err.contains("no longer gives"), "{err}");
     }
+
+    #[test]
+    fn a_release_draw_keeps_its_games_and_no_bot_reports_the_played_answers() {
+        let dir = data_dir("capabilities-release");
+        // The ranking game is played by release r1; the test game has none.
+        let index = fs::read_to_string(dir.join("index.jsonl")).expect("index");
+        let index = index.replacen(
+            "\"kind\":\"ranking\",",
+            "\"kind\":\"ranking\",\"release\":\"r1\",",
+            1,
+        );
+        fs::write(dir.join("index.jsonl"), index).expect("index");
+        let draw = |kinds: Vec<String>, release: Option<String>| {
+            run_suite(&SuiteRequest {
+                base: Base {
+                    kinds,
+                    release,
+                    ..base(&dir)
+                },
+                reference: "Gabbek".to_string(),
+                per: 100,
+                per_game: 100,
+                seed: 1,
+                mover: Some("Tarleya".to_string()),
+            })
+            .expect("a suite")
+        };
+        let (all, _) = draw(Vec::new(), None);
+        let (text, summary) = draw(vec!["ranking".to_string()], Some("r1".to_string()));
+        assert!(
+            summary.starts_with("1 games replayed, 0 left out"),
+            "{summary}"
+        );
+        assert!(
+            text.contains("games of kinds ranking, only our games played by r1"),
+            "{text}"
+        );
+        let tests = read_suite(&text).expect("the suite reads back");
+        assert!(!tests.is_empty());
+        let expected: Vec<Test> = read_suite(&all)
+            .expect("the suite reads back")
+            .into_iter()
+            .filter(|t| t.game_id == 914386214)
+            .collect();
+        assert_eq!(tests, expected);
+        let (none, _) = draw(Vec::new(), Some("r2".to_string()));
+        assert!(read_suite(&none).expect("an empty suite").is_empty());
+
+        let suite = dir.join("suite.tsv");
+        fs::write(&suite, &text).expect("suite");
+        let report = run(&request(&dir, suite, Vec::new())).expect("a report");
+        assert!(!report.contains("Bots answered"), "{report}");
+        assert!(
+            report.contains("| Capability | Tests | Played, all |"),
+            "{report}"
+        );
+        let csv = fs::read_to_string(dir.join("verdicts.csv")).expect("csv");
+        assert!(csv.starts_with("capability,game_id,ply,turn,mover,mover_pass\n"));
+        assert_eq!(csv.lines().count(), tests.len() + 1);
+    }
 }
