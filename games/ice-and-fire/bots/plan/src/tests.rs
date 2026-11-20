@@ -1390,6 +1390,12 @@ fn step_and_guard_steps_into_a_neutral_cell_and_guards_the_cell_left() {
                 _ => continue,
             };
             let from = usize::from(gy) * SIZE + usize::from(gx);
+            if crate::actions::FALL_BACK != 0
+                && (state.owned(me).test(to) || state.owned(1 - me).test(to))
+            {
+                // E076's fall back and guard, checked by its own test.
+                continue;
+            }
             assert!(!state.owned(me).test(to) && !state.owned(1 - me).test(to));
             assert!(crate::eval::reach(&state, 1 - me).test(from));
             let mut after = state.clone();
@@ -1441,4 +1447,105 @@ fn the_opening_goal_counts_the_band_cells_each_side_holds() {
     // After GOAL_UNTIL it counts nothing.
     let later = position_at(GOAL_UNTIL + 1, "0\n", rows, [20, 20], &[]);
     assert_eq!(goal(&later, 0), 0);
+}
+
+#[test]
+fn fall_back_and_guard_steps_onto_an_owned_cell_and_guards_the_cell_left() {
+    // E076: a unit on a cell the enemy can reach steps onto an owned cell
+    // (back, along the border, or any, by FALL_BACK), then a tower goes on
+    // the cell it left.
+    use crate::actions::FALL_BACK;
+    use ice_and_fire_engine::HQ;
+    let mut found = 0;
+    for state in many_positions() {
+        let mut actions = Vec::new();
+        actions_of(&state, &mut actions);
+        let me = state.to_act();
+        for action in &actions {
+            let Action::Many(commands) = action else {
+                continue;
+            };
+            let [Command::Move { x, y, .. }, Command::BuildTower { x: gx, y: gy }] = commands[..]
+            else {
+                continue;
+            };
+            let to = usize::from(y) * SIZE + usize::from(x);
+            if !state.owned(me).test(to) && !state.owned(1 - me).test(to) {
+                continue; // E070's step and guard
+            }
+            assert_ne!(
+                std::hint::black_box(FALL_BACK),
+                0,
+                "a fall back offered with FALL_BACK 0"
+            );
+            let from = usize::from(gy) * SIZE + usize::from(gx);
+            assert!(crate::eval::reach(&state, 1 - me).test(from));
+            let map = state.map();
+            match FALL_BACK {
+                1 => assert!(
+                    state.owned(me).test(to)
+                        && map.distance(to, HQ[1 - me]) > map.distance(from, HQ[1 - me])
+                ),
+                2 => assert!(state.owned(me).test(to) && state.owned(1 - me).neighbours().test(to)),
+                _ => {}
+            }
+            let mut after = state.clone();
+            assert!(
+                after.apply(commands[0]) && after.apply(commands[1]),
+                "{commands:?}"
+            );
+            assert!(after.towers().test(from));
+            found += 1;
+        }
+    }
+    assert!(found > 0 || FALL_BACK == 0, "no fall back offered");
+}
+
+#[test]
+fn the_rush_trains_a_line_from_the_cell_nearest_the_enemy_hq() {
+    // E076: chains of level-1 trainings into neutral cells, each next to
+    // the one before, starting next to our active land.
+    use crate::actions::RUSH_LENGTH;
+    let mut found = 0;
+    for state in many_positions() {
+        let mut actions = Vec::new();
+        actions_of(&state, &mut actions);
+        let me = state.to_act();
+        let neutral = state
+            .map()
+            .valid
+            .and_not(state.owned(me) | state.owned(1 - me));
+        for action in &actions {
+            let Action::Many(commands) = action else {
+                continue;
+            };
+            let cells: Option<Vec<usize>> = commands
+                .iter()
+                .map(|c| match *c {
+                    Command::Train { level: 1, x, y } => {
+                        Some(usize::from(y) * SIZE + usize::from(x))
+                    }
+                    _ => None,
+                })
+                .collect();
+            let Some(cells) = cells else {
+                continue;
+            };
+            if !cells.iter().all(|&c| neutral.test(c)) {
+                continue; // a cut or the lethal chain
+            }
+            let longest = std::hint::black_box(RUSH_LENGTH);
+            assert!(cells.len() >= 2 && cells.len() <= longest, "{commands:?}");
+            assert!(state.active(me).neighbours().test(cells[0]));
+            for pair in cells.windows(2) {
+                assert!(Bits::cell(pair[0]).neighbours().test(pair[1]));
+            }
+            let mut after = state.clone();
+            for &c in commands {
+                assert!(after.apply(c), "{commands:?}");
+            }
+            found += 1;
+        }
+    }
+    assert!(found > 0 || RUSH_LENGTH == 0, "no rush offered");
 }

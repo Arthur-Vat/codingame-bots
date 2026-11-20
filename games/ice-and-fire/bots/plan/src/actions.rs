@@ -70,6 +70,25 @@ pub const OWN_CELLS: u8 = 2;
 /// on the cell it leaves.
 pub const STEP_GUARD: u8 = 1;
 
+/// The fall-back-and-guard macro action (E076, after zasmu's games): a unit
+/// on a cell of ours the enemy can reach at its next turn steps onto a cell
+/// that is owned (E070 offers the steps into neutral cells), and the cell
+/// it leaves gets a tower. 0: none (v030); 1: steps onto our cells farther
+/// from the enemy HQ (back); 2: steps onto our cells next to an enemy cell
+/// (along the border); 3: steps onto any of our cells or an enemy cell
+/// other than its HQ.
+pub const FALL_BACK: u8 = 0;
+
+/// The rush from the tip (E076): chains of level-1 trainings into neutral
+/// cells, from the trainable neutral cells nearest the enemy HQ, each next
+/// cell the neutral neighbour nearest it, of 2 up to this many trainings;
+/// 0 for none (v030).
+pub const RUSH_LENGTH: usize = 0;
+
+/// The starts of [`RUSH_LENGTH`]'s chains: this many trainable neutral
+/// cells, the nearest the enemy HQ first.
+pub const RUSH_STARTS: usize = 2;
+
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
 /// Longest cut, in trainings: 5 since E014 (4 before).
@@ -223,6 +242,18 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
         }
     }
 
+    // Fall back and guard (E076): a step onto an owned cell, then a tower
+    // on the cell left behind.
+    if FALL_BACK != 0 && gold >= BUILD_COST && state.league().allows_towers() {
+        fall_back(state, &enter, out);
+    }
+
+    // Rush from the tip (E076): chains of level-1 trainings toward the
+    // enemy HQ.
+    if RUSH_LENGTH != 0 && gold >= 20 {
+        rush(state, enter[1], gold, out);
+    }
+
     // Macro actions: the best cuts, and the lethal chain. A cut of one
     // training is a single training already.
     for cut in cuts(state, CUT_LENGTH, gold, MACRO_CUTS) {
@@ -233,6 +264,83 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
     if let Some(chain) = chain_to(state, HQ[1 - me], gold) {
         if chain.commands.len() > 1 {
             out.push(Action::Many(chain.commands));
+        }
+    }
+}
+
+/// The fall-back-and-guard actions (E076, [`FALL_BACK`]) of the player to
+/// act, with `enter` as [`generate`] has it.
+fn fall_back(state: &State, enter: &[Bits; 4], out: &mut Vec<Action>) {
+    let me = state.to_act();
+    let enemy = 1 - me;
+    let reach = crate::eval::reach(state, enemy);
+    let ours = state.owned(me);
+    let theirs = state.owned(enemy);
+    let border = theirs.neighbours();
+    let spots = state.map().spots;
+    for from in (state.movable_units() & reach & state.active(me)).iter() {
+        if spots.test(from) {
+            continue;
+        }
+        let Some((id, level)) = state.unit_at(from) else {
+            continue;
+        };
+        let away = state.map().distance(from, HQ[enemy]);
+        let steps = Bits::cell(from).neighbours() & enter[usize::from(level)];
+        let (fx, fy) = xy(from);
+        for to in steps.iter() {
+            let allowed = match FALL_BACK {
+                1 => ours.test(to) && state.map().distance(to, HQ[enemy]) > away,
+                2 => ours.test(to) && border.test(to),
+                // A step onto the enemy HQ wins: it is offered alone.
+                _ => ours.test(to) || (theirs.test(to) && to != HQ[enemy]),
+            };
+            if !allowed {
+                continue;
+            }
+            let (x, y) = xy(to);
+            out.push(Action::Many(vec![
+                Command::Move { id, x, y },
+                Command::BuildTower { x: fx, y: fy },
+            ]));
+        }
+    }
+}
+
+/// The rush-from-the-tip actions (E076, [`RUSH_LENGTH`]): `level1` is where
+/// a level-1 unit of the player to act may go.
+fn rush(state: &State, level1: Bits, gold: i64, out: &mut Vec<Action>) {
+    let me = state.to_act();
+    let target = HQ[1 - me];
+    let map = state.map();
+    let neutral = map.valid.and_not(state.owned(me) | state.owned(1 - me));
+    let open = neutral & level1;
+    let mut starts: Vec<usize> = (state.active(me).neighbours() & open).iter().collect();
+    starts.sort_by_key(|&cell| (map.distance(cell, target), cell));
+    starts.truncate(RUSH_STARTS);
+    let most = usize::try_from(gold / 10).unwrap_or(0).min(RUSH_LENGTH);
+    for start in starts {
+        let mut chain = vec![start];
+        let mut taken = Bits::cell(start);
+        while chain.len() < most {
+            let last = chain[chain.len() - 1];
+            let next = (Bits::cell(last).neighbours() & open)
+                .and_not(taken)
+                .iter()
+                .min_by_key(|&cell| (map.distance(cell, target), cell));
+            let Some(next) = next else {
+                break;
+            };
+            chain.push(next);
+            taken.set(next);
+            let commands = chain
+                .iter()
+                .map(|&cell| {
+                    let (x, y) = xy(cell);
+                    Command::Train { level: 1, x, y }
+                })
+                .collect();
+            out.push(Action::Many(commands));
         }
     }
 }
