@@ -120,6 +120,55 @@ pub enum Order {
     /// The active cells, then the sum of their weights in a static weight
     /// map of the map, computed at turn 1 ([`Field`]), then the weighted sum.
     Field(Field),
+    /// The active cells, then the Voronoi share (twice it: a tie counts 1,
+    /// [`crate::score::voronoi_halves`]), then the weighted sum (the owner,
+    /// 2026-11-20).
+    Voronoi,
+    /// The active cells, then twice the non-void cells behind the
+    /// frontline that are nearer our land than the frontline (a tie counts
+    /// 1, [`behind_front`]), then the weighted sum (the owner, 2026-11-20).
+    BehindFront,
+}
+
+/// For each cell on `seat`'s side of the frontline (nearer its HQ than the
+/// enemy's, or as near: the frontline itself), its steps to the frontline;
+/// `u8::MAX` for the other cells. Fixed from turn 1.
+pub fn to_front(state: &State, seat: usize) -> [u8; CELLS] {
+    let ours = econ::distances(state, Bits::cell(HQ[seat]));
+    let theirs = econ::distances(state, Bits::cell(HQ[1 - seat]));
+    let mut front = Bits::EMPTY;
+    let mut side = Bits::EMPTY;
+    for c in state.map().valid.iter() {
+        if ours[c] == u8::MAX || theirs[c] == u8::MAX {
+            continue;
+        }
+        if ours[c] == theirs[c] {
+            front.set(c);
+        }
+        if ours[c] <= theirs[c] {
+            side.set(c);
+        }
+    }
+    let d = econ::distances(state, front);
+    let mut out = [u8::MAX; CELLS];
+    for c in side.iter() {
+        out[c] = d[c];
+    }
+    out
+}
+
+/// Twice the cells behind `seat`'s frontline nearer its active land than
+/// the frontline (`front`: [`to_front`]), a tie counting 1.
+pub fn behind_front(state: &State, seat: usize, front: &[u8; CELLS]) -> i64 {
+    let d = econ::distances(state, state.active(seat));
+    (0..CELLS)
+        .filter(|&c| front[c] != u8::MAX && d[c] != u8::MAX)
+        .map(|c| match d[c].cmp(&front[c]) {
+            std::cmp::Ordering::Less => 2,
+            std::cmp::Ordering::Equal => 1,
+            std::cmp::Ordering::Greater => 0,
+        })
+        .sum()
 }
 
 /// A static weight map, from each cell's walking steps `a` from our HQ and
@@ -351,6 +400,9 @@ pub struct Zones {
     pub rings: [i64; CELLS],
     /// The frontier's cells (ring 0) for `Order::Frontier`.
     pub frontier: Bits,
+    /// Steps to the frontline behind it for `Order::BehindFront`
+    /// ([`to_front`]).
+    pub front: [u8; CELLS],
 }
 
 impl Default for Zones {
@@ -361,6 +413,7 @@ impl Default for Zones {
             weights: [0; CELLS],
             rings: [i64::MAX; CELLS],
             frontier: Bits::EMPTY,
+            front: [u8::MAX; CELLS],
         }
     }
 }
@@ -399,6 +452,11 @@ impl Zones {
             weights,
             rings: ring_of,
             frontier,
+            front: if objective.order == Order::BehindFront {
+                to_front(state, state.to_act())
+            } else {
+                [u8::MAX; CELLS]
+            },
             chokes: if objective.chokes != 0 || lexicographic {
                 ice_and_fire_early::zones::Zones::of(state).middle_chokes()
             } else {
@@ -434,6 +492,18 @@ pub fn key(state: &State, seat: usize, objective: &Objective, zones: Zones) -> K
                 .sum();
             [i64::from(active.count()), -far, sum, 0]
         }
+        Order::BehindFront => [
+            i64::from(state.active(seat).count()),
+            behind_front(state, seat, &zones.front),
+            sum,
+            0,
+        ],
+        Order::Voronoi => [
+            i64::from(state.active(seat).count()),
+            crate::score::voronoi_halves(state, seat),
+            sum,
+            0,
+        ],
         Order::ByRing => {
             let active = state.active(seat);
             // Seven counts of at most 144, 8 bits each, ring 0 highest.

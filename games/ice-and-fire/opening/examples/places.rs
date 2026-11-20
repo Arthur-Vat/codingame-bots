@@ -317,6 +317,8 @@ fn dump(plans: &str, starts: &[String]) {
             ("corridor", Order::Field(Field::Corridor { top: 8 })),
             ("reach", Order::Field(Field::Reachable { top: 7, steps: 9 })),
             ("outward", Order::Field(Field::Outward)),
+            ("voronoi", Order::Voronoi),
+            ("behind", Order::BehindFront),
         ] {
             let mut planned = opening(order);
             let mut s = state.clone();
