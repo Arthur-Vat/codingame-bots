@@ -11,7 +11,7 @@ elo: +11.7 [+3.4, +20.1]
 pairs: 1840
 full_time: +11.7 [+3.4, +20.1]
 decision: promoted
-cg_rank: none
+cg_rank: Legend, 5th of 90 (5th of 929 overall), 2026-11-20: submitted through the API on the owner's approval (submission 41769923)
 ---
 
 ## Why
@@ -248,3 +248,6 @@ the API on the owner's approval (form, 2026-11-20): submission 41769923
 (file SHA-256
 d1176c05449361db45766889e6afd04d5b5bd7ae639cdb0c85c159f7dd9c52ca),
 replacing v029 (4th of 90 in Legend; v030 was never submitted).
+
+Its ranking ended the same day: 5th of 90 in Legend (score 30.0), 5th of
+929 overall, where v029 had ended 4th of 90 (score 29.89).
