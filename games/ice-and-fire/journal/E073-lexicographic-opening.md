@@ -86,4 +86,20 @@ chokes and middle cells.
 
 ## Duels cut at game turn 12
 
-DUELS
+`ice-and-fire-arena-early` against `ice-and-fire-v029` (its release
+compiled with `rustc -C opt-level=3`), 400 pairs, seed 72, both seats,
+time scale 0.403 and 5 ms of tolerance from `scripts/calibrate.sh` on the
+session's 4 CPUs; the variants built with `cargo build --release`, `ORDER`
+changed.
+
+| Variant | Order | Elo over v029 [95%] | Pairs won / level / lost | Timeouts (variant / v029) |
+| --- | --- | --- | --- | ---: |
+| sum | `Sum` (v029's opening: control) | −1.7 [−14.3, +10.8] | 26 / 346 / 28 | 1 / 0 |
+| land | `LandFirst` | +20.9 [−1.4, +43.3] | 98 / 228 / 74 | 2 / 4 |
+| tie12 | `TieBreak { within: 12 }` | +20.9 [+2.6, +39.2] | 70 / 284 / 46 | 0 / 0 |
+| tie6 | `TieBreak { within: 6 }` | +5.2 [−11.1, +21.6] | 49 / 308 / 43 | 0 / 1 |
+
+The control plays as v029. `land` changes the most games (a pair
+split in 172 of 400 against 54 for the control) and wins more than it
+loses; `tie12` changes fewer and wins as much. Median answer times are
+level (9 to 10 ms after the first turn).
