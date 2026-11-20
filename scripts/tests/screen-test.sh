@@ -86,7 +86,7 @@ contains "good" "$output" "baseline_name=toy-v002"
 contains "good" "$output" "seed=7"
 contains "good" "$output" "pairs=800"
 contains "good" "$output" "shards=2"
-contains "good" "$output" "arena="
+expect "good: whole games" "$(sed -n 's/^arena=//p' <<<"$output")" ""
 run "short=${first:0:7}" BASELINE=toy-v001 SEED=00012
 expect "short sha: status" "$status" 0
 contains "short sha" "$output" "\"sha\":\"$first\""
@@ -106,6 +106,12 @@ contains "GITHUB_OUTPUT" "$(cat "$out_file")" "baseline_name=toy-v002"
 # ---- bad inputs ----
 bad "unknown arena" "arena must be empty or early" "a=$first" ARENA=late
 bad "no early arena" "has no early arena" "a=$first" ARENA=early
+mkdir -p "$repo/games/toy/arena/src/bin"
+touch "$repo/games/toy/arena/src/bin/toy-arena-early.rs"
+run "a=$first" ARENA=early
+expect "early arena: status" "$status" 0
+expect "early arena: output" "$(sed -n 's/^arena=//p' <<<"$output")" "early"
+rm -r "$repo/games/toy/arena"
 bad "bad name" "variant name" "-a=$first"
 bad "name with a dot" "variant name" "x.y=$first"
 bad "name with a slash" "variant name" "a/b=$first"

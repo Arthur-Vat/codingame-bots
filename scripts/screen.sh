@@ -31,21 +31,25 @@
 # target/screen/src-NAME, builds that tree's own bundler there and bundles the
 # bot with it, minified, into target/screen/NAME.rs; compiles it, BASELINE.rs
 # (a file of the current tree) with scripts/cg-check.sh (the variant must fit
-# CodinGame's size limit); builds the arena, calibrates as sprt.sh does (the
+# CodinGame's size limit); builds the arena (the early arena when ARENA is
+# `early`, as for `plan`), calibrates as sprt.sh does (the
 # game's evaluation.env, SPRT_TIME_SCALE and SPRT_TIME_TOLERANCE_MS included),
 # and plays PAIRS/SHARDS seat-swapped pairs of NAME against the baseline with
 # SEED (with `--shard K` when SHARDS is above 1, so that the shards play other
 # games; with one shard the games are those of a plain `arena match`), writing
 # the games to target/screen/NAME-K.jsonl, the summary to NAME-K.txt and the
-# settings in one line to NAME-K.settings. A variant that loses is a result,
+# settings in one line to NAME-K.settings (with the arena when it is the early
+# one). A variant that loses is a result,
 # not an error; an arena error is. For example, a look at the working tree's
 # last commit against the 13th release of A Code of Ice and Fire:
 #   scripts/screen.sh play ice-and-fire plan local HEAD \
 #     games/ice-and-fire/releases/ice-and-fire-v013.rs 20 0 1 1
 #
 # summary: DIR holds the artifacts of the run's shards (NAME-K.jsonl, .txt and
-# .settings). Adds each variant's shards up with the arena's `sum` and writes a
-# table to $GITHUB_STEP_SUMMARY (and stdout): per variant the Elo with its 95%
+# .settings). Adds each variant's shards up with the arena's `sum` (the early
+# arena's when ARENA is `early`) and writes a table to $GITHUB_STEP_SUMMARY
+# (and stdout), headed as games cut by the early arena when they are: per
+# variant the Elo with its 95%
 # interval, the score, the faults, the slowest answers and the time scales of
 # its shards; then, per shard, the answers after the first. One
 # `::notice title=Screening NAME::` line per variant carries the result, and a
@@ -198,6 +202,7 @@ play() {
   [[ $pairs =~ ^[1-9][0-9]{0,3}$ && $shards =~ ^[1-9]$ && $shard =~ ^[0-9]$ ]] || die "bad pairs, shard or shards"
   ((pairs % shards == 0 && shard < shards)) || die "pairs must be a multiple of shards, and shard below shards"
   [[ $seed =~ ^[0-9]{1,20}$ ]] || die "bad seed"
+  check_arena
   local sha
   sha="$(git rev-parse --verify --quiet "$rev^{commit}")" || die "no commit $rev"
   [[ -f games/$game/bots/$bot/Cargo.toml ]] || die "games/$game/bots/$bot/Cargo.toml does not exist"
@@ -243,6 +248,9 @@ play() {
   fi
   local settings
   settings="$(describe_settings); machine speed ${MACHINE_SPEED:-none}"
+  if [[ ${ARENA:-} == early ]]; then
+    settings+="; games cut by the early arena"
+  fi
   echo "Settings: $settings."
   echo "$settings" >"$work/$name-$shard.settings"
   # No --expect-* option: a variant that loses is a result. A status of 2 or
@@ -257,6 +265,12 @@ play() {
     die "the arena could not play $name (status $status)"
   fi
   mv "$work/$name-$shard.jsonl.part" "$work/$name-$shard.jsonl"
+}
+
+# Checks ARENA (empty or `early`), with an annotation: `arena_binary` runs in
+# a command substitution, where `die`'s annotation would be lost.
+check_arena() {
+  [[ -z ${ARENA:-} || ${ARENA:-} == early ]] || die "arena must be empty or early"
 }
 
 # The arena that plays the games of game $1: the game's own, or its early
@@ -282,8 +296,9 @@ join() {
 summary() {
   [[ $# -eq 2 ]] || usage
   local game="$1" dir="$2" arena
-  arena="$(arena_binary "$1")"
   [[ $game =~ $WORD_RE ]] || die "bad game"
+  check_arena
+  arena="$(arena_binary "$1")"
   [[ -d $dir ]] || die "$dir is not a folder"
   if [[ ! -x $arena ]]; then
     cargo build --quiet --release --locked -p "$game-arena" >&2
@@ -382,7 +397,11 @@ summary() {
     echo "::notice title=Screening $variant::Elo $elo over $baseline_name, $pairs_played pairs, faults (timeouts/crashes/invalid) $vfaults against the baseline's $bfaults, ${#files[@]} shard(s)"
   done
 
-  local text="## Screening of $game
+  local text="## Screening of $game"
+  if [[ ${ARENA:-} == early ]]; then
+    text+=" (games cut by the early arena)"
+  fi
+  text+="
 "
   text+="$md"
   if [[ -n $shard_rows ]]; then
