@@ -39,6 +39,11 @@ const OBJECTIVE: Objective = Objective {
 const TURNS: usize = 10;
 
 fn opening(order: Order) -> Planned {
+    opening_over(order, 9)
+}
+
+/// The opening planned over `turns` of our turns (the bot plans over 9).
+fn opening_over(order: Order, turns: usize) -> Planned {
     let sets = solo::SETS
         .iter()
         .map(|&params| Params {
@@ -50,7 +55,7 @@ fn opening(order: Order) -> Planned {
         })
         .collect();
     let planner = Planner::Solo {
-        turns: 9,
+        turns,
         width: 32,
         objective: Objective { order, ..OBJECTIVE },
     };
@@ -303,7 +308,7 @@ fn dump(plans: &str, starts: &[String]) {
                 cells(s.units(seat))
             );
         };
-        for (name, order) in [
+        let orders = [
             ("v029", Order::Sum),
             ("tie12", Order::TieBreak { within: 12 }),
             ("land", Order::LandFirst),
@@ -351,15 +356,41 @@ fn dump(plans: &str, starts: &[String]) {
                     moves: true,
                 },
             ),
-        ] {
-            let mut planned = opening(order);
+        ];
+        // Longer plans (the owner, 2026-11-20): the same orders planned over
+        // 12 and 15 turns.
+        let claim2 = Order::Claim {
+            band: 2,
+            future_first: false,
+            moves: false,
+        };
+        let longer = [
+            ("claim2-12", claim2, 12),
+            ("claim2-15", claim2, 15),
+            ("fr8-12", Order::Frontier { cap: 8 }, 12),
+            ("fr8-15", Order::Frontier { cap: 8 }, 15),
+            ("v029-15", Order::Sum, 15),
+        ];
+        // `PLACES_ONLY=a,b`: only these openings.
+        let only = std::env::var("PLACES_ONLY").ok();
+        let wanted = |name: &str| {
+            only.as_ref()
+                .is_none_or(|o| o.split(',').any(|n| n == name))
+        };
+        for (name, order, turns) in orders
+            .into_iter()
+            .map(|(n, o)| (n, o, 9))
+            .chain(longer)
+            .filter(|(n, _, _)| wanted(n))
+        {
+            let mut planned = opening_over(order, turns);
             let mut s = state.clone();
-            for turn in 1..=8 {
+            for turn in 1..=10 {
                 if s.outcome().is_none() {
                     let c = planned.turn(&s, None);
                     s = solo::advance(&s, &c);
                 }
-                if turn >= 7 {
+                if turn >= 7 && turn != 9 {
                     show(name, turn, &s);
                 }
             }
