@@ -83,7 +83,7 @@ pub const FALL_BACK: u8 = 2;
 /// cells, from the trainable neutral cells nearest the enemy HQ, each next
 /// cell the neutral neighbour nearest it, of 2 up to this many trainings;
 /// 0 for none (v030).
-pub const RUSH_LENGTH: usize = 2;
+pub const RUSH_LENGTH: usize = 3;
 
 /// The starts of [`RUSH_LENGTH`]'s chains: this many trainable neutral
 /// cells, the nearest the enemy HQ first (or, with [`RUSH_GOAL`], this many
