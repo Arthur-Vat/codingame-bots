@@ -407,7 +407,7 @@ pub const GOAL_OWNED: i64 = 4;
 /// See [`GOAL`].
 pub const GOAL_GUARD: i64 = 0;
 /// See [`GOAL`].
-pub const GOAL_CHOKE: i64 = 8;
+pub const GOAL_CHOKE: i64 = 4;
 /// The last game turn at which the goal counts.
 pub const GOAL_UNTIL: u32 = 14;
 /// The band's width: cells within this many rings of the frontline.
