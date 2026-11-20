@@ -298,6 +298,8 @@ fn dump(plans: &str, starts: &[String]) {
             ("lin5", Order::Central(Decay::Linear(5))),
             ("lin7", Order::Central(Decay::Linear(7))),
             ("lin9", Order::Central(Decay::Linear(9))),
+            ("ring", Order::ByRing),
+            ("fr8", Order::Frontier { cap: 8 }),
         ] {
             let mut planned = opening(order);
             let mut s = state.clone();
