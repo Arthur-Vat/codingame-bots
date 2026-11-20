@@ -17,7 +17,7 @@ use ice_and_fire_early::zones::Zones;
 use ice_and_fire_engine::{Bits, Command, League, State};
 use ice_and_fire_opening::econ::{distances, Params};
 use ice_and_fire_opening::planned::{Planned, Planner};
-use ice_and_fire_opening::solo::{self, Objective, Order};
+use ice_and_fire_opening::solo::{self, Decay, Objective, Order};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::League as RefereeLeague;
 
@@ -273,6 +273,14 @@ fn dump(plans: &str, starts: &[String]) {
         println!("VALID {}", cells(state.map().valid));
         println!("CHOKES {}", cells(Zones::of(&state).middle_chokes()));
         println!("BAND {}", cells(solo::middle_band(&state)));
+        println!(
+            "RINGS {}",
+            solo::rings(&state)
+                .iter()
+                .map(|r| if *r == i64::MAX { -1 } else { *r }.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        );
         let show = |name: &str, turn: usize, s: &State| {
             println!(
                 "PANEL {name} {turn} {} | {} | {}",
@@ -285,6 +293,8 @@ fn dump(plans: &str, starts: &[String]) {
             ("v029", Order::Sum),
             ("tie12", Order::TieBreak { within: 12 }),
             ("land", Order::LandFirst),
+            ("lin3", Order::Central(Decay::Linear(3))),
+            ("half8", Order::Central(Decay::Halving(8))),
         ] {
             let mut planned = opening(order);
             let mut s = state.clone();
