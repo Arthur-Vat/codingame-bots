@@ -405,6 +405,15 @@ impl<'a> Pruner<'a> {
                 }
             }
         }
+        // What the round tried and did not remove counts as left out too:
+        // `drop_kept_variants` can take back removals of a compile that
+        // passed, and a round that removes nothing and leaves nothing out
+        // would be tried again as it was, forever.
+        for &id in candidates {
+            if !self.state.contains(&id) && !left_out.contains(&id) {
+                left_out.push(id);
+            }
+        }
         Ok(left_out)
     }
 
