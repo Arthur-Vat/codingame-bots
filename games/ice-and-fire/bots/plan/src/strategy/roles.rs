@@ -2,8 +2,11 @@
 //! we can reach first or at the same time, kept between turns.
 //!
 //! Rules of [`assign`]:
-//! - Only counted objectives (value at least `OBJECTIVE_MIN_VALUE`) that we
-//!   do not hold and whose race margin is 0 or more take a role.
+//! - Only counted objectives (`objectives::counted`: every one that gains
+//!   land, or those of value at least `OBJECTIVE_MIN_VALUE`) that we do not
+//!   hold and whose race margin is 0 or more take a role, in rank order
+//!   (value, chokes first, then our arrival, then cell), while the side can
+//!   cover them: a free unit, or a training it can pay for.
 //! - A unit keeps its objective while it lives and the objective takes a
 //!   role, unless another unit that is not frontline is nearer to it by at
 //!   least one step: the handover, the old unit going to the back line (and
@@ -11,14 +14,19 @@
 //! - The other such objectives, by value then our arrival, take the
 //!   nearest free unit, or a training when that is as near or nearer
 //!   (`Race::ours_training` before the unit): the cell to train on is then
-//!   listed instead of a unit. One training an objective, whatever the gold.
+//!   listed instead of a unit. A training cell serves one objective (the best
+//!   ranked), and trainings are assigned only while the gold left after
+//!   those already assigned pays 10 for one.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use ice_and_fire_engine::State;
 
-use super::objectives::{counted, Objective};
-use super::race::{Arrival, How, Race};
+use super::objectives::{counted, Kind, Objective};
+use super::race::{How, Race};
+
+/// The gold of a level-1 unit.
+const TRAIN_COST: i64 = 10;
 
 /// The objective cell of each frontline unit, by unit id, between turns.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -61,7 +69,14 @@ pub fn assign(
             }
         }
     }
-    open.sort_by_key(|(o, r)| (-o.value, r.ours.map_or(u32::MAX, |a| a.turns), o.cell));
+    open.sort_by_key(|(o, r)| {
+        (
+            -o.value,
+            o.kind != Kind::Choke,
+            r.ours.map_or(u32::MAX, |a| a.turns),
+            o.cell,
+        )
+    });
 
     let dist = |unit: u32, goal: usize| u32::from(map.distance(units[&unit], goal));
     let in_play = |holder: &BTreeMap<usize, u32>, released: &BTreeSet<u32>, id: u32| {
@@ -115,7 +130,18 @@ pub fn assign(
             .filter(|&(d, _)| d != u32::from(u8::MAX))
             .min();
         let unit_turns = free.map(|(d, _)| i64::from(d));
-        let train_turns = r.ours_training.map(|t| i64::from(t.turns));
+        // A training needs a cell no better objective uses and the gold
+        // left after the trainings already assigned.
+        let train = r.ours_training.and_then(|t| match t.how {
+            How::Train(cell)
+                if state.gold(seat) - TRAIN_COST * trainings.len() as i64 >= TRAIN_COST
+                    && !trainings.iter().any(|&(c, _)| c == cell) =>
+            {
+                Some((cell, i64::from(t.turns)))
+            }
+            _ => None,
+        });
+        let train_turns = train.map(|(_, t)| t);
         let use_train = match (unit_turns, train_turns) {
             (Some(u), Some(t)) => t < u,
             (None, Some(_)) => true,
@@ -128,15 +154,8 @@ pub fn assign(
         if r.theirs.map_or(100, |a| i64::from(a.turns)) < turns {
             continue;
         }
-        match (use_train, r.ours_training, free) {
-            (
-                true,
-                Some(Arrival {
-                    how: How::Train(cell),
-                    ..
-                }),
-                _,
-            ) => trainings.push((cell, o.cell)),
+        match (use_train, train, free) {
+            (true, Some((cell, _)), _) => trainings.push((cell, o.cell)),
             (false, _, Some((_, id))) => {
                 holder.insert(o.cell, id);
             }

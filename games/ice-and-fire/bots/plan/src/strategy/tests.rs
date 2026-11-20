@@ -1,6 +1,11 @@
 use ice_and_fire_engine::State;
 
-use super::objectives::{counted, objectives, Kind, Objective, OBJECTIVE_MIN_VALUE};
+use ice_and_fire_engine::Bits;
+use ice_and_fire_opening::econ::distances;
+
+use super::objectives::{
+    counted, objectives, objectives_valued, Kind, Objective, OBJECTIVE_MIN_VALUE,
+};
 use super::race::{race, Arrival, How, Race};
 use super::roles::{assign, Memory};
 use super::STRATEGY;
@@ -25,13 +30,6 @@ const CORRIDOR: [&str; 12] = [
 
 fn cell(x: usize, y: usize) -> usize {
     y * 12 + x
-}
-
-fn objective(state: &State, seat: usize, at: usize) -> Objective {
-    *objectives(state, seat)
-        .iter()
-        .find(|o| o.cell == at)
-        .expect("the cell is an objective")
 }
 
 /// Objectives for a hand-made list, as `objectives` would give them.
@@ -59,38 +57,79 @@ fn race_of(at: usize, ours: Option<Arrival>, theirs: Option<Arrival>) -> Race {
     }
 }
 
-#[test]
-fn a_corridor_choke_decides_everything_behind_it() {
-    let state = position(CORRIDOR, [0, 0], &[]);
-    // Every choke of the corridor is red's and decides the same land: red's
-    // 21 cells are nearer red with it, and the only cell red would lose to
-    // blue were blue to hold it is the choke itself (the neutral cell
-    // (11, 10) is level between the HQs either way).
-    let all = objectives(&state, 0);
-    assert!(!all.is_empty());
-    assert!(all.iter().all(|o| o.kind == Kind::Choke && o.held));
-    assert!(all.iter().all(|o| o.value == 20));
-    // For blue, the same cell is worth the opposite swing.
-    let at = all[0].cell;
-    let blue = objective(&state, 1, at);
-    assert!(!blue.held);
-    assert_eq!(blue.value, -20);
+/// The valid cells strictly nearer to `mine` than to `theirs`.
+fn count(state: &State, mine: Bits, theirs: Bits) -> i64 {
+    let (dm, dt) = (distances(state, mine), distances(state, theirs));
+    state
+        .map()
+        .valid
+        .iter()
+        .filter(|&c| dm[c] != u8::MAX && dm[c] < dt[c])
+        .count() as i64
 }
 
 #[test]
-fn objectives_are_sorted_and_counted_by_value() {
+fn a_held_corridor_choke_is_the_land_its_loss_would_cost() {
     let state = position(CORRIDOR, [0, 0], &[]);
     let all = objectives(&state, 0);
-    assert!(all
-        .windows(2)
-        .all(|w| (-w[0].value, w[0].cell) < (-w[1].value, w[1].cell)));
-    assert!(counted(&all).iter().all(|o| o.value >= OBJECTIVE_MIN_VALUE));
-    assert!(counted(&all).len() < all.len() || all.iter().all(|o| o.value >= 3));
-    // Held cells say so.
-    assert!(all
+    // The five chokes are red's; losing one cuts the corridor behind it
+    // off the HQ, and red keeps the cells nearer it than blue's HQ: 21 of
+    // them now, 15, 16, 16, 17, 17 after. Ranked by value, then cell.
+    let got: Vec<(usize, i64)> = all.iter().map(|o| (o.cell, o.value)).collect();
+    assert_eq!(got, vec![(9, 6), (10, 5), (11, 5), (23, 4), (35, 4)]);
+    assert!(all.iter().all(|o| o.kind == Kind::Choke && o.held));
+    // Blue gains nothing by a cell red holds (a level cell is nobody's).
+    assert!(objectives(&state, 1)
         .iter()
-        .filter(|o| o.held)
-        .all(|o| state.active(0).test(o.cell)));
+        .all(|o| !o.held && o.value == 0));
+}
+
+#[test]
+fn the_swing_is_the_land_held_by_us_less_held_by_the_enemy() {
+    let state = position(CORRIDOR, [0, 0], &[]);
+    let red = objectives_valued(&state, 0, true);
+    assert!(red.iter().all(|o| o.value == 20));
+    assert!(objectives_valued(&state, 1, true)
+        .iter()
+        .all(|o| o.value == -20));
+}
+
+#[test]
+fn the_land_gained_is_the_difference_of_two_counts() {
+    let state = position(LAND, [0, 0], &[]);
+    let (mine, theirs) = (state.active(0), state.active(1));
+    let all = objectives(&state, 0);
+    assert!(all.iter().any(|o| !o.held));
+    for o in &all {
+        let c = Bits::cell(o.cell);
+        let expected = if o.held {
+            let without = mine.and_not(c);
+            count(&state, mine, theirs) - count(&state, without, theirs)
+        } else {
+            count(&state, mine | c, theirs) - count(&state, mine, theirs)
+        };
+        // A held cell of the open ground leaves the rest joined to the HQ.
+        if !o.held {
+            assert_eq!(o.value, expected, "cell {}", o.cell);
+        }
+        assert!(o.value >= 0);
+    }
+}
+
+#[test]
+fn objectives_are_ranked_and_counted_without_a_threshold() {
+    let state = position(LAND, [0, 0], &[]);
+    let all = objectives(&state, 0);
+    assert!(all.windows(2).all(|w| {
+        (-w[0].value, w[0].kind != Kind::Choke, w[0].cell)
+            < (-w[1].value, w[1].kind != Kind::Choke, w[1].cell)
+    }));
+    let list = [goal(1, 5), goal(2, 2), goal(3, 0)];
+    let kept = counted(&list);
+    if OBJECTIVE_MIN_VALUE.is_none() {
+        assert_eq!(kept.len(), 2);
+    }
+    assert!(kept.iter().all(|o| o.value > 0));
 }
 
 /// Open ground: red's HQ in a corner, blue's in the other; `units` as given.
@@ -197,9 +236,9 @@ fn one_frontline_unit_per_objective() {
 }
 
 #[test]
-fn objectives_below_the_threshold_get_no_unit() {
+fn an_objective_gaining_nothing_gets_no_unit() {
     let at = cell(6, 6);
-    let obj = [goal(at, OBJECTIVE_MIN_VALUE - 1)];
+    let obj = [goal(at, 0)];
     let state = position(LAND, [0, 0], &[(0, 1, 1, 6, 3)]);
     let races = [race_of(at, arrival(3, How::Unit(1)), None)];
     let roles = assign(&state, 0, &obj, &races, &mut Memory::default());
@@ -314,4 +353,28 @@ fn a_dead_unit_leaves_the_memory() {
 #[test]
 fn the_switch_is_off() {
     const { assert!(!STRATEGY) };
+}
+
+#[test]
+fn a_training_cell_serves_one_objective_and_the_gold_pays_each() {
+    let (a, b) = (cell(3, 8), cell(4, 8));
+    let obj = [goal(a, 9), goal(b, 8)];
+    let slow = arrival(9, How::Train(cell(3, 4)));
+    let races = [race_of(a, slow, None), race_of(b, slow, None)];
+    // The same cell for both: the best ranked has it.
+    let rich = position(LAND, [30, 0], &[]);
+    let roles = assign(&rich, 0, &obj, &races, &mut Memory::default());
+    assert_eq!(roles.trainings, vec![(cell(3, 4), a)]);
+    // Two cells, gold for one: the better objective is paid.
+    let races = [
+        race_of(a, arrival(9, How::Train(cell(3, 4))), None),
+        race_of(b, arrival(9, How::Train(cell(4, 4))), None),
+    ];
+    let poor = position(LAND, [19, 0], &[]);
+    let roles = assign(&poor, 0, &obj, &races, &mut Memory::default());
+    assert_eq!(roles.trainings, vec![(cell(3, 4), a)]);
+    // Gold for both.
+    let rich = position(LAND, [20, 0], &[]);
+    let roles = assign(&rich, 0, &obj, &races, &mut Memory::default());
+    assert_eq!(roles.trainings, vec![(cell(3, 4), a), (cell(4, 4), b)]);
 }
