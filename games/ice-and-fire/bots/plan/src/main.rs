@@ -56,6 +56,7 @@ mod analysis;
 mod eval;
 mod search;
 mod session;
+mod strategy;
 
 use std::io;
 use std::time::{Duration, Instant};

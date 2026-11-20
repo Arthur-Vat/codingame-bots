@@ -9,6 +9,7 @@ use ice_and_fire_opening::planned::Planned;
 use ice_and_fire_policy::io::turns;
 
 use crate::search::{think, Limit};
+use crate::strategy::{self, Memory, STRATEGY};
 
 /// Plays turns of a Bronze game until the input ends. `limit` gives the
 /// search's limits from the instant the turn's first line arrived and the
@@ -21,11 +22,17 @@ pub fn play(
     input: impl BufRead,
     output: impl Write,
 ) -> Result<(), String> {
+    // The roles of the strategic layer, kept beside the opening's plan; the
+    // layer does nothing unless `STRATEGY` is set.
+    let mut roles = Memory::default();
     turns(
         input,
         output,
         |initial, text, turn, start| match State::read(initial, text, League::Bronze, turn) {
             Ok(state) => {
+                if STRATEGY {
+                    let _ = strategy::roles_of(&state, &mut roles);
+                }
                 let thought = think(&state, limit(start, turn), &mut opening);
                 eprintln!(
                     "turn {turn}: climbs {} tries {} memory {} checks {} forced {} {:?}",
