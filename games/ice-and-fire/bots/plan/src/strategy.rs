@@ -20,7 +20,7 @@ pub use roles::Memory;
 /// first climb of each turn starts with it; 4, its pieces (each frontline
 /// unit's step and the training at its tip) offered as macro actions at
 /// every step of the climbs.
-pub const TURN: u8 = 4;
+pub const TURN: u8 = 2;
 
 /// Which trainings the strategic turn holds (E077): 1, at the frontline
 /// units' tips only, after their moves (the owner's rule); 2, also the
@@ -44,7 +44,7 @@ pub const GUARD: u8 = 1;
 /// See [`GUARD`]: the tip training fills the exposed cell left.
 pub const FILL_BEHIND: bool = false;
 /// See [`GUARD`]: no step that raises our cells the enemy can take.
-pub const SAFE_STEP: bool = true;
+pub const SAFE_STEP: bool = false;
 /// Whether only units on cells the enemy cannot reach next turn take a
 /// frontline role (E077, round 2): the units holding the border keep it.
 pub const BACK_ONLY: bool = false;
