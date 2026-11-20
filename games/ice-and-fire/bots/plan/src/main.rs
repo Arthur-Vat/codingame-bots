@@ -115,7 +115,7 @@ fn limit(start: Instant, turn: u32) -> Limit {
 /// The number of our turns an opening plan covers: the middle game starts
 /// at our eighth turn in the median game (E010); 9, two beyond, won the
 /// screening (E052, E055; 8 and 10 did less).
-const OPENING_TURNS: usize = 12;
+const OPENING_TURNS: usize = 9;
 
 /// What the opening's plans maximize: the solo planner's weights, written
 /// out (E010), with cells 3 and income 1 rather than 4 and 3 (E034): the
@@ -136,7 +136,7 @@ const OBJECTIVE: Objective = Objective {
 
 /// How the opening compares its plans (E073): the weighted sum above in
 /// v029.
-const ORDER: Order = Order::Claim { band: 2, future_first: false, moves: false };
+const ORDER: Order = Order::Frontier { cap: 8 };
 
 /// The opening uses a mine spot only when the enemy's territory is more than
 /// this many steps from it: `u8::MAX`, so it builds no mine (E034; v003's
