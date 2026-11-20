@@ -136,7 +136,7 @@ const OBJECTIVE: Objective = Objective {
 
 /// How the opening compares its plans (E073): the weighted sum above in
 /// v029.
-const ORDER: Order = Order::Sum;
+const ORDER: Order = Order::Claim { band: 2, future_first: false, moves: false };
 
 /// The opening uses a mine spot only when the enemy's territory is more than
 /// this many steps from it: `u8::MAX`, so it builds no mine (E034; v003's
