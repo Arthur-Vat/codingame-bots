@@ -1,4 +1,5 @@
-//! `guide --positions FILE [--tries N]`: the strategic turn of E077 against
+//! `guide --positions FILE [--tries N] [--guard 0|1|2] [--fill-behind]
+//! [--safe-step] [--back-only]`: the strategic turn of E077 against
 //! the search's own plan, on each position of a bank of game turns
 //! `strategy::FROM_TURN` to `UNTIL_TURN`, with a fresh role memory.
 //!
@@ -18,7 +19,7 @@ use super::{read_bank, ready};
 use crate::eval::eval;
 use crate::search::{think, Limit};
 use crate::strategy::objectives::{counted, objectives};
-use crate::strategy::{guide_with, Memory, FROM_TURN, UNTIL_TURN};
+use crate::strategy::{guide_with, Memory, Settings, FROM_TURN, UNTIL_TURN};
 
 /// The opponent's answer to the state `after` (our turn played and ended):
 /// its search with `tries` tries, its opening over.
@@ -37,6 +38,10 @@ fn answer(after: &State, tries: u64) -> Vec<Command> {
 pub fn run(args: &[String]) -> Result<String, String> {
     let mut positions = None;
     let mut tries: u64 = 1_000;
+    let mut settings = Settings {
+        mode: 1,
+        ..Settings::default()
+    };
     let mut args = args.iter();
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -49,6 +54,15 @@ pub fn run(args: &[String]) -> Result<String, String> {
                     .and_then(|n| n.parse().ok())
                     .ok_or("--tries needs a number")?;
             }
+            "--guard" => {
+                settings.rules.guard = args
+                    .next()
+                    .and_then(|n| n.parse().ok())
+                    .ok_or("--guard needs 0, 1 or 2")?;
+            }
+            "--fill-behind" => settings.rules.fill_behind = true,
+            "--safe-step" => settings.rules.safe_step = true,
+            "--back-only" => settings.back_only = true,
             other => return Err(format!("unknown argument {other}")),
         }
     }
@@ -69,7 +83,7 @@ pub fn run(args: &[String]) -> Result<String, String> {
             }
         };
         let seat = state.to_act();
-        let Some(guide) = guide_with(&state, &mut Memory::default(), 1, 1, 0, false) else {
+        let Some(guide) = guide_with(&state, &mut Memory::default(), settings) else {
             continue;
         };
         let frontline = guide

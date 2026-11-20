@@ -11,6 +11,7 @@ use ice_and_fire_engine::{Bits, Command, State};
 
 use super::roles::Roles;
 use crate::actions::xy;
+use crate::eval::threatened;
 
 /// The gold of a level-1 unit.
 const TRAIN_COST: i64 = 10;
@@ -49,18 +50,45 @@ fn accepted(scratch: &mut State, out: &mut Vec<Command>, command: Command) -> bo
     ok
 }
 
+/// How the strategic turn keeps the line behind its frontline units (E077,
+/// round 2, after the diagnosis that a third of its steps left a cell the
+/// enemy then entered).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Rules {
+    /// Also the trainings the roles give the objectives no unit covers.
+    pub role_trainings: bool,
+    /// A step off a cell the enemy can reach next turn needs that cell
+    /// guarded at once: 0, no (round 1); 1, by a tower; 2, by a level-1
+    /// training. A step whose guard the rules or the gold refuse is not
+    /// played.
+    pub guard: u8,
+    /// The tip training of a unit that left a cell the enemy can reach goes
+    /// on that cell instead, when it is still empty.
+    pub fill_behind: bool,
+    /// A step is not played when it raises the cells of ours the enemy can
+    /// take at its next turn (`eval::threatened`).
+    pub safe_step: bool,
+}
+
 /// The pieces of the strategic turn (E077, [`super::TURN`]'s 4): for each
 /// frontline unit, its step toward its objective and the training at its
 /// tip that the gold pays, each made alone from `state`, the units in role
 /// order; pieces the rules refuse are left out.
-pub fn pieces(state: &State, roles: &Roles) -> Vec<Vec<Command>> {
+pub fn pieces(state: &State, roles: &Roles, rules: Rules) -> Vec<Vec<Command>> {
     let mut out = Vec::new();
     for &(id, goal) in &roles.frontline {
         let one = Roles {
             frontline: vec![(id, goal)],
             ..Roles::default()
         };
-        let piece = strategic_turn(state, &one, false);
+        let piece = strategic_turn(
+            state,
+            &one,
+            Rules {
+                role_trainings: false,
+                ..rules
+            },
+        );
         if !piece.is_empty() {
             out.push(piece);
         }
@@ -68,14 +96,56 @@ pub fn pieces(state: &State, roles: &Roles) -> Vec<Vec<Command>> {
     out
 }
 
+/// The step of the unit `id` from `from` to `to` on `scratch`, with the
+/// guard `rules` ask for on `from` when the enemy reaches it (`exposed`):
+/// the commands, or `None` when the step is not played.
+fn step(
+    scratch: &State,
+    id: u32,
+    from: usize,
+    to: usize,
+    exposed: bool,
+    rules: Rules,
+) -> Option<Vec<Command>> {
+    let seat = scratch.to_act();
+    let mut trial = scratch.clone();
+    let mut commands = Vec::new();
+    let (x, y) = xy(to);
+    if !accepted(&mut trial, &mut commands, Command::Move { id, x, y }) {
+        return None;
+    }
+    if exposed && rules.guard != 0 {
+        let (fx, fy) = xy(from);
+        let guard = if rules.guard == 1 {
+            Command::BuildTower { x: fx, y: fy }
+        } else {
+            Command::Train {
+                level: 1,
+                x: fx,
+                y: fy,
+            }
+        };
+        if !accepted(&mut trial, &mut commands, guard) {
+            return None;
+        }
+    }
+    if rules.safe_step && threatened(&trial, seat) > threatened(scratch, seat) {
+        return None;
+    }
+    Some(commands)
+}
+
 /// The commands of the strategic turn of the player to act in `state`, with
-/// `roles` its roles this turn; with `role_trainings`, also the trainings the
-/// roles give the objectives no frontline unit covers.
-pub fn strategic_turn(state: &State, roles: &Roles, role_trainings: bool) -> Vec<Command> {
+/// `roles` its roles this turn, by `rules`.
+pub fn strategic_turn(state: &State, roles: &Roles, rules: Rules) -> Vec<Command> {
     let seat = state.to_act();
     let map = state.map();
     let mut scratch = state.clone();
     let mut out = Vec::new();
+    // The cells the enemy can take at its next turn, as the turn starts.
+    let reach = crate::eval::reach(state, 1 - seat);
+    // The exposed cells our frontline units left unguarded, by unit.
+    let mut left: Vec<(u32, usize)> = Vec::new();
 
     // 1. The frontline units step toward their objectives.
     for &(id, goal) in &roles.frontline {
@@ -85,16 +155,24 @@ pub fn strategic_turn(state: &State, roles: &Roles, role_trainings: bool) -> Vec
         if !scratch.movable_units().test(from) {
             continue;
         }
+        let exposed = reach.test(from);
         for to in steps_toward(&scratch, seat, from, goal) {
-            let (x, y) = xy(to);
-            if accepted(&mut scratch, &mut out, Command::Move { id, x, y }) {
+            if let Some(commands) = step(&scratch, id, from, to, exposed, rules) {
+                for command in &commands {
+                    scratch.apply(*command);
+                }
+                if exposed && rules.guard == 0 {
+                    left.push((id, from));
+                }
+                out.extend(commands);
                 break;
             }
         }
     }
 
     // 2. A training at the tip of each frontline unit: on a cell next to it
-    // nearer its objective, the nearest first.
+    // nearer its objective, the nearest first; with `fill_behind`, on the
+    // exposed cell it left instead.
     for &(id, goal) in &roles.frontline {
         if scratch.gold(seat) < TRAIN_COST {
             break;
@@ -102,7 +180,12 @@ pub fn strategic_turn(state: &State, roles: &Roles, role_trainings: bool) -> Vec
         let Some(at) = cell_of(&scratch, seat, id) else {
             continue;
         };
-        for to in steps_toward(&scratch, seat, at, goal) {
+        let behind = left.iter().find(|&&(u, _)| u == id).map(|&(_, c)| c);
+        let cells = match behind {
+            Some(cell) if rules.fill_behind => vec![cell],
+            _ => steps_toward(&scratch, seat, at, goal),
+        };
+        for to in cells {
             let (x, y) = xy(to);
             if accepted(&mut scratch, &mut out, Command::Train { level: 1, x, y }) {
                 break;
@@ -112,7 +195,7 @@ pub fn strategic_turn(state: &State, roles: &Roles, role_trainings: bool) -> Vec
 
     // 3. The objectives no unit covers: a training at our trainable cell
     // nearest each, after the moves.
-    if role_trainings {
+    if rules.role_trainings {
         for &(_, goal) in &roles.trainings {
             if scratch.gold(seat) < TRAIN_COST {
                 break;

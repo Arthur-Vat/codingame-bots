@@ -8,8 +8,8 @@ use super::objectives::{
 };
 use super::race::{race, Arrival, How, Race};
 use super::roles::{assign, Memory, Roles};
-use super::turn::strategic_turn;
-use super::{guide, guide_with, Guide, STRATEGY};
+use super::turn::{strategic_turn, Rules};
+use super::{guide, guide_with, Guide, Settings, STRATEGY};
 use crate::tests::position;
 use ice_and_fire_engine::Command;
 
@@ -442,7 +442,7 @@ fn the_strategic_turn_steps_then_trains_at_the_tip() {
         ..Roles::default()
     };
     let state = position(LAND, [30, 0], &[(0, 1, 1, 6, 3)]);
-    let plan = strategic_turn(&state, &roles, false);
+    let plan = strategic_turn(&state, &roles, Rules::default());
     assert_eq!(
         plan,
         vec![
@@ -460,7 +460,7 @@ fn the_strategic_turn_steps_then_trains_at_the_tip() {
     // Without the gold, the step alone.
     let poor = position(LAND, [9, 0], &[(0, 1, 1, 6, 3)]);
     assert_eq!(
-        strategic_turn(&poor, &roles, false),
+        strategic_turn(&poor, &roles, Rules::default()),
         vec![Command::Move { id: 1, x: 6, y: 4 }]
     );
 }
@@ -473,9 +473,16 @@ fn the_role_trainings_come_only_with_their_switch() {
         ..Roles::default()
     };
     let state = position(LAND, [30, 0], &[]);
-    assert!(strategic_turn(&state, &roles, false).is_empty());
+    assert!(strategic_turn(&state, &roles, Rules::default()).is_empty());
     assert_eq!(
-        strategic_turn(&state, &roles, true),
+        strategic_turn(
+            &state,
+            &roles,
+            Rules {
+                role_trainings: true,
+                ..Rules::default()
+            }
+        ),
         vec![Command::Train {
             level: 1,
             x: 3,
@@ -500,15 +507,148 @@ fn the_objectives_term_counts_held_lost_and_neutral() {
 #[test]
 fn the_guide_offers_or_starts_by_its_mode() {
     let state = position(LAND, [30, 0], &[(0, 1, 1, 6, 3)]);
-    let both = guide_with(&state, &mut Memory::default(), 3, 1, 0, false).expect("a guide");
+    let both = guide_with(&state, &mut Memory::default(), with(3, 0)).expect("a guide");
     assert!(!both.plan.is_empty() && both.offered && both.start);
-    let offered = guide_with(&state, &mut Memory::default(), 1, 1, 0, false).expect("a guide");
+    let offered = guide_with(&state, &mut Memory::default(), with(1, 0)).expect("a guide");
     assert!(offered.offered && !offered.start);
-    let none = guide_with(&state, &mut Memory::default(), 0, 1, 4, false).expect("a guide");
+    let none = guide_with(&state, &mut Memory::default(), with(0, 4)).expect("a guide");
     assert!(none.plan.is_empty() && !none.offered && !none.start);
     assert!(!none.objectives.is_empty());
     // Off, the bot has no guide.
     if !STRATEGY {
         assert!(guide(&state, &mut Memory::default()).is_none());
     }
+}
+
+/// Settings with the mode `mode` and the objectives' term at `quarters`.
+fn with(mode: u8, quarters: i64) -> Settings {
+    Settings {
+        mode,
+        quarters,
+        ..Settings::default()
+    }
+}
+
+/// Red holds rows 0 to 3, blue rows 6 to 11, two neutral rows between.
+const FACING: [&str; 12] = [
+    "OOOOOOOOOOOO",
+    "OOOOOOOOOOOO",
+    "OOOOOOOOOOOO",
+    "OOOOOOOOOOOO",
+    "............",
+    "............",
+    "XXXXXXXXXXXX",
+    "XXXXXXXXXXXX",
+    "XXXXXXXXXXXX",
+    "XXXXXXXXXXXX",
+    "XXXXXXXXXXXX",
+    "XXXXXXXXXXXX",
+];
+
+/// FACING with a red unit on its border at (6, 3) and a blue one at (6, 6),
+/// blue rich enough to take (6, 3) at its next turn.
+fn contested() -> State {
+    let state = position(FACING, [40, 60], &[(0, 1, 1, 6, 3), (1, 2, 1, 6, 6)]);
+    assert!(crate::eval::reach(&state, 1).test(cell(6, 3)));
+    state
+}
+
+#[test]
+fn a_guarded_step_guards_the_exposed_cell_it_leaves() {
+    let state = contested();
+    let at = cell(6, 5);
+    let roles = Roles {
+        frontline: vec![(1, at)],
+        ..Roles::default()
+    };
+    let towered = strategic_turn(
+        &state,
+        &roles,
+        Rules {
+            guard: 1,
+            ..Rules::default()
+        },
+    );
+    let trained = strategic_turn(
+        &state,
+        &roles,
+        Rules {
+            guard: 2,
+            ..Rules::default()
+        },
+    );
+    assert_eq!(
+        &towered[..2],
+        &[
+            Command::Move { id: 1, x: 6, y: 4 },
+            Command::BuildTower { x: 6, y: 3 },
+        ]
+    );
+    assert_eq!(
+        &trained[..2],
+        &[
+            Command::Move { id: 1, x: 6, y: 4 },
+            Command::Train {
+                level: 1,
+                x: 6,
+                y: 3
+            },
+        ]
+    );
+    // Without the gold for the guard, the exposed unit stays.
+    let poor = position(FACING, [9, 60], &[(0, 1, 1, 6, 3), (1, 2, 1, 6, 6)]);
+    assert!(crate::eval::reach(&poor, 1).test(cell(6, 3)));
+    let plan = strategic_turn(
+        &poor,
+        &roles,
+        Rules {
+            guard: 2,
+            ..Rules::default()
+        },
+    );
+    assert!(plan.is_empty(), "{plan:?}");
+}
+
+#[test]
+fn filling_behind_trains_on_the_exposed_cell_left() {
+    let state = contested();
+    let roles = Roles {
+        frontline: vec![(1, cell(6, 5))],
+        ..Roles::default()
+    };
+    let plan = strategic_turn(
+        &state,
+        &roles,
+        Rules {
+            fill_behind: true,
+            ..Rules::default()
+        },
+    );
+    assert_eq!(
+        plan,
+        vec![
+            Command::Move { id: 1, x: 6, y: 4 },
+            Command::Train {
+                level: 1,
+                x: 6,
+                y: 3
+            },
+        ]
+    );
+}
+
+#[test]
+fn only_units_off_the_enemys_reach_take_a_role_when_asked() {
+    let state = contested();
+    let reach = crate::eval::reach(&state, 1);
+    let eligible = state.units(0).and_not(reach);
+    let at = cell(6, 5);
+    let obj = [goal(at, 9)];
+    let races = [race_of(at, arrival(2, How::Unit(1)), None)];
+    let roles =
+        super::roles::assign_among(&state, 0, &obj, &races, &mut Memory::default(), eligible);
+    assert!(roles.frontline.is_empty());
+    assert_eq!(roles.back, vec![1]);
+    let all = assign(&state, 0, &obj, &races, &mut Memory::default());
+    assert_eq!(all.frontline, vec![(1, at)]);
 }

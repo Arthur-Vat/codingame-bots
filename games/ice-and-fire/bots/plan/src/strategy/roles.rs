@@ -20,7 +20,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use ice_and_fire_engine::State;
+use ice_and_fire_engine::{Bits, State};
 
 use super::objectives::{counted, Kind, Objective};
 use super::race::{How, Race};
@@ -53,10 +53,22 @@ pub fn assign(
     races: &[Race],
     memory: &mut Memory,
 ) -> Roles {
+    assign_among(state, seat, objectives, races, memory, state.units(seat))
+}
+
+/// [`assign`] with only the units on `eligible` cells taking a frontline
+/// role (E077's back units walking); the others are back-line units.
+pub fn assign_among(
+    state: &State,
+    seat: usize,
+    objectives: &[Objective],
+    races: &[Race],
+    memory: &mut Memory,
+    eligible: Bits,
+) -> Roles {
     let map = state.map();
-    // The units of ours, by id, with their cells.
-    let units: BTreeMap<u32, usize> = state
-        .units(seat)
+    // The units of ours that may take a role, by id, with their cells.
+    let units: BTreeMap<u32, usize> = (state.units(seat) & eligible)
         .iter()
         .filter_map(|c| state.unit_id(c).map(|id| (id, c)))
         .collect();
@@ -172,11 +184,13 @@ pub fn assign(
             out.frontline.push((id, o.cell));
         }
     }
-    out.back = units
-        .keys()
-        .copied()
+    out.back = state
+        .units(seat)
+        .iter()
+        .filter_map(|c| state.unit_id(c))
         .filter(|id| !out.frontline.iter().any(|&(u, _)| u == *id))
         .collect();
+    out.back.sort_unstable();
     memory.objective_of = out.frontline.iter().copied().collect();
     out
 }

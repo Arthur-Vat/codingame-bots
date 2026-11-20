@@ -37,6 +37,18 @@ pub const OBJECTIVE_QUARTERS: i64 = 0;
 /// clamped to -1..=1 (the plan's definition).
 pub const OBJECTIVE_RACE: bool = false;
 
+/// How the strategic turn keeps the line behind its frontline units (E077,
+/// round 2): see [`turn::Rules`]. [`GUARD`]: 0 none (round 1), 1 a tower, 2
+/// a level-1 training on the exposed cell a unit leaves.
+pub const GUARD: u8 = 0;
+/// See [`GUARD`]: the tip training fills the exposed cell left.
+pub const FILL_BEHIND: bool = false;
+/// See [`GUARD`]: no step that raises our cells the enemy can take.
+pub const SAFE_STEP: bool = false;
+/// Whether only units on cells the enemy cannot reach next turn take a
+/// frontline role (E077, round 2): the units holding the border keep it.
+pub const BACK_ONLY: bool = false;
+
 /// The first and the last game turn of the strategic layer (E077: 7 to 14).
 pub const FROM_TURN: u32 = 7;
 /// See [`FROM_TURN`].
@@ -93,31 +105,61 @@ pub fn guide(state: &State, memory: &mut Memory) -> Option<Guide> {
     if !STRATEGY || !(FROM_TURN..=UNTIL_TURN).contains(&now) || state.outcome().is_some() {
         return None;
     }
-    guide_with(
-        state,
-        memory,
-        TURN,
-        TRAININGS,
-        OBJECTIVE_QUARTERS,
-        OBJECTIVE_RACE,
-    )
+    guide_with(state, memory, SETTINGS)
 }
 
+/// The switches of the layer, together.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Settings {
+    /// [`TURN`].
+    pub mode: u8,
+    /// The strategic turn's rules ([`TRAININGS`], [`GUARD`],
+    /// [`FILL_BEHIND`], [`SAFE_STEP`]).
+    pub rules: turn::Rules,
+    /// [`BACK_ONLY`].
+    pub back_only: bool,
+    /// [`OBJECTIVE_QUARTERS`].
+    pub quarters: i64,
+    /// [`OBJECTIVE_RACE`].
+    pub race_counts: bool,
+}
+
+/// The bot's switches.
+pub const SETTINGS: Settings = Settings {
+    mode: TURN,
+    rules: turn::Rules {
+        role_trainings: TRAININGS == 2,
+        guard: GUARD,
+        fill_behind: FILL_BEHIND,
+        safe_step: SAFE_STEP,
+    },
+    back_only: BACK_ONLY,
+    quarters: OBJECTIVE_QUARTERS,
+    race_counts: OBJECTIVE_RACE,
+};
+
 /// [`guide`] with its switches given, at any game turn.
-pub fn guide_with(
-    state: &State,
-    memory: &mut Memory,
-    mode: u8,
-    trainings: u8,
-    quarters: i64,
-    race_counts: bool,
-) -> Option<Guide> {
+pub fn guide_with(state: &State, memory: &mut Memory, settings: Settings) -> Option<Guide> {
+    let Settings {
+        mode,
+        rules,
+        back_only,
+        quarters,
+        race_counts,
+    } = settings;
     let seat = state.to_act();
     let objectives = objectives::objectives(state, seat);
     let races = race::race(state, seat, &objectives);
-    let roles = roles::assign(state, seat, &objectives, &races, memory);
+    let eligible = if back_only {
+        state
+            .units(seat)
+            .and_not(crate::eval::reach(state, 1 - seat))
+    } else {
+        state.units(seat)
+    };
+    let roles = roles::assign_among(state, seat, &objectives, &races, memory, eligible);
     let plan = if mode != 0 {
-        turn::strategic_turn(state, &roles, trainings == 2)
+        turn::strategic_turn(state, &roles, rules)
     } else {
         Vec::new()
     };
@@ -134,7 +176,7 @@ pub fn guide_with(
         })
         .collect();
     let pieces = if mode & 4 != 0 {
-        turn::pieces(state, &roles)
+        turn::pieces(state, &roles, rules)
     } else {
         Vec::new()
     };
