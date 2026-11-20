@@ -544,3 +544,45 @@ fn cost_to_moving_is_cost_to_without_movers_and_never_more_with_them() {
     }
     assert!(cheaper > 20, "{cheaper} chains made cheaper by moves");
 }
+
+#[test]
+fn reach_past_towers_is_reach_within_where_no_tower_guards() {
+    let (mut same, mut wider) = (0, 0);
+    for seed in 0..20 {
+        for state in crate::test_util::random_positions(seed, League::Bronze, &[0, 5, 15, 30]) {
+            for seat in 0..2 {
+                for budget in [0, 10, 40, 1_000] {
+                    let movers = state.units(seat);
+                    let usual = reach_within_moving(&state, seat, movers, budget);
+                    let past = reach_past_towers(&state, seat, movers, budget);
+                    assert_eq!(past & usual, usual, "it reaches at least as far");
+                    if (state.towers() & state.owned(1 - seat)).is_empty() {
+                        assert_eq!(past, usual);
+                        same += 1;
+                    } else {
+                        wider += usize::from(past != usual);
+                    }
+                }
+            }
+        }
+    }
+    assert!(
+        same > 100 && wider > 0,
+        "{same} without towers, {wider} wider"
+    );
+}
+
+#[test]
+fn reach_past_towers_takes_the_tower_and_its_cells_at_level_one() {
+    // Along the top row from red's HQ, (1, 0) to (7, 0) are neutral, 70
+    // gold; the tower at (9, 0) makes (8, 0) to (10, 0) cost 30 each, so
+    // 100 gold take (8, 0) at most, and (10, 0) past the tower.
+    let state = tower_world(false);
+    let budget = 100;
+    let usual = reach_within_moving(&state, 0, Bits::EMPTY, budget);
+    let past = reach_past_towers(&state, 0, Bits::EMPTY, budget);
+    for x in 8..=10 {
+        assert_eq!(usual.test(x), x == 8, "({x}, 0) with the tower");
+        assert!(past.test(x), "({x}, 0) past the tower");
+    }
+}
