@@ -158,15 +158,17 @@ pub fn is_boxed_in(state: &State, mine: Bits, cell: usize) -> bool {
 }
 
 /// The trainings of a ply, and those at the tip: next to the destination of
-/// an earlier MOVE of the ply.
-pub fn tip_trainings(commands: &[Command]) -> (u32, u32) {
+/// an earlier MOVE of the ply. A MOVE's x y is only a target the unit steps
+/// toward, so the destination is `landed(id)`, the cell the unit stands on
+/// after the ply if it moved (`None` if it did not).
+pub fn tip_trainings(commands: &[Command], landed: impl Fn(u32) -> Option<usize>) -> (u32, u32) {
     let (mut trainings, mut tips) = (0, 0);
     let mut moved = Bits::EMPTY;
     for &command in commands {
         match command {
-            Command::Move { x, y, .. } => {
-                if usize::from(x) < SIZE && usize::from(y) < SIZE {
-                    moved.set(usize::from(y) * SIZE + usize::from(x));
+            Command::Move { id, .. } => {
+                if let Some(cell) = landed(id) {
+                    moved.set(cell);
                 }
             }
             Command::Train { x, y, .. } => {
@@ -184,6 +186,16 @@ pub fn tip_trainings(commands: &[Command]) -> (u32, u32) {
         }
     }
     (trainings, tips)
+}
+
+/// Whether two of the objectives of `regions` are more than 2 steps apart.
+pub fn spread_apart(state: &State, regions: Bits) -> bool {
+    regions.iter().any(|a| {
+        regions.iter().any(|b| {
+            let d = state.map().distance(a, b);
+            d > 2 && d != u8::MAX
+        })
+    })
 }
 
 /// What one side did at one game turn.
@@ -229,6 +241,8 @@ pub struct Side {
     /// Of the objectives counted at some turn, the first turn each is held.
     pub first_held: Vec<u32>,
     pub ever_counted: u32,
+    /// The first turn the side holds any counted objective.
+    pub first_any: Option<u32>,
 }
 
 fn cell_of(state: &State, seat: usize, id: u32) -> Option<usize> {
@@ -304,7 +318,10 @@ pub fn sides(game: &Game, turns: u32, min_value: i32) -> [Side; 2] {
                 }
                 t.fronted = fronted.count();
             }
-            let (trainings, tips) = tip_trainings(&game.steps[i].commands);
+            let (trainings, tips) = tip_trainings(&game.steps[i].commands, |id| {
+                let after = cell_of(next, seat, id)?;
+                (cell_of(start, seat, id) != Some(after)).then_some(after)
+            });
             t.trainings = trainings;
             t.tips = tips;
             let valid = start.map().valid;
@@ -348,11 +365,7 @@ pub fn sides(game: &Game, turns: u32, min_value: i32) -> [Side; 2] {
                             }
                         }
                     }
-                    let spread = regions.iter().any(|a| {
-                        regions.iter().any(|b| {
-                            start.map().distance(a, b) > 2 && start.map().distance(a, b) != u8::MAX
-                        })
-                    });
+                    let spread = spread_apart(start, regions);
                     if spread {
                         loc.multi += 1;
                     }
@@ -374,6 +387,7 @@ pub fn sides(game: &Game, turns: u32, min_value: i32) -> [Side; 2] {
         }
         side.ever_counted = first_hold.len() as u32;
         side.first_held = first_hold.values().flatten().copied().collect();
+        side.first_any = side.first_held.iter().min().copied();
     }
     out
 }
@@ -445,6 +459,16 @@ fn table(
             let _ = write!(row, " {} |", pooled(sides, &turns, &f));
         }
         let _ = writeln!(text, "{row}");
+    }
+}
+
+fn median(values: &mut [u32]) -> String {
+    values.sort_unstable();
+    let n = values.len();
+    if n == 0 {
+        "-".to_string()
+    } else {
+        format!("{:.1}", (values[(n - 1) / 2] + values[n / 2]) as f64 / 2.0)
     }
 }
 
@@ -563,31 +587,28 @@ pub fn report(groups: &Groups, turns: u32, from: u32, min_value: i32, left_out: 
     let _ = writeln!(text, "\n## First game turn an objective is held\n");
     let _ = writeln!(
         text,
-        "| Group | Sides | Objectives counted | Held by game turn {turns} | Median first turn held |"
+        "| Group | Sides | Median first game turn the side holds any objective | Sides that never do | Objectives counted | Objectives held by game turn {turns} | Median first turn over every objective held |"
     );
-    let _ = writeln!(text, "| --- | --- | --- | --- | --- |");
+    let _ = writeln!(text, "| --- | --- | --- | --- | --- | --- | --- |");
     for ((group, seat), sides) in groups {
         let counted: u32 = sides.iter().map(|s| s.ever_counted).sum();
         let mut firsts: Vec<u32> = sides.iter().flat_map(|s| s.first_held.clone()).collect();
-        firsts.sort_unstable();
-        let median = if firsts.is_empty() {
-            "-".to_string()
-        } else {
-            let n = firsts.len();
-            format!("{:.1}", (firsts[(n - 1) / 2] + firsts[n / 2]) as f64 / 2.0)
-        };
+        let mut any: Vec<u32> = sides.iter().filter_map(|s| s.first_any).collect();
+        let never = sides.len() - any.len();
         let _ = writeln!(
             text,
-            "| {group} {} | {} | {counted} | {} | {median} |",
+            "| {group} {} | {} | {} | {never} | {counted} | {} | {} |",
             seat_name(*seat),
             sides.len(),
-            firsts.len()
+            median(&mut any),
+            firsts.len(),
+            median(&mut firsts)
         );
     }
     let _ = writeln!(text, "\n## Locality, game turns {LOCAL_FROM} to {turns}\n");
     let _ = writeln!(
         text,
-        "| Group | Sides | Captured cells | Within 2 steps of an objective | Plies with captures | Captures near two objectives more than 2 apart | Plies that cut enemy land | Cut more than 4 steps from every capture |"
+        "| Group | Sides | Captured cells | Within 2 steps of an objective | Plies with captures | Captures near two objectives more than 2 apart | Plies that cut enemy land | Share of those plies that cut more than 4 steps from every capture |"
     );
     let _ = writeln!(text, "| --- | --- | --- | --- | --- | --- | --- | --- |");
     for ((group, seat), sides) in groups {
@@ -611,7 +632,7 @@ pub fn report(groups: &Groups, turns: u32, from: u32, min_value: i32, left_out: 
             share(l.multi, l.capture_plies),
             l.multi,
             l.cut_plies,
-            share(l.cut_far, l.capture_plies),
+            share(l.cut_far, l.cut_plies),
             l.cut_far
         );
     }
