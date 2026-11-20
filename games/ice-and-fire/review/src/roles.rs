@@ -111,13 +111,6 @@ pub fn frontline_of(state: &State, cells: [usize; 3], open: Bits) -> Option<usiz
     (d(cells[0]) > d(cells[1]) && d(cells[1]) > d(cells[2])).then_some(g)
 }
 
-/// The value of `g` to the side alone: the cells nearer to its land plus
-/// `g` than to the enemy's, less those nearer without `g` (the enemy's land
-/// unchanged).
-pub fn marginal_value(state: &State, mine: Bits, theirs: Bits, g: usize) -> i32 {
-    nearer(state, mine | Bits::cell(g), theirs) - nearer(state, mine, theirs)
-}
-
 /// Whether the unit of `seat` nearest to `g` (by map distance, the lowest
 /// cell on a tie) is nearer to it than it was at `before`, its cell in the
 /// previous ply (`None` if it was not there).
@@ -216,9 +209,6 @@ pub struct Turn {
     /// Every objective, and those held.
     pub all: u32,
     pub all_held: u32,
-    /// Objectives of marginal value at least the threshold, and those held.
-    pub marginal: u32,
-    pub marginal_held: u32,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -276,14 +266,6 @@ pub fn sides(game: &Game, turns: u32, min_value: i32) -> [Side; 2] {
             t.open = open.count();
             t.all = set.count();
             t.all_held = (set & mine).count();
-            let mut marginal = Bits::EMPTY;
-            for g in set.iter() {
-                if marginal_value(start, mine, start.active(enemy), g) >= min_value {
-                    marginal.set(g);
-                }
-            }
-            t.marginal = marginal.count();
-            t.marginal_held = (marginal & mine).count();
             let before = |id: u32| {
                 k.checked_sub(1)
                     .and_then(|j| cell_of(&game.steps[plies[j]].state, seat, id))
@@ -577,24 +559,6 @@ pub fn report(groups: &Groups, turns: u32, from: u32, min_value: i32, left_out: 
         turns,
         None,
         |t| (t.all_held, 1),
-    );
-    table(
-        &mut text,
-        "Variant: objectives of marginal value at least the threshold, per side",
-        groups,
-        from,
-        turns,
-        None,
-        |t| (t.marginal, 1),
-    );
-    table(
-        &mut text,
-        "Variant: those of marginal value held per side",
-        groups,
-        from,
-        turns,
-        None,
-        |t| (t.marginal_held, 1),
     );
     let _ = writeln!(text, "\n## First game turn an objective is held\n");
     let _ = writeln!(

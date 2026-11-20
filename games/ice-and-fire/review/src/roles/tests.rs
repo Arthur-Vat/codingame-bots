@@ -166,12 +166,3 @@ fn the_nearest_unit_approaching_and_the_tip_unit_are_read_per_objective() {
     assert!(tip_unit(&state, 0, g));
     assert!(!tip_unit(&state, 1, g));
 }
-
-#[test]
-fn the_marginal_value_ignores_what_the_enemy_would_gain() {
-    let (state, path) = corridor();
-    let (mine, theirs) = (Bits::cell(path[0]), Bits::cell(path[22]));
-    // With the goal at step 16, 19 cells are nearer to us, 11 without
-    // (steps 0 to 10): 8, where the swing was 5.
-    assert_eq!(marginal_value(&state, mine, theirs, path[16]), 8);
-}
