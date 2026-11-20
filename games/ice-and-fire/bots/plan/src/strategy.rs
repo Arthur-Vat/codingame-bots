@@ -29,7 +29,7 @@ pub const TRAININGS: u8 = 1;
 
 /// The objectives' term in the search's score (E077), in quarters of a cell
 /// of land per cell an objective decides; 0 for none (v031).
-pub const OBJECTIVE_QUARTERS: i64 = 4;
+pub const OBJECTIVE_QUARTERS: i64 = 0;
 
 /// What the objectives' term counts for an objective of value `v`: with
 /// false, `v` if we hold it, `-v` if the enemy does, 0 otherwise; with true,
