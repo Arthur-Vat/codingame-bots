@@ -29,7 +29,7 @@ fn evals(max_evals: u64) -> Limit {
 /// row by row (`#` void, `.` neutral, `O`/`o` red's active and inactive
 /// cells, `X`/`x` blue's), the gold of both and the units (owner, id, level,
 /// x, y). No building but the HQs.
-fn position(rows: [&str; 12], gold: [i64; 2], units: &[(u8, u32, u8, u8, u8)]) -> State {
+pub(crate) fn position(rows: [&str; 12], gold: [i64; 2], units: &[(u8, u32, u8, u8, u8)]) -> State {
     position_with_spots("0\n", rows, gold, units)
 }
 
