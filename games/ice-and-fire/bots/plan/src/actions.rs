@@ -108,7 +108,7 @@ pub const RUSH_SKIP_ENEMY: bool = false;
 /// choice, 2026-11-20, after zasmu trains at the tip once its units have
 /// moved): a movable unit of ours next to the chain's first cell steps onto
 /// it, and the trainings go on from there.
-pub const RUSH_LEAP: bool = true;
+pub const RUSH_LEAP: bool = false;
 
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
