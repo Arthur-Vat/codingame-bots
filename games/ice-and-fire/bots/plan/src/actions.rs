@@ -83,7 +83,7 @@ pub const FALL_BACK: u8 = 2;
 /// cells, from the trainable neutral cells nearest the enemy HQ, each next
 /// cell the neutral neighbour nearest it, of 2 up to this many trainings;
 /// 0 for none (v030).
-pub const RUSH_LENGTH: usize = 0;
+pub const RUSH_LENGTH: usize = 3;
 
 /// The starts of [`RUSH_LENGTH`]'s chains: this many trainable neutral
 /// cells, the nearest the enemy HQ first (or, with [`RUSH_GOAL`], this many
@@ -97,7 +97,7 @@ pub const RUSH_STARTS: usize = 2;
 /// farther from it than our nearest trainable cell and nearer to it than
 /// every enemy unit. Each chain starts at the trainable cell nearest its
 /// goal and steps toward it. False: the enemy HQ (rounds 1 to 3).
-pub const RUSH_GOAL: bool = false;
+pub const RUSH_GOAL: bool = true;
 
 /// With [`RUSH_GOAL`], whether goals the enemy wins are left out (the
 /// owner's choice, 2026-11-20): those it holds, and those one of its units
