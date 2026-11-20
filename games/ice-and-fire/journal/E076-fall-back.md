@@ -6,11 +6,11 @@ parent: ice-and-fire-v030
 hypothesis: Units that, when the enemy can reach them, step along the border leaving a tower on the cell they held, as zasmu does, with the contested band counted until game turn 14, hold more land after the first contacts and beat ice-and-fire-v030 (candidate ice-and-fire-v031).
 change: The search is also offered, for each unit on a cell the enemy can reach, a step onto another of our cells next to an enemy cell together with a tower on the cell it leaves (`actions::FALL_BACK = 2`), and the evaluation counts the contested band until game turn 14 (`eval::GOAL_UNTIL`, 10 before); the rush from the tip, the centre's defence and the land term screened alongside stay behind switches that are off.
 release: ice-and-fire-v031
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +11.7 [+3.4, +20.1]
+pairs: 1840
+full_time: +11.7 [+3.4, +20.1]
+decision: promoted
 cg_rank: none
 ---
 
@@ -217,3 +217,25 @@ The steps from each unit to its nearest own unit at game turn 8: red 2.05
 against 2.44, blue 1.65 against 2.39 (level by turn 10). The owner sees two
 dimensions (2026-11-20): goals reached, and back-line units spread; a third
 is the gold fed to them (we hold 50 to 100 gold at game turns 11 to 13).
+
+## SPRT
+
+The SPRT on #375 (run 44785153857), against v030 at CodinGame's speed and
+real limit over 8 calibrated runners (time scales from each runner's
+calibration):
+
+```
+ice-and-fire-v031 vs ice-and-fire-v030: 3680 games, 1840 complete pairs
+  ice-and-fire-v031: 1902 wins, 0 draws, 1778 losses (score 51.7%)
+  Elo of ice-and-fire-v031 over ice-and-fire-v030: +11.7 [+3.4, +20.1] (95%, from pairs)
+  pairs by ice-and-fire-v031's points (0, 1/2, 1, 3/2, 2): [223, 0, 1332, 0, 285]
+  ice-and-fire-v031 faults: 1 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v030 faults: 1 timeouts, 0 crashes, 0 invalid answers
+  slowest answer: ice-and-fire-v031 497.1 ms, ice-and-fire-v030 498.3 ms
+Checked 23 rounds of 8 blocks (184 blocks counted, 16 left out)
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.72 (bounds -2.94, 2.94) after 1840 pairs
+Verdict: ACCEPTED: ice-and-fire-v031 is stronger than ice-and-fire-v030
+```
+
+Accepted at about half the screening's +22: the screening chose the best
+of 34 variants, which overstates its winner.
