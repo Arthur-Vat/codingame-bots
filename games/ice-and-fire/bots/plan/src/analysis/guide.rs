@@ -5,8 +5,8 @@
 //! For each position, the two plans are each played, then the opponent's
 //! answer (the search from its seat, `--tries` tries, its opening over),
 //! and the state after is read from our side. One tab-separated line per
-//! position and plan: name, ply, game turn, seat, plan (`search` or
-//! `strategic`), its commands, frontline units, units we lost to the answer,
+//! position and plan: name, ply, game turn, seat, plan (`search`, `strategic`, or
+//! `completed`: the strategic turn then the search's plan from there), its commands, frontline units, units we lost to the answer,
 //! our cells less the enemy's after the answer, the evaluation after the
 //! answer, and the objectives we hold after it.
 
@@ -55,7 +55,7 @@ pub fn run(args: &[String]) -> Result<String, String> {
     let path = positions.ok_or("guide needs --positions FILE")?;
     let text = std::fs::read_to_string(&path).map_err(|e| format!("{path}: {e}"))?;
     let mut out = String::from(
-        "name\tply\tgame_turn\tseat\tplan\tcommands\tfrontline\tunits_lost\tcells_lead\teval\tobjectives_held\n",
+        "name\tply\tgame_turn\tseat\tplan\tcommands\tfrontline\tunits_lost\tcells_lead\teval\tobjectives_held\tkilled\tcut_off\tspent\tvacated_taken\ttaken\n",
     );
     for position in read_bank(&text)? {
         if !(FROM_TURN..=UNTIL_TURN).contains(&position.game_turn) {
@@ -84,7 +84,21 @@ pub fn run(args: &[String]) -> Result<String, String> {
         };
         let search = think(&state, limit, &mut opening).commands;
         let goals = counted(&objectives(&state, seat));
-        for (name, plan) in [("search", &search), ("strategic", &guide.plan)] {
+        // The strategic turn, then the search's plan for the rest of the
+        // turn from there (as E077's forced first climb).
+        let mut mid = state.clone();
+        for &command in &guide.plan {
+            mid.apply(command);
+        }
+        let mut completed = guide.plan.clone();
+        let mut rest_opening = crate::opening();
+        rest_opening.end();
+        completed.extend(think(&mid, limit, &mut rest_opening).commands);
+        for (name, plan) in [
+            ("search", &search),
+            ("strategic", &guide.plan),
+            ("completed", &completed),
+        ] {
             let mut after = state.clone();
             for &command in plan.iter() {
                 after.apply(command);
@@ -103,6 +117,26 @@ pub fn run(args: &[String]) -> Result<String, String> {
                 ours.apply(command);
             }
             let lost = ours.unit_count(seat).saturating_sub(after.unit_count(seat));
+            // Of the units lost, those whose cell the enemy took (killed),
+            // the others being cut off.
+            let missing = ours.units(seat).and_not(after.units(seat));
+            let killed = (missing & after.owned(1 - seat)).count();
+            let cut = missing.count() - killed;
+            let spent = state.gold(seat) - ours.gold(seat);
+            // Cells our moves left that the enemy holds after its answer.
+            let vacated = plan
+                .iter()
+                .filter_map(|c| match *c {
+                    Command::Move { id, .. } => state
+                        .units(seat)
+                        .iter()
+                        .find(|&cell| state.unit_id(cell) == Some(id)),
+                    _ => None,
+                })
+                .filter(|&cell| after.owned(1 - seat).test(cell))
+                .count();
+            // Cells the enemy holds after its answer that were ours before.
+            let taken = (state.owned(seat) & after.owned(1 - seat)).count();
             let lead =
                 i64::from(after.active(seat).count()) - i64::from(after.active(1 - seat).count());
             let held = goals
@@ -111,7 +145,7 @@ pub fn run(args: &[String]) -> Result<String, String> {
                 .count();
             let _ = writeln!(
                 out,
-                "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
                 position.name,
                 position.ply,
                 position.game_turn,
@@ -122,7 +156,12 @@ pub fn run(args: &[String]) -> Result<String, String> {
                 lost,
                 lead,
                 eval(&after, seat),
-                held
+                held,
+                killed,
+                cut,
+                spent,
+                vacated,
+                taken
             );
         }
     }

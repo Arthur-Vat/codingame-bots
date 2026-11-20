@@ -96,3 +96,36 @@ The objectives' term alone is level (+7.4 cut, −4.3 full). The search
 already rejects the whole turn in about 99% of turns; where the pieces make
 it play the rush, it plays worse. Faults: one timeout of t7 in 1,600
 games, none elsewhere.
+
+## Diagnosis after round 1
+
+The owner chose (form, 2026-11-20) to diagnose before more variants.
+
+**Games against v031** (local, 60 pairs each, seed 2026112102, time scale 1,
+tolerance 20 ms, `ice-and-fire-review games` metrics at the start of each
+ply): t4 and t3 hold the same land as a v031-against-v031 control (cells
+and Voronoi share at game turns 10 and 12 within a cell), and lose more
+units: by game turn 14, t3 as blue 36.9 units' worth lost against 26.7 for
+the control, t4 33.2. The rush does not win the centre; it costs units.
+
+**Positions** (the analysis mode `guide`, new in this entry: 1,629
+positions of game turns 7 to 14 from the control's games, a fresh role
+memory each; each plan played, then the opponent's answer by the search
+from its seat at 1,000 tries; read at the start of our next turn). In the
+1,094 positions with a non-empty strategic turn:
+
+| Plan | Units lost | Of which cut off | Cell lead | Objectives held | Gold spent | HQ lost | Moves | Left cells the enemy then holds |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| The search's plan | 0.32 | 0.19 | −2.3 | 6.80 | 23.2 | 3 | 4.27 | 0.16 (4% of moves) |
+| The strategic turn alone | 2.23 | 2.02 | −10.1 | 5.11 | 13.1 | 31 | 2.52 | 0.86 (34%) |
+| The strategic turn, then the search's plan from there | 1.27 | 1.07 | −4.3 | 6.61 | 26.0 | 6 | 4.81 | 0.73 (15%) |
+
+(Cell lead: our active cells less the enemy's. Objectives held: counted
+objectives at the position that are our active cells after the answer.)
+
+So the strategic turn loses units by cut-offs, not fights, and holds no
+more objectives even when the search completes it: a third of its moves
+take a frontline unit off a border cell the enemy then enters, cutting off
+what lies behind. The race counts who arrives first, not whether the line
+behind the arriving unit holds; E070's step and guard (a step with the cell
+left guarded, +71.9) is the safe version of the same move.
