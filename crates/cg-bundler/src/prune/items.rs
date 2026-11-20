@@ -1201,8 +1201,6 @@ impl Source {
         }
     }
 
-    /// The name that other code uses for the item `id` removes, when it
-    /// has one: an item's name, the last name of an import.
     /// The enum (the token of its name) of a variant removal; `None` for
     /// other removals.
     pub fn enum_of(&self, id: Id) -> Option<usize> {
@@ -1212,6 +1210,8 @@ impl Source {
         }
     }
 
+    /// The name that other code uses for the item `id` removes, when it
+    /// has one: an item's name, the last name of an import.
     pub fn name_of(&self, id: Id) -> Option<&str> {
         match id {
             Id::Item(name) | Id::Variant(name) => Some(&self.tokens[name].text),
