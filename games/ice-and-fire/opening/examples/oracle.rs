@@ -621,9 +621,9 @@ fn replay(state: &State, plan: &[Vec<Command>]) -> State {
 /// The openings compared with the optimum, by name, each played once to the
 /// longest horizon: a new opening joins this list to be measured by `run`
 /// and `--bench`.
-const OPENINGS: [&str; 18] = [
+const OPENINGS: [&str; 21] = [
     "v029", "b", "rules", "assign", "tie", "land", "tie3", "tie6", "tie12", "lin3", "lin6",
-    "lin10", "half4", "half8", "sq6", "lin5", "lin7", "lin9",
+    "lin10", "half4", "half8", "sq6", "lin5", "lin7", "lin9", "fr4", "fr8", "ring",
 ];
 
 struct Openings {
@@ -660,6 +660,10 @@ fn openings(state: &State, t: u32) -> Openings {
     let mut lin5 = centred(Decay::Linear(5));
     let mut lin7 = centred(Decay::Linear(7));
     let mut lin9 = centred(Decay::Linear(9));
+    let ordered = |order| opening(Objective { order, ..OBJECTIVE });
+    let mut fr4 = ordered(Order::Frontier { cap: 4 });
+    let mut fr8 = ordered(Order::Frontier { cap: 8 });
+    let mut ring = ordered(Order::ByRing);
     let mut tie3 = tie_within(3);
     let mut tie6 = tie_within(6);
     let mut tie12 = tie_within(12);
@@ -692,6 +696,9 @@ fn openings(state: &State, t: u32) -> Openings {
             play(state, t, |s| lin5.turn(s, None)),
             play(state, t, |s| lin7.turn(s, None)),
             play(state, t, |s| lin9.turn(s, None)),
+            play(state, t, |s| fr4.turn(s, None)),
+            play(state, t, |s| fr8.turn(s, None)),
+            play(state, t, |s| ring.turn(s, None)),
         ],
     }
 }

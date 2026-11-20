@@ -248,3 +248,44 @@ The central orders keep `land`'s land and come much nearer the best plans'
 middle band (blue at turn 7: 0.21 to 0.36 middle cells short against 0.70
 for `land` and 1.67 for v029), but no nearer their middle chokes, which
 they do not count. The decays differ little.
+
+### Duels of the central orders
+
+As above (400 pairs, seed 72, scale 0.403, tolerance 5 ms). Runs marked
+* played while the session ran other work on the same CPUs, as their
+timeouts show: read them as noisier.
+
+| Variant | Order | Elo over v029 [95%] | Timeouts (variant / v029) |
+| --- | --- | --- | ---: |
+| lin3* | `Central(Linear(3))` | −6.9 [−29.1, +15.1] | 10 / 6 |
+| lin5* | `Central(Linear(5))` | +2.6 [−19.8, +25.0] | 10 / 11 |
+| lin7 | `Central(Linear(7))` | +34.9 [+11.9, +58.1] | 0 / 0 |
+| lin9 | `Central(Linear(9))` | +26.1 [+2.4, +50.1] | 1 / 0 |
+| lin10 | `Central(Linear(10))` | +21.7 [−2.4, +46.1] | 1 / 2 |
+| half8* | `Central(Halving(8))` | +16.5 [−6.3, +39.5] | 24 / 26 |
+| sq6 | `Central(Square(6))` | +17.4 [−4.6, +39.5] | 4 / – |
+
+Linear weights with different tops rank plans of equal cells the same
+way: a plan's weight is top × cells − the sum of its cells' rings, for
+cells within `top` rings, so after the cells it is the sum of rings that
+decides, whatever the top; the top matters only for cells beyond it. On
+the 10 boards shown to the owner, lin5, lin7 and lin9 made the same plans
+on every map. Their duels differ by the noise of the clock and of the
+machine (lin5 was disturbed), so they read together as about +20 to +30.
+
+On those boards the central orders reach the most land and are at least
+as central as the study's best plans for the chokes, but hold fewer
+chokes at equal central weight (map 1: weights 42 / 75 / 113 both, chokes
+1 of 6 against 6 of 6): a choke weighs no more than any cell of its ring.
+
+## Closer to the frontier
+
+The owner (2026-11-20): other evaluations, "to be closer to the
+frontier"; his choice (form): all three of
+
+- `Frontier { cap }`: the active cells, then the least sum over the
+  frontier's cells (ring 0) of the steps from our land to each, at most
+  `cap`, then the weighted sum: near the whole line, not one flank;
+- `ByRing`: the active cells, then our cells on ring 0, then ring 1, up to
+  ring 6, compared in that order, then the weighted sum;
+- convex weights (`Halving`, `Square`), duelled again cleanly.

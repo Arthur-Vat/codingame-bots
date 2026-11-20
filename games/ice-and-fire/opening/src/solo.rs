@@ -108,6 +108,15 @@ pub enum Order {
     /// the middle ([`ring`]: the central cells weigh most), then the
     /// weighted sum (the owner's evaluation, 2026-11-20).
     Central(Decay),
+    /// The active cells, then the least total distance from them to the
+    /// frontier's cells (ring 0: even between the HQs), each distance at
+    /// most `cap`, then the weighted sum: near the whole frontier, not one
+    /// flank (the owner, 2026-11-20).
+    Frontier { cap: i64 },
+    /// The active cells, then the active cells on ring 0, then on ring 1,
+    /// and so on up to ring 6, compared in that order, then the weighted
+    /// sum.
+    ByRing,
 }
 
 /// How a cell's weight falls with its ring from the middle (`Order::Central`).
@@ -289,6 +298,11 @@ pub struct Zones {
     pub band: Bits,
     /// Each cell's weight by `Order::Central` (0 for other orders).
     pub weights: [i64; CELLS],
+    /// Each cell's ring ([`rings`]) for `Order::Frontier` and
+    /// `Order::ByRing` (`i64::MAX` for other orders).
+    pub rings: [i64; CELLS],
+    /// The frontier's cells (ring 0) for `Order::Frontier`.
+    pub frontier: Bits,
 }
 
 impl Default for Zones {
@@ -297,6 +311,8 @@ impl Default for Zones {
             chokes: Bits::EMPTY,
             band: Bits::EMPTY,
             weights: [0; CELLS],
+            rings: [i64::MAX; CELLS],
+            frontier: Bits::EMPTY,
         }
     }
 }
@@ -315,8 +331,23 @@ impl Zones {
                 };
             }
         }
+        let (ring_of, frontier) = match objective.order {
+            Order::Frontier { .. } | Order::ByRing => {
+                let r = rings(state);
+                let mut f = Bits::EMPTY;
+                for (c, &ring) in r.iter().enumerate() {
+                    if ring == 0 {
+                        f.set(c);
+                    }
+                }
+                (r, f)
+            }
+            _ => ([i64::MAX; CELLS], Bits::EMPTY),
+        };
         Zones {
             weights,
+            rings: ring_of,
+            frontier,
             chokes: if objective.chokes != 0 || lexicographic {
                 ice_and_fire_early::zones::Zones::of(state).middle_chokes()
             } else {
@@ -341,6 +372,26 @@ pub fn key(state: &State, seat: usize, objective: &Objective, zones: Zones) -> K
             let active = state.active(seat);
             let weighed: i64 = active.iter().map(|c| zones.weights[c]).sum();
             [i64::from(active.count()), weighed, sum, 0]
+        }
+        Order::Frontier { cap } => {
+            let active = state.active(seat);
+            let d = econ::distances(state, active);
+            let far: i64 = zones
+                .frontier
+                .iter()
+                .map(|c| i64::from(d[c]).min(cap))
+                .sum();
+            [i64::from(active.count()), -far, sum, 0]
+        }
+        Order::ByRing => {
+            let active = state.active(seat);
+            // Seven counts of at most 144, 8 bits each, ring 0 highest.
+            let mut packed = 0i64;
+            for ring in 0..7 {
+                let n = active.iter().filter(|&c| zones.rings[c] == ring).count();
+                packed = (packed << 8) | n as i64;
+            }
+            [i64::from(active.count()), packed, sum, 0]
         }
         Order::TieBreak { .. } | Order::LandFirst => {
             let owned = state.owned(seat);
