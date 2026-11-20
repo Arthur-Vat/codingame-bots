@@ -376,6 +376,27 @@ impl<'a> Pruner<'a> {
             match self.compiler.compile(&rendered.text)? {
                 Outcome::Compiled(diagnostics) if quiet(&known, &diagnostics, &rendered) => {
                     self.source.drop_kept_variants(&mut all);
+                    // A compile whose variants would take back an earlier
+                    // removal (an enum keeps one variant at least) is not
+                    // taken: the trial's variants of those enums are left
+                    // out, and the rest is tried again.
+                    let lost = self.lost_enums(&all);
+                    if !lost.is_empty() {
+                        let back: Vec<Id> = trial
+                            .iter()
+                            .copied()
+                            .filter(|&id| {
+                                self.source.enum_of(id).is_some_and(|e| lost.contains(&e))
+                            })
+                            .collect();
+                        if back.is_empty() {
+                            left_out.extend(trial.iter().copied());
+                            break;
+                        }
+                        trial.retain(|id| !back.contains(id));
+                        left_out.extend(back);
+                        continue;
+                    }
                     self.state = all;
                     self.rendered = rendered;
                     self.diagnostics = diagnostics;
@@ -405,7 +426,27 @@ impl<'a> Pruner<'a> {
                 }
             }
         }
+        // What the round tried and did not remove counts as left out too:
+        // `drop_kept_variants` can take back removals of a compile that
+        // passed, and a round that removes nothing and leaves nothing out
+        // would be tried again as it was, forever.
+        for &id in candidates {
+            if !self.state.contains(&id) && !left_out.contains(&id) {
+                left_out.push(id);
+            }
+        }
         Ok(left_out)
+    }
+
+    /// The enums of the variant removals of the state that `kept` (a state
+    /// after [`Source::drop_kept_variants`]) no longer holds: those a
+    /// compile would take back.
+    fn lost_enums(&self, kept: &BTreeSet<Id>) -> BTreeSet<usize> {
+        self.state
+            .iter()
+            .filter(|id| !kept.contains(id))
+            .filter_map(|&id| self.source.enum_of(id))
+            .collect()
     }
 
     /// The members of `trial` whose names are in the error spans of the
@@ -563,10 +604,13 @@ impl<'a> Pruner<'a> {
             match self.compiler.compile(&rendered.text)? {
                 Outcome::Compiled(diagnostics) if quiet(&known, &diagnostics, &rendered) => {
                     self.source.drop_kept_variants(&mut trial);
-                    self.state = trial;
-                    self.rendered = rendered;
-                    self.diagnostics = diagnostics;
-                    return Ok(());
+                    // As in `round`: never at the cost of an earlier removal.
+                    if self.lost_enums(&trial).is_empty() {
+                        self.state = trial;
+                        self.rendered = rendered;
+                        self.diagnostics = diagnostics;
+                        return Ok(());
+                    }
                 }
                 _ => {}
             }
