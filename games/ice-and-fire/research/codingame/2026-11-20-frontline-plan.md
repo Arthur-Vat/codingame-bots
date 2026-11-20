@@ -35,7 +35,7 @@ evidence says so.
 - **Objective:** a cell whose holder decides land. Candidates: the middle
   chokes (`ice_and_fire_opening::solo::middle_chokes`), then the cells of
   the contested band (within 2 rings of the line even between the HQs,
-  `eval::goal_zones`), the choice the owner made for E076's rush.
+  `eval::goal_zones`), the choice the owner made for E076's rush ([E076](../../journal/E076-fall-back.md)).
 - **Value of an objective:** the land it decides, as the owner put it (we
   lose the cell to the opponent and the land behind it shrinks, so it is not
   one cell): the number of cells nearer to our active land than to the
