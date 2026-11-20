@@ -119,6 +119,11 @@ fn main() {
         adhere(&args);
         return;
     }
+    if path == "towers" {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        towers(&args);
+        return;
+    }
     if path == "census" {
         census(
             std::env::args()
@@ -564,4 +569,162 @@ fn adhere(args: &[String]) {
             sum / n.max(1) as f64
         );
     }
+}
+
+/// `towers SEAT FILE...`: for each tower the side SEAT builds in each game
+/// (files as `replay` reads them), whether it was needed then: the turn is
+/// played again without the tower, and the tower counts as needed when the
+/// enemy, at its next turn, can take one of the cells it would guard (its
+/// own cell and the side's active cells next to it) with its gold
+/// (`Reach`, its units' moves free); else, whether the side's gold at its
+/// next start of turn (gold left plus income, the enemy's turn aside) would
+/// pay for it then. Also the game turns of the side's first tower and first
+/// mine. Measurement only (E075's question, the owner, 2026-11-20).
+fn towers(args: &[String]) {
+    use ice_and_fire_tactics::chain::Reach;
+    let seat: usize = args[0].parse().expect("a seat");
+    let (mut built, mut needed, mut could_wait) = (0usize, 0usize, 0usize);
+    let mut by_turn: std::collections::BTreeMap<u32, (usize, usize)> = Default::default();
+    let (mut first_tower, mut first_mine, mut games) = (Vec::new(), Vec::new(), 0usize);
+    let (mut mines_by_10, mut towers_by_10) = (0usize, 0usize);
+    // Towers by what they spare at the enemy's next turn: nothing, at most a
+    // cell (1 to 5), 2 to 9 cells' worth (6 to 29), more (30 to 999), the HQ.
+    let mut prevented = [0usize; 5];
+    let mut idle_affordable = 0usize;
+    for file in &args[1..] {
+        let text = std::fs::read_to_string(file).expect("read");
+        let mut lines = text.lines();
+        let seed: u64 = lines
+            .next()
+            .and_then(|l| l.strip_prefix("SEED "))
+            .and_then(|n| n.trim().parse().ok())
+            .expect("SEED n");
+        let map = generate(seed, RefereeLeague::Bronze);
+        let mut state = State::new(&map.void, &map.mine_spots, League::Bronze);
+        games += 1;
+        let (mut tower_turn, mut mine_turn) = (None, None);
+        for line in lines {
+            if state.outcome().is_some() {
+                break;
+            }
+            let commands: Vec<Command> =
+                line.split(';').filter_map(|c| command(c.trim())).collect();
+            if state.to_act() == seat {
+                let turn = state.game_turn();
+                for (i, c) in commands.iter().enumerate() {
+                    match *c {
+                        Command::BuildTower { x, y } => {
+                            built += 1;
+                            tower_turn.get_or_insert(turn);
+                            if turn <= 10 {
+                                towers_by_10 += 1;
+                            }
+                            // The turn without this tower.
+                            let mut without = state.clone();
+                            let others: Vec<Command> = commands
+                                .iter()
+                                .enumerate()
+                                .filter(|&(j, _)| j != i)
+                                .map(|(_, c)| *c)
+                                .collect();
+                            without.play_turn(&others);
+                            if without.outcome().is_some() {
+                                continue;
+                            }
+                            let cell = usize::from(y) * 12 + usize::from(x);
+                            let guarded = (Bits::cell(cell) | Bits::cell(cell).neighbours())
+                                & without.active(seat);
+                            let enemy = 1 - seat;
+                            let reach = Reach::new(&without, enemy, true);
+                            let gold = without.gold(enemy);
+                            let need = guarded.iter().any(|g| reach.cost[g] <= gold);
+                            // What the enemy's best cut at its next turn takes
+                            // without the tower, beyond what it takes with it
+                            // (score::exposure: 3 a cell or a turn of a mine's
+                            // income, units' value, 1000 for the HQ).
+                            let mut with = state.clone();
+                            with.play_turn(&commands);
+                            let settings = ice_and_fire_opening::score::Settings::DEFAULT;
+                            let gain =
+                                ice_and_fire_opening::score::exposure(&without, seat, settings)
+                                    - ice_and_fire_opening::score::exposure(&with, seat, settings);
+                            let bucket = match gain {
+                                i64::MIN..=0 => 0,
+                                1..=5 => 1,
+                                6..=29 => 2,
+                                30..=999 => 3,
+                                _ => 4,
+                            };
+                            prevented[bucket] += 1;
+                            if bucket <= 1 && without.gold(seat) + without.income(seat) >= 15 {
+                                idle_affordable += 1;
+                            }
+                            let entry = by_turn.entry(turn).or_default();
+                            entry.0 += 1;
+                            if need {
+                                needed += 1;
+                                entry.1 += 1;
+                            } else if without.gold(seat) + without.income(seat) >= 15 {
+                                could_wait += 1;
+                            }
+                        }
+                        Command::BuildMine { .. } => {
+                            mine_turn.get_or_insert(turn);
+                            if turn <= 10 {
+                                mines_by_10 += 1;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            state.play_turn(&commands);
+        }
+        if let Some(t) = tower_turn {
+            first_tower.push(t);
+        }
+        if let Some(t) = mine_turn {
+            first_mine.push(t);
+        }
+    }
+    let median = |v: &mut Vec<u32>| {
+        v.sort_unstable();
+        v.get(v.len() / 2).copied().unwrap_or(0)
+    };
+    println!(
+        "games {games}, towers built {built} ({:.1} a game)",
+        built as f64 / games.max(1) as f64
+    );
+    println!(
+        "needed (the enemy could take a guarded cell at its next turn): {needed} ({:.0}%)",
+        100.0 * needed as f64 / built.max(1) as f64
+    );
+    println!(
+        "not needed, and our gold next turn would have paid: {could_wait} ({:.0}%)",
+        100.0 * could_wait as f64 / built.max(1) as f64
+    );
+    println!(
+        "first tower: in {} games, median game turn {}; first mine: in {} games, median game turn {}",
+        first_tower.len(),
+        median(&mut first_tower),
+        first_mine.len(),
+        median(&mut first_mine)
+    );
+    println!("towers by game turn 10: {towers_by_10}; mines by game turn 10: {mines_by_10}");
+    let pct = |n: usize| 100.0 * n as f64 / built.max(1) as f64;
+    println!(
+        "what the tower spares at the enemy's next cut: nothing {} ({:.0}%), a cell at most {} ({:.0}%), 2-9 cells {} ({:.0}%), more {} ({:.0}%), the HQ {} ({:.0}%)",
+        prevented[0], pct(prevented[0]), prevented[1], pct(prevented[1]), prevented[2], pct(prevented[2]),
+        prevented[3], pct(prevented[3]), prevented[4], pct(prevented[4])
+    );
+    println!(
+        "sparing a cell at most, with our gold next turn enough for it: {idle_affordable} ({:.0}%)",
+        pct(idle_affordable)
+    );
+    let line: Vec<String> = by_turn
+        .iter()
+        .filter(|(t, _)| **t <= 20)
+        .map(|(t, (b, n))| format!("{t}:{b}/{n}"))
+        .collect();
+    println!("by game turn (built/needed): {}", line.join(" "));
 }
