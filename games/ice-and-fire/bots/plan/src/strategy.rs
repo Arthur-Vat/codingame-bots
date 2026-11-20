@@ -20,7 +20,7 @@ pub use roles::Memory;
 /// first climb of each turn starts with it; 4, its pieces (each frontline
 /// unit's step and the training at its tip) offered as macro actions at
 /// every step of the climbs.
-pub const TURN: u8 = 0;
+pub const TURN: u8 = 1;
 
 /// Which trainings the strategic turn holds (E077): 1, at the frontline
 /// units' tips only, after their moves (the owner's rule); 2, also the
