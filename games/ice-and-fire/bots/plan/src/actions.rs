@@ -75,9 +75,9 @@ pub const STEP_GUARD: u8 = 1;
 /// that is owned (E070 offers the steps into neutral cells), and the cell
 /// it leaves gets a tower. 0: none (v030); 1: steps onto our cells farther
 /// from the enemy HQ (back); 2: steps onto our cells next to an enemy cell
-/// (along the border); 3: steps onto any of our cells or an enemy cell
-/// other than its HQ.
-pub const FALL_BACK: u8 = 0;
+/// (along the border, ice-and-fire-v031); 3: steps onto any of our cells
+/// or an enemy cell other than its HQ.
+pub const FALL_BACK: u8 = 2;
 
 /// The rush from the tip (E076): chains of level-1 trainings into neutral
 /// cells, from the trainable neutral cells nearest the enemy HQ, each next
