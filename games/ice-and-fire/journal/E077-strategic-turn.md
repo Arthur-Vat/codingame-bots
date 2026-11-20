@@ -129,3 +129,30 @@ take a frontline unit off a border cell the enemy then enters, cutting off
 what lies behind. The race counts who arrives first, not whether the line
 behind the arriving unit holds; E070's step and guard (a step with the cell
 left guarded, +71.9) is the safe version of the same move.
+
+## Round 2's rules, measured on the positions
+
+The owner chose all four fixes (form, 2026-11-20): guarded steps, back
+units walking, filling behind, a safe-step filter (`strategy::GUARD`,
+`BACK_ONLY`, `FILL_BEHIND`, `SAFE_STEP`; the analysis mode `guide` takes
+them as `--guard N`, `--back-only`, `--fill-behind`, `--safe-step`). On
+the same positions (the strategic turn completed by the search's plan from
+there, as the forced first climb does; with `--back-only` fewer positions
+have a strategic turn, 712, and the search's plan is compared on those):
+
+| Rules | Positions | Moves whose cell the enemy then holds | Units lost | Cut off | Cell lead | Objectives held | The search's plan: lost / lead / objectives |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| none (round 1) | 1,094 | 34% | 1.27 | 1.07 | −4.3 | 6.61 | 0.32 / −2.3 / 6.80 |
+| guard: a tower | 1,094 | 7% | 0.71 | 0.58 | −4.4 | 6.72 | same |
+| guard: a training | 1,094 | 14% | 1.39 | 1.01 | −4.8 | 6.43 | same |
+| fill behind | 1,094 | 17% | 1.19 | 0.89 | −4.6 | 6.39 | same |
+| safe step | 1,094 | 14% | 0.99 | 0.69 | −4.0 | 6.61 | same |
+| a tower, safe step | 1,094 | 3% | 0.68 | 0.54 | −4.2 | 6.73 | same |
+| back units only | 712 | 13% | 0.60 | 0.44 | −2.8 | 6.52 | 0.19 / −1.6 / 6.43 |
+| back units, safe step | 712 | 5% | 0.43 | 0.27 | −2.6 | 6.52 | same |
+
+(The first column is for the strategic turn alone; "back units, a
+training" plays as "back units only", since back units leave no exposed
+cell.) Each fix halves the losses or more, and back units with the safe
+step hold more objectives than the search's plan, but none reaches its
+units or its cell lead.
