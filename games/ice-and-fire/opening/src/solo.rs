@@ -419,6 +419,11 @@ pub fn value_with(state: &State, seat: usize, objective: &Objective, middle: Bit
         + o.chokes * held
 }
 
+/// The middle chokes of `state`'s map (`ice_and_fire_early`'s zones).
+pub fn middle_chokes(state: &State) -> Bits {
+    ice_and_fire_early::zones::Zones::of(state).middle_chokes()
+}
+
 /// The cells of the middle band of `state`'s map: those whose steps to the
 /// two HQs differ by at most 2 (as the optimal plans' study counts them,
 /// `examples/oracle.rs`).

@@ -61,8 +61,8 @@
 //!   share of the contested band they claim (cells within [`GOAL_BAND`]
 //!   rings of the frontline, `ice_and_fire_opening::solo::rings`), and the
 //!   search takes over at game turn 7 without it. Until game turn
-//!   [`GOAL_UNTIL`], each band cell nearer one side's active land than the
-//!   other's counts [`GOAL`] for it ([`goal`]).
+//!   [`GOAL_UNTIL`], band cells near a side's land, held by it, guarded by
+//!   its towers, and the middle chokes it holds count for it ([`goal`]).
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::reach_within_moving;
@@ -387,35 +387,110 @@ fn wall(state: &State, seat: usize) -> i64 {
     WALL * i64::from(frontier(state, seat).1.count())
 }
 
-/// What each contested band cell nearer a side's active land than the
-/// enemy's counts for it (E073): 0 for nothing (v029).
+/// The opening's goal kept in the search (E073), as weights of its parts,
+/// each counted for `seat` less for the enemy, until [`GOAL_UNTIL`]; all 0
+/// for nothing (v029). Band cells are those within [`GOAL_BAND`] rings of
+/// the frontline.
+///
+/// - [`GOAL`]: each band cell at least [`GOAL_MARGIN`] steps nearer the
+///   side's active land than the enemy's (being near: 0 steps is v029's
+///   tie rule, a strict nearness);
+/// - [`GOAL_OWNED`]: each band cell the side holds actively;
+/// - [`GOAL_GUARD`]: each band cell it holds that is one of its active
+///   towers or next to one (a tower stops units below level 3);
+/// - [`GOAL_CHOKE`]: each middle choke it holds actively.
 pub const GOAL: i64 = 0;
-/// The last game turn at which [`GOAL`] counts.
+/// See [`GOAL`].
+pub const GOAL_MARGIN: u8 = 1;
+/// See [`GOAL`].
+pub const GOAL_OWNED: i64 = 0;
+/// See [`GOAL`].
+pub const GOAL_GUARD: i64 = 0;
+/// See [`GOAL`].
+pub const GOAL_CHOKE: i64 = 0;
+/// The last game turn at which the goal counts.
 pub const GOAL_UNTIL: u32 = 10;
 /// The band's width: cells within this many rings of the frontline.
 pub const GOAL_BAND: i64 = 2;
 
-/// The opening's goal for `seat` (E073): [`GOAL`] for each band cell
-/// nearer its active land than the enemy's, less [`GOAL`] for each nearer
-/// the enemy's; 0 after [`GOAL_UNTIL`].
+/// The map's band cells and middle chokes, computed once a map.
+struct GoalZones {
+    valid: Bits,
+    band: Bits,
+    chokes: Bits,
+}
+
+thread_local! {
+    static GOAL_ZONES: std::cell::RefCell<Option<GoalZones>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// The band cells and middle chokes of `state`'s map.
+fn goal_zones(state: &State) -> (Bits, Bits) {
+    GOAL_ZONES.with(|cell| {
+        let mut zones = cell.borrow_mut();
+        let valid = state.map().valid;
+        if zones.as_ref().is_none_or(|z| z.valid != valid) {
+            let rings = ice_and_fire_opening::solo::rings(state);
+            let mut band = Bits::EMPTY;
+            for c in valid.iter() {
+                if rings[c] <= GOAL_BAND {
+                    band.set(c);
+                }
+            }
+            *zones = Some(GoalZones {
+                valid,
+                band,
+                chokes: ice_and_fire_opening::solo::middle_chokes(state),
+            });
+        }
+        zones
+            .as_ref()
+            .map_or((Bits::EMPTY, Bits::EMPTY), |z| (z.band, z.chokes))
+    })
+}
+
+/// The cells of `seat` a tower guards: its active towers and their
+/// neighbours among its active cells.
+fn guarded(state: &State, seat: usize) -> Bits {
+    let active = state.active(seat);
+    let towers = state.towers() & active;
+    (towers | towers.neighbours()) & active
+}
+
+/// The opening's goal for `seat` (E073), see [`GOAL`]; 0 after
+/// [`GOAL_UNTIL`].
 fn goal(state: &State, seat: usize) -> i64 {
-    if GOAL == 0 || state.game_turn() > GOAL_UNTIL {
+    if (GOAL == 0 && GOAL_OWNED == 0 && GOAL_GUARD == 0 && GOAL_CHOKE == 0)
+        || state.game_turn() > GOAL_UNTIL
+    {
         return 0;
     }
-    let rings = ice_and_fire_opening::solo::rings(state);
-    let ours = ice_and_fire_opening::econ::distances(state, state.active(seat));
-    let theirs = ice_and_fire_opening::econ::distances(state, state.active(1 - seat));
-    let mut net = 0;
-    for c in state.map().valid.iter() {
-        if rings[c] <= GOAL_BAND {
-            net += match ours[c].cmp(&theirs[c]) {
-                std::cmp::Ordering::Less => 1,
-                std::cmp::Ordering::Equal => 0,
-                std::cmp::Ordering::Greater => -1,
-            };
+    let (band, chokes) = goal_zones(state);
+    let mut total = 0;
+    if GOAL != 0 {
+        let ours = ice_and_fire_opening::econ::distances(state, state.active(seat));
+        let theirs = ice_and_fire_opening::econ::distances(state, state.active(1 - seat));
+        let mut net = 0;
+        for c in band.iter() {
+            let (a, b) = (ours[c], theirs[c]);
+            if a != u8::MAX && a.saturating_add(GOAL_MARGIN) <= b {
+                net += 1;
+            } else if b != u8::MAX && b.saturating_add(GOAL_MARGIN) <= a {
+                net -= 1;
+            }
         }
+        total += GOAL * net;
     }
-    GOAL * net
+    let count = |bits: Bits| i64::from(bits.count());
+    let (mine, theirs) = (state.active(seat), state.active(1 - seat));
+    total += GOAL_OWNED * (count(mine & band) - count(theirs & band));
+    if GOAL_GUARD != 0 {
+        total += GOAL_GUARD
+            * (count(guarded(state, seat) & band) - count(guarded(state, 1 - seat) & band));
+    }
+    total += GOAL_CHOKE * (count(mine & chokes) - count(theirs & chokes));
+    total
 }
 
 /// The score of `state` for `seat`, higher is better for it.
