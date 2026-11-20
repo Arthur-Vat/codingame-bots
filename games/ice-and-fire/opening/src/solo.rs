@@ -117,6 +117,54 @@ pub enum Order {
     /// and so on up to ring 6, compared in that order, then the weighted
     /// sum.
     ByRing,
+    /// The active cells, then the sum of their weights in a static weight
+    /// map of the map, computed at turn 1 ([`Field`]), then the weighted sum.
+    Field(Field),
+}
+
+/// A static weight map, from each cell's walking steps `a` from our HQ and
+/// `b` from the enemy's, `d` the steps between the HQs, `ring` = |a − b| / 2
+/// (the owner's request, 2026-11-20: computed at turn 1, closer to where
+/// contact happens).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Field {
+    /// `top − ring − excess / 2`, at least 0, with `excess = a + b − d` the
+    /// detour of the cell off the shortest paths between the HQs: the
+    /// meeting point weighs most, the far ends of the even line less.
+    Corridor { top: i64 },
+    /// `top − ring`, at least 0, for cells within `steps` of our HQ; 0
+    /// beyond: only the frontier the opening can reach.
+    Reachable { top: i64, steps: i64 },
+    /// `min(a, d / 2)`: farther from our HQ is better, up to halfway.
+    Outward,
+}
+
+impl Field {
+    /// The weight of a cell `a` steps from our HQ and `b` from the enemy's,
+    /// the HQs `d` steps apart.
+    pub fn weight(self, a: i64, b: i64, d: i64) -> i64 {
+        let ring = (a - b).abs() / 2;
+        match self {
+            Field::Corridor { top } => (top - ring - (a + b - d) / 2).max(0),
+            Field::Reachable { top, steps } if a <= steps => (top - ring).max(0),
+            Field::Reachable { .. } => 0,
+            Field::Outward => a.min(d / 2),
+        }
+    }
+}
+
+/// Each cell's weight in `field` for `seat`; 0 where an HQ is not reachable.
+pub fn field_weights(state: &State, seat: usize, field: Field) -> [i64; CELLS] {
+    let ours = econ::distances(state, Bits::cell(HQ[seat]));
+    let theirs = econ::distances(state, Bits::cell(HQ[1 - seat]));
+    let d = i64::from(ours[HQ[1 - seat]]);
+    let mut out = [0; CELLS];
+    for c in 0..CELLS {
+        if ours[c] != u8::MAX && theirs[c] != u8::MAX {
+            out[c] = field.weight(i64::from(ours[c]), i64::from(theirs[c]), d);
+        }
+    }
+    out
 }
 
 /// How a cell's weight falls with its ring from the middle (`Order::Central`).
@@ -331,6 +379,9 @@ impl Zones {
                 };
             }
         }
+        if let Order::Field(field) = objective.order {
+            weights = field_weights(state, state.to_act(), field);
+        }
         let (ring_of, frontier) = match objective.order {
             Order::Frontier { .. } | Order::ByRing => {
                 let r = rings(state);
@@ -368,7 +419,7 @@ pub fn key(state: &State, seat: usize, objective: &Objective, zones: Zones) -> K
     let sum = value_with(state, seat, objective, zones.chokes);
     match objective.order {
         Order::Sum => [sum, 0, 0, 0],
-        Order::Central(_) => {
+        Order::Central(_) | Order::Field(_) => {
             let active = state.active(seat);
             let weighed: i64 = active.iter().map(|c| zones.weights[c]).sum();
             [i64::from(active.count()), weighed, sum, 0]

@@ -17,7 +17,7 @@ use ice_and_fire_early::zones::Zones;
 use ice_and_fire_engine::{Bits, Command, League, State};
 use ice_and_fire_opening::econ::{distances, Params};
 use ice_and_fire_opening::planned::{Planned, Planner};
-use ice_and_fire_opening::solo::{self, Decay, Objective, Order};
+use ice_and_fire_opening::solo::{self, Decay, Field, Objective, Order};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::League as RefereeLeague;
 
@@ -273,6 +273,20 @@ fn dump(plans: &str, starts: &[String]) {
         println!("VALID {}", cells(state.map().valid));
         println!("CHOKES {}", cells(Zones::of(&state).middle_chokes()));
         println!("BAND {}", cells(solo::middle_band(&state)));
+        for (name, field) in [
+            ("corridor", Field::Corridor { top: 8 }),
+            ("reach", Field::Reachable { top: 7, steps: 9 }),
+            ("outward", Field::Outward),
+        ] {
+            println!(
+                "FIELD {name} {}",
+                solo::field_weights(&state, seat, field)
+                    .iter()
+                    .map(|w| w.to_string())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            );
+        }
         println!(
             "RINGS {}",
             solo::rings(&state)
@@ -300,6 +314,9 @@ fn dump(plans: &str, starts: &[String]) {
             ("lin9", Order::Central(Decay::Linear(9))),
             ("ring", Order::ByRing),
             ("fr8", Order::Frontier { cap: 8 }),
+            ("corridor", Order::Field(Field::Corridor { top: 8 })),
+            ("reach", Order::Field(Field::Reachable { top: 7, steps: 9 })),
+            ("outward", Order::Field(Field::Outward)),
         ] {
             let mut planned = opening(order);
             let mut s = state.clone();
