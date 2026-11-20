@@ -20,7 +20,7 @@ pub use roles::Memory;
 /// first climb of each turn starts with it; 4, its pieces (each frontline
 /// unit's step and the training at its tip) offered as macro actions at
 /// every step of the climbs.
-pub const TURN: u8 = 7;
+pub const TURN: u8 = 4;
 
 /// Which trainings the strategic turn holds (E077): 1, at the frontline
 /// units' tips only, after their moves (the owner's rule); 2, also the
@@ -29,7 +29,7 @@ pub const TRAININGS: u8 = 1;
 
 /// The objectives' term in the search's score (E077), in quarters of a cell
 /// of land per cell an objective decides; 0 for none (v031).
-pub const OBJECTIVE_QUARTERS: i64 = 0;
+pub const OBJECTIVE_QUARTERS: i64 = 4;
 
 /// What the objectives' term counts for an objective of value `v`: with
 /// false, `v` if we hold it, `-v` if the enemy does, 0 otherwise; with true,
