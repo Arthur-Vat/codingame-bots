@@ -289,3 +289,17 @@ frontier"; his choice (form): all three of
 - `ByRing`: the active cells, then our cells on ring 0, then ring 1, up to
   ring 6, compared in that order, then the weighted sum;
 - convex weights (`Halving`, `Square`), duelled again cleanly.
+
+Duels, as above, all clean (at most 2 timeouts a side):
+
+| Variant | Order | Elo over v029 [95%] |
+| --- | --- | --- |
+| fr4 | `Frontier { cap: 4 }` | +10.4 [−12.8, +33.7] |
+| fr8 | `Frontier { cap: 8 }` | +17.4 [−6.3, +41.2] |
+| ring | `ByRing` | +17.4 [−4.9, +39.8] |
+| half8 | `Central(Halving(8))`, again | +16.5 [−6.6, +39.8] |
+
+Every order that puts the land first scores between +10 and +35 in the
+cut duels, and no two differ by more than the noise of 400 pairs (about
+±23). What they share, the most land first, gains about +20; the
+tie-breaks after it are not told apart by this judge.
