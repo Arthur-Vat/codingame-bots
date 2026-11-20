@@ -85,7 +85,7 @@ use ice_and_fire_engine::{answer_line, Bits, Command, League, State, HQ, SIZE};
 use ice_and_fire_opening::assign::{self, Purchase};
 use ice_and_fire_opening::econ::{distances, Params};
 use ice_and_fire_opening::planned::{Planned, Planner};
-use ice_and_fire_opening::solo::{self, Objective};
+use ice_and_fire_opening::solo::{self, Objective, Order};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::League as RefereeLeague;
 
@@ -101,6 +101,7 @@ const OBJECTIVE: Objective = Objective {
     voronoi: 1,
     chokes: 0,
     assign: false,
+    order: Order::Sum,
 };
 
 /// v029's opening weights (`opening_of` in the plan bot).
@@ -574,7 +575,9 @@ fn replay(state: &State, plan: &[Vec<Command>]) -> State {
 /// The openings compared with the optimum, by name, each played once to the
 /// longest horizon: a new opening joins this list to be measured by `run`
 /// and `--bench`.
-const OPENINGS: [&str; 4] = ["v029", "b", "rules", "assign"];
+const OPENINGS: [&str; 9] = [
+    "v029", "b", "rules", "assign", "tie", "land", "tie3", "tie6", "tie12",
+];
 
 struct Openings {
     played: Vec<(Vec<State>, Plan)>,
@@ -585,6 +588,21 @@ fn openings(state: &State, t: u32) -> Openings {
     let mut v029 = opening(OBJECTIVE);
     let mut b = opening(Objective {
         assign: true,
+        ..OBJECTIVE
+    });
+    // E073: the lexicographic orders.
+    let tie_within = |within| {
+        opening(Objective {
+            order: Order::TieBreak { within },
+            ..OBJECTIVE
+        })
+    };
+    let mut tie = tie_within(1);
+    let mut tie3 = tie_within(3);
+    let mut tie6 = tie_within(6);
+    let mut tie12 = tie_within(12);
+    let mut land = opening(Objective {
+        order: Order::LandFirst,
         ..OBJECTIVE
     });
     let settings = assign::Settings {
@@ -598,6 +616,11 @@ fn openings(state: &State, t: u32) -> Openings {
             play(state, t, |s| b.turn(s, None)),
             play(state, t, |s| solo::commands(s, &sets, solo::REST)),
             play(state, t, |s| assign::turn(s, &settings)),
+            play(state, t, |s| tie.turn(s, None)),
+            play(state, t, |s| land.turn(s, None)),
+            play(state, t, |s| tie3.turn(s, None)),
+            play(state, t, |s| tie6.turn(s, None)),
+            play(state, t, |s| tie12.turn(s, None)),
         ],
     }
 }

@@ -85,7 +85,30 @@ pub struct Objective {
     /// (E072, [`crate::assign`]), with the payback rule and spending all
     /// the gold.
     pub assign: bool,
+    /// How plans are compared (E073).
+    pub order: Order,
 }
+
+/// How the beam compares two positions (E073): by the weighted sum alone,
+/// or lexicographically with the middle of the map as tie-breaks, so that,
+/// among the many plans that reach the most land, it keeps those that hold
+/// the middle without giving up land for it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Order {
+    /// The weighted sum [`value`] alone.
+    Sum,
+    /// The weighted sum in steps of `within` (1: exact ties only), then the
+    /// middle chokes held, then the cells of the middle band held, then the
+    /// weighted sum.
+    TieBreak { within: i64 },
+    /// The active cells, then the middle chokes held, then the cells of the
+    /// middle band held, then the weighted sum.
+    LandFirst,
+}
+
+/// A position's rank by an [`Order`]: larger is better, compared
+/// lexicographically.
+pub type Key = [i64; 4];
 
 impl Objective {
     /// A cell is worth 4, a turn of income 3 and a gold 1, as in the shared
@@ -106,6 +129,7 @@ impl Objective {
         voronoi: 1,
         chokes: 0,
         assign: false,
+        order: Order::Sum,
     };
 }
 
@@ -199,6 +223,66 @@ pub fn value_with(state: &State, seat: usize, objective: &Objective, middle: Bit
         + o.chokes * held
 }
 
+/// The cells of the middle band of `state`'s map: those whose steps to the
+/// two HQs differ by at most 2 (as the optimal plans' study counts them,
+/// `examples/oracle.rs`).
+pub fn middle_band(state: &State) -> Bits {
+    let ours = econ::distances(state, Bits::cell(HQ[0]));
+    let theirs = econ::distances(state, Bits::cell(HQ[1]));
+    let mut band = Bits::EMPTY;
+    for c in state.map().valid.iter() {
+        if ours[c] != u8::MAX && theirs[c] != u8::MAX && ours[c].abs_diff(theirs[c]) <= 2 {
+            band.set(c);
+        }
+    }
+    band
+}
+
+/// The zones of `state`'s map that `objective` needs: its middle chokes and
+/// its middle band.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Zones {
+    pub chokes: Bits,
+    pub band: Bits,
+}
+
+impl Zones {
+    /// The zones of `state`'s map that `objective` uses, empty otherwise.
+    pub fn of(state: &State, objective: &Objective) -> Zones {
+        let lexicographic = objective.order != Order::Sum;
+        Zones {
+            chokes: if objective.chokes != 0 || lexicographic {
+                ice_and_fire_early::zones::Zones::of(state).middle_chokes()
+            } else {
+                Bits::EMPTY
+            },
+            band: if lexicographic {
+                middle_band(state)
+            } else {
+                Bits::EMPTY
+            },
+        }
+    }
+}
+
+/// The rank of `seat`'s position in `state` by `objective` and its
+/// [`Order`].
+pub fn key(state: &State, seat: usize, objective: &Objective, zones: Zones) -> Key {
+    let sum = value_with(state, seat, objective, zones.chokes);
+    match objective.order {
+        Order::Sum => [sum, 0, 0, 0],
+        Order::TieBreak { .. } | Order::LandFirst => {
+            let owned = state.owned(seat);
+            let chokes = i64::from((owned & zones.chokes).count());
+            let band = i64::from((owned & zones.band).count());
+            match objective.order {
+                Order::TieBreak { within } => [sum.div_euclid(within.max(1)), chokes, band, sum],
+                _ => [i64::from(state.active(seat).count()), chokes, band, sum],
+            }
+        }
+    }
+}
+
 /// Our `commands`, then the opponent passes: our next start of turn.
 pub fn advance(state: &State, commands: &[Command]) -> State {
     let mut next = state.clone();
@@ -286,18 +370,9 @@ fn steps(state: &State, sets: &[Params], assign: bool) -> Vec<(Step, Vec<Command
     out
 }
 
-/// The middle chokes of `state`'s map when `objective` weighs them.
-fn middle_chokes(state: &State, objective: &Objective) -> Bits {
-    if objective.chokes == 0 {
-        Bits::EMPTY
-    } else {
-        ice_and_fire_early::zones::Zones::of(state).middle_chokes()
-    }
-}
-
 /// A beam search over whole turns for `turns` of our turns, `width` nodes a
-/// turn, the opponent passing: the plan whose final position [`value`]
-/// rates best, the plan of `rest` alone among the candidates. Stops early,
+/// turn, the opponent passing: the plan whose final position [`key`]
+/// ranks best, the plan of `rest` alone among the candidates. Stops early,
 /// with the best plan found, at `deadline`.
 pub fn beam(
     state: &State,
@@ -310,13 +385,12 @@ pub fn beam(
 ) -> Vec<Step> {
     let me = state.to_act();
     let out_of_time = || deadline.is_some_and(|t| Instant::now() >= t);
-    let middle = middle_chokes(state, objective);
-    let rated =
-        |plan: &[Step]| value_with(&play(state, sets, plan, rest, turns), me, objective, middle);
-    let mut best: (i64, Vec<Step>) = (rated(&[]), Vec::new());
+    let zones = Zones::of(state, objective);
+    let rated = |plan: &[Step]| key(&play(state, sets, plan, rest, turns), me, objective, zones);
+    let mut best: (Key, Vec<Step>) = (rated(&[]), Vec::new());
     let mut frontier: Vec<(State, Vec<Step>)> = vec![(state.clone(), Vec::new())];
     for depth in 0..turns {
-        let mut children: Vec<(i64, State, Vec<Step>)> = Vec::new();
+        let mut children: Vec<(Key, State, Vec<Step>)> = Vec::new();
         let mut seen: HashMap<u64, usize> = HashMap::new();
         for (node, plan) in &frontier {
             if out_of_time() {
@@ -326,7 +400,7 @@ pub fn beam(
                 let next = advance(node, &c);
                 let mut child = plan.clone();
                 child.push(step);
-                let v = value_with(&next, me, objective, middle);
+                let v = key(&next, me, objective, zones);
                 let key = side_key(&next, me);
                 match seen.get(&key) {
                     Some(&at) if children[at].0 >= v => {}
@@ -381,10 +455,9 @@ pub fn plan(
     objective: &Objective,
 ) -> Vec<Step> {
     let me = state.to_act();
-    let middle = middle_chokes(state, objective);
-    let rated =
-        |plan: &[Step]| value_with(&play(state, sets, plan, rest, turns), me, objective, middle);
-    let mut best: (i64, Vec<Step>) = (rated(&[]), Vec::new());
+    let zones = Zones::of(state, objective);
+    let rated = |plan: &[Step]| key(&play(state, sets, plan, rest, turns), me, objective, zones);
+    let mut best: (Key, Vec<Step>) = (rated(&[]), Vec::new());
     let mut width = 2;
     loop {
         let found = beam(state, sets, rest, turns, width, deadline, objective);
