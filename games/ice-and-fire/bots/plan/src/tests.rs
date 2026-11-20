@@ -1587,15 +1587,23 @@ fn the_rush_heads_for_chokes_then_band_cells_no_unit_of_ours_claims() {
                         .all(|e| d < map.distance(e, goal))
             })
         };
+        let lost = |goal: usize| {
+            crate::actions::RUSH_SKIP_ENEMY
+                && (state.owned(1 - me).test(goal)
+                    || state
+                        .units(1 - me)
+                        .iter()
+                        .any(|e| map.distance(e, goal) < reach(goal)))
+        };
         let goals = rush_goals(&state, &trainable);
         assert!(goals.len() <= RUSH_STARTS);
         let open_chokes: Vec<usize> = chokes
             .and_not(state.owned(me))
             .iter()
-            .filter(|&g| reach(g) != u8::MAX && !claimed(g))
+            .filter(|&g| reach(g) != u8::MAX && !claimed(g) && !lost(g))
             .collect();
         for (i, &goal) in goals.iter().enumerate() {
-            assert!(!state.owned(me).test(goal) && !claimed(goal));
+            assert!(!state.owned(me).test(goal) && !claimed(goal) && !lost(goal));
             if open_chokes.is_empty() {
                 assert!(band.test(goal));
             } else {
@@ -1608,4 +1616,65 @@ fn the_rush_heads_for_chokes_then_band_cells_no_unit_of_ours_claims() {
         }
     }
     assert!(found > 0, "no goal found");
+}
+
+#[test]
+fn a_leapfrog_steps_a_unit_onto_the_rush_start_and_trains_beyond_it() {
+    // E076, RUSH_LEAP: a movable unit next to a rush chain's first cell steps
+    // onto it, then level-1 trainings follow the chain from there.
+    use crate::actions::RUSH_LEAP;
+    let mut found = 0;
+    for state in many_positions() {
+        let mut actions = Vec::new();
+        actions_of(&state, &mut actions);
+        let me = state.to_act();
+        let neutral = state
+            .map()
+            .valid
+            .and_not(state.owned(me) | state.owned(1 - me));
+        for action in &actions {
+            let Action::Many(commands) = action else {
+                continue;
+            };
+            let Some((Command::Move { x, y, .. }, rest)) = commands.split_first() else {
+                continue;
+            };
+            if rest.is_empty()
+                || !rest
+                    .iter()
+                    .all(|c| matches!(c, Command::Train { level: 1, .. }))
+            {
+                continue;
+            }
+            let start = usize::from(*y) * SIZE + usize::from(*x);
+            let cells: Vec<usize> = rest
+                .iter()
+                .filter_map(|c| match *c {
+                    Command::Train { x, y, .. } => Some(usize::from(y) * SIZE + usize::from(x)),
+                    _ => None,
+                })
+                .collect();
+            if !neutral.test(start) || !cells.iter().all(|&c| neutral.test(c)) {
+                continue; // another macro action (E070 guards a cell of ours)
+            }
+            assert!(
+                std::hint::black_box(RUSH_LEAP),
+                "a leapfrog offered with RUSH_LEAP off"
+            );
+            let mut last = start;
+            for &cell in &cells {
+                assert!(Bits::cell(last).neighbours().test(cell), "{commands:?}");
+                last = cell;
+            }
+            let mut after = state.clone();
+            for &c in commands {
+                assert!(after.apply(c), "{commands:?}");
+            }
+            found += 1;
+        }
+    }
+    assert!(
+        found > 0 || !RUSH_LEAP || crate::actions::RUSH_LENGTH == 0,
+        "no leapfrog offered"
+    );
 }

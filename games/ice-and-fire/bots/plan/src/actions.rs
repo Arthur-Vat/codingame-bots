@@ -99,6 +99,17 @@ pub const RUSH_STARTS: usize = 2;
 /// goal and steps toward it. False: the enemy HQ (rounds 1 to 3).
 pub const RUSH_GOAL: bool = false;
 
+/// With [`RUSH_GOAL`], whether goals the enemy wins are left out (the
+/// owner's choice, 2026-11-20): those it holds, and those one of its units
+/// is nearer to than our nearest trainable cell.
+pub const RUSH_SKIP_ENEMY: bool = false;
+
+/// Whether each rush chain is also offered as a leapfrog (the owner's
+/// choice, 2026-11-20, after zasmu trains at the tip once its units have
+/// moved): a movable unit of ours next to the chain's first cell steps onto
+/// it, and the trainings go on from there.
+pub const RUSH_LEAP: bool = false;
+
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
 /// Longest cut, in trainings: 5 since E014 (4 before).
@@ -376,6 +387,33 @@ fn rush(state: &State, level1: Bits, gold: i64, out: &mut Vec<Action>) {
                 .collect();
             out.push(Action::Many(commands));
         }
+        if RUSH_LEAP {
+            leapfrogs(state, &chain, out);
+        }
+    }
+}
+
+/// The leapfrogs of `chain` ([`RUSH_LEAP`]): for each movable unit of ours
+/// next to the chain's first cell that may enter it, the step onto it, then
+/// the trainings of the chain's next cells, one more each time.
+fn leapfrogs(state: &State, chain: &[usize], out: &mut Vec<Action>) {
+    let me = state.to_act();
+    let start = chain[0];
+    let movers = state.movable_units() & state.units(me) & Bits::cell(start).neighbours();
+    for from in movers.iter() {
+        let Some((id, level)) = state.unit_at(from) else {
+            continue;
+        };
+        if !state.enterable(me, level).test(start) {
+            continue;
+        }
+        let (x, y) = xy(start);
+        let mut commands = vec![Command::Move { id, x, y }];
+        for &cell in &chain[1..] {
+            let (x, y) = xy(cell);
+            commands.push(Command::Train { level: 1, x, y });
+            out.push(Action::Many(commands.clone()));
+        }
     }
 }
 
@@ -403,11 +441,19 @@ pub fn rush_goals(state: &State, trainable: &[usize]) -> Vec<usize> {
             d <= reach && theirs.iter().all(|&enemy| d < map.distance(enemy, goal))
         })
     };
+    // RUSH_SKIP_ENEMY: the enemy holds it, or one of its units is nearer.
+    let lost = |goal: usize| {
+        RUSH_SKIP_ENEMY
+            && (state.owned(1 - me).test(goal)
+                || theirs
+                    .iter()
+                    .any(|&enemy| map.distance(enemy, goal) < from_trainable(goal)))
+    };
     let open = |cells: Bits| -> Vec<usize> {
         let mut goals: Vec<usize> = cells
             .and_not(state.owned(me))
             .iter()
-            .filter(|&goal| from_trainable(goal) != u8::MAX && !claimed(goal))
+            .filter(|&goal| from_trainable(goal) != u8::MAX && !claimed(goal) && !lost(goal))
             .collect();
         goals.sort_by_key(|&goal| (from_trainable(goal), goal));
         goals
