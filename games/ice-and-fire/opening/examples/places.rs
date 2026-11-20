@@ -114,6 +114,11 @@ fn main() {
         replay(&std::fs::read_to_string(file).expect("read"));
         return;
     }
+    if path == "adhere" {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        adhere(&args);
+        return;
+    }
     if path == "census" {
         census(
             std::env::args()
@@ -479,5 +484,81 @@ fn replay(text: &str) {
                 state.income(1)
             );
         }
+    }
+}
+
+/// `adhere ORDER SEAT FILE...`: how closely a game followed the opening's
+/// plan (E073, measurement only). Each FILE is a game as `replay` reads it,
+/// SEAT the side measured, ORDER `v029` or `lin7` (the opening's order).
+/// At the start of that side's game turn 6, its last opening turn (the
+/// search plays from game turn 7), the opening plans again, untimed (beams
+/// up to 32), the opponent passing; the plan's cells at the start of game
+/// turns 8, 10 and 12 are its targets. Prints, per game and turn, the
+/// targets, the cells held then, and the share of the targets held.
+fn adhere(args: &[String]) {
+    let order = match args[0].as_str() {
+        "v029" => Order::Sum,
+        "lin7" => Order::Central(Decay::Linear(7)),
+        other => panic!("unknown order {other}"),
+    };
+    let seat: usize = args[1].parse().expect("a seat");
+    let sets: Vec<Params> = solo::SETS
+        .iter()
+        .map(|&params| Params {
+            safe_spot: u8::MAX,
+            crowd: 2,
+            horizon: 18,
+            after_contact: 0,
+            ..params
+        })
+        .collect();
+    let objective = Objective { order, ..OBJECTIVE };
+    let mut sums = [(0.0f64, 0usize); 3];
+    for file in &args[2..] {
+        let text = std::fs::read_to_string(file).expect("read");
+        let mut lines = text.lines();
+        let seed: u64 = lines
+            .next()
+            .and_then(|l| l.strip_prefix("SEED "))
+            .and_then(|n| n.trim().parse().ok())
+            .expect("SEED n");
+        let map = generate(seed, RefereeLeague::Bronze);
+        let mut state = State::new(&map.void, &map.mine_spots, League::Bronze);
+        let mut targets: Option<[Bits; 3]> = None;
+        let mut shares = Vec::new();
+        for line in lines {
+            if state.outcome().is_some() {
+                break;
+            }
+            if state.to_act() == seat {
+                let turn = state.game_turn();
+                if turn == 6 {
+                    let plan = solo::plan(&state, &sets, solo::REST, 9, 32, None, &objective);
+                    let at = |k: usize| solo::play(&state, &sets, &plan, solo::REST, k).owned(seat);
+                    targets = Some([at(2), at(4), at(6)]);
+                }
+                if let Some(t) = targets {
+                    if let Some(i) = [8, 10, 12].iter().position(|&g| g == turn) {
+                        let held = state.owned(seat);
+                        let share =
+                            f64::from((t[i] & held).count()) / f64::from(t[i].count().max(1));
+                        shares.push(format!("{turn}:{:.2}", share));
+                        sums[i].0 += share;
+                        sums[i].1 += 1;
+                    }
+                }
+            }
+            let commands: Vec<Command> =
+                line.split(';').filter_map(|c| command(c.trim())).collect();
+            state.play_turn(&commands);
+        }
+        println!("{file} {}", shares.join(" "));
+    }
+    for (i, turn) in [8, 10, 12].iter().enumerate() {
+        let (sum, n) = sums[i];
+        println!(
+            "mean share of the plan's cells held at game turn {turn}: {:.3} over {n} games",
+            sum / n.max(1) as f64
+        );
     }
 }
