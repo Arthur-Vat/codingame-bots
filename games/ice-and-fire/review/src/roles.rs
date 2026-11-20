@@ -41,8 +41,6 @@ use crate::profiles::{newest_snapshot, prepare, read_index, read_ranks, Request}
 use crate::replay::{replay, Game};
 use crate::style::releases;
 
-/// The first game turn of the by-turn tables.
-const FIRST_COLUMN: u32 = 6;
 /// The game turns from which locality is read.
 const LOCAL_FROM: u32 = 8;
 /// The game turns of the idle total.
@@ -113,6 +111,36 @@ pub fn frontline_of(state: &State, cells: [usize; 3], open: Bits) -> Option<usiz
     (d(cells[0]) > d(cells[1]) && d(cells[1]) > d(cells[2])).then_some(g)
 }
 
+/// The value of `g` to the side alone: the cells nearer to its land plus
+/// `g` than to the enemy's, less those nearer without `g` (the enemy's land
+/// unchanged).
+pub fn marginal_value(state: &State, mine: Bits, theirs: Bits, g: usize) -> i32 {
+    nearer(state, mine | Bits::cell(g), theirs) - nearer(state, mine, theirs)
+}
+
+/// Whether the unit of `seat` nearest to `g` (by map distance, the lowest
+/// cell on a tie) is nearer to it than it was at `before`, its cell in the
+/// previous ply (`None` if it was not there).
+pub fn nearest_approaching(
+    state: &State,
+    seat: usize,
+    g: usize,
+    before: impl Fn(u32) -> Option<usize>,
+) -> bool {
+    let Some((cell, d)) = nearest(state, g, state.units(seat)) else {
+        return false;
+    };
+    let Some(id) = state.unit_id(cell) else {
+        return false;
+    };
+    before(id).is_some_and(|b| state.map().distance(b, g) > d)
+}
+
+/// Whether the active cell of `seat` nearest to `g` holds a unit of `seat`.
+pub fn tip_unit(state: &State, seat: usize, g: usize) -> bool {
+    nearest(state, g, state.active(seat)).is_some_and(|(c, _)| state.units(seat).test(c))
+}
+
 /// The neutral valid cells the enemy's active land cannot reach over valid
 /// cells that `mine` does not hold.
 pub fn pockets(valid: Bits, mine: Bits, owned_theirs: Bits, active_theirs: Bits) -> Bits {
@@ -178,6 +206,19 @@ pub struct Turn {
     pub pockets: u32,
     pub units: u32,
     pub idle: u32,
+    /// Units that stood still, and those next to a valid cell not ours.
+    pub still: u32,
+    pub still_edge: u32,
+    /// Counted objectives not held with the nearest unit approaching, and
+    /// with a unit on the nearest active cell.
+    pub approaching: u32,
+    pub tip_unit: u32,
+    /// Every objective, and those held.
+    pub all: u32,
+    pub all_held: u32,
+    /// Objectives of marginal value at least the threshold, and those held.
+    pub marginal: u32,
+    pub marginal_held: u32,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -233,6 +274,28 @@ pub fn sides(game: &Game, turns: u32, min_value: i32) -> [Side; 2] {
             t.counted = count.count();
             t.held = (count & mine).count();
             t.open = open.count();
+            t.all = set.count();
+            t.all_held = (set & mine).count();
+            let mut marginal = Bits::EMPTY;
+            for g in set.iter() {
+                if marginal_value(start, mine, start.active(enemy), g) >= min_value {
+                    marginal.set(g);
+                }
+            }
+            t.marginal = marginal.count();
+            t.marginal_held = (marginal & mine).count();
+            let before = |id: u32| {
+                k.checked_sub(1)
+                    .and_then(|j| cell_of(&game.steps[plies[j]].state, seat, id))
+            };
+            for g in open.iter() {
+                if nearest_approaching(start, seat, g, before) {
+                    t.approaching += 1;
+                }
+                if tip_unit(start, seat, g) {
+                    t.tip_unit += 1;
+                }
+            }
             for g in count.iter() {
                 let slot = first_hold.entry(g).or_insert(None);
                 if slot.is_none() && mine.test(g) {
@@ -278,6 +341,14 @@ pub fn sides(game: &Game, turns: u32, min_value: i32) -> [Side; 2] {
                 let stayed = cell_of(next, seat, id) == Some(cell);
                 if stayed && is_boxed_in(start, start.owned(seat), cell) {
                     t.idle += 1;
+                }
+                if stayed {
+                    t.still += 1;
+                    if !(Bits::cell(cell).neighbours() & valid.and_not(start.owned(seat)))
+                        .is_empty()
+                    {
+                        t.still_edge += 1;
+                    }
                 }
             }
             if turn >= LOCAL_FROM && !count.is_empty() {
@@ -365,11 +436,12 @@ fn table(
     text: &mut String,
     title: &str,
     groups: &Groups,
+    from: u32,
     last: u32,
     total: Option<(u32, u32)>,
     f: impl Fn(&Turn) -> (u32, u32),
 ) {
-    let first = FIRST_COLUMN.min(last);
+    let first = from.min(last);
     let _ = writeln!(text, "\n## {title}\n");
     let mut head = String::from("| Group |");
     for t in first..=last {
@@ -403,7 +475,7 @@ fn share(a: u32, b: u32) -> String {
 }
 
 /// The report's text from the sides of each group and seat.
-pub fn report(groups: &Groups, turns: u32, min_value: i32, left_out: usize) -> String {
+pub fn report(groups: &Groups, turns: u32, from: u32, min_value: i32, left_out: usize) -> String {
     let mut text = String::new();
     let _ = writeln!(text, "# Roles in the early game by group\n");
     let _ = writeln!(
@@ -414,6 +486,7 @@ pub fn report(groups: &Groups, turns: u32, min_value: i32, left_out: usize) -> S
         &mut text,
         "Counted objectives per side",
         groups,
+        from,
         turns,
         None,
         |t| (t.counted, 1),
@@ -422,6 +495,7 @@ pub fn report(groups: &Groups, turns: u32, min_value: i32, left_out: usize) -> S
         &mut text,
         "Counted objectives held per side",
         groups,
+        from,
         turns,
         None,
         |t| (t.held, 1),
@@ -430,6 +504,7 @@ pub fn report(groups: &Groups, turns: u32, min_value: i32, left_out: usize) -> S
         &mut text,
         "Share of counted objectives not held that have a frontline unit",
         groups,
+        from,
         turns,
         None,
         |t| (t.fronted, t.open),
@@ -438,6 +513,7 @@ pub fn report(groups: &Groups, turns: u32, min_value: i32, left_out: usize) -> S
         &mut text,
         "Share of trainings at the tip (after a move to a neighbour)",
         groups,
+        from,
         turns,
         None,
         |t| (t.tips, t.trainings),
@@ -446,6 +522,7 @@ pub fn report(groups: &Groups, turns: u32, min_value: i32, left_out: usize) -> S
         &mut text,
         "Pockets per side (neutral cells the enemy cannot reach)",
         groups,
+        from,
         turns,
         None,
         |t| (t.pockets, 1),
@@ -454,9 +531,70 @@ pub fn report(groups: &Groups, turns: u32, min_value: i32, left_out: usize) -> S
         &mut text,
         "Share of unit turns idle with no cell to take within 2 steps",
         groups,
+        from,
         turns,
         Some((IDLE_FROM, IDLE_TO)),
         |t| (t.idle, t.units),
+    );
+    table(&mut text, "Variant: share of counted objectives not held whose nearest unit approached in the previous ply", groups, from, turns, None, |t| {
+        (t.approaching, t.open)
+    });
+    table(&mut text, "Variant: share of counted objectives not held with a unit on our nearest active cell (tip unit)", groups, from, turns, None, |t| {
+        (t.tip_unit, t.open)
+    });
+    table(
+        &mut text,
+        "Variant: share of unit turns standing still, any reason",
+        groups,
+        from,
+        turns,
+        Some((IDLE_FROM, IDLE_TO)),
+        |t| (t.still, t.units),
+    );
+    table(
+        &mut text,
+        "Variant: share of unit turns standing still next to a cell not ours",
+        groups,
+        from,
+        turns,
+        Some((IDLE_FROM, IDLE_TO)),
+        |t| (t.still_edge, t.units),
+    );
+    table(
+        &mut text,
+        "Variant: every objective, no threshold, per side",
+        groups,
+        from,
+        turns,
+        None,
+        |t| (t.all, 1),
+    );
+    table(
+        &mut text,
+        "Variant: every objective held per side",
+        groups,
+        from,
+        turns,
+        None,
+        |t| (t.all_held, 1),
+    );
+    table(
+        &mut text,
+        "Variant: objectives of marginal value at least the threshold, per side",
+        groups,
+        from,
+        turns,
+        None,
+        |t| (t.marginal, 1),
+    );
+    table(
+        &mut text,
+        "Variant: those of marginal value held per side",
+        groups,
+        from,
+        turns,
+        None,
+        |t| (t.marginal_held, 1),
     );
     let _ = writeln!(text, "\n## First game turn an objective is held\n");
     let _ = writeln!(
@@ -520,7 +658,7 @@ pub fn report(groups: &Groups, turns: u32, min_value: i32, left_out: usize) -> S
 /// the players of `request.players` (each its own), the rest of the top
 /// `request.top` of the leaderboard snapshot, and our releases in games
 /// against them.
-pub fn run(request: &Request, turns: u32, min_value: i32) -> Result<String, String> {
+pub fn run(request: &Request, turns: u32, from: u32, min_value: i32) -> Result<String, String> {
     let (entries, left_out) = read_index(&request.data.join("index.jsonl"), request)?;
     let release_of = releases(&request.data)?;
     let ranks = match request
@@ -575,7 +713,7 @@ pub fn run(request: &Request, turns: u32, min_value: i32) -> Result<String, Stri
     for (group, seat, side) in slots.into_iter().flatten().flatten() {
         groups.entry((group, seat)).or_default().push(side);
     }
-    Ok(report(&groups, turns, min_value, left_out.len()))
+    Ok(report(&groups, turns, from, min_value, left_out.len()))
 }
 
 #[cfg(test)]

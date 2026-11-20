@@ -13,7 +13,7 @@
 //! ice-and-fire-review codingame-moments --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--our-seat 0|1] [--top N] [--examples K] [--out DIR] > moments.md
 //! ice-and-fire-review codingame-opening --data DIR --me NAME [--kinds ranking,test] [--batch B] [--release NAME] [--our-seat 0|1] [--top N] [--turns T] [--leaderboard FILE] [--jobs N] > opening.md
 //! ice-and-fire-review codingame-units --data DIR --me NAME [--kinds ranking,test] [--batch B] [--release NAME] [--our-seat 0|1] [--top N] [--leaderboard FILE] > units.csv
-//! ice-and-fire-review codingame-roles --data DIR --me NAME [--kinds ranking,test] [--batch B] [--release NAME] [--our-seat 0|1] [--players A,B] [--top N] [--leaderboard FILE] [--turns T] [--min-value V] [--jobs N] > roles.md
+//! ice-and-fire-review codingame-roles --data DIR --me NAME [--kinds ranking,test] [--batch B] [--release NAME] [--our-seat 0|1] [--players A,B] [--top N] [--leaderboard FILE] [--turns T] [--from-turn F] [--min-value V] [--jobs N] > roles.md
 //! ice-and-fire-review codingame-surprise --data DIR --me NAME --judge BIN [--release NAME] [--top N] [--tries N] [--limit PLIES] [--jobs N] [--leaderboard FILE] [--pass] --out DIR
 //! ice-and-fire-review codingame-style --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--players A,B] [--top N] [--leaderboard FILE] [--jobs N] > style.md
 //! ice-and-fire-review codingame-early --data DIR --me NAME [--kinds ranking,test] [--turns T] > early.csv
@@ -604,6 +604,9 @@ enum Command {
         /// The last game turn read.
         #[arg(long, default_value_t = 15)]
         turns: u32,
+        /// The first game turn of the by-turn tables.
+        #[arg(long, default_value_t = 2)]
+        from_turn: u32,
         /// The least value for an objective to count.
         #[arg(long, default_value_t = 3)]
         min_value: i32,
@@ -1151,6 +1154,7 @@ fn run(cli: Cli) -> Result<(), String> {
             top,
             leaderboard,
             turns,
+            from_turn,
             min_value,
             jobs,
         } => {
@@ -1168,6 +1172,7 @@ fn run(cli: Cli) -> Result<(), String> {
                     jobs,
                 },
                 turns,
+                from_turn,
                 min_value,
             )?;
             print!("{text}");

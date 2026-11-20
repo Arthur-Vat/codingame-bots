@@ -127,6 +127,51 @@ fn a_random_game_is_measured_for_both_sides() {
     let mut groups = Groups::new();
     groups.insert(("x".to_string(), 0), vec![a]);
     groups.insert(("x".to_string(), 1), vec![b]);
-    let text = report(&groups, 15, 3, 0);
+    let text = report(&groups, 15, 2, 3, 0);
     assert!(text.contains("| x red (1) |") && text.contains("Locality"));
+}
+
+/// Red's two trained units on the open map.
+fn two_units() -> State {
+    let mut state = open_state();
+    state.play_turn(&[
+        Command::Train {
+            level: 1,
+            x: 1,
+            y: 0,
+        },
+        Command::Train {
+            level: 1,
+            x: 0,
+            y: 1,
+        },
+    ]);
+    state.play_turn(&[]);
+    state
+}
+
+#[test]
+fn the_nearest_unit_approaching_and_the_tip_unit_are_read_per_objective() {
+    let state = two_units();
+    let u1 = at(1, 0);
+    let id1 = state.unit_id(u1).unwrap();
+    let g = at(6, 0);
+    // The unit on (1, 0) is nearest to (6, 0); it was one step farther.
+    assert!(nearest_approaching(&state, 0, g, |id| (id == id1).then_some(at(0, 0))));
+    // It stood on the same cell, or was not there: not approaching.
+    assert!(!nearest_approaching(&state, 0, g, |id| (id == id1).then_some(u1)));
+    assert!(!nearest_approaching(&state, 0, g, |_| None));
+    // Red's land is its HQ and the two trained cells: the active cell
+    // nearest to (6, 0) is (1, 0), which holds a unit; blue's is its HQ.
+    assert!(tip_unit(&state, 0, g));
+    assert!(!tip_unit(&state, 1, g));
+}
+
+#[test]
+fn the_marginal_value_ignores_what_the_enemy_would_gain() {
+    let (state, path) = corridor();
+    let (mine, theirs) = (Bits::cell(path[0]), Bits::cell(path[22]));
+    // With the goal at step 16, 19 cells are nearer to us, 11 without
+    // (steps 0 to 10): 8, where the swing was 5.
+    assert_eq!(marginal_value(&state, mine, theirs, path[16]), 8);
 }
