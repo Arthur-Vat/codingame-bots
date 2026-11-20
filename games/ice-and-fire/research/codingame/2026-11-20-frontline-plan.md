@@ -307,17 +307,96 @@ check fails stops the plan there for the owner's decision.
 Steps 2 and 3 can share a pull request if the owner prefers fewer; each
 experiment stays alone (one hypothesis per pull request).
 
-## Open questions for the owner
+## The owner's answers (forms, 2026-11-20), as defaults
 
-1. **Objective value:** the land it decides (the Voronoi swing), as above?
-2. **How many objectives:** every middle choke plus the band cells above a
-   value threshold, or a fixed number (as many as we have units)?
-3. **"Empty cells within our territory":** neutral pockets enclosed by our
-   land (as read here), or cells we own left without units or buildings?
-4. **"Move only towards this direction":** strictly along a shortest path
-   (as above, any of them), or also a step aside to take a free cell when it
-   costs no turn of arrival?
-5. **"Created only after a unit moved":** always, or may the search train
-   first when the gold would otherwise be left unspent (a variant of
-   Step 4)?
-6. **Start with the measurement (Step 1)**, or go straight to Steps 2 to 4?
+The owner answered the open questions and added: "I gave logical answers,
+however it may be challenged. Make sure to propose multiple variants or
+totally different implementations/approaches when relevant". So each
+answer is the default, and the steps screen the other options against it.
+
+| Question | Default (the owner's answer) | Variants screened against it |
+| --- | --- | --- |
+| Value of an objective | The land it decides (the Voronoi swing) | Chokes above every band cell, then by land; nearness to the line even between the HQs; the land weighted by the cells' own value (a mine spot more) |
+| How many objectives at once | Those above a value threshold, as many as we have units for | One per unit, the most valuable first; at most 2 or 3; a threshold that falls as the game goes on |
+| Room for the back line | Neutral pockets fenced in by our land | Corridors of owned empty cells from the back to the front; both |
+| A frontline unit's path | Any shortest path, one step nearer every turn | A step aside to take a free cell when it costs at most one turn and the race is still won; one path fixed when the objective is given |
+| Trainings in a turn | After the frontline moves, at their tips; elsewhere only with gold that would stay unspent | Strictly after the moves and at the tips; no rule, the tips offered and the search free |
+| First step | Measure (Step 1) | (Steps 2 to 4 directly; a quick prototype first) |
+
+## Variants by step
+
+Beyond the table above, each step's experiment screens, on GitHub, the
+variants that could reasonably win (up to 8 a round, three seeds for a
+leader, as E076):
+
+- **Step 2 (objectives):** the land counted to the end of the map or only
+  within a few steps of the objective; mine spots counted more; objectives
+  recomputed every turn or kept until reached or lost.
+- **Step 3 (race and roles):** greedy assignment by arrival then value,
+  against the Hungarian method (`ice_and_fire_opening::assign`) on arrival
+  turns weighted by value; the handover when a unit is nearer by one step,
+  or by two (fewer switches); the enemy's arrival with its trainings paid
+  from its gold, or its units only.
+- **Step 4 (strategic turn, E077):** the plan offered as one macro action,
+  as the start of the search's climbs, or both; an evaluation term for the
+  objectives on or off, at a few weights; game turns 7 to 12 or 7 to 14.
+- **Step 5 (back line, E078):** back-line units to the nearest pocket, to
+  the nearest uncovered front cell, or the nearer of the two; the pocket
+  term on or off; pockets kept only while a front cell is free, or always
+  until game turn 14.
+- **Step 6 (local fights, E079):** the region's radius (2 or 3 steps);
+  one turn or two of local search; the gold shared by value, or by need
+  (the gold the region's best plan uses).
+- **Step 7 (opening by roles, E080):** the roles offered as one more plan
+  to the opening's planner, or played as the opening outright.
+
+## Two other approaches, to compare with the frontline layer
+
+The owner chose (form, 2026-11-20) to lay out two different approaches as
+alternatives; each would be a track of its own, judged by the same cut
+duels and full games, so that the three can be compared on the same
+measures (Step 1's).
+
+### A. A search over several of our turns
+
+- **What:** the middle game searches over two or three of our turns with
+  the enemy's replies between them, so that a rush, a fall back or a
+  fence emerges from the search instead of from rules. Candidates: a beam
+  over whole-turn plans (the current climb's best plans as the beam), or
+  Monte Carlo tree search over turns with the climb as its playout policy.
+- **What we know:** E065 checked the final choice two turns ahead and was
+  level (the check was cheap: 1.5 to 3 ms a turn); M1 (beam) and M2 (two
+  turns) were proposed on 2026-11-14 and not tried. Time is the limit: 45 ms
+  a turn, the evaluation 63% of the search's time.
+- **Steps:** (A1) a two-turn beam behind a switch, its speed measured;
+  (A2) screened against v031; (A3) Monte Carlo tree search only if A2
+  shows depth pays.
+
+### B. A two-sided early planner (the race as a game)
+
+- **What:** plan both sides' units from game turn 7 to 12 or 14 as a race
+  with simultaneous moves and arrival times: each side's units and
+  affordable trainings to objectives, with the enemy planning too, solved
+  exactly on small regions (the oracle's exact solver,
+  `opening/examples/oracle.rs`, as a start) or by search (best response
+  against the enemy's best plan, a few rounds).
+- **What we know:** the early-game plan of 2026-11-19 proposed a two-sided
+  planner judged by cut duels; the oracle found the most land by turn 6 is
+  held by tens of thousands of territories, so exact solving must stay
+  regional or short.
+- **Steps:** (B1) the race game on one region, solved exactly, checked
+  against the zasmu games (does its plan match zasmu's arrival?); (B2) as
+  the plan offered to the search, screened against v031.
+
+### How the three compare
+
+| | Frontline layer (Steps 1 to 8) | A. Multi-turn search | B. Two-sided planner |
+| --- | --- | --- | --- |
+| Encodes the goals | as rules and roles | finds them by search | finds them by solving the race |
+| Main risk | rules that misfire in positions they did not foresee | too slow in 45 ms | too slow or too regional |
+| First evidence | Step 1, no code in the bot | A1's speed | B1 on zasmu's positions |
+| Size | large, in eight steps | medium to large | large |
+
+Step 1's measures serve all three. The recommended order is Step 1 first,
+then the frontline layer's Steps 2 to 4, with A1's speed check alongside,
+since it is cheap; B waits for Step 1's answer on how local the fights are.
