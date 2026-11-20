@@ -18,11 +18,14 @@
 # or a tag), BASELINE (a release name such as ice-and-fire-v014, empty for the
 # newest release), PAIRS (2 to 8000 in all, a multiple of SHARDS, at most 1,000 a shard), SHARDS (1 to
 # 8; variants x shards at most 20) and SEED (a decimal u64, empty for the
-# game's SEED in evaluation.env). A bad input is an `::error` annotation and
+# game's SEED in evaluation.env), and ARENA (empty for whole games with the
+# game's arena, or `early` for games cut at the early arena's turn with
+# games/GAME/arena/src/bin/GAME-arena-early.rs). A bad input is an `::error`
+# annotation and
 # exit status 1. It resolves each REF to a full SHA, checks that the bot exists
 # there, and prints, also to $GITHUB_OUTPUT: matrix (a JSON array of
 # {"variant":NAME,"sha":SHA,"shard":K}), game, bot, baseline (the file),
-# baseline_name, pairs, shards and seed.
+# baseline_name, pairs, shards, seed and arena.
 #
 # play: one variant's shard K of SHARDS. Makes a git worktree of REV in
 # target/screen/src-NAME, builds that tree's own bundler there and bundles the
@@ -109,12 +112,16 @@ resolve_ref() {
 
 plan() {
   local game="${GAME:-}" bot="${BOT:-}" variants="${VARIANTS:-}" baseline="${BASELINE:-}"
-  local pairs="${PAIRS:-}" shards="${SHARDS:-}" seed="${SEED:-}"
+  local pairs="${PAIRS:-}" shards="${SHARDS:-}" seed="${SEED:-}" arena="${ARENA:-}"
 
   [[ $game =~ $WORD_RE ]] || die "game must be a folder of games/ (letters, digits, - and _)"
   [[ -f games/$game/evaluation.env ]] || die "games/$game/evaluation.env does not exist"
   [[ $bot =~ $WORD_RE ]] || die "bot must be a folder of games/$game/bots (letters, digits, - and _)"
   [[ -f games/$game/bots/$bot/Cargo.toml ]] || die "games/$game/bots/$bot/Cargo.toml does not exist"
+  [[ -z $arena || $arena == early ]] || die "arena must be empty or early"
+  if [[ $arena == early ]]; then
+    [[ -f games/$game/arena/src/bin/$game-arena-early.rs ]] || die "games/$game has no early arena"
+  fi
 
   if [[ -z $baseline ]]; then
     baseline="$(releases "$game" | tail -n 1)"
@@ -177,6 +184,7 @@ plan() {
   emit "pairs=$pairs"
   emit "shards=$shards"
   emit "seed=$seed"
+  emit "arena=$arena"
 }
 
 play() {
@@ -227,7 +235,8 @@ play() {
   build_tools "$game"
   calibrate_settings "$game" "$work/calibration"
 
-  local arena="target/release/$game-arena" options shard_option=() status=0
+  local arena options shard_option=() status=0
+  arena="$(arena_binary "$game")"
   read -r -a options <<<"$(arena_options)"
   if ((shards > 1)); then
     shard_option=(--shard "$shard")
@@ -250,6 +259,16 @@ play() {
   mv "$work/$name-$shard.jsonl.part" "$work/$name-$shard.jsonl"
 }
 
+# The arena that plays the games of game $1: the game's own, or its early
+# arena when ARENA is `early` (whole games when ARENA is empty).
+arena_binary() {
+  case "${ARENA:-}" in
+    "") echo "target/release/$1-arena" ;;
+    early) echo "target/release/$1-arena-early" ;;
+    *) die "arena must be empty or early" ;;
+  esac
+}
+
 # Prints "$1 $2 ..." joined by $1: join <separator> <items>...
 join() {
   local separator="$1" out="" item
@@ -262,7 +281,8 @@ join() {
 
 summary() {
   [[ $# -eq 2 ]] || usage
-  local game="$1" dir="$2" arena="target/release/$1-arena"
+  local game="$1" dir="$2" arena
+  arena="$(arena_binary "$1")"
   [[ $game =~ $WORD_RE ]] || die "bad game"
   [[ -d $dir ]] || die "$dir is not a folder"
   if [[ ! -x $arena ]]; then

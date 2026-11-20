@@ -25,6 +25,8 @@ name: Screening
 #   shards    runners per variant, 1 to 8, pairs a multiple of it, variants x
 #             shards at most 20 (default 1)
 #   seed      a decimal u64; empty: the game's SEED in evaluation.env
+#   arena     empty: whole games; `early`: games cut by the game's early arena
+#             (games/<game>/arena/src/bin/<game>-arena-early.rs)
 #
 # Results come back in the run's step summary (a table per variant), in the
 # summary job's log, and as annotations on its check run (a notice per variant,
@@ -81,6 +83,11 @@ on:
         type: string
         required: false
         default: ""
+      arena:
+        description: "Empty: whole games; early: games cut by the game's early arena"
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -108,6 +115,7 @@ jobs:
       pairs: ${{ steps.plan.outputs.pairs }}
       shards: ${{ steps.plan.outputs.shards }}
       seed: ${{ steps.plan.outputs.seed }}
+      arena: ${{ steps.plan.outputs.arena }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -125,6 +133,7 @@ jobs:
           PAIRS: ${{ inputs.pairs }}
           SHARDS: ${{ inputs.shards }}
           SEED: ${{ inputs.seed }}
+          ARENA: ${{ inputs.arena }}
         run: scripts/screen.sh plan
 
   play:
@@ -144,6 +153,7 @@ jobs:
       PAIRS: ${{ needs.plan.outputs.pairs }}
       SHARDS: ${{ needs.plan.outputs.shards }}
       SEED: ${{ needs.plan.outputs.seed }}
+      ARENA: ${{ needs.plan.outputs.arena }}
       VARIANT: ${{ matrix.variant }}
       SHA: ${{ matrix.sha }}
       SHARD: ${{ matrix.shard }}
@@ -201,6 +211,7 @@ jobs:
         env:
           GAME: ${{ needs.plan.outputs.game }}
           MATRIX: ${{ needs.plan.outputs.matrix }}
+          ARENA: ${{ needs.plan.outputs.arena }}
         run: |
           mkdir -p target/screen-results
           scripts/screen.sh summary "$GAME" target/screen-results
