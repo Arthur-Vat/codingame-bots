@@ -172,3 +172,79 @@ On the 50 four-place maps, both seats (100 starts), one side alone:
 With four places, `land` spreads to three of them by turn 10 on 85 of 100
 starts, against 36 for v029; few starts hold all four (10 for `land`,
 none for v029), since the far pair lies nearer the enemy.
+
+## The owner's evaluation: land, then central cells
+
+The owner, 2026-11-20, after the boards: "the evaluation function should
+be different. Central cells should have more weight, then cells just next
+to them slightly less, and so on. We should value the total number of
+cells first, then the total weighted value of cells." His answers to the
+details (form): central means even between the HQs; try several decays;
+counted at the end of the 9-turn plans, as before; the current weighted
+sum breaks the remaining ties.
+
+`Order::Central(decay)` ranks a position by its active cells, then the
+sum of their weights, then the weighted sum. A cell's ring (`solo::rings`)
+is half the difference of its steps to the two HQs: always even on this
+grid, whose two colours alternate, so each step away from the cells even
+between the HQs adds a ring. Weights (`Decay`): `Linear(m)` m − ring,
+at least 0; `Halving(m)` 2^(m − ring), 0 beyond m rings; `Square(m)`
+(m − ring)², 0 beyond.
+
+Bench, as above (`land` for comparison):
+
+| Turns | Seat | Opening | Cells short of the most | At the most cells | Chokes short at its cells | Middle cells short at its cells |
+| ---: | --- | --- | ---: | ---: | ---: | ---: |
+| 6 | red | v029 | 0.18 | 82% | 0.71 | 0.00 |
+| 6 | red | land | 0.09 | 91% | 0.64 | 0.00 |
+| 6 | red | lin3 | 0.07 | 93% | 0.71 | 0.00 |
+| 6 | red | lin6 | 0.09 | 91% | 0.68 | 0.00 |
+| 6 | red | lin10 | 0.09 | 91% | 0.68 | 0.00 |
+| 6 | red | half4 | 0.09 | 91% | 0.68 | 0.00 |
+| 6 | red | half8 | 0.09 | 91% | 0.68 | 0.00 |
+| 6 | red | sq6 | 0.09 | 91% | 0.68 | 0.00 |
+| 6 | blue | v029 | 0.26 | 79% | 1.42 | 0.94 |
+| 6 | blue | land | 0.09 | 94% | 0.95 | 0.44 |
+| 6 | blue | lin3 | 0.09 | 94% | 0.95 | 0.18 |
+| 6 | blue | lin6 | 0.09 | 94% | 1.16 | 0.29 |
+| 6 | blue | lin10 | 0.09 | 94% | 1.05 | 0.29 |
+| 6 | blue | half4 | 0.09 | 94% | 0.89 | 0.18 |
+| 6 | blue | half8 | 0.09 | 94% | 0.74 | 0.06 |
+| 6 | blue | sq6 | 0.09 | 94% | 0.89 | 0.15 |
+| 7 | red | v029 | 0.59 | 68% | 1.68 | 1.07 |
+| 7 | red | land | 0.20 | 89% | 1.67 | 0.60 |
+| 7 | red | lin3 | 0.20 | 89% | 2.00 | 0.35 |
+| 7 | red | lin6 | 0.25 | 86% | 1.89 | 0.30 |
+| 7 | red | lin10 | 0.25 | 86% | 1.89 | 0.30 |
+| 7 | red | half4 | 0.25 | 86% | 1.93 | 0.35 |
+| 7 | red | half8 | 0.25 | 86% | 1.85 | 0.33 |
+| 7 | red | sq6 | 0.25 | 86% | 1.93 | 0.33 |
+| 7 | blue | v029 | 0.50 | 68% | 2.33 | 1.67 |
+| 7 | blue | land | 0.18 | 88% | 1.67 | 0.70 |
+| 7 | blue | lin3 | 0.18 | 88% | 1.83 | 0.33 |
+| 7 | blue | lin6 | 0.18 | 88% | 2.00 | 0.36 |
+| 7 | blue | lin10 | 0.18 | 88% | 1.89 | 0.33 |
+| 7 | blue | half4 | 0.21 | 85% | 1.78 | 0.33 |
+| 7 | blue | half8 | 0.21 | 85% | 1.67 | 0.21 |
+| 7 | blue | sq6 | 0.21 | 85% | 1.78 | 0.33 |
+| 8 | red | v029 | 1.30 | 36% | 1.64 | 2.62 |
+| 8 | red | land | 0.23 | 84% | 1.54 | 1.18 |
+| 8 | red | lin3 | 0.25 | 84% | 2.14 | 0.89 |
+| 8 | red | lin6 | 0.27 | 84% | 2.07 | 0.80 |
+| 8 | red | lin10 | 0.27 | 84% | 2.07 | 0.77 |
+| 8 | red | half4 | 0.27 | 84% | 2.11 | 0.86 |
+| 8 | red | half8 | 0.30 | 82% | 2.04 | 0.82 |
+| 8 | red | sq6 | 0.27 | 84% | 2.14 | 0.86 |
+| 8 | blue | v029 | 1.35 | 41% | 1.77 | 3.69 |
+| 8 | blue | land | 0.15 | 85% | 0.82 | 1.22 |
+| 8 | blue | lin3 | 0.15 | 85% | 1.06 | 0.69 |
+| 8 | blue | lin6 | 0.18 | 85% | 0.88 | 0.72 |
+| 8 | blue | lin10 | 0.21 | 82% | 0.94 | 0.69 |
+| 8 | blue | half4 | 0.18 | 82% | 0.94 | 0.81 |
+| 8 | blue | half8 | 0.21 | 82% | 0.94 | 0.78 |
+| 8 | blue | sq6 | 0.18 | 82% | 0.94 | 0.78 |
+
+The central orders keep `land`'s land and come much nearer the best plans'
+middle band (blue at turn 7: 0.21 to 0.36 middle cells short against 0.70
+for `land` and 1.67 for v029), but no nearer their middle chokes, which
+they do not count. The decays differ little.

@@ -104,6 +104,33 @@ pub enum Order {
     /// The active cells, then the middle chokes held, then the cells of the
     /// middle band held, then the weighted sum.
     LandFirst,
+    /// The active cells, then the sum of their weights by their ring from
+    /// the middle ([`ring`]: the central cells weigh most), then the
+    /// weighted sum (the owner's evaluation, 2026-11-20).
+    Central(Decay),
+}
+
+/// How a cell's weight falls with its ring from the middle (`Order::Central`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Decay {
+    /// `top - ring`, at least 0.
+    Linear(i64),
+    /// `2^(top - ring)`, 0 beyond `top` rings.
+    Halving(i64),
+    /// `(top - ring)²`, 0 beyond `top` rings.
+    Square(i64),
+}
+
+impl Decay {
+    /// The weight of a cell `ring` rings from the middle.
+    pub fn weight(self, ring: i64) -> i64 {
+        match self {
+            Decay::Linear(top) => (top - ring).max(0),
+            Decay::Halving(top) if ring <= top => 1 << (top - ring).min(40),
+            Decay::Halving(_) => 0,
+            Decay::Square(top) => (top - ring).max(0).pow(2),
+        }
+    }
 }
 
 /// A position's rank by an [`Order`]: larger is better, compared
@@ -238,19 +265,58 @@ pub fn middle_band(state: &State) -> Bits {
     band
 }
 
+/// For each cell, its ring from the middle: half of the difference of its
+/// steps to the two HQs (always even on this grid, since its two colours
+/// alternate), so that each step away from the cells even between the HQs
+/// adds a ring; `i64::MAX` for cells one HQ cannot reach.
+pub fn rings(state: &State) -> [i64; CELLS] {
+    let a = econ::distances(state, Bits::cell(HQ[0]));
+    let b = econ::distances(state, Bits::cell(HQ[1]));
+    let mut out = [i64::MAX; CELLS];
+    for c in 0..CELLS {
+        if a[c] != u8::MAX && b[c] != u8::MAX {
+            out[c] = i64::from(a[c].abs_diff(b[c])) / 2;
+        }
+    }
+    out
+}
+
 /// The zones of `state`'s map that `objective` needs: its middle chokes and
 /// its middle band.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Zones {
     pub chokes: Bits,
     pub band: Bits,
+    /// Each cell's weight by `Order::Central` (0 for other orders).
+    pub weights: [i64; CELLS],
+}
+
+impl Default for Zones {
+    fn default() -> Zones {
+        Zones {
+            chokes: Bits::EMPTY,
+            band: Bits::EMPTY,
+            weights: [0; CELLS],
+        }
+    }
 }
 
 impl Zones {
     /// The zones of `state`'s map that `objective` uses, empty otherwise.
     pub fn of(state: &State, objective: &Objective) -> Zones {
-        let lexicographic = objective.order != Order::Sum;
+        let lexicographic = matches!(objective.order, Order::TieBreak { .. } | Order::LandFirst);
+        let mut weights = [0; CELLS];
+        if let Order::Central(decay) = objective.order {
+            for (w, ring) in weights.iter_mut().zip(rings(state)) {
+                *w = if ring == i64::MAX {
+                    0
+                } else {
+                    decay.weight(ring)
+                };
+            }
+        }
         Zones {
+            weights,
             chokes: if objective.chokes != 0 || lexicographic {
                 ice_and_fire_early::zones::Zones::of(state).middle_chokes()
             } else {
@@ -271,6 +337,11 @@ pub fn key(state: &State, seat: usize, objective: &Objective, zones: Zones) -> K
     let sum = value_with(state, seat, objective, zones.chokes);
     match objective.order {
         Order::Sum => [sum, 0, 0, 0],
+        Order::Central(_) => {
+            let active = state.active(seat);
+            let weighed: i64 = active.iter().map(|c| zones.weights[c]).sum();
+            [i64::from(active.count()), weighed, sum, 0]
+        }
         Order::TieBreak { .. } | Order::LandFirst => {
             let owned = state.owned(seat);
             let chokes = i64::from((owned & zones.chokes).count());

@@ -85,7 +85,7 @@ use ice_and_fire_engine::{answer_line, Bits, Command, League, State, HQ, SIZE};
 use ice_and_fire_opening::assign::{self, Purchase};
 use ice_and_fire_opening::econ::{distances, Params};
 use ice_and_fire_opening::planned::{Planned, Planner};
-use ice_and_fire_opening::solo::{self, Objective, Order};
+use ice_and_fire_opening::solo::{self, Decay, Objective, Order};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::League as RefereeLeague;
 
@@ -575,8 +575,9 @@ fn replay(state: &State, plan: &[Vec<Command>]) -> State {
 /// The openings compared with the optimum, by name, each played once to the
 /// longest horizon: a new opening joins this list to be measured by `run`
 /// and `--bench`.
-const OPENINGS: [&str; 9] = [
-    "v029", "b", "rules", "assign", "tie", "land", "tie3", "tie6", "tie12",
+const OPENINGS: [&str; 15] = [
+    "v029", "b", "rules", "assign", "tie", "land", "tie3", "tie6", "tie12", "lin3", "lin6",
+    "lin10", "half4", "half8", "sq6",
 ];
 
 struct Openings {
@@ -597,7 +598,19 @@ fn openings(state: &State, t: u32) -> Openings {
             ..OBJECTIVE
         })
     };
+    let central = |decay| {
+        opening(Objective {
+            order: Order::Central(decay),
+            ..OBJECTIVE
+        })
+    };
     let mut tie = tie_within(1);
+    let mut lin3 = central(Decay::Linear(3));
+    let mut lin6 = central(Decay::Linear(6));
+    let mut lin10 = central(Decay::Linear(10));
+    let mut half4 = central(Decay::Halving(4));
+    let mut half8 = central(Decay::Halving(8));
+    let mut sq6 = central(Decay::Square(6));
     let mut tie3 = tie_within(3);
     let mut tie6 = tie_within(6);
     let mut tie12 = tie_within(12);
@@ -621,6 +634,12 @@ fn openings(state: &State, t: u32) -> Openings {
             play(state, t, |s| tie3.turn(s, None)),
             play(state, t, |s| tie6.turn(s, None)),
             play(state, t, |s| tie12.turn(s, None)),
+            play(state, t, |s| lin3.turn(s, None)),
+            play(state, t, |s| lin6.turn(s, None)),
+            play(state, t, |s| lin10.turn(s, None)),
+            play(state, t, |s| half4.turn(s, None)),
+            play(state, t, |s| half8.turn(s, None)),
+            play(state, t, |s| sq6.turn(s, None)),
         ],
     }
 }
