@@ -12,6 +12,8 @@ description: Finishes a release after its pull request is merged - checks the Gi
 
 ## Submitting
 
+When the session starts the device flow, write the approval link (`verification_uri_complete`) and the code (`user_code`) in the chat message itself, in plain text, every time: the owner does not see tool output, so a link shown only there never reaches him (the owner, 2026-11-20). Write them again if he asks, and say how long the code stays valid (`expires_in`, 15 minutes so far). Never show the `device_code` or the token.
+
 With the CodinGame Agent Skill (`docs/CODINGAME.md`, section "API"; the owner approves the device flow if the session has no token):
 
 1. A few test games against the league's boss first, to check that the release compiles and answers in time on CodinGame.
