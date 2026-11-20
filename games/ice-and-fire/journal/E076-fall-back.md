@@ -192,11 +192,28 @@ already offered). Seed 2026112006, run 44780199145:
 
 | Variant | Switches | Elo over v030 [95%] | Faults (variant / v030) |
 | --- | --- | --- | ---: |
-| fbv1 | fb2g14, `VORONOI = 1` | pending | |
-| fbv2 | fb2g14, `VORONOI = 2` | pending | |
-| fbd | fb2g14, `RUSH_DEFEND` | pending | |
-| fbdv1 | fb2g14, `RUSH_DEFEND`, `VORONOI = 1` | pending | |
-| fbdv2 | fb2g14, `RUSH_DEFEND`, `VORONOI = 2` | pending | |
-| Bdv1 | B, `RUSH_DEFEND`, `VORONOI = 1` | pending | |
-| Balldv1 | Ball, `RUSH_DEFEND`, `VORONOI = 1` | pending | |
-| v1 | `VORONOI = 1` alone | pending | |
+| fbv1 | fb2g14, `VORONOI = 1` | +15.2 [+0.2, +30.3] | 0 / 0 |
+| fbv2 | fb2g14, `VORONOI = 2` | −22.2 [−37.8, −6.7] | 0 / 0 |
+| fbd | fb2g14, `RUSH_DEFEND` | +13.0 [−0.7, +26.8] | 0 / 0 |
+| fbdv1 | fb2g14, `RUSH_DEFEND`, `VORONOI = 1` | +3.5 [−11.2, +18.2] | 0 / 0 |
+| fbdv2 | fb2g14, `RUSH_DEFEND`, `VORONOI = 2` | −36.2 [−52.0, −20.5] | 0 / 0 |
+| Bdv1 | B, `RUSH_DEFEND`, `VORONOI = 1` | +3.0 [−11.6, +17.7] | 0 / 0 |
+| Balldv1 | Ball, `RUSH_DEFEND`, `VORONOI = 1` | +1.3 [−13.6, +16.2] | 0 / 0 |
+| v1 | `VORONOI = 1` alone | +2.6 [−11.8, +17.0] | 0 / 0 |
+
+No fb2g14 control in this round (+22 over three seeds before): the land
+term at 1 and the defence are at best level with it, and the land term at
+2 loses clearly (−22, −36 with the defence). The land term alone adds
+nothing (+2.6), nor does the defence on top of the rush.
+
+### Game turns 7 to 12, after the rounds
+
+From the 76 CodinGame games against zasmu, within a seat (our band cells
+by the definition of `eval::goal_zones`' band, recomputed in a scratch
+script): band cells held at game turn 10, red 5.0 (us) against 8.4
+(zasmu, 7 games), blue 7.9 (us, 7 games) against 12.8; both sides first
+hold a band cell at about the same turn (7 or 8 as red, 6 or 7 as blue).
+The steps from each unit to its nearest own unit at game turn 8: red 2.05
+against 2.44, blue 1.65 against 2.39 (level by turn 10). The owner sees two
+dimensions (2026-11-20): goals reached, and back-line units spread; a third
+is the gold fed to them (we hold 50 to 100 gold at game turns 11 to 13).
