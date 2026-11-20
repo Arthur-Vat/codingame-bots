@@ -399,3 +399,38 @@ runner still in the bundler, no game played. The bundler on the plan bot
 of that commit runs over 10 minutes locally too, while it bundled
 without trouble at 75bf3d6 earlier the same day: a change to the opening's code since makes the
 minifier slow (being bisected).
+
+## Full games
+
+The owner chose four finalists (form, 2026-11-20) and to play them
+locally: GitHub's screening bundles each variant first, and the bundler
+then looped forever on this bot (below). Whole games with the game's
+arena (`ice-and-fire-arena match`), against v029's release compiled with
+`rustc -C opt-level=3`, the variants built with `cargo build --release`,
+800 pairs, seed 91, time scale 0.403 and 5 ms of tolerance, 3 games at a
+time:
+
+| Finalist | Goal term (lin7 opening) | Cut duels (800) | Full games (800) | Timeouts (finalist / v029) |
+| --- | --- | --- | --- | ---: |
+| lin7-g2u12 | near 2, until game turn 12 | +93.4 | +56.5 [+40.1, +73.2] | 18 / 16 |
+| own2-gd2-ck6 | owned 2, guarded 2, chokes 6, until 10 | +88.3 | +70.4 [+53.9, +87.3] | 14 / 9 |
+| near2-gd2 | near 2, guarded 2, until 10 | +80.0 | +45.4 [+28.6, +62.5] | 19 / 28 |
+| own4 | owned 4, until 10 | +74.5 | +74.1 [+57.6, +90.8] | 14 / 18 |
+
+Every finalist gains on full games: the cut duels' gain was not an
+artifact of their judge, though their order differs (lin7-g2u12 led the
+duels, it trails here). near2-gd2's run shared the machine with the
+bundler's investigation (its timeouts, and v029's, are the highest).
+
+## The bundler's endless loop
+
+`cg-bundler`'s prune stage repeated one round forever on this bot: a
+compile of 6 removals passed, `drop_kept_variants` took all 6 back (they
+were variants that must stay), the round reported nothing left out, and
+`Pruner::reported` tried the same 6 again with the same cached compile
+(287,944 rounds in a minute). Fixed by counting what a round tried and
+did not remove as left out (commit 70e89e0, for a pull request of its
+own). The flatten stage then failed on a field named like a function it
+renamed (`Field::Reachable { top, steps }` became `steps1`): the field
+is now `within`. The plan bot bundles in about 35 s, flattened, 55,544
+characters; the bundler's tests pass.
