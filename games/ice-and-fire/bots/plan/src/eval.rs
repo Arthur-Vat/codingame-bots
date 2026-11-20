@@ -418,7 +418,7 @@ pub const GOAL_BAND: i64 = 2;
 /// it): each cell of the map nearer to a side's active land than to the
 /// enemy's (in steps over valid cells, as `econ::distances`) counts this
 /// much for it, until game turn [`VORONOI_UNTIL`]; 0 for nothing (v030).
-pub const VORONOI: i64 = 2;
+pub const VORONOI: i64 = 0;
 /// See [`VORONOI`].
 pub const VORONOI_UNTIL: u32 = 14;
 

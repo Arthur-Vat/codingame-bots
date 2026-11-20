@@ -119,7 +119,7 @@ pub const RUSH_LEAP: bool = false;
 /// reaches it; and a tower on it, if it is ours, or on our cells next to
 /// it. Blocking the enemy's path needs no action of its own: every training
 /// on a trainable cell is offered.
-pub const RUSH_DEFEND: bool = false;
+pub const RUSH_DEFEND: bool = true;
 
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
