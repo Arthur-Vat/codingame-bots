@@ -102,13 +102,13 @@ pub const RUSH_GOAL: bool = true;
 /// With [`RUSH_GOAL`], whether goals the enemy wins are left out (the
 /// owner's choice, 2026-11-20): those it holds, and those one of its units
 /// is nearer to than our nearest trainable cell.
-pub const RUSH_SKIP_ENEMY: bool = false;
+pub const RUSH_SKIP_ENEMY: bool = true;
 
 /// Whether each rush chain is also offered as a leapfrog (the owner's
 /// choice, 2026-11-20, after zasmu trains at the tip once its units have
 /// moved): a movable unit of ours next to the chain's first cell steps onto
 /// it, and the trainings go on from there.
-pub const RUSH_LEAP: bool = false;
+pub const RUSH_LEAP: bool = true;
 
 /// Whether the centre cells the enemy can grab are defended (the owner's
 /// choices, 2026-11-20): the middle chokes and band cells it reaches before
