@@ -115,7 +115,7 @@ fn limit(start: Instant, turn: u32) -> Limit {
 /// The number of our turns an opening plan covers: the middle game starts
 /// at our eighth turn in the median game (E010); 9, two beyond, won the
 /// screening (E052, E055; 8 and 10 did less).
-const OPENING_TURNS: usize = 9;
+const OPENING_TURNS: usize = 10;
 
 /// What the opening's plans maximize: the solo planner's weights, written
 /// out (E010), with cells 3 and income 1 rather than 4 and 3 (E034): the
