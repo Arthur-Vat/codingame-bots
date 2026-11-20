@@ -6,11 +6,11 @@ parent: ice-and-fire-v029
 hypothesis: An opening that ranks its plans by the most land first, then by how central their cells are, with the search's evaluation keeping the opening's goal (the contested band held) until game turn 10, beats ice-and-fire-v029 (candidate ice-and-fire-v030).
 change: The opening's beam ranks positions by `Order::Central(Linear(7))` (active cells, then the sum of 7 less each cell's ring) instead of its weighted sum; the search's evaluation adds 4 for each contested band cell held (ours less the enemy's) until game turn 10 (`eval::GOAL_OWNED`).
 release: ice-and-fire-v030
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +43.7 [+21.7, +65.9]
+pairs: 480
+full_time: +43.7 [+21.7, +65.9]
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -471,3 +471,24 @@ simplest goal term. Frozen as `ice-and-fire-v030` (`scripts/new-release.sh`:
 weights 0. Three evaluation tests isolate a term by taking the others
 away; they now take the goal term away too, and a test of the goal term
 itself was added.
+
+## SPRT
+
+The SPRT on #372 at its final head (8f5bfea), at CodinGame's speed and
+real limit over 8 calibrated runners (time scales 0.670 to 0.906):
+
+```
+ice-and-fire-v030 vs ice-and-fire-v029: 960 games, 480 complete pairs
+  ice-and-fire-v030: 540 wins, 0 draws, 420 losses (score 56.2%)
+  Elo of ice-and-fire-v030 over ice-and-fire-v029: +43.7 [+21.7, +65.9] (95%, from pairs)
+  pairs by ice-and-fire-v030's points (0, 1/2, 1, 3/2, 2): [91, 0, 238, 0, 151]
+  ice-and-fire-v030 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v029 faults: 1 timeouts, 0 crashes, 0 invalid answers
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.13 (bounds -2.94, 2.94) after 480 pairs
+Verdict: ACCEPTED: ice-and-fire-v030 is stronger than ice-and-fire-v029
+```
+
+The two earlier heads of the same candidate (4ae0720 and 45d906c, the
+same bot) were accepted too: +62.6 [+37.3, +88.5] and +63.7 [+38.7,
++89.3] over 320 pairs each. The nightly league rates v030 on the branch
+`league-results`.
