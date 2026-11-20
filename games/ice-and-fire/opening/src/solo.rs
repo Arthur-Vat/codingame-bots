@@ -244,9 +244,9 @@ pub enum Field {
     /// detour of the cell off the shortest paths between the HQs: the
     /// meeting point weighs most, the far ends of the even line less.
     Corridor { top: i64 },
-    /// `top − ring`, at least 0, for cells within `steps` of our HQ; 0
+    /// `top − ring`, at least 0, for cells within `within` steps of our HQ; 0
     /// beyond: only the frontier the opening can reach.
-    Reachable { top: i64, steps: i64 },
+    Reachable { top: i64, within: i64 },
     /// `min(a, d / 2)`: farther from our HQ is better, up to halfway.
     Outward,
 }
@@ -258,7 +258,7 @@ impl Field {
         let ring = (a - b).abs() / 2;
         match self {
             Field::Corridor { top } => (top - ring - (a + b - d) / 2).max(0),
-            Field::Reachable { top, steps } if a <= steps => (top - ring).max(0),
+            Field::Reachable { top, within } if a <= within => (top - ring).max(0),
             Field::Reachable { .. } => 0,
             Field::Outward => a.min(d / 2),
         }

@@ -299,7 +299,7 @@ fn dump(plans: &str, starts: &[String]) {
         println!("BAND {}", cells(solo::middle_band(&state)));
         for (name, field) in [
             ("corridor", Field::Corridor { top: 8 }),
-            ("reach", Field::Reachable { top: 7, steps: 9 }),
+            ("reach", Field::Reachable { top: 7, within: 9 }),
             ("outward", Field::Outward),
         ] {
             println!(
@@ -339,7 +339,10 @@ fn dump(plans: &str, starts: &[String]) {
             ("ring", Order::ByRing),
             ("fr8", Order::Frontier { cap: 8 }),
             ("corridor", Order::Field(Field::Corridor { top: 8 })),
-            ("reach", Order::Field(Field::Reachable { top: 7, steps: 9 })),
+            (
+                "reach",
+                Order::Field(Field::Reachable { top: 7, within: 9 }),
+            ),
             ("outward", Order::Field(Field::Outward)),
             ("voronoi", Order::Voronoi),
             ("behind", Order::BehindFront),
