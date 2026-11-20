@@ -80,11 +80,19 @@ in full games (run 44827866653):
 
 | Variant | Switches | Cut at turn 12 | Full games |
 | --- | --- | --- | --- |
-| t1 | `TURN = 1` (offered) | −5.6 [−18.4, +7.1] | |
-| t2 | `TURN = 2` (first climb) | +2.2 [−11.5, +15.9] | |
-| t3 | `TURN = 3` (both) | −3.9 [−17.8, +10.0] | |
-| t4 | `TURN = 4` (pieces) | −10.9 [−24.4, +2.6] | |
-| t7 | `TURN = 7` (all three) | −10.0 [−24.4, +4.4] | |
-| t4q4 | `TURN = 4`, `OBJECTIVE_QUARTERS = 4` | −8.3 [−23.3, +6.8] | |
-| t3q4 | `TURN = 3`, `OBJECTIVE_QUARTERS = 4` | −18.3 [−33.6, −3.0] | |
-| q4 | `OBJECTIVE_QUARTERS = 4` | +7.4 [−7.7, +22.5] | |
+| t1 | `TURN = 1` (offered) | −5.6 [−18.4, +7.1] |  −3.5 [−15.9, +8.9] |
+| t2 | `TURN = 2` (first climb) | +2.2 [−11.5, +15.9] |  −11.3 [−25.3, +2.7] |
+| t3 | `TURN = 3` (both) | −3.9 [−17.8, +10.0] |  −12.6 [−26.6, +1.4] |
+| t4 | `TURN = 4` (pieces) | −10.9 [−24.4, +2.6] |  −14.8 [−28.1, −1.5] |
+| t7 | `TURN = 7` (all three) | −10.0 [−24.4, +4.4] |  −4.3 [−18.0, +9.3] (1 timeout) |
+| t4q4 | `TURN = 4`, `OBJECTIVE_QUARTERS = 4` | −8.3 [−23.3, +6.8] |  −22.6 [−36.8, −8.5] |
+| t3q4 | `TURN = 3`, `OBJECTIVE_QUARTERS = 4` | −18.3 [−33.6, −3.0] |  −9.1 [−23.3, +5.0] |
+| q4 | `OBJECTIVE_QUARTERS = 4` | +7.4 [−7.7, +22.5] |  −4.3 [−19.0, +10.3] |
+
+No variant gains in either judge; the pieces lose in both (t4 −10.9 cut,
+−14.8 full; t4q4 −8.3, −22.6), and forcing the first climb to start with
+the whole turn (t2, t3) is level cut at turn 12 but weaker in full games.
+The objectives' term alone is level (+7.4 cut, −4.3 full). The search
+already rejects the whole turn in about 99% of turns; where the pieces make
+it play the rush, it plays worse. Faults: one timeout of t7 in 1,600
+games, none elsewhere.
