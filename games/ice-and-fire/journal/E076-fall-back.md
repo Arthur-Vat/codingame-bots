@@ -94,13 +94,28 @@ turn 10 (E073's goal ends there).
 ### Round 2
 
 The leaders combined, and the rush with E073's goal kept until game turn 14
-(`eval::GOAL_UNTIL`), seed 2026112002 (fb2 again as a replicate):
+(`eval::GOAL_UNTIL`), seed 2026112002 (fb2 again as a replicate), run 44772777429:
 
 | Variant | Switches | Elo over v030 [95%] | Faults (variant / v030) |
 | --- | --- | --- | ---: |
-| fb2 | `FALL_BACK = 2` | pending | |
-| fb2r2 | `FALL_BACK = 2`, `RUSH_LENGTH = 2` | pending | |
-| g14 | `GOAL_UNTIL = 14` | pending | |
-| r2g14 | `RUSH_LENGTH = 2`, `GOAL_UNTIL = 14` | pending | |
-| r3g14 | `RUSH_LENGTH = 3`, `GOAL_UNTIL = 14` | pending | |
+| fb2 | `FALL_BACK = 2` | +4.8 [−6.8, +16.4] | 0 / 0 |
+| fb2r2 | `FALL_BACK = 2`, `RUSH_LENGTH = 2` | −5.2 [−18.5, +8.1] | 0 / 0 |
+| g14 | `GOAL_UNTIL = 14` | +2.2 [−9.5, +13.9] | 0 / 0 |
+| r2g14 | `RUSH_LENGTH = 2`, `GOAL_UNTIL = 14` | +6.5 [−6.6, +19.6] | 0 / 0 |
+| r3g14 | `RUSH_LENGTH = 3`, `GOAL_UNTIL = 14` | +6.5 [−6.6, +19.6] | 0 / 0 |
+| fb2r2g14 | `FALL_BACK = 2`, `RUSH_LENGTH = 2`, `GOAL_UNTIL = 14` | +14.3 [+1.3, +27.4] | 0 / 0 |
+
+Eleven variants so far, so the best of them at +14.3 may partly be luck;
+fb2 read +6.5 then +4.8 (+5.6 over 1,600 pairs). The rush gains only with
+the goal kept to game turn 14 (fb2r2 −5.2, fb2r2g14 +14.3).
+
+### Round 3
+
+Confirmation on a new seed (2026112003), run 44774801182, with the two
+combinations not yet played:
+
+| Variant | Switches | Elo over v030 [95%] | Faults (variant / v030) |
+| --- | --- | --- | ---: |
 | fb2r2g14 | `FALL_BACK = 2`, `RUSH_LENGTH = 2`, `GOAL_UNTIL = 14` | pending | |
+| fb2g14 | `FALL_BACK = 2`, `GOAL_UNTIL = 14` | pending | |
+| fb2r3g14 | `FALL_BACK = 2`, `RUSH_LENGTH = 3`, `GOAL_UNTIL = 14` | pending | |
