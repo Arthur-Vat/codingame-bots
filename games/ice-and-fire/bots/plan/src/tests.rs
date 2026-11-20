@@ -1390,6 +1390,12 @@ fn step_and_guard_steps_into_a_neutral_cell_and_guards_the_cell_left() {
                 _ => continue,
             };
             let from = usize::from(gy) * SIZE + usize::from(gx);
+            if crate::actions::FALL_BACK != 0
+                && (state.owned(me).test(to) || state.owned(1 - me).test(to))
+            {
+                // E076's fall back and guard, checked by its own test.
+                continue;
+            }
             assert!(!state.owned(me).test(to) && !state.owned(1 - me).test(to));
             assert!(crate::eval::reach(&state, 1 - me).test(from));
             let mut after = state.clone();
@@ -1441,4 +1447,310 @@ fn the_opening_goal_counts_the_band_cells_each_side_holds() {
     // After GOAL_UNTIL it counts nothing.
     let later = position_at(GOAL_UNTIL + 1, "0\n", rows, [20, 20], &[]);
     assert_eq!(goal(&later, 0), 0);
+}
+
+#[test]
+fn fall_back_and_guard_steps_onto_an_owned_cell_and_guards_the_cell_left() {
+    // E076: a unit on a cell the enemy can reach steps onto an owned cell
+    // (back, along the border, or any, by FALL_BACK), then a tower goes on
+    // the cell it left.
+    use crate::actions::FALL_BACK;
+    use ice_and_fire_engine::HQ;
+    let mut found = 0;
+    for state in many_positions() {
+        let mut actions = Vec::new();
+        actions_of(&state, &mut actions);
+        let me = state.to_act();
+        for action in &actions {
+            let Action::Many(commands) = action else {
+                continue;
+            };
+            let [Command::Move { x, y, .. }, Command::BuildTower { x: gx, y: gy }] = commands[..]
+            else {
+                continue;
+            };
+            let to = usize::from(y) * SIZE + usize::from(x);
+            if !state.owned(me).test(to) && !state.owned(1 - me).test(to) {
+                continue; // E070's step and guard
+            }
+            assert_ne!(
+                std::hint::black_box(FALL_BACK),
+                0,
+                "a fall back offered with FALL_BACK 0"
+            );
+            let from = usize::from(gy) * SIZE + usize::from(gx);
+            assert!(crate::eval::reach(&state, 1 - me).test(from));
+            let map = state.map();
+            match FALL_BACK {
+                1 => assert!(
+                    state.owned(me).test(to)
+                        && map.distance(to, HQ[1 - me]) > map.distance(from, HQ[1 - me])
+                ),
+                2 => assert!(state.owned(me).test(to) && state.owned(1 - me).neighbours().test(to)),
+                _ => {}
+            }
+            let mut after = state.clone();
+            assert!(
+                after.apply(commands[0]) && after.apply(commands[1]),
+                "{commands:?}"
+            );
+            assert!(after.towers().test(from));
+            found += 1;
+        }
+    }
+    assert!(found > 0 || FALL_BACK == 0, "no fall back offered");
+}
+
+#[test]
+fn the_rush_trains_a_line_from_the_cell_nearest_the_enemy_hq() {
+    // E076: chains of level-1 trainings into neutral cells, each next to
+    // the one before, starting next to our active land.
+    use crate::actions::RUSH_LENGTH;
+    let mut found = 0;
+    for state in many_positions() {
+        let mut actions = Vec::new();
+        actions_of(&state, &mut actions);
+        let me = state.to_act();
+        let neutral = state
+            .map()
+            .valid
+            .and_not(state.owned(me) | state.owned(1 - me));
+        for action in &actions {
+            let Action::Many(commands) = action else {
+                continue;
+            };
+            let cells: Option<Vec<usize>> = commands
+                .iter()
+                .map(|c| match *c {
+                    Command::Train { level: 1, x, y } => {
+                        Some(usize::from(y) * SIZE + usize::from(x))
+                    }
+                    _ => None,
+                })
+                .collect();
+            let Some(cells) = cells else {
+                continue;
+            };
+            if !cells.iter().all(|&c| neutral.test(c)) {
+                continue; // a cut or the lethal chain
+            }
+            // E076's defence chains are up to 3 long when RUSH_LENGTH is 0.
+            let longest = std::hint::black_box(RUSH_LENGTH).max(if crate::actions::RUSH_DEFEND {
+                3
+            } else {
+                0
+            });
+            assert!(cells.len() >= 2 && cells.len() <= longest, "{commands:?}");
+            assert!(state.active(me).neighbours().test(cells[0]));
+            for pair in cells.windows(2) {
+                assert!(Bits::cell(pair[0]).neighbours().test(pair[1]));
+            }
+            let mut after = state.clone();
+            for &c in commands {
+                assert!(after.apply(c), "{commands:?}");
+            }
+            found += 1;
+        }
+    }
+    assert!(found > 0 || RUSH_LENGTH == 0, "no rush offered");
+}
+
+#[test]
+fn the_rush_heads_for_chokes_then_band_cells_no_unit_of_ours_claims() {
+    // E076, RUSH_GOAL (the owner's choice, 2026-11-20): the goals are the
+    // middle chokes we do not hold that none of our units claims (no
+    // farther from it than our nearest trainable cell and nearer than
+    // every enemy unit), else the band cells alike, the nearest first.
+    use crate::actions::{rush_goals, RUSH_STARTS};
+    let mut found = 0;
+    for state in many_positions() {
+        let me = state.to_act();
+        let map = state.map();
+        let neutral = map.valid.and_not(state.owned(me) | state.owned(1 - me));
+        let trainable: Vec<usize> =
+            (state.active(me).neighbours() & neutral & state.enterable(me, 1))
+                .iter()
+                .collect();
+        if trainable.is_empty() {
+            continue;
+        }
+        let (band, chokes) = crate::eval::goal_zones(&state);
+        let reach = |goal: usize| {
+            trainable
+                .iter()
+                .map(|&c| map.distance(c, goal))
+                .min()
+                .unwrap()
+        };
+        let claimed = |goal: usize| {
+            state.units(me).iter().any(|u| {
+                let d = map.distance(u, goal);
+                d <= reach(goal)
+                    && state
+                        .units(1 - me)
+                        .iter()
+                        .all(|e| d < map.distance(e, goal))
+            })
+        };
+        let lost = |goal: usize| {
+            crate::actions::RUSH_SKIP_ENEMY
+                && (state.owned(1 - me).test(goal)
+                    || state
+                        .units(1 - me)
+                        .iter()
+                        .any(|e| map.distance(e, goal) < reach(goal)))
+        };
+        let goals = rush_goals(&state, &trainable);
+        assert!(goals.len() <= RUSH_STARTS);
+        let open_chokes: Vec<usize> = chokes
+            .and_not(state.owned(me))
+            .iter()
+            .filter(|&g| reach(g) != u8::MAX && !claimed(g) && !lost(g))
+            .collect();
+        for (i, &goal) in goals.iter().enumerate() {
+            assert!(!state.owned(me).test(goal) && !claimed(goal) && !lost(goal));
+            if open_chokes.is_empty() {
+                assert!(band.test(goal));
+            } else {
+                assert!(chokes.test(goal));
+            }
+            if i > 0 {
+                assert!(reach(goals[i - 1]) <= reach(goal));
+            }
+            found += 1;
+        }
+    }
+    assert!(found > 0, "no goal found");
+}
+
+#[test]
+fn a_leapfrog_steps_a_unit_onto_the_rush_start_and_trains_beyond_it() {
+    // E076, RUSH_LEAP: a movable unit next to a rush chain's first cell steps
+    // onto it, then level-1 trainings follow the chain from there.
+    use crate::actions::RUSH_LEAP;
+    let mut found = 0;
+    for state in many_positions() {
+        let mut actions = Vec::new();
+        actions_of(&state, &mut actions);
+        let me = state.to_act();
+        let neutral = state
+            .map()
+            .valid
+            .and_not(state.owned(me) | state.owned(1 - me));
+        for action in &actions {
+            let Action::Many(commands) = action else {
+                continue;
+            };
+            let Some((Command::Move { x, y, .. }, rest)) = commands.split_first() else {
+                continue;
+            };
+            if rest.is_empty()
+                || !rest
+                    .iter()
+                    .all(|c| matches!(c, Command::Train { level: 1, .. }))
+            {
+                continue;
+            }
+            let start = usize::from(*y) * SIZE + usize::from(*x);
+            let cells: Vec<usize> = rest
+                .iter()
+                .filter_map(|c| match *c {
+                    Command::Train { x, y, .. } => Some(usize::from(y) * SIZE + usize::from(x)),
+                    _ => None,
+                })
+                .collect();
+            if !neutral.test(start) || !cells.iter().all(|&c| neutral.test(c)) {
+                continue; // another macro action (E070 guards a cell of ours)
+            }
+            assert!(
+                std::hint::black_box(RUSH_LEAP),
+                "a leapfrog offered with RUSH_LEAP off"
+            );
+            let mut last = start;
+            for &cell in &cells {
+                assert!(Bits::cell(last).neighbours().test(cell), "{commands:?}");
+                last = cell;
+            }
+            let mut after = state.clone();
+            for &c in commands {
+                assert!(after.apply(c), "{commands:?}");
+            }
+            found += 1;
+        }
+    }
+    assert!(
+        found > 0 || !RUSH_LEAP || crate::actions::RUSH_LENGTH == 0,
+        "no leapfrog offered"
+    );
+}
+
+#[test]
+fn the_land_term_counts_the_cells_nearer_each_side() {
+    // E076, VORONOI: each valid cell nearer to a side's active land than to
+    // the enemy's counts VORONOI for it, until VORONOI_UNTIL.
+    use crate::eval::{voronoi, VORONOI, VORONOI_UNTIL};
+    let mut checked = 0;
+    for state in many_positions() {
+        let a = voronoi(&state, 0);
+        assert_eq!(a, -voronoi(&state, 1));
+        if state.game_turn() > VORONOI_UNTIL {
+            assert_eq!(a, 0);
+            continue;
+        }
+        let map = state.map();
+        let near = |c: usize, side: usize| {
+            state
+                .active(side)
+                .iter()
+                .map(|a| map.distance(a, c))
+                .min()
+                .unwrap_or(u8::MAX)
+        };
+        let mut net = 0;
+        for c in map.valid.iter() {
+            let (r, b) = (near(c, 0), near(c, 1));
+            net += i64::from(r < b) - i64::from(b < r);
+        }
+        assert_eq!(a, VORONOI * net);
+        checked += 1;
+    }
+    assert!(checked > 0);
+}
+
+#[test]
+fn the_contested_centre_cells_are_those_the_enemy_can_grab() {
+    // E076, RUSH_DEFEND: chokes and band cells the enemy reaches before our
+    // land (not owned by either side), or ours that its next turn can take.
+    use crate::actions::{contested, RUSH_STARTS};
+    let mut found = 0;
+    for state in many_positions() {
+        let me = state.to_act();
+        let map = state.map();
+        let (band, chokes) = crate::eval::goal_zones(&state);
+        let reach = crate::eval::reach(&state, 1 - me);
+        let from_land = |c: usize| {
+            state
+                .active(me)
+                .iter()
+                .map(|a| map.distance(a, c))
+                .min()
+                .unwrap_or(u8::MAX)
+        };
+        let cells = contested(&state);
+        assert!(cells.len() <= 2 * RUSH_STARTS);
+        for &c in &cells {
+            assert!(band.test(c) || chokes.test(c));
+            if state.owned(me).test(c) {
+                assert!(state.active(me).test(c) && reach.test(c));
+            } else {
+                assert!(!state.owned(1 - me).test(c));
+                assert!(state
+                    .units(1 - me)
+                    .iter()
+                    .any(|e| map.distance(e, c) < from_land(c)));
+            }
+            found += 1;
+        }
+    }
+    assert!(found > 0, "no contested cell");
 }

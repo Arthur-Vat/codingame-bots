@@ -70,6 +70,57 @@ pub const OWN_CELLS: u8 = 2;
 /// on the cell it leaves.
 pub const STEP_GUARD: u8 = 1;
 
+/// The fall-back-and-guard macro action (E076, after zasmu's games): a unit
+/// on a cell of ours the enemy can reach at its next turn steps onto a cell
+/// that is owned (E070 offers the steps into neutral cells), and the cell
+/// it leaves gets a tower. 0: none (v030); 1: steps onto our cells farther
+/// from the enemy HQ (back); 2: steps onto our cells next to an enemy cell
+/// (along the border, ice-and-fire-v031); 3: steps onto any of our cells
+/// or an enemy cell other than its HQ.
+pub const FALL_BACK: u8 = 2;
+
+/// The rush from the tip (E076): chains of level-1 trainings into neutral
+/// cells, from the trainable neutral cells nearest the enemy HQ, each next
+/// cell the neutral neighbour nearest it, of 2 up to this many trainings;
+/// 0 for none (v030).
+pub const RUSH_LENGTH: usize = 0;
+
+/// The starts of [`RUSH_LENGTH`]'s chains: this many trainable neutral
+/// cells, the nearest the enemy HQ first (or, with [`RUSH_GOAL`], this many
+/// goals, the nearest first).
+pub const RUSH_STARTS: usize = 2;
+
+/// Whether [`RUSH_LENGTH`]'s chains head for goals rather than the enemy
+/// HQ (the owner's choice, 2026-11-20): the middle chokes we do not hold,
+/// then, once each of them is claimed, the band cells we do not hold
+/// (`eval::goal_zones`). A goal is claimed when one of our units is no
+/// farther from it than our nearest trainable cell and nearer to it than
+/// every enemy unit. Each chain starts at the trainable cell nearest its
+/// goal and steps toward it. False: the enemy HQ (rounds 1 to 3).
+pub const RUSH_GOAL: bool = false;
+
+/// With [`RUSH_GOAL`], whether goals the enemy wins are left out (the
+/// owner's choice, 2026-11-20): those it holds, and those one of its units
+/// is nearer to than our nearest trainable cell.
+pub const RUSH_SKIP_ENEMY: bool = false;
+
+/// Whether each rush chain is also offered as a leapfrog (the owner's
+/// choice, 2026-11-20, after zasmu trains at the tip once its units have
+/// moved): a movable unit of ours next to the chain's first cell steps onto
+/// it, and the trainings go on from there.
+pub const RUSH_LEAP: bool = false;
+
+/// Whether the centre cells the enemy can grab are defended (the owner's
+/// choices, 2026-11-20): the middle chokes and band cells it reaches before
+/// our nearest trainable cell, and those of ours its chains reach at its
+/// next turn (`eval::reach`), the nearest to our land first, at most twice
+/// [`RUSH_STARTS`]. For each: the chain of level-1 trainings that takes it
+/// this turn, when one of at most [`RUSH_LENGTH`] (3 if 0) trainings
+/// reaches it; and a tower on it, if it is ours, or on our cells next to
+/// it. Blocking the enemy's path needs no action of its own: every training
+/// on a trainable cell is offered.
+pub const RUSH_DEFEND: bool = false;
+
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
 /// Longest cut, in trainings: 5 since E014 (4 before).
@@ -223,6 +274,23 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
         }
     }
 
+    // Fall back and guard (E076): a step onto an owned cell, then a tower
+    // on the cell left behind.
+    if FALL_BACK != 0 && gold >= BUILD_COST && state.league().allows_towers() {
+        fall_back(state, &enter, out);
+    }
+
+    // Rush from the tip (E076): chains of level-1 trainings toward the
+    // enemy HQ.
+    if RUSH_LENGTH != 0 && gold >= 20 {
+        rush(state, enter[1], gold, out);
+    }
+
+    // Defend the centre cells the enemy can grab (E076).
+    if RUSH_DEFEND {
+        defend(state, enter[1], gold, out);
+    }
+
     // Macro actions: the best cuts, and the lethal chain. A cut of one
     // training is a single training already.
     for cut in cuts(state, CUT_LENGTH, gold, MACRO_CUTS) {
@@ -233,6 +301,274 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
     if let Some(chain) = chain_to(state, HQ[1 - me], gold) {
         if chain.commands.len() > 1 {
             out.push(Action::Many(chain.commands));
+        }
+    }
+}
+
+/// The fall-back-and-guard actions (E076, [`FALL_BACK`]) of the player to
+/// act, with `enter` as [`generate`] has it.
+fn fall_back(state: &State, enter: &[Bits; 4], out: &mut Vec<Action>) {
+    let me = state.to_act();
+    let enemy = 1 - me;
+    let reach = crate::eval::reach(state, enemy);
+    let ours = state.owned(me);
+    let theirs = state.owned(enemy);
+    let border = theirs.neighbours();
+    let spots = state.map().spots;
+    for from in (state.movable_units() & reach & state.active(me)).iter() {
+        if spots.test(from) {
+            continue;
+        }
+        let Some((id, level)) = state.unit_at(from) else {
+            continue;
+        };
+        let away = state.map().distance(from, HQ[enemy]);
+        let steps = Bits::cell(from).neighbours() & enter[usize::from(level)];
+        let (fx, fy) = xy(from);
+        for to in steps.iter() {
+            let allowed = match FALL_BACK {
+                1 => ours.test(to) && state.map().distance(to, HQ[enemy]) > away,
+                2 => ours.test(to) && border.test(to),
+                // A step onto the enemy HQ wins: it is offered alone.
+                _ => ours.test(to) || (theirs.test(to) && to != HQ[enemy]),
+            };
+            if !allowed {
+                continue;
+            }
+            let (x, y) = xy(to);
+            out.push(Action::Many(vec![
+                Command::Move { id, x, y },
+                Command::BuildTower { x: fx, y: fy },
+            ]));
+        }
+    }
+}
+
+/// The rush-from-the-tip actions (E076, [`RUSH_LENGTH`]): `level1` is where
+/// a level-1 unit of the player to act may go.
+fn rush(state: &State, level1: Bits, gold: i64, out: &mut Vec<Action>) {
+    let me = state.to_act();
+    let map = state.map();
+    let neutral = map.valid.and_not(state.owned(me) | state.owned(1 - me));
+    let open = neutral & level1;
+    let trainable: Vec<usize> = (state.active(me).neighbours() & open).iter().collect();
+    if trainable.is_empty() {
+        return;
+    }
+    // The chains' starts, each with the cell it heads for.
+    let nearest = |target: usize| {
+        trainable
+            .iter()
+            .copied()
+            .min_by_key(|&cell| (map.distance(cell, target), cell))
+    };
+    let mut chains: Vec<(usize, usize)> = Vec::new();
+    if RUSH_GOAL {
+        for goal in rush_goals(state, &trainable) {
+            if let Some(start) = nearest(goal) {
+                chains.push((start, goal));
+            }
+        }
+    } else {
+        let target = HQ[1 - me];
+        let mut starts = trainable.clone();
+        starts.sort_by_key(|&cell| (map.distance(cell, target), cell));
+        starts.truncate(RUSH_STARTS);
+        chains.extend(starts.into_iter().map(|start| (start, target)));
+    }
+    let most = usize::try_from(gold / 10).unwrap_or(0).min(RUSH_LENGTH);
+    for (start, target) in chains {
+        let mut chain = vec![start];
+        let mut taken = Bits::cell(start);
+        while chain.len() < most {
+            let last = chain[chain.len() - 1];
+            if last == target {
+                break;
+            }
+            let next = (Bits::cell(last).neighbours() & open)
+                .and_not(taken)
+                .iter()
+                .min_by_key(|&cell| (map.distance(cell, target), cell));
+            let Some(next) = next else {
+                break;
+            };
+            chain.push(next);
+            taken.set(next);
+            let commands = chain
+                .iter()
+                .map(|&cell| {
+                    let (x, y) = xy(cell);
+                    Command::Train { level: 1, x, y }
+                })
+                .collect();
+            out.push(Action::Many(commands));
+        }
+        if RUSH_LEAP {
+            leapfrogs(state, &chain, out);
+        }
+    }
+}
+
+/// The leapfrogs of `chain` ([`RUSH_LEAP`]): for each movable unit of ours
+/// next to the chain's first cell that may enter it, the step onto it, then
+/// the trainings of the chain's next cells, one more each time.
+fn leapfrogs(state: &State, chain: &[usize], out: &mut Vec<Action>) {
+    let me = state.to_act();
+    let start = chain[0];
+    let movers = state.movable_units() & state.units(me) & Bits::cell(start).neighbours();
+    for from in movers.iter() {
+        let Some((id, level)) = state.unit_at(from) else {
+            continue;
+        };
+        if !state.enterable(me, level).test(start) {
+            continue;
+        }
+        let (x, y) = xy(start);
+        let mut commands = vec![Command::Move { id, x, y }];
+        for &cell in &chain[1..] {
+            let (x, y) = xy(cell);
+            commands.push(Command::Train { level: 1, x, y });
+            out.push(Action::Many(commands.clone()));
+        }
+    }
+}
+
+/// The goals of [`RUSH_GOAL`]'s chains, the nearest to `trainable` (our
+/// trainable cells) first, at most [`RUSH_STARTS`]: the middle chokes we do
+/// not hold and no unit of ours claims, or, when there is none, the band
+/// cells alike.
+pub fn rush_goals(state: &State, trainable: &[usize]) -> Vec<usize> {
+    let me = state.to_act();
+    let map = state.map();
+    let (band, chokes) = crate::eval::goal_zones(state);
+    let ours: Vec<usize> = state.units(me).iter().collect();
+    let theirs: Vec<usize> = state.units(1 - me).iter().collect();
+    let from_trainable = |goal: usize| {
+        trainable
+            .iter()
+            .map(|&cell| map.distance(cell, goal))
+            .min()
+            .unwrap_or(u8::MAX)
+    };
+    let claimed = |goal: usize| {
+        let reach = from_trainable(goal);
+        ours.iter().any(|&unit| {
+            let d = map.distance(unit, goal);
+            d <= reach && theirs.iter().all(|&enemy| d < map.distance(enemy, goal))
+        })
+    };
+    // RUSH_SKIP_ENEMY: the enemy holds it, or one of its units is nearer.
+    let lost = |goal: usize| {
+        RUSH_SKIP_ENEMY
+            && (state.owned(1 - me).test(goal)
+                || theirs
+                    .iter()
+                    .any(|&enemy| map.distance(enemy, goal) < from_trainable(goal)))
+    };
+    let open = |cells: Bits| -> Vec<usize> {
+        let mut goals: Vec<usize> = cells
+            .and_not(state.owned(me))
+            .iter()
+            .filter(|&goal| from_trainable(goal) != u8::MAX && !claimed(goal) && !lost(goal))
+            .collect();
+        goals.sort_by_key(|&goal| (from_trainable(goal), goal));
+        goals
+    };
+    let mut goals = open(chokes);
+    if goals.is_empty() {
+        goals = open(band);
+    }
+    goals.truncate(RUSH_STARTS);
+    goals
+}
+
+/// The centre cells [`RUSH_DEFEND`] defends: chokes and band cells the
+/// enemy reaches first (not ours) or can take at its next turn (ours), the
+/// nearest to our active land first.
+pub fn contested(state: &State) -> Vec<usize> {
+    let me = state.to_act();
+    let map = state.map();
+    let (band, chokes) = crate::eval::goal_zones(state);
+    let active = state.active(me);
+    let ours = state.owned(me);
+    let reach = crate::eval::reach(state, 1 - me);
+    let theirs: Vec<usize> = state.units(1 - me).iter().collect();
+    let from_land = |cell: usize| {
+        active
+            .iter()
+            .map(|a| map.distance(a, cell))
+            .min()
+            .unwrap_or(u8::MAX)
+    };
+    let mut cells: Vec<usize> = (band | chokes)
+        .iter()
+        .filter(|&cell| {
+            if ours.test(cell) {
+                active.test(cell) && reach.test(cell)
+            } else {
+                !state.owned(1 - me).test(cell)
+                    && theirs
+                        .iter()
+                        .any(|&e| map.distance(e, cell) < from_land(cell))
+            }
+        })
+        .collect();
+    cells.sort_by_key(|&cell| (u8::from(!chokes.test(cell)), from_land(cell), cell));
+    cells.truncate(2 * RUSH_STARTS);
+    cells
+}
+
+/// The [`RUSH_DEFEND`] actions: `level1` is where a level-1 unit of the
+/// player to act may go.
+fn defend(state: &State, level1: Bits, gold: i64, out: &mut Vec<Action>) {
+    let me = state.to_act();
+    let map = state.map();
+    let neutral = map.valid.and_not(state.owned(me) | state.owned(1 - me));
+    let open = neutral & level1;
+    let active = state.active(me);
+    let free = active & state.empty_cells();
+    let longest = if RUSH_LENGTH == 0 { 3 } else { RUSH_LENGTH };
+    for cell in contested(state) {
+        if !state.owned(me).test(cell) {
+            // Train onto it first: the shortest chain from our land.
+            let start = (active.neighbours() & open)
+                .iter()
+                .min_by_key(|&c| (map.distance(c, cell), c));
+            if let Some(start) = start {
+                let mut chain = vec![start];
+                let mut taken = Bits::cell(start);
+                while chain[chain.len() - 1] != cell && chain.len() < longest {
+                    let last = chain[chain.len() - 1];
+                    let next = (Bits::cell(last).neighbours() & open)
+                        .and_not(taken)
+                        .iter()
+                        .min_by_key(|&c| (map.distance(c, cell), c));
+                    let Some(next) = next else {
+                        break;
+                    };
+                    chain.push(next);
+                    taken.set(next);
+                }
+                let cost = 10 * i64::try_from(chain.len()).unwrap_or(i64::MAX);
+                if chain.len() >= 2 && chain[chain.len() - 1] == cell && cost <= gold {
+                    let commands = chain
+                        .iter()
+                        .map(|&c| {
+                            let (x, y) = xy(c);
+                            Command::Train { level: 1, x, y }
+                        })
+                        .collect();
+                    out.push(Action::Many(commands));
+                }
+            }
+        }
+        // A tower on it or behind it.
+        if gold >= BUILD_COST && state.league().allows_towers() {
+            let spots = (Bits::cell(cell) | Bits::cell(cell).neighbours()) & free;
+            for tower in spots.and_not(map.spots).iter() {
+                let (x, y) = xy(tower);
+                out.push(Action::One(Command::BuildTower { x, y }));
+            }
         }
     }
 }
