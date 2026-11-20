@@ -757,7 +757,7 @@ mod eval {
 
     /// The opening's goal for `seat` (E073), see [`GOAL`]; 0 after
     /// [`GOAL_UNTIL`].
-    fn goal(state: &State, seat: usize) -> i64 {
+    pub fn goal(state: &State, seat: usize) -> i64 {
         if (GOAL == 0 && GOAL_OWNED == 0 && GOAL_GUARD == 0 && GOAL_CHOKE == 0)
             || state.game_turn() > GOAL_UNTIL
         {
