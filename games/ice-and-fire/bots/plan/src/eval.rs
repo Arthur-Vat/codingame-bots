@@ -57,6 +57,12 @@
 //!   we about 50%) and keeps its upkeep low. Each active cell of a side next
 //!   to an enemy cell that is one of its active towers or next to one counts
 //!   [`WALL`] more ([`wall`]).
+//! - **The opening's goal** (E073): the opening chooses its plans by the
+//!   share of the contested band they claim (cells within [`GOAL_BAND`]
+//!   rings of the frontline, `ice_and_fire_opening::solo::rings`), and the
+//!   search takes over at game turn 7 without it. Until game turn
+//!   [`GOAL_UNTIL`], each band cell nearer one side's active land than the
+//!   other's counts [`GOAL`] for it ([`goal`]).
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::reach_within_moving;
@@ -381,6 +387,37 @@ fn wall(state: &State, seat: usize) -> i64 {
     WALL * i64::from(frontier(state, seat).1.count())
 }
 
+/// What each contested band cell nearer a side's active land than the
+/// enemy's counts for it (E073): 0 for nothing (v029).
+pub const GOAL: i64 = 0;
+/// The last game turn at which [`GOAL`] counts.
+pub const GOAL_UNTIL: u32 = 10;
+/// The band's width: cells within this many rings of the frontline.
+pub const GOAL_BAND: i64 = 2;
+
+/// The opening's goal for `seat` (E073): [`GOAL`] for each band cell
+/// nearer its active land than the enemy's, less [`GOAL`] for each nearer
+/// the enemy's; 0 after [`GOAL_UNTIL`].
+fn goal(state: &State, seat: usize) -> i64 {
+    if GOAL == 0 || state.game_turn() > GOAL_UNTIL {
+        return 0;
+    }
+    let rings = ice_and_fire_opening::solo::rings(state);
+    let ours = ice_and_fire_opening::econ::distances(state, state.active(seat));
+    let theirs = ice_and_fire_opening::econ::distances(state, state.active(1 - seat));
+    let mut net = 0;
+    for c in state.map().valid.iter() {
+        if rings[c] <= GOAL_BAND {
+            net += match ours[c].cmp(&theirs[c]) {
+                std::cmp::Ordering::Less => 1,
+                std::cmp::Ordering::Equal => 0,
+                std::cmp::Ordering::Greater => -1,
+            };
+        }
+    }
+    GOAL * net
+}
+
 /// The score of `state` for `seat`, higher is better for it.
 pub fn eval(state: &State, seat: usize) -> i64 {
     let movers = [
@@ -409,4 +446,5 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         - mines(state, 1 - seat, theirs)
         + wall(state, seat)
         - wall(state, 1 - seat)
+        + goal(state, seat)
 }
