@@ -13,6 +13,7 @@
 //! ice-and-fire-review codingame-moments --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--our-seat 0|1] [--top N] [--examples K] [--out DIR] > moments.md
 //! ice-and-fire-review codingame-opening --data DIR --me NAME [--kinds ranking,test] [--batch B] [--release NAME] [--our-seat 0|1] [--top N] [--turns T] [--leaderboard FILE] [--jobs N] > opening.md
 //! ice-and-fire-review codingame-units --data DIR --me NAME [--kinds ranking,test] [--batch B] [--release NAME] [--our-seat 0|1] [--top N] [--leaderboard FILE] > units.csv
+//! ice-and-fire-review codingame-roles --data DIR --me NAME [--kinds ranking,test] [--batch B] [--release NAME] [--our-seat 0|1] [--players A,B] [--top N] [--leaderboard FILE] [--turns T] [--from-turn F] [--min-value V] [--jobs N] > roles.md
 //! ice-and-fire-review codingame-surprise --data DIR --me NAME --judge BIN [--release NAME] [--top N] [--tries N] [--limit PLIES] [--jobs N] [--leaderboard FILE] [--pass] --out DIR
 //! ice-and-fire-review codingame-style --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--players A,B] [--top N] [--leaderboard FILE] [--jobs N] > style.md
 //! ice-and-fire-review codingame-early --data DIR --me NAME [--kinds ranking,test] [--turns T] > early.csv
@@ -31,6 +32,7 @@ mod opening;
 mod profiles;
 mod profiling;
 mod replay;
+mod roles;
 mod screening;
 mod study;
 mod style;
@@ -567,6 +569,51 @@ enum Command {
         #[arg(long)]
         leaderboard: Option<PathBuf>,
     },
+    /// Prints, as Markdown, the measures of the three goals of the early
+    /// game (research/codingame/2026-11-20-frontline-plan.md, Step 1) for
+    /// each group and seat: objectives held, frontline units, trainings at
+    /// the tip, pockets, idle units and how local the captures are.
+    CodingameRoles {
+        /// The game's data directory, for example `data/ice-and-fire`.
+        #[arg(long)]
+        data: PathBuf,
+        /// Our nickname on CodinGame, for games whose index has no seat.
+        #[arg(long)]
+        me: String,
+        /// The kinds of games to use, separated by commas.
+        #[arg(long, value_delimiter = ',', default_values_t = ["ranking".to_string(), "test".to_string(), "replay".to_string()])]
+        kinds: Vec<String>,
+        /// Only the games of this batch.
+        #[arg(long)]
+        batch: Option<String>,
+        /// Only our games played by this release (see `codingame-report`).
+        #[arg(long)]
+        release: Option<String>,
+        /// Only the games in which we sat in this seat (see `codingame-report`).
+        #[arg(long)]
+        our_seat: Option<usize>,
+        /// Players who each form a group, separated by commas.
+        #[arg(long, value_delimiter = ',')]
+        players: Vec<String>,
+        /// The rest of the top N of the snapshot form one group (0: none).
+        #[arg(long, default_value_t = 10)]
+        top: usize,
+        /// The leaderboard snapshot, instead of the newest in the data directory.
+        #[arg(long)]
+        leaderboard: Option<PathBuf>,
+        /// The last game turn read.
+        #[arg(long, default_value_t = 15)]
+        turns: u32,
+        /// The first game turn of the by-turn tables.
+        #[arg(long, default_value_t = 2)]
+        from_turn: u32,
+        /// The least value for an objective to count.
+        #[arg(long, default_value_t = 3)]
+        min_value: i32,
+        /// Games replayed at the same time.
+        #[arg(long, default_value_t = 4)]
+        jobs: usize,
+    },
     /// Writes, to a folder, where our bot was overconfident in its CodinGame
     /// games: at each of our plies, the score the plan bot's search expected
     /// for the turn played (the worst over the opponent replies it models)
@@ -1093,6 +1140,41 @@ fn run(cli: Cli) -> Result<(), String> {
                 leaderboard,
                 jobs: 1,
             })?;
+            print!("{text}");
+            Ok(())
+        }
+        Command::CodingameRoles {
+            data,
+            me,
+            kinds,
+            batch,
+            release,
+            our_seat,
+            players,
+            top,
+            leaderboard,
+            turns,
+            from_turn,
+            min_value,
+            jobs,
+        } => {
+            let text = roles::run(
+                &profiles::Request {
+                    data,
+                    me,
+                    kinds,
+                    batch,
+                    release,
+                    our_seat,
+                    top,
+                    players,
+                    leaderboard,
+                    jobs,
+                },
+                turns,
+                from_turn,
+                min_value,
+            )?;
             print!("{text}");
             Ok(())
         }

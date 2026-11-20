@@ -538,7 +538,7 @@ fn summarise(summary: Summary, values: &mut [f64]) -> Option<f64> {
 
 /// Our releases from the index's lines (`release`, without the game's
 /// prefix).
-fn releases(data: &std::path::Path) -> Result<HashMap<u64, String>, String> {
+pub(crate) fn releases(data: &std::path::Path) -> Result<HashMap<u64, String>, String> {
     let path = data.join("index.jsonl");
     let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     let mut out = HashMap::new();
