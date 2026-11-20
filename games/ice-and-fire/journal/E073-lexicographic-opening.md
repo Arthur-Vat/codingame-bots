@@ -344,3 +344,58 @@ nothing measurable to the land-first orders. The owner then had the cut
 duels moved to GitHub (`screen.yml` with `arena: early`, added on this
 branch) and the study run of the central goals cancelled to free the
 runners.
+
+## The opening's goal kept in the search
+
+The owner's plan (2026-11-20): (1) replan every turn from game turn 4 or
+5 (`REPLAN_FROM`), (2) carry the opening's goal into the search, (3) plan
+against a predicted opponent, (4) then measure the passing model against
+real games. The search's evaluation gained a goal term (`eval::goal`),
+counted until game turn `GOAL_UNTIL`, each part the side's count less the
+enemy's, over the contested band (rings 0 to 2): `GOAL` for each band
+cell nearer the side's active land by at least `GOAL_MARGIN` steps,
+`GOAL_OWNED` for each band cell it holds, `GOAL_GUARD` for each it holds
+that a tower of its guards, `GOAL_CHOKE` for each middle choke it holds.
+After seeing a game where the near term left the top-right pocket
+neutral (the search was paid for being near, not for owning), the owner
+asked for strategies that own the critical cells, mainly by towers.
+
+Cut duels against v029, the opening `Central(Linear(7))` over 9 turns
+(lin7), local, 800 pairs (seed 81) unless noted:
+
+| Variant | Goal term | Until | Elo over v029 [95%] |
+| --- | --- | ---: | --- |
+| lin7 (400 pairs, seed 72) | none | – | +34.9 [+11.9, +58.1] |
+| lin7 + replan from turn 4 (400) | none | – | +38.4 [+15.4, +61.6] |
+| lin7 + replan from turn 5 (400) | none | – | +32.2 [+9.7, +55.0] |
+| lin7-g2 (400, seed 72) | near 2 | 10 | +53.4 [+30.1, +77.2] |
+| lin7-g4 (400, seed 72) | near 4 | 10 | +37.5 [+12.8, +62.6] |
+| lin7-g1 | near 1 | 10 | +71.8 [+55.4, +88.5] |
+| lin7-g2 | near 2 | 10 | +68.2 [+51.4, +85.3] |
+| check-g2 (the term rewritten) | near 2 | 10 | +63.2 [+46.4, +80.4] |
+| lin7-g2-r4 | near 2, replan from turn 4 | 10 | +63.7 [+47.5, +80.2] |
+| claim2-g2 | near 2 (claim2's opening) | 10 | +58.7 [+41.9, +75.9] |
+| own2 | owned 2 | 10 | +55.2 [+38.5, +72.1] |
+| own4 | owned 4 | 10 | +74.5 [+58.1, +91.3] |
+| safe2 | near 2, 2 steps nearer | 10 | +64.1 [+47.5, +81.0] |
+| own2-gd2 | owned 2, guarded 2 | 10 | +59.6 [+43.1, +76.4] |
+| own2-gd4 | owned 2, guarded 4 | 10 | +61.4 [+44.6, +78.5] |
+| own2-ck6 | owned 2, chokes 6 | 10 | +56.5 [+39.7, +73.6] |
+| near2-gd2 | near 2, guarded 2 | 10 | +80.0 [+63.0, +97.4] |
+| own2-gd2-ck6 | owned 2, guarded 2, chokes 6 | 10 | +88.3 [+71.1, +105.9] |
+| lin7-g2u12 | near 2 | 12 | +93.4 [+76.0, +111.2] |
+
+Timeouts: 0 to 8 a side in each run, as for v029. The goal term adds
+about +30 to +50 to lin7 in these duels; its parts are not told apart at
+800 pairs, though the strategies with towers or chokes lead. A term
+counted until game turn 12 is counted on the judge's own turn, so its
+gain needs full games. `tests::the_search_respects_its_deadline_on_a_heavy_position`
+failed once while the duels used every CPU and passed 4 times of 4 on
+the idle machine.
+
+The GitHub duel screening (run 44710005153, `arena: early`) was
+cancelled by the owner after 2 hours 11 minutes: its log shows every
+runner still in the bundler, no game played. The bundler on the plan bot
+of that commit runs over 10 minutes locally too, while it took about a
+minute at 75bf3d6: a change to the opening's code since makes the
+minifier slow (being bisected).
