@@ -80,11 +80,11 @@ in full games (run 44827866653):
 
 | Variant | Switches | Cut at turn 12 | Full games |
 | --- | --- | --- | --- |
-| t1 | `TURN = 1` (offered) | | |
-| t2 | `TURN = 2` (first climb) | | |
-| t3 | `TURN = 3` (both) | | |
-| t4 | `TURN = 4` (pieces) | | |
-| t7 | `TURN = 7` (all three) | | |
-| t4q4 | `TURN = 4`, `OBJECTIVE_QUARTERS = 4` | | |
-| t3q4 | `TURN = 3`, `OBJECTIVE_QUARTERS = 4` | | |
-| q4 | `OBJECTIVE_QUARTERS = 4` | | |
+| t1 | `TURN = 1` (offered) | −5.6 [−18.4, +7.1] | |
+| t2 | `TURN = 2` (first climb) | +2.2 [−11.5, +15.9] | |
+| t3 | `TURN = 3` (both) | −3.9 [−17.8, +10.0] | |
+| t4 | `TURN = 4` (pieces) | −10.9 [−24.4, +2.6] | |
+| t7 | `TURN = 7` (all three) | −10.0 [−24.4, +4.4] | |
+| t4q4 | `TURN = 4`, `OBJECTIVE_QUARTERS = 4` | −8.3 [−23.3, +6.8] | |
+| t3q4 | `TURN = 3`, `OBJECTIVE_QUARTERS = 4` | −18.3 [−33.6, −3.0] | |
+| q4 | `OBJECTIVE_QUARTERS = 4` | +7.4 [−7.7, +22.5] | |
