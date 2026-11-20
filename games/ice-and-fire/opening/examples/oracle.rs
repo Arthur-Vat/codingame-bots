@@ -34,6 +34,12 @@
 //!    breadth-first enumeration while a layer holds at most `--cap` states;
 //!    beyond, the start is reported as having more.
 //!
+//! 4. **The most central weight at the most cells (E073):** the same branch
+//!    and bound with each cell weighted by the linear central weights of the
+//!    opening's `Order::Central` (top 5, 7 and 9 less the cell's ring from
+//!    the middle, `solo::rings`), the bound taking the heaviest cells within
+//!    reach.
+//!
 //! A depth-first search stops after `--limit` states expanded (20,000 by
 //! default: each costs about a millisecond, since it makes every turn of the
 //! state) with the best plan found so far, and the result is not `proven`.
@@ -81,11 +87,11 @@ use std::io::Write;
 use std::time::Instant;
 
 use ice_and_fire_early::zones::Zones;
-use ice_and_fire_engine::{answer_line, Bits, Command, League, State, HQ, SIZE};
+use ice_and_fire_engine::{answer_line, Bits, Command, League, State, CELLS, HQ, SIZE};
 use ice_and_fire_opening::assign::{self, Purchase};
 use ice_and_fire_opening::econ::{distances, Params};
 use ice_and_fire_opening::planned::{Planned, Planner};
-use ice_and_fire_opening::solo::{self, Objective};
+use ice_and_fire_opening::solo::{self, Decay, Objective, Order};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::League as RefereeLeague;
 
@@ -101,6 +107,7 @@ const OBJECTIVE: Objective = Objective {
     voronoi: 1,
     chokes: 0,
     assign: false,
+    order: Order::Sum,
 };
 
 /// v029's opening weights (`opening_of` in the plan bot).
@@ -123,6 +130,7 @@ fn opening(objective: Objective) -> Planned {
         turns: 9,
         width: 32,
         objective,
+        replan_from: 0,
     };
     Planned::new(planner, sets(), Params::V003)
 }
@@ -413,6 +421,38 @@ fn solve(
     Some((layer.into_iter().collect(), peak))
 }
 
+/// A weight for each cell.
+type Weights = [i64; CELLS];
+
+/// Weight 1 on the cells of `zone`.
+fn ones(zone: Bits) -> Weights {
+    let mut w = [0; CELLS];
+    for c in zone.iter() {
+        w[c] = 1;
+    }
+    w
+}
+
+/// The total weight of the cells of `owned`.
+fn weighed(w: &Weights, owned: Bits) -> i64 {
+    owned.iter().map(|c| w[c]).sum()
+}
+
+/// The linear central weights of E073 (`Decay::Linear(top)` of the
+/// opening's `Order::Central`): `top` less a cell's ring from the middle.
+fn central(state: &State, top: i64) -> Weights {
+    let mut w = [0; CELLS];
+    for (c, ring) in solo::rings(state).into_iter().enumerate() {
+        if ring != i64::MAX {
+            w[c] = Decay::Linear(top).weight(ring);
+        }
+    }
+    w
+}
+
+/// The tops of the central goals.
+const CENTRAL: [u8; 3] = [5, 7, 9];
+
 /// A branch-and-bound search over `me`'s turns, depth first: among the
 /// plans that end with at least `min_cells` active cells, the most cells of
 /// `zone` held at the end (`None`: whether such a plan exists at all, which
@@ -426,7 +466,8 @@ struct Dfs {
     me: usize,
     t: u32,
     min_cells: i64,
-    zone: Option<Bits>,
+    /// Each cell's weight in the value (a zone weighs 1 a cell).
+    zone: Option<Weights>,
     best: i64,
     /// The plan of `best` when the search found it (else the caller's).
     plan: Option<Plan>,
@@ -439,7 +480,7 @@ struct Dfs {
 }
 
 impl Dfs {
-    fn new(me: usize, t: u32, min_cells: i64, zone: Option<Bits>, best: i64, limit: u64) -> Dfs {
+    fn new(me: usize, t: u32, min_cells: i64, zone: Option<Weights>, best: i64, limit: u64) -> Dfs {
         Dfs {
             me,
             t,
@@ -456,24 +497,27 @@ impl Dfs {
     }
 
     fn value(&self, owned: Bits) -> i64 {
-        self.zone.map_or(1, |z| i64::from((owned & z).count()))
+        self.zone.as_ref().map_or(1, |z| weighed(z, owned))
     }
 
     fn zone_bound(&self, state: &State, left: u32) -> i64 {
-        let Some(zone) = self.zone else {
+        let Some(zone) = self.zone.as_ref() else {
             return 1;
         };
         let owned = state.owned(self.me);
-        let held = i64::from((owned & zone).count());
+        let held = weighed(zone, owned);
         let d = distances(state, owned);
         let far = reach(state, self.me, left);
-        let near = zone
-            .and_not(owned)
-            .iter()
+        // The heaviest cells within reach, at most as many as the cells it
+        // can still take.
+        let mut near: Vec<i64> = (0..CELLS)
+            .filter(|&c| zone[c] > 0 && !owned.test(c))
             .filter(|&c| d[c] != u8::MAX && i64::from(d[c]) <= far)
-            .count() as i64;
+            .map(|c| zone[c])
+            .collect();
+        near.sort_unstable_by(|a, b| b.cmp(a));
         let room = (bound(state, self.me, left) - i64::from(owned.count())).max(0);
-        held + near.min(room)
+        held + near.iter().take(room as usize).sum::<i64>()
     }
 
     fn search(&mut self, state: State, done: u32) {
@@ -507,9 +551,9 @@ impl Dfs {
             children.push((end(after), commands.to_vec()))
         });
         // The most promising first: the zone held, then the cells bound.
-        let zone = self.zone;
+        let zone = self.zone.as_ref();
         children.sort_by_cached_key(|(c, _)| {
-            let held = zone.map_or(0, |z| (c.owned(me) & z).count());
+            let held = zone.map_or(0, |z| weighed(z, c.owned(me)));
             std::cmp::Reverse((held, bound(c, me, left - 1)))
         });
         for (child, commands) in children {
@@ -530,13 +574,17 @@ struct Reached {
     chokes: i64,
     /// Our cells within 2 steps of even between the HQs.
     middle: i64,
+    /// The central weight of our cells for each top of [`CENTRAL`].
+    central: [i64; 3],
 }
 
 fn reached(state: &State, me: usize, chokes: Bits, band: Bits) -> Reached {
+    let owned = state.owned(me);
     Reached {
         cells: i64::from(state.active(me).count()),
-        chokes: i64::from((state.owned(me) & chokes).count()),
-        middle: i64::from((state.owned(me) & band).count()),
+        chokes: i64::from((owned & chokes).count()),
+        middle: i64::from((owned & band).count()),
+        central: CENTRAL.map(|top| weighed(&central(state, i64::from(top)), owned)),
     }
 }
 
@@ -574,7 +622,11 @@ fn replay(state: &State, plan: &[Vec<Command>]) -> State {
 /// The openings compared with the optimum, by name, each played once to the
 /// longest horizon: a new opening joins this list to be measured by `run`
 /// and `--bench`.
-const OPENINGS: [&str; 4] = ["v029", "b", "rules", "assign"];
+const OPENINGS: [&str; 23] = [
+    "v029", "b", "rules", "assign", "tie", "land", "tie3", "tie6", "tie12", "lin3", "lin6",
+    "lin10", "half4", "half8", "sq6", "lin5", "lin7", "lin9", "fr4", "fr8", "ring", "voronoi",
+    "behind",
+];
 
 struct Openings {
     played: Vec<(Vec<State>, Plan)>,
@@ -585,6 +637,42 @@ fn openings(state: &State, t: u32) -> Openings {
     let mut v029 = opening(OBJECTIVE);
     let mut b = opening(Objective {
         assign: true,
+        ..OBJECTIVE
+    });
+    // E073: the lexicographic orders.
+    let tie_within = |within| {
+        opening(Objective {
+            order: Order::TieBreak { within },
+            ..OBJECTIVE
+        })
+    };
+    let centred = |decay| {
+        opening(Objective {
+            order: Order::Central(decay),
+            ..OBJECTIVE
+        })
+    };
+    let mut tie = tie_within(1);
+    let mut lin3 = centred(Decay::Linear(3));
+    let mut lin6 = centred(Decay::Linear(6));
+    let mut lin10 = centred(Decay::Linear(10));
+    let mut half4 = centred(Decay::Halving(4));
+    let mut half8 = centred(Decay::Halving(8));
+    let mut sq6 = centred(Decay::Square(6));
+    let mut lin5 = centred(Decay::Linear(5));
+    let mut lin7 = centred(Decay::Linear(7));
+    let mut lin9 = centred(Decay::Linear(9));
+    let ordered = |order| opening(Objective { order, ..OBJECTIVE });
+    let mut fr4 = ordered(Order::Frontier { cap: 4 });
+    let mut fr8 = ordered(Order::Frontier { cap: 8 });
+    let mut ring = ordered(Order::ByRing);
+    let mut voronoi = ordered(Order::Voronoi);
+    let mut behind = ordered(Order::BehindFront);
+    let mut tie3 = tie_within(3);
+    let mut tie6 = tie_within(6);
+    let mut tie12 = tie_within(12);
+    let mut land = opening(Objective {
+        order: Order::LandFirst,
         ..OBJECTIVE
     });
     let settings = assign::Settings {
@@ -598,6 +686,25 @@ fn openings(state: &State, t: u32) -> Openings {
             play(state, t, |s| b.turn(s, None)),
             play(state, t, |s| solo::commands(s, &sets, solo::REST)),
             play(state, t, |s| assign::turn(s, &settings)),
+            play(state, t, |s| tie.turn(s, None)),
+            play(state, t, |s| land.turn(s, None)),
+            play(state, t, |s| tie3.turn(s, None)),
+            play(state, t, |s| tie6.turn(s, None)),
+            play(state, t, |s| tie12.turn(s, None)),
+            play(state, t, |s| lin3.turn(s, None)),
+            play(state, t, |s| lin6.turn(s, None)),
+            play(state, t, |s| lin10.turn(s, None)),
+            play(state, t, |s| half4.turn(s, None)),
+            play(state, t, |s| half8.turn(s, None)),
+            play(state, t, |s| sq6.turn(s, None)),
+            play(state, t, |s| lin5.turn(s, None)),
+            play(state, t, |s| lin7.turn(s, None)),
+            play(state, t, |s| lin9.turn(s, None)),
+            play(state, t, |s| fr4.turn(s, None)),
+            play(state, t, |s| fr8.turn(s, None)),
+            play(state, t, |s| ring.turn(s, None)),
+            play(state, t, |s| voronoi.turn(s, None)),
+            play(state, t, |s| behind.turn(s, None)),
         ],
     }
 }
@@ -611,20 +718,25 @@ enum Goal {
     Chokes,
     /// The most cells of the middle band within `margin` cells of the most.
     Middle,
+    /// The most central weight (E073: the linear weights with this top) at
+    /// the most cells.
+    Central(u8),
 }
 
 impl Goal {
-    fn name(self) -> &'static str {
+    fn name(self) -> String {
         match self {
-            Goal::Cells => "cells",
-            Goal::Chokes => "chokes",
-            Goal::Middle => "middle",
+            Goal::Cells => "cells".to_string(),
+            Goal::Chokes => "chokes".to_string(),
+            Goal::Middle => "middle".to_string(),
+            Goal::Central(top) => format!("central{top}"),
         }
     }
 
     fn parse(text: &str) -> Option<Goal> {
         [Goal::Cells, Goal::Chokes, Goal::Middle]
             .into_iter()
+            .chain(CENTRAL.map(Goal::Central))
             .find(|g| g.name() == text)
     }
 
@@ -634,6 +746,10 @@ impl Goal {
             Goal::Cells => r.cells,
             Goal::Chokes => r.chokes,
             Goal::Middle => r.middle,
+            Goal::Central(top) => CENTRAL
+                .iter()
+                .position(|&t| t == top)
+                .map_or(0, |i| r.central[i]),
         }
     }
 }
@@ -789,7 +905,7 @@ fn run(
             let (value, plan, done) = if zone.is_empty() {
                 (value.max(0), plan, true)
             } else {
-                let mut dfs = Dfs::new(me, t, floor, Some(zone), value, limit);
+                let mut dfs = Dfs::new(me, t, floor, Some(ones(zone)), value, limit);
                 dfs.search(state.clone(), 0);
                 match dfs.plan {
                     Some(found) => (dfs.best, found, !dfs.aborted),
@@ -814,10 +930,48 @@ fn run(
             });
         }
     }
+    // The most central weight at the most cells (E073), for each top.
+    let mut central_best = [0; 3];
+    for (i, &top) in CENTRAL.iter().enumerate() {
+        let goal = Goal::Central(top);
+        let (value, plan) = known
+            .iter()
+            .filter(|(r, _)| r.cells >= most)
+            .max_by_key(|(r, _)| goal.of(r))
+            .map(|(r, p)| (goal.of(r), p.clone()))
+            .unwrap_or((-1, Vec::new()));
+        let mut dfs = Dfs::new(
+            me,
+            t,
+            most,
+            Some(central(&state, i64::from(top))),
+            value,
+            limit,
+        );
+        dfs.search(state.clone(), 0);
+        let done = !dfs.aborted;
+        let (value, plan) = match dfs.plan {
+            Some(found) => (dfs.best, found),
+            None => (value, plan),
+        };
+        case.proven &= done;
+        let r = measure(&plan);
+        known.push((r, plan.clone()));
+        central_best[i] = value;
+        case.plans.push(Best {
+            goal,
+            margin: 0,
+            value,
+            cells: r.cells,
+            proven: done && proven,
+            plan,
+        });
+    }
     case.best = Reached {
         cells: most,
         chokes: case.chokes_within[0],
         middle: case.middle_within[0],
+        central: central_best,
     };
     // The optimal territories, counted while they fit.
     match solve(&state, me, t, most, true, cap) {
@@ -883,11 +1037,27 @@ fn check(starts: &[(u64, usize)]) {
                     .map(|k| i64::from((from_words(k.0) & zone).count()))
                     .max()
                     .unwrap_or(0);
-                let mut dfs = Dfs::new(seat, t, floor, Some(zone), -1, u64::MAX);
+                let mut dfs = Dfs::new(seat, t, floor, Some(ones(zone)), -1, u64::MAX);
                 dfs.search(state.clone(), 0);
                 assert_eq!(
                     dfs.best, expected,
                     "seed {seed}, seat {seat}, {t} turns, floor {floor}"
+                );
+            }
+            // The central goals (E073) at the most cells, likewise.
+            for top in CENTRAL {
+                let w = central(&state, i64::from(top));
+                let expected = full
+                    .iter()
+                    .filter(|k| cells(k) >= most)
+                    .map(|k| weighed(&w, from_words(k.0)))
+                    .max()
+                    .unwrap_or(0);
+                let mut dfs = Dfs::new(seat, t, most, Some(w), -1, u64::MAX);
+                dfs.search(state.clone(), 0);
+                assert_eq!(
+                    dfs.best, expected,
+                    "seed {seed}, seat {seat}, {t} turns, central {top}"
                 );
             }
             // The bound never falls below what a plan reaches.
@@ -1193,7 +1363,7 @@ fn bench_mode(path: &str, jobs: usize) {
     // (turns, seat, opening) -> sums: starts, cell gap, at the most cells,
     // starts with chokes measured, choke gap, at the most chokes, starts with
     // the band measured, middle gap, all compared values proven.
-    type Sums = [f64; 9];
+    type Sums = [f64; 13];
     let gathered: Vec<((u32, usize, usize), Sums)> = std::thread::scope(|scope| {
         let handles: Vec<_> = (0..jobs.max(1))
             .map(|_| {
@@ -1223,7 +1393,7 @@ fn bench_mode(path: &str, jobs: usize) {
                             for (k, (states, _)) in open.played.iter().enumerate() {
                                 let r = reached(&states[t as usize], seat, chokes, band);
                                 let gap = most.best.value - r.cells;
-                                let mut sums: Sums = [0.0; 9];
+                                let mut sums: Sums = [0.0; 13];
                                 sums[0] = 1.0;
                                 sums[1] = gap as f64;
                                 sums[2] = f64::from(u8::from(gap <= 0));
@@ -1245,6 +1415,20 @@ fn bench_mode(path: &str, jobs: usize) {
                                     }
                                 }
                                 sums[8] = f64::from(u8::from(proven));
+                                // E073: the central weight short of the most
+                                // at the most cells, for each top.
+                                if gap == 0 {
+                                    let stored: Vec<_> = CENTRAL
+                                        .iter()
+                                        .map(|&top| find(t, Goal::Central(top), 0))
+                                        .collect();
+                                    if stored.iter().all(Option::is_some) {
+                                        sums[9] = 1.0;
+                                        for (i, c) in stored.into_iter().flatten().enumerate() {
+                                            sums[10 + i] = (c.best.value - r.central[i]) as f64;
+                                        }
+                                    }
+                                }
                                 out.push(((t, seat, k), sums));
                             }
                         }
@@ -1260,15 +1444,17 @@ fn bench_mode(path: &str, jobs: usize) {
     });
     let mut totals: HashMap<(u32, usize, usize), Sums> = HashMap::new();
     for (key, sums) in gathered {
-        let total = totals.entry(key).or_insert([0.0; 9]);
+        let total = totals.entry(key).or_insert([0.0; 13]);
         for (a, b) in total.iter_mut().zip(sums) {
             *a += b;
         }
     }
     let mut keys: Vec<(u32, usize, usize)> = totals.keys().copied().collect();
     keys.sort_unstable();
-    println!("| Turns | Seat | Opening | Starts | Cells short of the most | At the most cells | Starts with middle chokes, compared | Chokes short of the most at its cells | At the most chokes | Middle cells short of the most at its cells | Compared against proven values |");
-    println!("| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
+    println!("| Turns | Seat | Opening | Starts | Cells short of the most | At the most cells | Starts with middle chokes, compared | Chokes short of the most at its cells | At the most chokes | Middle cells short of the most at its cells | Compared against proven values | Starts at the most cells, central compared | Central weight short of the most: lin5 / lin7 / lin9 |");
+    println!(
+        "| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |"
+    );
     for key in keys {
         let s = totals[&key];
         let per = |a: f64, n: f64| {
@@ -1286,7 +1472,7 @@ fn bench_mode(path: &str, jobs: usize) {
             }
         };
         println!(
-            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
+            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} / {} / {} |",
             key.0,
             if key.1 == 0 { "red" } else { "blue" },
             OPENINGS[key.2],
@@ -1298,6 +1484,10 @@ fn bench_mode(path: &str, jobs: usize) {
             pct(s[5], s[3]),
             per(s[7], s[6]),
             pct(s[8], s[0]),
+            s[9],
+            per(s[10], s[9]),
+            per(s[11], s[9]),
+            per(s[12], s[9]),
         );
     }
 }

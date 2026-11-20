@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 use ice_and_fire_engine::{Bits, League, State, HQ};
 use ice_and_fire_opening::econ::{distances, Params};
 use ice_and_fire_opening::planned::{Planned, Planner};
-use ice_and_fire_opening::solo::{self, Objective};
+use ice_and_fire_opening::solo::{self, Objective, Order};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::League as RefereeLeague;
 
@@ -39,6 +39,7 @@ const OBJECTIVE: Objective = Objective {
     voronoi: 1,
     chokes: 0,
     assign: false,
+    order: Order::Sum,
 };
 
 /// v026's opening, as the plan bot builds it.
@@ -57,6 +58,7 @@ fn opening() -> Planned {
         turns: 9,
         width: 32,
         objective: OBJECTIVE,
+        replan_from: 0,
     };
     Planned::new(planner, sets, Params::V003)
 }

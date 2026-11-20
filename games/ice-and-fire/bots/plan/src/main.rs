@@ -63,7 +63,7 @@ use std::time::{Duration, Instant};
 use ice_and_fire_opening::assign::{self, Purchase};
 use ice_and_fire_opening::econ::Params;
 use ice_and_fire_opening::planned::{Planned, Planner};
-use ice_and_fire_opening::solo::{self, Objective};
+use ice_and_fire_opening::solo::{self, Decay, Objective, Order};
 
 use crate::search::Limit;
 
@@ -131,7 +131,16 @@ const OBJECTIVE: Objective = Objective {
     voronoi: 1,
     chokes: 0,
     assign: false,
+    order: ORDER,
 };
+
+/// The game turn from which the opening replans every turn, from the real
+/// position (E073); 0: only when our side leaves the plan, as in v029.
+const REPLAN_FROM: u32 = 0;
+
+/// How the opening compares its plans (E073): the weighted sum above in
+/// v029.
+const ORDER: Order = Order::Central(Decay::Linear(7));
 
 /// The opening uses a mine spot only when the enemy's territory is more than
 /// this many steps from it: `u8::MAX`, so it builds no mine (E034; v003's
@@ -203,6 +212,7 @@ fn opening_of(width: usize) -> Planned {
         turns: OPENING_TURNS,
         width,
         objective: OBJECTIVE,
+        replan_from: REPLAN_FROM,
     };
     let sets = solo::SETS
         .iter()

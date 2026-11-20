@@ -85,7 +85,226 @@ pub struct Objective {
     /// (E072, [`crate::assign`]), with the payback rule and spending all
     /// the gold.
     pub assign: bool,
+    /// How plans are compared (E073).
+    pub order: Order,
 }
+
+/// How the beam compares two positions (E073): by the weighted sum alone,
+/// or lexicographically with the middle of the map as tie-breaks, so that,
+/// among the many plans that reach the most land, it keeps those that hold
+/// the middle without giving up land for it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Order {
+    /// The weighted sum [`value`] alone.
+    Sum,
+    /// The weighted sum in steps of `within` (1: exact ties only), then the
+    /// middle chokes held, then the cells of the middle band held, then the
+    /// weighted sum.
+    TieBreak { within: i64 },
+    /// The active cells, then the middle chokes held, then the cells of the
+    /// middle band held, then the weighted sum.
+    LandFirst,
+    /// The active cells, then the sum of their weights by their ring from
+    /// the middle ([`ring`]: the central cells weigh most), then the
+    /// weighted sum (the owner's evaluation, 2026-11-20).
+    Central(Decay),
+    /// The active cells, then the least total distance from them to the
+    /// frontier's cells (ring 0: even between the HQs), each distance at
+    /// most `cap`, then the weighted sum: near the whole frontier, not one
+    /// flank (the owner, 2026-11-20).
+    Frontier { cap: i64 },
+    /// The active cells, then the active cells on ring 0, then on ring 1,
+    /// and so on up to ring 6, compared in that order, then the weighted
+    /// sum.
+    ByRing,
+    /// The active cells, then the sum of their weights in a static weight
+    /// map of the map, computed at turn 1 ([`Field`]), then the weighted sum.
+    Field(Field),
+    /// The active cells, then the Voronoi share (twice it: a tie counts 1,
+    /// [`crate::score::voronoi_halves`]), then the weighted sum (the owner,
+    /// 2026-11-20).
+    Voronoi,
+    /// The active cells, then twice the non-void cells behind the
+    /// frontline that are nearer our land than the frontline (a tie counts
+    /// 1, [`behind_front`]), then the weighted sum (the owner, 2026-11-20).
+    BehindFront,
+    /// The owner's three goals (2026-11-20), against an enemy assumed to
+    /// hold as many cells as our active land, the nearest to its HQ: first
+    /// the active cells (`moves`: the cells taken by unit moves, active
+    /// cells less units), then [`Claim`]'s two shares in the order of
+    /// `future_first`, then the weighted sum.
+    Claim {
+        band: i64,
+        future_first: bool,
+        moves: bool,
+    },
+}
+
+/// What a side would claim against an enemy holding as many cells as its
+/// active land, those nearest the enemy HQ by steps (all cells at the last
+/// distance included): twice the cells nearer its active land than that
+/// enemy land (a tie counts 1), among the cells within `band` rings of the
+/// frontline (`contested`) and among all cells (`future`). The enemy's land
+/// depends only on the map and the number of our cells, so plans with as
+/// many cells meet the same enemy.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Claim {
+    pub contested: i64,
+    pub future: i64,
+}
+
+/// [`Claim`] of `seat` in `state`, `rings` from [`rings`].
+pub fn claim(state: &State, seat: usize, rings: &[i64; CELLS], band: i64) -> Claim {
+    let active = state.active(seat);
+    let from_hq = econ::distances(state, Bits::cell(HQ[1 - seat]));
+    let mut steps: Vec<u8> = state
+        .map()
+        .valid
+        .iter()
+        .map(|c| from_hq[c])
+        .filter(|&d| d != u8::MAX)
+        .collect();
+    steps.sort_unstable();
+    let n = (active.count() as usize).clamp(1, steps.len().max(1));
+    let radius = steps.get(n - 1).copied().unwrap_or(0);
+    let mut enemy = Bits::EMPTY;
+    for c in state.map().valid.iter() {
+        if from_hq[c] <= radius {
+            enemy.set(c);
+        }
+    }
+    let ours = econ::distances(state, active);
+    let theirs = econ::distances(state, enemy);
+    let mut out = Claim::default();
+    for c in state.map().valid.iter() {
+        if ours[c] == u8::MAX {
+            continue;
+        }
+        let v = match ours[c].cmp(&theirs[c]) {
+            std::cmp::Ordering::Less => 2,
+            std::cmp::Ordering::Equal => 1,
+            std::cmp::Ordering::Greater => 0,
+        };
+        out.future += v;
+        if rings[c] <= band {
+            out.contested += v;
+        }
+    }
+    out
+}
+
+/// For each cell on `seat`'s side of the frontline (nearer its HQ than the
+/// enemy's, or as near: the frontline itself), its steps to the frontline;
+/// `u8::MAX` for the other cells. Fixed from turn 1.
+pub fn to_front(state: &State, seat: usize) -> [u8; CELLS] {
+    let ours = econ::distances(state, Bits::cell(HQ[seat]));
+    let theirs = econ::distances(state, Bits::cell(HQ[1 - seat]));
+    let mut front = Bits::EMPTY;
+    let mut side = Bits::EMPTY;
+    for c in state.map().valid.iter() {
+        if ours[c] == u8::MAX || theirs[c] == u8::MAX {
+            continue;
+        }
+        if ours[c] == theirs[c] {
+            front.set(c);
+        }
+        if ours[c] <= theirs[c] {
+            side.set(c);
+        }
+    }
+    let d = econ::distances(state, front);
+    let mut out = [u8::MAX; CELLS];
+    for c in side.iter() {
+        out[c] = d[c];
+    }
+    out
+}
+
+/// Twice the cells behind `seat`'s frontline nearer its active land than
+/// the frontline (`front`: [`to_front`]), a tie counting 1.
+pub fn behind_front(state: &State, seat: usize, front: &[u8; CELLS]) -> i64 {
+    let d = econ::distances(state, state.active(seat));
+    (0..CELLS)
+        .filter(|&c| front[c] != u8::MAX && d[c] != u8::MAX)
+        .map(|c| match d[c].cmp(&front[c]) {
+            std::cmp::Ordering::Less => 2,
+            std::cmp::Ordering::Equal => 1,
+            std::cmp::Ordering::Greater => 0,
+        })
+        .sum()
+}
+
+/// A static weight map, from each cell's walking steps `a` from our HQ and
+/// `b` from the enemy's, `d` the steps between the HQs, `ring` = |a − b| / 2
+/// (the owner's request, 2026-11-20: computed at turn 1, closer to where
+/// contact happens).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Field {
+    /// `top − ring − excess / 2`, at least 0, with `excess = a + b − d` the
+    /// detour of the cell off the shortest paths between the HQs: the
+    /// meeting point weighs most, the far ends of the even line less.
+    Corridor { top: i64 },
+    /// `top − ring`, at least 0, for cells within `within` steps of our HQ; 0
+    /// beyond: only the frontier the opening can reach.
+    Reachable { top: i64, within: i64 },
+    /// `min(a, d / 2)`: farther from our HQ is better, up to halfway.
+    Outward,
+}
+
+impl Field {
+    /// The weight of a cell `a` steps from our HQ and `b` from the enemy's,
+    /// the HQs `d` steps apart.
+    pub fn weight(self, a: i64, b: i64, d: i64) -> i64 {
+        let ring = (a - b).abs() / 2;
+        match self {
+            Field::Corridor { top } => (top - ring - (a + b - d) / 2).max(0),
+            Field::Reachable { top, within } if a <= within => (top - ring).max(0),
+            Field::Reachable { .. } => 0,
+            Field::Outward => a.min(d / 2),
+        }
+    }
+}
+
+/// Each cell's weight in `field` for `seat`; 0 where an HQ is not reachable.
+pub fn field_weights(state: &State, seat: usize, field: Field) -> [i64; CELLS] {
+    let ours = econ::distances(state, Bits::cell(HQ[seat]));
+    let theirs = econ::distances(state, Bits::cell(HQ[1 - seat]));
+    let d = i64::from(ours[HQ[1 - seat]]);
+    let mut out = [0; CELLS];
+    for c in 0..CELLS {
+        if ours[c] != u8::MAX && theirs[c] != u8::MAX {
+            out[c] = field.weight(i64::from(ours[c]), i64::from(theirs[c]), d);
+        }
+    }
+    out
+}
+
+/// How a cell's weight falls with its ring from the middle (`Order::Central`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Decay {
+    /// `top - ring`, at least 0.
+    Linear(i64),
+    /// `2^(top - ring)`, 0 beyond `top` rings.
+    Halving(i64),
+    /// `(top - ring)²`, 0 beyond `top` rings.
+    Square(i64),
+}
+
+impl Decay {
+    /// The weight of a cell `ring` rings from the middle.
+    pub fn weight(self, ring: i64) -> i64 {
+        match self {
+            Decay::Linear(top) => (top - ring).max(0),
+            Decay::Halving(top) if ring <= top => 1 << (top - ring).min(40),
+            Decay::Halving(_) => 0,
+            Decay::Square(top) => (top - ring).max(0).pow(2),
+        }
+    }
+}
+
+/// A position's rank by an [`Order`]: larger is better, compared
+/// lexicographically.
+pub type Key = [i64; 4];
 
 impl Objective {
     /// A cell is worth 4, a turn of income 3 and a gold 1, as in the shared
@@ -106,6 +325,7 @@ impl Objective {
         voronoi: 1,
         chokes: 0,
         assign: false,
+        order: Order::Sum,
     };
 }
 
@@ -199,6 +419,199 @@ pub fn value_with(state: &State, seat: usize, objective: &Objective, middle: Bit
         + o.chokes * held
 }
 
+/// The middle chokes of `state`'s map (`ice_and_fire_early`'s zones).
+pub fn middle_chokes(state: &State) -> Bits {
+    ice_and_fire_early::zones::Zones::of(state).middle_chokes()
+}
+
+/// The cells of the middle band of `state`'s map: those whose steps to the
+/// two HQs differ by at most 2 (as the optimal plans' study counts them,
+/// `examples/oracle.rs`).
+pub fn middle_band(state: &State) -> Bits {
+    let ours = econ::distances(state, Bits::cell(HQ[0]));
+    let theirs = econ::distances(state, Bits::cell(HQ[1]));
+    let mut band = Bits::EMPTY;
+    for c in state.map().valid.iter() {
+        if ours[c] != u8::MAX && theirs[c] != u8::MAX && ours[c].abs_diff(theirs[c]) <= 2 {
+            band.set(c);
+        }
+    }
+    band
+}
+
+/// For each cell, its ring from the middle: half of the difference of its
+/// steps to the two HQs (always even on this grid, since its two colours
+/// alternate), so that each step away from the cells even between the HQs
+/// adds a ring; `i64::MAX` for cells one HQ cannot reach.
+pub fn rings(state: &State) -> [i64; CELLS] {
+    let a = econ::distances(state, Bits::cell(HQ[0]));
+    let b = econ::distances(state, Bits::cell(HQ[1]));
+    let mut out = [i64::MAX; CELLS];
+    for c in 0..CELLS {
+        if a[c] != u8::MAX && b[c] != u8::MAX {
+            out[c] = i64::from(a[c].abs_diff(b[c])) / 2;
+        }
+    }
+    out
+}
+
+/// The zones of `state`'s map that `objective` needs: its middle chokes and
+/// its middle band.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Zones {
+    pub chokes: Bits,
+    pub band: Bits,
+    /// Each cell's weight by `Order::Central` (0 for other orders).
+    pub weights: [i64; CELLS],
+    /// Each cell's ring ([`rings`]) for `Order::Frontier` and
+    /// `Order::ByRing` (`i64::MAX` for other orders).
+    pub rings: [i64; CELLS],
+    /// The frontier's cells (ring 0) for `Order::Frontier`.
+    pub frontier: Bits,
+    /// Steps to the frontline behind it for `Order::BehindFront`
+    /// ([`to_front`]).
+    pub front: [u8; CELLS],
+}
+
+impl Default for Zones {
+    fn default() -> Zones {
+        Zones {
+            chokes: Bits::EMPTY,
+            band: Bits::EMPTY,
+            weights: [0; CELLS],
+            rings: [i64::MAX; CELLS],
+            frontier: Bits::EMPTY,
+            front: [u8::MAX; CELLS],
+        }
+    }
+}
+
+impl Zones {
+    /// The zones of `state`'s map that `objective` uses, empty otherwise.
+    pub fn of(state: &State, objective: &Objective) -> Zones {
+        let lexicographic = matches!(objective.order, Order::TieBreak { .. } | Order::LandFirst);
+        let mut weights = [0; CELLS];
+        if let Order::Central(decay) = objective.order {
+            for (w, ring) in weights.iter_mut().zip(rings(state)) {
+                *w = if ring == i64::MAX {
+                    0
+                } else {
+                    decay.weight(ring)
+                };
+            }
+        }
+        if let Order::Field(field) = objective.order {
+            weights = field_weights(state, state.to_act(), field);
+        }
+        let (ring_of, frontier) = match objective.order {
+            Order::Frontier { .. } | Order::ByRing | Order::Claim { .. } => {
+                let r = rings(state);
+                let mut f = Bits::EMPTY;
+                for (c, &ring) in r.iter().enumerate() {
+                    if ring == 0 {
+                        f.set(c);
+                    }
+                }
+                (r, f)
+            }
+            _ => ([i64::MAX; CELLS], Bits::EMPTY),
+        };
+        Zones {
+            weights,
+            rings: ring_of,
+            frontier,
+            front: if objective.order == Order::BehindFront {
+                to_front(state, state.to_act())
+            } else {
+                [u8::MAX; CELLS]
+            },
+            chokes: if objective.chokes != 0 || lexicographic {
+                ice_and_fire_early::zones::Zones::of(state).middle_chokes()
+            } else {
+                Bits::EMPTY
+            },
+            band: if lexicographic {
+                middle_band(state)
+            } else {
+                Bits::EMPTY
+            },
+        }
+    }
+}
+
+/// The rank of `seat`'s position in `state` by `objective` and its
+/// [`Order`].
+pub fn key(state: &State, seat: usize, objective: &Objective, zones: Zones) -> Key {
+    let sum = value_with(state, seat, objective, zones.chokes);
+    match objective.order {
+        Order::Sum => [sum, 0, 0, 0],
+        Order::Central(_) | Order::Field(_) => {
+            let active = state.active(seat);
+            let weighed: i64 = active.iter().map(|c| zones.weights[c]).sum();
+            [i64::from(active.count()), weighed, sum, 0]
+        }
+        Order::Frontier { cap } => {
+            let active = state.active(seat);
+            let d = econ::distances(state, active);
+            let far: i64 = zones
+                .frontier
+                .iter()
+                .map(|c| i64::from(d[c]).min(cap))
+                .sum();
+            [i64::from(active.count()), -far, sum, 0]
+        }
+        Order::Claim {
+            band,
+            future_first,
+            moves,
+        } => {
+            let active = i64::from(state.active(seat).count());
+            let first = if moves {
+                active - i64::from(state.units(seat).count())
+            } else {
+                active
+            };
+            let c = claim(state, seat, &zones.rings, band);
+            if future_first {
+                [first, c.future, c.contested, sum]
+            } else {
+                [first, c.contested, c.future, sum]
+            }
+        }
+        Order::BehindFront => [
+            i64::from(state.active(seat).count()),
+            behind_front(state, seat, &zones.front),
+            sum,
+            0,
+        ],
+        Order::Voronoi => [
+            i64::from(state.active(seat).count()),
+            crate::score::voronoi_halves(state, seat),
+            sum,
+            0,
+        ],
+        Order::ByRing => {
+            let active = state.active(seat);
+            // Seven counts of at most 144, 8 bits each, ring 0 highest.
+            let mut packed = 0i64;
+            for ring in 0..7 {
+                let n = active.iter().filter(|&c| zones.rings[c] == ring).count();
+                packed = (packed << 8) | n as i64;
+            }
+            [i64::from(active.count()), packed, sum, 0]
+        }
+        Order::TieBreak { .. } | Order::LandFirst => {
+            let owned = state.owned(seat);
+            let chokes = i64::from((owned & zones.chokes).count());
+            let band = i64::from((owned & zones.band).count());
+            match objective.order {
+                Order::TieBreak { within } => [sum.div_euclid(within.max(1)), chokes, band, sum],
+                _ => [i64::from(state.active(seat).count()), chokes, band, sum],
+            }
+        }
+    }
+}
+
 /// Our `commands`, then the opponent passes: our next start of turn.
 pub fn advance(state: &State, commands: &[Command]) -> State {
     let mut next = state.clone();
@@ -286,18 +699,9 @@ fn steps(state: &State, sets: &[Params], assign: bool) -> Vec<(Step, Vec<Command
     out
 }
 
-/// The middle chokes of `state`'s map when `objective` weighs them.
-fn middle_chokes(state: &State, objective: &Objective) -> Bits {
-    if objective.chokes == 0 {
-        Bits::EMPTY
-    } else {
-        ice_and_fire_early::zones::Zones::of(state).middle_chokes()
-    }
-}
-
 /// A beam search over whole turns for `turns` of our turns, `width` nodes a
-/// turn, the opponent passing: the plan whose final position [`value`]
-/// rates best, the plan of `rest` alone among the candidates. Stops early,
+/// turn, the opponent passing: the plan whose final position [`key`]
+/// ranks best, the plan of `rest` alone among the candidates. Stops early,
 /// with the best plan found, at `deadline`.
 pub fn beam(
     state: &State,
@@ -310,13 +714,12 @@ pub fn beam(
 ) -> Vec<Step> {
     let me = state.to_act();
     let out_of_time = || deadline.is_some_and(|t| Instant::now() >= t);
-    let middle = middle_chokes(state, objective);
-    let rated =
-        |plan: &[Step]| value_with(&play(state, sets, plan, rest, turns), me, objective, middle);
-    let mut best: (i64, Vec<Step>) = (rated(&[]), Vec::new());
+    let zones = Zones::of(state, objective);
+    let rated = |plan: &[Step]| key(&play(state, sets, plan, rest, turns), me, objective, zones);
+    let mut best: (Key, Vec<Step>) = (rated(&[]), Vec::new());
     let mut frontier: Vec<(State, Vec<Step>)> = vec![(state.clone(), Vec::new())];
     for depth in 0..turns {
-        let mut children: Vec<(i64, State, Vec<Step>)> = Vec::new();
+        let mut children: Vec<(Key, State, Vec<Step>)> = Vec::new();
         let mut seen: HashMap<u64, usize> = HashMap::new();
         for (node, plan) in &frontier {
             if out_of_time() {
@@ -326,7 +729,7 @@ pub fn beam(
                 let next = advance(node, &c);
                 let mut child = plan.clone();
                 child.push(step);
-                let v = value_with(&next, me, objective, middle);
+                let v = key(&next, me, objective, zones);
                 let key = side_key(&next, me);
                 match seen.get(&key) {
                     Some(&at) if children[at].0 >= v => {}
@@ -381,10 +784,9 @@ pub fn plan(
     objective: &Objective,
 ) -> Vec<Step> {
     let me = state.to_act();
-    let middle = middle_chokes(state, objective);
-    let rated =
-        |plan: &[Step]| value_with(&play(state, sets, plan, rest, turns), me, objective, middle);
-    let mut best: (i64, Vec<Step>) = (rated(&[]), Vec::new());
+    let zones = Zones::of(state, objective);
+    let rated = |plan: &[Step]| key(&play(state, sets, plan, rest, turns), me, objective, zones);
+    let mut best: (Key, Vec<Step>) = (rated(&[]), Vec::new());
     let mut width = 2;
     loop {
         let found = beam(state, sets, rest, turns, width, deadline, objective);
