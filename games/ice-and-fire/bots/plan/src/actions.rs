@@ -25,7 +25,7 @@ pub const HQ_GUARD: bool = true;
 /// The enemy's incomes beyond its gold within which [`HQ_GUARD`] counts a
 /// chain to our HQ: 2 since E026 (two of its turns); 0 guards only against
 /// its next turn (E075).
-pub const HQ_GUARD_INCOMES: i64 = 2;
+pub const HQ_GUARD_INCOMES: i64 = 0;
 
 /// Whether a tower on `cell` guards something for the player to act (E026):
 /// it lowers the cells of ours the enemy can take at its next turn
