@@ -239,3 +239,12 @@ Verdict: ACCEPTED: ice-and-fire-v031 is stronger than ice-and-fire-v030
 
 Accepted at about half the screening's +22: the screening chose the best
 of 34 variants, which overstates its winner.
+
+## On CodinGame
+
+Three test games against CodinGame's default bot on 2026-11-20 (Legend has
+no boss): all won, no timeout, no invalid answer of ours. Submitted through
+the API on the owner's approval (form, 2026-11-20): submission 41769923
+(file SHA-256
+d1176c05449361db45766889e6afd04d5b5bd7ae639cdb0c85c159f7dd9c52ca),
+replacing v029 (4th of 90 in Legend; v030 was never submitted).
