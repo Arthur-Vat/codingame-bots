@@ -109,6 +109,11 @@ fn main() {
         dump(&args[0], &args[1..]);
         return;
     }
+    if path == "replay" {
+        let file = std::env::args().nth(2).expect("a plies file");
+        replay(&std::fs::read_to_string(file).expect("read"));
+        return;
+    }
     if path == "census" {
         census(
             std::env::args()
@@ -251,6 +256,14 @@ fn command(text: &str) -> Option<Command> {
         }),
         ["TRAIN", level, x, y] => Some(Command::Train {
             level: level.parse().ok()?,
+            x: x.parse().ok()?,
+            y: y.parse().ok()?,
+        }),
+        ["BUILD", "TOWER", x, y] => Some(Command::BuildTower {
+            x: x.parse().ok()?,
+            y: y.parse().ok()?,
+        }),
+        ["BUILD", "MINE", x, y] => Some(Command::BuildMine {
             x: x.parse().ok()?,
             y: y.parse().ok()?,
         }),
@@ -416,6 +429,55 @@ fn dump(plans: &str, starts: &[String]) {
                 }
             }
             show("best", turns, &s);
+        }
+    }
+}
+
+/// `replay FILE`: a game from its seed (line `SEED n`) and its answers, one
+/// ply a line (the commands separated by `;`), played through the engine;
+/// prints both sides' land, units (`cell:level`), towers and mines at the
+/// end of each game turn.
+fn replay(text: &str) {
+    let mut lines = text.lines();
+    let seed: u64 = lines
+        .next()
+        .and_then(|l| l.strip_prefix("SEED "))
+        .and_then(|n| n.trim().parse().ok())
+        .expect("SEED n");
+    let map = generate(seed, RefereeLeague::Bronze);
+    let mut state = State::new(&map.void, &map.mine_spots, League::Bronze);
+    println!("VALID {}", cells(state.map().valid));
+    for (ply, line) in lines.enumerate() {
+        if state.outcome().is_some() {
+            break;
+        }
+        let commands: Vec<Command> = line.split(';').filter_map(|c| command(c.trim())).collect();
+        state.play_turn(&commands);
+        if ply % 2 == 1 {
+            let units = |seat: usize| {
+                state
+                    .units(seat)
+                    .iter()
+                    .map(|c| format!("{c}:{}", state.unit_level(c).unwrap_or(0)))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            };
+            println!(
+                "TURN {} | {} | {} | {} | {} | {} | {} | {} | {} | {} {} {} {}",
+                ply / 2 + 1,
+                cells(state.owned(0)),
+                cells(state.active(0)),
+                cells(state.owned(1)),
+                cells(state.active(1)),
+                units(0),
+                units(1),
+                cells(state.towers()),
+                cells(state.mines()),
+                state.gold(0),
+                state.income(0),
+                state.gold(1),
+                state.income(1)
+            );
         }
     }
 }
