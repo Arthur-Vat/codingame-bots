@@ -110,6 +110,17 @@ pub const RUSH_SKIP_ENEMY: bool = false;
 /// it, and the trainings go on from there.
 pub const RUSH_LEAP: bool = false;
 
+/// Whether the centre cells the enemy can grab are defended (the owner's
+/// choices, 2026-11-20): the middle chokes and band cells it reaches before
+/// our nearest trainable cell, and those of ours its chains reach at its
+/// next turn (`eval::reach`), the nearest to our land first, at most twice
+/// [`RUSH_STARTS`]. For each: the chain of level-1 trainings that takes it
+/// this turn, when one of at most [`RUSH_LENGTH`] (3 if 0) trainings
+/// reaches it; and a tower on it, if it is ours, or on our cells next to
+/// it. Blocking the enemy's path needs no action of its own: every training
+/// on a trainable cell is offered.
+pub const RUSH_DEFEND: bool = false;
+
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
 /// Longest cut, in trainings: 5 since E014 (4 before).
@@ -273,6 +284,11 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
     // enemy HQ.
     if RUSH_LENGTH != 0 && gold >= 20 {
         rush(state, enter[1], gold, out);
+    }
+
+    // Defend the centre cells the enemy can grab (E076).
+    if RUSH_DEFEND {
+        defend(state, enter[1], gold, out);
     }
 
     // Macro actions: the best cuts, and the lethal chain. A cut of one
@@ -464,4 +480,95 @@ pub fn rush_goals(state: &State, trainable: &[usize]) -> Vec<usize> {
     }
     goals.truncate(RUSH_STARTS);
     goals
+}
+
+/// The centre cells [`RUSH_DEFEND`] defends: chokes and band cells the
+/// enemy reaches first (not ours) or can take at its next turn (ours), the
+/// nearest to our active land first.
+pub fn contested(state: &State) -> Vec<usize> {
+    let me = state.to_act();
+    let map = state.map();
+    let (band, chokes) = crate::eval::goal_zones(state);
+    let active = state.active(me);
+    let ours = state.owned(me);
+    let reach = crate::eval::reach(state, 1 - me);
+    let theirs: Vec<usize> = state.units(1 - me).iter().collect();
+    let from_land = |cell: usize| {
+        active
+            .iter()
+            .map(|a| map.distance(a, cell))
+            .min()
+            .unwrap_or(u8::MAX)
+    };
+    let mut cells: Vec<usize> = (band | chokes)
+        .iter()
+        .filter(|&cell| {
+            if ours.test(cell) {
+                active.test(cell) && reach.test(cell)
+            } else {
+                !state.owned(1 - me).test(cell)
+                    && theirs
+                        .iter()
+                        .any(|&e| map.distance(e, cell) < from_land(cell))
+            }
+        })
+        .collect();
+    cells.sort_by_key(|&cell| (u8::from(!chokes.test(cell)), from_land(cell), cell));
+    cells.truncate(2 * RUSH_STARTS);
+    cells
+}
+
+/// The [`RUSH_DEFEND`] actions: `level1` is where a level-1 unit of the
+/// player to act may go.
+fn defend(state: &State, level1: Bits, gold: i64, out: &mut Vec<Action>) {
+    let me = state.to_act();
+    let map = state.map();
+    let neutral = map.valid.and_not(state.owned(me) | state.owned(1 - me));
+    let open = neutral & level1;
+    let active = state.active(me);
+    let free = active & state.empty_cells();
+    let longest = if RUSH_LENGTH == 0 { 3 } else { RUSH_LENGTH };
+    for cell in contested(state) {
+        if !state.owned(me).test(cell) {
+            // Train onto it first: the shortest chain from our land.
+            let start = (active.neighbours() & open)
+                .iter()
+                .min_by_key(|&c| (map.distance(c, cell), c));
+            if let Some(start) = start {
+                let mut chain = vec![start];
+                let mut taken = Bits::cell(start);
+                while chain[chain.len() - 1] != cell && chain.len() < longest {
+                    let last = chain[chain.len() - 1];
+                    let next = (Bits::cell(last).neighbours() & open)
+                        .and_not(taken)
+                        .iter()
+                        .min_by_key(|&c| (map.distance(c, cell), c));
+                    let Some(next) = next else {
+                        break;
+                    };
+                    chain.push(next);
+                    taken.set(next);
+                }
+                let cost = 10 * i64::try_from(chain.len()).unwrap_or(i64::MAX);
+                if chain.len() >= 2 && chain[chain.len() - 1] == cell && cost <= gold {
+                    let commands = chain
+                        .iter()
+                        .map(|&c| {
+                            let (x, y) = xy(c);
+                            Command::Train { level: 1, x, y }
+                        })
+                        .collect();
+                    out.push(Action::Many(commands));
+                }
+            }
+        }
+        // A tower on it or behind it.
+        if gold >= BUILD_COST && state.league().allows_towers() {
+            let spots = (Bits::cell(cell) | Bits::cell(cell).neighbours()) & free;
+            for tower in spots.and_not(map.spots).iter() {
+                let (x, y) = xy(tower);
+                out.push(Action::One(Command::BuildTower { x, y }));
+            }
+        }
+    }
 }

@@ -1534,7 +1534,12 @@ fn the_rush_trains_a_line_from_the_cell_nearest_the_enemy_hq() {
             if !cells.iter().all(|&c| neutral.test(c)) {
                 continue; // a cut or the lethal chain
             }
-            let longest = std::hint::black_box(RUSH_LENGTH);
+            // E076's defence chains are up to 3 long when RUSH_LENGTH is 0.
+            let longest = std::hint::black_box(RUSH_LENGTH).max(if crate::actions::RUSH_DEFEND {
+                3
+            } else {
+                0
+            });
             assert!(cells.len() >= 2 && cells.len() <= longest, "{commands:?}");
             assert!(state.active(me).neighbours().test(cells[0]));
             for pair in cells.windows(2) {
@@ -1677,4 +1682,75 @@ fn a_leapfrog_steps_a_unit_onto_the_rush_start_and_trains_beyond_it() {
         found > 0 || !RUSH_LEAP || crate::actions::RUSH_LENGTH == 0,
         "no leapfrog offered"
     );
+}
+
+#[test]
+fn the_land_term_counts_the_cells_nearer_each_side() {
+    // E076, VORONOI: each valid cell nearer to a side's active land than to
+    // the enemy's counts VORONOI for it, until VORONOI_UNTIL.
+    use crate::eval::{voronoi, VORONOI, VORONOI_UNTIL};
+    let mut checked = 0;
+    for state in many_positions() {
+        let a = voronoi(&state, 0);
+        assert_eq!(a, -voronoi(&state, 1));
+        if state.game_turn() > VORONOI_UNTIL {
+            assert_eq!(a, 0);
+            continue;
+        }
+        let map = state.map();
+        let near = |c: usize, side: usize| {
+            state
+                .active(side)
+                .iter()
+                .map(|a| map.distance(a, c))
+                .min()
+                .unwrap_or(u8::MAX)
+        };
+        let mut net = 0;
+        for c in map.valid.iter() {
+            let (r, b) = (near(c, 0), near(c, 1));
+            net += i64::from(r < b) - i64::from(b < r);
+        }
+        assert_eq!(a, VORONOI * net);
+        checked += 1;
+    }
+    assert!(checked > 0);
+}
+
+#[test]
+fn the_contested_centre_cells_are_those_the_enemy_can_grab() {
+    // E076, RUSH_DEFEND: chokes and band cells the enemy reaches before our
+    // land (not owned by either side), or ours that its next turn can take.
+    use crate::actions::{contested, RUSH_STARTS};
+    let mut found = 0;
+    for state in many_positions() {
+        let me = state.to_act();
+        let map = state.map();
+        let (band, chokes) = crate::eval::goal_zones(&state);
+        let reach = crate::eval::reach(&state, 1 - me);
+        let from_land = |c: usize| {
+            state
+                .active(me)
+                .iter()
+                .map(|a| map.distance(a, c))
+                .min()
+                .unwrap_or(u8::MAX)
+        };
+        let cells = contested(&state);
+        assert!(cells.len() <= 2 * RUSH_STARTS);
+        for &c in &cells {
+            assert!(band.test(c) || chokes.test(c));
+            if state.owned(me).test(c) {
+                assert!(state.active(me).test(c) && reach.test(c));
+            } else {
+                assert!(!state.owned(1 - me).test(c));
+                assert!(state
+                    .units(1 - me)
+                    .iter()
+                    .any(|e| map.distance(e, c) < from_land(c)));
+            }
+            found += 1;
+        }
+    }
+    assert!(found > 0, "no contested cell");
 }

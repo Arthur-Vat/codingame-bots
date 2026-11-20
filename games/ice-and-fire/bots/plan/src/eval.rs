@@ -413,6 +413,34 @@ pub const GOAL_UNTIL: u32 = 10;
 /// The band's width: cells within this many rings of the frontline.
 pub const GOAL_BAND: i64 = 2;
 
+/// The land a side's position decides (E076, the owner, 2026-11-20: a
+/// centre cell the enemy takes is lost to it and shrinks the land behind
+/// it): each cell of the map nearer to a side's active land than to the
+/// enemy's (in steps over valid cells, as `econ::distances`) counts this
+/// much for it, until game turn [`VORONOI_UNTIL`]; 0 for nothing (v030).
+pub const VORONOI: i64 = 0;
+/// See [`VORONOI`].
+pub const VORONOI_UNTIL: u32 = 14;
+
+/// [`VORONOI`] for `seat`: its weight times the cells nearer to `seat`'s
+/// active land less those nearer to the enemy's.
+pub fn voronoi(state: &State, seat: usize) -> i64 {
+    if VORONOI == 0 || state.game_turn() > VORONOI_UNTIL {
+        return 0;
+    }
+    let ours = ice_and_fire_opening::econ::distances(state, state.active(seat));
+    let theirs = ice_and_fire_opening::econ::distances(state, state.active(1 - seat));
+    let mut net = 0;
+    for c in state.map().valid.iter() {
+        match ours[c].cmp(&theirs[c]) {
+            std::cmp::Ordering::Less => net += 1,
+            std::cmp::Ordering::Greater => net -= 1,
+            std::cmp::Ordering::Equal => {}
+        }
+    }
+    VORONOI * net
+}
+
 /// The map's band cells and middle chokes, computed once a map.
 struct GoalZones {
     valid: Bits,
@@ -522,4 +550,5 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         + wall(state, seat)
         - wall(state, 1 - seat)
         + goal(state, seat)
+        + voronoi(state, seat)
 }
