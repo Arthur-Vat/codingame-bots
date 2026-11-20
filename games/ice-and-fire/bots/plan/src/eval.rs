@@ -426,7 +426,7 @@ thread_local! {
 }
 
 /// The band cells and middle chokes of `state`'s map.
-fn goal_zones(state: &State) -> (Bits, Bits) {
+pub fn goal_zones(state: &State) -> (Bits, Bits) {
     GOAL_ZONES.with(|cell| {
         let mut zones = cell.borrow_mut();
         let valid = state.map().valid;

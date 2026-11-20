@@ -1549,3 +1549,63 @@ fn the_rush_trains_a_line_from_the_cell_nearest_the_enemy_hq() {
     }
     assert!(found > 0 || RUSH_LENGTH == 0, "no rush offered");
 }
+
+#[test]
+fn the_rush_heads_for_chokes_then_band_cells_no_unit_of_ours_claims() {
+    // E076, RUSH_GOAL (the owner's choice, 2026-11-20): the goals are the
+    // middle chokes we do not hold that none of our units claims (no
+    // farther from it than our nearest trainable cell and nearer than
+    // every enemy unit), else the band cells alike, the nearest first.
+    use crate::actions::{rush_goals, RUSH_STARTS};
+    let mut found = 0;
+    for state in many_positions() {
+        let me = state.to_act();
+        let map = state.map();
+        let neutral = map.valid.and_not(state.owned(me) | state.owned(1 - me));
+        let trainable: Vec<usize> =
+            (state.active(me).neighbours() & neutral & state.enterable(me, 1))
+                .iter()
+                .collect();
+        if trainable.is_empty() {
+            continue;
+        }
+        let (band, chokes) = crate::eval::goal_zones(&state);
+        let reach = |goal: usize| {
+            trainable
+                .iter()
+                .map(|&c| map.distance(c, goal))
+                .min()
+                .unwrap()
+        };
+        let claimed = |goal: usize| {
+            state.units(me).iter().any(|u| {
+                let d = map.distance(u, goal);
+                d <= reach(goal)
+                    && state
+                        .units(1 - me)
+                        .iter()
+                        .all(|e| d < map.distance(e, goal))
+            })
+        };
+        let goals = rush_goals(&state, &trainable);
+        assert!(goals.len() <= RUSH_STARTS);
+        let open_chokes: Vec<usize> = chokes
+            .and_not(state.owned(me))
+            .iter()
+            .filter(|&g| reach(g) != u8::MAX && !claimed(g))
+            .collect();
+        for (i, &goal) in goals.iter().enumerate() {
+            assert!(!state.owned(me).test(goal) && !claimed(goal));
+            if open_chokes.is_empty() {
+                assert!(band.test(goal));
+            } else {
+                assert!(chokes.test(goal));
+            }
+            if i > 0 {
+                assert!(reach(goals[i - 1]) <= reach(goal));
+            }
+            found += 1;
+        }
+    }
+    assert!(found > 0, "no goal found");
+}

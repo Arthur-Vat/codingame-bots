@@ -86,8 +86,18 @@ pub const FALL_BACK: u8 = 0;
 pub const RUSH_LENGTH: usize = 0;
 
 /// The starts of [`RUSH_LENGTH`]'s chains: this many trainable neutral
-/// cells, the nearest the enemy HQ first.
+/// cells, the nearest the enemy HQ first (or, with [`RUSH_GOAL`], this many
+/// goals, the nearest first).
 pub const RUSH_STARTS: usize = 2;
+
+/// Whether [`RUSH_LENGTH`]'s chains head for goals rather than the enemy
+/// HQ (the owner's choice, 2026-11-20): the middle chokes we do not hold,
+/// then, once each of them is claimed, the band cells we do not hold
+/// (`eval::goal_zones`). A goal is claimed when one of our units is no
+/// farther from it than our nearest trainable cell and nearer to it than
+/// every enemy unit. Each chain starts at the trainable cell nearest its
+/// goal and steps toward it. False: the enemy HQ (rounds 1 to 3).
+pub const RUSH_GOAL: bool = false;
 
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
@@ -311,19 +321,43 @@ fn fall_back(state: &State, enter: &[Bits; 4], out: &mut Vec<Action>) {
 /// a level-1 unit of the player to act may go.
 fn rush(state: &State, level1: Bits, gold: i64, out: &mut Vec<Action>) {
     let me = state.to_act();
-    let target = HQ[1 - me];
     let map = state.map();
     let neutral = map.valid.and_not(state.owned(me) | state.owned(1 - me));
     let open = neutral & level1;
-    let mut starts: Vec<usize> = (state.active(me).neighbours() & open).iter().collect();
-    starts.sort_by_key(|&cell| (map.distance(cell, target), cell));
-    starts.truncate(RUSH_STARTS);
+    let trainable: Vec<usize> = (state.active(me).neighbours() & open).iter().collect();
+    if trainable.is_empty() {
+        return;
+    }
+    // The chains' starts, each with the cell it heads for.
+    let nearest = |target: usize| {
+        trainable
+            .iter()
+            .copied()
+            .min_by_key(|&cell| (map.distance(cell, target), cell))
+    };
+    let mut chains: Vec<(usize, usize)> = Vec::new();
+    if RUSH_GOAL {
+        for goal in rush_goals(state, &trainable) {
+            if let Some(start) = nearest(goal) {
+                chains.push((start, goal));
+            }
+        }
+    } else {
+        let target = HQ[1 - me];
+        let mut starts = trainable.clone();
+        starts.sort_by_key(|&cell| (map.distance(cell, target), cell));
+        starts.truncate(RUSH_STARTS);
+        chains.extend(starts.into_iter().map(|start| (start, target)));
+    }
     let most = usize::try_from(gold / 10).unwrap_or(0).min(RUSH_LENGTH);
-    for start in starts {
+    for (start, target) in chains {
         let mut chain = vec![start];
         let mut taken = Bits::cell(start);
         while chain.len() < most {
             let last = chain[chain.len() - 1];
+            if last == target {
+                break;
+            }
             let next = (Bits::cell(last).neighbours() & open)
                 .and_not(taken)
                 .iter()
@@ -343,4 +377,45 @@ fn rush(state: &State, level1: Bits, gold: i64, out: &mut Vec<Action>) {
             out.push(Action::Many(commands));
         }
     }
+}
+
+/// The goals of [`RUSH_GOAL`]'s chains, the nearest to `trainable` (our
+/// trainable cells) first, at most [`RUSH_STARTS`]: the middle chokes we do
+/// not hold and no unit of ours claims, or, when there is none, the band
+/// cells alike.
+pub fn rush_goals(state: &State, trainable: &[usize]) -> Vec<usize> {
+    let me = state.to_act();
+    let map = state.map();
+    let (band, chokes) = crate::eval::goal_zones(state);
+    let ours: Vec<usize> = state.units(me).iter().collect();
+    let theirs: Vec<usize> = state.units(1 - me).iter().collect();
+    let from_trainable = |goal: usize| {
+        trainable
+            .iter()
+            .map(|&cell| map.distance(cell, goal))
+            .min()
+            .unwrap_or(u8::MAX)
+    };
+    let claimed = |goal: usize| {
+        let reach = from_trainable(goal);
+        ours.iter().any(|&unit| {
+            let d = map.distance(unit, goal);
+            d <= reach && theirs.iter().all(|&enemy| d < map.distance(enemy, goal))
+        })
+    };
+    let open = |cells: Bits| -> Vec<usize> {
+        let mut goals: Vec<usize> = cells
+            .and_not(state.owned(me))
+            .iter()
+            .filter(|&goal| from_trainable(goal) != u8::MAX && !claimed(goal))
+            .collect();
+        goals.sort_by_key(|&goal| (from_trainable(goal), goal));
+        goals
+    };
+    let mut goals = open(chokes);
+    if goals.is_empty() {
+        goals = open(band);
+    }
+    goals.truncate(RUSH_STARTS);
+    goals
 }
