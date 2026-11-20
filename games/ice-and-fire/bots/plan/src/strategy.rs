@@ -150,14 +150,14 @@ pub fn guide_with(state: &State, memory: &mut Memory, settings: Settings) -> Opt
     let seat = state.to_act();
     let objectives = objectives::objectives(state, seat);
     let races = race::race(state, seat, &objectives);
-    let eligible = if back_only {
-        state
+    let roles = if back_only {
+        let eligible = state
             .units(seat)
-            .and_not(crate::eval::reach(state, 1 - seat))
+            .and_not(crate::eval::reach(state, 1 - seat));
+        roles::assign_among(state, seat, &objectives, &races, memory, eligible)
     } else {
-        state.units(seat)
+        roles::assign(state, seat, &objectives, &races, memory)
     };
-    let roles = roles::assign_among(state, seat, &objectives, &races, memory, eligible);
     let plan = if mode != 0 {
         turn::strategic_turn(state, &roles, rules)
     } else {
