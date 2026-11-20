@@ -1,7 +1,7 @@
 ---
 id: E075
 date: 2026-11-20
-pull_request: "#NN"
+pull_request: "#376"
 parent: ice-and-fire-v030
 hypothesis: Towers built only when the enemy's next turn could take what they guard, the gold kept for units and mines until then, beat ice-and-fire-v030.
 change: None released. Screening only: the tower wall of the evaluation (E068) counting only the guarded frontier cells the enemy could take at its next turn were they not guarded; towers that guard nothing so threatened losing their static value; the HQ guard of E026 against the next turn only.
