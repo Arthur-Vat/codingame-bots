@@ -94,7 +94,16 @@ fn arrivals(state: &State, side: usize, cell: usize) -> (Option<Arrival>, Option
             });
         }
     }
-    let wait = match (state.gold(side), state.income(side)) {
+    // A player's income is paid at the start of its own turn (RULES.md,
+    // "Start of a player's turn"): ours is in the gold already, the other
+    // side's is still to come.
+    let gold = state.gold(side)
+        + if side == state.to_act() {
+            0
+        } else {
+            state.income(side)
+        };
+    let wait = match (gold, state.income(side)) {
         (gold, _) if gold >= TRAIN_COST => Some(0),
         (_, income) if income <= 0 => None,
         (gold, income) => Some((TRAIN_COST - gold + income - 1) / income),

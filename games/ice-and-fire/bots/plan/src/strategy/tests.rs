@@ -68,6 +68,18 @@ fn count(state: &State, mine: Bits, theirs: Bits) -> i64 {
         .count() as i64
 }
 
+/// The part of `land` joined to red's HQ.
+fn joined(land: Bits) -> Bits {
+    let mut reached = Bits::cell(0) & land;
+    loop {
+        let next = reached | (reached.neighbours() & land);
+        if next == reached {
+            return reached;
+        }
+        reached = next;
+    }
+}
+
 #[test]
 fn a_held_corridor_choke_is_the_land_its_loss_would_cost() {
     let state = position(CORRIDOR, [0, 0], &[]);
@@ -103,15 +115,12 @@ fn the_land_gained_is_the_difference_of_two_counts() {
     for o in &all {
         let c = Bits::cell(o.cell);
         let expected = if o.held {
-            let without = mine.and_not(c);
+            let without = joined(mine.and_not(c));
             count(&state, mine, theirs) - count(&state, without, theirs)
         } else {
             count(&state, mine | c, theirs) - count(&state, mine, theirs)
         };
-        // A held cell of the open ground leaves the rest joined to the HQ.
-        if !o.held {
-            assert_eq!(o.value, expected, "cell {}", o.cell);
-        }
+        assert_eq!(o.value, expected, "cell {}", o.cell);
         assert!(o.value >= 0);
     }
 }
@@ -184,8 +193,52 @@ fn arrival_by_a_unit_or_by_a_training_with_the_wait() {
     let d = u32::from(state.map().distance(cell(1, 0), far));
     assert_eq!(state.income(0), 1);
     assert_eq!(r.ours.map(|a| a.turns), Some(6 + 1 + d));
-    // The enemy, with the same gold and income, is on the corner HQ.
-    assert!(r.theirs.is_some());
+    // The enemy's income is paid at the start of its turn: gold 4 and
+    // income 1 need 5 more turns (not 6), 9 and 1 none.
+    let theirs = |gold: i64| {
+        let state = position(OPEN, [4, gold], &[]);
+        race(&state, 0, &obj)[0].theirs.map(|a| a.turns)
+    };
+    let d = u32::from(state.map().distance(cell(10, 11), far));
+    assert_eq!(theirs(4), Some(5 + 1 + d));
+    assert_eq!(theirs(9), Some(1 + d));
+    assert_eq!(theirs(30), Some(1 + d));
+}
+
+#[test]
+fn without_income_or_gold_a_side_cannot_train() {
+    let far = cell(8, 8);
+    let obj = [goal(far, 10)];
+    // Red's only unit on the HQ costs the upkeep: income 0, gold 4.
+    let state = position(OPEN, [4, 4], &[(0, 1, 1, 0, 0)]);
+    assert_eq!(state.income(0), 0);
+    let r = race(&state, 0, &obj)[0];
+    assert_eq!(r.ours_training, None);
+    assert_eq!(r.ours.map(|a| a.how), Some(How::Unit(1)));
+    // The same for the enemy, whose gold is short even with its income.
+    let state = position(OPEN, [4, 4], &[(1, 2, 1, 11, 11)]);
+    assert_eq!(state.income(1), 0);
+    let r = race(&state, 0, &obj)[0];
+    assert_eq!(r.theirs.map(|a| a.how), Some(How::Unit(2)));
+}
+
+#[test]
+fn on_a_point_symmetric_map_the_seats_mirror() {
+    let state = position(OPEN, [0, 0], &[]);
+    let red = objectives(&state, 0);
+    let blue = objectives(&state, 1);
+    assert!(!red.is_empty());
+    assert_eq!(red.len(), blue.len());
+    for o in &red {
+        let mirror = blue
+            .iter()
+            .find(|b| b.cell == 143 - o.cell)
+            .expect("the mirrored cell is an objective");
+        assert_eq!(
+            (mirror.value, mirror.kind, mirror.held),
+            (o.value, o.kind, o.held)
+        );
+    }
 }
 
 #[test]

@@ -231,6 +231,20 @@ check fails stops the plan there for the owner's decision.
   match zasmu's own frontline units (Step 1's recognition) in most turns;
   images for the owner.
 
+**As built (#382, 2026-11-20).** Step 1 found that a frontline unit cannot
+be recognised from moves, so Step 3's check became the race's: whether the
+side it names reaches each objective first in the games against zasmu.
+After the first images (our red side had no objective at all in game
+925709108 at game turn 8), the owner chose (forms, 2026-11-20): an
+objective's value is the land the side gains by holding it (the Voronoi
+count with the cell added, less as is; for a held cell, the land lost
+without it), not the swing against the enemy holding it (`VALUE_SWING`);
+every choke and band cell is an objective, ranked by value, then chokes
+first, with no threshold (`OBJECTIVE_MIN_VALUE`); roles go by that rank,
+then by arrival; and a training cell serves one objective, within the
+side's gold. The enemy's training wait counts the income it receives at
+the start of its turn.
+
 ### Step 4: the strategic turn in the middle game (E077)
 
 - **What:** the strategic turn of the design, game turns 7 to 14, offered
