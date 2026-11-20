@@ -434,3 +434,29 @@ own). The flatten stage then failed on a field named like a function it
 renamed (`Field::Reachable { top, steps }` became `steps1`): the field
 is now `within`. The plan bot bundles in about 35 s, flattened, 55,544
 characters; the bundler's tests pass.
+
+### How the games follow the opening's plan
+
+`places adhere` on the recorded full games (about 160 to 180 a finalist,
+`--records-sample 200`): at the start of a side's game turn 6, its last
+opening turn, the opening plans again untimed (beams up to 32, the
+opponent passing, the side's own order: lin7 for the finalists, v029's
+for v029); the plan's cells at game turns 8, 10 and 12 are its targets.
+Mean share of the targets held then, both seats together:
+
+| Side | Turn 8 | Turn 10 | Turn 12 |
+| --- | ---: | ---: | ---: |
+| lin7-g2u12 | 0.89 | 0.70 | 0.53 |
+| own2-gd2-ck6 | 0.89 | 0.70 | 0.53 |
+| near2-gd2 | 0.89 | 0.70 | 0.52 |
+| own4 | 0.90 | 0.71 | 0.54 |
+| v029, in the same games | 0.87 to 0.89 | 0.70 to 0.74 | 0.57 to 0.63 |
+
+Every bot holds about nine tenths of its plan two turns after the
+handover and half of it five turns after, the goal term or not: the plan
+is a solo plan, so the enemy takes part of it, and the search does not
+follow it. v029 holds slightly more of its own plan at turn 12, whose
+cells lie nearer its HQ. The plan's cells are measured from a replan
+without the turn's time limit, so they approximate the bot's own plan.
+Making the strategy consistent (one target, kept by the search) is the
+next experiment, E074.
