@@ -164,6 +164,7 @@ fn solo_opening() -> Planned {
             turns: 3,
             width: 2,
             objective: crate::solo::Objective::DEFAULT,
+            replan_from: 0,
         },
         sets,
         Params::V003,

@@ -134,6 +134,10 @@ const OBJECTIVE: Objective = Objective {
     order: ORDER,
 };
 
+/// The game turn from which the opening replans every turn, from the real
+/// position (E073); 0: only when our side leaves the plan, as in v029.
+const REPLAN_FROM: u32 = 0;
+
 /// How the opening compares its plans (E073): the weighted sum above in
 /// v029.
 const ORDER: Order = Order::Sum;
@@ -208,6 +212,7 @@ fn opening_of(width: usize) -> Planned {
         turns: OPENING_TURNS,
         width,
         objective: OBJECTIVE,
+        replan_from: REPLAN_FROM,
     };
     let sets = solo::SETS
         .iter()

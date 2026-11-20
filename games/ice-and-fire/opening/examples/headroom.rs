@@ -58,6 +58,7 @@ fn opening() -> Planned {
         turns: 9,
         width: 32,
         objective: OBJECTIVE,
+        replan_from: 0,
     };
     Planned::new(planner, sets, Params::V003)
 }

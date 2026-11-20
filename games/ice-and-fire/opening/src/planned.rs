@@ -33,11 +33,14 @@ pub enum Planner {
     /// with [`solo::SETS`] as the weight sets (`sets` must hold them), the
     /// `objective`, and beams up to `width` when there is no deadline; again
     /// for `turns` turns whenever the plan runs out or our side differs from
-    /// it. The opening ends only at the middle game.
+    /// it, and every turn from game turn `replan_from` (E073: the plan
+    /// then starts from the real position, the enemy's cells as they are;
+    /// 0: never). The opening ends only at the middle game.
     Solo {
         turns: usize,
         width: usize,
         objective: Objective,
+        replan_from: u32,
     },
     /// E072: [`assign::turn`] every turn, no plan kept; the opening ends
     /// only at the middle game.
@@ -114,7 +117,11 @@ impl Planned {
         }
         let me = state.to_act();
         let on_track = self.expected.get(self.played) == Some(&side_key(state, me));
-        if !on_track {
+        let every_turn = matches!(
+            self.planner,
+            Planner::Solo { replan_from, .. } if replan_from > 0 && state.game_turn() >= replan_from
+        );
+        if !on_track || every_turn {
             let first = self.plans == 0;
             self.plan = match self.planner {
                 Planner::Beam { width, replan } => {
@@ -133,6 +140,7 @@ impl Planned {
                     turns,
                     width,
                     objective,
+                    ..
                 } => {
                     let objective = &objective;
                     let rest = solo::REST;

@@ -58,6 +58,7 @@ fn opening_over(order: Order, turns: usize) -> Planned {
         turns,
         width: 32,
         objective: Objective { order, ..OBJECTIVE },
+        replan_from: 0,
     };
     Planned::new(planner, sets, Params::V003)
 }
