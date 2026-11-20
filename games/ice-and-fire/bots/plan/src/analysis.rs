@@ -49,6 +49,7 @@
 //! commands joined by `;` (`WAIT` for none). `bank` and `speed` ignore it.
 
 pub mod frontline;
+pub mod guide;
 pub mod judge;
 pub mod speed;
 pub mod surprise;
@@ -550,6 +551,18 @@ pub fn main_if_asked() {
             }
             Err(err) => {
                 eprintln!("plan strategy: {err}");
+                std::process::exit(2);
+            }
+        }
+    }
+    if args.first().map(String::as_str) == Some("guide") {
+        match guide::run(&args[1..]) {
+            Ok(text) => {
+                print!("{text}");
+                std::process::exit(0);
+            }
+            Err(err) => {
+                eprintln!("plan guide: {err}");
                 std::process::exit(2);
             }
         }
