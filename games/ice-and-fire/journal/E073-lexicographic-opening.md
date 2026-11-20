@@ -396,6 +396,6 @@ the idle machine.
 The GitHub duel screening (run 44710005153, `arena: early`) was
 cancelled by the owner after 2 hours 11 minutes: its log shows every
 runner still in the bundler, no game played. The bundler on the plan bot
-of that commit runs over 10 minutes locally too, while it took about a
-minute at 75bf3d6: a change to the opening's code since makes the
+of that commit runs over 10 minutes locally too, while it bundled
+without trouble at 75bf3d6 earlier the same day: a change to the opening's code since makes the
 minifier slow (being bisected).
