@@ -65,6 +65,13 @@ In `games/ice-and-fire/bots/plan/src/actions.rs`, all off in v030:
 - `RUSH_LENGTH`: chains of 2 up to this many level-1 trainings into neutral
   cells, from each of the `RUSH_STARTS` (2) trainable neutral cells nearest
   the enemy HQ, each next cell the neutral neighbour nearest the enemy HQ.
+- `RUSH_GOAL` (added after round 3, the owner: "Rush from tip should be
+  toward the closest goal which is not claimed by one of our units"; his
+  choices: goals are the middle chokes, then the band cells; a goal is
+  claimed when one of our units is no farther from it than our nearest
+  trainable cell and nearer to it than every enemy unit): the chains head
+  for the `RUSH_STARTS` nearest unclaimed goals we do not hold, each from
+  the trainable cell nearest its goal.
 
 ## Screening
 
@@ -116,6 +123,22 @@ combinations not yet played:
 
 | Variant | Switches | Elo over v030 [95%] | Faults (variant / v030) |
 | --- | --- | --- | ---: |
-| fb2r2g14 | `FALL_BACK = 2`, `RUSH_LENGTH = 2`, `GOAL_UNTIL = 14` | pending | |
+| fb2r2g14 | `FALL_BACK = 2`, `RUSH_LENGTH = 2`, `GOAL_UNTIL = 14` | +6.1 [−7.3, +19.4] | 0 / 0 |
+| fb2g14 | `FALL_BACK = 2`, `GOAL_UNTIL = 14` | +18.3 [+5.5, +31.1] | 0 / 0 |
+| fb2r3g14 | `FALL_BACK = 2`, `RUSH_LENGTH = 3`, `GOAL_UNTIL = 14` | +13.5 [+0.4, +26.6] | 0 / 0 |
+
+The fall back with the goal kept to game turn 14 gains in all three: alone
+the two read +5.6 (fb2, 1,600 pairs) and +2.2 (g14); fb2r2g14 is about
++10 over its 1,600 pairs. The rush toward the enemy HQ adds nothing.
+
+### Round 4
+
+fb2g14 again, and the rush toward goals (`RUSH_GOAL`) on top of it and
+alone, seed 2026112004, run 44776479533:
+
+| Variant | Switches | Elo over v030 [95%] | Faults (variant / v030) |
+| --- | --- | --- | ---: |
 | fb2g14 | `FALL_BACK = 2`, `GOAL_UNTIL = 14` | pending | |
-| fb2r3g14 | `FALL_BACK = 2`, `RUSH_LENGTH = 3`, `GOAL_UNTIL = 14` | pending | |
+| fb2g14rg2 | as fb2g14, `RUSH_LENGTH = 2`, `RUSH_GOAL` | pending | |
+| fb2g14rg3 | as fb2g14, `RUSH_LENGTH = 3`, `RUSH_GOAL` | pending | |
+| rg3g14 | `GOAL_UNTIL = 14`, `RUSH_LENGTH = 3`, `RUSH_GOAL` | pending | |
