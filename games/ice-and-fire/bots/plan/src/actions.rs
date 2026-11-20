@@ -77,13 +77,13 @@ pub const STEP_GUARD: u8 = 1;
 /// from the enemy HQ (back); 2: steps onto our cells next to an enemy cell
 /// (along the border); 3: steps onto any of our cells or an enemy cell
 /// other than its HQ.
-pub const FALL_BACK: u8 = 2;
+pub const FALL_BACK: u8 = 0;
 
 /// The rush from the tip (E076): chains of level-1 trainings into neutral
 /// cells, from the trainable neutral cells nearest the enemy HQ, each next
 /// cell the neutral neighbour nearest it, of 2 up to this many trainings;
 /// 0 for none (v030).
-pub const RUSH_LENGTH: usize = 3;
+pub const RUSH_LENGTH: usize = 0;
 
 /// The starts of [`RUSH_LENGTH`]'s chains: this many trainable neutral
 /// cells, the nearest the enemy HQ first (or, with [`RUSH_GOAL`], this many
@@ -97,18 +97,18 @@ pub const RUSH_STARTS: usize = 2;
 /// farther from it than our nearest trainable cell and nearer to it than
 /// every enemy unit. Each chain starts at the trainable cell nearest its
 /// goal and steps toward it. False: the enemy HQ (rounds 1 to 3).
-pub const RUSH_GOAL: bool = true;
+pub const RUSH_GOAL: bool = false;
 
 /// With [`RUSH_GOAL`], whether goals the enemy wins are left out (the
 /// owner's choice, 2026-11-20): those it holds, and those one of its units
 /// is nearer to than our nearest trainable cell.
-pub const RUSH_SKIP_ENEMY: bool = true;
+pub const RUSH_SKIP_ENEMY: bool = false;
 
 /// Whether each rush chain is also offered as a leapfrog (the owner's
 /// choice, 2026-11-20, after zasmu trains at the tip once its units have
 /// moved): a movable unit of ours next to the chain's first cell steps onto
 /// it, and the trainings go on from there.
-pub const RUSH_LEAP: bool = true;
+pub const RUSH_LEAP: bool = false;
 
 /// Whether the centre cells the enemy can grab are defended (the owner's
 /// choices, 2026-11-20): the middle chokes and band cells it reaches before
@@ -119,7 +119,7 @@ pub const RUSH_LEAP: bool = true;
 /// reaches it; and a tower on it, if it is ours, or on our cells next to
 /// it. Blocking the enemy's path needs no action of its own: every training
 /// on a trainable cell is offered.
-pub const RUSH_DEFEND: bool = true;
+pub const RUSH_DEFEND: bool = false;
 
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
