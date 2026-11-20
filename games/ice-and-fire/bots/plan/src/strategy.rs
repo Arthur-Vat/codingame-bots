@@ -20,7 +20,7 @@ pub use roles::Memory;
 /// first climb of each turn starts with it; 4, its pieces (each frontline
 /// unit's step and the training at its tip) offered as macro actions at
 /// every step of the climbs.
-pub const TURN: u8 = 7;
+pub const TURN: u8 = 2;
 
 /// Which trainings the strategic turn holds (E077): 1, at the frontline
 /// units' tips only, after their moves (the owner's rule); 2, also the
@@ -40,14 +40,14 @@ pub const OBJECTIVE_RACE: bool = false;
 /// How the strategic turn keeps the line behind its frontline units (E077,
 /// round 2): see [`turn::Rules`]. [`GUARD`]: 0 none (round 1), 1 a tower, 2
 /// a level-1 training on the exposed cell a unit leaves.
-pub const GUARD: u8 = 0;
+pub const GUARD: u8 = 1;
 /// See [`GUARD`]: the tip training fills the exposed cell left.
 pub const FILL_BEHIND: bool = false;
 /// See [`GUARD`]: no step that raises our cells the enemy can take.
 pub const SAFE_STEP: bool = true;
 /// Whether only units on cells the enemy cannot reach next turn take a
 /// frontline role (E077, round 2): the units holding the border keep it.
-pub const BACK_ONLY: bool = true;
+pub const BACK_ONLY: bool = false;
 
 /// The first and the last game turn of the strategic layer (E077: 7 to 14).
 pub const FROM_TURN: u32 = 7;
