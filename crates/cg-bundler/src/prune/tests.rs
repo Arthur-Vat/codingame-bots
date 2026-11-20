@@ -1069,3 +1069,87 @@ fn a_derive_on_a_type_named_by_a_macro_is_not_offered() {
     let trials = Source::new(text).unwrap().trials();
     assert!(trials.is_empty(), "{trials:?}");
 }
+
+#[test]
+fn an_enum_whose_variants_are_all_unbuilt_does_not_stall_the_rounds() {
+    // Every variant of `Shape` is reported as never constructed, while its
+    // type stays in use: the enum must keep its variants, so a round that
+    // offers them removes nothing. Before the fix the next round offered
+    // them again, with the same compile, forever (E073's plan bot).
+    let source = r#"#[derive(Clone, Copy)]
+enum Shape {
+    Round(u8),
+    Square(u8),
+}
+fn area(shape: Shape) -> u8 {
+    match shape {
+        Shape::Round(r) => r,
+        Shape::Square(q) => q,
+    }
+}
+fn dead() -> u8 {
+    1
+}
+fn main() {
+    let f: fn(Shape) -> u8 = area;
+    println!("{}", f as usize > 0);
+}
+"#;
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = sender.send(pruned(source));
+    });
+    let (out, _) = receiver
+        .recv_timeout(std::time::Duration::from_secs(120))
+        .expect("pruning ends");
+    assert!(!out.contains("fn dead"), "{out}");
+    assert!(out.contains("Round") && out.contains("Square"), "{out}");
+    check(&out, &rustc()).unwrap();
+}
+
+#[test]
+fn a_variant_removed_in_an_earlier_round_is_never_taken_back() {
+    // `A` is never built and goes first; `B` and `C` are built only in
+    // impls that `trials` removes, then are offered too. All three would
+    // empty the enum, which keeps them all, `A` with them: a round taking
+    // that compile would offer `A` again, and so on forever (found in the
+    // review of the first fix). `A` stays removed.
+    let source = r#"#[derive(Clone, Copy)]
+enum Shape {
+    A(u8),
+    B(u8),
+    C(u8),
+}
+impl Default for Shape {
+    fn default() -> Shape {
+        Shape::B(0)
+    }
+}
+impl From<u8> for Shape {
+    fn from(x: u8) -> Shape {
+        Shape::C(x)
+    }
+}
+fn area(shape: Shape) -> u8 {
+    match shape {
+        Shape::A(a) => a,
+        Shape::B(b) => b,
+        Shape::C(c) => c,
+    }
+}
+fn main() {
+    let f: fn(Shape) -> u8 = area;
+    println!("{}", f as usize > 0);
+}
+"#;
+    // A failed run leaves its thread compiling until the test process ends.
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = sender.send(pruned(source));
+    });
+    let (out, _) = receiver
+        .recv_timeout(std::time::Duration::from_secs(120))
+        .expect("pruning ends");
+    assert!(!out.contains("A(u8)"), "{out}");
+    check(&out, &rustc()).unwrap();
+}
