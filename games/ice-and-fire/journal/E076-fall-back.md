@@ -72,6 +72,14 @@ In `games/ice-and-fire/bots/plan/src/actions.rs`, all off in v030:
   trainable cell and nearer to it than every enemy unit): the chains head
   for the `RUSH_STARTS` nearest unclaimed goals we do not hold, each from
   the trainable cell nearest its goal.
+- `RUSH_SKIP_ENEMY` and `RUSH_LEAP` (added after round 4, from images of
+  the goal rush in our positions: it was offered in 303 of 304 positions of
+  game turns 7 to 10 and played whole in 7; the owner chose all three
+  fixes): goals the enemy holds, or one of its units is nearer to than our
+  nearest trainable cell, are left out; each chain is also offered as a
+  leapfrog, a movable unit of ours stepping onto its first cell and the
+  trainings following from there. The third fix is E073's choke weight
+  (`eval::GOAL_CHOKE`, 0 in v030), counted until `GOAL_UNTIL`.
 
 ## Screening
 
@@ -138,7 +146,26 @@ alone, seed 2026112004, run 44776479533:
 
 | Variant | Switches | Elo over v030 [95%] | Faults (variant / v030) |
 | --- | --- | --- | ---: |
-| fb2g14 | `FALL_BACK = 2`, `GOAL_UNTIL = 14` | pending | |
-| fb2g14rg2 | as fb2g14, `RUSH_LENGTH = 2`, `RUSH_GOAL` | pending | |
-| fb2g14rg3 | as fb2g14, `RUSH_LENGTH = 3`, `RUSH_GOAL` | pending | |
-| rg3g14 | `GOAL_UNTIL = 14`, `RUSH_LENGTH = 3`, `RUSH_GOAL` | pending | |
+| fb2g14 | `FALL_BACK = 2`, `GOAL_UNTIL = 14` | +30.0 [+17.4, +42.8] | 0 / 0 |
+| fb2g14rg2 | as fb2g14, `RUSH_LENGTH = 2`, `RUSH_GOAL` | +9.6 [−3.3, +22.4] | 0 / 0 |
+| fb2g14rg3 | as fb2g14, `RUSH_LENGTH = 3`, `RUSH_GOAL` | +23.5 [+10.1, +37.0] | 0 / 0 |
+| rg3g14 | `GOAL_UNTIL = 14`, `RUSH_LENGTH = 3`, `RUSH_GOAL` | +20.9 [+8.0, +33.8] | 0 / 0 |
+
+fb2g14 holds: +18.3 then +30.0, about +24 over 1,600 pairs. The goal rush
+gains alone (rg3g14 +20.9, against g14 +2.2) but not on top of fb2g14.
+
+### Round 5
+
+The rush's fixes on top of fb2g14 with the 3-training goal rush (B), seed
+2026112005, run 44778741431:
+
+| Variant | Switches beyond fb2g14 | Elo over v030 [95%] | Faults (variant / v030) |
+| --- | --- | --- | ---: |
+| fb2g14 | none | pending | |
+| B | `RUSH_LENGTH = 3`, `RUSH_GOAL` | pending | |
+| Bskip | B, `RUSH_SKIP_ENEMY` | pending | |
+| Bleap | B, `RUSH_LEAP` | pending | |
+| Bck4 | B, `GOAL_CHOKE = 4` | pending | |
+| Bck8 | B, `GOAL_CHOKE = 8` | pending | |
+| Ball | B, `RUSH_SKIP_ENEMY`, `RUSH_LEAP`, `GOAL_CHOKE = 4` | pending | |
+| fb2g14ck4 | `GOAL_CHOKE = 4` | pending | |
