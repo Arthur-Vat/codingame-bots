@@ -319,6 +319,38 @@ fn dump(plans: &str, starts: &[String]) {
             ("outward", Order::Field(Field::Outward)),
             ("voronoi", Order::Voronoi),
             ("behind", Order::BehindFront),
+            (
+                "claim1",
+                Order::Claim {
+                    band: 1,
+                    future_first: false,
+                    moves: false,
+                },
+            ),
+            (
+                "claim2",
+                Order::Claim {
+                    band: 2,
+                    future_first: false,
+                    moves: false,
+                },
+            ),
+            (
+                "future",
+                Order::Claim {
+                    band: 2,
+                    future_first: true,
+                    moves: false,
+                },
+            ),
+            (
+                "moves",
+                Order::Claim {
+                    band: 2,
+                    future_first: false,
+                    moves: true,
+                },
+            ),
         ] {
             let mut planned = opening(order);
             let mut s = state.clone();

@@ -128,6 +128,69 @@ pub enum Order {
     /// frontline that are nearer our land than the frontline (a tie counts
     /// 1, [`behind_front`]), then the weighted sum (the owner, 2026-11-20).
     BehindFront,
+    /// The owner's three goals (2026-11-20), against an enemy assumed to
+    /// hold as many cells as our active land, the nearest to its HQ: first
+    /// the active cells (`moves`: the cells taken by unit moves, active
+    /// cells less units), then [`Claim`]'s two shares in the order of
+    /// `future_first`, then the weighted sum.
+    Claim {
+        band: i64,
+        future_first: bool,
+        moves: bool,
+    },
+}
+
+/// What a side would claim against an enemy holding as many cells as its
+/// active land, those nearest the enemy HQ by steps (all cells at the last
+/// distance included): twice the cells nearer its active land than that
+/// enemy land (a tie counts 1), among the cells within `band` rings of the
+/// frontline (`contested`) and among all cells (`future`). The enemy's land
+/// depends only on the map and the number of our cells, so plans with as
+/// many cells meet the same enemy.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Claim {
+    pub contested: i64,
+    pub future: i64,
+}
+
+/// [`Claim`] of `seat` in `state`, `rings` from [`rings`].
+pub fn claim(state: &State, seat: usize, rings: &[i64; CELLS], band: i64) -> Claim {
+    let active = state.active(seat);
+    let from_hq = econ::distances(state, Bits::cell(HQ[1 - seat]));
+    let mut steps: Vec<u8> = state
+        .map()
+        .valid
+        .iter()
+        .map(|c| from_hq[c])
+        .filter(|&d| d != u8::MAX)
+        .collect();
+    steps.sort_unstable();
+    let n = (active.count() as usize).clamp(1, steps.len().max(1));
+    let radius = steps.get(n - 1).copied().unwrap_or(0);
+    let mut enemy = Bits::EMPTY;
+    for c in state.map().valid.iter() {
+        if from_hq[c] <= radius {
+            enemy.set(c);
+        }
+    }
+    let ours = econ::distances(state, active);
+    let theirs = econ::distances(state, enemy);
+    let mut out = Claim::default();
+    for c in state.map().valid.iter() {
+        if ours[c] == u8::MAX {
+            continue;
+        }
+        let v = match ours[c].cmp(&theirs[c]) {
+            std::cmp::Ordering::Less => 2,
+            std::cmp::Ordering::Equal => 1,
+            std::cmp::Ordering::Greater => 0,
+        };
+        out.future += v;
+        if rings[c] <= band {
+            out.contested += v;
+        }
+    }
+    out
 }
 
 /// For each cell on `seat`'s side of the frontline (nearer its HQ than the
@@ -436,7 +499,7 @@ impl Zones {
             weights = field_weights(state, state.to_act(), field);
         }
         let (ring_of, frontier) = match objective.order {
-            Order::Frontier { .. } | Order::ByRing => {
+            Order::Frontier { .. } | Order::ByRing | Order::Claim { .. } => {
                 let r = rings(state);
                 let mut f = Bits::EMPTY;
                 for (c, &ring) in r.iter().enumerate() {
@@ -491,6 +554,24 @@ pub fn key(state: &State, seat: usize, objective: &Objective, zones: Zones) -> K
                 .map(|c| i64::from(d[c]).min(cap))
                 .sum();
             [i64::from(active.count()), -far, sum, 0]
+        }
+        Order::Claim {
+            band,
+            future_first,
+            moves,
+        } => {
+            let active = i64::from(state.active(seat).count());
+            let first = if moves {
+                active - i64::from(state.units(seat).count())
+            } else {
+                active
+            };
+            let c = claim(state, seat, &zones.rings, band);
+            if future_first {
+                [first, c.future, c.contested, sum]
+            } else {
+                [first, c.contested, c.future, sum]
+            }
         }
         Order::BehindFront => [
             i64::from(state.active(seat).count()),
