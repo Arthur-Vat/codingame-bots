@@ -98,6 +98,10 @@ fn places(state: &State) -> Vec<Bits> {
 #[allow(clippy::needless_range_loop)]
 fn main() {
     let path = std::env::args().nth(1).expect("oracle.csv");
+    if path == "census" {
+        census(std::env::args().nth(2).map_or(2000, |a| a.parse().expect("a count")));
+        return;
+    }
     let text = std::fs::read_to_string(path).expect("read");
     let mut starts: BTreeSet<(u64, usize)> = text
         .lines()
@@ -141,7 +145,7 @@ fn main() {
     for &(seed, seat) in &starts {
         let state = start(seed, seat);
         let groups = places(&state);
-        if !(2..=3).contains(&groups.len()) {
+        if groups.len() < 2 {
             continue;
         }
         n += 1;
@@ -193,5 +197,30 @@ fn main() {
                 all[i][turn]
             );
         }
+    }
+}
+
+/// `census N`: how many places the middle chokes of N maps lie in, and the
+/// first seeds with 3 or more.
+fn census(maps: usize) {
+    let mut x: u64 = 0x9E37_79B9_7F4A_7C15;
+    let mut by: std::collections::BTreeMap<usize, usize> = Default::default();
+    let mut three = Vec::new();
+    for _ in 0..maps {
+        x = x
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        let seed = x >> 1;
+        let state = start(seed, 0);
+        let groups = places(&state);
+        *by.entry(groups.len()).or_default() += 1;
+        if groups.len() >= 3 && three.len() < 50 {
+            three.push((seed, groups.iter().map(|g| g.count()).collect::<Vec<_>>()));
+        }
+    }
+    println!("places: maps {by:?}");
+    // With the grouping at 1 step (adjacent chokes only).
+    for (seed, sizes) in three {
+        println!("{seed}: {sizes:?}");
     }
 }

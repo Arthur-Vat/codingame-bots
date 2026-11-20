@@ -151,3 +151,24 @@ sooner (27 of 87 by turn 8, 63 by turn 10) and holds more places at every
 turn; `tie12` is between. The bot hands over to the middle-game search at
 game turn 7, so turns 8 to 10 here show where the opening's plans lead,
 not what the bot plays.
+
+### Three places and more
+
+The owner then asked about three places. `places census 20000` groups the
+middle chokes of 20,000 maps from the same seed sequence: no place 8,429
+maps (42%), one 9,186 (46%), two 2,335 (12%), three none, four 50
+(0.25%). Three never occurs: the maps are point-symmetric, so a place off
+the centre has its mirror, and a place on the centre would merge with
+nothing else to make three; the four-place maps are two mirrored pairs.
+
+On the 50 four-place maps, both seats (100 starts), one side alone:
+
+| Opening | ≥ 2 places at our turns 7 / 8 / 10 | ≥ 3 places at turns 7 / 8 / 10 | Places held at turn 8 / 10 (of 400) |
+| --- | --- | --- | --- |
+| v029 | 11 / 48 / 99 | 1 / 9 / 36 | 156 / 235 |
+| tie12 | 17 / 77 / 100 | 2 / 15 / 40 | 192 / 241 |
+| land | 21 / 86 / 100 | 1 / 33 / 85 | 219 / 295 |
+
+With four places, `land` spreads to three of them by turn 10 on 85 of 100
+starts, against 36 for v029; few starts hold all four (10 for `land`,
+none for v029), since the far pair lies nearer the enemy.
