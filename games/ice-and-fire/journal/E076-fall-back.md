@@ -161,11 +161,42 @@ The rush's fixes on top of fb2g14 with the 3-training goal rush (B), seed
 
 | Variant | Switches beyond fb2g14 | Elo over v030 [95%] | Faults (variant / v030) |
 | --- | --- | --- | ---: |
-| fb2g14 | none | pending | |
-| B | `RUSH_LENGTH = 3`, `RUSH_GOAL` | pending | |
-| Bskip | B, `RUSH_SKIP_ENEMY` | pending | |
-| Bleap | B, `RUSH_LEAP` | pending | |
-| Bck4 | B, `GOAL_CHOKE = 4` | pending | |
-| Bck8 | B, `GOAL_CHOKE = 8` | pending | |
-| Ball | B, `RUSH_SKIP_ENEMY`, `RUSH_LEAP`, `GOAL_CHOKE = 4` | pending | |
-| fb2g14ck4 | `GOAL_CHOKE = 4` | pending | |
+| fb2g14 | none | +17.8 [+4.7, +31.0] | 0 / 0 |
+| B | `RUSH_LENGTH = 3`, `RUSH_GOAL` | +5.2 [−7.5, +17.9] | 0 / 0 |
+| Bskip | B, `RUSH_SKIP_ENEMY` | +12.2 [−0.4, +24.7] | 0 / 0 |
+| Bleap | B, `RUSH_LEAP` | +12.2 [−1.4, +25.8] | 1 / 0 |
+| Bck4 | B, `GOAL_CHOKE = 4` | +15.2 [+1.3, +29.2] | 0 / 0 |
+| Bck8 | B, `GOAL_CHOKE = 8` | −0.4 [−14.0, +13.2] | 1 / 0 |
+| Ball | B, `RUSH_SKIP_ENEMY`, `RUSH_LEAP`, `GOAL_CHOKE = 4` | +15.6 [+2.0, +29.4] | 0 / 0 |
+| fb2g14ck4 | `GOAL_CHOKE = 4` | +6.5 [−7.0, +20.0] | 0 / 0 |
+
+fb2g14 holds a third time: +18.3, +30.0, +17.8 on three seeds, about +22
+over 2,400 pairs. Each fix lifts the goal rush (B +5.2; skip and leap
++12.2; chokes 4 +15.2; all three +15.6) but none goes beyond fb2g14 in the
+same round; chokes at 8 lose the gain, and chokes at 4 without the rush add
+nothing.
+
+### Round 6
+
+The owner, 2026-11-20: "Stops chasing lost goals, and also defend when the
+opponent can grab territory?", "territory in the center is key, because we
+1. Lose that cell for the opponent 2. Shrink our territory. So it shouldn't
+be counted as a single cell"; his choices: value a centre cell by the land
+it decides (`eval::VORONOI`: each cell nearer to a side's active land than
+to the enemy's counts for it, until `VORONOI_UNTIL` = 14), and defend by
+training onto it first, a tower behind it, and blocking its path
+(`actions::RUSH_DEFEND`: for the chokes and band cells the enemy reaches
+first or can take at its next turn, the chain that takes them this turn
+and towers on or next to them; the path is blocked by the single trainings
+already offered). Seed 2026112006, run 44780199145:
+
+| Variant | Switches | Elo over v030 [95%] | Faults (variant / v030) |
+| --- | --- | --- | ---: |
+| fbv1 | fb2g14, `VORONOI = 1` | pending | |
+| fbv2 | fb2g14, `VORONOI = 2` | pending | |
+| fbd | fb2g14, `RUSH_DEFEND` | pending | |
+| fbdv1 | fb2g14, `RUSH_DEFEND`, `VORONOI = 1` | pending | |
+| fbdv2 | fb2g14, `RUSH_DEFEND`, `VORONOI = 2` | pending | |
+| Bdv1 | B, `RUSH_DEFEND`, `VORONOI = 1` | pending | |
+| Balldv1 | Ball, `RUSH_DEFEND`, `VORONOI = 1` | pending | |
+| v1 | `VORONOI = 1` alone | pending | |
