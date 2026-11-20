@@ -1,7 +1,7 @@
 ---
 id: E073
 date: 2026-11-20
-pull_request: "#NN"
+pull_request: "#372"
 parent: ice-and-fire-v029
 hypothesis: An opening that ranks its plans by the most land first, then by how central their cells are, with the search's evaluation keeping the opening's goal (the contested band held) until game turn 10, beats ice-and-fire-v029 (candidate ice-and-fire-v030).
 change: The opening's beam ranks positions by `Order::Central(Linear(7))` (active cells, then the sum of 7 less each cell's ring) instead of its weighted sum; the search's evaluation adds 4 for each contested band cell held (ours less the enemy's) until game turn 10 (`eval::GOAL_OWNED`).
