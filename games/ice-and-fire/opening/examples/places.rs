@@ -94,6 +94,8 @@ fn places(state: &State) -> Vec<Bits> {
     out
 }
 
+// The turns index the per-turn tallies.
+#[allow(clippy::needless_range_loop)]
 fn main() {
     let path = std::env::args().nth(1).expect("oracle.csv");
     let text = std::fs::read_to_string(path).expect("read");
