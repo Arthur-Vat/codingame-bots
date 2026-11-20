@@ -15,9 +15,11 @@ use ice_and_fire_engine::{Command, State};
 
 pub use roles::Memory;
 
-/// How the strategic turn reaches the search (E077): 0, not at all (v031);
-/// 1, offered as one macro action at the climbs' root; 2, the first climb
-/// of each turn starts with it; 3, both.
+/// How the strategic turn reaches the search (E077), bits added: 0, not at
+/// all (v031); 1, offered as one macro action at the climbs' root; 2, the
+/// first climb of each turn starts with it; 4, its pieces (each frontline
+/// unit's step and the training at its tip) offered as macro actions at
+/// every step of the climbs.
 pub const TURN: u8 = 0;
 
 /// Which trainings the strategic turn holds (E077): 1, at the frontline
@@ -53,6 +55,8 @@ pub struct Guide {
     pub offered: bool,
     /// Whether the first climb starts with the plan.
     pub start: bool,
+    /// The plan's pieces offered as macro actions, empty for none.
+    pub pieces: Vec<Vec<Command>>,
     /// For the objectives' term: each objective's cell, value and the count
     /// it gets when neither side holds it (`OBJECTIVE_RACE`).
     pub objectives: Vec<(usize, i64, i64)>,
@@ -129,7 +133,13 @@ pub fn guide_with(
             (o.cell, o.value, neutral)
         })
         .collect();
+    let pieces = if mode & 4 != 0 {
+        turn::pieces(state, &roles)
+    } else {
+        Vec::new()
+    };
     Some(Guide {
+        pieces,
         offered: !plan.is_empty() && mode & 1 != 0,
         start: !plan.is_empty() && mode & 2 != 0,
         plan,

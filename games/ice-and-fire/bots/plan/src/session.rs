@@ -38,13 +38,14 @@ pub fn play(
                     None => think(&state, limit(start, turn), &mut opening),
                 };
                 eprintln!(
-                    "turn {turn}: climbs {} tries {} memory {} checks {} forced {} strategic {} {:?}",
+                    "turn {turn}: climbs {} tries {} memory {} checks {} forced {} strategic {} {} {:?}",
                     thought.climbs,
                     thought.evals,
                     thought.memory,
                     thought.checks,
                     thought.forced,
                     u8::from(thought.strategic),
+                    thought.pieces,
                     start.elapsed()
                 );
                 answer_line(&thought.commands)

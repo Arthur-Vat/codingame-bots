@@ -111,6 +111,8 @@ pub struct Thought {
     pub opening: bool,
     /// Whether the plan played starts with the strategic turn (E077).
     pub strategic: bool,
+    /// The strategic turn's pieces the plan played holds (E077).
+    pub pieces: usize,
 }
 
 /// Whether the plan played must have had its own replies searched (E027).
@@ -380,6 +382,15 @@ impl Search {
         }
     }
 
+    /// Adds the strategic turn's pieces to `actions` (E077).
+    fn add_pieces(&self, actions: &mut Vec<Action>) {
+        if let Some(guide) = &self.guide {
+            for piece in &guide.pieces {
+                actions.push(Action::Many(piece.clone()));
+            }
+        }
+    }
+
     /// One pass over `actions` in `order` from the plan state `cur`: the best
     /// action that scores above `cur_score`, with its state and score. With
     /// `lazy`, stops at the first action whose last gain is no more than the
@@ -447,11 +458,13 @@ impl Search {
                         if let Some(guide) = self.guide.as_ref().filter(|g| g.offered) {
                             actions.push(Action::Many(guide.plan.clone()));
                         }
+                        self.add_pieces(&mut actions);
                         self.root_actions = Some(actions.clone());
                     }
                 }
             } else {
                 generate(&cur, &mut actions);
+                self.add_pieces(&mut actions);
             }
             blockers(&cur, memory, &mut actions);
             order.clear();
@@ -790,6 +803,12 @@ pub fn think_with(
             .guide
             .as_ref()
             .is_some_and(|g| !g.plan.is_empty() && plans[index].commands.starts_with(&g.plan));
+        thought.pieces = search.guide.as_ref().map_or(0, |g| {
+            g.pieces
+                .iter()
+                .filter(|p| p.iter().all(|c| plans[index].commands.contains(c)))
+                .count()
+        });
         // Each command is checked once more, in order, on a scratch copy.
         let mut scratch = state.clone();
         for &command in &plans[index].commands {

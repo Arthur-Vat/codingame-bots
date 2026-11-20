@@ -49,6 +49,25 @@ fn accepted(scratch: &mut State, out: &mut Vec<Command>, command: Command) -> bo
     ok
 }
 
+/// The pieces of the strategic turn (E077, [`super::TURN`]'s 4): for each
+/// frontline unit, its step toward its objective and the training at its
+/// tip that the gold pays, each made alone from `state`, the units in role
+/// order; pieces the rules refuse are left out.
+pub fn pieces(state: &State, roles: &Roles) -> Vec<Vec<Command>> {
+    let mut out = Vec::new();
+    for &(id, goal) in &roles.frontline {
+        let one = Roles {
+            frontline: vec![(id, goal)],
+            ..Roles::default()
+        };
+        let piece = strategic_turn(state, &one, false);
+        if !piece.is_empty() {
+            out.push(piece);
+        }
+    }
+    out
+}
+
 /// The commands of the strategic turn of the player to act in `state`, with
 /// `roles` its roles this turn; with `role_trainings`, also the trainings the
 /// roles give the objectives no frontline unit covers.
