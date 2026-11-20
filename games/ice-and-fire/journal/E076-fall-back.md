@@ -1,7 +1,7 @@
 ---
 id: E076
 date: 2026-11-20
-pull_request: "#NN"
+pull_request: "#375"
 parent: ice-and-fire-v030
 hypothesis: Units that, when the enemy can reach them, step along the border leaving a tower on the cell they held, as zasmu does, with the contested band counted until game turn 14, hold more land after the first contacts and beat ice-and-fire-v030 (candidate ice-and-fire-v031).
 change: The search is also offered, for each unit on a cell the enemy can reach, a step onto another of our cells next to an enemy cell together with a tower on the cell it leaves (`actions::FALL_BACK = 2`), and the evaluation counts the contested band until game turn 14 (`eval::GOAL_UNTIL`, 10 before); the rush from the tip, the centre's defence and the land term screened alongside stay behind switches that are off.
