@@ -165,11 +165,20 @@ v031, cut at game turn 12 (run 44835317605) and full games (run
 
 | Variant | Switches | Cut at turn 12 | Full games |
 | --- | --- | --- | --- |
-| t2bs | `TURN = 2`, `BACK_ONLY`, `SAFE_STEP` | | |
-| t4bs | `TURN = 4`, `BACK_ONLY`, `SAFE_STEP` | | |
-| t1bs | `TURN = 1`, `BACK_ONLY`, `SAFE_STEP` | | |
-| t7bs | `TURN = 7`, `BACK_ONLY`, `SAFE_STEP` | | |
-| t2gs | `TURN = 2`, `GUARD = 1`, `SAFE_STEP` | | |
-| t4gs | `TURN = 4`, `GUARD = 1`, `SAFE_STEP` | | |
-| t2g | `TURN = 2`, `GUARD = 1` | | |
-| t4g | `TURN = 4`, `GUARD = 1` | | |
+| t2bs | `TURN = 2`, `BACK_ONLY`, `SAFE_STEP` | −3.9 [−18.2, +10.4] | +14.8 [+1.0, +28.6] |
+| t4bs | `TURN = 4`, `BACK_ONLY`, `SAFE_STEP` | −10.9 [−23.2, +1.5] | −4.3 [−16.0, +7.3] |
+| t1bs | `TURN = 1`, `BACK_ONLY`, `SAFE_STEP` | +2.2 [−9.6, +13.9] | −5.2 [−17.4, +7.0] |
+| t7bs | `TURN = 7`, `BACK_ONLY`, `SAFE_STEP` | −7.4 [−21.5, +6.7] | +7.8 [−5.9, +21.6] |
+| t2gs | `TURN = 2`, `GUARD = 1`, `SAFE_STEP` | −11.3 [−25.2, +2.6] | ±0.0 [−13.5, +13.5] |
+| t4gs | `TURN = 4`, `GUARD = 1`, `SAFE_STEP` | −7.4 [−20.2, +5.4] | −11.7 [−24.4, +0.9] |
+| t2g | `TURN = 2`, `GUARD = 1` | −19.1 [−33.2, −5.1] | −3.5 [−17.5, +10.6] |
+| t4g | `TURN = 4`, `GUARD = 1` | −4.3 [−17.7, +9.0] | −17.8 [−30.8, −4.9] |
+
+All faults 0. In full games, the first climb starting with the strategic
+turn of the back units with the safe step (t2bs) leads at +14.8, the only
+interval above 0, and the same rules in all three ways (t7bs) read +7.8;
+the tower guard is level at best (t2gs ±0.0) and loses as pieces (t4g
+−17.8). Cut at game turn 12, no variant gains (t1bs +2.2 best, t2bs −3.9):
+the cut duels, which end two turns before the layer does, did not track
+the full games in either round. After 16 variants, the leader needs new
+seeds before any SPRT.
