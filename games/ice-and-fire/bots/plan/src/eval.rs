@@ -386,7 +386,7 @@ pub const WALL_THREAT: bool = true;
 /// What each active tower of a side that guards nothing the enemy could take
 /// at its next turn, were it not guarded, counts less than the shared
 /// evaluation's 10 (E075): 0 for nothing (v030).
-pub const IDLE_TOWER: i64 = 0;
+pub const IDLE_TOWER: i64 = 10;
 
 /// The active cells of `seat` that the enemy could take at its next turn
 /// were none of them guarded by `seat`'s towers ([`reach`] past them).
