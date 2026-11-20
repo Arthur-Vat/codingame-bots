@@ -156,3 +156,20 @@ training" plays as "back units only", since back units leave no exposed
 cell.) Each fix halves the losses or more, and back units with the safe
 step hold more objectives than the search's plan, but none reaches its
 units or its cell lead.
+
+### Round 2
+
+Seed 2026112103, 800 pairs a variant over 2 calibrated runners, against
+v031, cut at game turn 12 (run 44835317605) and full games (run
+44835320532):
+
+| Variant | Switches | Cut at turn 12 | Full games |
+| --- | --- | --- | --- |
+| t2bs | `TURN = 2`, `BACK_ONLY`, `SAFE_STEP` | | |
+| t4bs | `TURN = 4`, `BACK_ONLY`, `SAFE_STEP` | | |
+| t1bs | `TURN = 1`, `BACK_ONLY`, `SAFE_STEP` | | |
+| t7bs | `TURN = 7`, `BACK_ONLY`, `SAFE_STEP` | | |
+| t2gs | `TURN = 2`, `GUARD = 1`, `SAFE_STEP` | | |
+| t4gs | `TURN = 4`, `GUARD = 1`, `SAFE_STEP` | | |
+| t2g | `TURN = 2`, `GUARD = 1` | | |
+| t4g | `TURN = 4`, `GUARD = 1` | | |
