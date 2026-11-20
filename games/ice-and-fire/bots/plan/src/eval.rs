@@ -65,7 +65,7 @@
 //!   its towers, and the middle chokes it holds count for it ([`goal`]).
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
-use ice_and_fire_tactics::chain::{reach_past_towers, reach_within_moving};
+use ice_and_fire_tactics::chain::reach_within_moving;
 use ice_and_fire_tactics::eval::evaluate_with_movers;
 
 /// The lowest level of a unit whose moves count in [`exposed`] (E037): 1 to
@@ -378,52 +378,13 @@ pub fn frontier(state: &State, seat: usize) -> (Bits, Bits) {
     (front, front & (towers | towers.neighbours()))
 }
 
-/// Whether the tower wall counts, of the guarded frontier cells, only those
-/// the enemy could take at its next turn were they not guarded (E075):
-/// false for all of them (v030).
-pub const WALL_THREAT: bool = false;
-
-/// What each active tower of a side that guards nothing the enemy could take
-/// at its next turn, were it not guarded, counts less than the shared
-/// evaluation's 10 (E075): 0 for nothing (v030).
-pub const IDLE_TOWER: i64 = 0;
-
-/// The active cells of `seat` that the enemy could take at its next turn
-/// were none of them guarded by `seat`'s towers ([`reach`] past them).
-fn exposed_past_towers(state: &State, seat: usize) -> Bits {
-    let enemy = 1 - seat;
-    let budget = state.gold(enemy) + state.income(enemy);
-    reach_past_towers(state, enemy, movers(state, enemy), budget) & state.active(seat)
-}
-
 /// What the tower wall of `seat` counts (E068): [`WALL`] for each of its
-/// frontier cells guarded by one of its towers; with [`WALL_THREAT`], only
-/// those the enemy could take were they not guarded. Less [`IDLE_TOWER`] for
-/// each of its active towers whose cell and active neighbours the enemy
-/// could not take even then (E075).
+/// frontier cells guarded by one of its towers.
 fn wall(state: &State, seat: usize) -> i64 {
-    let towers = state.towers() & state.active(seat);
-    if towers.is_empty() {
+    if WALL == 0 {
         return 0;
     }
-    let guarded = frontier(state, seat).1;
-    if !WALL_THREAT && IDLE_TOWER == 0 {
-        return WALL * i64::from(guarded.count());
-    }
-    let past = exposed_past_towers(state, seat);
-    let wall = if WALL_THREAT {
-        WALL * i64::from((guarded & past).count())
-    } else {
-        WALL * i64::from(guarded.count())
-    };
-    let mut idle = 0;
-    if IDLE_TOWER != 0 {
-        for tower in towers.iter() {
-            let zone = Bits::cell(tower) | Bits::cell(tower).neighbours();
-            idle += i64::from((zone & past).is_empty());
-        }
-    }
-    wall - IDLE_TOWER * idle
+    WALL * i64::from(frontier(state, seat).1.count())
 }
 
 /// The opening's goal kept in the search (E073), as weights of its parts,

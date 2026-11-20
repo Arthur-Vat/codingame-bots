@@ -4,13 +4,13 @@ date: 2026-11-20
 pull_request: "#NN"
 parent: ice-and-fire-v030
 hypothesis: Towers built only when the enemy's next turn could take what they guard, the gold kept for units and mines until then, beat ice-and-fire-v030.
-change: The tower wall of the evaluation (E068) counts only the guarded frontier cells the enemy could take at its next turn were they not guarded, and switches screen two related changes (towers that guard nothing so counted lose their static value; the HQ guard of E026 against the next turn only).
+change: None released. Screening only: the tower wall of the evaluation (E068) counting only the guarded frontier cells the enemy could take at its next turn were they not guarded; towers that guard nothing so threatened losing their static value; the HQ guard of E026 against the next turn only.
 release: none
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: not run: level or weaker in screening
+elo: none
+pairs: none
+full_time: none
+decision: dropped
 cg_rank: none
 ---
 
@@ -61,16 +61,38 @@ Switches, all off in v030:
 
 ## Screening
 
-Local, full games with `ice-and-fire-arena match` against v030's release
-compiled with `rustc -C opt-level=3`, the variants built with
-`cargo build --release`, time scale 0.430 and 6 ms of tolerance from
-`scripts/calibrate.sh` at 3 games at a time on the session's 4 CPUs, seed
-91:
+Full games against v030 on GitHub (`screen.yml`, run 44757582435), 800
+pairs a variant over 2 calibrated runners, the workflow's own seed; and
+locally (`ice-and-fire-arena match` against v030's release compiled with
+`rustc -C opt-level=3`, the variants built with `cargo build --release`,
+time scale 0.430 and 6 ms of tolerance from `scripts/calibrate.sh` at 3
+games at a time on the session's 4 CPUs, seed 91, 400 pairs):
 
-| Variant | Switches | Elo over v030 [95%] | Pairs | Timeouts (variant / v030) |
-| --- | --- | --- | ---: | ---: |
-| base | none (control) | pending | | |
-| wt | `WALL_THREAT` | pending | | |
-| wti | `WALL_THREAT`, `IDLE_TOWER = 10` | pending | | |
-| idle | `IDLE_TOWER = 10` | pending | | |
-| hq0 | `HQ_GUARD_INCOMES = 0` | pending | | |
+| Variant | Switches | GitHub, 800 pairs [95%] | Local, 400 pairs [95%] |
+| --- | --- | --- | --- |
+| base | none (control) | – | +11.3 [−8.0, +30.7] |
+| wt | `WALL_THREAT` | −0.4 [−12.8, +11.9] | −13.9 [−31.8, +3.9] |
+| wti | `WALL_THREAT`, `IDLE_TOWER = 10` | −14.3 [−26.3, −2.4] | −2.6 [−21.5, +16.3] |
+| idle | `IDLE_TOWER = 10` | −10.0 [−22.2, +2.2] | −8.7 [−25.7, +8.3] |
+| hq0 | `HQ_GUARD_INCOMES = 0` | −1.7 [−11.1, +7.6] | +6.1 [−11.0, +23.2] |
+
+No fault on GitHub; locally 1 to 3 timeouts a side for the variants. The
+local control ran while the session analysed CodinGame games alongside
+(14 and 16 timeouts), so the local column is noisy by about ±17. The new
+reach did not slow the bot: its answer times match v030's.
+
+## What was learned
+
+Making towers cheaper in the evaluation does not pay. Taking their static
+value away from towers that guard nothing the enemy could take loses about
+10; counting the wall only where a cell is threatened, or guarding the HQ
+only against the next turn, is level. The towers that spare nothing at the
+enemy's best next cut earn their cost some other way, likely over more
+than one enemy turn. The owner then asked (2026-11-20) for an analysis of
+zasmu's games before any new change; it led to E076, whose candidate
+builds towers where units fall back.
+
+Dropped. The code (`tactics::chain::reach_past_towers`, the switches
+`eval::WALL_THREAT`, `eval::IDLE_TOWER`, `actions::HQ_GUARD_INCOMES` and
+their tests) stays reachable at commit 16f0c7a of the branch
+`claude/ice-and-fire-e075-towers-in-time`.

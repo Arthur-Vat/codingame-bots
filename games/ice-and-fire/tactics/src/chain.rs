@@ -74,53 +74,6 @@ pub fn reach_within_moving(state: &State, seat: usize, movers: Bits, budget: i64
     reached.and_not(state.active(seat))
 }
 
-/// [`reach_within_moving`] as if the towers of the other side protected
-/// nothing (E075): the cells `seat` could take were none of them guarded.
-pub fn reach_past_towers(state: &State, seat: usize, movers: Bits, budget: i64) -> Bits {
-    let mut reached = Bits::EMPTY;
-    let entry = past_towers(state, seat);
-    flood_with(state, seat, movers, entry, |step, new| {
-        if 10 * step as i64 > budget {
-            return true;
-        }
-        reached |= new;
-        false
-    });
-    reached.and_not(state.active(seat))
-}
-
-/// `enter[l - 1]`: the cells a unit of level `l` of `seat` may enter, as
-/// [`State::enterable`] gives them.
-fn enterable(state: &State, seat: usize) -> [Bits; 3] {
-    let mut enter = [Bits::EMPTY; 3];
-    for level in 1..=state.league().max_level() {
-        enter[usize::from(level) - 1] = state.enterable(seat, level);
-    }
-    enter
-}
-
-/// [`enterable`] as if the other side's towers protected nothing: a level
-/// below 3 may enter what level 3 may, except the cells of units it does
-/// not beat (RULES.md, "Capture").
-fn past_towers(state: &State, seat: usize) -> [Bits; 3] {
-    let mut enter = enterable(state, seat);
-    let max = state.league().max_level();
-    if !state.league().allows_towers() || max < 3 {
-        return enter;
-    }
-    let all = enter[2];
-    let units = state.units(0) | state.units(1);
-    let mut strong = Bits::EMPTY;
-    for cell in units.iter() {
-        if state.unit_level(cell).is_some_and(|level| level >= 2) {
-            strong.set(cell);
-        }
-    }
-    enter[0] = all.and_not(units);
-    enter[1] = all.and_not(strong);
-    enter
-}
-
 /// The units that step first in a search with `moves`: the movable units of
 /// `seat` when it is to act, else none.
 fn movers(state: &State, seat: usize, moves: bool) -> Bits {
@@ -135,16 +88,10 @@ fn movers(state: &State, seat: usize, moves: bool) -> Bits {
 /// cells first reached at the cost of `step` steps of 10 gold, cheapest
 /// first, until `visit` returns true or no cell is left. The units of
 /// `seat` on the cells `movers` step first, at no cost.
-fn flood_from(state: &State, seat: usize, movers: Bits, visit: impl FnMut(usize, Bits) -> bool) {
-    flood_with(state, seat, movers, enterable(state, seat), visit);
-}
-
-/// [`flood_from`] on the cells `enter[l - 1]` a unit of level `l` may enter.
-fn flood_with(
+fn flood_from(
     state: &State,
     seat: usize,
     movers: Bits,
-    enter: [Bits; 3],
     mut visit: impl FnMut(usize, Bits) -> bool,
 ) {
     let max = state.league().max_level();
@@ -152,7 +99,7 @@ fn flood_with(
     let mut entry = [Bits::EMPTY; 3];
     let mut seen = Bits::EMPTY;
     for level in 1..=max {
-        let bits = enter[usize::from(level) - 1];
+        let bits = state.enterable(seat, level);
         entry[usize::from(level) - 1] = bits.and_not(seen);
         seen |= bits;
     }
@@ -160,7 +107,7 @@ fn flood_with(
     let mut open = [state.active(seat), Bits::EMPTY, Bits::EMPTY, Bits::EMPTY];
     for cell in (movers & state.units(seat)).iter() {
         if let Some(level) = state.unit_level(cell).filter(|&level| level <= max) {
-            open[0] |= Bits::cell(cell).neighbours() & enter[usize::from(level) - 1];
+            open[0] |= Bits::cell(cell).neighbours() & state.enterable(seat, level);
         }
     }
     let mut done = Bits::EMPTY;

@@ -22,16 +22,11 @@ use crate::eval::threatened;
 /// variant).
 pub const HQ_GUARD: bool = true;
 
-/// The enemy's incomes beyond its gold within which [`HQ_GUARD`] counts a
-/// chain to our HQ: 2 since E026 (two of its turns); 0 guards only against
-/// its next turn (E075).
-pub const HQ_GUARD_INCOMES: i64 = 2;
-
 /// Whether a tower on `cell` guards something for the player to act (E026):
 /// it lowers the cells of ours the enemy can take at its next turn
 /// ([`threatened`]), or, with [`HQ_GUARD`], it raises the enemy's chain to
-/// our HQ while that chain costs at most the enemy's gold plus
-/// [`HQ_GUARD_INCOMES`] of its incomes. `threats` is `threatened(state, me)`, `reach` the cells the
+/// our HQ while that chain costs at most the enemy's gold plus two of its
+/// incomes. `threats` is `threatened(state, me)`, `reach` the cells the
 /// enemy's chains reach behind it, and `chain` the enemy's chain to our HQ,
 /// before the tower.
 ///
@@ -42,8 +37,7 @@ pub const HQ_GUARD_INCOMES: i64 = 2;
 fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64) -> bool {
     let me = state.to_act();
     let enemy = 1 - me;
-    let hq_guard =
-        HQ_GUARD && chain <= state.gold(enemy) + HQ_GUARD_INCOMES * state.income(enemy).max(0);
+    let hq_guard = HQ_GUARD && chain <= state.gold(enemy) + 2 * state.income(enemy).max(0);
     let zone = Bits::cell(cell) | Bits::cell(cell).neighbours();
     if !hq_guard && (zone & reach).is_empty() {
         return false;
