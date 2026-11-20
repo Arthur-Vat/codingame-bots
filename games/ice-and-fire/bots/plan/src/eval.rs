@@ -381,7 +381,7 @@ pub fn frontier(state: &State, seat: usize) -> (Bits, Bits) {
 /// Whether the tower wall counts, of the guarded frontier cells, only those
 /// the enemy could take at its next turn were they not guarded (E075):
 /// false for all of them (v030).
-pub const WALL_THREAT: bool = true;
+pub const WALL_THREAT: bool = false;
 
 /// What each active tower of a side that guards nothing the enemy could take
 /// at its next turn, were it not guarded, counts less than the shared
