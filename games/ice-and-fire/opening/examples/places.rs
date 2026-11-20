@@ -295,6 +295,9 @@ fn dump(plans: &str, starts: &[String]) {
             ("land", Order::LandFirst),
             ("lin3", Order::Central(Decay::Linear(3))),
             ("half8", Order::Central(Decay::Halving(8))),
+            ("lin5", Order::Central(Decay::Linear(5))),
+            ("lin7", Order::Central(Decay::Linear(7))),
+            ("lin9", Order::Central(Decay::Linear(9))),
         ] {
             let mut planned = opening(order);
             let mut s = state.clone();
