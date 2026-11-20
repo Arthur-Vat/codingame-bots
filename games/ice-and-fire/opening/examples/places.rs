@@ -14,7 +14,7 @@
 use std::collections::BTreeSet;
 
 use ice_and_fire_early::zones::Zones;
-use ice_and_fire_engine::{Bits, League, State};
+use ice_and_fire_engine::{Bits, Command, League, State};
 use ice_and_fire_opening::econ::{distances, Params};
 use ice_and_fire_opening::planned::{Planned, Planner};
 use ice_and_fire_opening::solo::{self, Objective, Order};
@@ -98,8 +98,17 @@ fn places(state: &State) -> Vec<Bits> {
 #[allow(clippy::needless_range_loop)]
 fn main() {
     let path = std::env::args().nth(1).expect("oracle.csv");
+    if path == "dump" {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        dump(&args[0], &args[1..]);
+        return;
+    }
     if path == "census" {
-        census(std::env::args().nth(2).map_or(2000, |a| a.parse().expect("a count")));
+        census(
+            std::env::args()
+                .nth(2)
+                .map_or(2000, |a| a.parse().expect("a count")),
+        );
         return;
     }
     let text = std::fs::read_to_string(path).expect("read");
@@ -222,5 +231,93 @@ fn census(maps: usize) {
     // With the grouping at 1 step (adjacent chokes only).
     for (seed, sizes) in three {
         println!("{seed}: {sizes:?}");
+    }
+}
+
+/// One command as CodinGame reads it (moves and trainings only).
+fn command(text: &str) -> Option<Command> {
+    let w: Vec<&str> = text.split(' ').collect();
+    match w.as_slice() {
+        ["MOVE", id, x, y] => Some(Command::Move {
+            id: id.parse().ok()?,
+            x: x.parse().ok()?,
+            y: y.parse().ok()?,
+        }),
+        ["TRAIN", level, x, y] => Some(Command::Train {
+            level: level.parse().ok()?,
+            x: x.parse().ok()?,
+            y: y.parse().ok()?,
+        }),
+        _ => None,
+    }
+}
+
+fn cells(bits: Bits) -> String {
+    bits.iter()
+        .map(|c| c.to_string())
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+/// `dump PLANS SEED:SEAT...`: for pictures, each start's map, its middle
+/// chokes and band, and the land and units after our turns 7 and 8 of
+/// v029's opening, tie12, land and the study's best plan (the most cells,
+/// then the most middle chokes).
+fn dump(plans: &str, starts: &[String]) {
+    let text = std::fs::read_to_string(plans).expect("plans");
+    for spec in starts {
+        let (seed, seat) = spec.split_once(':').expect("SEED:SEAT");
+        let (seed, seat): (u64, usize) = (seed.parse().unwrap(), seat.parse().unwrap());
+        let state = start(seed, seat);
+        println!("START {seed} {seat}");
+        println!("VALID {}", cells(state.map().valid));
+        println!("CHOKES {}", cells(Zones::of(&state).middle_chokes()));
+        println!("BAND {}", cells(solo::middle_band(&state)));
+        let show = |name: &str, turn: usize, s: &State| {
+            println!(
+                "PANEL {name} {turn} {} | {} | {}",
+                cells(s.owned(seat)),
+                cells(s.active(seat)),
+                cells(s.units(seat))
+            );
+        };
+        for (name, order) in [
+            ("v029", Order::Sum),
+            ("tie12", Order::TieBreak { within: 12 }),
+            ("land", Order::LandFirst),
+        ] {
+            let mut planned = opening(order);
+            let mut s = state.clone();
+            for turn in 1..=8 {
+                if s.outcome().is_none() {
+                    let c = planned.turn(&s, None);
+                    s = solo::advance(&s, &c);
+                }
+                if turn >= 7 {
+                    show(name, turn, &s);
+                }
+            }
+        }
+        for turns in [7, 8] {
+            let row = text.lines().find(|l| {
+                let f: Vec<&str> = l.split('\t').collect();
+                f.len() >= 9
+                    && f[0] == seed.to_string()
+                    && f[1] == seat.to_string()
+                    && f[2] == turns.to_string()
+                    && f[3] == "chokes"
+                    && f[4] == "0"
+            });
+            let Some(row) = row else { continue };
+            let plan = row.split('\t').nth(8).unwrap_or("");
+            let mut s = state.clone();
+            for turn in plan.split(" | ") {
+                let c: Vec<Command> = turn.split(';').filter_map(command).collect();
+                if s.outcome().is_none() {
+                    s = solo::advance(&s, &c);
+                }
+            }
+            show("best", turns, &s);
+        }
     }
 }
