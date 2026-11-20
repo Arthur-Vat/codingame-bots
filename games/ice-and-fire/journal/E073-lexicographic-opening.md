@@ -303,3 +303,44 @@ Every order that puts the land first scores between +10 and +35 in the
 cut duels, and no two differ by more than the noise of 400 pairs (about
 ±23). What they share, the most land first, gains about +20; the
 tie-breaks after it are not told apart by this judge.
+
+## Other measures and longer plans
+
+The owner's questions (2026-11-20), each shown on the 10 boards
+(`opening/examples/places.rs dump`, pictures sent in the conversation):
+
+- static weight maps from the HQs' steps (`Order::Field`): `Corridor`
+  (rings less half the detour off the shortest paths between the HQs; on
+  these maps nearly every cell lies on such a path, so it equals the
+  rings), `Reachable` (rings within 9 steps of our HQ: too strict, most of
+  the even line is farther), `Outward` (steps from our HQ up to halfway:
+  every cell beyond is equal, so it plays like `land`);
+- `Voronoi` (the share against the enemy's start, weak: with the opponent
+  passing, almost all our half is already ours) and `BehindFront` (the
+  cells of our side of the frontline nearer our land than the frontline:
+  the most of them on 5 of the 10 maps, within half a cell elsewhere);
+- the owner's three goals (`Order::Claim`): the most cells, then the
+  share of the contested band (rings 0 to 2) and of the whole map against
+  an enemy assumed to hold as many cells as us, those nearest its HQ (an
+  enemy holding the mirror of our land gives every plan exactly half, by
+  the maps' symmetry: discarded);
+- longer plans (the owner: plan longer, the search still taking over at
+  game turn 7): over 12 turns claim2 reaches both choke places of map 5 by
+  turn 10 (5 chokes of 6 against 3); 15 turns plays as 12 up to turn 10.
+
+Cut duels, as above (400 pairs, seed 72, local):
+
+| Variant | Order, turns planned | Elo over v029 [95%] |
+| --- | --- | --- |
+| sum12 | `Sum` (v029's), 12 | −23.5 [−45.6, −1.6] |
+| claim2-9 | `Claim { band: 2 }`, 9 | +22.6 [−1.0, +46.5] |
+| claim2-12 | the same, 12 | +8.7 [−14.4, +31.9] |
+| claim2-15 | the same, 15 | +11.3 [−11.3, +34.0] |
+| fr8-12 | `Frontier { cap: 8 }`, 12 | +4.3 [−17.8, +26.5] |
+| lin7-12 | `Central(Linear(7))`, 12 | +22.6 [+0.1, +45.3] |
+
+Planning longer loses with v029's order (as in E052 and E055) and adds
+nothing measurable to the land-first orders. The owner then had the cut
+duels moved to GitHub (`screen.yml` with `arena: early`, added on this
+branch) and the study run of the central goals cancelled to free the
+runners.
