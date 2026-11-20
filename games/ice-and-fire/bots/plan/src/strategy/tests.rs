@@ -7,9 +7,11 @@ use super::objectives::{
     counted, objectives, objectives_valued, Kind, Objective, OBJECTIVE_MIN_VALUE,
 };
 use super::race::{race, Arrival, How, Race};
-use super::roles::{assign, Memory};
-use super::STRATEGY;
+use super::roles::{assign, Memory, Roles};
+use super::turn::strategic_turn;
+use super::{guide, guide_with, Guide, STRATEGY};
 use crate::tests::position;
+use ice_and_fire_engine::Command;
 
 /// The corridor: red holds the top row and the right column down to (11, 9),
 /// blue's HQ is alone at (11, 11) and (11, 10) is neutral.
@@ -430,4 +432,83 @@ fn a_training_cell_serves_one_objective_and_the_gold_pays_each() {
     let rich = position(LAND, [20, 0], &[]);
     let roles = assign(&rich, 0, &obj, &races, &mut Memory::default());
     assert_eq!(roles.trainings, vec![(cell(3, 4), a), (cell(4, 4), b)]);
+}
+
+#[test]
+fn the_strategic_turn_steps_then_trains_at_the_tip() {
+    let at = cell(6, 7);
+    let roles = Roles {
+        frontline: vec![(1, at)],
+        ..Roles::default()
+    };
+    let state = position(LAND, [30, 0], &[(0, 1, 1, 6, 3)]);
+    let plan = strategic_turn(&state, &roles, false);
+    assert_eq!(
+        plan,
+        vec![
+            Command::Move { id: 1, x: 6, y: 4 },
+            Command::Train {
+                level: 1,
+                x: 6,
+                y: 5
+            },
+        ]
+    );
+    // The plan applies whole on the state it was made for.
+    let mut after = state.clone();
+    assert!(plan.iter().all(|&c| after.apply(c)));
+    // Without the gold, the step alone.
+    let poor = position(LAND, [9, 0], &[(0, 1, 1, 6, 3)]);
+    assert_eq!(
+        strategic_turn(&poor, &roles, false),
+        vec![Command::Move { id: 1, x: 6, y: 4 }]
+    );
+}
+
+#[test]
+fn the_role_trainings_come_only_with_their_switch() {
+    let at = cell(3, 8);
+    let roles = Roles {
+        trainings: vec![(cell(3, 4), at)],
+        ..Roles::default()
+    };
+    let state = position(LAND, [30, 0], &[]);
+    assert!(strategic_turn(&state, &roles, false).is_empty());
+    assert_eq!(
+        strategic_turn(&state, &roles, true),
+        vec![Command::Train {
+            level: 1,
+            x: 3,
+            y: 4
+        }]
+    );
+}
+
+#[test]
+fn the_objectives_term_counts_held_lost_and_neutral() {
+    let state = position(LAND, [0, 0], &[]);
+    let guide = Guide {
+        objectives: vec![(cell(1, 1), 5, 0), (cell(11, 11), 3, 0), (cell(5, 7), 2, 2)],
+        quarters: 2,
+        ..Guide::default()
+    };
+    // (5 - 3 + 2) cells at half a cell each.
+    assert_eq!(guide.term(&state, 0), 2);
+    assert_eq!(Guide::default().term(&state, 0), 0);
+}
+
+#[test]
+fn the_guide_offers_or_starts_by_its_mode() {
+    let state = position(LAND, [30, 0], &[(0, 1, 1, 6, 3)]);
+    let both = guide_with(&state, &mut Memory::default(), 3, 1, 0, false).expect("a guide");
+    assert!(!both.plan.is_empty() && both.offered && both.start);
+    let offered = guide_with(&state, &mut Memory::default(), 1, 1, 0, false).expect("a guide");
+    assert!(offered.offered && !offered.start);
+    let none = guide_with(&state, &mut Memory::default(), 0, 1, 4, false).expect("a guide");
+    assert!(none.plan.is_empty() && !none.offered && !none.start);
+    assert!(!none.objectives.is_empty());
+    // Off, the bot has no guide.
+    if !STRATEGY {
+        assert!(guide(&state, &mut Memory::default()).is_none());
+    }
 }

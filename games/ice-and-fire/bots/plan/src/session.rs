@@ -8,8 +8,8 @@ use ice_and_fire_engine::{answer_line, League, State};
 use ice_and_fire_opening::planned::Planned;
 use ice_and_fire_policy::io::turns;
 
-use crate::search::{think, Limit};
-use crate::strategy::{self, Memory, STRATEGY};
+use crate::search::{think, think_with, Limit};
+use crate::strategy::{self, Memory};
 
 /// Plays turns of a Bronze game until the input ends. `limit` gives the
 /// search's limits from the instant the turn's first line arrived and the
@@ -23,24 +23,28 @@ pub fn play(
     output: impl Write,
 ) -> Result<(), String> {
     // The roles of the strategic layer, kept beside the opening's plan; the
-    // layer does nothing unless `STRATEGY` is set.
+    // layer does nothing unless `strategy::STRATEGY` is set (E077).
     let mut roles = Memory::default();
     turns(
         input,
         output,
         |initial, text, turn, start| match State::read(initial, text, League::Bronze, turn) {
             Ok(state) => {
-                if STRATEGY {
-                    let _ = strategy::roles_of(&state, &mut roles);
-                }
-                let thought = think(&state, limit(start, turn), &mut opening);
+                let guide = strategy::guide(&state, &mut roles);
+                let thought = match guide {
+                    Some(guide) => {
+                        think_with(&state, limit(start, turn), &mut opening, Some(guide))
+                    }
+                    None => think(&state, limit(start, turn), &mut opening),
+                };
                 eprintln!(
-                    "turn {turn}: climbs {} tries {} memory {} checks {} forced {} {:?}",
+                    "turn {turn}: climbs {} tries {} memory {} checks {} forced {} strategic {} {:?}",
                     thought.climbs,
                     thought.evals,
                     thought.memory,
                     thought.checks,
                     thought.forced,
+                    u8::from(thought.strategic),
                     start.elapsed()
                 );
                 answer_line(&thought.commands)
