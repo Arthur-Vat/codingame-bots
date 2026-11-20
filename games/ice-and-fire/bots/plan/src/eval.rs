@@ -409,7 +409,7 @@ pub const GOAL_GUARD: i64 = 0;
 /// See [`GOAL`].
 pub const GOAL_CHOKE: i64 = 0;
 /// The last game turn at which the goal counts.
-pub const GOAL_UNTIL: u32 = 10;
+pub const GOAL_UNTIL: u32 = 14;
 /// The band's width: cells within this many rings of the frontline.
 pub const GOAL_BAND: i64 = 2;
 
@@ -418,7 +418,7 @@ pub const GOAL_BAND: i64 = 2;
 /// it): each cell of the map nearer to a side's active land than to the
 /// enemy's (in steps over valid cells, as `econ::distances`) counts this
 /// much for it, until game turn [`VORONOI_UNTIL`]; 0 for nothing (v030).
-pub const VORONOI: i64 = 0;
+pub const VORONOI: i64 = 1;
 /// See [`VORONOI`].
 pub const VORONOI_UNTIL: u32 = 14;
 
