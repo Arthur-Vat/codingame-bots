@@ -34,9 +34,31 @@
 //!    breadth-first enumeration while a layer holds at most `--cap` states;
 //!    beyond, the start is reported as having more.
 //!
-//! A search that expands 4 million states stops, and the start is not
-//! `proven`. `--check` compares, on short horizons, the pruned searches with
-//! a full enumeration without any cut, and asserts the same results.
+//! A depth-first search stops after `--limit` states expanded (20,000 by
+//! default: each costs about a millisecond, since it makes every turn of the
+//! state) with the best plan found so far, and the result is not `proven`.
+//! The searches try the most promising turns first, so a result cut short
+//! is a good plan, a lower bound on the optimum. `--check` compares, on short
+//! horizons, the pruned searches with a full enumeration without any cut, and
+//! asserts the same results.
+//!
+//! **The plans are kept** (`--plans FILE`): for each start, horizon and goal
+//! (the most cells; the most middle chokes, and the most middle cells, within
+//! 0, 1 and 2 cells of the most), the best plan found, its value, its cells,
+//! whether it is proven, and its commands turn by turn as CodinGame reads
+//! them, so that later work need not search again:
+//!
+//! - `--replay FILE [--show]` plays every stored plan again through the
+//!   engine and checks its values (and shows the board it ends on), in
+//!   milliseconds;
+//! - `--from FILE` starts each search from the stored plans of its start and
+//!   horizon, so that a later run (with a larger limit, or a better bound)
+//!   only improves them and turns lower bounds into proofs;
+//! - `--bench FILE` plays the openings of [`OPENINGS`] on the stored starts
+//!   and prints how far each is from the stored best plans: the cells short
+//!   of the most, and the middle chokes and middle cells short of the most
+//!   at its own cells. A new opening joins [`OPENINGS`] to be measured in
+//!   seconds, without solving again.
 //!
 //! The starts are a suite's (`games/ice-and-fire/openings/`): the reference
 //! player's maps and seats. Beside the optimum, the tool plays in the same
@@ -48,7 +70,10 @@
 //! ```sh
 //! cargo run --release -p ice-and-fire-opening --example oracle -- \
 //!     --suite games/ice-and-fire/openings/suite-v1.tsv --player zasmu \
-//!     --per-seat 50 --turns 6,7,8 --jobs 4 [--cap 1000000] [--shard K/N] [--csv FILE] [--check]
+//!     --per-seat 50 --turns 6,7,8 --jobs 4 [--limit 20000] [--cap 20000] [--shard K/N] \
+//!     [--csv FILE] [--plans FILE] [--from FILE] [--check]
+//! cargo run --release -p ice-and-fire-opening --example oracle -- --replay plans.tsv [--show]
+//! cargo run --release -p ice-and-fire-opening --example oracle -- --bench plans.tsv --jobs 4
 //! ```
 
 use std::collections::{HashMap, HashSet};
@@ -56,7 +81,7 @@ use std::io::Write;
 use std::time::Instant;
 
 use ice_and_fire_early::zones::Zones;
-use ice_and_fire_engine::{Bits, Command, League, State, HQ, SIZE};
+use ice_and_fire_engine::{answer_line, Bits, Command, League, State, HQ, SIZE};
 use ice_and_fire_opening::assign::{self, Purchase};
 use ice_and_fire_opening::econ::{distances, Params};
 use ice_and_fire_opening::planned::{Planned, Planner};
@@ -112,6 +137,9 @@ fn start(seed: u64, seat: usize) -> State {
     state
 }
 
+/// A plan: our commands, a list a turn.
+type Plan = Vec<Vec<Command>>;
+
 /// A state's key for merging: our cells, our units, our gold.
 type Key = ([u64; 3], [u64; 3], i64);
 
@@ -157,25 +185,39 @@ fn xy(cell: usize) -> (u8, u8) {
 }
 
 /// Every turn of `me` from `state` (moves, then trainings), each passed to
-/// `out` as the state after it, before the turn ends. Moves that take no
-/// cell are tried only with `waste`; a unit with no cell to take may always
-/// stay.
-fn turns(state: &State, me: usize, waste: bool, out: &mut dyn FnMut(State)) {
+/// `out` as the state after it, before the turn ends, with its commands.
+/// Moves that take no cell are tried only with `waste`; a unit with no cell
+/// to take may always stay.
+fn turns(state: &State, me: usize, waste: bool, out: &mut dyn FnMut(State, &[Command])) {
     let units: Vec<usize> = state.movable_units().iter().collect();
     let mut after_moves = Vec::new();
-    moves(state.clone(), me, &units, waste, &mut after_moves);
-    for s in after_moves {
-        trainings(s, me, None, Bits::EMPTY, out);
+    moves(
+        state.clone(),
+        me,
+        &units,
+        waste,
+        Vec::new(),
+        &mut after_moves,
+    );
+    for (s, commands) in after_moves {
+        trainings(s, me, None, Bits::EMPTY, commands, out);
     }
 }
 
-fn moves(state: State, me: usize, units: &[usize], waste: bool, out: &mut Vec<State>) {
+fn moves(
+    state: State,
+    me: usize,
+    units: &[usize],
+    waste: bool,
+    commands: Vec<Command>,
+    out: &mut Vec<(State, Vec<Command>)>,
+) {
     let Some((&from, rest)) = units.split_first() else {
-        out.push(state);
+        out.push((state, commands));
         return;
     };
     let Some((id, level)) = state.unit_at(from) else {
-        moves(state, me, rest, waste, out);
+        moves(state, me, rest, waste, commands, out);
         return;
     };
     let enter = state.enterable(me, level) & state.map().valid;
@@ -187,13 +229,16 @@ fn moves(state: State, me: usize, units: &[usize], waste: bool, out: &mut Vec<St
         }
         let mut next = state.clone();
         let (x, y) = xy(to);
-        if next.apply(Command::Move { id, x, y }) {
+        let command = Command::Move { id, x, y };
+        if next.apply(command) {
             took |= capture;
-            moves(next, me, rest, waste, out);
+            let mut more = commands.clone();
+            more.push(command);
+            moves(next, me, rest, waste, more, out);
         }
     }
     if waste || !took {
-        moves(state, me, rest, waste, out);
+        moves(state, me, rest, waste, commands, out);
     }
 }
 
@@ -205,9 +250,10 @@ fn trainings(
     me: usize,
     last: Option<usize>,
     before: Bits,
-    out: &mut dyn FnMut(State),
+    commands: Vec<Command>,
+    out: &mut dyn FnMut(State, &[Command]),
 ) {
-    out(state.clone());
+    out(state.clone(), &commands);
     if state.gold(me) < 10 {
         return;
     }
@@ -220,8 +266,11 @@ fn trainings(
         }
         let mut next = state.clone();
         let (x, y) = xy(cell);
-        if next.apply(Command::Train { level: 1, x, y }) {
-            trainings(next, me, Some(cell), trainable, out);
+        let command = Command::Train { level: 1, x, y };
+        if next.apply(command) {
+            let mut more = commands.clone();
+            more.push(command);
+            trainings(next, me, Some(cell), trainable, more, out);
         }
     }
 }
@@ -341,7 +390,7 @@ fn solve(
                 continue;
             }
             let waste = !prune || slack >= 1;
-            turns(&s, me, waste, &mut |after| {
+            turns(&s, me, waste, &mut |after, _| {
                 if over {
                     return;
                 }
@@ -379,6 +428,10 @@ struct Dfs {
     min_cells: i64,
     zone: Option<Bits>,
     best: i64,
+    /// The plan of `best` when the search found it (else the caller's).
+    plan: Option<Plan>,
+    /// The commands of the turns from the root to the state searched.
+    path: Plan,
     memo: HashSet<(Key, u32)>,
     nodes: u64,
     limit: u64,
@@ -393,6 +446,8 @@ impl Dfs {
             min_cells,
             zone,
             best,
+            plan: None,
+            path: Vec::new(),
             memo: HashSet::new(),
             nodes: 0,
             limit,
@@ -427,8 +482,10 @@ impl Dfs {
         }
         let left = self.t - done;
         if left == 0 {
-            if i64::from(state.active(self.me).count()) >= self.min_cells {
-                self.best = self.best.max(self.value(state.owned(self.me)));
+            let value = self.value(state.owned(self.me));
+            if i64::from(state.active(self.me).count()) >= self.min_cells && value > self.best {
+                self.best = value;
+                self.plan = Some(self.path.clone());
             }
             return;
         }
@@ -445,18 +502,20 @@ impl Dfs {
             return;
         }
         let me = self.me;
-        let mut children: Vec<State> = Vec::new();
-        turns(&state, me, most > self.min_cells, &mut |after| {
-            children.push(end(after))
+        let mut children: Vec<(State, Vec<Command>)> = Vec::new();
+        turns(&state, me, most > self.min_cells, &mut |after, commands| {
+            children.push((end(after), commands.to_vec()))
         });
         // The most promising first: the zone held, then the cells bound.
         let zone = self.zone;
-        children.sort_by_cached_key(|c| {
+        children.sort_by_cached_key(|(c, _)| {
             let held = zone.map_or(0, |z| (c.owned(me) & z).count());
             std::cmp::Reverse((held, bound(c, me, left - 1)))
         });
-        for child in children {
+        for (child, commands) in children {
+            self.path.push(commands);
             self.search(child, done + 1);
+            self.path.pop();
             if self.aborted {
                 return;
             }
@@ -482,26 +541,43 @@ fn reached(state: &State, me: usize, chokes: Bits, band: Bits) -> Reached {
 }
 
 /// An opening played for `t` turns by `me`, the other passing: the state at
-/// the start of each turn, the first included.
-fn play(state: &State, t: u32, mut turn: impl FnMut(&State) -> Vec<Command>) -> Vec<State> {
+/// the start of each turn, the first included, and its plan.
+fn play(state: &State, t: u32, mut turn: impl FnMut(&State) -> Vec<Command>) -> (Vec<State>, Plan) {
     let mut s = state.clone();
-    let mut out = vec![s.clone()];
+    let mut states = vec![s.clone()];
+    let mut plan = Vec::new();
     for _ in 0..t {
         if s.outcome().is_none() {
             let commands = turn(&s);
             s = solo::advance(&s, &commands);
+            plan.push(commands);
+        } else {
+            plan.push(Vec::new());
         }
-        out.push(s.clone());
+        states.push(s.clone());
     }
-    out
+    (states, plan)
 }
 
-/// The openings of one start, played once to the longest horizon.
+/// The state after `plan` from `state`, the other side passing.
+fn replay(state: &State, plan: &[Vec<Command>]) -> State {
+    let mut s = state.clone();
+    for commands in plan {
+        if s.outcome().is_some() {
+            break;
+        }
+        s = solo::advance(&s, commands);
+    }
+    s
+}
+
+/// The openings compared with the optimum, by name, each played once to the
+/// longest horizon: a new opening joins this list to be measured by `run`
+/// and `--bench`.
+const OPENINGS: [&str; 4] = ["v029", "b", "rules", "assign"];
+
 struct Openings {
-    v029: Vec<State>,
-    b: Vec<State>,
-    rules: Vec<State>,
-    assign: Vec<State>,
+    played: Vec<(Vec<State>, Plan)>,
 }
 
 fn openings(state: &State, t: u32) -> Openings {
@@ -517,11 +593,78 @@ fn openings(state: &State, t: u32) -> Openings {
         ..assign::Settings::DEFAULT
     };
     Openings {
-        v029: play(state, t, |s| v029.turn(s, None)),
-        b: play(state, t, |s| b.turn(s, None)),
-        rules: play(state, t, |s| solo::commands(s, &sets, solo::REST)),
-        assign: play(state, t, |s| assign::turn(s, &settings)),
+        played: vec![
+            play(state, t, |s| v029.turn(s, None)),
+            play(state, t, |s| b.turn(s, None)),
+            play(state, t, |s| solo::commands(s, &sets, solo::REST)),
+            play(state, t, |s| assign::turn(s, &settings)),
+        ],
     }
+}
+
+/// What a plan is the best one found for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+enum Goal {
+    /// The most active cells.
+    Cells,
+    /// The most middle chokes within `margin` cells of the most cells.
+    Chokes,
+    /// The most cells of the middle band within `margin` cells of the most.
+    Middle,
+}
+
+impl Goal {
+    fn name(self) -> &'static str {
+        match self {
+            Goal::Cells => "cells",
+            Goal::Chokes => "chokes",
+            Goal::Middle => "middle",
+        }
+    }
+
+    fn parse(text: &str) -> Option<Goal> {
+        [Goal::Cells, Goal::Chokes, Goal::Middle]
+            .into_iter()
+            .find(|g| g.name() == text)
+    }
+
+    /// The goal's value of what a plan reaches.
+    fn of(self, r: &Reached) -> i64 {
+        match self {
+            Goal::Cells => r.cells,
+            Goal::Chokes => r.chokes,
+            Goal::Middle => r.middle,
+        }
+    }
+}
+
+/// The best plan found for one goal of one start and horizon.
+#[derive(Clone, Debug)]
+struct Best {
+    goal: Goal,
+    margin: u8,
+    value: i64,
+    cells: i64,
+    /// Whether no plan does better: the search ended without its limit.
+    proven: bool,
+    plan: Plan,
+}
+
+/// A start's stored plans (`--from`), by start, horizon, goal and margin.
+type Stored = HashMap<(u64, usize, u32, Goal, u8), Plan>;
+
+/// The middle chokes and the middle band of `state`'s map for `me`.
+fn zones_of(state: &State, me: usize) -> (Bits, Bits) {
+    let chokes = Zones::of(state).middle_chokes();
+    let ours = distances(state, Bits::cell(HQ[me]));
+    let theirs = distances(state, Bits::cell(HQ[1 - me]));
+    let mut band = Bits::EMPTY;
+    for c in state.map().valid.iter() {
+        if ours[c] != u8::MAX && theirs[c] != u8::MAX && ours[c].abs_diff(theirs[c]) <= 2 {
+            band.set(c);
+        }
+    }
+    (chokes, band)
 }
 
 /// One start's results at one horizon.
@@ -544,10 +687,10 @@ struct Case {
     middle_within: [i64; 3],
     peak: usize,
     ms: u128,
-    v029: Reached,
-    b: Reached,
-    rules: Reached,
-    assign: Reached,
+    /// What each of [`OPENINGS`] reaches.
+    openings: Vec<Reached>,
+    /// The best plan found for each goal and margin.
+    plans: Vec<Best>,
     /// The reference player's mean active cells at the next game turn.
     player: Option<f64>,
     too_large: bool,
@@ -556,85 +699,119 @@ struct Case {
     proven: bool,
 }
 
-fn run(seed: u64, seat: usize, t: u32, cap: usize, player: Option<f64>, open: &Openings) -> Case {
+#[allow(clippy::too_many_arguments)]
+fn run(
+    seed: u64,
+    seat: usize,
+    t: u32,
+    cap: usize,
+    limit: u64,
+    player: Option<f64>,
+    open: &Openings,
+    stored: &Stored,
+) -> Case {
     let state = start(seed, seat);
     let me = seat;
-    let zones = Zones::of(&state);
-    let chokes = zones.middle_chokes();
-    let ours = distances(&state, Bits::cell(HQ[me]));
-    let theirs = distances(&state, Bits::cell(HQ[1 - me]));
-    let mut band = Bits::EMPTY;
-    for c in state.map().valid.iter() {
-        if ours[c] != u8::MAX && theirs[c] != u8::MAX && ours[c].abs_diff(theirs[c]) <= 2 {
-            band.set(c);
-        }
-    }
-    let at = |states: &[State]| reached(&states[t as usize], me, chokes, band);
+    let (chokes, band) = zones_of(&state, me);
+    let measure = |plan: &[Vec<Command>]| reached(&replay(&state, plan), me, chokes, band);
     let mut case = Case {
         seed,
         seat,
         turns: t,
         map_chokes: i64::from(chokes.count()),
-        v029: at(&open.v029),
-        b: at(&open.b),
-        rules: at(&open.rules),
-        assign: at(&open.assign),
+        openings: open
+            .played
+            .iter()
+            .map(|(states, _)| reached(&states[t as usize], me, chokes, band))
+            .collect(),
         player,
         ..Case::default()
     };
-    let known = [case.v029, case.b, case.rules, case.assign]
+    // Every plan known so far, measured: the openings', the stored ones of
+    // this start and horizon, and those the searches below find.
+    let mut known: Vec<(Reached, Plan)> = open
+        .played
         .iter()
-        .map(|r| r.cells)
-        .max()
-        .unwrap_or(0);
+        .map(|(_, plan)| plan[..t as usize].to_vec())
+        .chain(
+            stored
+                .iter()
+                .filter(|(k, plan)| {
+                    k.0 == seed && k.1 == seat && k.2 == t && plan.len() == t as usize
+                })
+                .map(|(_, plan)| plan.clone()),
+        )
+        .map(|plan| (measure(&plan), plan))
+        .collect();
     let clock = Instant::now();
-    let limit = 4_000_000;
     // The most cells: one more than the best known, until no plan reaches it.
-    let mut most = known;
-    case.proven = true;
+    let (mut top, mut top_plan) = known
+        .iter()
+        .max_by_key(|(r, _)| r.cells)
+        .map(|(r, p)| (*r, p.clone()))
+        .unwrap_or_default();
+    let mut proven = true;
     loop {
-        let mut dfs = Dfs::new(me, t, most + 1, None, 0, limit);
+        let mut dfs = Dfs::new(me, t, top.cells + 1, None, 0, limit);
         dfs.search(state.clone(), 0);
         if dfs.aborted {
-            case.proven = false;
+            proven = false;
             break;
         }
-        if dfs.best < 1 {
+        let Some(plan) = dfs.plan else {
             break;
-        }
-        most += 1;
+        };
+        top = measure(&plan);
+        top_plan = plan;
+        known.push((top, top_plan.clone()));
     }
+    let most = top.cells;
+    case.proven = proven;
+    case.plans.push(Best {
+        goal: Goal::Cells,
+        margin: 0,
+        value: most,
+        cells: most,
+        proven,
+        plan: top_plan,
+    });
     // The most middle chokes and middle cells within 0, 1, 2 cells of it,
-    // starting from what the openings reach.
-    let openings = [case.v029, case.b, case.rules, case.assign];
-    for (zone, which) in [(chokes, 0), (band, 1)] {
-        let mut previous = -1;
-        for d in 0..3 {
-            let floor = most - d as i64;
-            let of = |r: &Reached| if which == 0 { r.chokes } else { r.middle };
-            // A plan within d − 1 cells is within d: the narrower margin's
-            // result is a floor too.
-            let known = openings
+    // each search starting from the best plan known for it.
+    for (goal, zone) in [(Goal::Chokes, chokes), (Goal::Middle, band)] {
+        for d in 0..3u8 {
+            let floor = most - i64::from(d);
+            let (value, plan) = known
                 .iter()
-                .filter(|r| r.cells >= floor)
-                .map(of)
-                .max()
-                .unwrap_or(-1)
-                .max(previous);
-            let found = if zone.is_empty() {
-                0
+                .filter(|(r, _)| r.cells >= floor)
+                .max_by_key(|(r, _)| goal.of(r))
+                .map(|(r, p)| (goal.of(r), p.clone()))
+                .unwrap_or((-1, Vec::new()));
+            let (value, plan, done) = if zone.is_empty() {
+                (value.max(0), plan, true)
             } else {
-                let mut dfs = Dfs::new(me, t, floor, Some(zone), known, limit);
+                let mut dfs = Dfs::new(me, t, floor, Some(zone), value, limit);
                 dfs.search(state.clone(), 0);
-                case.proven &= !dfs.aborted;
-                dfs.best.max(0)
+                match dfs.plan {
+                    Some(found) => (dfs.best, found, !dfs.aborted),
+                    None => (value, plan, !dfs.aborted),
+                }
             };
-            previous = found;
-            if which == 0 {
-                case.chokes_within[d] = found;
-            } else {
-                case.middle_within[d] = found;
+            case.proven &= done;
+            let r = measure(&plan);
+            known.push((r, plan.clone()));
+            match goal {
+                Goal::Chokes => case.chokes_within[usize::from(d)] = value,
+                _ => case.middle_within[usize::from(d)] = value,
             }
+            case.plans.push(Best {
+                goal,
+                margin: d,
+                value,
+                cells: r.cells,
+                // Proven only if the most cells it is measured from is.
+                proven: done && proven,
+                plan,
+            });
         }
     }
     case.best = Reached {
@@ -800,18 +977,329 @@ fn csv_line(c: &Case) -> String {
         c.middle_within[0],
         c.middle_within[1],
         c.middle_within[2],
-        c.v029.cells,
-        c.v029.chokes,
-        c.v029.middle,
-        c.b.cells,
-        c.b.chokes,
-        c.rules.cells,
-        c.assign.cells,
-        c.assign.chokes,
+        c.openings[0].cells,
+        c.openings[0].chokes,
+        c.openings[0].middle,
+        c.openings[1].cells,
+        c.openings[1].chokes,
+        c.openings[2].cells,
+        c.openings[3].cells,
+        c.openings[3].chokes,
         c.player.map(|p| format!("{p:.2}")).unwrap_or_default(),
         c.peak,
         c.ms
     )
+}
+
+/// The columns of `--plans`, tab-separated: the start, the horizon, the goal
+/// and its margin, the value found, the plan's cells, whether no plan does
+/// better, and the plan: each turn's answer as CodinGame reads it, the turns
+/// separated by ` | `.
+const PLANS_HEADER: &str = "seed\tseat\tturns\tgoal\tmargin\tvalue\tcells\tproven\tplan";
+
+fn plan_text(plan: &[Vec<Command>]) -> String {
+    plan.iter()
+        .map(|commands| answer_line(commands))
+        .collect::<Vec<_>>()
+        .join(" | ")
+}
+
+/// One command as CodinGame writes it (`MOVE 3 4 5`, `TRAIN 1 2 3`, `BUILD
+/// MINE 1 2`, `BUILD TOWER 1 2`, `WAIT`).
+fn parse_command(text: &str) -> Option<Command> {
+    let words: Vec<&str> = text.split_whitespace().collect();
+    let n = |i: usize| words.get(i).and_then(|w| w.parse::<u32>().ok());
+    let b = |i: usize| words.get(i).and_then(|w| w.parse::<u8>().ok());
+    match words.as_slice() {
+        ["MOVE", _, _, _] => Some(Command::Move {
+            id: n(1)?,
+            x: b(2)?,
+            y: b(3)?,
+        }),
+        ["TRAIN", _, _, _] => Some(Command::Train {
+            level: b(1)?,
+            x: b(2)?,
+            y: b(3)?,
+        }),
+        ["BUILD", "MINE", _, _] => Some(Command::BuildMine { x: b(2)?, y: b(3)? }),
+        ["BUILD", "TOWER", _, _] => Some(Command::BuildTower { x: b(2)?, y: b(3)? }),
+        ["WAIT"] => Some(Command::Wait),
+        _ => None,
+    }
+}
+
+/// A plan written by [`plan_text`].
+fn parse_plan(text: &str) -> Option<Plan> {
+    if text.trim().is_empty() {
+        return Some(Vec::new());
+    }
+    text.split(" | ")
+        .map(|turn| {
+            turn.split(';')
+                .map(parse_command)
+                .filter(|c| *c != Some(Command::Wait))
+                .collect::<Option<Vec<Command>>>()
+        })
+        .collect()
+}
+
+/// One line of a plans file.
+#[derive(Clone, Debug)]
+struct Row {
+    seed: u64,
+    seat: usize,
+    turns: u32,
+    best: Best,
+}
+
+fn plans_line(seed: u64, seat: usize, turns: u32, b: &Best) -> String {
+    format!(
+        "{seed}\t{seat}\t{turns}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+        b.goal.name(),
+        b.margin,
+        b.value,
+        b.cells,
+        b.proven,
+        plan_text(&b.plan)
+    )
+}
+
+/// The rows of a plans file; a line that does not read is an error.
+fn load_plans(path: &str) -> Vec<Row> {
+    let text = std::fs::read_to_string(path).unwrap_or_else(|e| {
+        eprintln!("oracle: cannot read {path}: {e}");
+        std::process::exit(2);
+    });
+    let mut out = Vec::new();
+    for (n, line) in text.lines().enumerate() {
+        if n == 0 && line.starts_with("seed\t") || line.trim().is_empty() {
+            continue;
+        }
+        let f: Vec<&str> = line.split('\t').collect();
+        let row = (|| {
+            Some(Row {
+                seed: f.first()?.parse().ok()?,
+                seat: f.get(1)?.parse().ok()?,
+                turns: f.get(2)?.parse().ok()?,
+                best: Best {
+                    goal: Goal::parse(f.get(3)?)?,
+                    margin: f.get(4)?.parse().ok()?,
+                    value: f.get(5)?.parse().ok()?,
+                    cells: f.get(6)?.parse().ok()?,
+                    proven: f.get(7)?.parse().ok()?,
+                    plan: parse_plan(f.get(8)?)?,
+                },
+            })
+        })();
+        match row.filter(|r| r.best.plan.len() == r.turns as usize) {
+            Some(row) => out.push(row),
+            None => {
+                eprintln!(
+                    "oracle: {path}, line {}: not a plan row of as many turns as it says",
+                    n + 1
+                );
+                std::process::exit(2);
+            }
+        }
+    }
+    out
+}
+
+/// A board for `--show`: `#` void, `.` neutral, `*` a neutral middle choke,
+/// `O` ours, `@` a middle choke of ours, `X` the enemy's.
+fn board(state: &State, me: usize, chokes: Bits) -> String {
+    let mut out = String::new();
+    for y in 0..SIZE {
+        out.push_str("    ");
+        for x in 0..SIZE {
+            let c = y * SIZE + x;
+            out.push(if !state.map().valid.test(c) {
+                '#'
+            } else if state.owned(me).test(c) {
+                if chokes.test(c) {
+                    '@'
+                } else {
+                    'O'
+                }
+            } else if state.owned(1 - me).test(c) {
+                'X'
+            } else if chokes.test(c) {
+                '*'
+            } else {
+                '.'
+            });
+        }
+        out.push('\n');
+    }
+    out
+}
+
+/// `--replay`: plays every stored plan again and checks its cells and value.
+fn replay_mode(path: &str, show: bool) {
+    let rows = load_plans(path);
+    let mut wrong = 0;
+    for row in &rows {
+        let state = start(row.seed, row.seat);
+        let (chokes, band) = zones_of(&state, row.seat);
+        let end = replay(&state, &row.best.plan);
+        let r = reached(&end, row.seat, chokes, band);
+        let ok = r.cells == row.best.cells
+            && row.best.goal.of(&r) == row.best.value
+            && row.best.plan.len() == row.turns as usize;
+        if !ok {
+            wrong += 1;
+        }
+        if show || !ok {
+            println!(
+                "{} {} seat {} turn {} {} within {}: value {} cells {}{}",
+                if ok { "ok  " } else { "FAIL" },
+                row.seed,
+                row.seat,
+                row.turns,
+                row.best.goal.name(),
+                row.best.margin,
+                row.best.goal.of(&r),
+                r.cells,
+                if row.best.proven {
+                    " (proven)"
+                } else {
+                    " (best found)"
+                }
+            );
+        }
+        if show {
+            print!("{}", board(&end, row.seat, chokes));
+        }
+    }
+    println!("replay: {} plans, {wrong} wrong", rows.len());
+    if wrong > 0 {
+        std::process::exit(1);
+    }
+}
+
+/// `--bench`: each of [`OPENINGS`] on the stored starts, against the stored
+/// best plans: its cells short of the most, and its middle chokes and middle
+/// cells short of the most at its own cells (when within 2 of the most).
+fn bench_mode(path: &str, jobs: usize) {
+    let rows = load_plans(path);
+    let mut by_start: HashMap<(u64, usize), Vec<&Row>> = HashMap::new();
+    for row in &rows {
+        by_start.entry((row.seed, row.seat)).or_default().push(row);
+    }
+    let mut starts: Vec<(u64, usize)> = by_start.keys().copied().collect();
+    starts.sort_unstable();
+    let longest = rows.iter().map(|r| r.turns).max().unwrap_or(0);
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    // (turns, seat, opening) -> sums: starts, cell gap, at the most cells,
+    // starts with chokes measured, choke gap, at the most chokes, starts with
+    // the band measured, middle gap, all compared values proven.
+    type Sums = [f64; 9];
+    let gathered: Vec<((u32, usize, usize), Sums)> = std::thread::scope(|scope| {
+        let handles: Vec<_> = (0..jobs.max(1))
+            .map(|_| {
+                scope.spawn(|| {
+                    let mut out = Vec::new();
+                    loop {
+                        let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let Some(&(seed, seat)) = starts.get(i) else {
+                            break;
+                        };
+                        let state = start(seed, seat);
+                        let (chokes, band) = zones_of(&state, seat);
+                        let open = openings(&state, longest);
+                        let stored = &by_start[&(seed, seat)];
+                        let find = |t: u32, goal: Goal, margin: u8| {
+                            stored.iter().find(|r| {
+                                r.turns == t && r.best.goal == goal && r.best.margin == margin
+                            })
+                        };
+                        let mut ts: Vec<u32> = stored.iter().map(|r| r.turns).collect();
+                        ts.sort_unstable();
+                        ts.dedup();
+                        for t in ts {
+                            let Some(most) = find(t, Goal::Cells, 0) else {
+                                continue;
+                            };
+                            for (k, (states, _)) in open.played.iter().enumerate() {
+                                let r = reached(&states[t as usize], seat, chokes, band);
+                                let gap = most.best.value - r.cells;
+                                let mut sums: Sums = [0.0; 9];
+                                sums[0] = 1.0;
+                                sums[1] = gap as f64;
+                                sums[2] = f64::from(u8::from(gap <= 0));
+                                let mut proven = most.best.proven;
+                                if (0..=2).contains(&gap) {
+                                    let margin = gap as u8;
+                                    if let Some(c) =
+                                        find(t, Goal::Chokes, margin).filter(|_| !chokes.is_empty())
+                                    {
+                                        sums[3] = 1.0;
+                                        sums[4] = (c.best.value - r.chokes) as f64;
+                                        sums[5] = f64::from(u8::from(r.chokes >= c.best.value));
+                                        proven &= c.best.proven;
+                                    }
+                                    if let Some(m) = find(t, Goal::Middle, margin) {
+                                        sums[6] = 1.0;
+                                        sums[7] = (m.best.value - r.middle) as f64;
+                                        proven &= m.best.proven;
+                                    }
+                                }
+                                sums[8] = f64::from(u8::from(proven));
+                                out.push(((t, seat, k), sums));
+                            }
+                        }
+                    }
+                    out
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().unwrap_or_default())
+            .collect()
+    });
+    let mut totals: HashMap<(u32, usize, usize), Sums> = HashMap::new();
+    for (key, sums) in gathered {
+        let total = totals.entry(key).or_insert([0.0; 9]);
+        for (a, b) in total.iter_mut().zip(sums) {
+            *a += b;
+        }
+    }
+    let mut keys: Vec<(u32, usize, usize)> = totals.keys().copied().collect();
+    keys.sort_unstable();
+    println!("| Turns | Seat | Opening | Starts | Cells short of the most | At the most cells | Starts with middle chokes, compared | Chokes short of the most at its cells | At the most chokes | Middle cells short of the most at its cells | Compared against proven values |");
+    println!("| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
+    for key in keys {
+        let s = totals[&key];
+        let per = |a: f64, n: f64| {
+            if n > 0.0 {
+                format!("{:.2}", a / n)
+            } else {
+                "-".to_string()
+            }
+        };
+        let pct = |a: f64, n: f64| {
+            if n > 0.0 {
+                format!("{:.0}%", 100.0 * a / n)
+            } else {
+                "-".to_string()
+            }
+        };
+        println!(
+            "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
+            key.0,
+            if key.1 == 0 { "red" } else { "blue" },
+            OPENINGS[key.2],
+            s[0],
+            per(s[1], s[0]),
+            pct(s[2], s[0]),
+            s[3],
+            per(s[4], s[3]),
+            pct(s[5], s[3]),
+            per(s[7], s[6]),
+            pct(s[8], s[0]),
+        );
+    }
 }
 
 fn mean(xs: impl Iterator<Item = f64>) -> f64 {
@@ -831,9 +1319,19 @@ fn median(mut v: Vec<usize>) -> usize {
 fn main() {
     let mut args = std::env::args().skip(1);
     let (mut suite, mut player) = (String::new(), "zasmu".to_string());
-    let (mut per_seat, mut jobs, mut cap) = (50usize, 4usize, 1_000_000usize);
+    let (mut per_seat, mut jobs, mut cap) = (50usize, 4usize, 20_000usize);
     let mut horizons: Vec<u32> = vec![6, 7, 8];
     let (mut csv, mut do_check) = (None::<String>, false);
+    let (mut plans_out, mut from, mut replay_from, mut bench_from) = (
+        None::<String>,
+        None::<String>,
+        None::<String>,
+        None::<String>,
+    );
+    let mut show = false;
+    // Most states each depth-first search expands before it stops with the
+    // best plan found so far, unproven.
+    let mut limit: u64 = 20_000;
     // This run's share of the starts: those whose place in the list is K
     // modulo N (`--shard K/N`), so that runners split a study.
     let mut shard: (usize, usize) = (0, 1);
@@ -848,6 +1346,12 @@ fn main() {
             "--turns" => horizons = value().split(',').filter_map(|s| s.parse().ok()).collect(),
             "--csv" => csv = Some(value()),
             "--check" => do_check = true,
+            "--limit" => limit = value().parse().unwrap_or(limit),
+            "--plans" => plans_out = Some(value()),
+            "--from" => from = Some(value()),
+            "--replay" => replay_from = Some(value()),
+            "--show" => show = true,
+            "--bench" => bench_from = Some(value()),
             "--shard" => {
                 let v = value();
                 let parsed = v
@@ -867,6 +1371,30 @@ fn main() {
             }
         }
     }
+    if let Some(path) = replay_from {
+        replay_mode(&path, show);
+        return;
+    }
+    if let Some(path) = bench_from {
+        bench_mode(&path, jobs);
+        return;
+    }
+    let mut stored: Stored = HashMap::new();
+    if let Some(path) = &from {
+        for row in load_plans(path) {
+            stored.insert(
+                (
+                    row.seed,
+                    row.seat,
+                    row.turns,
+                    row.best.goal,
+                    row.best.margin,
+                ),
+                row.best.plan,
+            );
+        }
+    }
+    let stored = &stored;
     let mut starts = suite_starts(&suite, &player);
     starts.sort_by_key(|s| (s.1, s.0));
     let mut chosen: Vec<(u64, usize, [Option<f64>; 3])> = Vec::new();
@@ -921,8 +1449,25 @@ fn main() {
         }
         std::sync::Mutex::new(file)
     });
+    // `--plans` gets each start's best plans in the same way.
+    let plans_sink = plans_out.as_ref().map(|path| {
+        let old = std::fs::read_to_string(path).unwrap_or_default();
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .unwrap_or_else(|e| {
+                eprintln!("oracle: cannot open {path}: {e}");
+                std::process::exit(2);
+            });
+        if old.is_empty() {
+            let _ = writeln!(file, "{PLANS_HEADER}");
+        }
+        std::sync::Mutex::new(file)
+    });
     let done = &done;
     let sink = &sink;
+    let plans_sink = &plans_sink;
     let next = std::sync::atomic::AtomicUsize::new(0);
     let chosen = &chosen;
     let horizons = &horizons;
@@ -941,11 +1486,24 @@ fn main() {
                         }
                         let open = openings(&start(seed, seat), longest);
                         let mut lines = String::new();
+                        let mut plan_lines = String::new();
                         for &t in horizons {
                             let p = player[(t as usize).saturating_sub(6).min(2)];
-                            let case = run(seed, seat, t, cap, p, &open);
+                            let case = run(seed, seat, t, cap, limit, p, &open, stored);
                             lines.push_str(&csv_line(&case));
+                            for b in &case.plans {
+                                plan_lines.push_str(&plans_line(seed, seat, t, b));
+                            }
                             out.push(case);
+                        }
+                        if let Some(file) = &plans_sink {
+                            let mut file = file.lock().unwrap_or_else(|e| e.into_inner());
+                            if let Err(e) = file
+                                .write_all(plan_lines.as_bytes())
+                                .and_then(|()| file.flush())
+                            {
+                                eprintln!("oracle: cannot write the plans: {e}");
+                            }
                         }
                         if let Some(file) = &sink {
                             let mut file = file.lock().unwrap_or_else(|e| e.into_inner());
@@ -1010,13 +1568,13 @@ fn main() {
                 m(&|c| c.chokes_within[0] as f64),
                 m(&|c| c.chokes_within[1] as f64),
                 m(&|c| c.chokes_within[2] as f64),
-                m(&|c| c.v029.cells as f64),
-                m(&|c| c.v029.chokes as f64),
-                m(&|c| c.b.cells as f64),
-                m(&|c| c.b.chokes as f64),
-                m(&|c| c.rules.cells as f64),
-                m(&|c| c.assign.cells as f64),
-                m(&|c| c.assign.chokes as f64),
+                m(&|c| c.openings[0].cells as f64),
+                m(&|c| c.openings[0].chokes as f64),
+                m(&|c| c.openings[1].cells as f64),
+                m(&|c| c.openings[1].chokes as f64),
+                m(&|c| c.openings[2].cells as f64),
+                m(&|c| c.openings[3].cells as f64),
+                m(&|c| c.openings[3].chokes as f64),
                 mean(all.iter().filter_map(|c| c.player)),
                 all.iter().map(|c| c.ms).max().unwrap_or(0),
             );
