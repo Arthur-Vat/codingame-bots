@@ -56,7 +56,7 @@ Beside it, the same model plays v029's opening (the solo planner, untimed), the 
 
 Study run 44626073005 (the study workflow, #368 and #370), at the solver's commit 4493de6 with `--limit 20000 --cap 20000`, on 12 runners for up to 300 minutes each: 78 of the 94 starts (all 44 of zasmu's red starts, 34 of its first 50 blue ones; the rest were cut by the time limit), at T = 6, 7 and 8. Its files are in [2026-11-20-optimal-early-plans/](2026-11-20-optimal-early-plans/): `oracle.csv` (a row a start and horizon), `oracle.plans.tsv` (1,638 best plans; `--replay` plays all of them back with their stored values) and `bench.md`.
 
-**What is proven.** The most cells: every start at turns 6 and 7, 72 of 78 at turn 8. The most middle chokes at the most cells: every start at turn 6, 76 of 78 at turn 7, 73 of 78 at turn 8. The most cells of the middle band: 72 of 78 at turn 6, 39 at turn 7 and 14 at turn 8; elsewhere the value is the best plan found, a lower bound, so the gaps to it below are at least what they say.
+**What is proven.** The most cells: every start at turns 6 and 7, 72 of 78 at turn 8. The most middle chokes at the most cells: every start at turn 6, 76 of 78 at turn 7, 68 of 78 at turn 8. The most cells of the middle band: 72 of 78 at turn 6, 39 at turn 7 and 13 at turn 8; within 1 or 2 cells of the most, fewer still (61 to 4 of 78). Elsewhere the value is the best plan found, a lower bound, so the gaps to it below are at least what they say. (A value is proven only when the most cells it is measured from is; the run's files were written before that rule, and 20 of their rows were corrected to unproven.)
 
 ### The most land, and our openings
 
@@ -71,7 +71,7 @@ The mean most cells at the end of turn T, and each opening's share of the starts
 | 8 | red | 44 | 29.59 | 36%; 1.30 | 23%; 2.93 | 7%; 4.61 | 59%; 0.84 | 26.45 |
 | 8 | blue | 34 | 33.65 | 41%; 1.35 | 29%; 1.68 | 21%; 2.74 | 32%; 1.26 | 29.23 |
 
-v029's opening holds the most land at turn 6 on four starts in five, a fifth of a cell short on average; it falls behind later because its 9-turn plans do not aim at land at turn 7 or 8, and from turn 7 the bot's search plays in its place anyway. Zasmu, in its two-sided games, holds the side-alone maximum at turn 6 to within a tenth of a cell, and falls behind it from turn 7 as the sides meet.
+v029's opening holds the most land at turn 6 on four starts in five, a fifth of a cell short on average; it falls behind later because its 9-turn plans do not aim at land at turn 7 or 8, and from turn 7 the bot's search plays in its place anyway. Zasmu, in its two-sided games, holds the side-alone maximum at turn 6 to within 0.11 of a cell, and falls behind it from turn 7 as the sides meet.
 
 ### How many plans reach it
 
@@ -102,8 +102,8 @@ On the maps with at least one middle choke: the most middle chokes a plan can ho
 
 The bench (`--bench`, every start, each opening against the best plans at its own cells), middle chokes short of the most at turn 6 / 7: v029's opening 0.71 / 1.68 (red) and 1.42 / 2.33 (blue); the assignment alone 0.50 / 1.72 and 0.72 / 2.00; middle cells short at turn 6 (blue): v029 0.94, the assignment 0.24.
 
-- **Land and the middle do not compete early.** Allowing 1 or 2 cells less land buys almost no more chokes or middle cells: the plans with the most land can already hold the most of the middle.
-- **v029's opening leaves the middle on the table.** With the land it holds, plans exist that hold two to seven times its middle chokes at turns 6 and 7 (0.82 against 0.11 as red at turn 6, 2.63 against 1.21 as blue, 3.18 against 1.46 as red at turn 7, 4.89 against 2.58 as blue) and 1.5 to 2 times its middle cells; it holds as many chokes as possible on a fifth to a third of the starts.
+- **Land and the middle chokes do not compete early.** Allowing 1 or 2 cells less land buys almost no more middle chokes at turns 6 to 8, nor middle cells at turn 6 (both mostly proven): the plans with the most land can already hold the most of them. For the middle band at turns 7 and 8 the values within 1 or 2 cells are mostly lower bounds, and as blue at turn 8 they rise (9.50 to 10.24), so there the trade is not settled.
+- **v029's opening leaves the middle on the table.** With the land it holds, plans exist that hold 1.9 to 7 times its middle chokes at turns 6 and 7 (0.82 against 0.11 as red at turn 6, 2.63 against 1.21 as blue, 3.18 against 1.46 as red at turn 7, 4.89 against 2.58 as blue) and 1.45 to 1.9 times its middle cells; it holds as many chokes as possible on a sixth to a third of the starts.
 - **The assignment comes closer, and still lost.** The joint assignment of E072 is nearest the best plans on chokes and middle cells at turn 6, as it was built to be, yet lost the duels cut at turn 12 (−21 to −121): holding the middle in a side-alone plan is not yet holding it against an opponent who comes for it, nor keeping a land the search can defend from turn 7.
 
 ## B: the assignment inside the beam
@@ -112,7 +112,7 @@ The bench (`--bench`, every start, each opening against the best plans at its ow
 
 ## What follows
 
-The full run settles the first question of this note: our opening finds the most land; what it lacks is the choice, among the many plans that reach it, of those that hold the middle, and land costs nothing to get it. Next steps, for the owner to choose:
+The full run settles the first question of this note: our opening finds the most land; what it lacks is the choice, among the many plans that reach it, of those that hold the middle, and for the middle chokes (and the middle band at turn 6) that choice costs no land. Next steps, for the owner to choose:
 
 1. **A lexicographic choice in the opening (small):** the solo beam keeps its land-first objective but breaks ties by the middle chokes, then the middle cells, held at the end of its plans; `--bench` tells in seconds whether it closes the gap above without losing land, then the duels cut at turn 12 whether that wins. Unlike the additive choke weight of E072's B (b3, level at turn 6), it gives up no land.
 2. **The two-sided check (step 3 of phase 2):** the same choice judged against an opponent that expands too, since the assignment shows that holding the middle alone does not win; the stored best plans give its targets.

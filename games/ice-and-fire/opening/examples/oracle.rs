@@ -736,7 +736,9 @@ fn run(
         .chain(
             stored
                 .iter()
-                .filter(|(k, _)| k.0 == seed && k.1 == seat && k.2 == t)
+                .filter(|(k, plan)| {
+                    k.0 == seed && k.1 == seat && k.2 == t && plan.len() == t as usize
+                })
                 .map(|(_, plan)| plan.clone()),
         )
         .map(|plan| (measure(&plan), plan))
@@ -806,7 +808,8 @@ fn run(
                 margin: d,
                 value,
                 cells: r.cells,
-                proven: done,
+                // Proven only if the most cells it is measured from is.
+                proven: done && proven,
                 plan,
             });
         }
@@ -1088,10 +1091,13 @@ fn load_plans(path: &str) -> Vec<Row> {
                 },
             })
         })();
-        match row {
+        match row.filter(|r| r.best.plan.len() == r.turns as usize) {
             Some(row) => out.push(row),
             None => {
-                eprintln!("oracle: {path}, line {}: not a plan row", n + 1);
+                eprintln!(
+                    "oracle: {path}, line {}: not a plan row of as many turns as it says",
+                    n + 1
+                );
                 std::process::exit(2);
             }
         }
