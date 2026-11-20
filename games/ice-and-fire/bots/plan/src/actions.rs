@@ -77,13 +77,13 @@ pub const STEP_GUARD: u8 = 1;
 /// from the enemy HQ (back); 2: steps onto our cells next to an enemy cell
 /// (along the border); 3: steps onto any of our cells or an enemy cell
 /// other than its HQ.
-pub const FALL_BACK: u8 = 2;
+pub const FALL_BACK: u8 = 0;
 
 /// The rush from the tip (E076): chains of level-1 trainings into neutral
 /// cells, from the trainable neutral cells nearest the enemy HQ, each next
 /// cell the neutral neighbour nearest it, of 2 up to this many trainings;
 /// 0 for none (v030).
-pub const RUSH_LENGTH: usize = 3;
+pub const RUSH_LENGTH: usize = 0;
 
 /// The starts of [`RUSH_LENGTH`]'s chains: this many trainable neutral
 /// cells, the nearest the enemy HQ first.
