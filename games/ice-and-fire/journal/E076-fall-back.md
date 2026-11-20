@@ -68,12 +68,39 @@ In `games/ice-and-fire/bots/plan/src/actions.rs`, all off in v030:
 
 ## Screening
 
-Full games against v030 on GitHub (`screen.yml`), 800 pairs a variant:
+### Round 1
+
+Full games against v030 on GitHub (`screen.yml`, run 44770695725), 800
+pairs a variant over 2 calibrated runners, the workflow's own seed:
 
 | Variant | Switches | Elo over v030 [95%] | Faults (variant / v030) |
 | --- | --- | --- | ---: |
-| fb1 | `FALL_BACK = 1` | pending | |
+| fb1 | `FALL_BACK = 1` (back) | −3.0 [−15.6, +9.5] | 0 / 0 |
+| fb2 | `FALL_BACK = 2` (along the border) | +6.5 [−5.2, +18.2] | 0 / 0 |
+| fb3 | `FALL_BACK = 3` (any step) | −1.3 [−14.1, +11.5] | 1 / 0 |
+| r2 | `RUSH_LENGTH = 2` | +4.3 [−7.8, +16.4] | 0 / 0 |
+| r3 | `RUSH_LENGTH = 3` | +0.9 [−10.7, +12.5] | 0 / 0 |
+
+How often the actions are played, from 30 local pairs a variant against
+v030 (`ice-and-fire-arena match --records`, time scale 0.430, tolerance
+6 ms), counted in 60 games: a step onto an owned cell with a tower on the
+cell left, the variant against v030 in the same games, fb1 134 against 73,
+fb2 100 against 73, fb3 171 against 58 (v030's climb already finds the pair
+about once a game); turns with two adjacent level-1 trainings into neutral
+cells, r2 82 against 86, r3 90 against 78: the search rarely takes the
+rush, whose cells the evaluation values no more than other land after game
+turn 10 (E073's goal ends there).
+
+### Round 2
+
+The leaders combined, and the rush with E073's goal kept until game turn 14
+(`eval::GOAL_UNTIL`), seed 2026112002 (fb2 again as a replicate):
+
+| Variant | Switches | Elo over v030 [95%] | Faults (variant / v030) |
+| --- | --- | --- | ---: |
 | fb2 | `FALL_BACK = 2` | pending | |
-| fb3 | `FALL_BACK = 3` | pending | |
-| r2 | `RUSH_LENGTH = 2` | pending | |
-| r3 | `RUSH_LENGTH = 3` | pending | |
+| fb2r2 | `FALL_BACK = 2`, `RUSH_LENGTH = 2` | pending | |
+| g14 | `GOAL_UNTIL = 14` | pending | |
+| r2g14 | `RUSH_LENGTH = 2`, `GOAL_UNTIL = 14` | pending | |
+| r3g14 | `RUSH_LENGTH = 3`, `GOAL_UNTIL = 14` | pending | |
+| fb2r2g14 | `FALL_BACK = 2`, `RUSH_LENGTH = 2`, `GOAL_UNTIL = 14` | pending | |
