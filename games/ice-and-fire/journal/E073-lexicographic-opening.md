@@ -103,3 +103,51 @@ The control plays as v029. `land` changes the most games (a pair
 split in 172 of 400 against 54 for the control) and wins more than it
 loses; `tie12` changes fewer and wins as much. Median answer times are
 level (9 to 10 ms after the first turn).
+
+## Several middle chokes in different places
+
+The owner's question (2026-11-20): when the middle chokes lie in several
+places, does the opening reach more than one? `opening/examples/places.rs`
+groups a map's middle chokes into places (two chokes within 2 steps are in
+the same place) and plays each opening, one side alone, the other passing,
+for 10 of our turns. Starts: the 7 of the study's 78 with 2 or 3 places,
+and 40 more maps from fresh seeds with 2 or 3 places, both seats: 87
+starts. Every map found has exactly 2 places of the same size (the maps
+are point-symmetric, so the middle chokes come in mirrored pairs, one on
+each flank; 3 would need one on the centre): 33 of 1 choke each, 24 of 2,
+12 of 3, 3 of 4, 15 of 5.
+
+| Opening | Our turn | Places held (share) | Starts holding every place |
+| --- | ---: | ---: | ---: |
+| v029 | 4 | 0 (0%) | 0 of 87 |
+| v029 | 5 | 1 (1%) | 0 of 87 |
+| v029 | 6 | 9 (5%) | 0 of 87 |
+| v029 | 7 | 42 (24%) | 1 of 87 |
+| v029 | 8 | 72 (41%) | 5 of 87 |
+| v029 | 9 | 96 (55%) | 12 of 87 |
+| v029 | 10 | 115 (66%) | 28 of 87 |
+| tie12 | 4 | 0 (0%) | 0 of 87 |
+| tie12 | 5 | 2 (1%) | 0 of 87 |
+| tie12 | 6 | 16 (9%) | 0 of 87 |
+| tie12 | 7 | 53 (30%) | 2 of 87 |
+| tie12 | 8 | 89 (51%) | 6 of 87 |
+| tie12 | 9 | 105 (60%) | 18 of 87 |
+| tie12 | 10 | 119 (68%) | 32 of 87 |
+| land | 4 | 0 (0%) | 0 of 87 |
+| land | 5 | 4 (2%) | 0 of 87 |
+| land | 6 | 22 (13%) | 0 of 87 |
+| land | 7 | 64 (37%) | 5 of 87 |
+| land | 8 | 110 (63%) | 27 of 87 |
+| land | 9 | 142 (82%) | 55 of 87 |
+| land | 10 | 150 (86%) | 63 of 87 |
+
+By seat, places held after our turn 7 (v029 / tie12 / land): red 12 / 17 /
+23 of 86, blue 30 / 36 / 41 of 88; after turn 8 (v029 / land): red 30 / 48,
+blue 42 / 62.
+
+So v029's opening mostly reaches one flank: by our turn 8 it holds both
+places on 5 of 87 starts, and by turn 10 on 28. `land` reaches both
+sooner (27 of 87 by turn 8, 63 by turn 10) and holds more places at every
+turn; `tie12` is between. The bot hands over to the middle-game search at
+game turn 7, so turns 8 to 10 here show where the opening's plans lead,
+not what the bot plays.
