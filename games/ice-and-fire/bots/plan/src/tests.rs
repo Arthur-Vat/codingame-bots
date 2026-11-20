@@ -644,10 +644,11 @@ fn cells_the_enemy_can_take_next_turn_count_less() {
     assert_eq!(threatened(&state, 1), 1);
     // Each threatened cell costs its side THREAT_QUARTERS / 4 (E023: 7/4,
     // 0.25 of a cell's value of 7; E037: 5/4). Red's standing threat on
-    // blue's HQ counts too (E042).
+    // blue's HQ counts too (E042), and the opening's goal (E073).
     let shared = ice_and_fire_tactics::eval::evaluate(&state, 0)
         + crate::eval::shape(&state, 0)
-        + standing_term(&state, 0);
+        + standing_term(&state, 0)
+        + crate::eval::goal(&state, 0);
     assert_eq!(
         eval(&state, 0),
         shared + crate::eval::THREAT_QUARTERS * (1 - 2) / 4
@@ -712,12 +713,14 @@ fn a_mine_counts_more_with_a_larger_territory() {
         [0, 1, 5, 9, 12],
         "the bonus by territory"
     );
-    // What the bot's evaluation adds to the shared one and the shape term.
+    // What the bot's evaluation adds to the shared one, the shape term and
+    // the opening's goal (E073, early turns).
     let own = |state: &State, seat: usize| {
         eval(state, seat)
             - ice_and_fire_tactics::eval::evaluate(state, seat)
             - crate::eval::shape(state, seat)
             - standing_term(state, seat)
+            - crate::eval::goal(state, seat)
     };
     // Red holds 21 cells of the corridor and blue its HQ alone. Blue (20
     // gold, income 1) reaches (11, 9) for 20, and red blue's HQ: one
@@ -1030,10 +1033,12 @@ fn an_enemy_unit_of_level_two_moves_toward_our_hq() {
     assert_eq!(margin_moving(&state, 1, unit), still + 10);
     assert!((-200..-10).contains(&still), "{still}");
     // The bot's evaluation is the shared one with both sides' movers and the
-    // terms these positions hold (no debt, no mine).
+    // terms these positions hold (no debt, no mine), the opening's goal
+    // included (E073).
     let expected = bot_shared(&state, 0) + shape(&state, 0) + strong_units(&state, 0)
         - strong_units(&state, 1)
-        + THREAT_QUARTERS * (threatened(&state, 1) - threatened(&state, 0)) / 4;
+        + THREAT_QUARTERS * (threatened(&state, 1) - threatened(&state, 0)) / 4
+        + crate::eval::goal(&state, 0);
     assert_eq!(eval(&state, 0), expected);
 }
 
@@ -1397,4 +1402,43 @@ fn step_and_guard_steps_into_a_neutral_cell_and_guards_the_cell_left() {
         }
     }
     assert!(found > 0 || STEP_GUARD == 0, "no step and guard offered");
+}
+
+#[test]
+fn the_opening_goal_counts_the_band_cells_each_side_holds() {
+    use crate::eval::{goal, GOAL, GOAL_CHOKE, GOAL_GUARD, GOAL_OWNED, GOAL_UNTIL};
+    // E073 (v030): the goal is the band cells held, GOAL_OWNED each, the
+    // side's less the enemy's, until GOAL_UNTIL.
+    assert_eq!((GOAL, GOAL_GUARD, GOAL_CHOKE), (0, 0, 0), "v030's goal");
+    // Red reaches the middle along row 5; blue holds its corner.
+    let rows = [
+        "OOOO........",
+        "OOOO........",
+        "OOOO........",
+        "OOOO........",
+        "OOOO........",
+        "OOOOOOO.....",
+        "............",
+        "............",
+        "........XXXX",
+        "........XXXX",
+        "........XXXX",
+        "........XXXX",
+    ];
+    let state = position_at(GOAL_UNTIL, "0\n", rows, [20, 20], &[]);
+    let rings = ice_and_fire_opening::solo::rings(&state);
+    let band = |seat: usize| {
+        state
+            .active(seat)
+            .iter()
+            .filter(|&c| rings[c] <= crate::eval::GOAL_BAND)
+            .count() as i64
+    };
+    // Red's row 5 reaches cells of the band; blue's corner holds none.
+    assert!(band(0) > band(1), "{} {}", band(0), band(1));
+    assert_eq!(goal(&state, 0), GOAL_OWNED * (band(0) - band(1)));
+    assert_eq!(goal(&state, 1), -goal(&state, 0));
+    // After GOAL_UNTIL it counts nothing.
+    let later = position_at(GOAL_UNTIL + 1, "0\n", rows, [20, 20], &[]);
+    assert_eq!(goal(&later, 0), 0);
 }

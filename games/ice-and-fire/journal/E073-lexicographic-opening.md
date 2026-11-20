@@ -3,9 +3,9 @@ id: E073
 date: 2026-11-20
 pull_request: "#NN"
 parent: ice-and-fire-v029
-hypothesis: Among the many opening plans that reach the most land, choosing those that hold the most middle chokes, then the most cells of the middle band (step after the study of optimal early plans), wins the duels cut at game turn 12 against v029 without giving up land.
-change: The solo opening's beam ranks positions lexicographically (`solo::Order`) instead of by its weighted sum alone.
-release: pending
+hypothesis: An opening that ranks its plans by the most land first, then by how central their cells are, with the search's evaluation keeping the opening's goal (the contested band held) until game turn 10, beats ice-and-fire-v029 (candidate ice-and-fire-v030).
+change: The opening's beam ranks positions by `Order::Central(Linear(7))` (active cells, then the sum of 7 less each cell's ring) instead of its weighted sum; the search's evaluation adds 4 for each contested band cell held (ours less the enemy's) until game turn 10 (`eval::GOAL_OWNED`).
+release: ice-and-fire-v030
 sprt: pending
 elo: pending
 pairs: pending
@@ -460,3 +460,14 @@ cells lie nearer its HQ. The plan's cells are measured from a replan
 without the turn's time limit, so they approximate the bot's own plan.
 Making the strategy consistent (one target, kept by the search) is the
 next experiment, E074.
+
+## Candidate
+
+The owner chose own4 (form, 2026-11-20): the best on full games and the
+simplest goal term. Frozen as `ice-and-fire-v030` (`scripts/new-release.sh`:
+55,452 characters; the same answers as its readable copy in 4 games):
+`ORDER = Order::Central(Decay::Linear(7))`, `OPENING_TURNS = 9`,
+`REPLAN_FROM = 0`, `GOAL_OWNED = 4`, `GOAL_UNTIL = 10`, the other goal
+weights 0. Three evaluation tests isolate a term by taking the others
+away; they now take the goal term away too, and a test of the goal term
+itself was added.

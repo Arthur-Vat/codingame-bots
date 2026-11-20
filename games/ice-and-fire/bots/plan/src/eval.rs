@@ -403,7 +403,7 @@ pub const GOAL: i64 = 0;
 /// See [`GOAL`].
 pub const GOAL_MARGIN: u8 = 1;
 /// See [`GOAL`].
-pub const GOAL_OWNED: i64 = 0;
+pub const GOAL_OWNED: i64 = 4;
 /// See [`GOAL`].
 pub const GOAL_GUARD: i64 = 0;
 /// See [`GOAL`].
@@ -460,7 +460,7 @@ fn guarded(state: &State, seat: usize) -> Bits {
 
 /// The opening's goal for `seat` (E073), see [`GOAL`]; 0 after
 /// [`GOAL_UNTIL`].
-fn goal(state: &State, seat: usize) -> i64 {
+pub fn goal(state: &State, seat: usize) -> i64 {
     if (GOAL == 0 && GOAL_OWNED == 0 && GOAL_GUARD == 0 && GOAL_CHOKE == 0)
         || state.game_turn() > GOAL_UNTIL
     {
