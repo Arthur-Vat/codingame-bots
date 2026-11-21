@@ -182,3 +182,32 @@ the tower guard is level at best (t2gs ±0.0) and loses as pieces (t4g
 the cut duels, which end two turns before the layer does, did not track
 the full games in either round. After 16 variants, the leader needs new
 seeds before any SPRT.
+
+## Timing (after round 2)
+
+The owner asked (2026-11-20, after round 2: t2bs +14.8 in full games,
+−3.9 cut at game turn 12) to analyse the timing, with visual examples, and
+suggested doing the early game first, so that the rush comes before the
+defence. All plies of the control's 120 games (v031 against v031, seed
+2026112102; `ice-and-fire-review bank --all-plies`, new in this entry), read
+with the bot's `strategy` analysis mode: per position, the objectives of
+value above 0 and their races.
+
+| Game turn | 1 | 2 | 4 | 6 | 7 | 8 | 9 | 10 | 12 | 14 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Red: objectives we reach first | 18.2 | 19.1 | 20.6 | 20.0 | 17.4 | 13.2 | 8.9 | 7.5 | 4.6 | 2.8 |
+| Red: their summed value | 468 | 358 | 280 | 159 | 94 | 75 | 50 | 57 | 26 | 10 |
+| Red: held by us | 0 | 0 | 0 | 0 | 0.8 | 2.5 | 3.8 | 5.2 | 6.8 | 6.7 |
+| Blue: objectives we reach first | 18.2 | 26.9 | 21.3 | 21.9 | 17.1 | 14.6 | 10.0 | 6.5 | 3.9 | 2.6 |
+| Blue: their summed value | 400 | 506 | 231 | 135 | 87 | 75 | 55 | 31 | 23 | 8 |
+| Blue: held by us | 0 | 0 | 0 | 0.5 | 2.0 | 4.0 | 5.4 | 6.1 | 6.9 | 7.2 |
+
+(Value: the land each objective would add to our side, summed; objectives
+overlap, so the sums are a trend.) The count of objectives we can still
+reach first holds until game turn 6, but their value falls by two thirds
+between game turns 1 and 6: the land that decides most is decided in the
+opening, which E077 does not touch (it starts at game turn 7, when about a
+fifth of the first turn's value is left). Boards: the race over one game,
+and three game-turn-7 positions played by the search, round 1's strategic
+turn and round 2's rules completed by the search, at
+https://claude.ai/artifact/5qfr4eKjZJF83y9QZTA6dH.
