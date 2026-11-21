@@ -13,8 +13,12 @@ use std::fmt::Write as _;
 use ice_and_fire_engine::{answer_line, Command, State};
 
 use super::{read_bank, ready};
-use crate::eval::{eval, terms};
+use crate::eval::{
+    debt, eval, exposed, goal, idle, mines, movers_from, shape, standing, strong_units, voronoi,
+    wall, MARGIN_MOVER_LEVEL, THREAT_QUARTERS,
+};
 use crate::search::{think, Limit};
+use ice_and_fire_tactics::eval::evaluate_with_movers;
 
 fn limit(tries: u64) -> Limit {
     Limit {
@@ -130,4 +134,37 @@ pub fn run(args: &[String]) -> Result<String, String> {
         }
     }
     Ok(out)
+}
+
+/// The parts of [`eval`] for `seat` in `state`, by name, for the analysis
+/// mode `explain` (their sum is [`eval`] when the game is not over).
+pub fn terms(state: &State, seat: usize) -> Vec<(&'static str, i64)> {
+    let movers = [
+        movers_from(state, seat, MARGIN_MOVER_LEVEL),
+        movers_from(state, 1 - seat, MARGIN_MOVER_LEVEL),
+    ];
+    let (score, margins) = evaluate_with_movers(state, seat, movers);
+    let ours = exposed(state, seat);
+    let theirs = exposed(state, 1 - seat);
+    let threats = i64::from(theirs.count()) - i64::from(ours.count());
+    vec![
+        ("shared", score),
+        ("standing", standing(margins[0]) - standing(margins[1])),
+        ("removed", -crate::analysis::removed(state, seat)),
+        ("debt", -2 * debt(state, seat) + 2 * debt(state, 1 - seat)),
+        ("shape", shape(state, seat)),
+        (
+            "strong",
+            strong_units(state, seat) - strong_units(state, 1 - seat),
+        ),
+        ("idle", -idle(state, seat) + idle(state, 1 - seat)),
+        ("threats", THREAT_QUARTERS * threats / 4),
+        (
+            "mines",
+            mines(state, seat, ours) - mines(state, 1 - seat, theirs),
+        ),
+        ("wall", wall(state, seat) - wall(state, 1 - seat)),
+        ("goal", goal(state, seat)),
+        ("voronoi", voronoi(state, seat)),
+    ]
 }
