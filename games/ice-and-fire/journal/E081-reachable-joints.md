@@ -1,7 +1,7 @@
 ---
 id: E081
 date: 2026-11-21
-pull_request: "#NN"
+pull_request: "#384"
 parent: ice-and-fire-v031
 hypothesis: A shape term that counts only the joints the enemy can reach soon (or weighs them down with their distance from it) stops the search from training units behind its own lines at the start of the middle game, keeps that gold for the front, and beats ice-and-fire-v031 (candidate ice-and-fire-v032).
 change: The shape term's joints are counted only within `SHAPE_NEAR` steps of the enemy's active land (`eval::SHAPE_REACH = 1`), or weighted down from `SHAPE_NEAR` to nothing at `SHAPE_FAR` steps (`SHAPE_REACH = 2`); 0, every joint, in v031.
