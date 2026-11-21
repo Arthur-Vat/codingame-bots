@@ -233,9 +233,13 @@ fn weakness(state: &State, seat: usize) -> i64 {
 const WEAKNESS_SLOTS: usize = 1 << 12;
 
 thread_local! {
-    /// [`weakness`] by territory and seat (the seat plus one, 0 for an empty
+    /// [`weakness`] by territory, the enemy's active land (empty when
+    /// [`SHAPE_REACH`] is 0) and seat (the seat plus one, 0 for an empty
     /// slot), so that a territory a search meets again is not searched again:
-    /// most actions leave one side's territory as it was.
+    /// most actions leave one side's territory as it was. The map is not in
+    /// the key: a bot plays one map, but the analysis modes, which read
+    /// positions of many games in one thread, could reuse a value of another
+    /// map with the same two lands.
     static WEAKNESS: std::cell::RefCell<Vec<(Bits, Bits, u8, i64)>> =
         std::cell::RefCell::new(vec![(Bits::EMPTY, Bits::EMPTY, 0, 0); WEAKNESS_SLOTS]);
 }
