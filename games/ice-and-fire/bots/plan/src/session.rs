@@ -38,6 +38,12 @@ pub fn play(
                     }
                     None => think(&state, limit(start, turn), &mut opening),
                 };
+                if thought.opening {
+                    let roles = opening
+                        .last
+                        .is_some_and(|s| s.weights & 0xF8 == ice_and_fire_opening::solo::ROLES);
+                    eprintln!("turn {turn}: opening roles {}", u8::from(roles));
+                }
                 eprintln!(
                     "turn {turn}: climbs {} tries {} memory {} checks {} forced {} strategic {} {} {:?}",
                     thought.climbs,

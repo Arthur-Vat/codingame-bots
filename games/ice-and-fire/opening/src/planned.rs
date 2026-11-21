@@ -62,6 +62,9 @@ pub struct Planned {
     pub plans: u32,
     /// Whether the middle game has begun: the opening is then over for good.
     over: bool,
+    /// The step of the last turn played (E080: whether it was the roles
+    /// step), `None` before the first.
+    pub last: Option<Step>,
 }
 
 impl Planned {
@@ -75,6 +78,7 @@ impl Planned {
             played: 0,
             plans: 0,
             over: false,
+            last: None,
         }
     }
 
@@ -161,6 +165,7 @@ impl Planned {
         }
         let step = self.plan.get(self.played).copied().unwrap_or(ctx.rest);
         self.played += 1;
+        self.last = Some(step);
         ctx.commands(state, step)
     }
 }
