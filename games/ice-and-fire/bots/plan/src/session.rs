@@ -30,8 +30,8 @@ pub fn play(
         output,
         |initial, text, turn, start| match State::read(initial, text, League::Bronze, turn) {
             Ok(state) => {
-                let guide = strategy::guide(&state, &mut roles);
-                let thought = match guide {
+                let layer = strategy::guide(&state, &mut roles);
+                let thought = match layer {
                     Some(guide) => {
                         think_with(&state, limit(start, turn), &mut opening, Some(guide))
                     }

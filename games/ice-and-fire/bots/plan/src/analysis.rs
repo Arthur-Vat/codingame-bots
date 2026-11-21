@@ -12,6 +12,8 @@
 //! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
 //!   strategy --positions FILE
 //! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
+//!   guide --positions FILE [--tries 1000] [--guard 0|1|2] [--fill-behind] [--safe-step] [--back-only]
+//! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
 //!   surprise --positions FILE [--tries 600]
 //! ```
 //!

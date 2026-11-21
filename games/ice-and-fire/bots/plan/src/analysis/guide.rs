@@ -6,10 +6,13 @@
 //! For each position, the two plans are each played, then the opponent's
 //! answer (the search from its seat, `--tries` tries, its opening over),
 //! and the state after is read from our side. One tab-separated line per
-//! position and plan: name, ply, game turn, seat, plan (`search`, `strategic`, or
-//! `completed`: the strategic turn then the search's plan from there), its commands, frontline units, units we lost to the answer,
+//! position and plan: name, ply, game turn, seat, plan (`search`,
+//! `strategic`, or `completed`: the strategic turn then the search's plan
+//! from there), its commands, frontline units, units we lost to the answer,
 //! our cells less the enemy's after the answer, the evaluation after the
-//! answer, and the objectives we hold after it.
+//! answer, the objectives we hold after it, our units killed and cut off,
+//! the gold the plan spent, the cells its moves left that the enemy then
+//! holds, and the cells of ours the enemy holds after its answer.
 
 use std::fmt::Write as _;
 

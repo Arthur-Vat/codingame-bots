@@ -652,3 +652,106 @@ fn only_units_off_the_enemys_reach_take_a_role_when_asked() {
     let all = assign(&state, 0, &obj, &races, &mut Memory::default());
     assert_eq!(all.frontline, vec![(1, at)]);
 }
+
+#[test]
+fn each_piece_is_one_frontline_units_step_and_tip_training() {
+    let state = position(
+        FACING,
+        [40, 60],
+        &[(0, 1, 1, 2, 3), (0, 3, 1, 9, 3), (1, 2, 1, 6, 6)],
+    );
+    let roles = Roles {
+        frontline: vec![(1, cell(2, 5)), (3, cell(9, 5))],
+        ..Roles::default()
+    };
+    let parts = super::turn::pieces(&state, &roles, Rules::default());
+    assert_eq!(
+        parts,
+        vec![
+            vec![
+                Command::Move { id: 1, x: 2, y: 4 },
+                Command::Train {
+                    level: 1,
+                    x: 2,
+                    y: 5
+                },
+            ],
+            vec![
+                Command::Move { id: 3, x: 9, y: 4 },
+                Command::Train {
+                    level: 1,
+                    x: 9,
+                    y: 5
+                },
+            ],
+        ]
+    );
+}
+
+#[test]
+fn a_safe_step_refuses_a_step_that_exposes_more_of_our_cells() {
+    let state = contested();
+    let roles = Roles {
+        frontline: vec![(1, cell(6, 5))],
+        ..Roles::default()
+    };
+    let safe = Rules {
+        safe_step: true,
+        ..Rules::default()
+    };
+    let mut after = state.clone();
+    assert!(after.apply(Command::Move { id: 1, x: 6, y: 4 }));
+    assert!(crate::eval::threatened(&after, 0) > crate::eval::threatened(&state, 0));
+    // The step is refused; the training at the unit's tip still comes.
+    let plan = strategic_turn(&state, &roles, safe);
+    assert!(
+        !plan.iter().any(|c| matches!(c, Command::Move { .. })),
+        "{plan:?}"
+    );
+}
+
+#[test]
+fn back_only_leaves_the_exposed_unit_out_of_the_turn() {
+    let state = contested();
+    let settings = Settings {
+        mode: 1,
+        back_only: true,
+        ..Settings::default()
+    };
+    let only = guide_with(&state, &mut Memory::default(), settings).expect("a guide");
+    assert!(!only
+        .plan
+        .iter()
+        .any(|c| matches!(c, Command::Move { id: 1, .. })));
+}
+
+#[test]
+fn the_search_plays_a_guide_that_starts_its_first_climb() {
+    use crate::search::{think_with, Limit};
+    // Blue has no gold and no unit: the guided cell stays ours.
+    let state = position(FACING, [40, 0], &[(0, 1, 1, 6, 3)]);
+    let step = Command::Move { id: 1, x: 6, y: 4 };
+    // The objectives' term makes the guided cell worth far more than
+    // anything else, so the plan played holds the guided step.
+    let layer = Guide {
+        plan: vec![step],
+        start: true,
+        pieces: vec![vec![step]],
+        objectives: vec![(cell(6, 4), 10_000, 0)],
+        quarters: 4,
+        ..Guide::default()
+    };
+    let limit = Limit {
+        soft: None,
+        hard: None,
+        max_evals: 200,
+    };
+    let mut opening = crate::opening_of(2);
+    opening.end();
+    let thought = think_with(&state, limit, &mut opening, Some(layer));
+    // The first climb starts with the guide; a later plan with the same
+    // step (offered as a piece at every step) may come first on a tie.
+    assert!(thought.climbs >= 1);
+    assert!(thought.commands.contains(&step), "{:?}", thought.commands);
+    assert_eq!(thought.pieces, 1);
+}

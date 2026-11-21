@@ -1,7 +1,7 @@
 ---
 id: E077
 date: 2026-11-20
-pull_request: "#NN"
+pull_request: "#383"
 parent: ice-and-fire-v031
 hypothesis: A strategic turn for game turns 7 to 14 (the frontline units step toward their objectives, then units are trained at their tips), offered to the search, which stays the judge, takes and holds more of the centre and beats ice-and-fire-v031 (Step 4 of the frontline plan).
 change: The strategic layer of Steps 2 and 3 (objectives, race, roles) is turned on from game turn 7 to 14; its turn is offered to the search as a macro action, as the first climb's start, or in pieces (each frontline unit's step and tip training) at every step of the climbs, and an objectives' term may join the score (`strategy::TURN`, `TRAININGS`, `OBJECTIVE_QUARTERS`, `OBJECTIVE_RACE`, `FROM_TURN`, `UNTIL_TURN`).
@@ -31,8 +31,9 @@ behaviour change. Against zasmu we hold fewer band cells at game turn 10
 ## Change
 
 In `games/ice-and-fire/bots/plan/src/strategy.rs` and
-`strategy/turn.rs`, all off in v031 (with them off the bot plays as v031:
-20 games against v030 at fixed tries, identical results and lengths):
+`strategy/turn.rs`, behind switches that are all off in this code (with
+them off the bot plays as ice-and-fire-v031: 20 games of each against v030
+at fixed tries gave the same results and lengths):
 
 - The **strategic turn** (`strategy::turn::strategic_turn`): each
   frontline unit, in role order, steps to a neighbour one step nearer its

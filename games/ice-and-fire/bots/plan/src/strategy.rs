@@ -175,13 +175,13 @@ pub fn guide_with(state: &State, memory: &mut Memory, settings: Settings) -> Opt
             (o.cell, o.value, neutral)
         })
         .collect();
-    let pieces = if mode & 4 != 0 {
+    let parts = if mode & 4 != 0 {
         turn::pieces(state, &roles, rules)
     } else {
         Vec::new()
     };
     Some(Guide {
-        pieces,
+        pieces: parts,
         offered: !plan.is_empty() && mode & 1 != 0,
         start: !plan.is_empty() && mode & 2 != 0,
         plan,
