@@ -134,4 +134,17 @@ we own and none in turns 1 to 6 is behind our front: the back-line ones
 come at game turns 7 (88) and 8 (22), from the middle-game search, which
 plays from game turn 7 (E067). As red at game turn 7 it trains at (0, 1),
 next to our HQ, in 80 of 100 games of the control (v031) and 82 of `rm`'s.
-Why is being diagnosed; it is not E080's change.
+Not E080's change. The diagnosis (the owner asked for it and for
+solutions, 2026-11-21), with a new analysis mode of the bot, `explain`
+(each training of the search's plan against the same plan without it,
+term by term of the evaluation): on the 800 positions of game turns 7 and
+8 of the control's games, the search's plans hold 764 level-1 trainings;
+266 of them (35%) are 6 or more steps from enemy land ((0, 1) as red 160
+times, (10, 11) and (11, 9) as blue 84 times). Each gains +31.8 on
+average, of which the shape term (`eval::shape`, E010: twice the side's
+joints plus the most cells one capture cuts off) gives +39.2, the rest
+−7.4; 258 of the 266 would not pay without it. Our land joins the HQ
+through one cell, which then cuts everything off; a unit beside the HQ
+closes a loop. The 498 trainings nearer the enemy gain +4.0 (+16.2 after
+the opponent's answer), from the cells and the band's goal. A fix is its
+own experiment (E081).

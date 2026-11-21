@@ -12,6 +12,8 @@
 //! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
 //!   strategy --positions FILE
 //! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
+//!   explain --positions FILE [--tries 1000] [--cell X,Y]
+//! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
 //!   guide --positions FILE [--tries 1000] [--guard 0|1|2] [--fill-behind] [--safe-step] [--back-only]
 //! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
 //!   surprise --positions FILE [--tries 600]
@@ -50,6 +52,7 @@
 //! comes just before `end`: the answer a player sent from the position, its
 //! commands joined by `;` (`WAIT` for none). `bank` and `speed` ignore it.
 
+pub mod explain;
 pub mod frontline;
 pub mod guide;
 pub mod judge;
@@ -553,6 +556,18 @@ pub fn main_if_asked() {
             }
             Err(err) => {
                 eprintln!("plan strategy: {err}");
+                std::process::exit(2);
+            }
+        }
+    }
+    if args.first().map(String::as_str) == Some("explain") {
+        match explain::run(&args[1..]) {
+            Ok(text) => {
+                print!("{text}");
+                std::process::exit(0);
+            }
+            Err(err) => {
+                eprintln!("plan explain: {err}");
                 std::process::exit(2);
             }
         }
