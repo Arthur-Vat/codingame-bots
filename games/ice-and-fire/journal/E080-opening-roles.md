@@ -324,3 +324,27 @@ cells). The race cannot rank fronts at turn 1; turn-1 goals come from the
 fronts' values (which fronts, how many agents each), and the race is
 followed from about game turn 3, as the enemy commits its units (a front
 it will reach first dropped, the others reinforced).
+
+### Cell values and the two kinds of option
+
+The owner (2026-11-21): within a region, cells differ (edge cells are
+weaker); two kinds of option, "reaching a cell at the entrance of a region
+of interest (to defend this area), or rush deep on such a region (attack)
+to get a strong position and take a lead", compared by territory share;
+later a dynamic opening based on the opponent's replies ("if an enemy
+doesn't claim an area we could go deeper"), but first "full planning from
+turn one", with the cell values drawn in absolute terms.
+
+The static value of a cell at game turn 1 (scratch script, the six maps
+above): we hold the shortest chain of cells from our land to it, the chain
+blocking the enemy, and count the map's cells nearer our land than the
+enemy's, less the count as it is. Per front, the entrance option (the best
+cell of its contested line) and the deep option (the best cell one or two
+rings past the line, 4 to 8 steps nearer the enemy than us):
+https://claude.ai/artifact/1hsAEqAvnM83ZDnRKACE6y. On these maps the
+entrance gains 16 to 50 cells in 10 to 12 steps; going 2 steps deeper adds
+0 to 8 cells. With an enemy that does not move, the value only grows
+toward the enemy's HQ (a chain to it blocks everything), and edge cells are
+worth less (a chain along the border decides little land); the planning
+needs the enemy's growth in time to give the deep options their real
+price.
