@@ -168,7 +168,7 @@ pub const SHAPE_REACH: u8 = 2;
 /// See [`SHAPE_REACH`].
 pub const SHAPE_NEAR: u8 = 3;
 /// See [`SHAPE_REACH`].
-pub const SHAPE_FAR: u8 = 6;
+pub const SHAPE_FAR: u8 = 8;
 
 /// The weight in quarters of a joint `d` steps from the enemy's active land
 /// by [`SHAPE_REACH`]'s rule `mode`.
