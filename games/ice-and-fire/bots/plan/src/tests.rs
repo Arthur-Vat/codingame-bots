@@ -623,8 +623,10 @@ fn a_cell_that_cuts_others_off_weakens_its_side() {
         assert_eq!(crate::eval::shape(&state, 0), -2 * 2);
         assert_eq!(crate::eval::shape(&state, 1), 2 * 2);
     } else {
-        // E081: (1,0) is far beyond SHAPE_NEAR steps of blue's land.
+        // E081: (1,0) is far beyond SHAPE_NEAR steps of blue's land, and
+        // blue's two cells have no joint.
         assert_eq!(crate::eval::shape(&state, 0), 0);
+        assert_eq!(crate::eval::shape(&state, 1), 0);
     }
     // A square has no joint.
     let mut rows = rows;
@@ -866,10 +868,33 @@ fn the_weakness_counts_the_joints_and_cuts_of_severed() {
             let want = 2
                 * (crate::eval::weakness_of(state.active(other), ice_and_fire_engine::HQ[other])
                     - (joints + most));
-            if crate::eval::SHAPE_REACH == 0 {
-                assert_eq!(crate::eval::shape(&state, seat), want);
-                assert_eq!(crate::eval::shape(&state, seat), want);
-            }
+            // The bot's path, through the cache, twice: every joint
+            // counted (v031), or each weighted by its steps from the
+            // enemy's land (E081).
+            let want = if crate::eval::SHAPE_REACH == 0 {
+                want
+            } else {
+                let weighted = |side: usize| {
+                    let d = ice_and_fire_opening::econ::distances(&state, state.active(1 - side));
+                    let mut w = [0u8; ice_and_fire_engine::CELLS];
+                    for (w, &steps) in w.iter_mut().zip(d.iter()) {
+                        *w = crate::eval::joint_weight(
+                            crate::eval::SHAPE_REACH,
+                            crate::eval::SHAPE_NEAR,
+                            crate::eval::SHAPE_FAR,
+                            steps,
+                        );
+                    }
+                    crate::eval::weakness_weighted(
+                        state.active(side),
+                        ice_and_fire_engine::HQ[side],
+                        &w,
+                    )
+                };
+                2 * (weighted(other) - weighted(seat))
+            };
+            assert_eq!(crate::eval::shape(&state, seat), want);
+            assert_eq!(crate::eval::shape(&state, seat), want);
             checked += 1;
         }
     }
