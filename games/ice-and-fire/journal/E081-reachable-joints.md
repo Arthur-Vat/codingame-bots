@@ -89,3 +89,23 @@ trains more near the enemy instead.
 The variants' median answer is a few milliseconds longer (the distances
 from the enemy's land, one breadth-first search an evaluated side when the
 cache misses), within the turn's 45 ms.
+
+## Screening
+
+The owner approved (form, 2026-11-21) one GitHub run of full games, 8
+variants, 800 pairs each against v031 over 2 calibrated runners, seed
+2026112107 (run 44888882551). `k` variants count a joint only within that
+many steps of the enemy's active land (`SHAPE_REACH = 1`); `w` variants
+weight it fully up to the first number of steps, then less to nothing at
+the second (`SHAPE_REACH = 2`).
+
+| Variant | Rule | Elo over v031 [95%] | Faults (variant / v031) |
+| --- | --- | --- | ---: |
+| k2 | ≤ 2 steps | | |
+| k3 | ≤ 3 steps | | |
+| k4 | ≤ 4 steps | | |
+| k5 | ≤ 5 steps | | |
+| k6 | ≤ 6 steps | | |
+| w26 | full ≤ 2, none from 6 | | |
+| w36 | full ≤ 3, none from 6 | | |
+| w38 | full ≤ 3, none from 8 | | |
