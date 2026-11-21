@@ -7,6 +7,8 @@
 //!   matched to the middle chokes and cells along the Voronoi frontier.
 //! - [`econ`]: the opening of `ice-and-fire-v003` (E003): units take free
 //!   cells, trainings and mines are bought while they pay back.
+//! - [`frontline`]: the frontline plan's objectives, race and roles (moved
+//!   from the plan bot for E080).
 //! - [`middle`]: when the middle game starts: the first start of a player's
 //!   turn whose gold pays a chain of trainings to an enemy cell.
 //! - [`score`]: a hand-built score of a state in gold, for comparing openings
@@ -23,6 +25,7 @@
 
 pub mod assign;
 pub mod econ;
+pub mod frontline;
 pub mod middle;
 pub mod plan;
 pub mod planned;

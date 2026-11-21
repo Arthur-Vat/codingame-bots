@@ -4,16 +4,14 @@
 //! (Steps 2 and 3), and the strategic turn offered to the search (Step 4,
 //! E077), each behind a switch.
 
-pub mod objectives;
-pub mod race;
-pub mod roles;
 #[cfg(test)]
 mod tests;
 pub mod turn;
 
 use ice_and_fire_engine::{Command, State};
+use ice_and_fire_opening::frontline::{objectives, race, roles};
 
-pub use roles::Memory;
+use roles::Memory;
 
 /// How the strategic turn reaches the search (E077), bits added: 0, not at
 /// all (v031); 1, offered as one macro action at the climbs' root; 2, the

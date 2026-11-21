@@ -1,7 +1,7 @@
 //! The objectives of a map and the land each decides.
 //!
 //! An objective is a cell of the contested band or a middle choke
-//! (`crate::eval::goal_zones`). Its value for a side is the land it gains by
+//! ([`super::goal_zones`]). Its value for a side is the land it gains by
 //! holding it: the number of valid cells strictly nearer (steps over valid
 //! cells) to the side's active land than to the enemy's, with the cell added
 //! to its land, less the same count as it is (the enemy's land unchanged).
@@ -11,10 +11,10 @@
 //! with the cell added to the side's land less the count with it added to
 //! the enemy's.
 
+use crate::econ::distances;
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
-use ice_and_fire_opening::econ::distances;
 
-use crate::eval::goal_zones;
+use super::goal_zones;
 
 /// The least value for an objective to count: `None` counts every objective
 /// that gains land (value above 0), `Some(3)` is the first cut.

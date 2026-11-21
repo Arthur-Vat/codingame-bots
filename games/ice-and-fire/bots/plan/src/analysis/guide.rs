@@ -21,8 +21,9 @@ use ice_and_fire_engine::{answer_line, Command, State};
 use super::{read_bank, ready};
 use crate::eval::eval;
 use crate::search::{think, Limit};
-use crate::strategy::objectives::{counted, objectives};
-use crate::strategy::{guide_with, Memory, Settings, FROM_TURN, UNTIL_TURN};
+use crate::strategy::{guide_with, Settings, FROM_TURN, UNTIL_TURN};
+use ice_and_fire_opening::frontline::objectives::{counted, objectives};
+use ice_and_fire_opening::frontline::roles::Memory;
 
 /// The opponent's answer to the state `after` (our turn played and ended):
 /// its search with `tries` tries, its opening over.

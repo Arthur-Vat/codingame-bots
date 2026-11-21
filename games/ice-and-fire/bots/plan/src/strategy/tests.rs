@@ -3,15 +3,15 @@ use ice_and_fire_engine::State;
 use ice_and_fire_engine::Bits;
 use ice_and_fire_opening::econ::distances;
 
-use super::objectives::{
-    counted, objectives, objectives_valued, Kind, Objective, OBJECTIVE_MIN_VALUE,
-};
-use super::race::{race, Arrival, How, Race};
-use super::roles::{assign, Memory, Roles};
 use super::turn::{strategic_turn, Rules};
 use super::{guide, guide_with, Guide, Settings, STRATEGY};
 use crate::tests::position;
 use ice_and_fire_engine::Command;
+use ice_and_fire_opening::frontline::objectives::{
+    counted, objectives, objectives_valued, Kind, Objective, OBJECTIVE_MIN_VALUE,
+};
+use ice_and_fire_opening::frontline::race::{race, Arrival, How, Race};
+use ice_and_fire_opening::frontline::roles::{assign, Memory, Roles};
 
 /// The corridor: red holds the top row and the right column down to (11, 9),
 /// blue's HQ is alone at (11, 11) and (11, 10) is neutral.
@@ -645,8 +645,14 @@ fn only_units_off_the_enemys_reach_take_a_role_when_asked() {
     let at = cell(6, 5);
     let obj = [goal(at, 9)];
     let races = [race_of(at, arrival(2, How::Unit(1)), None)];
-    let roles =
-        super::roles::assign_among(&state, 0, &obj, &races, &mut Memory::default(), eligible);
+    let roles = ice_and_fire_opening::frontline::roles::assign_among(
+        &state,
+        0,
+        &obj,
+        &races,
+        &mut Memory::default(),
+        eligible,
+    );
     assert!(roles.frontline.is_empty());
     assert_eq!(roles.back, vec![1]);
     let all = assign(&state, 0, &obj, &races, &mut Memory::default());

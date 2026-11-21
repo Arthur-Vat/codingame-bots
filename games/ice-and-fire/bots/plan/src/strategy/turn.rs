@@ -9,9 +9,9 @@
 
 use ice_and_fire_engine::{Bits, Command, State};
 
-use super::roles::Roles;
 use crate::actions::xy;
 use crate::eval::threatened;
+use ice_and_fire_opening::frontline::roles::Roles;
 
 /// The gold of a level-1 unit.
 const TRAIN_COST: i64 = 10;

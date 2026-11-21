@@ -12,9 +12,9 @@ use std::fmt::Write as _;
 
 use super::{read_bank, ready};
 use crate::actions::xy;
-use crate::strategy::objectives::{objectives, Kind};
-use crate::strategy::race::{race, Arrival, How};
-use crate::strategy::roles::{assign, Memory};
+use ice_and_fire_opening::frontline::objectives::{objectives, Kind};
+use ice_and_fire_opening::frontline::race::{race, Arrival, How};
+use ice_and_fire_opening::frontline::roles::{assign, Memory};
 
 fn cell_text(cell: usize) -> String {
     let (x, y) = xy(cell);

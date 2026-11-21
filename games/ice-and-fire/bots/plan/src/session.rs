@@ -9,7 +9,8 @@ use ice_and_fire_opening::planned::Planned;
 use ice_and_fire_policy::io::turns;
 
 use crate::search::{think, think_with, Limit};
-use crate::strategy::{self, Memory};
+use crate::strategy;
+use ice_and_fire_opening::frontline::roles::Memory;
 
 /// Plays turns of a Bronze game until the input ends. `limit` gives the
 /// search's limits from the instant the turn's first line arrived and the
