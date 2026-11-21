@@ -101,11 +101,17 @@ the second (`SHAPE_REACH = 2`).
 
 | Variant | Rule | Elo over v031 [95%] | Faults (variant / v031) |
 | --- | --- | --- | ---: |
-| k2 | ≤ 2 steps | | |
-| k3 | ≤ 3 steps | | |
-| k4 | ≤ 4 steps | | |
-| k5 | ≤ 5 steps | | |
-| k6 | ≤ 6 steps | | |
-| w26 | full ≤ 2, none from 6 | | |
-| w36 | full ≤ 3, none from 6 | | |
-| w38 | full ≤ 3, none from 8 | | |
+| k2 | ≤ 2 steps | +74.5 [+58.5, +90.8] | 1 / 0 |
+| k3 | ≤ 3 steps | +75.4 [+59.2, +92.0] | 0 / 0 |
+| k4 | ≤ 4 steps | +80.9 [+64.7, +97.5] | 0 / 0 |
+| k5 | ≤ 5 steps | +57.9 [+41.8, +74.1] | 0 / 0 |
+| k6 | ≤ 6 steps | +28.3 [+12.7, +44.0] | 0 / 0 |
+| w26 | full ≤ 2, none from 6 | +80.9 [+65.1, +97.0] | 0 / 0 |
+| w36 | full ≤ 3, none from 6 | +59.2 [+43.3, +75.4] | 0 / 0 |
+| w38 | full ≤ 3, none from 8 | +53.0 [+36.8, +69.4] | 0 / 0 |
+
+Every variant beats v031; the nearest cuts (2 to 4 steps) and the steep
+weighting (full to 2 steps, none from 6) lead at +75 to +81, and the
+further a joint may be from the enemy and still count, the less the gain
+(k5 +57.9, k6 +28.3; w36 +59.2, w38 +53.0). The leaders, w26 and k4, and
+k3 go on a second seed.
