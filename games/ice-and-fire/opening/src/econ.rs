@@ -37,6 +37,38 @@ pub const MIN_TURNS_LEFT: i64 = 6;
 /// Cost of a level 1 unit.
 const UNIT_COST: i64 = 10;
 
+/// How the rules break a tie between cells worth the same (E082): false,
+/// the lowest cell index (v032), which from the HQ at (0, 0) prefers the
+/// row to the column turn after turn, so the opening takes the flank along
+/// its HQ's row more than the one along its column (387 against 532 cells
+/// by game turn 8 on 100 maps and their mirrors); true, the side of the
+/// diagonal through the HQs where the side holds fewer cells, then the
+/// lowest index ([`lean`], [`balance`]).
+pub const BALANCED_TIES: bool = false;
+
+/// The side of the diagonal through the HQs of `cell`: −1 below it (`x < y`),
+/// 1 above it, 0 on it.
+fn diagonal_side(cell: usize) -> i64 {
+    ((cell % SIZE) as i64 - (cell / SIZE) as i64).signum()
+}
+
+/// How far `land` leans to one side of the diagonal through the HQs: its
+/// cells above it less those below it.
+pub fn lean(land: Bits) -> i64 {
+    land.iter().map(diagonal_side).sum()
+}
+
+/// The tie-break of [`BALANCED_TIES`] for `cell` when the land leans by
+/// `lean`: higher for a cell on the side the land holds less; 0 when the
+/// switch is off.
+pub fn balance(lean: i64, cell: usize) -> i64 {
+    if BALANCED_TIES {
+        -lean.signum() * diagonal_side(cell)
+    } else {
+        0
+    }
+}
+
 /// A mine spot is used only when the enemy territory is more than this many
 /// steps from it.
 const SAFE_SPOT: u8 = 3;
@@ -236,11 +268,17 @@ impl Turn<'_> {
             - crowd
     }
 
-    /// The cell of `cells` worth most, the lowest index on a tie.
+    /// The cell of `cells` worth most; on a tie, by [`balance`], then the
+    /// lowest index.
     fn best(&self, cells: Bits) -> Option<usize> {
-        cells
-            .iter()
-            .max_by_key(|&cell| (self.value(cell), std::cmp::Reverse(cell)))
+        let tilt = if BALANCED_TIES { lean(self.ours) } else { 0 };
+        cells.iter().max_by_key(|&cell| {
+            (
+                self.value(cell),
+                balance(tilt, cell),
+                std::cmp::Reverse(cell),
+            )
+        })
     }
 
     fn claim(&mut self, cell: usize) {
@@ -355,6 +393,7 @@ fn moves(state: &mut State, turn: &mut Turn<'_>, out: &mut Vec<Command>) {
             }
         }
     }
+    let tilt_now = if BALANCED_TIES { lean(state.owned(me)) } else { 0 };
     for from in idle {
         if !state.movable_units().test(from) {
             continue;
@@ -362,7 +401,13 @@ fn moves(state: &mut State, turn: &mut Turn<'_>, out: &mut Vec<Command>) {
         let target = [turn.side, turn.free].into_iter().find_map(|cells| {
             cells
                 .iter()
-                .min_by_key(|&cell| (state.map().distance(from, cell), cell))
+                .min_by_key(|&cell| {
+                    (
+                        state.map().distance(from, cell),
+                        -balance(tilt_now, cell),
+                        cell,
+                    )
+                })
         });
         if let Some(target) = target {
             step(state, from, target, out);

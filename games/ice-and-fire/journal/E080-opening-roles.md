@@ -223,3 +223,16 @@ best cell for a unit or a training breaks ties by the lowest cell index
 diagonal where we hold fewer cells (then the index) gives 473 against 446
 on the same check, the same 919 cells in all; 80 mirrors still differ
 (other ties remain). This is a change of behaviour for its own experiment.
+
+### The tie-break, folded in
+
+The owner chose (form, 2026-11-21) to fold the tie-break fix into E080
+rather than run it alone: `econ::BALANCED_TIES` (off in v032), with the
+mirror check `opening/examples/mirror.rs` (cherry-picked from the branch
+`claude/ice-and-fire-e082-balanced-ties`, whose journal entry was never
+merged). With it on, the mirror check gives 476 against 452 cells (v032:
+387 against 532), the same land in all. Local duels against v032, 150
+pairs each, seed 2026112109: full games +13.9 [−20.0, +48.1], cut at game
+turn 12 +25.5 [−6.0, +57.5] (the switched-off control −2.3 and 0.0); no
+fault, the same time per turn. E080's variants are screened with it on and
+off.
