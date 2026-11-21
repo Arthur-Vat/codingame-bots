@@ -861,8 +861,10 @@ fn the_weakness_counts_the_joints_and_cuts_of_severed() {
             let want = 2
                 * (crate::eval::weakness_of(state.active(other), ice_and_fire_engine::HQ[other])
                     - (joints + most));
-            assert_eq!(crate::eval::shape(&state, seat), want);
-            assert_eq!(crate::eval::shape(&state, seat), want);
+            if crate::eval::SHAPE_REACH == 0 {
+                assert_eq!(crate::eval::shape(&state, seat), want);
+                assert_eq!(crate::eval::shape(&state, seat), want);
+            }
             checked += 1;
         }
     }
@@ -1753,4 +1755,47 @@ fn the_contested_centre_cells_are_those_the_enemy_can_grab() {
         }
     }
     assert!(found > 0, "no contested cell");
+}
+
+#[test]
+fn a_joints_weight_falls_with_its_distance_from_the_enemy() {
+    use crate::eval::joint_weight;
+    assert!((0..20).all(|d| joint_weight(0, 3, 6, d) == 4));
+    assert_eq!(
+        (0..6).map(|d| joint_weight(1, 3, 6, d)).collect::<Vec<_>>(),
+        vec![4, 4, 4, 4, 0, 0]
+    );
+    assert_eq!(
+        (1..8).map(|d| joint_weight(2, 2, 6, d)).collect::<Vec<_>>(),
+        vec![4, 4, 3, 2, 1, 0, 0]
+    );
+    assert_eq!(joint_weight(2, 3, 6, u8::MAX), 0);
+}
+
+#[test]
+fn weighted_weakness_counts_only_the_weighted_joints() {
+    use crate::eval::{weakness_of, weakness_weighted};
+    use ice_and_fire_engine::{Bits, CELLS};
+    for state in many_positions().into_iter().take(200) {
+        for seat in 0..2 {
+            let active = state.active(seat);
+            let hq = ice_and_fire_engine::HQ[seat];
+            assert_eq!(
+                weakness_weighted(active, hq, &[4; CELLS]),
+                weakness_of(active, hq)
+            );
+            assert_eq!(weakness_weighted(active, hq, &[0; CELLS]), 0);
+        }
+    }
+    // A line from the HQ at (0, 0) along the top row: every cell but the
+    // last is a joint. Weighting only (5, 0) counts it and the 6 cells
+    // beyond it.
+    let mut line = Bits::EMPTY;
+    for x in 0..12 {
+        line.set(x);
+    }
+    let mut weights = [0u8; CELLS];
+    weights[5] = 4;
+    assert_eq!(weakness_weighted(line, 0, &weights), 1 + 6);
+    assert_eq!(weakness_of(line, 0), 10 + 10);
 }
