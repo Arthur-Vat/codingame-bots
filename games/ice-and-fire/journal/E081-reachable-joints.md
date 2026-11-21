@@ -53,3 +53,21 @@ In `games/ice-and-fire/bots/plan/src/eval.rs`, all off in v031:
   the enemy's active land.
 - The analysis mode `explain` (`bots/plan/src/analysis/explain.rs`,
   `eval::terms`), made for E080's diagnosis.
+
+## Offline
+
+The analysis mode `explain` with each variant's search (1,000 tries) on the
+same 800 positions of game turns 7 and 8; trainings of the plans by their
+steps from the enemy's active land:
+
+| Variant | Switches | Trainings | 6+ steps | 3 to 5 steps | 1 or 2 steps | Shape gain of the 6+ ones |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| v031 | `SHAPE_REACH = 0` | 764 | 266 | 27 | 471 | +39.2 |
+| k3 | 1, near 3 | 671 | 12 | 78 | 581 | 0.0 |
+| k4 | 1, near 4 | 711 | 14 | 77 | 620 | 0.0 |
+| k6 | 1, near 6 | 686 | 24 | 56 | 606 | +5.7 |
+| w26 | 2, near 2, far 6 | 688 | 14 | 60 | 614 | 0.0 |
+| w38 | 2, near 3, far 8 | 690 | 14 | 57 | 619 | −0.3 |
+
+Every variant removes about 95% of the trainings behind our lines and
+trains more near the enemy instead.
