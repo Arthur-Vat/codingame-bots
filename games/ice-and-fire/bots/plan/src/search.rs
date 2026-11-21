@@ -46,6 +46,7 @@ use ice_and_fire_tactics::eval::WIN;
 
 use crate::actions::{generate, xy, Action, CUT_LENGTH};
 use crate::eval::eval;
+use crate::strategy::Guide;
 
 #[cfg(feature = "analysis")]
 pub mod judge;
@@ -108,6 +109,10 @@ pub struct Thought {
     pub forced: usize,
     /// Whether the opening played the turn.
     pub opening: bool,
+    /// Whether the plan played starts with the strategic turn (E077).
+    pub strategic: bool,
+    /// The strategic turn's pieces the plan played holds (E077).
+    pub pieces: usize,
 }
 
 /// Whether the plan played must have had its own replies searched (E027).
@@ -148,6 +153,9 @@ struct Search {
     root_actions: Option<Vec<Action>>,
     /// Whether the strike reserve holds this turn (E069).
     strike: bool,
+    /// The strategic layer's guide this turn (E077): its plan and the
+    /// objectives' term.
+    guide: Option<Guide>,
 }
 
 /// The strike reserve (E069, stage B of the curriculum in
@@ -352,16 +360,35 @@ impl Search {
             return WIN;
         }
         if memory.is_empty() {
-            return eval(end, self.me);
+            return self.value(end);
         }
         let mut worst = i64::MAX;
         for reply in memory {
-            worst = worst.min(eval(&after_reply(end, &reply.commands), self.me));
+            worst = worst.min(self.value(&after_reply(end, &reply.commands)));
             if worst <= bound {
                 break;
             }
         }
         worst
+    }
+
+    /// The evaluation of `state` for us, with the objectives' term of the
+    /// guide (E077).
+    fn value(&self, state: &State) -> i64 {
+        let base = eval(state, self.me);
+        match &self.guide {
+            Some(guide) if state.outcome().is_none() => base + guide.term(state, self.me),
+            _ => base,
+        }
+    }
+
+    /// Adds the strategic turn's pieces to `actions` (E077).
+    fn add_pieces(&self, actions: &mut Vec<Action>) {
+        if let Some(guide) = &self.guide {
+            for piece in &guide.pieces {
+                actions.push(Action::Many(piece.clone()));
+            }
+        }
     }
 
     /// One pass over `actions` in `order` from the plan state `cur`: the best
@@ -427,11 +454,17 @@ impl Search {
                     Some(root_actions) => actions.clone_from(root_actions),
                     None => {
                         generate(&cur, &mut actions);
+                        // The strategic turn as one macro action (E077).
+                        if let Some(guide) = self.guide.as_ref().filter(|g| g.offered) {
+                            actions.push(Action::Many(guide.plan.clone()));
+                        }
+                        self.add_pieces(&mut actions);
                         self.root_actions = Some(actions.clone());
                     }
                 }
             } else {
                 generate(&cur, &mut actions);
+                self.add_pieces(&mut actions);
             }
             blockers(&cur, memory, &mut actions);
             order.clear();
@@ -517,6 +550,7 @@ impl Search {
             root_actions: None,
             // The opponent's model keeps no reserve, as before E069.
             strike: false,
+            guide: None,
         };
         out.push(theirs.climb(&next, &[], &[], true).commands);
         out.retain(|commands| !commands.is_empty());
@@ -528,7 +562,7 @@ impl Search {
         self.replies(end)
             .into_iter()
             .map(|commands| {
-                let damage = eval(&after_reply(end, &commands), self.me);
+                let damage = self.value(&after_reply(end, &commands));
                 Reply { commands, damage }
             })
             .collect()
@@ -583,6 +617,18 @@ fn remember(found: &[Reply], memory: &mut Vec<Reply>) -> bool {
 /// The commands to play in `state` for the player to act, within `limit`;
 /// `opening` plays until the middle game (`ice_and_fire_opening::middle`).
 pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
+    think_with(state, limit, opening, None)
+}
+
+/// [`think`] with the strategic layer's guide for the turn (E077): its plan
+/// offered as a macro action or as the first climb's start, and the
+/// objectives' term added to the score.
+pub fn think_with(
+    state: &State,
+    limit: Limit,
+    opening: &mut Planned,
+    guide: Option<Guide>,
+) -> Thought {
     let me = state.to_act();
     let mut thought = Thought::default();
     if state.outcome().is_some() {
@@ -632,6 +678,7 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
         hints: Gains::default(),
         root_actions: None,
         strike: strike_reserve(state),
+        guide,
     };
     let mut memory = Vec::new();
     let mut plans: Vec<Plan> = Vec::new();
@@ -639,8 +686,20 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
     // Set when no first action left improves the plan (E029).
     let mut exhausted = false;
     let mut forced: Vec<Action> = Vec::new();
+    // The first climb starts with the strategic turn (E077).
+    let mut start = search
+        .guide
+        .as_ref()
+        .filter(|g| g.start)
+        .map(|g| Action::Many(g.plan.clone()));
     while thought.climbs < MAX_CLIMBS && (plans.is_empty() || !search.spent()) {
-        let plan = if exhausted {
+        let started = match start.take() {
+            Some(action) => search.forced(state, &action, &memory),
+            None => None,
+        };
+        let plan = if let Some(plan) = started {
+            plan
+        } else if exhausted {
             let Some(action) = forced.pop() else {
                 break;
             };
@@ -740,6 +799,16 @@ pub fn think(state: &State, limit: Limit, opening: &mut Planned) -> Thought {
     #[cfg(feature = "analysis")]
     judge::observe(&search, state, &memory, best);
     if let Some((_, index)) = best {
+        thought.strategic = search
+            .guide
+            .as_ref()
+            .is_some_and(|g| !g.plan.is_empty() && plans[index].commands.starts_with(&g.plan));
+        thought.pieces = search.guide.as_ref().map_or(0, |g| {
+            g.pieces
+                .iter()
+                .filter(|p| p.iter().all(|c| plans[index].commands.contains(c)))
+                .count()
+        });
         // Each command is checked once more, in order, on a scratch copy.
         let mut scratch = state.clone();
         for &command in &plans[index].commands {

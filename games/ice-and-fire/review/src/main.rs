@@ -6,7 +6,7 @@
 //! ice-and-fire-review summary DIR > DIR/summary-data.md
 //! ice-and-fire-review report DIR [--curves FILE] > report.md
 //! ice-and-fire-review towers [--csv DIR] [--jobs N] GAME.json... > towers.md
-//! ice-and-fire-review bank --out FILE [--count N] [--seed S] [--jobs N] GAME.json...
+//! ice-and-fire-review bank --out FILE [--count N] [--seed S] [--jobs N] [--all-plies] GAME.json...
 //! ice-and-fire-review screening [--jobs N] GAME.json... > screening.md
 //! ice-and-fire-review codingame --out DIR [--kind ranking] [--strict] LOG.json... > check.md
 //! ice-and-fire-review codingame-report --data DIR --me NAME [--kinds ranking,test] [--release NAME] [--our-seat 0|1] [--top N] --out DIR
@@ -132,6 +132,10 @@ enum Command {
         /// Records replayed at the same time.
         #[arg(long, default_value_t = 2)]
         jobs: usize,
+        /// Draw from every ply of the games, the opening and the endgame
+        /// included, not only the middle game's.
+        #[arg(long)]
+        all_plies: bool,
         /// Game records written by the arena (`--records`).
         #[arg(required = true)]
         records: Vec<PathBuf>,
@@ -820,15 +824,19 @@ fn run(cli: Cli) -> Result<(), String> {
             count,
             seed,
             jobs,
+            all_plies,
             records,
         } => {
             if out.exists() {
                 return Err(format!("{} exists: write elsewhere", out.display()));
             }
             let blocks = replay::map_records(&sorted(records), jobs, |game| {
-                bank::middle_plies(game)
-                    .map(|ply| bank::block(game, ply))
-                    .collect::<Vec<_>>()
+                let plies = if all_plies {
+                    0..game.steps.len()
+                } else {
+                    bank::middle_plies(game)
+                };
+                plies.map(|ply| bank::block(game, ply)).collect::<Vec<_>>()
             })?;
             let candidates: Vec<(usize, usize)> = blocks
                 .iter()
@@ -840,8 +848,9 @@ fn run(cli: Cli) -> Result<(), String> {
             let text: String = drawn.iter().map(|&(g, i)| blocks[g][i].as_str()).collect();
             fs::write(&out, text).map_err(|e| format!("{}: {e}", out.display()))?;
             eprintln!(
-                "wrote {} of {total} middle-game positions of {} games to {}",
+                "wrote {} of {total} {} positions of {} games to {}",
                 drawn.len(),
+                if all_plies { "game" } else { "middle-game" },
                 blocks.len(),
                 out.display()
             );
