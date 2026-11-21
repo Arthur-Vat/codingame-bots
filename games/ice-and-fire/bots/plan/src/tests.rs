@@ -619,8 +619,13 @@ fn a_cell_that_cuts_others_off_weakens_its_side() {
         "...........X",
     ];
     let state = position(rows, [20, 20], &[]);
-    assert_eq!(crate::eval::shape(&state, 0), -2 * 2);
-    assert_eq!(crate::eval::shape(&state, 1), 2 * 2);
+    if crate::eval::SHAPE_REACH == 0 {
+        assert_eq!(crate::eval::shape(&state, 0), -2 * 2);
+        assert_eq!(crate::eval::shape(&state, 1), 2 * 2);
+    } else {
+        // E081: (1,0) is far beyond SHAPE_NEAR steps of blue's land.
+        assert_eq!(crate::eval::shape(&state, 0), 0);
+    }
     // A square has no joint.
     let mut rows = rows;
     rows[0] = "OO..........";
@@ -1798,4 +1803,44 @@ fn weighted_weakness_counts_only_the_weighted_joints() {
     weights[5] = 4;
     assert_eq!(weakness_weighted(line, 0, &weights), 1 + 6);
     assert_eq!(weakness_of(line, 0), 10 + 10);
+}
+
+#[test]
+fn only_joints_near_the_enemy_count_from_v032() {
+    // Red's line (0,0) to (3,0); blue's land comes down column 11 and along
+    // row 2 to (3,2). Red's joints (1,0) and (2,0) are 4 and 3 steps from
+    // blue's land; blue's joints (4,2) and (5,2) are 3 and 4 steps from
+    // red's.
+    let rows = [
+        "OOOO........",
+        "...........X",
+        "...XXXXXXXXX",
+        "...........X",
+        "...........X",
+        "...........X",
+        "...........X",
+        "...........X",
+        "...........X",
+        "...........X",
+        "...........X",
+        "...........X",
+    ];
+    let state = position(rows, [20, 20], &[]);
+    let weakness = |seat: usize| {
+        let d = ice_and_fire_opening::econ::distances(&state, state.active(1 - seat));
+        let mut w = [0u8; ice_and_fire_engine::CELLS];
+        for (w, &steps) in w.iter_mut().zip(d.iter()) {
+            *w = crate::eval::joint_weight(1, 3, 6, steps);
+        }
+        crate::eval::weakness_weighted(state.active(seat), ice_and_fire_engine::HQ[seat], &w)
+    };
+    // Each side: only the joint 3 steps away counts, cutting off the one
+    // cell beyond it ((3,0) for red, (3,2) for blue).
+    assert_eq!(weakness(0), 1 + 1);
+    assert_eq!(weakness(1), 1 + 1);
+    // Every joint counted (v031): red's (1,0) cuts off 2 cells.
+    assert_eq!(
+        crate::eval::weakness_of(state.active(0), ice_and_fire_engine::HQ[0]),
+        2 + 2
+    );
 }

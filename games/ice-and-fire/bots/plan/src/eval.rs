@@ -163,8 +163,9 @@ const SHAPE: i64 = 2;
 /// behind its own lines): 0, all of them (v031); 1, only those at most
 /// [`SHAPE_NEAR`] steps from the enemy's active land; 2, each weighted by
 /// its distance from it, fully up to [`SHAPE_NEAR`] steps, then less and
-/// less to nothing at [`SHAPE_FAR`].
-pub const SHAPE_REACH: u8 = 0;
+/// less to nothing at [`SHAPE_FAR`]. 1 with 3 steps (k3) is
+/// ice-and-fire-v032: +75.4 and +67.7 in screening on two seeds.
+pub const SHAPE_REACH: u8 = 1;
 /// See [`SHAPE_REACH`].
 pub const SHAPE_NEAR: u8 = 3;
 /// See [`SHAPE_REACH`].

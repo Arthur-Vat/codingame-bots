@@ -3,9 +3,9 @@ id: E081
 date: 2026-11-21
 pull_request: "#NN"
 parent: ice-and-fire-v031
-hypothesis: A shape term that counts only the joints the enemy can reach soon (or weighs them down with their distance from it) stops the search from training units behind its own lines at the start of the middle game, keeps that gold for the front, and beats ice-and-fire-v031.
+hypothesis: A shape term that counts only the joints the enemy can reach soon (or weighs them down with their distance from it) stops the search from training units behind its own lines at the start of the middle game, keeps that gold for the front, and beats ice-and-fire-v031 (candidate ice-and-fire-v032).
 change: The shape term's joints are counted only within `SHAPE_NEAR` steps of the enemy's active land (`eval::SHAPE_REACH = 1`), or weighted down from `SHAPE_NEAR` to nothing at `SHAPE_FAR` steps (`SHAPE_REACH = 2`); 0, every joint, in v031.
-release: pending
+release: ice-and-fire-v032
 sprt: pending
 elo: pending
 pairs: pending
@@ -20,7 +20,7 @@ The owner saw trainings in the back line on E080's boards (2026-11-21)
 and asked for a diagnosis and solutions. With the bot's analysis mode
 `explain` (each training of the search's plan against the same plan
 without it, term by term of the evaluation) on the 800 positions of game
-turns 7 and 8 of 200 games of v031 against itself ([E080](E080-opening-roles.md)):
+turns 7 and 8 of 200 games of v031 against itself (the local look of E080, on its branch):
 266 of the 764 trainings (35%) are 6 or more steps from the enemy's land,
 (0, 1) as red 160 times, (10, 11) and (11, 9) as blue 84 times; each gains
 +31.8, of which the shape term (E010: twice the side's joints plus the
@@ -52,7 +52,7 @@ In `games/ice-and-fire/bots/plan/src/eval.rs`, all off in v031:
   (`eval::weakness_weighted`); the cache of the weakness then also keys on
   the enemy's active land.
 - The analysis mode `explain` (`bots/plan/src/analysis/explain.rs`,
-  `eval::terms`), made for E080's diagnosis.
+  its `terms`), made for E080's diagnosis.
 
 ## Offline
 
@@ -115,3 +115,18 @@ weighting (full to 2 steps, none from 6) lead at +75 to +81, and the
 further a joint may be from the enemy and still count, the less the gain
 (k5 +57.9, k6 +28.3; w36 +59.2, w38 +53.0). The leaders, w26 and k4, and
 k3 go on a second seed.
+
+### Second seed
+
+The leaders again, seed 2026112108 (run 44890220155), 800 pairs each:
+
+| Variant | Elo over v031 [95%] | Faults (variant / v031) | Mean of the two seeds |
+| --- | --- | ---: | ---: |
+| k3 | +67.7 [+51.1, +84.6] | 0 / 0 | +71.6 |
+| w26 | +53.0 [+37.2, +68.9] | 0 / 0 | +67.0 |
+| k4 | +52.5 [+37.1, +68.2] | 0 / 0 | +66.7 |
+
+k3, the steadiest over both seeds, is the candidate: `SHAPE_REACH = 1`,
+`SHAPE_NEAR = 3`, frozen as `ice-and-fire-v032` (67,369 characters). The
+screening chose the best of 11 readings, which overstates the winner; the
+SPRT judges it.
