@@ -4,7 +4,6 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 
 ## Waiting for the owner
 
-- **#385 (opened 2026-11-21):** a comment only in `bots/plan/src/eval.rs` (the weakness cache's key since E081); no review (bookkeeping). Merge on his approval once CI is green.
 - **Branches to delete by hand (owner, GitHub's Branches page; a session's deletion is blocked by its safety check):** `claude/ice-and-fire-e082-balanced-ties` (folded into E080), `claude/study/44600313313`, `claude/study/44605143096`, `claude/study/44626073005` (results on main). `claude/study/44695713397` is not known to be done: check before deleting.
 - **Proposals not decided:** screening method (skip the confirmation when a variant leads by more than its interval; 400 pairs first; 2026-11-13); Ice and Fire time roadmap (speed at fixed tries, replies only for contending plans, restarts in early-ending turns; 2026-10-30); approaches of 2026-11-14 not tried (O2 action-level opening search, O3 opponent-aware opening, O5 imitate zasmu's openings, M1 beam search, M2 two-turn lookahead, M3 goal-directed middle game, T1 automated tuning; see this branch's history); UTTT experiments of 2026-10-16 and games/uttt/RETROSPECTIVE.md.
 
@@ -31,6 +30,8 @@ Read at the start of every session; updated by the sessions as work moves (ADR 0
 - ADR 0023 still says the SPRT is not a required check (the owner keeps it, 2026-10-09); ADR 0010's context says sessions cannot download Rust toolchains (they can since 2026-10-16): supersede only if a rule changes.
 
 ## Notes
+
+- **Merged 2026-11-21 on the owner's approval:** #385 (the weakness cache's comment, 9740ddd) and #348 (the weekly league results to 2026-11-19, b24c3bf).
 
 - **Owner's ways of working:** choices and approvals as forms with a recommended option; several variants when relevant, explained in plain words in the chat; links in the chat message itself (device-flow links too); every GitHub screening or run approved explicitly; never ask him for CodinGame ranks; do not mention the account's earlier (pre-project) CodinGame submission; SSE2 only, no `unsafe` without an ADR, no pondering, no time budget change; Train runs need his go-ahead.
 - **Evaluations (ADR 0048-0053):** SPRT in sprt.yml over 8 calibrated runners in blocks of 10 pairs; screening in screen.yml (one runner per variant and shard, `arena: early` for duels cut at game turn 12); nightly league at 19:17 UTC on branch `league-results`; weekly PR by scheduled task trig_01RsVuLPUe8dmAx2kpEFVA3x waking session_014KgfM5m6dDdZ6PAX8ZHZW1 (do not archive it). A commit that changes code reruns a PR's SPRT in full (Markdown-only commits reuse it); a push cancels a running SPRT.
