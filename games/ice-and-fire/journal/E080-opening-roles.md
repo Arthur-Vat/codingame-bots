@@ -306,3 +306,21 @@ middle-only maps; blue's 42% and 62%.)
   column flank in 23 of them (won 13% then; the 3 others were all won).
 - On middle-only maps, holding the middle is worth most: won 65% when it
   is not lost, 39% when it is.
+
+### The goals drawn on six maps
+
+The owner asked to see the goals on various maps (2026-11-21). A first
+version of the rule, in a scratch script for the pictures, on six maps of
+our red games (two with three fronts, two with the two flanks only, two
+with a middle only): each front valued by the cells that change sides
+between our holding its line and the enemy holding it, ranked by value,
+beside our board at game turn 10:
+https://claude.ai/artifact/CjVo3RiA1NCXV7eczk8vim.
+
+A finding for the design: at game turn 1 every front's nearest cell is 10
+steps from red's land and 9 from blue's, on every map, since the contested
+line is equidistant from the HQs by definition (blue starts with two
+cells). The race cannot rank fronts at turn 1; turn-1 goals come from the
+fronts' values (which fronts, how many agents each), and the race is
+followed from about game turn 3, as the enemy commits its units (a front
+it will reach first dropped, the others reinforced).
