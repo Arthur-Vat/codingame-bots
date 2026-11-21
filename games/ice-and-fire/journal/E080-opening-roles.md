@@ -82,3 +82,56 @@ against the opponent passing; without it the roles step loses 0.3 to 1.3
 cells (units with no target wait, gold stays). The bench cannot show what
 the roles step is for, the race against a moving enemy: that is for the
 cut duels and full games.
+
+## A local look, before any screening on GitHub
+
+The owner asked (form, 2026-11-21) for more metrics and visual examples
+before the screening. Duels cut at game turn 12 (`ice-and-fire-arena-early`,
+the bot's own switches, 100 pairs each against v031, seed 2026112105, time
+scale 1, tolerance 20 ms); the control `base` is the bot with the switches
+off (it plays as v031). The variants: v031's order (`Central`) with the
+roles step by its targets (`rv` Value, `rm` Matched, `rf` Frontier, `rg`
+Marginal); the owner's order alone (`vor`: the most cells, then the Voronoi
+share) and with the roles step (`vorrm`, `vorrg`, `vorrv`); all with the
+`econ` fill.
+
+| Variant | Won (of 200) | Opening turns playing the roles step | Voronoi share, ours − v031's, at game turn 8 / 10 / 12 | Units lost by game turn 12, ours / v031's | Objectives held at game turn 12 |
+| --- | ---: | ---: | --- | --- | ---: |
+| base | 96 | 0 of 1,199 | −4.0 / −4.1 / −3.4 | 1.12 / 0.92 | 6.20 |
+| rv | 108 | 455 of 1,198 | −3.3 / −2.5 / −3.6 | 1.16 / 0.88 | 6.20 |
+| rm | 115 | 467 of 1,200 | −2.8 / −1.8 / −0.8 | 1.06 / 0.92 | 6.20 |
+| rf | 102 | 460 of 1,199 | −3.7 / −3.7 / −2.5 | 1.21 / 1.05 | 6.26 |
+| rg | 93 | 482 of 1,200 | −3.2 / −3.3 / −2.6 | 1.28 / 0.97 | 6.43 |
+| vor | 110 | 0 of 1,200 | −2.3 / −1.0 / −0.4 | 1.08 / 0.83 | 6.55 |
+| vorrm | 98 | 481 of 1,200 | −3.0 / −3.6 / −1.4 | 1.07 / 1.02 | 6.42 |
+| vorrg | 104 | (not counted) | −2.6 / −2.3 / −1.3 | 1.22 / 0.84 | 6.46 |
+| vorrv | 102 | (not counted) | −3.4 / −3.5 / −2.6 | 1.23 / 1.09 | 6.05 |
+
+(Measured at the start of each of our plies from the review tool's metrics:
+the enemy has just played, so even the control trails v031 by about 2
+cells and 4 Voronoi cells; compare the variants with `base`. Objectives
+held: those of value above 0 for us at that moment, from the bot's
+`strategy` mode. 100 pairs give about ±7% on the share won.)
+
+- The roles step is chosen at about 4 opening turns in 10, yet our cells
+  at game turns 4 and 6 are the same in every variant (7.5 and 13.8): the
+  roles turns and the weight sets reach the same land that early, as the
+  bench found. The variants differ from game turn 8 on, in the Voronoi
+  share: `rm` and `vor` close most of the control's gap by game turn 12.
+- The owner's order alone (`vor`) does about as well as the best roles
+  variant, and the two together (`vorrm`) do not add up.
+- Matched targets (`rm`) beat the same objectives given out greedily
+  (`rv`), as the owner's board suggested; the marginal and frontier targets
+  do no better than the control.
+
+Boards of three maps that the control lost and `rm` won, played by both
+from the same seat, turn by turn:
+https://claude.ai/artifact/P26EXuMo7PiCEu9C2Kp2oj.
+
+The owner noticed trainings in the back line on the boards (2026-11-21).
+Of about 1,200 trainings a variant in game turns 1 to 8, none is on a cell
+we own and none in turns 1 to 6 is behind our front: the back-line ones
+come at game turns 7 (88) and 8 (22), from the middle-game search, which
+plays from game turn 7 (E067). As red at game turn 7 it trains at (0, 1),
+next to our HQ, in 80 of 100 games of the control (v031) and 82 of `rm`'s.
+Why is being diagnosed; it is not E080's change.
