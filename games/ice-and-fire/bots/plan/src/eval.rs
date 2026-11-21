@@ -164,11 +164,11 @@ const SHAPE: i64 = 2;
 /// [`SHAPE_NEAR`] steps from the enemy's active land; 2, each weighted by
 /// its distance from it, fully up to [`SHAPE_NEAR`] steps, then less and
 /// less to nothing at [`SHAPE_FAR`].
-pub const SHAPE_REACH: u8 = 2;
+pub const SHAPE_REACH: u8 = 0;
 /// See [`SHAPE_REACH`].
 pub const SHAPE_NEAR: u8 = 3;
 /// See [`SHAPE_REACH`].
-pub const SHAPE_FAR: u8 = 8;
+pub const SHAPE_FAR: u8 = 6;
 
 /// The weight in quarters of a joint `d` steps from the enemy's active land
 /// by [`SHAPE_REACH`]'s rule `mode`.
