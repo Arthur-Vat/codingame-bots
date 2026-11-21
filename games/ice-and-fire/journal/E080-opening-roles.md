@@ -236,3 +236,36 @@ pairs each, seed 2026112109: full games +13.9 [−20.0, +48.1], cut at game
 turn 12 +25.5 [−6.0, +57.5] (the switched-off control −2.3 and 0.0); no
 fault, the same time per turn. E080's variants are screened with it on and
 off.
+
+## The design agreed in the conversation (2026-11-21)
+
+From the owner's messages after the flank measurement, the next variant
+of E080, the goals of game turn 1:
+
+1. **Goals fixed at game turn 1 and assigned afterwards** (the owner: "Could
+   it be possible to identify goals from the start of the game and assign
+   them afterwards?").
+2. **Fronts from the map, not fixed lanes** (the owner: "On some maps we do
+   not have a contested middle, we only have two flanks"; "Also some maps
+   don't have contested flanks, only middle"): the cells of the contested
+   line (within one ring of the cells even between the HQs) grouped into
+   connected stretches, the void cutting them apart; one, two or three
+   fronts, by the map.
+3. **Prioritized per map** (the owner: "the goals should be prioritized
+   carefully depending on the map"): each front valued by the land it
+   decides (the cells that change sides when we hold it rather than the
+   enemy), raced from game turn 1 against the enemy's units and gold; a
+   front the map gives to one side is left out; the winnable ones ranked by
+   land per turn of travel, wide or valuable fronts getting more agents.
+4. **Kept between turns**, changed only when a front is secured, lost, or
+   the race changes.
+5. **Measured per seat** (the owner: "could you do the same per seat? I
+   assume there is a bias otherwise"), the flanks read from our HQ (the
+   column flank and the row flank).
+6. With the earlier choices: trainings spawned from the tip, targets
+   matched so that units do not cross, the balanced tie-break (E082
+   folded in); the goal, more territory than the opponent after the early
+   game (the most cells, then the Voronoi share).
+
+First step: the same measurement as above on the map's own fronts, per
+seat and per kind of map (one, two or three fronts).
