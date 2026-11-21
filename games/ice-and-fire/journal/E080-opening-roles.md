@@ -192,3 +192,34 @@ and the tables: https://claude.ai/artifact/P7UuovV76ZbNy7t5X7zYax.
 So the flanks are lost after the start in about half the games, the
 bottom-left more often and at a higher cost (38% won when it alone is
 lost); this is what goals fixed at game turn 1 should prevent.
+
+### Per seat, and a bias found
+
+The owner asked for the same per seat (2026-11-21), suspecting a bias.
+Lanes lost by 5+ Voronoi cells after game turn 1, against the top 6:
+
+| Lane | As red (489 games) | As blue (76 games) |
+| --- | ---: | ---: |
+| Bottom-left flank | 49% | 20% |
+| Centre | 31% | 42% |
+| Top-right flank | 41% | 43% |
+
+The map is symmetric by a half turn, which swaps the corners between the
+seats: red's bottom-left (straight down its HQ's column) matches blue's
+top-right (straight up its column). In both seats the flank along our
+HQ's column is lost more often (49% and 43%) than the one along its row
+(41% and 20%); as red, losing it costs most (won 37% when lost, 51%
+otherwise; the row flank 43% and 45%).
+
+A direct check (a scratch example, not committed): on 100 referee maps and
+on each map mirrored across the HQs' diagonal (x and y swapped: the same
+game), both sides playing v032's opening untimed for 8 turns, red's active
+cells in the column flank were 387 and in the row flank 532, summed over
+the maps and their mirrors, and 82 of the 100 mirrors were not played as
+the mirror of the map. The cause found: the `econ` rules' choice of the
+best cell for a unit or a training breaks ties by the lowest cell index
+(`econ::Turn::best`), so from (0, 0) the row's (1, 0) beats the column's
+(0, 1) turn after turn. Breaking ties instead toward the side of the HQs'
+diagonal where we hold fewer cells (then the index) gives 473 against 446
+on the same check, the same 919 cells in all; 80 mirrors still differ
+(other ties remain). This is a change of behaviour for its own experiment.
