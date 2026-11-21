@@ -166,7 +166,7 @@ const SHAPE: i64 = 2;
 /// less to nothing at [`SHAPE_FAR`].
 pub const SHAPE_REACH: u8 = 1;
 /// See [`SHAPE_REACH`].
-pub const SHAPE_NEAR: u8 = 5;
+pub const SHAPE_NEAR: u8 = 6;
 /// See [`SHAPE_REACH`].
 pub const SHAPE_FAR: u8 = 6;
 
