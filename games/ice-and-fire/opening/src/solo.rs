@@ -85,6 +85,9 @@ pub struct Objective {
     /// (E072, [`crate::assign`]), with the payback rule and spending all
     /// the gold.
     pub assign: bool,
+    /// The opening by roles (E080): with settings, the plans' steps also
+    /// include the roles step ([`crate::frontline::step`]) with them.
+    pub roles: Option<crate::frontline::step::Settings>,
     /// How plans are compared (E073).
     pub order: Order,
 }
@@ -325,6 +328,7 @@ impl Objective {
         voronoi: 1,
         chokes: 0,
         assign: false,
+        roles: None,
         order: Order::Sum,
     };
 }
@@ -627,8 +631,18 @@ pub fn advance(state: &State, commands: &[Command]) -> State {
 /// any other purchase spends all the gold.
 pub const ASSIGN: u8 = u8::MAX;
 
+/// The steps' weights that stand for the opening by roles (E080): this,
+/// with a [`crate::frontline::step::Settings::code`] in the low three bits;
+/// the rest of the turn (with `fill`) uses the first weight set.
+pub const ROLES: u8 = 0xF0;
+
 /// The commands of `step` in `state` with the weight `sets`.
 pub fn commands(state: &State, sets: &[Params], step: Step) -> Vec<Command> {
+    if step.weights & 0xF8 == ROLES {
+        let settings = crate::frontline::step::Settings::of_code(step.weights & 7);
+        let params = sets.first().copied().unwrap_or(Params::V003);
+        return crate::frontline::step::turn(state, settings, &params);
+    }
     if step.weights == ASSIGN {
         let settings = assign::Settings {
             params: sets.first().copied().unwrap_or(Params::V003),
@@ -664,8 +678,20 @@ pub fn play(state: &State, sets: &[Params], plan: &[Step], rest: Step, turns: us
 /// The distinct steps tried in `state`: every weight set with every
 /// purchase of [`BUYS`]; steps whose commands repeat an earlier one's are
 /// left out.
-fn steps(state: &State, sets: &[Params], assign: bool) -> Vec<(Step, Vec<Command>)> {
+fn steps(
+    state: &State,
+    sets: &[Params],
+    assign: bool,
+    roles: Option<crate::frontline::step::Settings>,
+) -> Vec<(Step, Vec<Command>)> {
     let mut out: Vec<(Step, Vec<Command>)> = Vec::new();
+    if let Some(settings) = roles {
+        let step = Step {
+            weights: ROLES | settings.code(),
+            buy: Buy::Payback,
+        };
+        out.push((step, commands(state, sets, step)));
+    }
     if assign {
         for buy in [
             Buy::Payback,
@@ -725,7 +751,7 @@ pub fn beam(
             if out_of_time() {
                 break;
             }
-            for (step, c) in steps(node, sets, objective.assign) {
+            for (step, c) in steps(node, sets, objective.assign, objective.roles) {
                 let next = advance(node, &c);
                 let mut child = plan.clone();
                 child.push(step);

@@ -132,6 +132,7 @@ const OBJECTIVE: Objective = Objective {
     voronoi: 1,
     chokes: 0,
     assign: false,
+    roles: None,
     order: ORDER,
 };
 

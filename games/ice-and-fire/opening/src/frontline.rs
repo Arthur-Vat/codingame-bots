@@ -2,11 +2,13 @@
 //! (`games/ice-and-fire/research/codingame/2026-11-20-frontline-plan.md`):
 //! the objectives of a map with the land each decides, the race of both
 //! sides to them, and the roles of our units kept between turns (Steps 2
-//! and 3, moved here from the plan bot for the opening by roles, E080).
+//! and 3, moved here from the plan bot), and the opening by roles
+//! ([`step`], Step 7, E080).
 
 pub mod objectives;
 pub mod race;
 pub mod roles;
+pub mod step;
 
 use ice_and_fire_engine::{Bits, State};
 
