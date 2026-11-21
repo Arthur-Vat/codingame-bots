@@ -63,6 +63,7 @@ use std::time::{Duration, Instant};
 
 use ice_and_fire_opening::assign::{self, Purchase};
 use ice_and_fire_opening::econ::Params;
+use ice_and_fire_opening::frontline::step;
 use ice_and_fire_opening::planned::{Planned, Planner};
 use ice_and_fire_opening::solo::{self, Decay, Objective, Order};
 
@@ -132,9 +133,16 @@ const OBJECTIVE: Objective = Objective {
     voronoi: 1,
     chokes: 0,
     assign: false,
-    roles: None,
+    roles: OPENING_ROLES,
     order: ORDER,
 };
+
+/// The opening by roles (E080, Step 7 of the frontline plan): with
+/// settings, the opening's plans may also play the roles step
+/// (`ice_and_fire_opening::frontline::step`: units walk to targets,
+/// trainings at the tips after the moves), beside its weight sets; `None`
+/// in v031.
+const OPENING_ROLES: Option<step::Settings> = None;
 
 /// The game turn from which the opening replans every turn, from the real
 /// position (E073); 0: only when our side leaves the plan, as in v029.

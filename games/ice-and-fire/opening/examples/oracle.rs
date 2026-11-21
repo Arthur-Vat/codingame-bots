@@ -90,6 +90,7 @@ use ice_and_fire_early::zones::Zones;
 use ice_and_fire_engine::{answer_line, Bits, Command, League, State, CELLS, HQ, SIZE};
 use ice_and_fire_opening::assign::{self, Purchase};
 use ice_and_fire_opening::econ::{distances, Params};
+use ice_and_fire_opening::frontline::step::{self, Targets};
 use ice_and_fire_opening::planned::{Planned, Planner};
 use ice_and_fire_opening::solo::{self, Decay, Objective, Order};
 use ice_and_fire_referee::map::generate;
@@ -623,10 +624,11 @@ fn replay(state: &State, plan: &[Vec<Command>]) -> State {
 /// The openings compared with the optimum, by name, each played once to the
 /// longest horizon: a new opening joins this list to be measured by `run`
 /// and `--bench`.
-const OPENINGS: [&str; 23] = [
+const OPENINGS: [&str; 32] = [
     "v029", "b", "rules", "assign", "tie", "land", "tie3", "tie6", "tie12", "lin3", "lin6",
     "lin10", "half4", "half8", "sq6", "lin5", "lin7", "lin9", "fr4", "fr8", "ring", "voronoi",
-    "behind",
+    "behind", "lin7rv", "lin7rm", "lin7rf", "lin7rg", "lin7rmn", "vorrv", "vorrm", "vorrf",
+    "vorrg",
 ];
 
 struct Openings {
@@ -676,6 +678,25 @@ fn openings(state: &State, t: u32) -> Openings {
         order: Order::LandFirst,
         ..OBJECTIVE
     });
+    // E080: the roles step beside the weight sets, by its targets, with
+    // E073's order (v030 and v031) or the most cells then the Voronoi share.
+    let roles = |order, targets, fill| {
+        opening(Objective {
+            order,
+            roles: Some(step::Settings { targets, fill }),
+            ..OBJECTIVE
+        })
+    };
+    let lin7o = Order::Central(Decay::Linear(7));
+    let mut lin7rv = roles(lin7o, Targets::Value, true);
+    let mut lin7rm = roles(lin7o, Targets::Matched, true);
+    let mut lin7rf = roles(lin7o, Targets::Frontier, true);
+    let mut lin7rg = roles(lin7o, Targets::Marginal, true);
+    let mut lin7rmn = roles(lin7o, Targets::Matched, false);
+    let mut vorrv = roles(Order::Voronoi, Targets::Value, true);
+    let mut vorrm = roles(Order::Voronoi, Targets::Matched, true);
+    let mut vorrf = roles(Order::Voronoi, Targets::Frontier, true);
+    let mut vorrg = roles(Order::Voronoi, Targets::Marginal, true);
     let settings = assign::Settings {
         params: sets[0],
         buy: Purchase::Payback,
@@ -706,6 +727,15 @@ fn openings(state: &State, t: u32) -> Openings {
             play(state, t, |s| ring.turn(s, None)),
             play(state, t, |s| voronoi.turn(s, None)),
             play(state, t, |s| behind.turn(s, None)),
+            play(state, t, |s| lin7rv.turn(s, None)),
+            play(state, t, |s| lin7rm.turn(s, None)),
+            play(state, t, |s| lin7rf.turn(s, None)),
+            play(state, t, |s| lin7rg.turn(s, None)),
+            play(state, t, |s| lin7rmn.turn(s, None)),
+            play(state, t, |s| vorrv.turn(s, None)),
+            play(state, t, |s| vorrm.turn(s, None)),
+            play(state, t, |s| vorrf.turn(s, None)),
+            play(state, t, |s| vorrg.turn(s, None)),
         ],
     }
 }

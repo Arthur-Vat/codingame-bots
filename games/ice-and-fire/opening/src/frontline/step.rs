@@ -164,8 +164,8 @@ fn marginal(state: &State, seat: usize, open: &[Objective], most: usize) -> Vec<
                 continue;
             }
             let mut merged = best;
-            for c in 0..merged.len() {
-                merged[c] = merged[c].min(d[c]);
+            for (m, &x) in merged.iter_mut().zip(d.iter()) {
+                *m = (*m).min(x);
             }
             let gain = count(&merged) - base;
             if gain > 0 && top.is_none_or(|(g, _)| gain > g) {
@@ -176,8 +176,8 @@ fn marginal(state: &State, seat: usize, open: &[Objective], most: usize) -> Vec<
             break;
         };
         picks.push(each[i].0);
-        for c in 0..best.len() {
-            best[c] = best[c].min(each[i].1[c]);
+        for (b, &x) in best.iter_mut().zip(each[i].1.iter()) {
+            *b = (*b).min(x);
         }
         base += gain;
     }
