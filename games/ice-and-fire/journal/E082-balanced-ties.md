@@ -45,3 +45,17 @@ less first). With it on, the mirror check gives 476 against 452 cells, the
 same land in all (928 against 919); 83 mirrors still differ (other ties
 remain: the beam's, the middle game's). With it off, the check gives v032's
 387 and 532.
+
+## Local duels
+
+150 pairs each against v032 (seed 2026112109, time scale 1, tolerance
+20 ms, 4 games at once), the control being the bot with the switch off:
+
+| Bot | Full games | Cut at game turn 12 |
+| --- | --- | --- |
+| control (`BALANCED_TIES = false`) | −2.3 [−25.1, +20.4] | 0.0 [−15.7, +15.7] |
+| `BALANCED_TIES = true` | +13.9 [−20.0, +48.1] | +25.5 [−6.0, +57.5] |
+
+No fault; answers after the first 36.0 / 44.3 / 46.0 ms (median, 99%,
+99.9%) against v032's 35.7 / 44.4 / 46.3. Both lean up, neither interval
+excludes 0.
