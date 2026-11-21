@@ -84,7 +84,7 @@ fn movers(state: &State, seat: usize) -> Bits {
 
 /// The units of `seat` on its active cells of at least level `from` (none
 /// when `from` is above 3).
-fn movers_from(state: &State, seat: usize, from: u8) -> Bits {
+pub(crate) fn movers_from(state: &State, seat: usize, from: u8) -> Bits {
     let mut movers = Bits::EMPTY;
     if from > 3 {
         return movers;
@@ -107,7 +107,7 @@ pub fn reach(state: &State, side: usize) -> Bits {
 
 /// The active cells of `seat` that the enemy can take at its next turn
 /// ([`reach`]).
-fn exposed(state: &State, seat: usize) -> Bits {
+pub(crate) fn exposed(state: &State, seat: usize) -> Bits {
     reach(state, 1 - seat) & state.active(seat)
 }
 
@@ -130,7 +130,7 @@ pub fn mine_bonus(cells: i64) -> i64 {
 /// What the mines of `seat` count beyond their income: [`mine_bonus`] for
 /// each on its active cells that the enemy cannot take at its next turn.
 /// `exposed` is `exposed(state, seat)`.
-fn mines(state: &State, seat: usize, exposed: Bits) -> i64 {
+pub(crate) fn mines(state: &State, seat: usize, exposed: Bits) -> i64 {
     let active = state.active(seat);
     let mines = (state.mines() & active).and_not(exposed);
     let cells = i64::from(active.count());
@@ -311,7 +311,7 @@ pub fn shape(state: &State, seat: usize) -> i64 {
 
 /// The training cost of the units of `seat` on active cells, if it cannot
 /// pay its upkeep, else 0.
-fn debt(state: &State, seat: usize) -> i64 {
+pub(crate) fn debt(state: &State, seat: usize) -> i64 {
     if state.gold(seat) + state.income(seat) >= 0 {
         return 0;
     }
@@ -394,7 +394,7 @@ pub const IDLE_LEVEL: u8 = 3;
 
 /// What the units of `seat` on its active cells cost it for standing away
 /// from the cells that are not its own (E060).
-fn idle(state: &State, seat: usize) -> i64 {
+pub(crate) fn idle(state: &State, seat: usize) -> i64 {
     if IDLE_STEP == 0 {
         return 0;
     }
@@ -436,7 +436,7 @@ pub fn frontier(state: &State, seat: usize) -> (Bits, Bits) {
 
 /// What the tower wall of `seat` counts (E068): [`WALL`] for each of its
 /// frontier cells guarded by one of its towers.
-fn wall(state: &State, seat: usize) -> i64 {
+pub(crate) fn wall(state: &State, seat: usize) -> i64 {
     if WALL == 0 {
         return 0;
     }
@@ -607,38 +607,4 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         - wall(state, 1 - seat)
         + goal(state, seat)
         + voronoi(state, seat)
-}
-
-/// The parts of [`eval`] for `seat` in `state`, by name, for the analysis
-/// mode `explain` (their sum is [`eval`] when the game is not over).
-#[cfg(feature = "analysis")]
-pub fn terms(state: &State, seat: usize) -> Vec<(&'static str, i64)> {
-    let movers = [
-        movers_from(state, seat, MARGIN_MOVER_LEVEL),
-        movers_from(state, 1 - seat, MARGIN_MOVER_LEVEL),
-    ];
-    let (score, margins) = evaluate_with_movers(state, seat, movers);
-    let ours = exposed(state, seat);
-    let theirs = exposed(state, 1 - seat);
-    let threats = i64::from(theirs.count()) - i64::from(ours.count());
-    vec![
-        ("shared", score),
-        ("standing", standing(margins[0]) - standing(margins[1])),
-        ("removed", -crate::analysis::removed(state, seat)),
-        ("debt", -2 * debt(state, seat) + 2 * debt(state, 1 - seat)),
-        ("shape", shape(state, seat)),
-        (
-            "strong",
-            strong_units(state, seat) - strong_units(state, 1 - seat),
-        ),
-        ("idle", -idle(state, seat) + idle(state, 1 - seat)),
-        ("threats", THREAT_QUARTERS * threats / 4),
-        (
-            "mines",
-            mines(state, seat, ours) - mines(state, 1 - seat, theirs),
-        ),
-        ("wall", wall(state, seat) - wall(state, 1 - seat)),
-        ("goal", goal(state, seat)),
-        ("voronoi", voronoi(state, seat)),
-    ]
 }
