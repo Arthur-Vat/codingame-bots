@@ -6,11 +6,11 @@ parent: ice-and-fire-v031
 hypothesis: A shape term that counts only the joints the enemy can reach soon (or weighs them down with their distance from it) stops the search from training units behind its own lines at the start of the middle game, keeps that gold for the front, and beats ice-and-fire-v031 (candidate ice-and-fire-v032).
 change: The shape term's joints are counted only within `SHAPE_NEAR` steps of the enemy's active land (`eval::SHAPE_REACH = 1`), or weighted down from `SHAPE_NEAR` to nothing at `SHAPE_FAR` steps (`SHAPE_REACH = 2`); 0, every joint, in v031.
 release: ice-and-fire-v032
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +51.4 [+26.8, +76.5]
+pairs: 320
+full_time: +51.4 [+26.8, +76.5]
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -130,3 +130,24 @@ k3, the steadiest over both seeds, is the candidate: `SHAPE_REACH = 1`,
 `SHAPE_NEAR = 3`, frozen as `ice-and-fire-v032` (67,369 characters). The
 screening chose the best of 11 readings, which overstates the winner; the
 SPRT judges it.
+
+## SPRT
+
+The SPRT on #384 (run 44892149727), against v031 at CodinGame's speed and
+real limit over 8 calibrated runners:
+
+```
+ice-and-fire-v032 vs ice-and-fire-v031: 640 games, 320 complete pairs
+  ice-and-fire-v032: 367 wins, 0 draws, 273 losses (score 57.3%)
+  Elo of ice-and-fire-v032 over ice-and-fire-v031: +51.4 [+26.8, +76.5] (95%, from pairs)
+  pairs by ice-and-fire-v032's points (0, 1/2, 1, 3/2, 2): [45, 0, 183, 0, 92]
+  ice-and-fire-v032 faults: 2 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v031 faults: 1 timeouts, 0 crashes, 0 invalid answers
+  slowest answer: ice-and-fire-v032 643.3 ms, ice-and-fire-v031 644.2 ms
+Checked 4 rounds of 8 blocks (32 blocks counted, 48 left out)
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.00 (bounds -2.94, 2.94) after 320 pairs
+Verdict: ACCEPTED: ice-and-fire-v032 is stronger than ice-and-fire-v031
+```
+
+Accepted at +51.4, below the screening's +71.6 for k3 (the best of 11
+readings), as usual.
