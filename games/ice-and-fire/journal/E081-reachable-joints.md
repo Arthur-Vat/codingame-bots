@@ -94,7 +94,7 @@ cache misses), within the turn's 45 ms.
 
 The owner approved (form, 2026-11-21) one GitHub run of full games, 8
 variants, 800 pairs each against v031 over 2 calibrated runners, seed
-2026112107 (run 44888882551). `k` variants count a joint only within that
+2026112107 (run 44889254786; a first run, 44888882551, failed to bundle: the analysis-only `eval::terms` broke the bundler's rule, fixed by moving it into the analysis module). `k` variants count a joint only within that
 many steps of the enemy's active land (`SHAPE_REACH = 1`); `w` variants
 weight it fully up to the first number of steps, then less to nothing at
 the second (`SHAPE_REACH = 2`).
