@@ -5,12 +5,12 @@ pull_request: "#NN"
 parent: ice-and-fire-v031
 hypothesis: A strategic turn for game turns 7 to 14 (the frontline units step toward their objectives, then units are trained at their tips), offered to the search, which stays the judge, takes and holds more of the centre and beats ice-and-fire-v031 (Step 4 of the frontline plan).
 change: The strategic layer of Steps 2 and 3 (objectives, race, roles) is turned on from game turn 7 to 14; its turn is offered to the search as a macro action, as the first climb's start, or in pieces (each frontline unit's step and tip training) at every step of the climbs, and an objectives' term may join the score (`strategy::TURN`, `TRAININGS`, `OBJECTIVE_QUARTERS`, `OBJECTIVE_RACE`, `FROM_TURN`, `UNTIL_TURN`).
-release: pending
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+release: none
+sprt: not run
+elo: none
+pairs: none
+full_time: none (screening only: t2bs +14.8 [+1.0, +28.6] on one seed)
+decision: pending (parked by the owner, 2026-11-21)
 cg_rank: not reported
 ---
 
@@ -211,3 +211,15 @@ fifth of the first turn's value is left). Boards: the race over one game,
 and three game-turn-7 positions played by the search, round 1's strategic
 turn and round 2's rules completed by the search, at
 https://claude.ai/artifact/5qfr4eKjZJF83y9QZTA6dH.
+
+## Parked
+
+The owner chose (form, 2026-11-21) to park E077 and do the early game
+first (Step 7 of the plan, E080): "Park E077, early game now". The code
+stays behind switches that are off, so the bot plays as v031; the round 2
+leader (t2bs: `TURN = 2`, `BACK_ONLY`, `SAFE_STEP`, +14.8 [+1.0, +28.6] in
+full games on one seed, −3.9 cut at game turn 12) is not confirmed. To take
+it up again: screen t2bs on two new seeds, then the SPRT, preferably on top
+of whatever the early-game work releases. Kept for that: the switches in
+`strategy.rs`, the analysis mode `guide` (`--guard`, `--back-only`,
+`--fill-behind`, `--safe-step`) and `ice-and-fire-review bank --all-plies`.
