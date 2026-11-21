@@ -148,3 +148,47 @@ through one cell, which then cuts everything off; a unit beside the HQ
 closes a loop. The 498 trainings nearer the enemy gain +4.0 (+16.2 after
 the opponent's answer), from the cells and the band's goal. A fix is its
 own experiment (E081).
+
+## Who takes the flanks on CodinGame
+
+The owner, 2026-11-21, after v032 (E081): "This bot is much much better,
+however i often notice see the correct goals are not targeted. Could it be
+possible to identify goals from the start of the game and assign them
+afterwards?" (a game against zasmu where we leave the bottom-left corner).
+He approved a measurement first. A new review command,
+`ice-and-fire-review codingame-sectors`, cuts each map into three lanes
+across the line between the HQs by a cell's `x − y` (the bottom-left flank
+at −4 and below, the centre, the top-right flank at 4 and above) and writes,
+per game, side, game turn and lane, the cells held, the lane's cells nearer
+the side's land than the enemy's (its Voronoi share there), and the first
+turn the side held a cell of the lane's middle (`--boards` writes chosen
+games' boards as JSON).
+
+Our games as red of v029 to v031 against the top 6 of the leaderboard of
+2026-11-21 (zasmu, Pduhard-, karliso, _iaz, reCurse; 489 games from the
+collection, 76 as blue left aside): a lane's split at game turn 1 is the
+map's and the seat's; what our play changes is the difference by game
+turn 10.
+
+| Lane | Voronoi at game turn 1 | Change by game turn 10 | Games losing 5+ cells after turn 1 |
+| --- | ---: | ---: | ---: |
+| Bottom-left flank | −3.3 | −4.4 | 240 (49%) |
+| Centre | −3.6 | −2.7 | 154 (31%) |
+| Top-right flank | −1.3 | −2.9 | 199 (41%) |
+
+| Flanks lost after game turn 1 (5+ cells) | Games | Won | All lanes' change |
+| --- | ---: | ---: | ---: |
+| Neither | 130 | 53% | −0.7 |
+| Top-right only | 119 | 49% | −8.3 |
+| Bottom-left only | 160 | 38% | −12.3 |
+| Both | 80 | 35% | −22.3 |
+
+The opponent first holds a cell of the bottom-left lane's middle in 298
+games (us 122, the same turn 68), of the top-right's in 246 (us 147, 95).
+Against zasmu alone (98 games) the centre loses most (−3.9 after turn 1),
+then the top-right (−2.7) and the bottom-left (−1.4). Boards of four games
+and the tables: https://claude.ai/artifact/P7UuovV76ZbNy7t5X7zYax.
+
+So the flanks are lost after the start in about half the games, the
+bottom-left more often and at a higher cost (38% won when it alone is
+lost); this is what goals fixed at game turn 1 should prevent.
