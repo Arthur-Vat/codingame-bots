@@ -71,3 +71,21 @@ steps from the enemy's active land:
 
 Every variant removes about 95% of the trainings behind our lines and
 trains more near the enemy instead.
+
+## Local full games
+
+100 pairs a variant against v031 (`ice-and-fire-arena match`, seed
+2026112106, time scale 1, tolerance 20 ms, 4 games at once):
+
+| Variant | Elo over v031 [95%] | Answers after the first, median / 99% / 99.9% (v031 in the same games) | Timeouts |
+| --- | --- | --- | ---: |
+| v031 (control) | +6.9 [−14.6, +28.5] | 32.5 / 44.1 / 48.5 ms (31.3 / 44.2 / 48.3) | 0 |
+| k3 | +63.2 [+19.1, +109.5] | 35.3 / 44.3 / 47.2 ms (27.4 / 43.9 / 45.8) | 0 |
+| k4 | +59.6 [+15.9, +105.3] | 35.6 / 44.7 / 46.8 ms (28.9 / 44.4 / 46.9) | 1 |
+| k6 | +34.9 [−6.7, +77.4] | 36.8 / 44.2 / 46.9 ms (30.5 / 44.1 / 47.0) | 0 |
+| w26 | +45.4 [+8.3, +83.6] | 35.9 / 44.5 / 48.2 ms (29.0 / 44.3 / 45.8) | 0 |
+| w38 | +34.9 [−10.9, +81.9] | 37.4 / 44.4 / 46.3 ms (31.2 / 44.0 / 47.1) | 0 |
+
+The variants' median answer is a few milliseconds longer (the distances
+from the enemy's land, one breadth-first search an evaluated side when the
+cache misses), within the turn's 45 ms.
