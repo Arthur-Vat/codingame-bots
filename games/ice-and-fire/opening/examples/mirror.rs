@@ -78,7 +78,10 @@ fn play(void: &[bool; CELLS], spots: &[(usize, usize)]) -> (i64, i64) {
 }
 
 fn main() {
-    let n: u64 = std::env::args().nth(1).and_then(|a| a.parse().ok()).unwrap_or(100);
+    let n: u64 = std::env::args()
+        .nth(1)
+        .and_then(|a| a.parse().ok())
+        .unwrap_or(100);
     let (mut a, mut b, mut c, mut d) = (0i64, 0i64, 0i64, 0i64);
     let mut differ = 0;
     for seed in 1..=n {

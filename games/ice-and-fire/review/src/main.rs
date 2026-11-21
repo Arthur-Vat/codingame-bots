@@ -654,6 +654,10 @@ enum Command {
         /// The last game turn read.
         #[arg(long, default_value_t = 15)]
         turns: u32,
+        /// By the map's fronts (connected stretches of the contested line)
+        /// rather than three fixed lanes.
+        #[arg(long)]
+        fronts: bool,
         /// Instead of the CSV, the boards of these games (ids separated by
         /// commas) at the game turns of `--at`, as JSON lines.
         #[arg(long, value_delimiter = ',')]
@@ -1210,6 +1214,7 @@ fn run(cli: Cli) -> Result<(), String> {
             top,
             leaderboard,
             turns,
+            fronts,
             boards,
             at,
             jobs,
@@ -1227,7 +1232,7 @@ fn run(cli: Cli) -> Result<(), String> {
                 jobs,
             };
             let text = if boards.is_empty() {
-                sectors::run(&request, turns)?
+                sectors::run(&request, turns, fronts)?
             } else {
                 sectors::boards(&request, &boards, &at)?
             };

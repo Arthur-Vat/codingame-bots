@@ -393,21 +393,23 @@ fn moves(state: &mut State, turn: &mut Turn<'_>, out: &mut Vec<Command>) {
             }
         }
     }
-    let tilt_now = if BALANCED_TIES { lean(state.owned(me)) } else { 0 };
+    let tilt_now = if BALANCED_TIES {
+        lean(state.owned(me))
+    } else {
+        0
+    };
     for from in idle {
         if !state.movable_units().test(from) {
             continue;
         }
         let target = [turn.side, turn.free].into_iter().find_map(|cells| {
-            cells
-                .iter()
-                .min_by_key(|&cell| {
-                    (
-                        state.map().distance(from, cell),
-                        -balance(tilt_now, cell),
-                        cell,
-                    )
-                })
+            cells.iter().min_by_key(|&cell| {
+                (
+                    state.map().distance(from, cell),
+                    -balance(tilt_now, cell),
+                    cell,
+                )
+            })
         });
         if let Some(target) = target {
             step(state, from, target, out);

@@ -16,7 +16,7 @@
 
 use std::fmt::Write as _;
 
-use ice_and_fire_engine::{Bits, State, SIZE};
+use ice_and_fire_engine::{Bits, State, CELLS, SIZE};
 use ice_and_fire_opening::econ::distances;
 use ice_and_fire_opening::solo::rings;
 
@@ -25,7 +25,7 @@ use crate::replay::{replay, Game};
 use crate::style::releases;
 
 /// The lanes, by name.
-pub const LANES: [&str; 3] = ["bottom_left", "centre", "top_right"];
+pub const LANES: [&str; 3] = ["bottom_left", "middle", "top_right"];
 
 /// The lane of `cell`: 0, 1 or 2 as in [`LANES`].
 pub fn lane(cell: usize) -> usize {
@@ -37,23 +37,87 @@ pub fn lane(cell: usize) -> usize {
     }
 }
 
+/// The fewest contested cells of a front ([`fronts`]).
+const FRONT_MIN: u32 = 4;
+
+/// The fronts of the map of `state` (E080, the owner: some maps have only
+/// two flanks, others only a middle): the cells within one ring of the line
+/// even between the HQs, cut by their place along that line into the
+/// bottom-left flank, the middle and the top-right flank (the lanes of
+/// [`lane`]); a place is a front only when it has at least [`FRONT_MIN`]
+/// such valid cells. Every valid cell then goes to its nearest front (steps
+/// over valid cells; on a tie, the front in the cell's own place, then the
+/// middle). Returns, per front, its name, its region and its contested
+/// cells.
+pub fn fronts(state: &State) -> Vec<(String, Bits, Bits)> {
+    let ring = rings(state);
+    let valid = state.map().valid;
+    let mut parts = [Bits::EMPTY; 3];
+    for c in valid.iter() {
+        if ring[c] <= 1 {
+            parts[lane(c)].set(c);
+        }
+    }
+    let kept: Vec<usize> = (0..3).filter(|&l| parts[l].count() >= FRONT_MIN).collect();
+    if kept.is_empty() {
+        return vec![(LANES[1].to_string(), valid, parts[0] | parts[1] | parts[2])];
+    }
+    let d: Vec<[u8; CELLS]> = kept.iter().map(|&l| distances(state, parts[l])).collect();
+    let mut regions = vec![Bits::EMPTY; kept.len()];
+    for c in valid.iter() {
+        // On a tie, the front in the cell's own place, then the middle.
+        let own = |i: usize| match kept[i] {
+            l if l == lane(c) => 0,
+            1 => 1,
+            _ => 2,
+        };
+        let best = (0..kept.len())
+            .min_by_key(|&i| (d[i][c], own(i)))
+            .unwrap_or(0);
+        regions[best].set(c);
+    }
+    kept.iter()
+        .zip(regions)
+        .map(|(&l, region)| (LANES[l].to_string(), region, parts[l]))
+        .collect()
+}
+
 /// The CSV rows of one game (see the module's docs), with `prefix` (the
-/// game's own columns) at the start of each.
-fn rows(game: &Game, turns: u32, prefix: &str, names: [&str; 2], out: &mut String) {
+/// game's own columns) at the start of each; with `by_fronts`, by the map's
+/// [`fronts`] rather than the three lanes.
+fn rows(
+    game: &Game,
+    turns: u32,
+    prefix: &str,
+    names: [&str; 2],
+    by_fronts: bool,
+    out: &mut String,
+) {
     let Some(first) = game.steps.first() else {
         return;
     };
     let ring = rings(&first.state);
     let valid = first.state.map().valid;
-    let mut lanes = [Bits::EMPTY; 3];
-    let mut middle = [Bits::EMPTY; 3];
-    for c in valid.iter() {
-        lanes[lane(c)].set(c);
-        if ring[c] <= 1 {
-            middle[lane(c)].set(c);
+    let (lane_names, lanes, middle): (Vec<String>, Vec<Bits>, Vec<Bits>) = if by_fronts {
+        let f = fronts(&first.state);
+        (
+            f.iter().map(|x| x.0.clone()).collect(),
+            f.iter().map(|x| x.1).collect(),
+            f.iter().map(|x| x.2).collect(),
+        )
+    } else {
+        let mut lanes = vec![Bits::EMPTY; 3];
+        let mut middle = vec![Bits::EMPTY; 3];
+        for c in valid.iter() {
+            lanes[lane(c)].set(c);
+            if ring[c] <= 1 {
+                middle[lane(c)].set(c);
+            }
         }
-    }
-    let mut front: [[Option<u32>; 3]; 2] = [[None; 3]; 2];
+        (LANES.iter().map(|s| s.to_string()).collect(), lanes, middle)
+    };
+    let k = lanes.len();
+    let mut front: Vec<Vec<Option<u32>>> = vec![vec![None; k]; 2];
     let mut by_turn: Vec<(u32, State)> = Vec::new();
     for step in &game.steps {
         let s = &step.state;
@@ -75,7 +139,7 @@ fn rows(game: &Game, turns: u32, prefix: &str, names: [&str; 2], out: &mut Strin
     for (t, s) in &by_turn {
         let d = [distances(s, s.active(0)), distances(s, s.active(1))];
         for side in 0..2 {
-            for l in 0..3 {
+            for l in 0..k {
                 let held = (s.active(side) & lanes[l]).count();
                 let nearer = lanes[l]
                     .iter()
@@ -85,7 +149,7 @@ fn rows(game: &Game, turns: u32, prefix: &str, names: [&str; 2], out: &mut Strin
                     out,
                     "{prefix},{t},{side},{},{},{},{held},{nearer},{}",
                     names[side],
-                    LANES[l],
+                    lane_names[l],
                     lanes[l].count(),
                     front[side][l].map_or(String::new(), |f| f.to_string())
                 );
@@ -181,8 +245,9 @@ pub fn boards(request: &Request, ids: &[u64], at: &[u32]) -> Result<String, Stri
     Ok(out)
 }
 
-/// Runs `codingame-sectors`: the CSV of every game of `request`.
-pub fn run(request: &Request, turns: u32) -> Result<String, String> {
+/// Runs `codingame-sectors`: the CSV of every game of `request`, by lanes
+/// or, with `by_fronts`, by the map's [`fronts`].
+pub fn run(request: &Request, turns: u32, by_fronts: bool) -> Result<String, String> {
     let (entries, _) = read_index(&request.data.join("index.jsonl"), request)?;
     let release_of = releases(&request.data)?;
     let jobs = request.jobs.clamp(1, 64);
@@ -206,7 +271,14 @@ pub fn run(request: &Request, turns: u32) -> Result<String, String> {
                     let prefix = format!("{},{},{},{winner}", meta.game_id, meta.kind, release);
                     let _ = us;
                     let game = replay(&meta.game_id.to_string(), record);
-                    rows(&game, turns, &prefix, [&names[0], &names[1]], out);
+                    rows(
+                        &game,
+                        turns,
+                        &prefix,
+                        [&names[0], &names[1]],
+                        by_fronts,
+                        out,
+                    );
                 }
             });
         }

@@ -269,3 +269,40 @@ of E080, the goals of game turn 1:
 
 First step: the same measurement as above on the map's own fronts, per
 seat and per kind of map (one, two or three fronts).
+
+### By the map's own fronts
+
+`codingame-sectors --fronts`: the contested line (within one ring of the
+cells even between the HQs) cut by its place into the bottom-left flank,
+the middle and the top-right flank; a place is a front when it has at
+least 4 valid contested cells, and every cell of the map goes to its
+nearest front (a tie to the front in its own place, then the middle). The
+same games (v029 to v031 against the top 6; flanks read from our HQ):
+442 games on maps with three fronts, 96 with only a middle, 27 with only
+the two flanks. A front's figures: its region's Voronoi cells, ours less
+the enemy's, at game turn 1 and their change by game turn 10.
+
+| Seat, map | Front | Games | Region | Turn 1 | Change by turn 10 | Lost 5+ after turn 1 | Won if lost / not | First to its line: us / same / them |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| red, three fronts | column flank | 383 | 23 | −3.1 | −4.7 | 55% | 39% / 49% | 106 / 36 / 240 |
+| | middle | | 63 | −3.8 | −2.8 | 34% | 33% / 49% | 27 / 236 / 119 |
+| | row flank | | 23 | −2.2 | −3.2 | 46% | 45% / 42% | 129 / 48 / 205 |
+| red, two flanks | column flank | 26 | 59 | −1.8 | −10.5 | 88% | 13% / 100% | 4 / 1 / 21 |
+| | row flank | | 35 | −6.4 | −2.3 | 62% | 12% / 40% | 5 / 15 / 6 |
+| red, middle only | middle | 80 | 89 | −3.9 | −5.1 | 39% | 39% / 65% | 1 / 59 / 20 |
+| blue, three fronts | column flank | 59 | 25 | +4.2 | −8.4 | 54% | 47% / 37% | 13 / 7 / 38 |
+| | middle | | 63 | +3.7 | −2.3 | 42% | 32% / 50% | 7 / 41 / 10 |
+| | row flank | | 25 | +2.2 | +2.6 | 25% | 27% / 48% | 24 / 10 / 24 |
+| blue, middle only | middle | 16 | 92 | +4.2 | −3.8 | 31% | 40% / 73% | 2 / 13 / 1 |
+
+(Red's games won: 43% on three-front maps, 23% on two-flank maps, 55% on
+middle-only maps; blue's 42% and 62%.)
+
+- On every kind of map and in both seats, the column flank is lost after
+  turn 1 most often (55% and 54% on three-front maps; 88% of red's
+  two-flank maps), and the enemy reaches its line first about twice as
+  often as we do: the opening's tie-break (above) is one cause.
+- On two-flank maps (no middle), red wins 23% of 26 games: it loses the
+  column flank in 23 of them (won 13% then; the 3 others were all won).
+- On middle-only maps, holding the middle is worth most: won 65% when it
+  is not lost, 39% when it is.
