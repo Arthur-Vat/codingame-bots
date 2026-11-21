@@ -348,3 +348,24 @@ toward the enemy's HQ (a chain to it blocks everything), and edge cells are
 worth less (a chain along the border decides little land); the planning
 needs the enemy's growth in time to give the deep options their real
 price.
+
+### Entrances: on our side, and often several
+
+The owner (2026-11-21): "On one of the maps you showed I actually see four
+choke points, so maybe there are several entrances there right?" and "Also
+the entrance should be on our side right?". A front's entrances are now the
+fewest cells on our side (neutral cells we reach no later than the enemy,
+a step later as red, the seat's own step) that every enemy path into the
+region's backfield (its cells 3 or more steps nearer us) must cross,
+within the region: a minimum vertex cut by max-flow (scratch script). On
+the six maps: one to three entrances a front, 9 to 12 steps from our land;
+for example on the two-flank map 925707764, three entrances to the
+bottom-left region ((1, 10), (2, 9), (3, 8)) and two to the top-right
+((8, 1), (8, 3)); the middle-only maps, two each. Drawn on the cell-value
+page (black diamonds): https://claude.ai/artifact/1hsAEqAvnM83ZDnRKACE6y.
+
+Next: the turn-1 planner (scripts and pictures first): the enemy growing
+in time, each front's options (skip it, hold its entrances, go deep) tried
+in every combination, the plan leaving us the largest share of the map at
+the end of the early game; then the same in the opening's code, then the
+dynamic version following the enemy's moves.
