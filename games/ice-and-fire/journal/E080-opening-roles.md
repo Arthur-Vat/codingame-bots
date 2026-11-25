@@ -426,3 +426,30 @@ will not be able to get closer to two goals at once". The formulation:
 
 The first version: model (1), then the plans drawn on the six maps, then
 the planner in Rust in `opening/src/frontline/`, played by the opening.
+
+### The planner's first prototype
+
+[`research/codingame/2026-11-25-turn1-planner/planner.py`](../research/codingame/2026-11-25-turn1-planner/README.md) (model (1) for the
+enemy; plans as ordered targets among the fronts' entrances and deep
+cells, at most 4, with the trainings either all to the first unfinished
+target or spread to the least advanced; our turns 1 to 9 simulated; kept,
+the most land plus Voronoi share at game turn 10 against the enemy's
+reach), on the six maps: 2,192 to 18,052 plans a map with flanks, a few
+seconds in Python.
+
+| Map | The best plan's targets, in order | Cells, Voronoi at turn 10 | Plain growth toward the middle line |
+| --- | --- | --- | --- |
+| three fronts, 925707781 | middle (5, 5), top-right (7, 2), spread | 27, 32 | 27, 28 |
+| three fronts, 925707787 | middle (6, 4), bottom-left (3, 8), (2, 9), spread | 26, 31 | 24, 25 |
+| two flanks, 925677145 | top-right (8, 3), bottom-left (3, 8), (1, 9), spread | 26, 33 | 27, 29 |
+| two flanks, 925707764 | top-right (8, 3), bottom-left (3, 8), (1, 10), spread | 26, 28 | 26, 26 |
+| middle only, 925708443 and 925709109 | none: plain growth is best | 30, 30 and 22, 29 | the same |
+
+On every map with flanks the best plan spreads its trainings over two
+fronts' entrances, the middle first on three-front maps, and gains 2 to 6
+Voronoi cells over plain growth in this model; on middle-only maps no
+target beats growing toward the middle line. Pictures:
+https://claude.ai/artifact/45xi3imE6WxsU2h4zUEDGP. Limits: the enemy is a
+rush in every direction at once (pessimistic), the rules of growth are
+simple, and the plan's land is not checked against the engine; the Rust
+version plays the plans through the engine.
