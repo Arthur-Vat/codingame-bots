@@ -158,26 +158,73 @@ pub const EARLY_MINE_PER_CELLS: i64 = MINE_PER_CELLS;
 /// The weight of a joint and of a cell that one capture cuts off.
 const SHAPE: i64 = 2;
 
+/// Which joints the shape term counts (E081, after the diagnosis of E080:
+/// a joint deep in our land, beside the HQ, made the search train units
+/// behind its own lines): 0, all of them (v031); 1, only those at most
+/// [`SHAPE_NEAR`] steps from the enemy's active land; 2, each weighted by
+/// its distance from it, fully up to [`SHAPE_NEAR`] steps, then less and
+/// less to nothing at [`SHAPE_FAR`]. 1 with 3 steps (k3) is
+/// ice-and-fire-v032: +75.4 and +67.7 in screening on two seeds.
+pub const SHAPE_REACH: u8 = 1;
+/// See [`SHAPE_REACH`].
+pub const SHAPE_NEAR: u8 = 3;
+/// See [`SHAPE_REACH`].
+pub const SHAPE_FAR: u8 = 6;
+
+/// The weight in quarters of a joint `d` steps from the enemy's active land
+/// by [`SHAPE_REACH`]'s rule `mode`.
+pub fn joint_weight(mode: u8, near: u8, far: u8, d: u8) -> u8 {
+    match mode {
+        0 => 4,
+        1 if d <= near => 4,
+        1 => 0,
+        _ if d <= near => 4,
+        _ if d >= far => 0,
+        _ => (4 * u32::from(far - d) / u32::from(far - near)) as u8,
+    }
+}
+
 /// The weakness of `seat`'s shape: its joints plus the most cells that one
-/// capture cuts off, as `ice_and_fire_opening::solo::severed` counts them.
-/// The same depth-first search, with arrays of bytes and only these two
-/// numbers kept, since it runs twice in every evaluation: the cells one
-/// capture cuts off do not depend on the order of the search.
+/// capture cuts off, as `ice_and_fire_opening::solo::severed` counts them,
+/// each joint weighted by [`SHAPE_REACH`]. The same depth-first search,
+/// with arrays of bytes and only these two numbers kept, since it runs
+/// twice in every evaluation: the cells one capture cuts off do not depend
+/// on the order of the search.
 fn weakness(state: &State, seat: usize) -> i64 {
     let active = state.active(seat);
+    // With SHAPE_REACH, the weakness also depends on the enemy's land.
+    let enemy = if SHAPE_REACH == 0 {
+        Bits::EMPTY
+    } else {
+        state.active(1 - seat)
+    };
     let [a, b, c] = active.words();
-    let mut hash = (a ^ b.rotate_left(21) ^ c.rotate_left(42) ^ seat as u64)
+    let [e, f, g] = enemy.words();
+    let mut hash = (a
+        ^ b.rotate_left(21)
+        ^ c.rotate_left(42)
+        ^ (e ^ f.rotate_left(13) ^ g.rotate_left(37)).wrapping_mul(0x2545_f491_4f6c_dd1d)
+        ^ seat as u64)
         .wrapping_mul(0x9e37_79b9_7f4a_7c15);
     hash ^= hash >> 29;
     let index = (hash as usize) & (WEAKNESS_SLOTS - 1);
     WEAKNESS.with(|cache| {
         let mut cache = cache.borrow_mut();
         let slot = &mut cache[index];
-        if slot.0 == active && slot.1 == seat as u8 + 1 {
-            return slot.2;
+        if slot.0 == active && slot.1 == enemy && slot.2 == seat as u8 + 1 {
+            return slot.3;
         }
-        let value = weakness_of(active, HQ[seat]);
-        *slot = (active, seat as u8 + 1, value);
+        let value = if SHAPE_REACH == 0 {
+            weakness_of(active, HQ[seat])
+        } else {
+            let d = ice_and_fire_opening::econ::distances(state, enemy);
+            let mut weights = [0u8; CELLS];
+            for (w, &steps) in weights.iter_mut().zip(d.iter()) {
+                *w = joint_weight(SHAPE_REACH, SHAPE_NEAR, SHAPE_FAR, steps);
+            }
+            weakness_weighted(active, HQ[seat], &weights)
+        };
+        *slot = (active, enemy, seat as u8 + 1, value);
         value
     })
 }
@@ -186,16 +233,28 @@ fn weakness(state: &State, seat: usize) -> i64 {
 const WEAKNESS_SLOTS: usize = 1 << 12;
 
 thread_local! {
-    /// [`weakness`] by territory and seat (the seat plus one, 0 for an empty
+    /// [`weakness`] by territory, the enemy's active land (empty when
+    /// [`SHAPE_REACH`] is 0) and seat (the seat plus one, 0 for an empty
     /// slot), so that a territory a search meets again is not searched again:
-    /// most actions leave one side's territory as it was.
-    static WEAKNESS: std::cell::RefCell<Vec<(Bits, u8, i64)>> =
-        std::cell::RefCell::new(vec![(Bits::EMPTY, 0, 0); WEAKNESS_SLOTS]);
+    /// most actions leave one side's territory as it was. The map is not in
+    /// the key: a bot plays one map, but the analysis modes, which read
+    /// positions of many games in one thread, could reuse a value of another
+    /// map with the same two lands.
+    static WEAKNESS: std::cell::RefCell<Vec<(Bits, Bits, u8, i64)>> =
+        std::cell::RefCell::new(vec![(Bits::EMPTY, Bits::EMPTY, 0, 0); WEAKNESS_SLOTS]);
 }
 
-/// [`weakness`] of the territory `active` whose HQ is `root`.
+/// [`weakness`] of the territory `active` whose HQ is `root`, every joint
+/// counted.
 pub fn weakness_of(active: Bits, root: usize) -> i64 {
-    struct Dfs {
+    weakness_weighted(active, root, &[4; CELLS])
+}
+
+/// [`weakness_of`] with each joint `v` weighted by `weights[v]` quarters:
+/// its count and the cells it cuts off, rounded down once at the end.
+pub fn weakness_weighted(active: Bits, root: usize, weights: &[u8; CELLS]) -> i64 {
+    struct Dfs<'a> {
+        weights: &'a [u8; CELLS],
         active: Bits,
         disc: [u8; CELLS],
         low: [u8; CELLS],
@@ -204,7 +263,7 @@ pub fn weakness_of(active: Bits, root: usize) -> i64 {
         joints: i64,
         most: i64,
     }
-    fn visit(d: &mut Dfs, v: usize) -> u8 {
+    fn visit(d: &mut Dfs<'_>, v: usize) -> u8 {
         d.time += 1;
         let disc = d.time;
         d.disc[v] = disc;
@@ -226,8 +285,9 @@ pub fn weakness_of(active: Bits, root: usize) -> i64 {
         d.low[v] = low;
         d.size[v] = size;
         if cut > 0 && d.disc[v] > 1 {
-            d.joints += 1;
-            d.most = d.most.max(i64::from(cut));
+            let w = i64::from(d.weights[v]);
+            d.joints += w;
+            d.most = d.most.max(w * i64::from(cut));
         }
         size
     }
@@ -235,6 +295,7 @@ pub fn weakness_of(active: Bits, root: usize) -> i64 {
         return 0;
     }
     let mut d = Dfs {
+        weights,
         active,
         disc: [0; CELLS],
         low: [0; CELLS],
@@ -244,7 +305,7 @@ pub fn weakness_of(active: Bits, root: usize) -> i64 {
         most: 0,
     };
     visit(&mut d, root);
-    d.joints + d.most
+    (d.joints + d.most) / 4
 }
 
 /// The shape term of `seat`'s score: [`SHAPE`] times the other side's
