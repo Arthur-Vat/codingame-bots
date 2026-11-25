@@ -57,8 +57,10 @@ opponent after the early game."
   is the owner's ranking; E073's `Order::Central` is v031's.
 - The bot: `OPENING_ROLES` (`None` in v031). With it off the bot plays as
   ice-and-fire-v031 (20 games against v030 at fixed tries, the same
-  results and lengths); the bundle is 88.2k characters (v031's 59.2k
-  plus E077's switched-off strategy and the opening's new code).
+  results and lengths); the bundle is 70.9k characters (88.3k bytes; v031's
+  59.2k characters, plus E077's switched-off strategy and the opening's new
+  code; "88.2k characters" in an earlier version of this entry was the byte
+  count).
 
 ## The bench
 
@@ -369,3 +371,58 @@ in time, each front's options (skip it, hold its entrances, go deep) tried
 in every combination, the plan leaving us the largest share of the map at
 the end of the early game; then the same in the opening's code, then the
 dynamic version following the enemy's moves.
+
+## The turn-1 planner: the problem (agreed in the conversation, 2026-11-21)
+
+The owner: "We have a contraint programming problem: we have a limited
+number of train that can accelerate towards a goal (maybe several goals at
+once during the early turns); we have a limited number of goals. We could
+simply check all possibilities to grow in order to maximize the final
+position (based on where the opponent could end up)"; then "Ideally some
+options bring closer to two goals at once? Also I presume in an open field
+the middle is absolutely critical", and "sometimes the most advanced unit
+will not be able to get closer to two goals at once". The formulation:
+
+- **The game, reduced:** the valid cells as a graph (four neighbours),
+  distances `d` in steps; game turns `t = 1 … T`, the end of the early game
+  (`T` about 8 to 10), red playing first in each turn. Our land `L_t`
+  (joined to the HQ), units `U_t`, gold `g_t`; `g_{t+1} = g_t − 10 k_t +
+  |L_{t+1}| − |U_{t+1}|` (`k_t` trainings, upkeep 1 a unit).
+- **Decisions in a turn:** each unit steps to a neighbour or stays (a
+  neutral cell entered joins the land); then `k_t ≤ ⌊g_t / 10⌋` trainings,
+  each on a free cell next to the land after the moves (from the tip); a
+  new unit cannot move that turn.
+- **Goals** `Γ = {γ_1 … γ_m}`, found at game turn 1: a front's entrances on
+  our side (a set of cells `C_j`, the minimum cut within its region) or a
+  deep cell; each with the land `v_j` it decides. Our arrival `a_j`: the
+  first turn all of `C_j` is ours; the enemy's `b_j`: the first turn it can
+  take a cell of `C_j`; won when `a_j ≤ b_j` (we play first).
+- **Objective, lexicographic (the owner's):** the most land at `T`, then
+  the Voronoi share against where the enemy can be: maximise
+  `(|L_T|, V(L_T, B_T))`; a softer form `α |L_T| + β V + Σ_j v_j [a_j ≤ b_j]`.
+- **Growth as a tree:** to reach a set of goals `S`, our land grows as a
+  tree from our land to every `C_j` of `S` (a Steiner tree): a shared trunk,
+  then branches; two goals cost less than two separate chains, and an open
+  map's middle is the natural trunk (the most land, a few steps from both
+  flanks' entrances, on the enemy's way to them). A step brings a unit
+  nearer to two goals only while both lie ahead of it; past a fork it serves
+  one branch, so the plan needs a second agent at each fork (a unit behind,
+  or a training at the fork: the leapfrog).
+- **The plan:** a set of goals, hub cells where the routes split, and each
+  agent (our movable units and the trainings the gold pays over the next
+  turns, about 6 early) assigned a route (trunk, then one branch) with its
+  timing. Every plan is simulated turn by turn with simple rules (each
+  agent steps along its route, trainings at the tip toward their branch,
+  free agents to the nearest neutral cells, gold spent as it comes), which
+  gives `a_j`, `L_T` and the objective; a few breadth-first searches on 144
+  cells each, so tens of thousands of plans fit in the first turn's time;
+  plans dominated on every goal are pruned.
+- **The opponent, three models from cheap to exact:** (1) its earliest
+  possible arrival at each cell (its units and trainings with its gold,
+  straight there): pessimistic and cheap; (2) a few plausible enemy plans
+  (its natural growth, a rush to each front): our plan's worst result over
+  them; (3) both sides choose a plan at turn 1: the zero-sum matrix of
+  results, our plan maximising the minimum (or the mixed strategy).
+
+The first version: model (1), then the plans drawn on the six maps, then
+the planner in Rust in `opening/src/frontline/`, played by the opening.
