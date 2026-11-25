@@ -11,7 +11,7 @@ elo: +51.4 [+26.8, +76.5]
 pairs: 320
 full_time: +51.4 [+26.8, +76.5]
 decision: promoted
-cg_rank: not reported
+cg_rank: Legend, 2nd of 91 (2nd of 935 overall), score 31.22, ranking ended by 2026-11-25: submitted through the API on the owner's approval, without test games (submission 41775684)
 ---
 
 ## Why
@@ -151,3 +151,12 @@ Verdict: ACCEPTED: ice-and-fire-v032 is stronger than ice-and-fire-v031
 
 Accepted at +51.4, below the screening's +71.6 for k3 (the best of 11
 readings), as usual.
+
+## On CodinGame
+
+Submitted through the API on the owner's approval (form, 2026-11-21),
+without test games: submission 41775684 (file SHA-256
+759ae4e6b622263bcd7a9c93afeacbf1d5e04fa84dd2b7b1812e1fa50acbc725),
+replacing v031 (5th of 90 in Legend). Its ranking ended 2nd of 91 in
+Legend (score 31.22, behind zasmu's 37.81), 2nd of 935 overall: our best
+rank so far.
