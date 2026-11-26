@@ -131,7 +131,7 @@ pub const SECURE: i64 = 8;
 
 /// What each secure cell of a side in the contested band (E073's band, the
 /// areas of interest) counts beyond [`SECURE`]: 0 for nothing (v032).
-pub const SECURE_BAND: i64 = 0;
+pub const SECURE_BAND: i64 = 4;
 
 /// The secure territory of `seat` ([`SECURE`]) when the enemy's next turn
 /// reaches `enemy_reach`.
