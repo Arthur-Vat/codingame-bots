@@ -143,7 +143,7 @@ const REPLAN_FROM: u32 = 0;
 /// How many cells each step between our land and the middle front's centre
 /// costs the opening's plans, on open fields (E083, `Order::CentralPull`):
 /// 0 for v032's `Order::Central`.
-const OPENING_PULL: i64 = 2;
+const OPENING_PULL: i64 = 0;
 
 /// How the opening compares its plans (E073): the weighted sum above in
 /// v029; with [`OPENING_PULL`], pulled toward the centre (E083).
