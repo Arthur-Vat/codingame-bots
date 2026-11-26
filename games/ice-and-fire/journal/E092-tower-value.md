@@ -45,4 +45,22 @@ only the count of reachable cells, 26% neither.
 
 ## Screening
 
-Pending.
+Each variant against `ice-and-fire-v032`, 400 pairs, full games (run
+45888969443):
+
+| Variant | Settings | Elo | Timeouts |
+|---|---|---|---|
+| guardcut | `GUARD_BY_CUT` | -60.5 [-78.9, -42.5] | 0 |
+| hqnow | `HQ_GUARD_TURNS` 1 | +3.5 [-9.3, +16.2] | 0 |
+| value0 | `TOWER_VALUE` 0 | -34.9 [-55.6, -14.3] | 0 |
+| hqnow-value0 | both | -34.9 [-56.5, -13.5] | 0 |
+| all3 | the three | -58.7 [-81.2, -36.8] | 2 |
+
+Towers offered only against the best cut lose heavily, as does a tower
+worth nothing beyond what it protects. The HQ guard on the next turn alone
+is level with v032 (its narrow interval: it changes few games). The towers
+the owner found useless are not free to remove: the 10 a tower counts, and
+the guard on the cells the enemy's chains could reach, stand in for
+protection the search's few modelled replies do not see (E087: the replies
+it misses are scattered cuts, which a deep tower may still stop). The cut
+finder also costs guardcut a third of its tries.
