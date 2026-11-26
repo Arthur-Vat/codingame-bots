@@ -141,14 +141,14 @@ const REPLAN_FROM: u32 = 0;
 
 /// The weight of the middle front's centre in the opening's race to the
 /// areas of interest (E086, `Order::Race`): 0 for v032's `Order::Central`.
-const OPENING_RACE: i64 = 0;
+const OPENING_RACE: i64 = 2;
 
 /// Whether that race comes after the land rather than before it (E086).
-const OPENING_LAND_FIRST: bool = false;
+const OPENING_LAND_FIRST: bool = true;
 
 /// Whether a centre counts fully in that race only when supported: one of
 /// our units next to it, or our tower on or next to it (E086).
-const OPENING_SUPPORT: bool = false;
+const OPENING_SUPPORT: bool = true;
 
 /// Whether the opening's plans meet an opponent that plays the opening's
 /// own rules rather than one that passes (E086,
