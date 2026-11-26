@@ -56,12 +56,12 @@ mod repair;
 /// `repair`): after its replies are searched, the plan is changed to raise
 /// its score against the memory, then its own replies are searched, and so
 /// on. 0 in v032.
-pub const REPAIR: usize = 4;
+pub const REPAIR: usize = 2;
 /// The most steps of one repair (E091).
 pub const REPAIR_STEPS: usize = 4;
 /// Whether a repair may add any action offered, not only counters to the
 /// worst reply and the dropping of a command (E091).
-pub const REPAIR_ANY: bool = true;
+pub const REPAIR_ANY: bool = false;
 
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8;
