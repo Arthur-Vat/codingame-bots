@@ -22,6 +22,34 @@ use crate::eval::threatened;
 /// variant).
 pub const HQ_GUARD: bool = true;
 
+/// The enemy's incomes, beyond its gold, within which its chain to our HQ
+/// must be affordable for [`HQ_GUARD`] to offer a tower (E026: 2; E092
+/// tries 1, its next turn alone).
+pub const HQ_GUARD_TURNS: i64 = 2;
+
+/// Whether a tower guards (E092, the owner: a tower must parry an immediate
+/// threat) only when it lowers the active cells the enemy's best cut
+/// removes once our turn ends, rather than the cells its chains of
+/// trainings could reach ([`threatened`]). Off in v032.
+pub const GUARD_BY_CUT: bool = false;
+
+/// The active cells of ours that the enemy's best cut removes once the turn
+/// that ends in `state` is over (E092).
+pub(crate) fn best_cut(state: &State) -> i64 {
+    let mut next = state.clone();
+    next.end_turn();
+    if next.outcome().is_some() {
+        return 0;
+    }
+    let gold = next.gold(next.to_act());
+    cuts(&next, CUT_LENGTH, gold, 3)
+        .iter()
+        .map(|c| c.cells)
+        .max()
+        .unwrap_or(0)
+        .max(0)
+}
+
 /// Whether a tower on `cell` guards something for the player to act (E026):
 /// it lowers the cells of ours the enemy can take at its next turn
 /// ([`threatened`]), or, with [`HQ_GUARD`], it raises the enemy's chain to
@@ -34,10 +62,11 @@ pub const HQ_GUARD: bool = true;
 /// it (RULES.md, protection), so where none of them is in `reach` it cannot
 /// lower `threats`, and the state is not copied unless the HQ guard may
 /// apply: the same answer, cheaper.
-fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64) -> bool {
+fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64, cut: i64) -> bool {
     let me = state.to_act();
     let enemy = 1 - me;
-    let hq_guard = HQ_GUARD && chain <= state.gold(enemy) + 2 * state.income(enemy).max(0);
+    let hq_guard =
+        HQ_GUARD && chain <= state.gold(enemy) + HQ_GUARD_TURNS * state.income(enemy).max(0);
     let zone = Bits::cell(cell) | Bits::cell(cell).neighbours();
     if !hq_guard && (zone & reach).is_empty() {
         return false;
@@ -47,7 +76,12 @@ fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64) -> 
     if !after.apply(Command::BuildTower { x, y }) {
         return false;
     }
-    if threatened(&after, me) < threats {
+    let lowers = if GUARD_BY_CUT {
+        best_cut(&after) < cut
+    } else {
+        threatened(&after, me) < threats
+    };
+    if lowers {
         return true;
     }
     hq_guard && cost_to(&after, enemy, false, HQ[me]) > chain
@@ -220,6 +254,7 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
             let reach = crate::eval::reach(state, 1 - me);
             let threats = i64::from((reach & state.active(me)).count());
             let chain = cost_to(state, 1 - me, false, HQ[me]);
+            let cut = if GUARD_BY_CUT { best_cut(state) } else { 0 };
             // Frontier cells of ours not yet guarded by a tower (E068).
             let open = if WALL_TOWERS {
                 let (front, guarded) = crate::eval::frontier(state, me);
@@ -229,7 +264,7 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
             };
             for cell in cells.iter().filter(|&cell| {
                 let zone = Bits::cell(cell) | Bits::cell(cell).neighbours();
-                !(zone & open).is_empty() || guards(state, cell, threats, reach, chain)
+                !(zone & open).is_empty() || guards(state, cell, threats, reach, chain, cut)
             }) {
                 let (x, y) = xy(cell);
                 out.push(Action::One(Command::BuildTower { x, y }));

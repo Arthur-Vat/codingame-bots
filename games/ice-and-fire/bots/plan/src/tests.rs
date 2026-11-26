@@ -836,7 +836,13 @@ fn a_tower_guards_the_hq_against_a_chain_affordable_within_two_turns() {
         ice_and_fire_tactics::chain::cost_to(&state, 1, false, ice_and_fire_engine::HQ[0]),
         80
     );
-    assert_eq!(towers_offered(&state), vec![(1, 0)]);
+    // With E092's guard on the next turn alone, 48 does not pay for 80.
+    let want = if crate::actions::HQ_GUARD_TURNS >= 2 {
+        vec![(1, 0)]
+    } else {
+        vec![]
+    };
+    assert_eq!(towers_offered(&state), want);
 }
 
 /// Positions of random games, every third ply up to 90, on several maps.
@@ -936,9 +942,15 @@ fn towers_are_offered_where_a_copy_of_the_state_says_they_guard() {
                 !(zone & front.and_not(guarded)).is_empty()
             };
             let guards = walls
-                || crate::eval::threatened(&after, me) < threats
+                || if crate::actions::GUARD_BY_CUT {
+                    crate::actions::best_cut(&after) < crate::actions::best_cut(&state)
+                } else {
+                    crate::eval::threatened(&after, me) < threats
+                }
                 || (crate::actions::HQ_GUARD
-                    && chain <= state.gold(enemy) + 2 * state.income(enemy).max(0)
+                    && chain
+                        <= state.gold(enemy)
+                            + crate::actions::HQ_GUARD_TURNS * state.income(enemy).max(0)
                     && cost_to(&after, enemy, false, HQ[me]) > chain);
             if guards {
                 want.push(Command::BuildTower { x, y });

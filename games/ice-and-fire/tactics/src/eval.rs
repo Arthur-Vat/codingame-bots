@@ -13,6 +13,10 @@ pub const WIN: i64 = 1_000_000;
 /// The lowest pressure term of one side.
 const MAX_PRESSURE: i64 = 200;
 
+/// What each active tower of a side counts (E092 tries 0: a tower worth
+/// only what it protects). 10 in v032.
+pub const TOWER_VALUE: i64 = 10;
+
 /// What a side has: gold, income, active cells, units on active cells (by
 /// training cost) and its active towers.
 fn side(state: &State, seat: usize) -> i64 {
@@ -26,7 +30,7 @@ fn side(state: &State, seat: usize) -> i64 {
         + 3 * state.income(seat)
         + 4 * i64::from(active.count())
         + units
-        + 10 * i64::from((state.towers() & active).count())
+        + TOWER_VALUE * i64::from((state.towers() & active).count())
 }
 
 /// What `seat`'s gold and income leave once it has paid for its cheapest
@@ -65,7 +69,7 @@ fn pressure(margin: i64) -> i64 {
 ///
 /// A finished game is [`WIN`], `-WIN` or 0. Else the score is the difference
 /// of what each side has (gold, 3 × income, 4 × active cells, the cost of its
-/// units on active cells, 10 × its active towers), minus `WIN / 2` when the
+/// units on active cells, [`TOWER_VALUE`] × its active towers), minus `WIN / 2` when the
 /// seat is to act and the opponent, after its start of turn, could pay for a
 /// chain of trainings (or a step of a unit) that takes the seat's HQ, plus
 /// the difference of the sides' pressure (how far each is from affording the
