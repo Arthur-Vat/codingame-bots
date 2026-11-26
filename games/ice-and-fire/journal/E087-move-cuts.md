@@ -204,3 +204,35 @@ The same benchmark:
 The scattered cuts halve the badly missed removals from v032 (12% to 5 or
 6%); pairs of steps add little alone.
 
+### Round 2: screening
+
+Variants (from 65d86725800b): s3 (steps3 again), s3-scatter (`SCATTER_CUTS`
+3, `SCATTER_AFTER_STEPS`, 4cd721d3cbae), s3-scatter-pairs (and
+`REPLY_STEPS` 7, 3deeab4f567a), s3-scatter-w60L5 (`SCATTER_CUTS` 3, width
+60, length 5, e00fc93a1192), s3-scatter-own (s3-scatter and `MACRO_SCATTER`
+2 in `actions.rs`: scattered cuts offered to our own search, 9dab590fe4f2),
+s3-own (steps3 and `MACRO_SCATTER` 2, 3e6d234bdcac). A local check of
+s3-scatter-pairs against v032, 8 pairs (seed 871): no fault, answers after
+the first 41.6 ms median, 48.0 ms at 99.9%.
+
+`screen.yml` run 45869403769 on the owner's approval (2026-11-26; a first
+dispatch, run 45869280130, failed on a garbled list of variants), full
+games against v032, 400 pairs per variant over 2 shards (the list cut the
+name of s3-scatter-w60L5 to `5`):
+
+| Variant | Elo over v032 [95%] | Timeouts of the variant (of 800 games) |
+| --- | --- | --- |
+| s3 | -4.3 [-24.0, +15.3] | 0 |
+| s3-scatter | -27.9 [-48.1, -7.8] | 9 |
+| s3-scatter-pairs | -23.5 [-43.6, -3.5] | 9 |
+| s3-scatter-w60L5 | -16.5 [-36.2, +3.1] | 0 |
+| s3-scatter-own | -14.8 [-34.3, +4.7] | 8 |
+| s3-own | -16.5 [-35.3, +2.2] | 0 |
+
+steps3 is level this time (+15.6 in round 1): together, about +5, within
+the noise of one screening. The scattered cuts, which halve the replies
+badly missed, do not make the search stronger: with them after each step it
+times out in about 1% of its games on CodinGame-speed runners, and without
+those timeouts (w60L5) it is still weaker; offered to our own search, they
+are a little weaker too.
+
