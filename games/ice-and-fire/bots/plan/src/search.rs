@@ -72,7 +72,7 @@ pub const MAX_SWAPS: usize = 3;
 /// How many climbs start from the best plan with actions removed once the
 /// climbs repeat (E090, `explore::perturbations`): first without its
 /// purchases, then without each of its first commands. 0 in v032.
-pub const PERTURB: usize = 0;
+pub const PERTURB: usize = 4;
 
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8;
