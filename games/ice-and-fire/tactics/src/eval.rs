@@ -19,7 +19,7 @@ pub const TOWER_VALUE: i64 = 10;
 
 /// What each active tower counts up to game turn [`EARLY_TOWER_UNTIL`]
 /// (E093: a tower that holds the frontier early). [`TOWER_VALUE`] in v032.
-pub const EARLY_TOWER_VALUE: i64 = 15;
+pub const EARLY_TOWER_VALUE: i64 = 20;
 
 /// See [`EARLY_TOWER_VALUE`]: the plan bot's early game (E093).
 pub const EARLY_TOWER_UNTIL: u32 = 10;
