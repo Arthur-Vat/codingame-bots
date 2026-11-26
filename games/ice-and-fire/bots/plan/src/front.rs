@@ -19,20 +19,20 @@ pub const RACE: i64 = 0;
 /// What a front counts for a side whose deepest goal cell held or reached
 /// first is its entrance, centre or outpost ([`goal_cells`]): 0 for
 /// nothing (v032).
-pub const GOAL_E: i64 = 0;
+pub const GOAL_E: i64 = 4;
 /// See [`GOAL_E`].
-pub const GOAL_C: i64 = 0;
+pub const GOAL_C: i64 = 8;
 /// See [`GOAL_E`].
-pub const GOAL_O: i64 = 0;
+pub const GOAL_O: i64 = 12;
 
 /// The factor of the middle front's goal weights ([`GOAL_E`]): 1 is the
 /// flanks' weights (the owner, 2026-11-26: value the centre more).
-pub const GOAL_MIDDLE: i64 = 1;
+pub const GOAL_MIDDLE: i64 = 2;
 
 /// What each band cell in the middle (`|x - y|` at most 3, the middle
 /// front's place, red's view) a side holds actively counts beyond E073's
 /// band cells held: 0 for nothing (v032).
-pub const CENTRE: i64 = 8;
+pub const CENTRE: i64 = 0;
 
 /// What each unit of a side on a band cell it holds actively, which the
 /// enemy cannot take at its next turn, counts: 0 for nothing (v032).
