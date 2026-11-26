@@ -56,4 +56,22 @@ Up to game turn `EARLY_UNTIL` (10):
 
 ## Screening
 
-Pending.
+Each variant against `ice-and-fire-v032`, 800 pairs over two shards (the
+owner's choice, after three leans at 400 pairs that did not hold), full
+games, no faults (run 45899985184):
+
+| Variant | Up to game turn 10 | Elo |
+|---|---|---|
+| fwd2 | `STEP_GUARD_NEAR` 2 | +7.4 [-6.6, +21.4] |
+| fwd3 | `STEP_GUARD_NEAR` 3 | -0.0 [-14.1, +14.1] |
+| hold8 | `EARLY_THREAT_QUARTERS` 8 | -3.5 [-18.7, +11.7] |
+| hold10 | `EARLY_THREAT_QUARTERS` 10 | -17.0 [-31.7, -2.3] |
+| tv15 | `EARLY_TOWER_VALUE` 15 | -12.6 [-26.3, +1.1] |
+| tv20 | `EARLY_TOWER_VALUE` 20 | -18.3 [-33.5, -3.1] |
+| fwd2-tv15 | both | -13.0 [-27.8, +1.6] |
+| fwd2-hold8-tv15 | the three | +5.2 [-10.3, +20.7] |
+
+No variant beats v032. A dearer tower or a dearer threatened cell early
+loses, the more the heavier, as the all-game versions did (E083's hold,
+E084's cut threat, E092's tower value); the step and guard offered from
+more units is level.
