@@ -49,11 +49,11 @@ pub const CENTRE: i64 = 0;
 /// front, until [`FRONT_UNTIL`] (the owner, 2026-11-26: on an open field
 /// the centre is a must, and the land extends toward it every turn): 0 for
 /// nothing (v032).
-pub const CENTRE_PULL: i64 = 4;
+pub const CENTRE_PULL: i64 = 8;
 
 /// What holding the middle front's centre actively counts for a side: 0
 /// for nothing (v032).
-pub const CENTRE_HOLD: i64 = 24;
+pub const CENTRE_HOLD: i64 = 48;
 
 /// What each unit of a side on a band cell it holds actively, which the
 /// enemy cannot take at its next turn, counts: 0 for nothing (v032).
