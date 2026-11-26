@@ -74,7 +74,7 @@ pub const STEP_CUT_LENGTH: usize = 4;
 /// the same (the owner's unit 11, E086's entry). The damage is the
 /// evaluation of the plan's end state, with no reply, less the evaluation
 /// after that reply. 0 for nothing (v032, the worst reply alone).
-pub const SECOND_QUARTERS: i64 = 0;
+pub const SECOND_QUARTERS: i64 = 2;
 
 /// Most climbs in one turn.
 const MAX_CLIMBS: usize = 32;
