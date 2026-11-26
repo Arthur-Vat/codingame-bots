@@ -52,4 +52,32 @@ In `bots/plan/src/`:
 
 ## Games and screening
 
-Pending.
+Variants: steps1 (`REPLY_STEPS` 1, 58298d300a2b), steps3 (3, d42ffc643e34),
+bundles6 (`BUNDLE_CANDIDATES` 6, fd1ee360beef), second2 (`SECOND_QUARTERS`
+2, 7941e16e1f94), steps3-second2 (008d31e697d4), steps3-bundles6
+(6b2b89ab3116), steps3-second2-bundles6 (1a211d7ec786).
+
+A local check of the heaviest (steps3-second2-bundles6) in full games
+against v032, 8 pairs at CodinGame's limits (seed 87): no fault, answers
+after the first 41.7 ms median, 45.5 at 99%, 47.3 at 99.9% (v032 30.8, 43.7,
+45.4): close to the 50 ms limit.
+
+Games against v032 on E086's 20 maps, both seats, cut at game turn 12, 40
+each, measured as E086's (v032 against itself the baseline):
+
+| Bot | Middle cells lost, turns 6 to 10 | All cells lost, turns 6 to 10 | Holds its centre at turns 8 / 10 | Cells at turn 12, its / v032's |
+| --- | --- | --- | --- | --- |
+| v032 | 0.47 | 0.85 | 64% / 86% | 35.5 / 36 |
+| steps1 | 0.75 | 1.23 | 64% / 89% | 35.5 / 39 |
+| steps3 | 0.72 | 1.15 | 64% / 86% | 34.5 / 41 |
+| bundles6 | 0.70 | 1.10 | 61% / 86% | 36 / 37 |
+| second2 | 0.50 | 0.75 | 58% / 81% | 34 / 38.5 |
+| steps3-second2 | 0.50 | 0.75 | 61% / 81% | 35.5 / 37.5 |
+| steps3-bundles6 | 0.68 | 1.10 | 67% / 86% | 36 / 39.5 |
+| steps3-second2-bundles6 | 0.80 | 1.40 | 56% / 78% | 34 / 38 |
+
+The second-worst charge is the only change that loses no more cells than
+v032 (0.75 against 0.85 in all, 0.50 against 0.47 in the middle), at a
+cost in land (34 to 35.5 cells at turn 12, v032 37.5 to 38.5); modelling
+more replies (steps) alone makes the search lose more and gain less land.
+40 games are few: the screening is needed.
