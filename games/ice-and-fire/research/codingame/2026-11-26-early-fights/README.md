@@ -38,8 +38,8 @@ python3 fights.py plies.jsonl data/ice-and-fire/index.jsonl records
   (46, 173, 295, 446 and 450 at game turns 8 to 12), 48% of them in our
   lost games. In the median one, v032 has 32 gold at the start of its ply
   before (at least 15, a tower, in 98% of them), spends it down to 5 (15 or
-  more left in 9%), and the enemy, with 38, trains 2 units (one of level 2
-  or more in 72% of the large losses) and takes 4 cells, 2 of them cut off.
+  more left in 9%), and the enemy, with 38, trains 2 units (0.72 of level 2
+  or more a large loss, on average) and takes 4 cells, 2 of them cut off.
   The cells lost were taken a turn before (median).
 - v032 holds more land than its opponents at game turn 12 (41 cells to 35,
   medians): it spreads wide and thin, spends all its gold on it, and keeps
