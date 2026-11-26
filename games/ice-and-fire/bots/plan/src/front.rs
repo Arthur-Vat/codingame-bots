@@ -19,11 +19,11 @@ pub const RACE: i64 = 0;
 /// What a front counts for a side whose deepest goal cell held or reached
 /// first is its entrance, centre or outpost ([`goal_cells`]): 0 for
 /// nothing (v032).
-pub const GOAL_E: i64 = 6;
+pub const GOAL_E: i64 = 4;
 /// See [`GOAL_E`].
-pub const GOAL_C: i64 = 12;
+pub const GOAL_C: i64 = 8;
 /// See [`GOAL_E`].
-pub const GOAL_O: i64 = 18;
+pub const GOAL_O: i64 = 0;
 
 /// The factor of the middle front's goal weights ([`GOAL_E`]): 1 is the
 /// flanks' weights (the owner, 2026-11-26: value the centre more).
