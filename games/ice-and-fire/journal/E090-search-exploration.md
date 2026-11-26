@@ -82,4 +82,23 @@ played, and how many tries a millisecond it makes on the bench bank:
 
 ## Screening
 
-Pending.
+Each variant against `ice-and-fire-v032`, 400 pairs, full games, no
+faults on either side (run 45879356488):
+
+| Variant | Settings | Elo |
+|---|---|---|
+| splits4 | `SPLITS` 4 | -22.6 [-44.5, -0.9] |
+| splits8 | `SPLITS` 8 | -47.2 [-68.7, -26.1] |
+| swaps | `SWAPS` | -0.0 [-21.3, +21.3] |
+| perturb4 | `PERTURB` 4 | -5.2 [-24.8, +14.3] |
+| splits4-swaps | `SPLITS` 4, `SWAPS` | -44.5 [-66.1, -23.3] |
+| all | `SPLITS` 4, `SWAPS`, `PERTURB` 4 | -30.5 [-51.0, -10.1] |
+
+The spending splits lose, the more of them the more; the swaps and the
+perturbations are level with v032. The plans the splits find score higher
+by the search's own measure (22.7% of plies above v032's play, against
+9.4%) yet lose games: they are judged against the replies the first climb
+found, and they take the climbs that would have found others, so a plan
+fitted to a few replies wins the choice and meets the replies left out.
+Finding plans the evaluation rates higher does not, alone, make the bot
+stronger.
