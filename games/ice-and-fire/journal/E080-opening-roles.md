@@ -711,3 +711,43 @@ Pictures, turn by turn in each of the eight games, with each unit's role,
 the moving sub-goals, the guessed enemy land, the spending compared and the
 turn-1 plan alone beside: https://claude.ai/artifact/VffeEVbaMWUoYjf9a4UJiB.
 
+### Threats by cuts, and holding the front
+
+The owner (2026-11-26): fix the threat and the towers with the regular
+approach (we forgot the enemy's cuts), and let units back off only when
+they are too far from the front line.
+
+- The enemy's guessed reply now searches, as our search's replies do, the
+  chain of trainings (10 gold a cell, 20 on a level-1 unit, through our
+  cells and the neutral cells next to our land) that does most damage: the
+  cells it takes and the cells it cuts off from our HQ; its units capture
+  first and its gold left trains singly.
+- Towers are offered only on our free active cells on or next to the
+  cells that reply enters (E044's blockers, E026's guarding towers), never
+  on mine spots, each judged by the reply recomputed.
+- A unit with no sub-goal within 3 steps of the front line (the free cells
+  about as near our land as the enemy's, within a step) holds it: it takes
+  the free cell within 2 steps nearest that line, or stays; only the units
+  further away fill the backline.
+
+| Enemy model | Our seat | Our cells | v020's cells | End |
+| --- | --- | --- | --- | --- |
+| free growth | red | 17 | 40 | HQ lost, turn 10 |
+| free growth | blue | 20 | 47 | turn 12 |
+| momentum | red | 22 | 32 | HQ lost, turn 9 |
+| momentum | blue | 12 | 52 | turn 12 |
+| our own plan | red | 15 | 50 | HQ lost, turn 12 |
+| our own plan | blue | 16 | 56 | turn 12 |
+| fastest rush | red | 9 | 51 | HQ lost, turn 11 |
+| fastest rush | blue | 11 | 60 | turn 12 |
+
+With the threats by cuts alone (units holding only within 3 steps of the
+enemy's land), the HQ fell in 2 games of 8 (momentum and rush as red); with
+holding the front line as well, in 4, all as red. In the free-growth game as
+red, the threat search sees the cut at turn 8 (5 cells, tower at (5, 5)) and
+at turn 9 (10 cells, tower at (3, 3), 3 left), but v020 then trains down
+column 1, through neutral cells next to our HQ that no tower protects and
+no unit holds any more, and at turn 10 we have 7 gold, less than a tower.
+One game a setting, against a bot whose search depends on time: the
+differences between settings are within the noise of single games.
+

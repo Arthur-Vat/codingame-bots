@@ -31,6 +31,7 @@ LOG = open(os.environ['PLAN_LOG'], 'w') if os.environ.get('PLAN_LOG') else None
 AREAS = json.load(open(os.environ['PLAN_AREAS']))  # areas with static sub-goals (our HQ at (0, 0))
 SEQ = json.loads(os.environ['PLAN_SEQ'])  # the turn-1 plan: per training, a list of [area, kind]
 LAST_TURN = 12
+HOLD = 3  # a unit with no sub-goal this near the enemy's land holds the front
 FACTOR = {-1: 0.0, 0: 0.6, 1: 1.0}
 
 
@@ -243,8 +244,7 @@ def arrival(guesses):
 class Bot:
     def __init__(self):
         rd_n = int(rd())
-        for _ in range(rd_n):
-            rd()
+        self.mine_spots_raw = [tuple(map(int, rd().split())) for _ in range(rd_n)]
         self.t = 0
         self.flip = None
         self.trained = 0
@@ -264,6 +264,7 @@ class Bot:
             lines += [str(nu)] + [rd() for _ in range(nu)]
             if self.flip is None:
                 self.flip = lines[4][0] not in 'Oo'
+                self.mine_spots = {(11 - x, 11 - y) if self.flip else (x, y) for x, y in self.mine_spots_raw}
             s = read_state(iter(lines), self.flip)
             self.t += 1
             cmds, log = self.turn(s)
@@ -332,8 +333,16 @@ class Bot:
         # 3. Backline: each its share of our territory.
         terr = self.territory(s, EH)
         log['territory'] = sorted(map(list, terr))
-        back = [c for c in free_units if not any(p[0] == ('unit', c) for p in picks)]
-        back = [c for c in back if c in s.units]  # still there
+        rest = [c for c in free_units if not any(p[0] == ('unit', c) for p in picks)]
+        rest = [c for c in rest if c in s.units]  # still there
+        # The front line: the free cells about as near our land as the
+        # enemy's (within a step); a unit near it holds and pushes it.
+        dLo, dTh = bfs(s.valid, list(s.ours)), bfs(s.valid, list(s.theirs))
+        line = [c for c in s.valid if c not in s.ours and c not in s.theirs and abs(dLo.get(c, 99) - dTh.get(c, 99)) <= 1]
+        dEn = bfs(s.valid, line) if line else bfs(s.valid, list(s.theirs))
+        hold = [c for c in rest if dEn.get(c, 99) <= HOLD]
+        back = [c for c in rest if c not in hold]
+        self.hold(s, hold, dEn, cmds, roles)
         self.backline(s, back, terr, cmds, roles)
         # 4. Trainings: the options' first, then for our territory.
         for agent, cell, label, value in picks:
@@ -364,16 +373,21 @@ class Bot:
         return cmds, log
 
     def towers(self, s, t, free_units, arr, EH, cmds, log):
-        base_lost, _ = self.reply(s)
+        base_lost, base_deadly, entered = self.reply(s)
+        log['threat'] = dict(lost=base_lost, deadly=base_deadly, entered=[list(c) for c in entered])
+        act = active(s, 0)
+        # Candidate spots: our free active cells on or next to the cells
+        # the reply enters (a tower protects its cell and its neighbours).
+        spots_c = {c for e in entered for c in [e] + list(nbrs(e)) if c in act and c not in s.units and c not in s.buildings and c not in self.mine_spots}
+        if base_deadly:
+            spots_c |= {c for c in nbrs((0, 0)) if c in act and c not in s.units and c not in s.buildings and c not in self.mine_spots}
         spots = []
-        for c in active(s, 0):
-            if c in s.units or c in s.buildings:
-                continue
+        for c in spots_c:
             x = clone(s)
             x.buildings[c] = (0, 2)
-            lost, deadly = self.reply(x)
-            if lost < base_lost or deadly < self.reply(s)[1]:
-                spots.append((base_lost - lost, c))
+            lost, deadly, _ = self.reply(x)
+            if lost < base_lost or deadly < base_deadly:
+                spots.append((base_lost - lost + 1000 * (base_deadly - deadly), c))
         spots = [c for _, c in sorted(spots, reverse=True)[:4]]
         combos = [()] + [(c,) for c in spots] + list(itertools.combinations(spots, 2))
         best = None
@@ -384,7 +398,7 @@ class Bot:
             for c in combo:
                 x.buildings[c] = (0, 2)
             x.gold -= 15 * len(combo)
-            lost, deadly = self.reply(x)
+            lost, deadly, _ = self.reply(x)
             saved = (self.trained, list(self.opened))
             picks = self.options(x, t, free_units, x.gold // 10, arr, EH, {})
             self.trained, self.opened = saved
@@ -401,21 +415,26 @@ class Bot:
         log['towers'] = [list(c) for c in best[1]]
 
     def reply(self, s):
-        """The enemy's guessed reply for one turn: its units, then its gold,
-        take the cells of ours whose loss costs us most (the cell and the
-        cells it cuts off from our HQ). Returns the cells we lose and
-        whether the enemy can then pay for a chain to our HQ."""
+        """The enemy's guessed reply for one turn, as our search's replies:
+        its units take the cells of ours whose loss costs us most, then its
+        gold pays for the chain of trainings that does most damage (the
+        cells it takes and the cells it cuts off from our HQ), through our
+        cells (10 gold, 20 on a level-1 unit) and the neutral cells next to
+        our land, then for single trainings with the gold left. Returns the
+        cells we lose, whether the enemy can then pay for a chain to our HQ,
+        and the cells the reply enters."""
         x = clone(s)
         gold = s.egold + s.eincome
-        lost = 0
+        entered = []
+        before0 = active(x, 0)
 
-        def damage(c):
-            before = active(x, 0)
-            x.ours.discard(c)
-            after = active(x, 0)
-            x.ours.add(c)
-            # The cell, and the cells its loss cuts off from our HQ.
-            return 1 + len(before - after - {c})
+        def damage_of(cells):
+            y = clone(x)
+            for c in cells:
+                y.ours.discard(c)
+            after = active(y, 0)
+            cur = active(x, 0)
+            return sum(1 for c in cells if c in x.ours) + len(cur - after - set(cells))
 
         for pos, v in list(x.units.items()):
             if v[0] != 1:
@@ -423,37 +442,81 @@ class Bot:
             cand = [n for n in nbrs(pos) if n in x.ours and enterable(x, n, 1, v[2])]
             if not cand:
                 continue
-            c = max(cand, key=lambda n: (damage(n), n))
+            c = max(cand, key=lambda n: (damage_of([n]), n))
             if c == (0, 0):
-                return lost + 100, 1
-            lost += damage(c)
+                return 100, 1, entered + [c]
+            entered.append(c)
             del x.units[pos]
             x.units.pop(c, None)
             take(x, c, 1)
             x.units[c] = v
-        while gold >= 10:
-            act = active(x, 1)
-            cand = []
-            for n in {n for a in act for n in nbrs(a) if n in x.ours}:
-                for level, cost in ((1, 10), (2, 20)):
-                    if cost <= gold and enterable(x, n, 1, level):
-                        cand.append((damage(n) / cost, level, cost, n))
-                        break
-            if not cand:
-                break
-            _, level, cost, c = max(cand)
+        # The best chain, by depth-first search.
+        near = {n for c in x.ours for n in nbrs(c) if n in x.valid} | set(x.ours)
+
+        def cost(c):
+            if c in x.theirs:
+                return None
+            for level, g in ((1, 10), (2, 20)):
+                if enterable(x, c, 1, level):
+                    return g
+            return None
+
+        act = active(x, 1)
+        starts = {n for a in act for n in nbrs(a) if n in near and n not in x.theirs}
+        best = [0, []]
+        seen = 0
+
+        def dfs(path, used, budget):
+            nonlocal seen
+            seen += 1
+            if seen > 4000:
+                return
+            if path:
+                d = damage_of(path)
+                if (0, 0) in path:
+                    d = 1000
+                if d > best[0]:
+                    best[0], best[1] = d, list(path)
+            frontier = starts if not path else {n for n in nbrs(path[-1]) if n in near and n not in x.theirs}
+            for n in sorted(frontier):
+                if n in used:
+                    continue
+                g = cost(n)
+                if g is None or g > budget:
+                    continue
+                path.append(n)
+                used.add(n)
+                dfs(path, used, budget - g)
+                path.pop()
+                used.discard(n)
+
+        dfs([], set(), gold)
+        for c in best[1]:
             if c == (0, 0):
-                return lost + 100, 1
-            lost += damage(c)
+                return 100, 1, entered + best[1]
+            gold -= cost(c) or 10
+            entered.append(c)
             x.units.pop(c, None)
             take(x, c, 1)
-            x.units[c] = (1, -1, level)
-            gold -= cost
-        # Units cut off from our HQ die; the chain at the enemy's next turn.
-        act = active(x, 0)
+            x.units[c] = (1, -1, 1)
+        while gold >= 10:
+            act = active(x, 1)
+            cand = [n for n in {n for a in act for n in nbrs(a) if n in x.ours} if cost(n) is not None and cost(n) <= gold]
+            if not cand:
+                break
+            c = max(cand, key=lambda n: (damage_of([n]) / cost(n), n))
+            if c == (0, 0):
+                return 100, 1, entered + [c]
+            gold -= cost(c)
+            entered.append(c)
+            x.units.pop(c, None)
+            take(x, c, 1)
+            x.units[c] = (1, -1, 1)
+        after = active(x, 0)
+        lost = len(before0 - after)
         nxt = gold + len(active(x, 1)) - sum(1 for v in x.units.values() if v[0] == 1)
         deadly = 1 if self.chain_cost(x) <= nxt else 0
-        return lost, deadly
+        return lost, deadly, entered
 
     def chain_cost(self, s):
         """The gold of the enemy's cheapest chain of trainings from its
@@ -653,6 +716,23 @@ class Bot:
             return
         n = min(steps, key=lambda n: (n in s.ours, -sum(1 for m in nbrs(n) if m in s.valid), n))
         self.move(s, pos, n, cmds)
+
+    def hold(self, s, hold, dEn, cmds, roles):
+        """Units near the front line stay there: each takes the free cell
+        within 2 steps of it nearest the front line, else stays to block."""
+        reserved = set()
+        for pos in hold:
+            u = s.units.get(pos)
+            if u is None:
+                continue
+            du = bfs(s.valid, [pos])
+            cand = [c for c in du if du[c] <= 2 and c not in s.ours and c not in s.theirs and dEn.get(c, 99) <= dEn.get(pos, 99) and c not in reserved]
+            roles[u[1]] = dict(role='hold')
+            if not cand:
+                continue
+            goal = min(cand, key=lambda c: (dEn.get(c, 99), du[c], c))
+            reserved.add(goal)
+            self.step(s, pos, goal, cmds)
 
     def backline(self, s, back, terr, cmds, roles):
         if not back:
