@@ -62,4 +62,18 @@ the bench bank:
 
 ## Screening
 
-Pending.
+Each variant against `ice-and-fire-v032`, 400 pairs, full games, no
+faults on either side (run 45882241276):
+
+| Variant | Settings | Elo |
+|---|---|---|
+| repair1 | `REPAIR` 1 | +7.8 [-13.9, +29.6] |
+| repair2 | `REPAIR` 2 | +17.4 [-4.1, +39.0] |
+| repair4 | `REPAIR` 4 | +11.3 [-9.7, +32.4] |
+| repair2-counters | `REPAIR` 2, no `REPAIR_ANY` | -0.9 [-21.7, +19.9] |
+| repair2-steps2 | `REPAIR` 2, `REPAIR_STEPS` 2 | +19.1 [-2.9, +41.3] |
+
+Every variant that may add any action leans positive, the first of this
+day's experiments to do so as a family; none has an interval above 0. The
+counters alone are level with v032: the gain comes from changing the plan
+freely against its worst reply, not from the targeted counters.
