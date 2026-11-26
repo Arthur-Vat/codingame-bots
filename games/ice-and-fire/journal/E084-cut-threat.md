@@ -109,3 +109,30 @@ cells lost: means a ply):
   against 1.5 and 1.6). Large losses before turn 12: 0.89 a game for v032,
   0.74 for zasmu.
 
+### Are the cuts unexpected?
+
+The owner (2026-11-26): do we miss obvious replies of the opponent; are the
+losses of game turns 6 to 12 unexpected? Two runs of the review tool on
+v032's 1,950 CodinGame games, with v032's own search (its analysis build)
+as the judge:
+
+- `codingame-surprise` (6,000 of our plies, 600 tries a search): at game
+  turns 9 to 12, the plies followed by a large removal (3 or more of our
+  cells) have a median surprise (the actual score after the opponent's real
+  reply less the worst the search expected) of 0 to +9.5, and the search's
+  cut finder had found the cut in 321 of 323 of them; plies with a large
+  surprise (-50 or less) are 1 to 4% of those turns. The cuts are foreseen:
+  the search plays into them knowingly. (The tool's `pass` column is the
+  plan's value before the reply, not a counterfactual of doing nothing.)
+- `codingame-judge` (6,000 plies of v032 and zasmu, 2,000 tries a search,
+  far more than CodinGame's 45 ms): at game turns 7 to 12, the search with
+  more time plays the same plan as v032 played in 84% of its plies, with a
+  median gap of 0 and a gap above 20 in 4%; more time does not change what
+  v032 plays. In zasmu's place it plays zasmu's plan in 5% of the plies and
+  rates its own a median 16 higher (above 20 in 39% of them, 80 higher from
+  turn 13), though it spends as much gold and buys as many trainings,
+  level-2 units and towers: the plans differ in where they put them. Our
+  evaluation disagrees with the player that beats v032 in 178 of 195 games:
+  the losses come from the evaluation, not from the search's time or its
+  model of the replies.
+
