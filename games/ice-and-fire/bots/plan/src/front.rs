@@ -19,20 +19,20 @@ pub const RACE: i64 = 0;
 /// What a front counts for a side whose deepest goal cell held or reached
 /// first is its entrance, centre or outpost ([`goal_cells`]): 0 for
 /// nothing (v032).
-pub const GOAL_E: i64 = 4;
+pub const GOAL_E: i64 = 0;
 /// See [`GOAL_E`].
-pub const GOAL_C: i64 = 8;
+pub const GOAL_C: i64 = 0;
 /// See [`GOAL_E`].
-pub const GOAL_O: i64 = 12;
+pub const GOAL_O: i64 = 0;
 
 /// What each unit of a side on a band cell it holds actively, which the
 /// enemy cannot take at its next turn, counts: 0 for nothing (v032).
-pub const HOLD: i64 = 0;
+pub const HOLD: i64 = 4;
 
 /// Whether E060's charge on idle units counts their steps to the front
 /// (the enemy's cells and the band cells not the side's) rather than to the
 /// nearest cell not the side's, until [`FRONT_UNTIL`]: false is v032.
-pub const IDLE_TO_FRONT: bool = false;
+pub const IDLE_TO_FRONT: bool = true;
 
 /// The farthest arrival counted, in turns.
 const CAP: usize = 8;
