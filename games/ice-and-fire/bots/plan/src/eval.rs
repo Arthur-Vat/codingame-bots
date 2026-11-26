@@ -76,6 +76,21 @@ pub const MOVER_LEVEL: u8 = 2;
 /// of a cell's value of 7), 5 since E037, which finds more of them.
 pub const THREAT_QUARTERS: i64 = 5;
 
+/// What a threatened cell costs up to game turn
+/// [`crate::actions::EARLY_UNTIL`] (E093: hold the ground that sets the
+/// frontier). [`THREAT_QUARTERS`] in v032.
+pub const EARLY_THREAT_QUARTERS: i64 = 5;
+
+/// The quarters a threatened cell costs in `state` ([`THREAT_QUARTERS`],
+/// [`EARLY_THREAT_QUARTERS`]).
+pub(crate) fn threat_quarters(state: &State) -> i64 {
+    if state.game_turn() <= crate::actions::EARLY_UNTIL {
+        EARLY_THREAT_QUARTERS
+    } else {
+        THREAT_QUARTERS
+    }
+}
+
 /// The units of `seat` whose moves count in [`exposed`]: those on its active
 /// cells of at least [`MOVER_LEVEL`], all of which may move at its next turn.
 fn movers(state: &State, seat: usize) -> Bits {
@@ -605,7 +620,7 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         - strong_units(state, 1 - seat)
         - idle(state, seat)
         + idle(state, 1 - seat)
-        + THREAT_QUARTERS * threats / 4
+        + threat_quarters(state) * threats / 4
         + mines(state, seat, ours)
         - mines(state, 1 - seat, theirs)
         + wall(state, seat)

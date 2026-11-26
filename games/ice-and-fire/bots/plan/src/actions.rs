@@ -142,6 +142,31 @@ pub const OWN_CELLS: u8 = 2;
 /// on the cell it leaves.
 pub const STEP_GUARD: u8 = 1;
 
+/// The last game turn of E093's early game (the owner: in game turns 5 to
+/// 10, holding ground sets the frontier; zasmu moves forward and builds a
+/// tower behind the unit at game turn 7 in 70% of its games against v032,
+/// which builds none then).
+pub const EARLY_UNTIL: u32 = 10;
+
+/// Up to [`EARLY_UNTIL`], the step and guard (E070) is also offered from
+/// our units on cells at most this many steps from the enemy's active cells
+/// or units, not only from those the enemy can reach (E093). 0 in v032.
+pub const STEP_GUARD_NEAR: u8 = 0;
+
+/// The cells at most `steps` steps, over non-void cells, from the active
+/// cells and units of the enemy of the player to act.
+pub(crate) fn near_enemy(state: &State, steps: u8) -> Bits {
+    let valid = state.map().valid;
+    let enemy = 1 - state.to_act();
+    let mut zone = state.active(enemy) | state.units(enemy);
+    let mut left = steps;
+    while left != 0 {
+        zone |= zone.neighbours() & valid;
+        left -= 1;
+    }
+    zone
+}
+
 /// The fall-back-and-guard macro action (E076, after zasmu's games): a unit
 /// on a cell of ours the enemy can reach at its next turn steps onto a cell
 /// that is owned (E070 offers the steps into neutral cells), and the cell
@@ -318,7 +343,10 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
         _ => i64::MAX,
     };
     if gold >= guard_cost {
-        let reach = crate::eval::reach(state, 1 - me);
+        let mut reach = crate::eval::reach(state, 1 - me);
+        if STEP_GUARD_NEAR != 0 && state.game_turn() <= EARLY_UNTIL {
+            reach |= near_enemy(state, STEP_GUARD_NEAR);
+        }
         let neutral = state
             .map()
             .valid

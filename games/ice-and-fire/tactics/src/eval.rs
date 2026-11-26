@@ -17,6 +17,13 @@ const MAX_PRESSURE: i64 = 200;
 /// only what it protects). 10 in v032.
 pub const TOWER_VALUE: i64 = 10;
 
+/// What each active tower counts up to game turn [`EARLY_TOWER_UNTIL`]
+/// (E093: a tower that holds the frontier early). [`TOWER_VALUE`] in v032.
+pub const EARLY_TOWER_VALUE: i64 = 10;
+
+/// See [`EARLY_TOWER_VALUE`]: the plan bot's early game (E093).
+pub const EARLY_TOWER_UNTIL: u32 = 10;
+
 /// What a side has: gold, income, active cells, units on active cells (by
 /// training cost) and its active towers.
 fn side(state: &State, seat: usize) -> i64 {
@@ -30,7 +37,11 @@ fn side(state: &State, seat: usize) -> i64 {
         + 3 * state.income(seat)
         + 4 * i64::from(active.count())
         + units
-        + TOWER_VALUE * i64::from((state.towers() & active).count())
+        + if state.game_turn() <= EARLY_TOWER_UNTIL {
+            EARLY_TOWER_VALUE
+        } else {
+            TOWER_VALUE
+        } * i64::from((state.towers() & active).count())
 }
 
 /// What `seat`'s gold and income leave once it has paid for its cheapest
