@@ -36,6 +36,17 @@ not part of the build or the checks.
   inside); the front centre, the front's contested cell nearest its middle
   (the most central for the middle). Objective: the most cells at game turn
   10, then the Voronoi share against the enemy's starting land.
+- `planner3.py`: the third version (the owner, 2026-11-26), still without
+  the enemy, reading `plans2.json`. Each area has three sub-goals: its
+  entrance (E), its front centre (C) and an outpost (O), two steps past the
+  centre toward the enemy's HQ. Macro: for each of the first 4 trainings, a
+  sub-goal, two front centres at once (the unit steps nearer both while a
+  step does, then keeps the first at the fork), or free growth; a unit that
+  reaches its sub-goal goes on to its area's next one. Micro: a new cell
+  first, then the cell with the most valid neighbours. Objective: land plus
+  each unit's room (the free cells nearer to it than to our other units, up
+  to 3), then the Voronoi share, then the fewest cells along the void. It
+  also counts the distinct endings (land and unit cells).
 
 The pictures: fronts and goals https://claude.ai/artifact/CjVo3RiA1NCXV7eczk8vim,
 cell values and entrances https://claude.ai/artifact/1hsAEqAvnM83ZDnRKACE6y,

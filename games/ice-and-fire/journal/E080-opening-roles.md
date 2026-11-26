@@ -493,3 +493,58 @@ The best sequences gain 1 to 5 cells over free growth and reach the
 centres of one or two areas, the middle first on three-front maps and both
 flanks on two-flank maps. Pictures, playable action by action:
 https://claude.ai/artifact/45xi3imE6WxsU2h4zUEDGP.
+
+## The planner's third prototype: sub-goals, two goals at once, room
+
+The owner (2026-11-26): each area gets three sub-goals, the entrance, the
+centre and an offensive cell between the centre and the opponent (static
+at turn 1, later dependent on the enemy's play); the advance of the most
+advanced units is part of the macro decisions, since one step can bring a
+unit nearer two goals; among plans with close scores, avoid building along
+void cells where the way is wide enough; and maximize the gold earned in
+the long run, so that units do not end inside our land ("multiple
+coordinated snakes that must not collide").
+
+The problem, written out. At most 3 areas `a`, each with sub-goals
+`E_a, C_a, O_a`. A plan is the macro choice `m_i` of each of the first `K`
+trainings, in `{(a, s)} ∪ {(C_a, C_b), a ≠ b} ∪ {free}`, so at most
+9 + 6 + 1 = 16 options and `16^K` plans; the micro rules then decide every
+move. Score at game turn `T + 1`: `|L_T| + Σ_u min(room_u, 3)`, then the
+Voronoi share, then the fewest cells of `L_T` along the void, where
+`room_u` is the free cells nearer to unit `u` than to our other units.
+Many plans end the same way: the distinct endings (land and unit cells)
+are counted below.
+
+`planner3.py` (research/codingame/2026-11-25-turn1-planner), `K = 4`,
+`T = 9`:
+
+| Map | Plans | Distinct endings | The best macro sequence (trainings 1 to 4) | Score (land + room), Voronoi, cells along the void | Free growth only |
+| --- | --- | --- | --- | --- | --- |
+| three fronts, 925707781 | 50,625 | 2,906 | bottom-left C; middle C and top-right C; middle O; middle C and top-right C | 40 + 29 = 69, 106, 5 | 63, 102, 13 |
+| three fronts, 925707787 | 50,625 | 847 | top-right O; middle C and top-right C (twice); middle O | 32 + 24 = 56, 81, 5 | 53, 80, 11 |
+| two flanks, 925677145 | 4,096 | 460 | top-right O; top-right E; bottom-left E; bottom-left O | 37 + 20 = 57, 83, 20 | 40, 81, 13 |
+| two flanks, 925707764 | 4,096 | 448 | top-right O; top-right E; bottom-left E; free | 39 + 21 = 60, 78, 25 | 41, 71, 20 |
+| middle only, 925708443 | 81 | 11 | middle E four times | 26 + 14 = 40, 48, 19 | 34, 49, 19 |
+| middle only, 925709109 | 81 | 17 | free; middle E; free; middle E | 31 + 11 = 42, 49, 21 | 38, 49, 16 |
+
+What it shows:
+- The two-goal option is chosen on both three-front maps: the middle and
+  top-right centres share a first stretch of path.
+- Room changes the picture most on the two-flank maps (57 and 60 against
+  40 and 41 for free growth): free growth bunches the units behind each
+  other, while the plan sends one unit to each flank's entrance and one past
+  it, so they spread out.
+- The endings are far fewer than the plans (17 times fewer on 925707781,
+  60 on 925707787), and on middle-only maps there are only 11 to 17: a
+  search could run over endings, or prune plans that reach the same land.
+- On middle-only maps the best plan holds less land than free growth (26
+  against 34) for more room: the room term, capped at 3 a unit, can
+  outweigh land. Its weight is a choice to settle before the Rust version.
+- The micro rule away from the void cuts the cells along it on three-front
+  maps (5 against 11 and 13), not on the others, where the plan goes along
+  the edges to reach the flanks.
+
+Pictures, playable action by action, with each decision's sub-goals, the
+forks and each unit's room:
+https://claude.ai/artifact/45xi3imE6WxsU2h4zUEDGP.
+
