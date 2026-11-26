@@ -64,3 +64,16 @@ the guard on the cells the enemy's chains could reach, stand in for
 protection the search's few modelled replies do not see (E087: the replies
 it misses are scattered cuts, which a deep tower may still stop). The cut
 finder also costs guardcut a third of its tries.
+
+## Round 2: a guard zone near the border
+
+The owner (2026-11-26): a quicker stand-in for guardcut, from a
+precomputed distance, since a tower nearer the border should guard best.
+`GUARD_NEAR` (0 in v032): E026's guard offers a tower only on cells at
+most that many steps, over non-void cells, from the enemy's active cells or
+units (the enemy's land and units grown that many steps on bitboards, once
+a generation); with `GUARD_NEAR_HQ`, the HQ guard too. 20.1 tries a
+millisecond on the bench bank with 2 steps (v032 21.7). In E090's tower
+study, 19% of v032's towers stood 3 or more steps from the enemy.
+
+Pending.

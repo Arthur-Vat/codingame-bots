@@ -33,6 +33,32 @@ pub const HQ_GUARD_TURNS: i64 = 2;
 /// trainings could reach ([`threatened`]). Off in v032.
 pub const GUARD_BY_CUT: bool = false;
 
+/// How many steps from the enemy's active cells or units a guard tower may
+/// stand (E092, the owner: a tower near the border guards best; a cheap
+/// stand-in for [`GUARD_BY_CUT`]): 0 for anywhere (v032).
+pub const GUARD_NEAR: u8 = 0;
+
+/// Whether [`GUARD_NEAR`] binds the HQ guard too (E092).
+pub const GUARD_NEAR_HQ: bool = false;
+
+/// The cells where a guard tower may stand by [`GUARD_NEAR`] for the player
+/// to act: those at most that many steps, over non-void cells, from the
+/// enemy's active cells or units; every cell when it is 0.
+pub(crate) fn guard_zone(state: &State) -> Bits {
+    let valid = state.map().valid;
+    if GUARD_NEAR == 0 {
+        return valid;
+    }
+    let enemy = 1 - state.to_act();
+    let mut zone = state.active(enemy) | state.units(enemy);
+    let mut steps = GUARD_NEAR;
+    while steps != 0 {
+        zone |= zone.neighbours() & valid;
+        steps -= 1;
+    }
+    zone
+}
+
 /// The active cells of ours that the enemy's best cut removes once the turn
 /// that ends in `state` is over (E092).
 pub(crate) fn best_cut(state: &State) -> i64 {
@@ -62,13 +88,24 @@ pub(crate) fn best_cut(state: &State) -> i64 {
 /// it (RULES.md, protection), so where none of them is in `reach` it cannot
 /// lower `threats`, and the state is not copied unless the HQ guard may
 /// apply: the same answer, cheaper.
-fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64, cut: i64) -> bool {
+#[allow(clippy::too_many_arguments)]
+fn guards(
+    state: &State,
+    cell: usize,
+    threats: i64,
+    reach: Bits,
+    chain: i64,
+    cut: i64,
+    near: Bits,
+) -> bool {
     let me = state.to_act();
     let enemy = 1 - me;
-    let hq_guard =
-        HQ_GUARD && chain <= state.gold(enemy) + HQ_GUARD_TURNS * state.income(enemy).max(0);
+    let in_zone = near.test(cell);
+    let hq_guard = HQ_GUARD
+        && (in_zone || !GUARD_NEAR_HQ)
+        && chain <= state.gold(enemy) + HQ_GUARD_TURNS * state.income(enemy).max(0);
     let zone = Bits::cell(cell) | Bits::cell(cell).neighbours();
-    if !hq_guard && (zone & reach).is_empty() {
+    if !hq_guard && (!in_zone || (zone & reach).is_empty()) {
         return false;
     }
     let (x, y) = xy(cell);
@@ -76,11 +113,12 @@ fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64, cut
     if !after.apply(Command::BuildTower { x, y }) {
         return false;
     }
-    let lowers = if GUARD_BY_CUT {
-        best_cut(&after) < cut
-    } else {
-        threatened(&after, me) < threats
-    };
+    let lowers = in_zone
+        && if GUARD_BY_CUT {
+            best_cut(&after) < cut
+        } else {
+            threatened(&after, me) < threats
+        };
     if lowers {
         return true;
     }
@@ -255,6 +293,7 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
             let threats = i64::from((reach & state.active(me)).count());
             let chain = cost_to(state, 1 - me, false, HQ[me]);
             let cut = if GUARD_BY_CUT { best_cut(state) } else { 0 };
+            let near = guard_zone(state);
             // Frontier cells of ours not yet guarded by a tower (E068).
             let open = if WALL_TOWERS {
                 let (front, guarded) = crate::eval::frontier(state, me);
@@ -264,7 +303,7 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
             };
             for cell in cells.iter().filter(|&cell| {
                 let zone = Bits::cell(cell) | Bits::cell(cell).neighbours();
-                !(zone & open).is_empty() || guards(state, cell, threats, reach, chain, cut)
+                !(zone & open).is_empty() || guards(state, cell, threats, reach, chain, cut, near)
             }) {
                 let (x, y) = xy(cell);
                 out.push(Action::One(Command::BuildTower { x, y }));

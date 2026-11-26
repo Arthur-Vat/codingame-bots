@@ -837,7 +837,10 @@ fn a_tower_guards_the_hq_against_a_chain_affordable_within_two_turns() {
         80
     );
     // With E092's guard on the next turn alone, 48 does not pay for 80.
-    let want = if crate::actions::HQ_GUARD_TURNS >= 2 {
+    // With E092's guard zone binding the HQ guard, (1, 0) is too far from
+    // blue's land.
+    let far = crate::actions::GUARD_NEAR_HQ && !crate::actions::guard_zone(&state).test(1);
+    let want = if crate::actions::HQ_GUARD_TURNS >= 2 && !far {
         vec![(1, 0)]
     } else {
         vec![]
@@ -941,13 +944,16 @@ fn towers_are_offered_where_a_copy_of_the_state_says_they_guard() {
                 let zone = Bits::cell(cell) | Bits::cell(cell).neighbours();
                 !(zone & front.and_not(guarded)).is_empty()
             };
+            let near = crate::actions::guard_zone(&state).test(cell);
             let guards = walls
-                || if crate::actions::GUARD_BY_CUT {
-                    crate::actions::best_cut(&after) < crate::actions::best_cut(&state)
-                } else {
-                    crate::eval::threatened(&after, me) < threats
-                }
+                || near
+                    && if crate::actions::GUARD_BY_CUT {
+                        crate::actions::best_cut(&after) < crate::actions::best_cut(&state)
+                    } else {
+                        crate::eval::threatened(&after, me) < threats
+                    }
                 || (crate::actions::HQ_GUARD
+                    && (near || !crate::actions::GUARD_NEAR_HQ)
                     && chain
                         <= state.gold(enemy)
                             + crate::actions::HQ_GUARD_TURNS * state.income(enemy).max(0)
