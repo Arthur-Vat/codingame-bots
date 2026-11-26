@@ -103,3 +103,28 @@ v032's balance, its threat charge of 5/4 on each cell the enemy can take,
 already seems near the best; what separates v032 from zasmu is where it
 plays, not how much it values safety (E084's `codingame-judge`).
 
+### The games against zasmu: when are we behind?
+
+The owner (2026-11-26): when does our evaluation tell us that we are
+behind? On some maps we lose from the early game, letting the opponent reach
+the areas of interest early; couldn't the evaluation hold this? v032's 195
+CodinGame games against zasmu (16 or 17 won, by source; v032 red, the first
+player, in all of them):
+
+- `codingame-surprise` on all of them (3,060 of our plies, v032's search as
+  the judge, 600 tries): the search's score of the turn it played (after
+  the worst reply) is below 0 from game turn 7, when it takes over from the
+  opening, in 57% of the lost games (median -7; +5 in the won ones), 77% at
+  turn 8 (-17), and below -50 at a median of turn 11. The evaluation sees
+  that we are behind as soon as it plays, mildly.
+- The boards (medians, our side less zasmu's): a cell behind from game
+  turn 2 (blue starts with two cells to red's one), -2 and -3 at turns 6 and
+  7; the Voronoi share -7 at turn 2, -10 and -11 at turns 6 and 7; the steps
+  to the middle front's centre (each side to its own, the maps being
+  point-symmetric) 8 against 7 at turn 2, 3 against 1 at turn 6, 2 against
+  0 at turn 7: zasmu reaches the middle centre at turn 7, a turn before us,
+  having gained a step on us between turns 5 and 6. These numbers are the
+  same in the games we won and the games we lost: the early deficit is
+  systematic against zasmu, decided in turns 1 to 6, which the opening
+  plays without a model of the opponent.
+
