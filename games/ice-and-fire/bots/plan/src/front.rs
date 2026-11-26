@@ -19,20 +19,30 @@ pub const RACE: i64 = 0;
 /// What a front counts for a side whose deepest goal cell held or reached
 /// first is its entrance, centre or outpost ([`goal_cells`]): 0 for
 /// nothing (v032).
-pub const GOAL_E: i64 = 4;
+pub const GOAL_E: i64 = 0;
 /// See [`GOAL_E`].
-pub const GOAL_C: i64 = 8;
+pub const GOAL_C: i64 = 0;
 /// See [`GOAL_E`].
-pub const GOAL_O: i64 = 12;
+pub const GOAL_O: i64 = 0;
 
 /// The factor of the middle front's goal weights ([`GOAL_E`]): 1 is the
 /// flanks' weights (the owner, 2026-11-26: value the centre more).
-pub const GOAL_MIDDLE: i64 = 2;
+pub const GOAL_MIDDLE: i64 = 1;
+
+/// Whether the goal cells move with the front (the owner, 2026-11-26):
+/// along each front's axis (the most central path from the side's HQ to
+/// the front's centre, then on to the enemy's HQ), the entrance lies
+/// halfway between the side's furthest cell on the axis and the front's
+/// region (its entrance cell; once in the region, its centre; once past
+/// the centre, the next cell), the centre is the front's centre or the
+/// entrance once past it, the outpost two steps beyond; false keeps the
+/// turn-1 cells.
+pub const MOVING: bool = false;
 
 /// What each band cell in the middle (`|x - y|` at most 3, the middle
 /// front's place, red's view) a side holds actively counts beyond E073's
 /// band cells held: 0 for nothing (v032).
-pub const CENTRE: i64 = 4;
+pub const CENTRE: i64 = 0;
 
 /// What each unit of a side on a band cell it holds actively, which the
 /// enemy cannot take at its next turn, counts: 0 for nothing (v032).
@@ -95,7 +105,19 @@ pub fn race_net(a: &[Bits; CAP + 1], b: &[Bits; CAP + 1], cells: Bits) -> i64 {
 /// centre, outpost.
 struct Goals {
     valid: Bits,
-    fronts: Vec<(usize, [usize; 3])>,
+    fronts: Vec<Front>,
+}
+
+/// A front of the map for red: its lane, its turn-1 goal cells
+/// (entrance, centre, outpost), its axis, and the indices on the axis of
+/// its centre and of its entrance cell.
+#[derive(Clone, Debug)]
+struct Front {
+    lane: usize,
+    cells: [usize; 3],
+    axis: Vec<usize>,
+    centre: usize,
+    entrance: usize,
 }
 
 thread_local! {
@@ -143,11 +165,10 @@ fn central_path(state: &State, start: usize, goal: usize) -> Vec<usize> {
     out
 }
 
-/// The goal cells of `state`'s map for red, computed once a map: for each
-/// front (the cells within a ring of even between the HQs, by
-/// [`lane`], at least 4 of them), its lane and its entrance, centre and
-/// outpost (see the journal entry E083).
-pub fn goal_cells(state: &State) -> Vec<(usize, [usize; 3])> {
+/// `f` of the fronts of `state`'s map, computed once a map: each front
+/// (the cells within a ring of even between the HQs, by [`lane`], at least
+/// 4 of them) with its goal cells (see the journal entry E083).
+fn with_fronts<R>(state: &State, f: impl FnOnce(&[Front]) -> R) -> R {
     GOALS.with(|slot| {
         let mut goals = slot.borrow_mut();
         let valid = state.map().valid;
@@ -157,11 +178,37 @@ pub fn goal_cells(state: &State) -> Vec<(usize, [usize; 3])> {
                 fronts: compute_goals(state),
             });
         }
-        goals.as_ref().map(|g| g.fronts.clone()).unwrap_or_default()
+        f(goals.as_ref().map_or(&[][..], |g| &g.fronts[..]))
     })
 }
 
-fn compute_goals(state: &State) -> Vec<(usize, [usize; 3])> {
+/// The goal cells of `front` for `side` now ([`MOVING`]): entrance,
+/// centre, outpost.
+fn moving(state: &State, side: usize, front: &Front) -> [usize; 3] {
+    let at = |j: usize| {
+        if side == 0 {
+            front.axis[j]
+        } else {
+            CELLS - 1 - front.axis[j]
+        }
+    };
+    let n = front.axis.len();
+    let owned = state.owned(side);
+    let last = (0..n).rev().find(|&j| owned.test(at(j))).unwrap_or(0);
+    let target = if last < front.entrance {
+        front.entrance
+    } else if last < front.centre {
+        front.centre
+    } else {
+        (last + 1).min(n - 1)
+    };
+    let e = target.min(last + target.saturating_sub(last).div_ceil(2).max(1));
+    let c = front.centre.max(e);
+    let o = (c + 2).min(n - 1);
+    [at(e), at(c), at(o)]
+}
+
+fn compute_goals(state: &State) -> Vec<Front> {
     let valid = state.map().valid;
     let a = distances(state, Bits::cell(HQ[0]));
     let b = distances(state, Bits::cell(HQ[1]));
@@ -212,13 +259,22 @@ fn compute_goals(state: &State) -> Vec<(usize, [usize; 3])> {
         };
         let Some(centre) = centre else { continue };
         let path = central_path(state, HQ[0], centre);
-        let entrance = match path.iter().rposition(|&c| region(c) != Some(l)) {
-            Some(i) if i + 1 < path.len() => path[i + 1],
-            _ => centre,
+        let entry = match path.iter().rposition(|&c| region(c) != Some(l)) {
+            Some(i) if i + 1 < path.len() => i + 1,
+            _ => path.len() - 1,
         };
+        let entrance = path[entry];
         let beyond = central_path(state, centre, HQ[1]);
         let outpost = beyond.get(2).copied().unwrap_or(centre);
-        out.push((l, [entrance, centre, outpost]));
+        let mut axis = path.clone();
+        axis.extend(beyond.iter().skip(1));
+        out.push(Front {
+            lane: l,
+            cells: [entrance, centre, outpost],
+            axis,
+            centre: path.len() - 1,
+            entrance: entry,
+        });
     }
     out
 }
@@ -241,26 +297,32 @@ pub fn score(state: &State, seat: usize, band: Bits) -> i64 {
     }
     if GOAL_E != 0 || GOAL_C != 0 || GOAL_O != 0 {
         let layers = |side: usize| if side == seat { &ours } else { &theirs };
-        for (front_lane, front) in goal_cells(state) {
-            let factor = if front_lane == 1 { GOAL_MIDDLE } else { 1 };
-            for side in 0..2 {
-                let other = 1 - side;
-                let value = [(2, GOAL_O), (1, GOAL_C), (0, GOAL_E)]
-                    .into_iter()
-                    .find(|&(i, _)| {
-                        // The enemy's goal cells are the mirrors of red's.
-                        let cell = if side == 0 {
-                            front[i]
-                        } else {
-                            CELLS - 1 - front[i]
-                        };
-                        state.active(side).test(cell)
-                            || first(layers(side), cell) < first(layers(other), cell)
-                    })
-                    .map_or(0, |(_, w)| w * factor);
-                total += if side == seat { value } else { -value };
+        total += with_fronts(state, |fronts| {
+            let mut sum = 0;
+            for front in fronts {
+                let factor = if front.lane == 1 { GOAL_MIDDLE } else { 1 };
+                for side in 0..2 {
+                    let other = 1 - side;
+                    // The enemy's turn-1 goal cells are the mirrors of red's.
+                    let cells = if MOVING {
+                        moving(state, side, front)
+                    } else if side == 0 {
+                        front.cells
+                    } else {
+                        front.cells.map(|c| CELLS - 1 - c)
+                    };
+                    let value = [(2, GOAL_O), (1, GOAL_C), (0, GOAL_E)]
+                        .into_iter()
+                        .find(|&(i, _)| {
+                            state.active(side).test(cells[i])
+                                || first(layers(side), cells[i]) < first(layers(other), cells[i])
+                        })
+                        .map_or(0, |(_, w)| w * factor);
+                    sum += if side == seat { value } else { -value };
+                }
             }
-        }
+            sum
+        });
     }
     total
 }

@@ -2,7 +2,14 @@ use ice_and_fire_engine::{Bits, League, State, SIZE};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::League as RefereeLeague;
 
-use super::{arrivals, goal_cells, race_net};
+use super::{arrivals, race_net, with_fronts};
+
+/// Each front's lane and turn-1 goal cells.
+fn goal_cells(state: &State) -> Vec<(usize, [usize; 3])> {
+    with_fronts(state, |fronts| {
+        fronts.iter().map(|f| (f.lane, f.cells)).collect()
+    })
+}
 
 /// The map of CodinGame's game 925707787 (its seed reproduces it), whose
 /// fronts the turn-1 planner's prototype found (E080).
@@ -50,4 +57,24 @@ fn the_race_counts_wins_less_losses_and_ties_for_neither() {
     assert!(race_net(&red, &blue, state.map().valid) < 0);
     assert_eq!(race_net(&red, &blue, Bits::cell(at(1, 0))), 1);
     assert_eq!(race_net(&red, &blue, Bits::cell(at(10, 11))), -1);
+}
+
+#[test]
+fn the_moving_entrance_lies_between_the_front_line_and_the_region() {
+    let state = map_925707787();
+    with_fronts(&state, |fronts| {
+        for front in fronts {
+            let [e, c, o] = super::moving(&state, 0, front);
+            // At the start red holds its HQ alone: the entrance lies
+            // halfway to the region's entrance cell, the centre and the
+            // outpost are the turn-1 ones.
+            let half = front.entrance.div_ceil(2).max(1).min(front.entrance);
+            assert_eq!(e, front.axis[half]);
+            assert_eq!(c, front.cells[1]);
+            assert_eq!(o, front.cells[2]);
+            // Blue's are the mirrors along its own axis.
+            let [be, _, _] = super::moving(&state, 1, front);
+            assert_ne!(be, e);
+        }
+    });
 }
