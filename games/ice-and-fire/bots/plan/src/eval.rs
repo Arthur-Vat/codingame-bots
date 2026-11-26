@@ -127,7 +127,7 @@ pub fn threatened(state: &State, seat: usize) -> i64 {
 /// its active cell, or a free cell nearer its active land than the
 /// enemy's (in steps over valid cells), and secure when the enemy cannot
 /// take it at its next turn ([`reach`]). 0 for nothing (v032).
-pub const SECURE: i64 = 8;
+pub const SECURE: i64 = 16;
 
 /// What each secure cell of a side in the contested band (E073's band, the
 /// areas of interest) counts beyond [`SECURE`]: 0 for nothing (v032).
