@@ -76,4 +76,16 @@ a generation); with `GUARD_NEAR_HQ`, the HQ guard too. 20.1 tries a
 millisecond on the bench bank with 2 steps (v032 21.7). In E090's tower
 study, 19% of v032's towers stood 3 or more steps from the enemy.
 
-Pending.
+Each variant against `ice-and-fire-v032`, 400 pairs, full games, no
+faults on either side (run 45891095696):
+
+| Variant | Settings | Elo |
+|---|---|---|
+| near2 | `GUARD_NEAR` 2 | +17.4 [+0.6, +34.2] |
+| near3 | `GUARD_NEAR` 3 | +17.4 [+1.0, +33.9] |
+| near2-hq | `GUARD_NEAR` 2, `GUARD_NEAR_HQ` | +7.8 [-9.6, +25.3] |
+| near3-hq | `GUARD_NEAR` 3, `GUARD_NEAR_HQ` | +5.2 [-11.3, +21.7] |
+
+The guard zone without the HQ guard's limit is the first change of the day
+whose interval lies above 0 at 400 pairs; binding the HQ guard too gives
+part of it back.
