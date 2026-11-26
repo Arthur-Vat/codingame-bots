@@ -41,7 +41,7 @@ use ice_and_fire_engine::{Bits, Command, Outcome, State, HQ, SIZE};
 use ice_and_fire_opening::planned::Planned;
 use ice_and_fire_policy::greedy_turn;
 use ice_and_fire_tactics::chain::{chain_to, cost_to, cost_to_moving, UNREACHABLE};
-use ice_and_fire_tactics::cut::cuts;
+use ice_and_fire_tactics::cut::{cuts, scatter_cuts};
 use ice_and_fire_tactics::eval::WIN;
 
 use crate::actions::{generate, xy, Action, CUT_LENGTH};
@@ -55,6 +55,62 @@ pub mod judge;
 const MEMORY_CAP: usize = 8;
 /// The opponent's best cuts added to the memory after a climb.
 const REPLY_CUTS: usize = 3;
+/// The opponent's replies with steps before a cut (E087, the owner,
+/// 2026-11-26: every kind of cut in the opponent's replies): bit 1, all its
+/// movable units step toward our land, then its best cuts; bit 2, each such
+/// step alone, then its best cut; bit 4, pairs of such steps by two units,
+/// then its best cut. 0 for none (v032).
+pub const REPLY_STEPS: u8 = 0;
+
+/// The opponent's scattered cuts among its replies (E087, `scatter_cuts`):
+/// sets of trainings each next to its active land as it stands after the
+/// ones before, reconnected pockets included, not only chains. The number
+/// kept from the position after our turn; 0 for none (v032).
+pub const SCATTER_CUTS: usize = 0;
+
+/// The scattered cuts' longest set of trainings and the beam's width.
+pub const SCATTER_LENGTH: usize = 4;
+/// See [`SCATTER_LENGTH`].
+pub const SCATTER_WIDTH: usize = 30;
+
+/// Whether each single step of [`REPLY_STEPS`]' bit 2 is also followed by
+/// the best scattered cut.
+pub const SCATTER_AFTER_STEPS: bool = false;
+
+/// Most pairs of steps tried by [`REPLY_STEPS`]' bit 4.
+pub const STEP_PAIRS: usize = 10;
+
+/// Most single steps tried by [`REPLY_STEPS`]' bit 2, the nearest our land
+/// first.
+pub const STEP_REPLIES: usize = 8;
+
+/// The cut finder's longest chain after the steps (E087).
+pub const STEP_CUT_LENGTH: usize = 4;
+
+/// Whether the opponent's replies also hold pairs of its plain cuts on
+/// distinct cells that its gold pays for together, each pair one reply
+/// (E087): several separate captures in one turn, which the cut finder's
+/// single connected chains miss.
+pub const PAIR_CUTS: bool = false;
+
+/// How many plain cuts the pairs of [`PAIR_CUTS`] are drawn from.
+pub const PAIR_POOL: usize = 6;
+
+/// The cuts kept after each single step of [`REPLY_STEPS`]' bit 2 (E087).
+pub const STEP_CUTS: usize = 1;
+
+/// The longest chain of the opponent's plain cuts among its replies (E087;
+/// v032 uses `CUT_LENGTH`, the length of our own cut actions, 5).
+pub const REPLY_CUT_LENGTH: usize = CUT_LENGTH;
+
+/// What the damage of a plan's second-worst reply costs it, in quarters
+/// (E087): the opponent plays one reply, but a plan that opens two
+/// weaknesses is riskier than one that opens one, though its worst reply is
+/// the same (the owner's unit 11, E086's entry). The damage is the
+/// evaluation of the plan's end state, with no reply, less the evaluation
+/// after that reply. 0 for nothing (v032, the worst reply alone).
+pub const SECOND_QUARTERS: i64 = 0;
+
 /// Most climbs in one turn.
 const MAX_CLIMBS: usize = 32;
 /// Most plans scored by the opponent's climb in one reply search (E019).
@@ -363,13 +419,27 @@ impl Search {
             return self.value(end);
         }
         let mut worst = i64::MAX;
+        let mut second = i64::MAX;
         for reply in memory {
-            worst = worst.min(self.value(&after_reply(end, &reply.commands)));
+            let value = self.value(&after_reply(end, &reply.commands));
+            if value < worst {
+                second = worst;
+                worst = value;
+            } else if value < second {
+                second = value;
+            }
+            // The second-worst charge only lowers the score: stopping here
+            // still gives an upper bound.
             if worst <= bound {
-                break;
+                return worst;
             }
         }
-        worst
+        if SECOND_QUARTERS != 0 && second != i64::MAX {
+            let damage = (self.value(end) - second).max(0);
+            worst - SECOND_QUARTERS * damage / 4
+        } else {
+            worst
+        }
     }
 
     /// The evaluation of `state` for us, with the objectives' term of the
@@ -531,8 +601,76 @@ impl Search {
         if let Some(chain) = chain_to(&next, HQ[self.me], gold) {
             out.push(chain.commands);
         }
-        for cut in cuts(&next, CUT_LENGTH, gold, REPLY_CUTS) {
-            out.push(cut.commands);
+        let plain = cuts(
+            &next,
+            REPLY_CUT_LENGTH,
+            gold,
+            REPLY_CUTS.max(if PAIR_CUTS { PAIR_POOL } else { 0 }),
+        );
+        for cut in plain.iter().take(REPLY_CUTS) {
+            out.push(cut.commands.clone());
+        }
+        if PAIR_CUTS {
+            let cells = |c: &ice_and_fire_tactics::cut::Cut| -> Vec<(u8, u8)> {
+                c.commands
+                    .iter()
+                    .filter_map(|cmd| match *cmd {
+                        Command::Train { x, y, .. } => Some((x, y)),
+                        _ => None,
+                    })
+                    .collect()
+            };
+            for (i, a) in plain.iter().enumerate() {
+                for b in &plain[i + 1..] {
+                    let (ca, cb) = (cells(a), cells(b));
+                    if a.cost + b.cost > gold || ca.iter().any(|c| cb.contains(c)) {
+                        continue;
+                    }
+                    let mut commands = a.commands.clone();
+                    commands.extend(b.commands.iter().copied());
+                    out.push(commands);
+                }
+            }
+        }
+        if REPLY_STEPS & 1 != 0 {
+            let (moves, stepped) = all_steps(&next);
+            if !moves.is_empty() {
+                for cut in cuts(&stepped, STEP_CUT_LENGTH, gold, 2) {
+                    let mut commands = moves.clone();
+                    commands.extend(cut.commands);
+                    out.push(commands);
+                }
+            }
+        }
+        if REPLY_STEPS & 2 != 0 {
+            for (step, stepped) in single_steps(&next, STEP_REPLIES) {
+                for cut in cuts(&stepped, STEP_CUT_LENGTH, gold, STEP_CUTS) {
+                    let mut commands = vec![step];
+                    commands.extend(cut.commands);
+                    out.push(commands);
+                }
+                if SCATTER_AFTER_STEPS {
+                    for cut in scatter_cuts(&stepped, SCATTER_LENGTH, gold, 1, SCATTER_WIDTH) {
+                        let mut commands = vec![step];
+                        commands.extend(cut.commands);
+                        out.push(commands);
+                    }
+                }
+            }
+        }
+        if REPLY_STEPS & 4 != 0 {
+            for (steps, stepped) in step_pairs(&next, STEP_REPLIES, STEP_PAIRS) {
+                for cut in cuts(&stepped, STEP_CUT_LENGTH, gold, 1) {
+                    let mut commands = steps.clone();
+                    commands.extend(cut.commands);
+                    out.push(commands);
+                }
+            }
+        }
+        if SCATTER_CUTS != 0 {
+            for cut in scatter_cuts(&next, SCATTER_LENGTH, gold, SCATTER_CUTS, SCATTER_WIDTH) {
+                out.push(cut.commands);
+            }
         }
         let mut greedy = Vec::new();
         greedy_turn(&next, &mut greedy);
@@ -818,4 +956,93 @@ pub fn think_with(
         }
     }
     thought
+}
+
+/// The steps toward our land of the player to act in `state` (E087): for
+/// each of its movable units, onto a cell of the enemy's it may take, else
+/// onto a free cell next to the enemy's land, if any; each with the state
+/// after it.
+fn step_options(state: &State) -> Vec<(Command, State)> {
+    let me = state.to_act();
+    let enemy_land = state.owned(1 - me);
+    let near = enemy_land.neighbours() & state.map().valid;
+    let mut out = Vec::new();
+    for from in state.movable_units().iter() {
+        let Some((id, _)) = state.unit_at(from) else {
+            continue;
+        };
+        let targets = Bits::cell(from).neighbours() & (enemy_land | near).and_not(state.owned(me));
+        for to in targets.iter() {
+            let (x, y) = (to % SIZE, to / SIZE);
+            let command = Command::Move {
+                id,
+                x: x as u8,
+                y: y as u8,
+            };
+            let mut after = state.clone();
+            if after.apply(command) {
+                out.push((command, after));
+            }
+        }
+    }
+    // Captures first, then the steps next to the enemy's land.
+    out.sort_by_key(|(c, _)| match *c {
+        Command::Move { x, y, .. } => !enemy_land.test(usize::from(y) * SIZE + usize::from(x)),
+        _ => true,
+    });
+    out
+}
+
+/// Each of [`step_options`] alone, at most `most` (E087).
+fn single_steps(state: &State, most: usize) -> Vec<(Command, State)> {
+    let mut out = step_options(state);
+    out.truncate(most);
+    out
+}
+
+/// Pairs of [`step_options`] by two different units, both accepted in turn,
+/// from the first `pool` options, at most `most` pairs (E087).
+fn step_pairs(state: &State, pool: usize, most: usize) -> Vec<(Vec<Command>, State)> {
+    let options = single_steps(state, pool);
+    let mut out = Vec::new();
+    for (i, (a, after_a)) in options.iter().enumerate() {
+        for (b, _) in &options[i + 1..] {
+            let (Command::Move { id: ia, .. }, Command::Move { id: ib, .. }) = (a, b) else {
+                continue;
+            };
+            if ia == ib {
+                continue;
+            }
+            let mut after = after_a.clone();
+            if after.apply(*b) {
+                out.push((vec![*a, *b], after));
+                if out.len() == most {
+                    return out;
+                }
+            }
+        }
+    }
+    out
+}
+
+/// All the movable units of the player to act step toward the enemy's land
+/// at once, each the first of its [`step_options`] the rules still accept
+/// after the steps before it (E087): the steps and the state after them.
+fn all_steps(state: &State) -> (Vec<Command>, State) {
+    let mut cur = state.clone();
+    let mut moves = Vec::new();
+    let mut moved = Vec::new();
+    for (command, _) in step_options(state) {
+        let Command::Move { id, .. } = command else {
+            continue;
+        };
+        if moved.contains(&id) {
+            continue;
+        }
+        if cur.apply(command) {
+            moves.push(command);
+            moved.push(id);
+        }
+    }
+    (moves, cur)
 }

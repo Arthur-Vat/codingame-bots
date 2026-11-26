@@ -63,6 +63,9 @@
 //!   search takes over at game turn 7 without it. Until game turn
 //!   [`GOAL_UNTIL`], band cells near a side's land, held by it, guarded by
 //!   its towers, and the middle chokes it holds count for it ([`goal`]).
+//! - **The front** (E083): the race to the band cells in which units count,
+//!   the goal cells of each front, and units holding the front line
+//!   (`crate::front`).
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::reach_within_moving;
@@ -115,6 +118,20 @@ pub(crate) fn exposed(state: &State, seat: usize) -> Bits {
 /// turn ([`exposed`]).
 pub fn threatened(state: &State, seat: usize) -> i64 {
     i64::from(exposed(state, seat).count())
+}
+
+/// What each gold a side keeps, up to [`KEEP_CAP`], counts beyond its value
+/// of 1, in quarters (E084): a training or a tower must then gain more than
+/// the gold it costs, or the gold is saved. 0 for nothing (v032).
+pub const KEEP_QUARTERS: i64 = 0;
+
+/// See [`KEEP_QUARTERS`].
+pub const KEEP_CAP: i64 = 30;
+
+/// What a side's kept gold counts beyond its value ([`KEEP_QUARTERS`]), in
+/// quarters.
+pub fn kept(state: &State, seat: usize) -> i64 {
+    KEEP_QUARTERS * state.gold(seat).clamp(0, KEEP_CAP)
 }
 
 /// The active cells of a side for which each of its mines counts one more
@@ -413,7 +430,7 @@ pub(crate) fn idle(state: &State, seat: usize) -> i64 {
             units |= Bits::cell(cell);
         }
     }
-    let mut within = valid.and_not(state.owned(seat));
+    let mut within = crate::front::idle_targets(state, seat, goal_zones(state).0);
     let mut counted = Bits::EMPTY;
     let mut steps = 0;
     for distance in 1..=IDLE_CAP {
@@ -598,6 +615,11 @@ pub fn eval(state: &State, seat: usize) -> i64 {
     let ours = exposed(state, seat);
     let theirs = exposed(state, 1 - seat);
     let threats = i64::from(theirs.count()) - i64::from(ours.count());
+    let keep = if KEEP_QUARTERS == 0 {
+        0
+    } else {
+        kept(state, seat) - kept(state, 1 - seat)
+    };
     score - 2 * debt(state, seat)
         + 2 * debt(state, 1 - seat)
         + shape(state, seat)
@@ -606,10 +628,25 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         - idle(state, seat)
         + idle(state, 1 - seat)
         + THREAT_QUARTERS * threats / 4
+        + keep / 4
         + mines(state, seat, ours)
         - mines(state, 1 - seat, theirs)
         + wall(state, seat)
         - wall(state, 1 - seat)
         + goal(state, seat)
         + voronoi(state, seat)
+        + front(state, seat, ours, theirs)
+}
+
+/// The front's terms (E083, `crate::front`): the race and goal cells, and
+/// the units holding the front of each side.
+fn front(state: &State, seat: usize, ours: Bits, theirs: Bits) -> i64 {
+    use crate::front::{hold, score, CENTRE, FRONT_UNTIL, GOAL_C, GOAL_E, GOAL_O, HOLD, RACE};
+    if (RACE == 0 && GOAL_E == 0 && GOAL_C == 0 && GOAL_O == 0 && HOLD == 0 && CENTRE == 0)
+        || state.game_turn() > FRONT_UNTIL
+    {
+        return 0;
+    }
+    let band = goal_zones(state).0;
+    score(state, seat, band) + hold(state, seat, band, ours) - hold(state, 1 - seat, band, theirs)
 }
