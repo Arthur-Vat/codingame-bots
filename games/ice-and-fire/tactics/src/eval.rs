@@ -32,7 +32,7 @@ pub const COVER_WEIGHT: i64 = 3;
 /// With [`COVER_WEIGHT`], only the protected cells at most this many steps,
 /// over non-void cells, from the enemy's active cells or units count; 0 for
 /// all of them (E095).
-pub const COVER_NEAR: u8 = 0;
+pub const COVER_NEAR: u8 = 3;
 
 /// The active cells of `seat` its active towers protect (E095), those near
 /// the enemy by [`COVER_NEAR`].
