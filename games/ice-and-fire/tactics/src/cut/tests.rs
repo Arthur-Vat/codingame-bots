@@ -267,3 +267,25 @@ fn the_cuts_of_late_positions_apply() {
         }
     }
 }
+
+#[test]
+fn scattered_cuts_find_the_single_cut_of_a_dead_end() {
+    // One training suffices: the scattered search finds what the chains do.
+    let state = dead_end();
+    let chain = cuts(&state, 1, 100, 1);
+    let scattered = scatter_cuts(&state, 1, 100, 1, 30);
+    assert_eq!(
+        scattered.first().map(|c| c.cells),
+        chain.first().map(|c| c.cells)
+    );
+    assert!(scattered.first().is_some_and(|c| c.cells >= 4));
+}
+
+#[test]
+fn scattered_cuts_never_pass_the_budget() {
+    for state in random_positions(3, League::Bronze, &[20, 40]) {
+        for cut in scatter_cuts(&state, 4, 30, 5, 20) {
+            assert!(cut.cost <= 30);
+        }
+    }
+}

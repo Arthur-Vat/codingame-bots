@@ -41,7 +41,7 @@ use ice_and_fire_engine::{Bits, Command, Outcome, State, HQ, SIZE};
 use ice_and_fire_opening::planned::Planned;
 use ice_and_fire_policy::greedy_turn;
 use ice_and_fire_tactics::chain::{chain_to, cost_to, cost_to_moving, UNREACHABLE};
-use ice_and_fire_tactics::cut::cuts;
+use ice_and_fire_tactics::cut::{cuts, scatter_cuts};
 use ice_and_fire_tactics::eval::WIN;
 
 use crate::actions::{generate, xy, Action, CUT_LENGTH};
@@ -58,8 +58,27 @@ const REPLY_CUTS: usize = 3;
 /// The opponent's replies with steps before a cut (E087, the owner,
 /// 2026-11-26: every kind of cut in the opponent's replies): bit 1, all its
 /// movable units step toward our land, then its best cuts; bit 2, each such
-/// step alone, then its best cut. 0 for none (v032).
+/// step alone, then its best cut; bit 4, pairs of such steps by two units,
+/// then its best cut. 0 for none (v032).
 pub const REPLY_STEPS: u8 = 3;
+
+/// The opponent's scattered cuts among its replies (E087, `scatter_cuts`):
+/// sets of trainings each next to its active land as it stands after the
+/// ones before, reconnected pockets included, not only chains. The number
+/// kept from the position after our turn; 0 for none (v032).
+pub const SCATTER_CUTS: usize = 0;
+
+/// The scattered cuts' longest set of trainings and the beam's width.
+pub const SCATTER_LENGTH: usize = 4;
+/// See [`SCATTER_LENGTH`].
+pub const SCATTER_WIDTH: usize = 30;
+
+/// Whether each single step of [`REPLY_STEPS`]' bit 2 is also followed by
+/// the best scattered cut.
+pub const SCATTER_AFTER_STEPS: bool = false;
+
+/// Most pairs of steps tried by [`REPLY_STEPS`]' bit 4.
+pub const STEP_PAIRS: usize = 10;
 
 /// Most single steps tried by [`REPLY_STEPS`]' bit 2, the nearest our land
 /// first.
@@ -630,6 +649,27 @@ impl Search {
                     commands.extend(cut.commands);
                     out.push(commands);
                 }
+                if SCATTER_AFTER_STEPS {
+                    for cut in scatter_cuts(&stepped, SCATTER_LENGTH, gold, 1, SCATTER_WIDTH) {
+                        let mut commands = vec![step];
+                        commands.extend(cut.commands);
+                        out.push(commands);
+                    }
+                }
+            }
+        }
+        if REPLY_STEPS & 4 != 0 {
+            for (steps, stepped) in step_pairs(&next, STEP_REPLIES, STEP_PAIRS) {
+                for cut in cuts(&stepped, STEP_CUT_LENGTH, gold, 1) {
+                    let mut commands = steps.clone();
+                    commands.extend(cut.commands);
+                    out.push(commands);
+                }
+            }
+        }
+        if SCATTER_CUTS != 0 {
+            for cut in scatter_cuts(&next, SCATTER_LENGTH, gold, SCATTER_CUTS, SCATTER_WIDTH) {
+                out.push(cut.commands);
             }
         }
         let mut greedy = Vec::new();
@@ -957,6 +997,31 @@ fn step_options(state: &State) -> Vec<(Command, State)> {
 fn single_steps(state: &State, most: usize) -> Vec<(Command, State)> {
     let mut out = step_options(state);
     out.truncate(most);
+    out
+}
+
+/// Pairs of [`step_options`] by two different units, both accepted in turn,
+/// from the first `pool` options, at most `most` pairs (E087).
+fn step_pairs(state: &State, pool: usize, most: usize) -> Vec<(Vec<Command>, State)> {
+    let options = single_steps(state, pool);
+    let mut out = Vec::new();
+    for (i, (a, after_a)) in options.iter().enumerate() {
+        for (b, _) in &options[i + 1..] {
+            let (Command::Move { id: ia, .. }, Command::Move { id: ib, .. }) = (a, b) else {
+                continue;
+            };
+            if ia == ib {
+                continue;
+            }
+            let mut after = after_a.clone();
+            if after.apply(*b) {
+                out.push((vec![*a, *b], after));
+                if out.len() == most {
+                    return out;
+                }
+            }
+        }
+    }
     out
 }
 

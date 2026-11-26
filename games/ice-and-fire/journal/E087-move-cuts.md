@@ -143,3 +143,64 @@ surprises left, 42% are trainings alone that neither the search's cut
 finder nor a wider one (chains of 8 and 20) matches, 23% remove none of our
 cells (units killed, or an HQ threat), 18% still need moves.
 
+### What the unmatched replies are
+
+The owner (2026-11-26): what are the replies no cut finder matches? And
+his guess: making an inactive region active again by training on it. Of the
+60 large surprises (-50 or less) of the widest setting above (s3-plain7x6),
+read on the board before and after the opponent's reply (the plies of
+`arena/examples/plies.rs` replayed from the CodinGame records):
+
+| Cause (`codingame-surprise`) | Cases | Replies that reactivate the opponent's inactive cells | Its trainings next to its active land / next to an earlier training / next to an inactive pocket only | Replies of 2+ trainings forming one connected chain |
+| --- | --- | --- | --- | --- |
+| neither finder matches it | 25 | 20 (median 3 cells) | 26 / 45 / 23 | 3 of 24 |
+| moves needed | 11 | 8 | 2 / 13 / 8 (5 else) | 6 of 10 |
+| only the wider finder | 5 | 1 | 7 / 19 / 0 | 5 of 5 |
+| the search's finder | 5 | 4 | 5 / 5 / 3 | 1 of 4 |
+| no cell of ours removed | 14 | 3 | 2 / 1 / 1 | 1 of 1 |
+
+The replies no finder matches reconnect the opponent's own inactive land,
+and train from several places, the reconnected pocket included: a cut is a
+set of trainings each legal when it is made, not a chain each next to the
+one before. Explained in all: 52 of the 60 (moves 11, sets of trainings or
+reconnections 21 of the 25, longer chains 5, cuts the finder finds but
+ranks below its best three for the units they kill 5, and 14 replies that
+remove none of our cells: six `WAIT`s, mostly at game turns 21 to 29, where
+every reply modelled spends the opponent's gold and the evaluation rates
+that better for us than its keeping it, and replies that build towers or
+move units, changing the evaluation's terms; the owner will look at those
+afterwards). Not fully explained: 4 long strikes (6 to 8 commands, level-3
+trainings in a near-straight line with moves; two the same game twice),
+and 4 replies removing no cell whose evaluation term is not checked.
+
+### Scattered cuts and pairs of steps
+
+On the owner's go (2026-11-26), steps 1 and 2 of the plan:
+
+- `tactics/src/cut.rs`, `scatter_cuts`: sets of up to `max_len` trainings
+  each on any cell next to the side's active land as it stands after the
+  ones before (reconnected pockets included), on the opponent's cells, the
+  cells next to them or next to the side's inactive pockets; a beam over
+  the number of trainings, `width` sets kept at each, by the cut finder's
+  own score (which counts the side's income gained: reconnections count).
+- `search.rs`: `SCATTER_CUTS` (scattered cuts from the position after our
+  turn), `SCATTER_LENGTH` (4) and `SCATTER_WIDTH` (30),
+  `SCATTER_AFTER_STEPS` (the best scattered cut after each single step),
+  `REPLY_STEPS`' bit 4 (pairs of single steps by two units, the first
+  `STEP_PAIRS`, 10, then the best cut).
+
+The same benchmark:
+
+| Setting | ms a position (300 tries) | Large removals, turns 7 to 14 | Missed (<= -20) | Badly missed (<= -50) | Badly missed, all turns |
+| --- | --- | --- | --- | --- | --- |
+| v032 | 13.97 | 256 | 20% | 12% | 12% |
+| s3 (steps3) | 14.22 | 248 | 17% | 9% | 9% |
+| s3-scatter3 | 17.91 | 247 | 15% | 6% | 6% |
+| s3-scatter3-after | 15.68 | 247 | 13% | 6% | 6% |
+| s3-scatter3-w60L5 | 13.84 | 247 | 15% | 6% | 5% |
+| s3-pairs (`REPLY_STEPS` 7) | 14.64 | 248 | 17% | 8% | 9% |
+| s3-pairs-scatter3-after | 16.68 | 247 | 13% | 5% | 6% |
+
+The scattered cuts halve the badly missed removals from v032 (12% to 5 or
+6%); pairs of steps add little alone.
+

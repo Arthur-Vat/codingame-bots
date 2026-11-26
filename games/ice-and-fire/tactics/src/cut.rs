@@ -226,5 +226,108 @@ fn search(state: &State, max_len: usize, budget: i64, limit: usize) -> (Vec<Cut>
     (found, nodes)
 }
 
+/// Scattered cuts (E087): sets of up to `max_len` trainings for at most
+/// `budget` gold, each on any cell next to the side's active land as it
+/// stands after the trainings before it (so a training that reconnects an
+/// inactive pocket of the side's opens the cells next to the pocket), on
+/// the opponent's cells, the cells next to them, or the cells next to the
+/// side's inactive pockets; not a chain where each training is next to the
+/// one before, as [`cuts`] has it. Found by a beam over the number of
+/// trainings, `width` sets kept at each, best [`Cut::score`] first (it
+/// counts the side's income gained, so reconnections count); every set
+/// that takes opponent cells or units out of play is a candidate. At most
+/// `limit` cuts, best first, the same set of cells once.
+pub fn scatter_cuts(
+    state: &State,
+    max_len: usize,
+    budget: i64,
+    limit: usize,
+    width: usize,
+) -> Vec<Cut> {
+    if state.outcome().is_some() || max_len == 0 || limit == 0 || width == 0 {
+        return Vec::new();
+    }
+    let me = state.to_act();
+    let opp = 1 - me;
+    let pockets = state.owned(me).and_not(state.active(me));
+    let mut run = Search {
+        me,
+        zone: state.owned(opp) | state.owned(opp).neighbours() | pockets.neighbours(),
+        before: holdings(state, opp),
+        income: state.income(me),
+        max_len,
+        budget,
+        nodes: 0,
+        path: Vec::new(),
+        found: Vec::new(),
+        index: HashMap::default(),
+    };
+    let max = usize::from(state.league().max_level());
+    // A node: the state, its commands, its cells, its cost and its score.
+    let mut frontier: Vec<(State, Vec<Command>, Key, i64, i64)> =
+        vec![(state.clone(), Vec::new(), [0; 3], 0, 0)];
+    let mut seen: HashMap<Key, (), BuildHasherDefault<DefaultHasher>> = HashMap::default();
+    for _ in 0..max_len {
+        let mut next_frontier = Vec::new();
+        for (scratch, path, taken, cost, _) in &frontier {
+            let options = (scratch.near_active(me) & run.zone).and_not(scratch.owned(me));
+            let mut enter = [Bits::EMPTY; 3];
+            for level in 1..=scratch.league().max_level() {
+                enter[usize::from(level) - 1] = scratch.enterable(me, level);
+            }
+            for cell in options.iter() {
+                let Some(index) = enter[..max].iter().position(|bits| bits.test(cell)) else {
+                    continue;
+                };
+                let level = index as u8 + 1;
+                let price = 10 * i64::from(level);
+                if cost + price > budget {
+                    continue;
+                }
+                let set = with_cell(*taken, cell);
+                if seen.insert(set, ()).is_some() {
+                    continue;
+                }
+                if run.nodes >= MAX_NODES {
+                    break;
+                }
+                run.nodes += 1;
+                let mut after = scratch.clone();
+                let command = Command::Train {
+                    level,
+                    x: (cell % SIZE) as u8,
+                    y: (cell / SIZE) as u8,
+                };
+                if !after.apply(command) {
+                    continue;
+                }
+                let mut commands = path.clone();
+                commands.push(command);
+                run.path.clone_from(&commands);
+                run.record(&after, set, cost + price);
+                let now = holdings(&after, opp);
+                let score = 3 * (run.before.cells - now.cells)
+                    + (run.before.units - now.units)
+                    + 2 * (after.income(me) - run.income)
+                    - cost
+                    - price;
+                if after.outcome().is_none() {
+                    next_frontier.push((after, commands, set, cost + price, score));
+                }
+            }
+        }
+        next_frontier.sort_by(|a, b| b.4.cmp(&a.4).then(a.3.cmp(&b.3)));
+        next_frontier.truncate(width);
+        if next_frontier.is_empty() {
+            break;
+        }
+        frontier = next_frontier;
+    }
+    let mut found = run.found;
+    found.sort_by(|a, b| b.score.cmp(&a.score).then(a.cost.cmp(&b.cost)));
+    found.truncate(limit);
+    found
+}
+
 #[cfg(test)]
 mod tests;
