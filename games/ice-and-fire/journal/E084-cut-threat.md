@@ -44,4 +44,19 @@ In `bots/plan/src/eval.rs`, for each side, less the enemy's:
 
 ## Screening
 
-Pending.
+| Variant | Commit | Cut (quarters a cell) | Pairs | Kept gold (quarters a gold) |
+| --- | --- | --- | --- | --- |
+| cut5 | b094d89a34ec | 5 | no | 0 |
+| cut10 | 75784e67e76a | 10 | no | 0 |
+| cut20 | 7627ce2619af | 20 | no | 0 |
+| cut10-pairs | e4b0dd20bfc2 | 10 | yes | 0 |
+| cut10-keep1 | e51b7a247e6f | 10 | no | 1 |
+| cut10-keep2 | 42bd22da31b1 | 10 | no | 2 |
+| keep2 | ee2c6ed07ffc | 0 | no | 2 |
+
+A local check of cut10-pairs against v032, 8 pairs at CodinGame's limits
+(seed 84): no fault, answers after the first 42.8 ms median (v032 41.4),
+99.9% within 57.6 ms; 4 wins and 12 losses (too few games to judge).
+
+`screen.yml` run 45836629632, on the owner's approval (2026-11-26), full
+games against v032, 400 pairs per variant over 2 shards: pending.
