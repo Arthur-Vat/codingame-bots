@@ -89,3 +89,20 @@ faults on either side (run 45891095696):
 The guard zone without the HQ guard's limit is the first change of the day
 whose interval lies above 0 at 400 pairs; binding the HQ guard too gives
 part of it back.
+
+## Confirmation
+
+The owner's choice: near2 and near3, with near4 and near2-hqnow (near2
+with `HQ_GUARD_TURNS` 1), 1,200 pairs over three shards each (run
+45893132548), no faults:
+
+| Variant | Elo |
+|---|---|
+| near2 | -2.6 [-12.0, +6.8] |
+| near3 | -0.9 [-10.0, +8.2] |
+| near4 | +3.2 [-4.9, +11.2] |
+| near2-hqnow | -7.8 [-17.8, +2.2] |
+
+The guard zone is level with v032: the +17.4 of the first screening, its
+interval just above 0, does not hold, as E088's and E091's leaners did not.
+
