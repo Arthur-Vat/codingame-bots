@@ -1869,3 +1869,34 @@ fn only_joints_near_the_enemy_count_from_v032() {
         2 + 2
     );
 }
+
+#[test]
+fn secure_territory_leaves_out_what_the_enemy_can_take() {
+    // Red holds a line from its HQ; blue's land is far.
+    let state = position(
+        [
+            "OOO.........",
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            "...........X",
+        ],
+        [0, 0],
+        &[],
+    );
+    let all = crate::eval::secure(&state, 0, Bits::EMPTY);
+    // Red's three cells and the free cells nearer to them than to blue's HQ.
+    assert!(all.test(0) && all.test(2) && all.test(3));
+    assert!(!all.test(143));
+    // A cell the enemy could take is not secure.
+    let some = crate::eval::secure(&state, 0, Bits::cell(2));
+    assert!(!some.test(2));
+    assert_eq!(some.count() + 1, all.count());
+}
