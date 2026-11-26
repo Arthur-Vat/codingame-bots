@@ -78,7 +78,7 @@ pub const MOVER_LEVEL: u8 = 2;
 
 /// What a threatened cell costs its side, in quarters: 7 in E023 (a quarter
 /// of a cell's value of 7), 5 since E037, which finds more of them.
-pub const THREAT_QUARTERS: i64 = 5;
+pub const THREAT_QUARTERS: i64 = 0;
 
 /// The units of `seat` whose moves count in [`exposed`]: those on its active
 /// cells of at least [`MOVER_LEVEL`], all of which may move at its next turn.
@@ -127,7 +127,7 @@ pub fn threatened(state: &State, seat: usize) -> i64 {
 /// its active cell, or a free cell nearer its active land than the
 /// enemy's (in steps over valid cells), and secure when the enemy cannot
 /// take it at its next turn ([`reach`]). 0 for nothing (v032).
-pub const SECURE: i64 = 16;
+pub const SECURE: i64 = 8;
 
 /// What each secure cell of a side in the contested band (E073's band, the
 /// areas of interest) counts beyond [`SECURE`]: 0 for nothing (v032).
