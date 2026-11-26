@@ -51,4 +51,21 @@ small term in the opening.
 
 ## Screening
 
-Pending.
+Each variant against `ice-and-fire-v032`, 400 pairs, full games, no
+faults on either side (run 45873600855). The spot weights are safe spots
+held, falling to nothing at game turn 40, unless marked `any`:
+
+| Variant | Spot weight | Opening spot | Elo |
+|---|---|---|---|
+| spot6 | 6 | 0 | -6.9 [-28.4, +14.4] |
+| spot10 | 10 | 0 | -27.9 [-49.2, -6.7] |
+| spot15 | 15 | 0 | -46.3 [-68.3, -24.7] |
+| spot10-any | 10, safe or not | 0 | -20.0 [-41.0, +0.9] |
+| open1 | 0 | 1 | +11.3 [-7.4, +30.1] |
+| open2 | 0 | 2 | +10.4 [-9.3, +30.2] |
+| spot10-open1 | 10 | 1 | -5.2 [-27.2, +16.7] |
+
+The evaluation's spot term loses, the more the heavier, as the measure
+foretold: v032 already takes the spots, and a term for them draws the
+search away from land. The opening's small preference leans positive
+(+11.3 and +10.4) without an interval above 0.
