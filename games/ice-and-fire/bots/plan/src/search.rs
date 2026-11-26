@@ -57,7 +57,7 @@ pub mod judge;
 /// buy only towers and trainings, each number of towers up to
 /// [`SPLIT_TOWERS`] with each number of trainings up to
 /// [`SPLIT_TRAININGS`], start the next climbs. 0 in v032.
-pub const SPLITS: usize = 4;
+pub const SPLITS: usize = 8;
 /// See [`SPLITS`].
 pub const SPLIT_TOWERS: usize = 3;
 /// See [`SPLITS`].
