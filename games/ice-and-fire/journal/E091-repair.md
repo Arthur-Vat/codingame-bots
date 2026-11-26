@@ -77,3 +77,19 @@ Every variant that may add any action leans positive, the first of this
 day's experiments to do so as a family; none has an interval above 0. The
 counters alone are level with v032: the gain comes from changing the plan
 freely against its worst reply, not from the targeted counters.
+
+## Confirmation
+
+The two best and two neighbours again, 1,200 pairs over three shards each
+(the owner's choice; run 45884703683), no faults:
+
+| Variant | Settings | Elo |
+|---|---|---|
+| repair2 | `REPAIR` 2 | -5.2 [-16.9, +6.4] |
+| repair2-steps2 | `REPAIR` 2, `REPAIR_STEPS` 2 | +2.6 [-9.6, +14.9] |
+| repair3-steps2 | `REPAIR` 3, `REPAIR_STEPS` 2 | -0.3 [-12.2, +11.6] |
+| repair2-steps1 | `REPAIR` 2, `REPAIR_STEPS` 1 | -11.3 [-22.8, +0.2] |
+
+The lean of the first screening does not hold: the repair is level with
+v032, as E088's leaners were.
+
