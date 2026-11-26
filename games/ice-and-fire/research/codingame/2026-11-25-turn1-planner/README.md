@@ -55,6 +55,11 @@ not part of the build or the checks.
   reserved), each played 3 turns past game turn 10 with free growth, and
   five calibrations of the score (land, land + room, tolerance 1 and 2,
   later land).
+- `planner5.py`: the fifth version (the owner, 2026-11-26): past game turn
+  10 we grow behind our front line. The enemy at turn 10 is a stand-in, our
+  free growth mirrored through the map's centre; our territory, the free
+  cells nearer our land than it; from turn 11 units and trainings take only
+  cells of our territory, and a unit's room is its share of it.
 
 The pictures: fronts and goals https://claude.ai/artifact/CjVo3RiA1NCXV7eczk8vim,
 cell values and entrances https://claude.ai/artifact/1hsAEqAvnM83ZDnRKACE6y,

@@ -605,3 +605,57 @@ sub-goals and the land a few turns later.
 Pictures, every calibration in both modes, playable action by action:
 https://claude.ai/artifact/45xi3imE6WxsU2h4zUEDGP.
 
+## Growing behind the front line
+
+The owner (2026-11-26): the room (the snakes) is within our territory;
+past the early game we cannot grow toward the enemy's HQ, so we grow
+behind our front line; later this will follow the opponent's position.
+
+`planner5.py` (research/codingame/2026-11-25-turn1-planner): until game
+turn 10 as version 4, then a stand-in for the enemy, our free growth's
+land at turn 10 mirrored through the map's centre (the six maps are
+point-symmetric). Our territory: the free cells nearer our land than that
+enemy land. From turn 11 units drop their sub-goals and, with the
+trainings, take only cells of our territory, for 3 turns. A unit's room:
+its share of our territory; a unit with no room either holds the front
+line (next to a cell neither ours nor our territory's) or stands idle
+inside our land.
+
+Coordinated mode, `K = 4`:
+
+| Map | Calibration | Land at turn 10 | Territory | Land at turn 13 | No room: front, inside (of units) |
+| --- | --- | --- | --- | --- | --- |
+| three fronts, 925707781 | land | 40 | 32 | 64 | 3, 0 (10) |
+| | tolerance 1 | 40 | 34 | 71 | 3, 0 (10) |
+| | free growth | 39 | 20 | 57 | 2, 2 (10) |
+| three fronts, 925707787 | land | 33 | 20 | 48 | 3, 1 (8) |
+| | tolerance 1 | 32 | 23 | 54 | 2, 1 (8) |
+| | free growth | 32 | 13 | 43 | 4, 1 (8) |
+| two flanks, 925677145 | land, tolerance 1 | 40 | 16 | 56 | 3, 3 (10) |
+| | later land | 38 | 20 | 58 | 3, 1 (10) |
+| | free growth | 28 | 19 | 44 | 1, 0 (7) |
+| two flanks, 925707764 | land, tolerance 1 | 40 | 15 | 55 | 2, 2 (10) |
+| | later land | 36 | 21 | 56 | 3, 2 (9) |
+| | free growth | 32 | 16 | 44 | 1, 4 (8) |
+| middle only, 925708443 | all | 32 | 7 | 39 | 3, 5 (9) |
+| | free growth | 26 | 10 | 33 | 2, 5 (8) |
+| middle only, 925709109 | all | 32 | 2 | 34 | 1, 5 (8) |
+| | free growth | 23 | 6 | 29 | 1, 3 (6) |
+
+What it shows:
+- With the enemy stand-in, turn 13's land is what the territory behind
+  our front can still give: 7 to 34 cells against 30 to 47 with no enemy.
+- On three-front maps tolerance 1 gains 6 cells at turn 13 (71 against
+  64, 54 against 48) for at most 1 at turn 10: the plans that leave free
+  cells behind the front, with units next to them, fill them later.
+- On two-flank maps the best at turn 13 gives up 2 to 4 cells at turn 10
+  for 1 or 2 later: tolerance 1 keeps the land.
+- On middle-only maps our side is full by turn 10 (territory 2 to 7) and
+  5 of 8 or 9 units stand idle inside: no plan of sub-goals helps; the
+  question there is how many units to train at all (each costs 1 gold a
+  turn), and what to do with the gold instead.
+
+Pictures, every calibration in both modes, with the enemy stand-in, our
+territory and each unit's room:
+https://claude.ai/artifact/45xi3imE6WxsU2h4zUEDGP.
+
