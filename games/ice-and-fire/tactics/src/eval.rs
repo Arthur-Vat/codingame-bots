@@ -15,11 +15,11 @@ const MAX_PRESSURE: i64 = 200;
 
 /// What each active tower of a side counts (E092 tries 0: a tower worth
 /// only what it protects). 10 in v032.
-pub const TOWER_VALUE: i64 = 0;
+pub const TOWER_VALUE: i64 = 10;
 
 /// What each active tower counts up to game turn [`EARLY_TOWER_UNTIL`]
 /// (E093: a tower that holds the frontier early). [`TOWER_VALUE`] in v032.
-pub const EARLY_TOWER_VALUE: i64 = 0;
+pub const EARLY_TOWER_VALUE: i64 = 10;
 
 /// See [`EARLY_TOWER_VALUE`]: the plan bot's early game (E093).
 pub const EARLY_TOWER_UNTIL: u32 = 10;
@@ -27,7 +27,7 @@ pub const EARLY_TOWER_UNTIL: u32 = 10;
 /// What each distinct active cell of a side that one of its towers protects
 /// (the tower's cell and the cells next to it) counts, so that towers
 /// protecting the same cells count it once (E095). 0 in v032.
-pub const COVER_WEIGHT: i64 = 5;
+pub const COVER_WEIGHT: i64 = 1;
 
 /// With [`COVER_WEIGHT`], only the protected cells at most this many steps,
 /// over non-void cells, from the enemy's active cells or units count; 0 for
