@@ -81,3 +81,24 @@ v032 (0.75 against 0.85 in all, 0.50 against 0.47 in the middle), at a
 cost in land (34 to 35.5 cells at turn 12, v032 37.5 to 38.5); modelling
 more replies (steps) alone makes the search lose more and gain less land.
 40 games are few: the screening is needed.
+
+`screen.yml` run 45860907261 on the owner's approval (2026-11-26), full
+games against v032, 400 pairs per variant over 2 shards, no fault on either
+side:
+
+| Variant | Elo over v032 [95%] |
+| --- | --- |
+| steps1 | -2.6 [-23.3, +18.0] |
+| steps3 | +15.6 [-4.0, +35.4] |
+| bundles6 | -14.8 [-35.5, +5.8] |
+| second2 | -85.0 [-107.8, -63.0] |
+| steps3-second2 | -58.7 [-80.3, -37.6] |
+| steps3-bundles6 | -20.0 [-40.1, -0.0] |
+| steps3-second2-bundles6 | -70.4 [-92.8, -48.7] |
+
+The opponent's cuts after its units' steps, each step alone as well
+(steps3), lean positive, the best result of E083 to E087; the second-worst
+charge, which lost the fewest cells in the local games cut at turn 12, is
+clearly weaker in full games (it makes the search passive: less land), and
+the spending bundles a little weaker.
+
