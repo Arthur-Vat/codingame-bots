@@ -195,3 +195,15 @@ variants hold the centre from game turn 8 in nearly every game (v032's
 opening held it at turn 8 in 5 of the 8). Pictures, action by action:
 https://claude.ai/artifact/Fi8iV1NgUNDd48v9GkD4Ks.
 
+### The lost fights before game turn 12
+
+The owner (2026-11-26), on the round 3 results: we still lose too many
+fights in the early and middle game, expanding too much and losing our
+units, where we would play safer and keep our territory after the
+opponent's play. The study of v032's 1,950 CodinGame games
+(research/codingame/2026-11-26-early-fights): the cells lost before turn 12
+are mostly cut off rather than captured in our lost games (4.7 cut off and
+4.6 captured a game, against 1.7 and 2.8 in our wins); in the median large
+loss, v032 spends its 32 gold down to 5 on cells it then loses the next
+enemy ply to a cut of 2 trainings paid from the enemy's 38.
+
