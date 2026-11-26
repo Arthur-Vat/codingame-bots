@@ -68,13 +68,29 @@ pub const STEP_REPLIES: usize = 8;
 /// The cut finder's longest chain after the steps (E087).
 pub const STEP_CUT_LENGTH: usize = 4;
 
+/// Whether the opponent's replies also hold pairs of its plain cuts on
+/// distinct cells that its gold pays for together, each pair one reply
+/// (E087): several separate captures in one turn, which the cut finder's
+/// single connected chains miss.
+pub const PAIR_CUTS: bool = false;
+
+/// How many plain cuts the pairs of [`PAIR_CUTS`] are drawn from.
+pub const PAIR_POOL: usize = 6;
+
+/// The cuts kept after each single step of [`REPLY_STEPS`]' bit 2 (E087).
+pub const STEP_CUTS: usize = 1;
+
+/// The longest chain of the opponent's plain cuts among its replies (E087;
+/// v032 uses `CUT_LENGTH`, the length of our own cut actions, 5).
+pub const REPLY_CUT_LENGTH: usize = CUT_LENGTH;
+
 /// What the damage of a plan's second-worst reply costs it, in quarters
 /// (E087): the opponent plays one reply, but a plan that opens two
 /// weaknesses is riskier than one that opens one, though its worst reply is
 /// the same (the owner's unit 11, E086's entry). The damage is the
 /// evaluation of the plan's end state, with no reply, less the evaluation
 /// after that reply. 0 for nothing (v032, the worst reply alone).
-pub const SECOND_QUARTERS: i64 = 2;
+pub const SECOND_QUARTERS: i64 = 0;
 
 /// Most climbs in one turn.
 const MAX_CLIMBS: usize = 32;
@@ -566,8 +582,36 @@ impl Search {
         if let Some(chain) = chain_to(&next, HQ[self.me], gold) {
             out.push(chain.commands);
         }
-        for cut in cuts(&next, CUT_LENGTH, gold, REPLY_CUTS) {
-            out.push(cut.commands);
+        let plain = cuts(
+            &next,
+            REPLY_CUT_LENGTH,
+            gold,
+            REPLY_CUTS.max(if PAIR_CUTS { PAIR_POOL } else { 0 }),
+        );
+        for cut in plain.iter().take(REPLY_CUTS) {
+            out.push(cut.commands.clone());
+        }
+        if PAIR_CUTS {
+            let cells = |c: &ice_and_fire_tactics::cut::Cut| -> Vec<(u8, u8)> {
+                c.commands
+                    .iter()
+                    .filter_map(|cmd| match *cmd {
+                        Command::Train { x, y, .. } => Some((x, y)),
+                        _ => None,
+                    })
+                    .collect()
+            };
+            for (i, a) in plain.iter().enumerate() {
+                for b in &plain[i + 1..] {
+                    let (ca, cb) = (cells(a), cells(b));
+                    if a.cost + b.cost > gold || ca.iter().any(|c| cb.contains(c)) {
+                        continue;
+                    }
+                    let mut commands = a.commands.clone();
+                    commands.extend(b.commands.iter().copied());
+                    out.push(commands);
+                }
+            }
         }
         if REPLY_STEPS & 1 != 0 {
             let (moves, stepped) = all_steps(&next);
@@ -581,7 +625,7 @@ impl Search {
         }
         if REPLY_STEPS & 2 != 0 {
             for (step, stepped) in single_steps(&next, STEP_REPLIES) {
-                if let Some(cut) = cuts(&stepped, STEP_CUT_LENGTH, gold, 1).into_iter().next() {
+                for cut in cuts(&stepped, STEP_CUT_LENGTH, gold, STEP_CUTS) {
                     let mut commands = vec![step];
                     commands.extend(cut.commands);
                     out.push(commands);

@@ -102,3 +102,44 @@ charge, which lost the fewest cells in the local games cut at turn 12, is
 clearly weaker in full games (it makes the search passive: less land), and
 the spending bundles a little weaker.
 
+### Longer and more cuts: a benchmark
+
+The owner (2026-11-26): couldn't the opponent's cuts be longer, and more of
+them considered? Benchmark first. Three more settings in `search.rs`:
+`STEP_CUTS` (cuts kept after each single step, 1), `REPLY_CUT_LENGTH` (the
+opponent's plain cuts' longest chain, v032's `CUT_LENGTH` 5), and
+`PAIR_CUTS` (pairs of its plain cuts on distinct cells its gold pays for,
+drawn from its best `PAIR_POOL` 6, as replies: several separate captures in
+one turn). Two measures for each setting, with its analysis build:
+
+- the time of the search alone (`speed`, 300 tries, 120 middle-game
+  positions drawn by `ice-and-fire-review bank` from 400 of v032's
+  CodinGame games);
+- what the replies miss (`codingame-surprise` as the judge, 300 tries,
+  3,000 of v032's CodinGame plies): among the plies of game turns 7 to 14
+  whose opponent's reply removed 3 or more of our cells, the share where
+  that reply scored 20 or more below every modelled one, or 50 or more.
+
+| Setting | Steps | Cut after a step | Cuts a step | Steps tried | Plain cuts (length, count) | Pairs | ms a position (300 tries) | Large removals | Missed (<= -20) | Badly missed (<= -50) | Modelled replies (median) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| v032 | 0 | - | - | - | 5, 3 | no | 13.97 | 256 | 20% | 12% | 12 |
+| s3 (steps3) | 3 | 4 | 1 | 8 | 5, 3 | no | 14.22 | 248 | 17% | 9% | 15 |
+| s3-L5 | 3 | 5 | 1 | 8 | 5, 3 | no | 14.62 | 248 | 17% | 9% | 15 |
+| s3-L6 | 3 | 6 | 1 | 8 | 5, 3 | no | 13.59 | 249 | 18% | 9% | 15 |
+| s3-k2 | 3 | 4 | 2 | 8 | 5, 3 | no | 13.97 | 248 | 17% | 9% | 15 |
+| s3-k3 | 3 | 4 | 3 | 8 | 5, 3 | no | 13.69 | 248 | 17% | 8% | 16 |
+| s3-n16 | 3 | 4 | 1 | 16 | 5, 3 | no | 13.86 | 248 | 17% | 9% | 15 |
+| s3-L5k2n12 | 3 | 5 | 2 | 12 | 5, 3 | no | 15.10 | 248 | 17% | 9% | 15 |
+| plain7x6 | 0 | - | - | - | 7, 6 | no | 13.84 | 254 | 19% | 11% | 15 |
+| s3-plain7x6 | 3 | 4 | 1 | 8 | 7, 6 | no | 14.16 | 249 | 17% | 8% | 17 |
+| pairs | 0 | - | - | - | 5, 3 | yes | 15.33 | 255 | 20% | 12% | 14 |
+| s3-pairs | 3 | 4 | 1 | 8 | 5, 3 | yes | 14.47 | 248 | 17% | 8% | 17 |
+
+The replies cost little time (13.6 to 15.3 ms a position against v032's
+14.0). The steps cut the large removals badly missed from 12% to 9%; longer
+cuts, more cuts, more steps, longer and more plain cuts, and pairs of cuts
+add at most a point. With the widest setting (s3-plain7x6), of the large
+surprises left, 42% are trainings alone that neither the search's cut
+finder nor a wider one (chains of 8 and 20) matches, 23% remove none of our
+cells (units killed, or an HQ threat), 18% still need moves.
+
