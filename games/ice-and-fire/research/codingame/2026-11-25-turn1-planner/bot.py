@@ -31,6 +31,7 @@ LOG = open(os.environ['PLAN_LOG'], 'w') if os.environ.get('PLAN_LOG') else None
 AREAS = json.load(open(os.environ['PLAN_AREAS']))  # areas with static sub-goals (our HQ at (0, 0))
 SEQ = json.loads(os.environ['PLAN_SEQ'])  # the turn-1 plan: per training, a list of [area, kind]
 LAST_TURN = 12
+BUDGET = float(os.environ.get('PLAN_BUDGET', '20'))  # seconds of climbing a turn
 HOLD = 3  # a unit with no sub-goal this near the enemy's land holds the front
 FACTOR = {-1: 0.0, 0: 0.6, 1: 1.0}
 
@@ -113,6 +114,14 @@ def enterable(s, c, side, level=1):
     if u is not None and not (level == 3 or level > u[2]):
         return False
     return True
+
+
+def moved_ids(cmds):
+    return {c[1] for c in cmds if c[0] == 'MOVE'}
+
+
+def moves_first(cmds):
+    return [c for c in cmds if c[0] == 'MOVE'] + [c for c in cmds if c[0] != 'MOVE']
 
 
 def clone(s):
@@ -276,6 +285,9 @@ class Bot:
                 elif c[0] == 'BUILD':
                     x, y = self.out_xy(c[1])
                     out.append(f'BUILD TOWER {x} {y}')
+                elif c[0] == 'TRAIN2':
+                    x, y = self.out_xy(c[1])
+                    out.append(f'TRAIN 2 {x} {y}')
                 else:
                     x, y = self.out_xy(c[1])
                     out.append(f'TRAIN 1 {x} {y}')
@@ -295,6 +307,7 @@ class Bot:
                    buildings=[[c[0], c[1], v[0], v[1]] for c, v in s.buildings.items()])
         if t == 1:
             log['plan'] = self.predict_plan(s)
+        s0 = clone(s)
         H = 4
         prev = {v[1]: c for c, v in self.prev_enemy.items()}
         guesses = guess(s, H, prev, self.plan_cells) if t >= 4 else [frozenset(s.theirs)]
@@ -364,13 +377,150 @@ class Bot:
                 break
             cmds.append(('TRAIN', c))
             roles['new %d,%d' % c] = dict(role='backline')
+        if t >= 4:
+            cmds = self.climb(s0, cmds, log, roles)
+            s = self.apply(s0, cmds)[0]
         log['roles'] = roles
         log['cmds'] = [[c[0]] + ([c[1], list(c[2])] if c[0] == 'MOVE' else [list(c[1])]) for c in cmds]
+        log['after_gold'] = s.gold
         log['after_buildings'] = [[c[0], c[1], v[0], v[1]] for c, v in s.buildings.items()]
         log['fighting'] = [list(c) for c in fighting]
         log['after'] = [''.join('#' if (x, y) not in s.valid else 'O' if (x, y) in s.ours else 'X' if (x, y) in s.theirs else '.' for x in range(12)) for y in range(12)]
         log['after_units'] = [[c[0], c[1], v[0], v[1], v[2]] for c, v in s.units.items()]
         return cmds, log
+
+    # The whole turn against the enemy's reply.
+    def apply(self, s0, cmds):
+        """Our commands played on a copy of `s0`, each checked by the rules;
+        the position and the commands the rules accepted."""
+        x = clone(s0)
+        ok = []
+        for c in cmds:
+            if c[0] == 'MOVE':
+                pos = next((p for p, v in x.units.items() if v[0] == 0 and v[1] == c[1]), None)
+                if pos is None or c[2] not in set(nbrs(pos)) or c[1] in moved_ids(ok):
+                    continue
+                n = len(x.units)
+                if self.move(x, pos, c[2], []):
+                    ok.append(c)
+            elif c[0] in ('TRAIN', 'TRAIN2'):
+                level, cost = (1, 10) if c[0] == 'TRAIN' else (2, 20)
+                cell = c[1]
+                if x.gold < cost or cell not in self.trainable_any(x) or not enterable(x, cell, 0, level):
+                    continue
+                x.units.pop(cell, None)
+                take(x, cell, 0)
+                x.units[cell] = (0, -1, level)
+                x.gold -= cost
+                ok.append(c)
+            elif c[0] == 'BUILD':
+                cell = c[1]
+                if x.gold < 15 or cell not in active(x, 0) or cell in x.units or cell in x.buildings or cell in self.mine_spots:
+                    continue
+                x.buildings[cell] = (0, 2)
+                x.gold -= 15
+                ok.append(c)
+        return x, ok
+
+    def trainable_any(self, s):
+        act = active(s, 0)
+        return set(act) | {n for c in act for n in nbrs(c) if n in s.valid}
+
+    def evaluate(self, s0, cmds):
+        x, ok = self.apply(s0, cmds)
+        lost, deadly, _ = self.reply(x)
+        y = self.reply_state
+        ours, theirs = set(active(y, 0)), set(active(y, 1))
+        dL, dE = bfs(y.valid, list(ours)), bfs(y.valid, list(theirs))
+        vor = sum(1 for c in y.valid if dL.get(c, 99) < dE.get(c, 99)) - sum(1 for c in y.valid if dE.get(c, 99) < dL.get(c, 99))
+        # The enemy's next turn from there, our turn between not counted.
+        y2 = clone(y)
+        y2.egold, y2.eincome = max(0, self.reply_next_gold), 0
+        lost2, deadly2, _ = self.reply(y2)
+        return len(ours) - len(theirs) + 0.25 * vor - 1000 * deadly - 0.5 * lost2 - 300 * deadly2 + 0.05 * x.gold, ok
+
+    def climb(self, s0, cmds, log, roles):
+        """From the turn the roles made, one change at a time while one
+        raises the score of the position after the enemy's reply: a unit's
+        step (or none), a purchase removed, or one added (a level-1 or
+        level-2 training, a tower)."""
+        import time
+        t0 = time.time()
+        best, cmds = self.evaluate(s0, cmds)
+        start = best
+        evals = 1
+        changes = []
+        my_units = [(p, v) for p, v in s0.units.items() if v[0] == 0]
+        while time.time() - t0 < BUDGET:
+            improved = False
+            trials = []
+            for p, v in my_units:
+                rest = [c for c in cmds if not (c[0] == 'MOVE' and c[1] == v[1])]
+                trials.append((rest, f'unit {v[1]} stays'))
+                for n in nbrs(p):
+                    if n in s0.valid:
+                        trials.append((moves_first(rest + [('MOVE', v[1], n)]), f'unit {v[1]} to {n}'))
+            for i, c in enumerate(cmds):
+                if c[0] != 'MOVE':
+                    trials.append((cmds[:i] + cmds[i + 1:], f'no {c[0].lower()} at {c[1]}'))
+            x, _ = self.apply(s0, cmds)
+            near = {n for e in x.theirs for n in nbrs(e)} | {n for e in x.theirs for m in nbrs(e) for n in nbrs(m)}
+            for cell in self.trainable_any(x):
+                if cell not in near:
+                    continue
+                if x.gold >= 10 and enterable(x, cell, 0, 1):
+                    trials.append((cmds + [('TRAIN', cell)], f'train at {cell}'))
+                elif x.gold >= 20 and enterable(x, cell, 0, 2) and cell in x.units:
+                    trials.append((cmds + [('TRAIN2', cell)], f'level 2 at {cell}'))
+            if x.gold >= 15:
+                for cell in active(x, 0):
+                    if cell in near and cell not in x.units and cell not in x.buildings and cell not in self.mine_spots:
+                        trials.append((cmds + [('BUILD', cell)], f'tower at {cell}'))
+            top = None
+            for trial, name in trials:
+                if time.time() - t0 >= BUDGET:
+                    break
+                sc, ok = self.evaluate(s0, trial)
+                evals += 1
+                if sc > best + 1e-9 and (top is None or sc > top[0]):
+                    top = (sc, ok, name)
+            if top is None:
+                # No single change helps: pairs of changes, a purchase with
+                # a step or another purchase.
+                adds = [(tr, nm) for tr, nm in trials if len(tr) > len(cmds)]
+                for (a, na), (b, nb) in itertools.combinations(trials, 2):
+                    if time.time() - t0 >= BUDGET:
+                        break
+                    if not ((a, na) in adds or (b, nb) in adds):
+                        continue
+                    extra = [c for c in b if c not in cmds]
+                    gone = [c for c in cmds if c not in b]
+                    trial = moves_first([c for c in a if c not in gone] + extra)
+                    sc, ok = self.evaluate(s0, trial)
+                    evals += 1
+                    if sc > best + 1e-9 and (top is None or sc > top[0]):
+                        top = (sc, ok, na + ' and ' + nb)
+            if top is None:
+                break
+            best, cmds = top[0], top[1]
+            changes.append(top[2])
+            improved = True
+        log['climb'] = dict(start=round(start, 2), end=round(best, 2), evals=evals, seconds=round(time.time() - t0, 1), changes=changes)
+        # Roles of what the climb changed.
+        for name in changes:
+            if name.startswith('unit '):
+                uid = int(name.split()[1])
+                r = roles.get(uid, {})
+                r = dict(r, replanned=name)
+                roles[uid] = r
+        for c in cmds:
+            if c[0] in ('TRAIN', 'TRAIN2'):
+                roles.setdefault('new %d,%d' % c[1], dict(role='fight', label=None))
+        for k in [k for k in roles if isinstance(k, str) and k.startswith('new ')]:
+            xy = tuple(map(int, k[4:].split(',')))
+            if not any(c[0] in ('TRAIN', 'TRAIN2') and c[1] == xy for c in cmds):
+                del roles[k]
+        return cmds
 
     def towers(self, s, t, free_units, arr, EH, cmds, log):
         base_lost, base_deadly, entered = self.reply(s)
@@ -429,21 +579,29 @@ class Bot:
         before0 = active(x, 0)
 
         def damage_of(cells):
-            y = clone(x)
-            for c in cells:
-                y.ours.discard(c)
-            after = active(y, 0)
-            cur = active(x, 0)
-            return sum(1 for c in cells if c in x.ours) + len(cur - after - set(cells))
+            removed = set(cells)
+            cur = set(bfs(x.valid, [(0, 0)], x.ours)) if (0, 0) in x.ours else set()
+            after = set(bfs(x.valid, [(0, 0)], x.ours - removed)) if (0, 0) not in removed else set()
+            return sum(1 for c in cells if c in x.ours) + len(cur - after - removed)
 
         for pos, v in list(x.units.items()):
             if v[0] != 1:
                 continue
             cand = [n for n in nbrs(pos) if n in x.ours and enterable(x, n, 1, v[2])]
             if not cand:
+                # No capture: a step into the neutral cell nearest our land,
+                # to cut at the next turn.
+                dOurs = bfs(x.valid, list(x.ours))
+                steps = [n for n in nbrs(pos) if n in x.valid and n not in x.ours and n not in x.theirs and n not in x.units and dOurs.get(n, 99) < dOurs.get(pos, 99)]
+                if steps:
+                    n = min(steps, key=lambda n: (dOurs.get(n, 99), n))
+                    del x.units[pos]
+                    take(x, n, 1)
+                    x.units[n] = v
                 continue
             c = max(cand, key=lambda n: (damage_of([n]), n))
             if c == (0, 0):
+                self.reply_state = x
                 return 100, 1, entered + [c]
             entered.append(c)
             del x.units[pos]
@@ -469,7 +627,7 @@ class Bot:
         def dfs(path, used, budget):
             nonlocal seen
             seen += 1
-            if seen > 4000:
+            if seen > 1500:
                 return
             if path:
                 d = damage_of(path)
@@ -493,6 +651,7 @@ class Bot:
         dfs([], set(), gold)
         for c in best[1]:
             if c == (0, 0):
+                self.reply_state = x
                 return 100, 1, entered + best[1]
             gold -= cost(c) or 10
             entered.append(c)
@@ -506,6 +665,7 @@ class Bot:
                 break
             c = max(cand, key=lambda n: (damage_of([n]) / cost(n), n))
             if c == (0, 0):
+                self.reply_state = x
                 return 100, 1, entered + [c]
             gold -= cost(c)
             entered.append(c)
@@ -516,6 +676,8 @@ class Bot:
         lost = len(before0 - after)
         nxt = gold + len(active(x, 1)) - sum(1 for v in x.units.values() if v[0] == 1)
         deadly = 1 if self.chain_cost(x) <= nxt else 0
+        self.reply_state = x
+        self.reply_next_gold = nxt
         return lost, deadly, entered
 
     def chain_cost(self, s):

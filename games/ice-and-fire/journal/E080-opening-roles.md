@@ -751,3 +751,43 @@ no unit holds any more, and at turn 10 we have 7 gold, less than a tower.
 One game a setting, against a bot whose search depends on time: the
 differences between settings are within the noise of single games.
 
+### The whole turn against the reply
+
+The owner (2026-11-26): take the opponent's reply into account, so that it
+cannot cut like this: plan carefully so that the opponent does not win a
+fight; a unit trained top-right while we lose the fight elsewhere, and
+stepping back onto a conquered cell the next turn, should be seen by the
+planner.
+
+From turn 4 the turn the roles make is now searched as our Rust search
+does: one change at a time (a unit's step or none, a purchase removed, a
+level-1 or level-2 training or a tower added near v020's land), or two when
+no single change helps, kept while it raises the score of the position
+after v020's guessed reply and its next turn: our active cells less v020's,
+a quarter of the Voronoi balance, half the cells a second reply would take,
+and a chain to our HQ v020 could pay for counted as lost. In the reply,
+v020's units that cannot capture step into the neutral cell nearest our
+land, as they do before a cut (at turn 8 of the free-growth game as red,
+the one-turn reply had foreseen 1 cell lost: v020's units stepped into the
+neutral cells by our land and cut 8 cells the turn after).
+
+| Enemy model | Our seat | Our cells | v020's cells | End |
+| --- | --- | --- | --- | --- |
+| free growth | red | 27 | 41 | turn 12 |
+| free growth | blue | 17 | 51 | turn 12 |
+| momentum | red | 25 | 44 | HQ lost, turn 11 |
+| momentum | blue | 30 | 38 | turn 12 |
+| our own plan | red | 20 | 46 | turn 12 |
+| our own plan | blue | 29 | 41 | turn 12 |
+| fastest rush | red | 16 | 53 | HQ lost, turn 11 |
+| fastest rush | blue | 26 | 50 | turn 12 |
+
+The HQ falls in 2 games of 8 (4 before), and we hold 16 to 30 cells at our
+last turn (9 to 22 before), v020 38 to 53. The search finds the chains to
+our HQ (in the free-growth game as red, at turns 9 and 11, a score of -328
+and -338 raised to -16 and -37 by a unit's step and a level-2 unit). From
+turn 4, 0 to 2 of our 16 to 25 moves a game still step back onto our land
+away from v020 (some chosen by the search against a chain to our HQ), and
+1 to 3 of our 4 to 9 trainings a game go more than 4 steps from v020's
+land. One game a setting.
+
