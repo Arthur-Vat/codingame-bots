@@ -59,4 +59,22 @@ A local check of cut10-pairs against v032, 8 pairs at CodinGame's limits
 99.9% within 57.6 ms; 4 wins and 12 losses (too few games to judge).
 
 `screen.yml` run 45836629632, on the owner's approval (2026-11-26), full
-games against v032, 400 pairs per variant over 2 shards: pending.
+games against v032, 400 pairs per variant over 2 shards, no fault on
+either side:
+
+| Variant | Elo over v032 [95%] |
+| --- | --- |
+| cut5 | -36.6 [-58.4, -15.1] |
+| cut10 | -41.9 [-64.9, -19.2] |
+| cut20 | -58.7 [-81.6, -36.4] |
+| cut10-pairs | -92.5 [-114.2, -71.4] |
+| cut10-keep1 | -21.7 [-43.7, +0.0] |
+| cut10-keep2 | -54.3 [-75.2, -33.8] |
+| keep2 | +11.3 [-9.9, +32.6] |
+
+Counting the cut-off cells makes the search weaker at every weight, the
+more the heavier, and most with pairs of captures; kept gold alone leans
+positive without an interval above 0. A likely cause, to check on games:
+the shape term (E010, E081) already charges the cells one loss cuts off
+near the enemy, so the cut term counts them twice and the search plays too
+defensively.
