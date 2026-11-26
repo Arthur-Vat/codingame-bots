@@ -54,6 +54,7 @@ mod actions;
 #[cfg(feature = "analysis")]
 mod analysis;
 mod eval;
+mod front;
 mod search;
 mod session;
 mod strategy;

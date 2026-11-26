@@ -63,6 +63,9 @@
 //!   search takes over at game turn 7 without it. Until game turn
 //!   [`GOAL_UNTIL`], band cells near a side's land, held by it, guarded by
 //!   its towers, and the middle chokes it holds count for it ([`goal`]).
+//! - **The front** (E083): the race to the band cells in which units count,
+//!   the goal cells of each front, and units holding the front line
+//!   (`crate::front`).
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::reach_within_moving;
@@ -413,7 +416,7 @@ pub(crate) fn idle(state: &State, seat: usize) -> i64 {
             units |= Bits::cell(cell);
         }
     }
-    let mut within = valid.and_not(state.owned(seat));
+    let mut within = crate::front::idle_targets(state, seat, goal_zones(state).0);
     let mut counted = Bits::EMPTY;
     let mut steps = 0;
     for distance in 1..=IDLE_CAP {
@@ -612,4 +615,18 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         - wall(state, 1 - seat)
         + goal(state, seat)
         + voronoi(state, seat)
+        + front(state, seat, ours, theirs)
+}
+
+/// The front's terms (E083, `crate::front`): the race and goal cells, and
+/// the units holding the front of each side.
+fn front(state: &State, seat: usize, ours: Bits, theirs: Bits) -> i64 {
+    use crate::front::{hold, score, FRONT_UNTIL, GOAL_C, GOAL_E, GOAL_O, HOLD, RACE};
+    if (RACE == 0 && GOAL_E == 0 && GOAL_C == 0 && GOAL_O == 0 && HOLD == 0)
+        || state.game_turn() > FRONT_UNTIL
+    {
+        return 0;
+    }
+    let band = goal_zones(state).0;
+    score(state, seat, band) + hold(state, seat, band, ours) - hold(state, 1 - seat, band, theirs)
 }
