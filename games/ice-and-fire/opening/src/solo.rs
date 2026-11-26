@@ -12,7 +12,7 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
-use ice_and_fire_engine::{Bits, Command, State, CELLS, HQ};
+use ice_and_fire_engine::{Bits, Command, State, CELLS, HQ, SIZE};
 
 use crate::assign;
 use crate::econ::{self, Buy, Params};
@@ -108,6 +108,11 @@ pub enum Order {
     /// the middle ([`ring`]: the central cells weigh most), then the
     /// weighted sum (the owner's evaluation, 2026-11-20).
     Central(Decay),
+    /// As [`Order::Central`], but the active cells less `pull` for each
+    /// step between them and the middle front's centre, on maps with a
+    /// middle front (an open field; the owner, 2026-11-26: the centre is a
+    /// must there, and the land extends toward it every turn; E083).
+    CentralPull { decay: Decay, pull: i64 },
     /// The active cells, then the least total distance from them to the
     /// frontier's cells (ring 0: even between the HQs), each distance at
     /// most `cap`, then the weighted sum: near the whole frontier, not one
@@ -471,6 +476,9 @@ pub struct Zones {
     /// Steps to the frontline behind it for `Order::BehindFront`
     /// ([`to_front`]).
     pub front: [u8; CELLS],
+    /// Steps to the middle front's centre of the side to act, for
+    /// `Order::CentralPull` (0 everywhere without a middle front).
+    pub to_centre: [u8; CELLS],
 }
 
 impl Default for Zones {
@@ -482,6 +490,7 @@ impl Default for Zones {
             rings: [i64::MAX; CELLS],
             frontier: Bits::EMPTY,
             front: [u8::MAX; CELLS],
+            to_centre: [0; CELLS],
         }
     }
 }
@@ -491,7 +500,7 @@ impl Zones {
     pub fn of(state: &State, objective: &Objective) -> Zones {
         let lexicographic = matches!(objective.order, Order::TieBreak { .. } | Order::LandFirst);
         let mut weights = [0; CELLS];
-        if let Order::Central(decay) = objective.order {
+        if let Order::Central(decay) | Order::CentralPull { decay, .. } = objective.order {
             for (w, ring) in weights.iter_mut().zip(rings(state)) {
                 *w = if ring == i64::MAX {
                     0
@@ -535,8 +544,48 @@ impl Zones {
             } else {
                 Bits::EMPTY
             },
+            to_centre: if matches!(objective.order, Order::CentralPull { .. }) {
+                to_middle_centre(state, state.to_act())
+            } else {
+                [0; CELLS]
+            },
         }
     }
+}
+
+/// The steps from each cell to `seat`'s middle front's centre: red's is
+/// the contested cell (steps to the two HQs within 2 of each other) with
+/// `|x - y|` at most 3 that is the most central (least `|x - y|`), then the
+/// nearest red's HQ; blue's is its mirror. All 0 when the map has fewer
+/// than 4 such cells (no middle front: no open field).
+pub fn to_middle_centre(state: &State, seat: usize) -> [u8; CELLS] {
+    let a = econ::distances(state, Bits::cell(HQ[0]));
+    let b = econ::distances(state, Bits::cell(HQ[1]));
+    let xy = |c: usize| ((c % SIZE) as i64, (c / SIZE) as i64);
+    let middle: Vec<usize> = state
+        .map()
+        .valid
+        .iter()
+        .filter(|&c| {
+            let (x, y) = xy(c);
+            a[c] != u8::MAX && b[c] != u8::MAX && a[c].abs_diff(b[c]) <= 2 && (x - y).abs() <= 3
+        })
+        .collect();
+    if middle.len() < 4 {
+        return [0; CELLS];
+    }
+    let Some(centre) = middle.iter().copied().min_by_key(|&c| {
+        let (x, y) = xy(c);
+        ((x - y).abs(), a[c], x, y)
+    }) else {
+        return [0; CELLS];
+    };
+    let cell = if seat == 0 {
+        centre
+    } else {
+        CELLS - 1 - centre
+    };
+    econ::distances(state, Bits::cell(cell))
 }
 
 /// The rank of `seat`'s position in `state` by `objective` and its
@@ -549,6 +598,22 @@ pub fn key(state: &State, seat: usize, objective: &Objective, zones: Zones) -> K
             let active = state.active(seat);
             let weighed: i64 = active.iter().map(|c| zones.weights[c]).sum();
             [i64::from(active.count()), weighed, sum, 0]
+        }
+        Order::CentralPull { pull, .. } => {
+            let active = state.active(seat);
+            let weighed: i64 = active.iter().map(|c| zones.weights[c]).sum();
+            let d = active
+                .iter()
+                .map(|c| zones.to_centre[c])
+                .min()
+                .unwrap_or(0)
+                .min(SIZE as u8);
+            [
+                i64::from(active.count()) - pull * i64::from(d),
+                weighed,
+                sum,
+                0,
+            ]
         }
         Order::Frontier { cap } => {
             let active = state.active(seat);
