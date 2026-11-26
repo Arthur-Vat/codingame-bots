@@ -138,7 +138,7 @@ pub const CUT_PAIRS: bool = false;
 /// What each gold a side keeps, up to [`KEEP_CAP`], counts beyond its value
 /// of 1, in quarters (E084): a training or a tower must then gain more than
 /// the gold it costs, or the gold is saved. 0 for nothing (v032).
-pub const KEEP_QUARTERS: i64 = 1;
+pub const KEEP_QUARTERS: i64 = 2;
 
 /// See [`KEEP_QUARTERS`].
 pub const KEEP_CAP: i64 = 30;
