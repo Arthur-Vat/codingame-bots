@@ -91,3 +91,26 @@ The race (with E073's band cells held removed) and holding the front
 every mix of them, the more the heavier; the goal cells alone are level
 with v032.
 
+### Games of the race and hold variants
+
+The owner (2026-11-26) chose to look at games before a second round. The
+race and hold variants played v032 at CodinGame's limits on the six maps
+of E080's planner study (CodinGame seeds), in both seats, with E080's
+`arena/examples/one_map.rs`: race won 3 and lost 9, hold won 7 and lost 5.
+From game turn 7, when the search takes over:
+
+- The race variant falls behind from turn 9: on map 925707781 as red it
+  holds 25, 27 and 30 cells at turns 9, 11 and 13 against v032's 30, 39
+  and 48. It trains 0 to 2 units a turn and builds towers at turns 8, 10
+  and 12, and at turn 10 the free cells on its own side (the bottom-left)
+  are still untaken while v032 drives into the middle. A free cell next to
+  our land already counts as won in the race (we arrive in one turn), so
+  taking it adds nothing: the race pays for cells one could take, where
+  E073's term, which the race replaced, pays for cells held.
+- The hold variant keeps its gold (43, 59 and 60 at turns 10, 12 and 14
+  on the same map) and buys towers: a unit counts only on a cell the enemy
+  cannot take, which a tower gives, while a unit stepping forward onto an
+  exposed cell loses its bonus.
+
+Pictures, action by action: https://claude.ai/artifact/6bTXzn74w3CrGougMPdJuv.
+
