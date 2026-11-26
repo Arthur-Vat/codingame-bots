@@ -138,7 +138,7 @@ pub const SECURE_BAND: i64 = 0;
 /// next turn counts for it (E085, round 2: held land only, so that taking a
 /// cell and making it safe pays more than leaving it exposed): 0 for
 /// nothing (v032).
-pub const SECURE_HELD: i64 = 2;
+pub const SECURE_HELD: i64 = 4;
 
 /// What each such cell next to a cell not the side's (its secure front
 /// line, the owner's "advanced front line the enemy cannot take back")
