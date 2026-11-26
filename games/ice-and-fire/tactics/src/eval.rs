@@ -15,7 +15,7 @@ const MAX_PRESSURE: i64 = 200;
 
 /// What each active tower of a side counts (E092 tries 0: a tower worth
 /// only what it protects). 10 in v032.
-pub const TOWER_VALUE: i64 = 10;
+pub const TOWER_VALUE: i64 = 0;
 
 /// What a side has: gold, income, active cells, units on active cells (by
 /// training cost) and its active towers.
