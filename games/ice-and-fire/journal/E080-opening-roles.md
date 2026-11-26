@@ -660,3 +660,54 @@ Pictures, every calibration in both modes, with the enemy stand-in, our
 territory and each unit's room:
 https://claude.ai/artifact/45xi3imE6WxsU2h4zUEDGP.
 
+## Adaptive plans against v020
+
+The owner (2026-11-26): plan against an opponent, first v020; no full
+games, adaptive plans until game turn 12: a turn-1 plan, then from turn 4
+or 5 the plan adapts to be ahead for the goals. Answers to the questions
+asked before the implementation: v020 live through our referee, both
+seats, the six maps (one first), re-planning every turn from turn 4, both
+sub-goals and macro choices adapting, four enemy models each as its own
+variant (free growth, momentum, our own plan mirrored, fastest rush),
+options weighed by the land decided times the race, the objective land
+then territory. Units have three roles: advancing toward short or
+middle-term goals (E, C, O per area, which depend on the opponent's play),
+fighting (one turn and the enemy's reply), and backline (longer-term
+filling). Towers are allowed where the opponent can grab territory, each
+spending of gold judged by the position after the guessed reply; the HQ
+needs no separate guard if the regular towers keep the opponent out of our
+territory, but an affordable chain to it counts as a lost position.
+
+`bot.py` (research/codingame/2026-11-25-turn1-planner), on map 925707787
+(CodinGame seed 4283710958304316400, reproduced by our referee), with
+`arena/examples/one_map.rs`:
+
+| Enemy model | Our seat | Last turn | Our cells | v020's cells | Turn-1 plan alone | Towers | End |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| free growth | red | 10 | 20 | 40 | 41 | 1 | HQ lost |
+| free growth | blue | 12 | 21 | 50 | 78 | 4 | turn 12 |
+| momentum | red | 9 | 22 | 32 | 34 | 1 | HQ lost |
+| momentum | blue | 12 | 28 | 42 | 78 | 6 | turn 12 |
+| our own plan | red | 12 | 16 | 57 | 66 | 2 | HQ lost |
+| our own plan | blue | 12 | 24 | 47 | 78 | 4 | turn 12 |
+| fastest rush | red | 12 | 6 | 61 | 66 | 3 | turn 12 |
+| fastest rush | blue | 11 | 15 | 50 | 66 | 2 | turn 12 |
+
+What it shows:
+- The prototype is far weaker than v020: v020 holds 32 to 61 cells at our
+  last turn against our 6 to 28, and takes our HQ in three of four games
+  as red. The turn-1 plan alone (no enemy) would hold 34 to 78.
+- Until turn 7 the land is close (15 to 19 at the start of turn 7 with
+  free growth as red); the gap opens in the fights from turn 8, where
+  v020's level-2 units and chains of trainings cut through our land.
+- The guessed reply underestimates v020 (3 cells lost predicted at turn 8
+  with free growth as red, 8 lost), so towers come late.
+- The fastest rush, as the owner expected, is too pessimistic: every
+  option looks lost, our units stay in the backline (16 to 23 backline
+  roles against 6 advancing), and we hold the least land.
+- Momentum, as blue, holds the most land (28) and builds the most towers.
+
+Pictures, turn by turn in each of the eight games, with each unit's role,
+the moving sub-goals, the guessed enemy land, the spending compared and the
+turn-1 plan alone beside: https://claude.ai/artifact/VffeEVbaMWUoYjf9a4UJiB.
+

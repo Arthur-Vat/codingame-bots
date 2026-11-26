@@ -1,0 +1,1 @@
+[{"lane": 0, "name": "bottom-left flank", "centre": [3, 8], "entrance": [3, 7], "sub": {"E": [3, 7], "C": [3, 8], "O": [5, 8]}}, {"lane": 1, "name": "middle", "centre": [5, 5], "entrance": [5, 5], "sub": {"E": [5, 5], "C": [5, 5], "O": [6, 6]}}, {"lane": 2, "name": "top-right flank", "centre": [8, 3], "entrance": [7, 3], "sub": {"E": [7, 3], "C": [8, 3], "O": [8, 5]}}]

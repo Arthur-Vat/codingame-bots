@@ -60,6 +60,27 @@ not part of the build or the checks.
   free growth mirrored through the map's centre; our territory, the free
   cells nearer our land than it; from turn 11 units and trainings take only
   cells of our territory, and a unit's room is its share of it.
+- `bot.py`: the planner as a bot (the owner, 2026-11-26), played against
+  a real opponent through our referee until game turn 12. Turns 1 to 3: the
+  turn-1 plan (`seq-925707787.json`, planner5's coordinated plan kept by
+  tolerance 1; `areas-925707787.json`, the areas and their static
+  sub-goals). From turn 4, every turn: an enemy model (`PLAN_MODEL`: free,
+  momentum, mirror, rush) guesses the enemy's land 4 turns ahead; the
+  sub-goals move with it; options are weighed by the cells reached before
+  the guessed enemy times a race factor; units fight (one turn and the
+  enemy's guessed reply), advance or fill the backline; towers are weighed
+  against the options by the enemy's guessed reply. One game, on the map of
+  CodinGame's seed, with `games/ice-and-fire/arena/examples/one_map.rs`:
+
+  ```sh
+  cargo build --release -p ice-and-fire-arena --example one_map
+  rustc --edition 2021 -C opt-level=3 -o v020 games/ice-and-fire/releases/ice-and-fire-v020.rs
+  PLAN_AREAS=areas-925707787.json PLAN_SEQ="$(cat seq-925707787.json)" PLAN_MODEL=free PLAN_LOG=log.jsonl \
+    target/release/examples/one_map 4283710958304316400 24 60 "plan=python3 bot.py" "v020=env CG_TIME_SCALE=1 ./v020" record.json
+  ```
+
+  (24 plies is game turn 12 for both; the time scale 60 gives the Python
+  bot time, and `CG_TIME_SCALE=1` keeps v020 at CodinGame's limits.)
 
 The pictures: fronts and goals https://claude.ai/artifact/CjVo3RiA1NCXV7eczk8vim,
 cell values and entrances https://claude.ai/artifact/1hsAEqAvnM83ZDnRKACE6y,
