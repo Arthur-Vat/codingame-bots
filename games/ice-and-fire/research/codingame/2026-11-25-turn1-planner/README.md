@@ -24,7 +24,9 @@ not part of the build or the checks.
   list of targets (entrances, deep cells) and a sharing of the trainings
   (all to the first unfinished target, or spread); every plan played for our
   turns 1 to 9 with simple rules; kept: the most land plus Voronoi share at
-  game turn 10 against the enemy's reach.
+  game turn 10 against the enemy's reach. The best plan and plain growth are
+  played again with every action logged, for the page's step-by-step
+  player.
 
 The pictures: fronts and goals https://claude.ai/artifact/CjVo3RiA1NCXV7eczk8vim,
 cell values and entrances https://claude.ai/artifact/1hsAEqAvnM83ZDnRKACE6y,

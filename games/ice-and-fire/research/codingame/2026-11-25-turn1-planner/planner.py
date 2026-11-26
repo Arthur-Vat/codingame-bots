@@ -53,7 +53,7 @@ def rush_reach(turns, cells0, red):
     return out
 
 
-def simulate(rows, ours0, enemy_at, targets, mode, free_bias):
+def simulate(rows, ours0, enemy_at, targets, mode, free_bias, log=None):
     """Our land after T turns playing `targets` in order."""
     L = set(ours0)
     units = []  # [pos, target index or None, moved_this_turn]
@@ -63,6 +63,8 @@ def simulate(rows, ours0, enemy_at, targets, mode, free_bias):
     occupied = set()
     for t in range(1, T + 1):
         g += len(L) - len(units)
+        if log is not None:
+            log.append(dict(t=t, kind='turn', gold=g, income=len(L) - len(units)))
         blocked = {c for c, e in enemy_at.items() if e < t}  # the enemy's by its turn t-1
         def ok(c):
             return c not in blocked and enemy_at.get(c, 99) >= t
@@ -86,6 +88,8 @@ def simulate(rows, ours0, enemy_at, targets, mode, free_bias):
                     if best is None or (c not in L, -d[c]) > (best not in L, -d[best]):
                         best = c
             if best is not None:
+                if log is not None:
+                    log.append(dict(t=t, kind='move', frm=list(pos), to=list(best), target=ti, gold=g))
                 occupied.discard(tuple(pos))
                 un[0] = best
                 occupied.add(best)
@@ -114,6 +118,8 @@ def simulate(rows, ours0, enemy_at, targets, mode, free_bias):
             occupied.add(c)
             units.append([c, ti])
             g -= 10
+            if log is not None:
+                log.append(dict(t=t, kind='train', to=list(c), target=ti, gold=g))
             if ti is not None:
                 progress[ti] += 1
                 if c == targets[ti]:
@@ -179,4 +185,11 @@ for g in G:
     g['free'] = dict(score=free[0], cells=free[1], voronoi=free[2], enemy=free[3], land=[list(c) for c in free[6]])
     g['top'] = [dict(score=p[0], cells=p[1], voronoi=p[2], order=[dict(cell=list(targets[i][0]), lane=targets[i][1], kind=targets[i][2]) for i in p[4]], mode=p[5]) for p in plans[:5]]
     g['reach'] = reach
+    # The best plan and plain growth again, every action logged, and the
+    # enemy's land in the model at each of our turns (its turns before ours).
+    for key, p in (('plan', best), ('free', free)):
+        log = []
+        simulate(rows, O, enemy_at, [cells[i] for i in p[4]], p[5], free_bias, log)
+        g[key]['actions'] = log
+    g['enemy_by_turn'] = {t: [list(c) for c, e in enemy_at.items() if e <= t - 1] for t in range(1, T + 2)}
 json.dump(G, open(P + '/plans.json', 'w'), separators=(',', ':'))
