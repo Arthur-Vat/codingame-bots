@@ -147,14 +147,14 @@ pub(crate) fn mines(state: &State, seat: usize, exposed: Bits) -> i64 {
 /// game): the value falls in a straight line to nothing at [`SPOT_UNTIL`].
 /// A spot with a mine counts too, so that building one keeps the value. 0
 /// in v032.
-pub const SPOT_WEIGHT: i64 = 15;
+pub const SPOT_WEIGHT: i64 = 10;
 
 /// The game turn from which a mine spot counts nothing more (E089).
 pub const SPOT_UNTIL: i64 = 40;
 
 /// Whether a mine spot counts only when the enemy cannot take it at its next
 /// turn (E089).
-pub const SPOT_SAFE: bool = true;
+pub const SPOT_SAFE: bool = false;
 
 /// What the mine spots of `seat` count ([`SPOT_WEIGHT`]). `exposed` is
 /// `exposed(state, seat)`.
