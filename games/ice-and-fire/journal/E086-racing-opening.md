@@ -70,3 +70,25 @@ variant loses more middle cells at turns 6 to 10 than v032 (0.60 to 0.95
 against 0.47 a game), the most those whose simulation lets the opponent
 play: they are not stronger in the centre. Pictures of race2 beside v032
 against itself, action by action: https://claude.ai/artifact/Esh6hC6nvscvnkxknci3xy.
+
+### A unit that left the line
+
+The owner (2026-11-26), on race2's game on map 925707781 (red): "unit 11
+moves to (3, 9)": had it stayed, we would have been more solid; was that
+considered? At game turn 10 (the search's turn) unit 11 stood on (3, 8) in
+our line; the turn played was `BUILD TOWER 4 2; MOVE 1 4 4; MOVE 5 4 8;
+MOVE 2 1 8; MOVE 11 3 9; TRAIN 1 6 4`. `explain` (the analysis build's
+breakdown, extended here with `--moves` and `--played` to explain the moves
+of the turn actually played), at 2,000 tries: without the move the turn
+scores 10 less, at the end of our turn and after the opponent's answer the
+search models: +8 for the cell taken, +4 for a band cell, -2 of shape.
+Staying was the search's starting point; it kept the move. v032 answered
+`MOVE 3 5 8; TRAIN 2 4 8; TRAIN 1 3 8; TRAIN 1 3 7`: its unit stepped next
+to our line, a level-2 unit killed ours on (4, 8), a level-1 unit took the
+cell unit 11 had left, and the last training cut (3, 9) off, where unit 11
+died; 40 gold, its 14 and its income of 26. The search's replies miss this
+kind: its cut finder chains trainings only, and E037's threat lets only
+units of level 2 or more step first, where here a level-1 unit stepped
+before the chain (as in 34% of the large surprises of E084's
+`codingame-surprise`).
+

@@ -1,6 +1,8 @@
-//! `explain --positions FILE [--tries N] [--cell X,Y]`: for each position,
-//! the search's plan (at `--tries` tries, its opening over), and for each
-//! level-1 training of the plan (or only the one on `--cell`), what the
+//! `explain --positions FILE [--tries N] [--cell X,Y] [--moves] [--played]`:
+//! for each position, the search's plan (at `--tries` tries, its opening
+//! over; with `--played`, the answer the position's block says was played),
+//! and for each level-1 training of the plan (with `--moves`, each move
+//! too; or only the one onto `--cell`), what the
 //! evaluation gains by it: the plan's end state against the same plan
 //! without that training, each term of the evaluation (`eval::terms`), at
 //! the end of our turn (no reply) and after the opponent's answer (the
@@ -55,6 +57,8 @@ pub fn run(args: &[String]) -> Result<String, String> {
     let mut positions = None;
     let mut tries: u64 = 1_000;
     let mut only: Option<(u8, u8)> = None;
+    let mut moves = false;
+    let mut played = false;
     let mut args = args.iter();
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -75,6 +79,8 @@ pub fn run(args: &[String]) -> Result<String, String> {
                     y.parse().map_err(|_| "--cell needs X,Y")?,
                 ));
             }
+            "--moves" => moves = true,
+            "--played" => played = true,
             other => return Err(format!("unknown argument {other}")),
         }
     }
@@ -91,10 +97,15 @@ pub fn run(args: &[String]) -> Result<String, String> {
             }
         };
         let seat = state.to_act();
-        let plan = think(&state, limit(tries), &mut opening).commands;
+        let plan = match (&position.played, played) {
+            (Some(line), true) => super::judge::commands_of(line),
+            _ => think(&state, limit(tries), &mut opening).commands,
+        };
         for (i, command) in plan.iter().enumerate() {
-            let Command::Train { level: 1, x, y } = *command else {
-                continue;
+            let (x, y) = match *command {
+                Command::Train { level: 1, x, y } => (x, y),
+                Command::Move { x, y, .. } if moves => (x, y),
+                _ => continue,
             };
             if only.is_some_and(|cell| cell != (x, y)) {
                 continue;
@@ -118,11 +129,12 @@ pub fn run(args: &[String]) -> Result<String, String> {
                 - eval(&after(&state, &without, true, tries), seat);
             let _ = write!(
                 out,
-                "{}\t{}\t{}\t{}\t{x},{y}\t{}\t{}\t{}",
+                "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
                 position.name,
                 position.ply,
                 position.game_turn,
                 seat,
+                command.to_text(),
                 answer_line(&plan),
                 eval(&a, seat) - eval(&b, seat),
                 answered
