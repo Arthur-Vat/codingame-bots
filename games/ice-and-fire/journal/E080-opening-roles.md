@@ -791,3 +791,15 @@ away from v020 (some chosen by the search against a chain to our HQ), and
 1 to 3 of our 4 to 9 trainings a game go more than 4 steps from v020's
 land. One game a setting.
 
+The pictures now go action by action (the owner, 2026-11-26: the turn
+boards were barely readable): `arena/examples/one_map.rs` also replays
+the game command by command on the engine's state and writes the board
+after each, and `frames.py` (research/codingame/2026-11-25-turn1-planner)
+joins each of our commands to its role and reason from the bot's log. A
+new run of the eight games (v020's search depends on time, so the games
+differ from the table above): our cells at turn 12 against v020's, 25-46,
+17-54, 23-47 (HQ lost), 37-33, 24-48 (HQ lost), 17-57, 15-55 (HQ lost) and
+28-46 (free growth, momentum, our own plan and the fastest rush, red then
+blue); momentum as blue is the first game where we hold more land than
+v020 at turn 12.
+
