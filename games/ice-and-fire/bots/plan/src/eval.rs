@@ -63,6 +63,12 @@
 //!   search takes over at game turn 7 without it. Until game turn
 //!   [`GOAL_UNTIL`], band cells near a side's land, held by it, guarded by
 //!   its towers, and the middle chokes it holds count for it ([`goal`]).
+//! - **Cuts and kept gold** (E084): in v032's CodinGame games the cells lost
+//!   before game turn 12 were as often cut off from the HQ as captured, and
+//!   v032 spent its gold before the enemy's cut. The cells the enemy's most
+//!   damaging capture cuts off cost [`CUT_QUARTERS`] quarters each
+//!   ([`cut_off`]), and kept gold counts [`KEEP_QUARTERS`] quarters more a
+//!   gold ([`kept`]).
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::reach_within_moving;
@@ -115,6 +121,68 @@ pub(crate) fn exposed(state: &State, seat: usize) -> Bits {
 /// turn ([`exposed`]).
 pub fn threatened(state: &State, seat: usize) -> i64 {
     i64::from(exposed(state, seat).count())
+}
+
+/// What each cell of a side cut off from its HQ by the enemy's most
+/// damaging capture at its next turn costs it, in quarters (E084): the
+/// captures are the [`exposed`] cells, one at a time (or, with
+/// [`CUT_PAIRS`], two neighbouring ones together, as a chain of two
+/// trainings); the captured cells themselves are E023's. 0 for nothing
+/// (v032).
+pub const CUT_QUARTERS: i64 = 0;
+
+/// Whether [`CUT_QUARTERS`] also tries two neighbouring exposed cells taken
+/// together (E084).
+pub const CUT_PAIRS: bool = false;
+
+/// What each gold a side keeps, up to [`KEEP_CAP`], counts beyond its value
+/// of 1, in quarters (E084): a training or a tower must then gain more than
+/// the gold it costs, or the gold is saved. 0 for nothing (v032).
+pub const KEEP_QUARTERS: i64 = 0;
+
+/// See [`KEEP_QUARTERS`].
+pub const KEEP_CAP: i64 = 30;
+
+/// The active cells of `seat` the enemy's most damaging capture among
+/// `exposed` cuts off from `seat`'s HQ (E084), the captured cells left out.
+pub fn cut_off(state: &State, seat: usize, exposed: Bits) -> i64 {
+    let active = state.active(seat);
+    let hq = Bits::cell(HQ[seat]);
+    if (active & hq).is_empty() {
+        return 0;
+    }
+    let lost = |taken: Bits| -> i64 {
+        let allowed = active.and_not(taken);
+        if !(taken & hq).is_empty() {
+            return i64::from(active.count());
+        }
+        let mut seen = hq;
+        let mut frontier = hq;
+        while !frontier.is_empty() {
+            frontier = (frontier.neighbours() & allowed).and_not(seen);
+            seen |= frontier;
+        }
+        i64::from(allowed.and_not(seen).count())
+    };
+    let mut worst = 0;
+    for c in exposed.iter() {
+        let one = Bits::cell(c);
+        worst = worst.max(lost(one));
+        if CUT_PAIRS {
+            for d in (one.neighbours() & exposed).iter() {
+                if d > c {
+                    worst = worst.max(lost(one | Bits::cell(d)));
+                }
+            }
+        }
+    }
+    worst
+}
+
+/// What a side's kept gold counts beyond its value ([`KEEP_QUARTERS`]), in
+/// quarters.
+pub fn kept(state: &State, seat: usize) -> i64 {
+    KEEP_QUARTERS * state.gold(seat).clamp(0, KEEP_CAP)
 }
 
 /// The active cells of a side for which each of its mines counts one more
@@ -598,6 +666,16 @@ pub fn eval(state: &State, seat: usize) -> i64 {
     let ours = exposed(state, seat);
     let theirs = exposed(state, 1 - seat);
     let threats = i64::from(theirs.count()) - i64::from(ours.count());
+    let cuts = if CUT_QUARTERS == 0 {
+        0
+    } else {
+        cut_off(state, 1 - seat, theirs) - cut_off(state, seat, ours)
+    };
+    let keep = if KEEP_QUARTERS == 0 {
+        0
+    } else {
+        kept(state, seat) - kept(state, 1 - seat)
+    };
     score - 2 * debt(state, seat)
         + 2 * debt(state, 1 - seat)
         + shape(state, seat)
@@ -606,6 +684,7 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         - idle(state, seat)
         + idle(state, 1 - seat)
         + THREAT_QUARTERS * threats / 4
+        + (CUT_QUARTERS * cuts + keep) / 4
         + mines(state, seat, ours)
         - mines(state, 1 - seat, theirs)
         + wall(state, seat)

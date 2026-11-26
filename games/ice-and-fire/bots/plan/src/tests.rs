@@ -1869,3 +1869,31 @@ fn only_joints_near_the_enemy_count_from_v032() {
         2 + 2
     );
 }
+
+#[test]
+fn a_capture_cuts_off_the_cells_behind_it() {
+    // Red holds a line from its HQ; blue can take the second cell.
+    let state = position(
+        [
+            "OOOO........",
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            "............",
+            "...........X",
+        ],
+        [0, 0],
+        &[],
+    );
+    let second = Bits::cell(1);
+    // Taking (1, 0) cuts off (2, 0) and (3, 0); taking (3, 0) cuts off none.
+    assert_eq!(crate::eval::cut_off(&state, 0, second), 2);
+    assert_eq!(crate::eval::cut_off(&state, 0, Bits::cell(3)), 0);
+    assert_eq!(crate::eval::cut_off(&state, 0, second | Bits::cell(3)), 2);
+}
