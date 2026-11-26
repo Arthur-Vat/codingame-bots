@@ -315,7 +315,7 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
 /// both, or saving): each pair of them that the gold pays for is offered
 /// as one action, so that a pair can be bought though neither alone raises
 /// the score; saving stays the climb's default. 0 for none (v032).
-pub const BUNDLE_CANDIDATES: usize = 0;
+pub const BUNDLE_CANDIDATES: usize = 6;
 
 /// What a purchase costs: its training's level times 10, or a building's
 /// cost; 0 for anything else.
