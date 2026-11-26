@@ -5,13 +5,13 @@ pull_request: "#NN"
 parent: ice-and-fire-v032
 hypothesis: Repairing each plan the search finds against its own worst reply (dropping a command, or adding a counter or an action), then searching the repaired plan's replies afresh and repairing again, finds plans that hold against the replies they open, and beats ice-and-fire-v032.
 change: After a climb's plan has had its replies searched, the search repairs it up to `REPAIR` times (`search/repair.rs`), each repaired plan getting its own replies; each setting at its v032 value is v032.
-release: pending
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
-cg_rank: not reported
+release: none
+sprt: not run: level with v032 at 1,200 pairs
+elo: none
+pairs: none
+full_time: none
+decision: dropped
+cg_rank: none
 ---
 
 ## Why
@@ -93,3 +93,6 @@ The two best and two neighbours again, 1,200 pairs over three shards each
 The lean of the first screening does not hold: the repair is level with
 v032, as E088's leaners were.
 
+## Result
+
+Dropped (the owner, 2026-11-26).
