@@ -32,7 +32,7 @@ pub const GOAL_MIDDLE: i64 = 2;
 /// What each band cell in the middle (`|x - y|` at most 3, the middle
 /// front's place, red's view) a side holds actively counts beyond E073's
 /// band cells held: 0 for nothing (v032).
-pub const CENTRE: i64 = 0;
+pub const CENTRE: i64 = 4;
 
 /// What each unit of a side on a band cell it holds actively, which the
 /// enemy cannot take at its next turn, counts: 0 for nothing (v032).
