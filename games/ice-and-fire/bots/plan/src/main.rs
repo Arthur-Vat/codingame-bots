@@ -139,9 +139,29 @@ const OBJECTIVE: Objective = Objective {
 /// position (E073); 0: only when our side leaves the plan, as in v029.
 const REPLAN_FROM: u32 = 0;
 
+/// The weight of the middle front's centre in the opening's race to the
+/// areas of interest (E086, `Order::Race`): 0 for v032's `Order::Central`.
+const OPENING_RACE: i64 = 0;
+
+/// Whether that race comes after the land rather than before it (E086).
+const OPENING_LAND_FIRST: bool = false;
+
+/// Whether the opening's plans meet an opponent that plays the opening's
+/// own rules rather than one that passes (E086,
+/// `solo::OPPONENT_PLAYS`).
+const OPENING_OPPONENT: bool = false;
+
 /// How the opening compares its plans (E073): the weighted sum above in
-/// v029.
-const ORDER: Order = Order::Central(Decay::Linear(7));
+/// v029; with [`OPENING_RACE`], the race to the areas of interest (E086).
+const ORDER: Order = if OPENING_RACE == 0 {
+    Order::Central(Decay::Linear(7))
+} else {
+    Order::Race {
+        decay: Decay::Linear(7),
+        middle: OPENING_RACE,
+        land_first: OPENING_LAND_FIRST,
+    }
+};
 
 /// The opening uses a mine spot only when the enemy's territory is more than
 /// this many steps from it: `u8::MAX`, so it builds no mine (E034; v003's
@@ -231,6 +251,7 @@ fn opening_of(width: usize) -> Planned {
 fn main() {
     #[cfg(feature = "analysis")]
     analysis::main_if_asked();
+    solo::OPPONENT_PLAYS.store(OPENING_OPPONENT, std::sync::atomic::Ordering::Relaxed);
     let stdin = io::stdin();
     let stdout = io::stdout();
     if let Err(err) = session::play(&limit, opening(), stdin.lock(), stdout.lock()) {

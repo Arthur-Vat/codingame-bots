@@ -12,7 +12,7 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
-use ice_and_fire_engine::{Bits, Command, State, CELLS, HQ};
+use ice_and_fire_engine::{Bits, Command, State, CELLS, HQ, SIZE};
 
 use crate::assign;
 use crate::econ::{self, Buy, Params};
@@ -108,6 +108,19 @@ pub enum Order {
     /// the middle ([`ring`]: the central cells weigh most), then the
     /// weighted sum (the owner's evaluation, 2026-11-20).
     Central(Decay),
+    /// The areas of interest held strongly, then the active cells (or the
+    /// active cells first with `land_first`), then as [`Order::Central`]
+    /// with `decay` (E086, the owner, 2026-11-26: race the opponent to the
+    /// areas of interest, and be strong there): each front's centre
+    /// ([`front_centres`]) counts 2 when the side holds it actively and the
+    /// enemy cannot take it at its next turn, 1 when it holds it but the
+    /// enemy can, -2 when the enemy holds it; the middle front's `middle`
+    /// times.
+    Race {
+        decay: Decay,
+        middle: i64,
+        land_first: bool,
+    },
     /// The active cells, then the least total distance from them to the
     /// frontier's cells (ring 0: even between the HQs), each distance at
     /// most `cap`, then the weighted sum: near the whole frontier, not one
@@ -471,6 +484,9 @@ pub struct Zones {
     /// Steps to the frontline behind it for `Order::BehindFront`
     /// ([`to_front`]).
     pub front: [u8; CELLS],
+    /// The centre of each front (bottom-left, middle, top-right) of the
+    /// side to act, `CELLS` where the map has none, for `Order::Race`.
+    pub centres: [usize; 3],
 }
 
 impl Default for Zones {
@@ -482,6 +498,7 @@ impl Default for Zones {
             rings: [i64::MAX; CELLS],
             frontier: Bits::EMPTY,
             front: [u8::MAX; CELLS],
+            centres: [CELLS; 3],
         }
     }
 }
@@ -491,7 +508,7 @@ impl Zones {
     pub fn of(state: &State, objective: &Objective) -> Zones {
         let lexicographic = matches!(objective.order, Order::TieBreak { .. } | Order::LandFirst);
         let mut weights = [0; CELLS];
-        if let Order::Central(decay) = objective.order {
+        if let Order::Central(decay) | Order::Race { decay, .. } = objective.order {
             for (w, ring) in weights.iter_mut().zip(rings(state)) {
                 *w = if ring == i64::MAX {
                     0
@@ -535,9 +552,99 @@ impl Zones {
             } else {
                 Bits::EMPTY
             },
+            centres: if matches!(objective.order, Order::Race { .. }) {
+                front_centres(state, state.to_act())
+            } else {
+                [CELLS; 3]
+            },
         }
     }
 }
+
+/// The centre of each front of the map (bottom-left, middle, top-right) for
+/// `seat`, `CELLS` where there is none (E086, as E083's `front.rs` and
+/// E080's planner): a front is the cells whose steps to the two HQs differ
+/// by at most 2, by their place (`x - y` at most -4, between, at least 4,
+/// red's view), at least 4 of them; its centre, the most central (least
+/// `|x - y|`) for the middle, the nearest its cells' mean for a flank, then
+/// the nearest red's HQ. Blue's are the mirrors.
+pub fn front_centres(state: &State, seat: usize) -> [usize; 3] {
+    let a = econ::distances(state, Bits::cell(HQ[0]));
+    let b = econ::distances(state, Bits::cell(HQ[1]));
+    let xy = |c: usize| ((c % SIZE) as i64, (c / SIZE) as i64);
+    let lane = |c: usize| {
+        let (x, y) = xy(c);
+        match x - y {
+            k if k <= -4 => 0,
+            k if k >= 4 => 2,
+            _ => 1,
+        }
+    };
+    let mut parts: [Vec<usize>; 3] = [Vec::new(), Vec::new(), Vec::new()];
+    for c in state.map().valid.iter() {
+        if a[c] != u8::MAX && b[c] != u8::MAX && a[c].abs_diff(b[c]) <= 2 {
+            parts[lane(c)].push(c);
+        }
+    }
+    let mut out = [CELLS; 3];
+    for (l, cells) in parts.iter().enumerate() {
+        if cells.len() < 4 {
+            continue;
+        }
+        let n = cells.len() as i64;
+        let (sx, sy) = cells.iter().fold((0, 0), |(sx, sy), &c| {
+            let (x, y) = xy(c);
+            (sx + x, sy + y)
+        });
+        let centre = cells.iter().copied().min_by_key(|&c| {
+            let (x, y) = xy(c);
+            let (dx, dy) = (n * x - sx, n * y - sy);
+            let spread = if l == 1 {
+                (x - y).abs()
+            } else {
+                dx * dx + dy * dy
+            };
+            (spread, a[c], x, y)
+        });
+        if let Some(c) = centre {
+            out[l] = if seat == 0 { c } else { CELLS - 1 - c };
+        }
+    }
+    out
+}
+
+/// The areas of interest `seat` holds strongly ([`Order::Race`]).
+fn areas(state: &State, seat: usize, centres: [usize; 3], middle: i64) -> i64 {
+    let enemy = 1 - seat;
+    let budget = state.gold(enemy) + state.income(enemy);
+    let reach = ice_and_fire_tactics::chain::reach_within(state, enemy, true, budget);
+    let mut total = 0;
+    for (l, &c) in centres.iter().enumerate() {
+        if c >= CELLS {
+            continue;
+        }
+        let weight = if l == 1 { middle } else { 1 };
+        let value = if state.active(seat).test(c) {
+            if reach.test(c) {
+                1
+            } else {
+                2
+            }
+        } else if state.owned(enemy).test(c) {
+            -2
+        } else {
+            0
+        };
+        total += weight * value;
+    }
+    total
+}
+
+/// Whether the opening's simulation lets the opponent play the opening's
+/// own rules (`econ`, v003's weights, the payback rule) at its turns,
+/// rather than pass (E086): set once by the bot.
+pub static OPPONENT_PLAYS: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
 
 /// The rank of `seat`'s position in `state` by `objective` and its
 /// [`Order`].
@@ -549,6 +656,19 @@ pub fn key(state: &State, seat: usize, objective: &Objective, zones: Zones) -> K
             let active = state.active(seat);
             let weighed: i64 = active.iter().map(|c| zones.weights[c]).sum();
             [i64::from(active.count()), weighed, sum, 0]
+        }
+        Order::Race {
+            middle, land_first, ..
+        } => {
+            let active = state.active(seat);
+            let weighed: i64 = active.iter().map(|c| zones.weights[c]).sum();
+            let held = areas(state, seat, zones.centres, middle);
+            let land = i64::from(active.count());
+            if land_first {
+                [land, held, weighed, sum]
+            } else {
+                [held, land, weighed, sum]
+            }
         }
         Order::Frontier { cap } => {
             let active = state.active(seat);
@@ -612,12 +732,18 @@ pub fn key(state: &State, seat: usize, objective: &Objective, zones: Zones) -> K
     }
 }
 
-/// Our `commands`, then the opponent passes: our next start of turn.
+/// Our `commands`, then the opponent passes, or with [`OPPONENT_PLAYS`]
+/// plays the opening's own rules: our next start of turn.
 pub fn advance(state: &State, commands: &[Command]) -> State {
     let mut next = state.clone();
     next.play_turn(commands);
     if next.outcome().is_none() {
-        next.play_turn(&[]);
+        if OPPONENT_PLAYS.load(std::sync::atomic::Ordering::Relaxed) {
+            let theirs = econ::turn_with(&next, &Params::V003, Buy::Payback);
+            next.play_turn(&theirs);
+        } else {
+            next.play_turn(&[]);
+        }
     }
     next
 }

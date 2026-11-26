@@ -67,3 +67,21 @@ fn the_anytime_plan_is_never_worse_than_its_first_beam() {
     assert!(rated(&anytime) >= rated(&first));
     assert!(rated(&anytime) >= rated(&[]));
 }
+
+#[test]
+fn the_centres_of_the_fronts_and_their_mirrors() {
+    // The map of CodinGame's game 925707787 (its seed reproduces it): its
+    // fronts' centres for red are (3, 8), (5, 5) and (8, 3) (E080, E083).
+    let seed = 4_283_710_958_304_316_400_i64 as u64;
+    let map = ice_and_fire_referee::map::generate(seed, ice_and_fire_referee::League::Bronze);
+    let state = State::new(&map.void, &map.mine_spots, League::Bronze);
+    let at = |x: usize, y: usize| y * 12 + x;
+    assert_eq!(
+        super::front_centres(&state, 0),
+        [at(3, 8), at(5, 5), at(8, 3)]
+    );
+    assert_eq!(
+        super::front_centres(&state, 1),
+        [143 - at(3, 8), 143 - at(5, 5), 143 - at(8, 3)]
+    );
+}
