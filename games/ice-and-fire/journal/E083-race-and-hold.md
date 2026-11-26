@@ -73,3 +73,21 @@ A local check of all-heavy against v032, 10 pairs at CodinGame's limits
 
 The screening, on the owner's approval (2026-11-26): `screen.yml` run
 45818893819, full games against v032, 400 pairs per variant over 2 shards.
+
+Results (job `Summary`, 400 pairs each, full games, no fault on either
+side):
+
+| Variant | Elo over v032 [95%] |
+| --- | --- |
+| race | -94.3 [-119.1, -70.4] |
+| goals | +2.6 [-18.6, +23.8] |
+| hold | -57.0 [-78.9, -35.4] |
+| all | -130.9 [-157.8, -105.5] |
+| all-light | -112.3 [-137.1, -88.7] |
+| all-heavy | -208.7 [-237.6, -182.1] |
+
+The race (with E073's band cells held removed) and holding the front
+(with idle units charged toward the front) are clearly weaker, and so is
+every mix of them, the more the heavier; the goal cells alone are level
+with v032.
+
