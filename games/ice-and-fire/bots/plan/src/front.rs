@@ -14,25 +14,34 @@ pub const FRONT_UNTIL: u32 = 14;
 /// What each contested band cell (E073's band) counts for the side that
 /// arrives first ([`arrivals`]), less those the enemy arrives at first: 0
 /// for nothing (v032).
-pub const RACE: i64 = 6;
+pub const RACE: i64 = 0;
 
 /// What a front counts for a side whose deepest goal cell held or reached
 /// first is its entrance, centre or outpost ([`goal_cells`]): 0 for
 /// nothing (v032).
-pub const GOAL_E: i64 = 6;
+pub const GOAL_E: i64 = 0;
 /// See [`GOAL_E`].
-pub const GOAL_C: i64 = 12;
+pub const GOAL_C: i64 = 0;
 /// See [`GOAL_E`].
-pub const GOAL_O: i64 = 18;
+pub const GOAL_O: i64 = 0;
+
+/// The factor of the middle front's goal weights ([`GOAL_E`]): 1 is the
+/// flanks' weights (the owner, 2026-11-26: value the centre more).
+pub const GOAL_MIDDLE: i64 = 1;
+
+/// What each band cell in the middle (`|x - y|` at most 3, the middle
+/// front's place, red's view) a side holds actively counts beyond E073's
+/// band cells held: 0 for nothing (v032).
+pub const CENTRE: i64 = 0;
 
 /// What each unit of a side on a band cell it holds actively, which the
 /// enemy cannot take at its next turn, counts: 0 for nothing (v032).
-pub const HOLD: i64 = 6;
+pub const HOLD: i64 = 0;
 
 /// Whether E060's charge on idle units counts their steps to the front
 /// (the enemy's cells and the band cells not the side's) rather than to the
 /// nearest cell not the side's, until [`FRONT_UNTIL`]: false is v032.
-pub const IDLE_TO_FRONT: bool = true;
+pub const IDLE_TO_FRONT: bool = false;
 
 /// The farthest arrival counted, in turns.
 const CAP: usize = 8;
@@ -86,7 +95,7 @@ pub fn race_net(a: &[Bits; CAP + 1], b: &[Bits; CAP + 1], cells: Bits) -> i64 {
 /// centre, outpost.
 struct Goals {
     valid: Bits,
-    fronts: Vec<[usize; 3]>,
+    fronts: Vec<(usize, [usize; 3])>,
 }
 
 thread_local! {
@@ -136,9 +145,9 @@ fn central_path(state: &State, start: usize, goal: usize) -> Vec<usize> {
 
 /// The goal cells of `state`'s map for red, computed once a map: for each
 /// front (the cells within a ring of even between the HQs, by
-/// [`lane`], at least 4 of them), its entrance, centre and outpost (see
-/// the journal entry E083).
-pub fn goal_cells(state: &State) -> Vec<[usize; 3]> {
+/// [`lane`], at least 4 of them), its lane and its entrance, centre and
+/// outpost (see the journal entry E083).
+pub fn goal_cells(state: &State) -> Vec<(usize, [usize; 3])> {
     GOALS.with(|slot| {
         let mut goals = slot.borrow_mut();
         let valid = state.map().valid;
@@ -152,7 +161,7 @@ pub fn goal_cells(state: &State) -> Vec<[usize; 3]> {
     })
 }
 
-fn compute_goals(state: &State) -> Vec<[usize; 3]> {
+fn compute_goals(state: &State) -> Vec<(usize, [usize; 3])> {
     let valid = state.map().valid;
     let a = distances(state, Bits::cell(HQ[0]));
     let b = distances(state, Bits::cell(HQ[1]));
@@ -209,7 +218,7 @@ fn compute_goals(state: &State) -> Vec<[usize; 3]> {
         };
         let beyond = central_path(state, centre, HQ[1]);
         let outpost = beyond.get(2).copied().unwrap_or(centre);
-        out.push([entrance, centre, outpost]);
+        out.push((l, [entrance, centre, outpost]));
     }
     out
 }
@@ -217,15 +226,23 @@ fn compute_goals(state: &State) -> Vec<[usize; 3]> {
 /// The race and goal terms for `seat`, less the enemy's (0 after
 /// [`FRONT_UNTIL`]); `band` is E073's band.
 pub fn score(state: &State, seat: usize, band: Bits) -> i64 {
-    if (RACE == 0 && GOAL_E == 0 && GOAL_C == 0 && GOAL_O == 0) || state.game_turn() > FRONT_UNTIL {
+    if (RACE == 0 && GOAL_E == 0 && GOAL_C == 0 && GOAL_O == 0 && CENTRE == 0)
+        || state.game_turn() > FRONT_UNTIL
+    {
         return 0;
     }
     let ours = arrivals(state, seat);
     let theirs = arrivals(state, 1 - seat);
     let mut total = RACE * race_net(&ours, &theirs, band);
+    if CENTRE != 0 {
+        let middle = band & middle_cells();
+        let held = |side: usize| i64::from((state.active(side) & middle).count());
+        total += CENTRE * (held(seat) - held(1 - seat));
+    }
     if GOAL_E != 0 || GOAL_C != 0 || GOAL_O != 0 {
         let layers = |side: usize| if side == seat { &ours } else { &theirs };
-        for front in goal_cells(state) {
+        for (front_lane, front) in goal_cells(state) {
+            let factor = if front_lane == 1 { GOAL_MIDDLE } else { 1 };
             for side in 0..2 {
                 let other = 1 - side;
                 let value = [(2, GOAL_O), (1, GOAL_C), (0, GOAL_E)]
@@ -240,12 +257,23 @@ pub fn score(state: &State, seat: usize, band: Bits) -> i64 {
                         state.active(side).test(cell)
                             || first(layers(side), cell) < first(layers(other), cell)
                     })
-                    .map_or(0, |(_, w)| w);
+                    .map_or(0, |(_, w)| w * factor);
                 total += if side == seat { value } else { -value };
             }
         }
     }
     total
+}
+
+/// The cells with `|x - y|` at most 3 (the middle front's place).
+fn middle_cells() -> Bits {
+    let mut out = Bits::EMPTY;
+    for c in 0..CELLS {
+        if lane(c) == 1 {
+            out.set(c);
+        }
+    }
+    out
 }
 
 /// What `seat`'s units holding the front count ([`HOLD`]): each on a band

@@ -467,7 +467,7 @@ pub const GOAL: i64 = 0;
 /// See [`GOAL`].
 pub const GOAL_MARGIN: u8 = 1;
 /// See [`GOAL`].
-pub const GOAL_OWNED: i64 = 0;
+pub const GOAL_OWNED: i64 = 4;
 /// See [`GOAL`].
 pub const GOAL_GUARD: i64 = 0;
 /// See [`GOAL`].
@@ -621,8 +621,8 @@ pub fn eval(state: &State, seat: usize) -> i64 {
 /// The front's terms (E083, `crate::front`): the race and goal cells, and
 /// the units holding the front of each side.
 fn front(state: &State, seat: usize, ours: Bits, theirs: Bits) -> i64 {
-    use crate::front::{hold, score, FRONT_UNTIL, GOAL_C, GOAL_E, GOAL_O, HOLD, RACE};
-    if (RACE == 0 && GOAL_E == 0 && GOAL_C == 0 && GOAL_O == 0 && HOLD == 0)
+    use crate::front::{hold, score, CENTRE, FRONT_UNTIL, GOAL_C, GOAL_E, GOAL_O, HOLD, RACE};
+    if (RACE == 0 && GOAL_E == 0 && GOAL_C == 0 && GOAL_O == 0 && HOLD == 0 && CENTRE == 0)
         || state.game_turn() > FRONT_UNTIL
     {
         return 0;

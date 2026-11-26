@@ -22,9 +22,9 @@ fn the_goal_cells_are_the_prototypes() {
     assert_eq!(
         fronts,
         vec![
-            [at(3, 7), at(3, 8), at(5, 8)],
-            [at(5, 5), at(5, 5), at(6, 6)],
-            [at(7, 3), at(8, 3), at(8, 5)],
+            (0, [at(3, 7), at(3, 8), at(5, 8)]),
+            (1, [at(5, 5), at(5, 5), at(6, 6)]),
+            (2, [at(7, 3), at(8, 3), at(8, 5)]),
         ]
     );
 }
