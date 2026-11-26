@@ -14,20 +14,20 @@ pub const FRONT_UNTIL: u32 = 14;
 /// What each contested band cell (E073's band) counts for the side that
 /// arrives first ([`arrivals`]), less those the enemy arrives at first: 0
 /// for nothing (v032).
-pub const RACE: i64 = 2;
+pub const RACE: i64 = 6;
 
 /// What a front counts for a side whose deepest goal cell held or reached
 /// first is its entrance, centre or outpost ([`goal_cells`]): 0 for
 /// nothing (v032).
-pub const GOAL_E: i64 = 4;
+pub const GOAL_E: i64 = 6;
 /// See [`GOAL_E`].
-pub const GOAL_C: i64 = 8;
+pub const GOAL_C: i64 = 12;
 /// See [`GOAL_E`].
-pub const GOAL_O: i64 = 12;
+pub const GOAL_O: i64 = 18;
 
 /// What each unit of a side on a band cell it holds actively, which the
 /// enemy cannot take at its next turn, counts: 0 for nothing (v032).
-pub const HOLD: i64 = 4;
+pub const HOLD: i64 = 6;
 
 /// Whether E060's charge on idle units counts their steps to the front
 /// (the enemy's cells and the band cells not the side's) rather than to the
