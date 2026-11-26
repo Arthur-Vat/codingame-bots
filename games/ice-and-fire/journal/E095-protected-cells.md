@@ -33,4 +33,21 @@ those at most that many steps from the enemy's active cells or units.
 
 ## Screening
 
-Pending.
+Each variant against `ice-and-fire-v032`, 1,600 pairs over two shards (the
+owner's choice), full games, no faults (run 45911286905):
+
+| Variant | Flat value per tower | Per protected cell | Which cells | Elo |
+|---|---|---|---|---|
+| cover2 | 0 | 2 | all | +16.3 [+6.2, +26.4] |
+| cover3 | 0 | 3 | all | -2.0 [-12.1, +8.2] |
+| cover3-near3 | 0 | 3 | within 3 steps of the enemy | -16.5 [-26.6, -6.4] |
+| cover5-near3 | 0 | 5 | within 3 steps | -36.4 [-47.2, -25.7] |
+| tv10-cover1-near3 | 10 | 1 | within 3 steps | -23.7 [-33.9, -13.6] |
+| tv10-cover2-near3 | 10 | 2 | within 3 steps | -20.2 [-31.1, -9.4] |
+| tv5-cover2-near3 | 5 | 2 | within 3 steps | -12.6 [-22.7, -2.5] |
+| near4-fwd2-cover3-near3 | 0 | 3 | within 3 steps, with E094's near4-fwd2 | -6.5 [-17.1, +4.1] |
+
+cover2, 2 a distinct protected cell in place of 10 a tower, is the first
+variant of the day whose interval lies above 0 at 1,600 pairs. Counting
+only the cells near the enemy loses in every form, the more the heavier;
+3 a cell is level.
