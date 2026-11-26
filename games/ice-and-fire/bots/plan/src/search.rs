@@ -56,7 +56,7 @@ mod repair;
 /// `repair`): after its replies are searched, the plan is changed to raise
 /// its score against the memory, then its own replies are searched, and so
 /// on. 0 in v032.
-pub const REPAIR: usize = 0;
+pub const REPAIR: usize = 1;
 /// The most steps of one repair (E091).
 pub const REPAIR_STEPS: usize = 4;
 /// Whether a repair may add any action offered, not only counters to the
