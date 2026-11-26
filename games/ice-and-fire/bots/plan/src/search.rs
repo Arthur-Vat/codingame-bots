@@ -66,13 +66,13 @@ pub const SPLIT_TRAININGS: usize = 5;
 /// actions or replace one of its purchases by another, and goes on climbing
 /// after the best that improves it (E090, `explore::improve`), at most
 /// [`MAX_SWAPS`] times. Off in v032.
-pub const SWAPS: bool = true;
+pub const SWAPS: bool = false;
 /// See [`SWAPS`].
 pub const MAX_SWAPS: usize = 3;
 /// How many climbs start from the best plan with actions removed once the
 /// climbs repeat (E090, `explore::perturbations`): first without its
 /// purchases, then without each of its first commands. 0 in v032.
-pub const PERTURB: usize = 0;
+pub const PERTURB: usize = 4;
 
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8;
