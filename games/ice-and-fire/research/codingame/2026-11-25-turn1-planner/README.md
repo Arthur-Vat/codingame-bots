@@ -27,6 +27,15 @@ not part of the build or the checks.
   game turn 10 against the enemy's reach. The best plan and plain growth are
   played again with every action logged, for the page's step-by-step
   player.
+- `planner2.py`: the second version (the owner, 2026-11-26), without the
+  enemy, with two levels of decision: macro (which area each of the first
+  6 trainings serves: every sequence tried) and micro (each unit walks the
+  shortest path to its area's current target, the most central path among
+  equals). An area's entrance is where our shortest path from the HQ to its
+  front centre enters it for good (the centre itself when the whole path is
+  inside); the front centre, the front's contested cell nearest its middle
+  (the most central for the middle). Objective: the most cells at game turn
+  10, then the Voronoi share against the enemy's starting land.
 
 The pictures: fronts and goals https://claude.ai/artifact/CjVo3RiA1NCXV7eczk8vim,
 cell values and entrances https://claude.ai/artifact/1hsAEqAvnM83ZDnRKACE6y,

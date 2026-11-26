@@ -453,3 +453,43 @@ https://claude.ai/artifact/45xi3imE6WxsU2h4zUEDGP. Limits: the enemy is a
 rush in every direction at once (pessimistic), the rules of growth are
 simple, and the plan's land is not checked against the engine; the Rust
 version plays the plans through the engine.
+
+### The planner's second prototype: no enemy, macro and micro
+
+The owner (2026-11-26): the first version's enemy spreads far more than a
+real one can, so the first version leaves the enemy out; there are two
+levels of decision, "macro-decisions (when training: which area should be
+targeted)" and "micro-decisions (which path should be followed by the
+units)", few of the first and many of the second ("sometimes several micro
+decisions will be good, however there is certainly a best, which could be
+arbitrated later with other heuristics"); and the entrances were badly
+placed ("in game 925707787, entrance 3 in the bottom left is not even the
+first cell of the region, and is very far. Ideally entrance 1 for the
+middle region should be more central, there should be an entrance for the
+top right region, and entrance for the bottom left region should be above
+top 2").
+
+`planner2.py` (research/codingame/2026-11-25-turn1-planner): macro, every
+sequence of areas (or free growth) for the first 6 trainings (64 to 4,096
+a map); micro, each unit walks the shortest path to its area's current
+target (the entrance, then the front centre, then the area's nearest cell
+not ours), the most central path among equals; units with no area walk to
+the nearest free cell. An area's entrance: where our shortest path from the
+HQ to its front centre enters it for good, the centre itself when the
+whole path lies inside (the middle on open maps). On 925707787: the
+middle's centre (5, 5), the bottom-left's entrance (3, 7) above its centre
+(3, 8), the top-right's entrance (7, 3).
+
+| Map | The best macro sequence (trainings 1 to 6) | Cells, Voronoi at game turn 10 | Free growth only |
+| --- | --- | --- | --- |
+| three fronts, 925707781 | middle, middle, then free | 40, 103 | 36, 95 |
+| three fronts, 925707787 | middle, middle, free, free, free, bottom-left | 40, 80 | 36, 80 |
+| two flanks, 925677145 | free, free, top-right, free, bottom-left, top-right | 39, 82 | 35, 83 |
+| two flanks, 925707764 | free, free, top-right, bottom-left, free, free | 39, 78 | 34, 71 |
+| middle only, 925708443 | middle and free alternating | 31, 49 | 27, 49 |
+| middle only, 925709109 | free and middle alternating | 33, 49 | 32, 49 |
+
+The best sequences gain 1 to 5 cells over free growth and reach the
+centres of one or two areas, the middle first on three-front maps and both
+flanks on two-flank maps. Pictures, playable action by action:
+https://claude.ai/artifact/45xi3imE6WxsU2h4zUEDGP.
