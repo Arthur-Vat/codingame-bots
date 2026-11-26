@@ -6,12 +6,12 @@ parent: ice-and-fire-v032
 hypothesis: An evaluation that counts the cells the enemy's next capture would cut off from our HQ, and values kept gold, makes the search keep a sound shape and the gold to answer the enemy's cut instead of spreading thin before it, and beats ice-and-fire-v032.
 change: The cells cut off by the enemy's most damaging capture at its next turn cost each side, and kept gold counts more than its value, in the search's evaluation; each weight at 0 is v032.
 release: none
-sprt: none
-elo: "+11.3 [-9.9, +32.6] (keep2, screening)"
-pairs: 400
+sprt: not run: no variant above 0 in screening
+elo: none
+pairs: none
 full_time: none
 decision: dropped
-cg_rank: not reported
+cg_rank: none
 ---
 
 ## Why

@@ -1,4 +1,4 @@
-# What E083 to E087 taught
+# What E083 to E088 taught
 
 Five experiments of 2026-11-26 on v032's early and middle game (the owner's
 plan: bring the turn-1 planner's ideas into v032, then fix the fights lost
@@ -17,7 +17,7 @@ the leaners are screened again in [E088](../journal/E088-leaners.md).
   spends its 32 gold down to 5, and the enemy, with 38, trains two units
   and takes four cells taken a turn before
   (`research/codingame/2026-11-26-early-fights`, on E083's branch).
-- Against zasmu (the leader; v032 won 17 of 195), v032 falls behind in the
+- Against zasmu (the leader; v032 won 16 or 17 of 195), v032 falls behind in the
   opening: zasmu reaches the middle front's centre at game turn 7, a turn
   before v032, and leads by 3 cells and 11 of the Voronoi share then, in the
   games v032 won as in those it lost. zasmu trains at turn 5, builds a tower
@@ -34,7 +34,7 @@ the leaners are screened again in [E088](../journal/E088-leaners.md).
   (20 of the 25 large surprises no cut finder matched); then cuts after a
   unit's step (11 of 60); then replies that remove none of our cells, among
   them the opponent passing and keeping its gold, which every reply
-  modelled spends (6 of 60, all late).
+  modelled spends (6 of 60, mostly late).
 
 ## What the screenings say
 

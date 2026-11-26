@@ -6,12 +6,12 @@ parent: ice-and-fire-v032
 hypothesis: A search that models the opponent's cuts that start with its units' steps, charges a plan for its second-worst reply as well as its worst, and is offered pairs of purchases near the front, stops opening weaknesses the opponent punishes and spends better, and beats ice-and-fire-v032.
 change: Replies with steps before a cut, a charge on the second-worst reply, and spending bundles in the search; each setting at its v032 value is v032.
 release: none
-sprt: none
-elo: "+15.6 [-4.0, +35.4] (steps3, screening)"
-pairs: 400
+sprt: not run: no variant above 0 in screening
+elo: none
+pairs: none
 full_time: none
 decision: dropped
-cg_rank: not reported
+cg_rank: none
 ---
 
 ## Why

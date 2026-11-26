@@ -6,12 +6,12 @@ parent: ice-and-fire-v032
 hypothesis: The three changes of E083 to E087 that leaned positive in their screenings (the centre pull, kept gold, the opponent's steps before its cuts), alone or together, beat ice-and-fire-v032 once screened with three times the pairs.
 change: E083's centre pull (`front.rs`), E084's kept gold (`eval.rs`) and E087's replies with steps (`search.rs`, with its cut finder's scattered cuts in `tactics`, unused here), gathered on one branch from main; each setting at its v032 value is v032.
 release: none
-sprt: none
-elo: "+10.4 [-2.0, +22.9] (pull4-keep2, screening)"
-pairs: 1200
+sprt: not run: no variant above 0 in screening
+elo: none
+pairs: none
 full_time: none
 decision: dropped
-cg_rank: not reported
+cg_rank: none
 ---
 
 ## Why
