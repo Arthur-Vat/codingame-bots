@@ -129,7 +129,7 @@ pub fn threatened(state: &State, seat: usize) -> i64 {
 /// [`CUT_PAIRS`], two neighbouring ones together, as a chain of two
 /// trainings); the captured cells themselves are E023's. 0 for nothing
 /// (v032).
-pub const CUT_QUARTERS: i64 = 10;
+pub const CUT_QUARTERS: i64 = 0;
 
 /// Whether [`CUT_QUARTERS`] also tries two neighbouring exposed cells taken
 /// together (E084).
