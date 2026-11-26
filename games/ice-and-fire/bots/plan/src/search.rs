@@ -59,7 +59,7 @@ const REPLY_CUTS: usize = 3;
 /// 2026-11-26: every kind of cut in the opponent's replies): bit 1, all its
 /// movable units step toward our land, then its best cuts; bit 2, each such
 /// step alone, then its best cut. 0 for none (v032).
-pub const REPLY_STEPS: u8 = 1;
+pub const REPLY_STEPS: u8 = 3;
 
 /// Most single steps tried by [`REPLY_STEPS`]' bit 2, the nearest our land
 /// first.
