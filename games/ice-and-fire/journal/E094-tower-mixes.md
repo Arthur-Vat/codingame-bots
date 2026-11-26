@@ -46,3 +46,12 @@ games (run 45903603606):
 No mix beats v032; the early hold costs every mix it joins. near4-fwd2
 leans positive, its parts (+3.2 and +7.4 alone) adding up, without an
 interval above 0.
+
+## Confirmation
+
+near4-fwd2 again, 1,200 pairs over three shards (the owner's choice; run
+45906479912), no faults: +8.4 [-2.9, +19.7]. The first of the day's leans
+to keep its sign with more pairs; with the screening's 800 pairs, about
++9.4 over 2,000 pairs, an interval of roughly [+0.6, +18] (pooled by
+hand, assuming independent games).
+
