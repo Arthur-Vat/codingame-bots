@@ -644,7 +644,8 @@ Coordinated mode, `K = 4`:
 
 What it shows:
 - With the enemy stand-in, turn 13's land is what the territory behind
-  our front can still give: 7 to 34 cells against 30 to 47 with no enemy.
+  our front can still give: 2 to 34 cells (tolerance 1) against 16 to 47
+  gained in turns 11 to 13 with no enemy (version 4).
 - On three-front maps tolerance 1 gains 6 cells at turn 13 (71 against
   64, 54 against 48) for at most 1 at turn 10: the plans that leave free
   cells behind the front, with units next to them, fill them later.
