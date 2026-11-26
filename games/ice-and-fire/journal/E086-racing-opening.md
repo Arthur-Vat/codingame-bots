@@ -43,4 +43,30 @@ middle at game turns 6 to 10 with v032's.
 
 ## Games and screening
 
-Pending.
+Variants (commits on the branch): race2 (`OPENING_RACE` 2, the opponent
+playing, 5c1a975c1ba2), race1 (1, 6af082908bbe), race2-noopp (2, the
+opponent passing, 04841120c54f), race2-land (2, the land first,
+cdf18e780ddb), opp (v032's ranking, the opponent playing, 2a78a820bfd6).
+
+Games on the owner's request, before any screening: each variant against
+v032, and v032 against itself, on 20 maps (the six CodinGame maps of E080's
+study and 14 of the repository's CodinGame seeds), both seats, at
+CodinGame's limits, cut at game turn 12 (`one_map`, 24 plies); measured from
+the bot's side (for v032 against itself, one of its sides), 40 games each:
+
+| Bot | Middle cells lost, turns 6 to 10 | Plies losing 3+ middle cells | All cells lost, turns 6 to 10 | Steps to its middle centre, turns 5 / 6 / 7 | Holds it at turns 8 / 10 | Cells at turn 12, its / v032's |
+| --- | --- | --- | --- | --- | --- | --- |
+| v032 | 0.47 | 0.03 | 0.85 | 4 / 3 / 1 | 64% / 86% | 35.5 / 36 |
+| race2 | 0.85 | 0.05 | 1.50 | 4 / 3 / 1 | 75% / 89% | 35 / 37 |
+| race1 | 0.95 | 0.05 | 1.60 | 4 / 3 / 1 | 61% / 86% | 35 / 37.5 |
+| race2-noopp | 0.60 | 0.00 | 1.05 | 4 / 3 / 1 | 72% / 81% | 36.5 / 37 |
+| race2-land | 0.75 | 0.03 | 1.48 | 4 / 3 / 1 | 67% / 89% | 36 / 37.5 |
+| opp | 0.90 | 0.03 | 1.50 | 4 / 3 / 1 | 58% / 83% | 36 / 36 |
+
+The racing ranking does not reach the middle centre sooner (the steps are
+v032's: the opening already goes to it as fast as its gold allows), and it
+holds it more often at turn 8 (75% for race2 against 64%), but every
+variant loses more middle cells at turns 6 to 10 than v032 (0.60 to 0.95
+against 0.47 a game), the most those whose simulation lets the opponent
+play: they are not stronger in the centre. Pictures of race2 beside v032
+against itself, action by action: https://claude.ai/artifact/Esh6hC6nvscvnkxknci3xy.
