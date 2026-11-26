@@ -55,4 +55,21 @@ enemy, until game turn [`FRONT_UNTIL`] (14, as the contested band of E076):
 
 ## Screening
 
-Pending.
+Six variants (weights: race; band cells held of E073; goal cells entrance,
+centre, outpost; hold; idle toward the front):
+
+| Variant | Commit | Race | Band held | Goal E / C / O | Hold | Idle to front |
+| --- | --- | --- | --- | --- | --- | --- |
+| race | 034262270b7e | 4 | 0 | 0 | 0 | no |
+| goals | 99748648773a | 0 | 4 | 4 / 8 / 12 | 0 | no |
+| hold | 8c015cea8695 | 0 | 4 | 0 | 4 | yes |
+| all | 9b247402b4b5 | 4 | 0 | 4 / 8 / 12 | 4 | yes |
+| all-light | b412b306c341 | 2 | 4 | 4 / 8 / 12 | 4 | yes |
+| all-heavy | f86dde085bfc | 6 | 0 | 6 / 12 / 18 | 6 | yes |
+
+A local check of all-heavy against v032, 10 pairs at CodinGame's limits
+(seed 83): no fault, answers after the first 41.4 ms median (v032 37.3),
+6 wins and 14 losses (too few games to judge).
+
+The screening, on the owner's approval (2026-11-26): `screen.yml` run
+45818893819, full games against v032, 400 pairs per variant over 2 shards.
