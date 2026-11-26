@@ -1869,3 +1869,42 @@ fn only_joints_near_the_enemy_count_from_v032() {
         2 + 2
     );
 }
+
+#[test]
+fn mine_spots_held_count_less_as_the_game_goes_on() {
+    use crate::eval::spot_value;
+    use ice_and_fire_engine::Bits;
+    let rows = [
+        "OOO.........",
+        "O...........",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "............",
+        "...........X",
+        "..........XX",
+    ];
+    // Spots at (1, 0) and (2, 0), ours, and (5, 5), no one's.
+    let spots = "3\n1 0\n2 0\n5 5\n";
+    let early = position_at(10, spots, rows, [0, 0], &[]);
+    assert_eq!(
+        spot_value(&early, 0, Bits::EMPTY, 10, 40, false),
+        10 * 30 * 2 / 40
+    );
+    assert_eq!(spot_value(&early, 1, Bits::EMPTY, 10, 40, false), 0);
+    // A spot the enemy can take counts only without the safety condition.
+    let exposed = Bits::cell(2);
+    assert_eq!(spot_value(&early, 0, exposed, 10, 40, true), 10 * 30 / 40);
+    assert_eq!(
+        spot_value(&early, 0, exposed, 10, 40, false),
+        10 * 30 * 2 / 40
+    );
+    // Nothing from the last turn on, nor with a weight of 0.
+    let late = position_at(40, spots, rows, [0, 0], &[]);
+    assert_eq!(spot_value(&late, 0, Bits::EMPTY, 10, 40, false), 0);
+    assert_eq!(spot_value(&early, 0, Bits::EMPTY, 0, 40, false), 0);
+}

@@ -142,6 +142,46 @@ pub(crate) fn mines(state: &State, seat: usize, exposed: Bits) -> i64 {
     bonus * i64::from(mines.count())
 }
 
+/// What each mine spot a side holds on an active cell counts at game turn 0
+/// (E089, the owner: a spot taken early unlocks income for the rest of the
+/// game): the value falls in a straight line to nothing at [`SPOT_UNTIL`].
+/// A spot with a mine counts too, so that building one keeps the value. 0
+/// in v032.
+pub const SPOT_WEIGHT: i64 = 0;
+
+/// The game turn from which a mine spot counts nothing more (E089).
+pub const SPOT_UNTIL: i64 = 40;
+
+/// Whether a mine spot counts only when the enemy cannot take it at its next
+/// turn (E089).
+pub const SPOT_SAFE: bool = true;
+
+/// What the mine spots of `seat` count ([`SPOT_WEIGHT`]). `exposed` is
+/// `exposed(state, seat)`.
+pub(crate) fn spots(state: &State, seat: usize, exposed: Bits) -> i64 {
+    spot_value(state, seat, exposed, SPOT_WEIGHT, SPOT_UNTIL, SPOT_SAFE)
+}
+
+/// [`spots`] with its settings as arguments.
+pub fn spot_value(
+    state: &State,
+    seat: usize,
+    exposed: Bits,
+    weight: i64,
+    until: i64,
+    safe: bool,
+) -> i64 {
+    let turn = i64::from(state.game_turn());
+    if weight == 0 || turn >= until {
+        return 0;
+    }
+    let mut held = state.map().spots & state.active(seat);
+    if safe {
+        held = held.and_not(exposed);
+    }
+    weight * (until - turn) * i64::from(held.count()) / until
+}
+
 /// The last game turn on which a safe mine counts [`EARLY_MINE_BONUS`] more
 /// and one more per [`EARLY_MINE_PER_CELLS`] active cells (E058): 0 for
 /// none (v024); 15 won the screening (12 and 18 did less).
@@ -608,6 +648,8 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         + THREAT_QUARTERS * threats / 4
         + mines(state, seat, ours)
         - mines(state, 1 - seat, theirs)
+        + spots(state, seat, ours)
+        - spots(state, 1 - seat, theirs)
         + wall(state, seat)
         - wall(state, 1 - seat)
         + goal(state, seat)

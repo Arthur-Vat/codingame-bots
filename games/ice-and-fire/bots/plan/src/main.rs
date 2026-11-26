@@ -148,6 +148,10 @@ const ORDER: Order = Order::Central(Decay::Linear(7));
 /// opening used 3). The middle game's search builds them (E033).
 const OPENING_SAFE_SPOT: u8 = u8::MAX;
 
+/// How much more a mine spot is worth to the opening's moves and trainings
+/// (E089, `Params::spot`): 0 in v032, as in every set of the solo planner.
+const OPENING_SPOT: i64 = 0;
+
 /// How much less a cell is worth to the opening's moves and trainings for
 /// each of our units next to it (E051): 0 in v022; 2 won the screening (4
 /// did less, 8 and 16 lost).
@@ -191,6 +195,7 @@ const ASSIGN_SETTINGS: assign::Settings = assign::Settings {
     params: Params {
         safe_spot: OPENING_SAFE_SPOT,
         crowd: OPENING_CROWD,
+        spot: OPENING_SPOT,
         horizon: OPENING_HORIZON,
         after_contact: OPENING_AFTER_CONTACT,
         ..Params::V003
@@ -220,6 +225,7 @@ fn opening_of(width: usize) -> Planned {
         .map(|&params| Params {
             safe_spot: OPENING_SAFE_SPOT,
             crowd: OPENING_CROWD,
+            spot: OPENING_SPOT,
             horizon: OPENING_HORIZON,
             after_contact: OPENING_AFTER_CONTACT,
             ..params
