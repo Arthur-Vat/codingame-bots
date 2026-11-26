@@ -143,7 +143,7 @@ pub const SECURE_HELD: i64 = 0;
 /// What each such cell next to a cell not the side's (its secure front
 /// line, the owner's "advanced front line the enemy cannot take back")
 /// counts more: 0 for nothing (v032).
-pub const SECURE_FRONT: i64 = 4;
+pub const SECURE_FRONT: i64 = 8;
 
 /// What each free cell nearer a side's active land than the enemy's, that
 /// the enemy cannot take at its next turn, counts for it (below a taken
