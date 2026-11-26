@@ -25,7 +25,7 @@ pub const HQ_GUARD: bool = true;
 /// The enemy's incomes, beyond its gold, within which its chain to our HQ
 /// must be affordable for [`HQ_GUARD`] to offer a tower (E026: 2; E092
 /// tries 1, its next turn alone).
-pub const HQ_GUARD_TURNS: i64 = 2;
+pub const HQ_GUARD_TURNS: i64 = 1;
 
 /// Whether a tower guards (E092, the owner: a tower must parry an immediate
 /// threat) only when it lowers the active cells the enemy's best cut
