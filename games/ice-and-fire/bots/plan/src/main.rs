@@ -141,7 +141,7 @@ const REPLAN_FROM: u32 = 0;
 
 /// The weight of the middle front's centre in the opening's race to the
 /// areas of interest (E086, `Order::Race`): 0 for v032's `Order::Central`.
-const OPENING_RACE: i64 = 0;
+const OPENING_RACE: i64 = 2;
 
 /// Whether that race comes after the land rather than before it (E086).
 const OPENING_LAND_FIRST: bool = false;
@@ -149,7 +149,7 @@ const OPENING_LAND_FIRST: bool = false;
 /// Whether the opening's plans meet an opponent that plays the opening's
 /// own rules rather than one that passes (E086,
 /// `solo::OPPONENT_PLAYS`).
-const OPENING_OPPONENT: bool = false;
+const OPENING_OPPONENT: bool = true;
 
 /// How the opening compares its plans (E073): the weighted sum above in
 /// v029; with [`OPENING_RACE`], the race to the areas of interest (E086).
