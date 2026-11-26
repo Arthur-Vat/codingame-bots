@@ -50,6 +50,18 @@ use crate::strategy::Guide;
 
 #[cfg(feature = "analysis")]
 pub mod judge;
+mod repair;
+
+/// How many times a climb's plan is repaired against its worst reply (E091,
+/// `repair`): after its replies are searched, the plan is changed to raise
+/// its score against the memory, then its own replies are searched, and so
+/// on. 0 in v032.
+pub const REPAIR: usize = 0;
+/// The most steps of one repair (E091).
+pub const REPAIR_STEPS: usize = 4;
+/// Whether a repair may add any action offered, not only counters to the
+/// worst reply and the dropping of a command (E091).
+pub const REPAIR_ANY: bool = true;
 
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8;
@@ -113,6 +125,8 @@ pub struct Thought {
     pub strategic: bool,
     /// The strategic turn's pieces the plan played holds (E077).
     pub pieces: usize,
+    /// Plans repaired against their worst reply (E091).
+    pub repairs: usize,
 }
 
 /// Whether the plan played must have had its own replies searched (E027).
@@ -728,6 +742,51 @@ pub fn think_with(
         }
         if stop {
             break;
+        }
+        // The repairs of the plan against its worst reply (E091).
+        if REPAIR != 0 && !same {
+            let mut base = plans.len() - 1;
+            // `max`: at least one round once `REPAIR` is set (the `if` above).
+            for _ in 0..REPAIR.max(1) {
+                let worst = plans[base]
+                    .own
+                    .as_ref()
+                    .and_then(|own| own.iter().min_by_key(|r| r.damage))
+                    .map(|r| r.commands.clone());
+                let Some(worst) = worst else {
+                    break;
+                };
+                let commands = plans[base].commands.clone();
+                let Some((commands, end)) = search.repair(state, &commands, &worst, &memory) else {
+                    break;
+                };
+                if plans.iter().any(|p| p.commands == commands) {
+                    break;
+                }
+                let first = plans[base].first;
+                let own = if search.spent() {
+                    None
+                } else {
+                    let found = search.answers(&end);
+                    more |= remember(&found, &mut memory);
+                    Some(found)
+                };
+                let done = own.is_none();
+                plans.push(Plan {
+                    commands,
+                    end,
+                    first,
+                    own,
+                });
+                thought.repairs += 1;
+                base = plans.len() - 1;
+                if done {
+                    break;
+                }
+            }
+            if search.spent() {
+                break;
+            }
         }
         // A climb against the same memory would find the same plan again:
         // the next one starts elsewhere (E014). When the plan was empty, no
