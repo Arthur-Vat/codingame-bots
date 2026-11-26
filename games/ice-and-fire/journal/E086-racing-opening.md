@@ -92,3 +92,32 @@ units of level 2 or more step first, where here a level-1 unit stepped
 before the chain (as in 34% of the large surprises of E084's
 `codingame-surprise`).
 
+### Round 2: a supported centre, preferred
+
+The owner (2026-11-26): be strong in the centre on arrival, but not as a
+must. `Order::Race`'s `support`: a centre counts 2 only when the enemy
+cannot take it at its next turn and one of our units stands next to it or
+one of our towers on or next to it, 1 otherwise; with the land first, so
+that the opening never gives up a cell for it. Variants: strong-land
+(`OPENING_RACE` 2, the land first, `OPENING_SUPPORT`, the opponent passing,
+742a650fcb24), strong-land1 (middle weight 1, 8a930525006a), strong-land-opp
+(the opponent playing, 682d5038609c). The same 40 games each against v032:
+
+| Bot | Middle cells lost, turns 6 to 10 [95%, bootstrap] | Games with a middle loss | All cells lost, turns 6 to 10 | Its centre lost, turns 6 to 10 | Holds it at turns 8 / 10 | Cells at turn 12, its / v032's |
+| --- | --- | --- | --- | --- | --- | --- |
+| v032 | 0.47 [0.17, 0.80] | 9 of 40 | 0.85 | 0% | 64% / 86% | 35.5 / 36 |
+| race2 | 0.85 [0.53, 1.20] | 19 | 1.50 | 3% | 75% / 89% | 35 / 37 |
+| race2-noopp | 0.60 [0.30, 0.93] | 13 | 1.05 | | 72% / 81% | 36.5 / 37 |
+| race2-land | 0.75 [0.45, 1.07] | 17 | 1.48 | 3% | 67% / 89% | 36 / 37.5 |
+| strong-land | 0.90 [0.53, 1.30] | 17 | 1.30 | 6% | 58% / 75% | 37 / 37.5 |
+| strong-land1 | 0.80 [0.47, 1.15] | 17 | 1.32 | 0% | 58% / 78% | 36 / 37.5 |
+| strong-land-opp | 0.75 [0.45, 1.07] | 17 | 1.40 | 0% | 67% / 92% | 36 / 36.5 |
+
+No variant is stronger in the middle than v032 against itself: each loses
+middle cells in 13 to 19 of its 40 games against v032's 9 (the means'
+intervals overlap; 40 games are few). The support condition does not
+change it, and the opening reaches the centre no sooner in any variant.
+The fights lost in the middle come later, in the search's turns, and from
+replies the search does not model (a unit's move, then a cut: the unit 11
+case above), not from the opening's choice of plan.
+
