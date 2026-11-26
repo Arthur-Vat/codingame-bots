@@ -114,3 +114,28 @@ From game turn 7, when the search takes over:
 
 Pictures, action by action: https://claude.ai/artifact/6bTXzn74w3CrGougMPdJuv.
 
+### Round 2: the centre
+
+The owner (2026-11-26): the trouble is one of priorities; value the centre
+more first. Two weights more in `front.rs`: `CENTRE`, what each band cell
+held in the middle (`|x - y|` at most 3, the middle front's place) counts
+beyond E073's band cells held, and `GOAL_MIDDLE`, the factor of the middle
+front's goal weights. `screen.yml` run 45825275537 on the owner's approval,
+full games against v032, 400 pairs per variant over 2 shards:
+
+| Variant | Commit | Goal E / C / O | Middle factor | Centre | Elo over v032 [95%] |
+| --- | --- | --- | --- | --- | --- |
+| centre4 | de86e87b6159 | 0 | 1 | 4 | -7.8 [-29.6, +13.9] |
+| centre8 | e58955656649 | 0 | 1 | 8 | -12.2 [-33.5, +9.1] |
+| goals-mid | c3e494fc3d03 | 4 / 8 / 12 | 2 | 0 | -27.9 [-49.9, -6.0] |
+| goals-centre | 95cc1b9a05a8 | 4 / 8 / 12 | 2 | 4 | -39.3 [-62.3, -16.5] |
+
+Weighing the centre more does not help: the centre cells are level or a
+little weaker, and doubling the middle front's goal cells is weaker than
+the goal cells alone (+2.6 in round 1). These goal cells are still the
+turn-1 ones: the owner noticed (2026-11-26) that the entrance can then lie
+behind our front line, where it should lie between it and the opponent;
+the games' page now moves each front's goals with it (E just past the
+side's furthest cell on the front's axis, C the centre or E once past it,
+O two steps beyond C), and `front.rs` does not yet.
+
