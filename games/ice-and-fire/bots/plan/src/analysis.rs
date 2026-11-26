@@ -58,6 +58,7 @@ pub mod guide;
 pub mod judge;
 pub mod speed;
 pub mod surprise;
+pub mod towers;
 
 #[cfg(test)]
 mod tests;
@@ -556,6 +557,18 @@ pub fn main_if_asked() {
             }
             Err(err) => {
                 eprintln!("plan strategy: {err}");
+                std::process::exit(2);
+            }
+        }
+    }
+    if args.first().map(String::as_str) == Some("towers") {
+        match towers::run(&args[1..]) {
+            Ok(text) => {
+                print!("{text}");
+                std::process::exit(0);
+            }
+            Err(err) => {
+                eprintln!("plan towers: {err}");
                 std::process::exit(2);
             }
         }
