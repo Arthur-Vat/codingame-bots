@@ -29,4 +29,20 @@ named E094).
 
 ## Screening
 
-Pending.
+Each variant against `ice-and-fire-v032`, 800 pairs over two shards, full
+games (run 45903603606):
+
+| Variant | Settings | Elo | Timeouts |
+|---|---|---|---|
+| near4-fwd2 | `GUARD_NEAR` 4, `STEP_GUARD_NEAR` 2 | +10.9 [-3.1, +24.9] | 0 |
+| near3-fwd2 | `GUARD_NEAR` 3, `STEP_GUARD_NEAR` 2 | +2.6 [-11.1, +16.3] | 1 |
+| near4-fwd3 | `GUARD_NEAR` 4, `STEP_GUARD_NEAR` 3 | -0.4 [-14.3, +13.4] | 0 |
+| near4-hqnow | `GUARD_NEAR` 4, `HQ_GUARD_TURNS` 1 | -1.3 [-12.4, +9.8] | 0 |
+| near4-fwd2-hqnow | the three | +6.1 [-8.4, +20.6] | 0 |
+| fwd2-hold8 | `STEP_GUARD_NEAR` 2, `EARLY_THREAT_QUARTERS` 8 | -11.3 [-26.4, +3.7] | 0 |
+| near4-fwd2-hold8 | the three | -12.2 [-27.1, +2.7] | 0 |
+| near4-fwd2-hold8-tv15 | the four, `EARLY_TOWER_VALUE` 15 | -6.5 [-21.7, +8.7] | 0 |
+
+No mix beats v032; the early hold costs every mix it joins. near4-fwd2
+leans positive, its parts (+3.2 and +7.4 alone) adding up, without an
+interval above 0.
