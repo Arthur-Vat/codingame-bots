@@ -129,11 +129,11 @@ pub fn threatened(state: &State, seat: usize) -> i64 {
 /// [`CUT_PAIRS`], two neighbouring ones together, as a chain of two
 /// trainings); the captured cells themselves are E023's. 0 for nothing
 /// (v032).
-pub const CUT_QUARTERS: i64 = 20;
+pub const CUT_QUARTERS: i64 = 10;
 
 /// Whether [`CUT_QUARTERS`] also tries two neighbouring exposed cells taken
 /// together (E084).
-pub const CUT_PAIRS: bool = false;
+pub const CUT_PAIRS: bool = true;
 
 /// What each gold a side keeps, up to [`KEEP_CAP`], counts beyond its value
 /// of 1, in quarters (E084): a training or a tower must then gain more than
