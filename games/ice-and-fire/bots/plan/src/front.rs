@@ -14,7 +14,7 @@ pub const FRONT_UNTIL: u32 = 14;
 /// What each contested band cell (E073's band) counts for the side that
 /// arrives first ([`arrivals`]), less those the enemy arrives at first: 0
 /// for nothing (v032).
-pub const RACE: i64 = 4;
+pub const RACE: i64 = 2;
 
 /// What a front counts for a side whose deepest goal cell held or reached
 /// first is its entrance, centre or outpost ([`goal_cells`]): 0 for
