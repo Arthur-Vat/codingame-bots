@@ -132,7 +132,7 @@ pub const SECURE: i64 = 0;
 /// What each held secure cell of a side in the contested band (E073's band,
 /// the areas of interest) counts more: 0 for nothing (v032). (Round 1
 /// counted it on [`secure`]'s cells, free ones included.)
-pub const SECURE_BAND: i64 = 0;
+pub const SECURE_BAND: i64 = 2;
 
 /// What each active cell a side holds that the enemy cannot take at its
 /// next turn counts for it (E085, round 2: held land only, so that taking a
