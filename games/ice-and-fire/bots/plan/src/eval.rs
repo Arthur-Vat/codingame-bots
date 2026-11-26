@@ -78,7 +78,7 @@ pub const MOVER_LEVEL: u8 = 2;
 
 /// What a threatened cell costs its side, in quarters: 7 in E023 (a quarter
 /// of a cell's value of 7), 5 since E037, which finds more of them.
-pub const THREAT_QUARTERS: i64 = 0;
+pub const THREAT_QUARTERS: i64 = 5;
 
 /// The units of `seat` whose moves count in [`exposed`]: those on its active
 /// cells of at least [`MOVER_LEVEL`], all of which may move at its next turn.
@@ -129,9 +129,26 @@ pub fn threatened(state: &State, seat: usize) -> i64 {
 /// take it at its next turn ([`reach`]). 0 for nothing (v032).
 pub const SECURE: i64 = 0;
 
-/// What each secure cell of a side in the contested band (E073's band, the
-/// areas of interest) counts beyond [`SECURE`]: 0 for nothing (v032).
+/// What each held secure cell of a side in the contested band (E073's band,
+/// the areas of interest) counts more: 0 for nothing (v032). (Round 1
+/// counted it on [`secure`]'s cells, free ones included.)
 pub const SECURE_BAND: i64 = 0;
+
+/// What each active cell a side holds that the enemy cannot take at its
+/// next turn counts for it (E085, round 2: held land only, so that taking a
+/// cell and making it safe pays more than leaving it exposed): 0 for
+/// nothing (v032).
+pub const SECURE_HELD: i64 = 0;
+
+/// What each such cell next to a cell not the side's (its secure front
+/// line, the owner's "advanced front line the enemy cannot take back")
+/// counts more: 0 for nothing (v032).
+pub const SECURE_FRONT: i64 = 0;
+
+/// What each free cell nearer a side's active land than the enemy's, that
+/// the enemy cannot take at its next turn, counts for it (below a taken
+/// cell's 7, so that taking it still pays): 0 for nothing (v032).
+pub const SECURE_FREE: i64 = 0;
 
 /// The secure territory of `seat` ([`SECURE`]) when the enemy's next turn
 /// reaches `enemy_reach`.
@@ -152,15 +169,34 @@ pub fn secure(state: &State, seat: usize, enemy_reach: Bits) -> Bits {
 /// The secure territory's terms for `seat`, less the enemy's ([`SECURE`],
 /// [`SECURE_BAND`]), until the end of the game.
 fn territory(state: &State, seat: usize) -> i64 {
-    if SECURE == 0 && SECURE_BAND == 0 {
+    if SECURE == 0 && SECURE_BAND == 0 && SECURE_HELD == 0 && SECURE_FRONT == 0 && SECURE_FREE == 0
+    {
         return 0;
     }
     let band = goal_zones(state).0;
-    let mine = secure(state, seat, reach(state, 1 - seat));
-    let theirs = secure(state, 1 - seat, reach(state, seat));
+    let valid = state.map().valid;
+    let reaches = [reach(state, 0), reach(state, 1)];
     let count = |b: Bits| i64::from(b.count());
-    SECURE * (count(mine) - count(theirs))
-        + SECURE_BAND * (count(mine & band) - count(theirs & band))
+    let side = |me: usize| -> i64 {
+        let enemy_reach = reaches[1 - me];
+        let mut total = 0;
+        if SECURE != 0 {
+            total += SECURE * count(secure(state, me, enemy_reach));
+        }
+        // Held land only: the side's active cells the enemy cannot take.
+        let held = state.active(me).and_not(enemy_reach);
+        total += SECURE_HELD * count(held) + SECURE_BAND * count(held & band);
+        if SECURE_FRONT != 0 {
+            let open = valid.and_not(state.owned(me));
+            total += SECURE_FRONT * count(held & open.neighbours());
+        }
+        if SECURE_FREE != 0 {
+            let free = secure(state, me, enemy_reach).and_not(state.active(me));
+            total += SECURE_FREE * count(free);
+        }
+        total
+    };
+    side(seat) - side(1 - seat)
 }
 
 /// The active cells of a side for which each of its mines counts one more

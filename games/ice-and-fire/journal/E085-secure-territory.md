@@ -62,3 +62,23 @@ and removing E023's charge on threatened cells alone costs about 60 Elo:
 that charge is worth keeping. A likely cause, as for E083's race: a free
 cell nearer to a side counts as its territory as soon as the enemy cannot
 reach it, so taking it adds nothing, and the search stops taking land.
+
+### Round 2: held land only
+
+The owner (2026-11-26): shouldn't there be an incentive to grow the
+territory anyway? It is there (a taken cell counts 4 and its income 3 in
+the shared evaluation), but a cell taken toward the enemy often comes
+within the enemy's reach, with its neighbours, and leaves the secure count:
+with the secure weight at 8 or more, expanding lowers the score. Round 2
+rewards held land only, so that taking a cell and making it safe pays more
+than leaving it exposed (E023's charge kept):
+
+- `SECURE_HELD`: each active cell of a side the enemy cannot take at its
+  next turn;
+- `SECURE_FRONT`: each such cell next to a cell not the side's (its secure
+  front line);
+- `SECURE_BAND`: each such cell in the contested band, more (on held cells
+  now);
+- `SECURE_FREE`: each free cell nearer the side's land than the enemy's
+  that the enemy cannot take, at a weight below a taken cell's 7.
+
