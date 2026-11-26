@@ -31,7 +31,7 @@ pub const HQ_GUARD_TURNS: i64 = 1;
 /// threat) only when it lowers the active cells the enemy's best cut
 /// removes once our turn ends, rather than the cells its chains of
 /// trainings could reach ([`threatened`]). Off in v032.
-pub const GUARD_BY_CUT: bool = false;
+pub const GUARD_BY_CUT: bool = true;
 
 /// The active cells of ours that the enemy's best cut removes once the turn
 /// that ends in `state` is over (E092).
