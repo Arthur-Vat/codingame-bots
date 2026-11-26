@@ -151,7 +151,7 @@ pub const EARLY_UNTIL: u32 = 10;
 /// Up to [`EARLY_UNTIL`], the step and guard (E070) is also offered from
 /// our units on cells at most this many steps from the enemy's active cells
 /// or units, not only from those the enemy can reach (E093). 0 in v032.
-pub const STEP_GUARD_NEAR: u8 = 3;
+pub const STEP_GUARD_NEAR: u8 = 0;
 
 /// The cells at most `steps` steps, over non-void cells, from the active
 /// cells and units of the enemy of the player to act.
