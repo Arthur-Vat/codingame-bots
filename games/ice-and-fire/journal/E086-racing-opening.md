@@ -1,7 +1,7 @@
 ---
 id: E086
 date: 2026-11-26
-pull_request: "#NN"
+pull_request: "#388"
 parent: ice-and-fire-v032
 hypothesis: An opening whose plans meet an opponent playing at its turns and are ranked first by the fronts' centres they hold strongly (the enemy cannot take them at its next turn) wins the race to the areas of interest that v032 loses to zasmu in turns 1 to 6, without losing the fight on arrival, and beats ice-and-fire-v032.
 change: The opening's simulation lets the opponent play the opening's own rules at its turns, and a new ranking of its plans (`Order::Race`) puts first the fronts' centres held strongly; each setting at its v032 value is v032.

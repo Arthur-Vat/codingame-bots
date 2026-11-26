@@ -1,7 +1,7 @@
 ---
 id: E088
 date: 2026-11-26
-pull_request: "#NN"
+pull_request: "#388"
 parent: ice-and-fire-v032
 hypothesis: The three changes of E083 to E087 that leaned positive in their screenings (the centre pull, kept gold, the opponent's steps before its cuts), alone or together, beat ice-and-fire-v032 once screened with three times the pairs.
 change: E083's centre pull (`front.rs`), E084's kept gold (`eval.rs`) and E087's replies with steps (`search.rs`, with its cut finder's scattered cuts in `tactics`, unused here), gathered on one branch from main; each setting at its v032 value is v032.

@@ -1,7 +1,7 @@
 ---
 id: E087
 date: 2026-11-26
-pull_request: "#NN"
+pull_request: "#388"
 parent: ice-and-fire-v032
 hypothesis: A search that models the opponent's cuts that start with its units' steps, charges a plan for its second-worst reply as well as its worst, and is offered pairs of purchases near the front, stops opening weaknesses the opponent punishes and spends better, and beats ice-and-fire-v032.
 change: Replies with steps before a cut, a charge on the second-worst reply, and spending bundles in the search; each setting at its v032 value is v032.

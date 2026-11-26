@@ -1,7 +1,7 @@
 ---
 id: E085
 date: 2026-11-26
-pull_request: "#NN"
+pull_request: "#388"
 parent: ice-and-fire-v032
 hypothesis: An evaluation that counts first the territory each side holds securely (its active cells and the free cells nearer to it than to the enemy, that the enemy cannot take at its next turn), the contested band more, without E023's charge on each threatened cell, makes the search hold an advanced front the enemy cannot take back rather than land it loses, and beats ice-and-fire-v032.
 change: A secure-territory term in the search's evaluation, a band bonus on it, and E023's threat term optionally removed; each weight at its v032 value is v032.

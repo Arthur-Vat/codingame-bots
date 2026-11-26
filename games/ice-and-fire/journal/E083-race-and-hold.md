@@ -1,7 +1,7 @@
 ---
 id: E083
 date: 2026-11-26
-pull_request: "#NN"
+pull_request: "#388"
 parent: ice-and-fire-v032
 hypothesis: An evaluation that counts the race to the contested cells with units (a unit at the front arrives before a chain of trainings), the map's goal cells of each front (entrance, centre, outpost) a side holds or reaches first, and units that hold the front line, makes the search push and hold the front instead of backing off, and beats ice-and-fire-v032.
 change: Three terms of the search's evaluation until game turn 14, from the turn-1 planner of E080 (the owner, 2026-11-26, ideas 3, 4 and 5); each weight at 0 is v032.

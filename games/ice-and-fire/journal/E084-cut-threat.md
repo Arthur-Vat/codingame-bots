@@ -1,7 +1,7 @@
 ---
 id: E084
 date: 2026-11-26
-pull_request: "#NN"
+pull_request: "#388"
 parent: ice-and-fire-v032
 hypothesis: An evaluation that counts the cells the enemy's next capture would cut off from our HQ, and values kept gold, makes the search keep a sound shape and the gold to answer the enemy's cut instead of spreading thin before it, and beats ice-and-fire-v032.
 change: The cells cut off by the enemy's most damaging capture at its next turn cost each side, and kept gold counts more than its value, in the search's evaluation; each weight at 0 is v032.
