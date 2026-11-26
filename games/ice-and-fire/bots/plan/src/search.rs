@@ -48,8 +48,31 @@ use crate::actions::{generate, xy, Action, CUT_LENGTH};
 use crate::eval::eval;
 use crate::strategy::Guide;
 
+mod explore;
 #[cfg(feature = "analysis")]
 pub mod judge;
+
+/// How many spending splits start climbs (E090, `explore::splits`): after
+/// the first climb has filled the memory, the best this many plans that
+/// buy only towers and trainings, each number of towers up to
+/// [`SPLIT_TOWERS`] with each number of trainings up to
+/// [`SPLIT_TRAININGS`], start the next climbs. 0 in v032.
+pub const SPLITS: usize = 0;
+/// See [`SPLITS`].
+pub const SPLIT_TOWERS: usize = 3;
+/// See [`SPLITS`].
+pub const SPLIT_TRAININGS: usize = 5;
+/// Whether a climb that no action improves tries to remove one of its
+/// actions or replace one of its purchases by another, and goes on climbing
+/// after the best that improves it (E090, `explore::improve`), at most
+/// [`MAX_SWAPS`] times. Off in v032.
+pub const SWAPS: bool = false;
+/// See [`SWAPS`].
+pub const MAX_SWAPS: usize = 3;
+/// How many climbs start from the best plan with actions removed once the
+/// climbs repeat (E090, `explore::perturbations`): first without its
+/// purchases, then without each of its first commands. 0 in v032.
+pub const PERTURB: usize = 0;
 
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8;
@@ -156,6 +179,9 @@ struct Search {
     /// The strategic layer's guide this turn (E077): its plan and the
     /// objectives' term.
     guide: Option<Guide>,
+    /// Whether this search is ours, which explores with E090's settings,
+    /// rather than the opponent's model.
+    explore: bool,
 }
 
 /// The strike reserve (E069, stage B of the curriculum in
@@ -448,6 +474,8 @@ impl Search {
         let mut gains = Gains::default();
         let mut actions = Vec::new();
         let mut order = Vec::new();
+        let mut taken: Vec<Action> = Vec::new();
+        let mut swaps = 0;
         while cur.outcome().is_none() && !self.spent() {
             if commands.is_empty() && cached {
                 match &self.root_actions {
@@ -495,12 +523,26 @@ impl Search {
                 }
             }
             let Some((index, next, score)) = best else {
+                if SWAPS
+                    && self.explore
+                    && swaps < MAX_SWAPS
+                    && !self.spent()
+                    && self.improve(root, &mut taken, &mut cur, &mut cur_score, memory)
+                {
+                    swaps += 1;
+                    commands = taken
+                        .iter()
+                        .flat_map(|a| a.commands().iter().copied())
+                        .collect();
+                    continue;
+                }
                 break;
             };
             if commands.is_empty() {
                 first = Some(key(actions[index].commands()));
             }
             commands.extend_from_slice(actions[index].commands());
+            taken.push(actions[index].clone());
             cur = next;
             cur_score = score;
         }
@@ -551,6 +593,7 @@ impl Search {
             // The opponent's model keeps no reserve, as before E069.
             strike: false,
             guide: None,
+            explore: false,
         };
         out.push(theirs.climb(&next, &[], &[], true).commands);
         out.retain(|commands| !commands.is_empty());
@@ -679,6 +722,7 @@ pub fn think_with(
         root_actions: None,
         strike: strike_reserve(state),
         guide,
+        explore: true,
     };
     let mut memory = Vec::new();
     let mut plans: Vec<Plan> = Vec::new();
@@ -686,6 +730,9 @@ pub fn think_with(
     // Set when no first action left improves the plan (E029).
     let mut exhausted = false;
     let mut forced: Vec<Action> = Vec::new();
+    // The starts of E090's spending splits and perturbations, the next last.
+    let mut seeds: Vec<Action> = Vec::new();
+    let mut perturbed = false;
     // The first climb starts with the strategic turn (E077).
     let mut start = search
         .guide
@@ -693,7 +740,7 @@ pub fn think_with(
         .filter(|g| g.start)
         .map(|g| Action::Many(g.plan.clone()));
     while thought.climbs < MAX_CLIMBS && (plans.is_empty() || !search.spent()) {
-        let started = match start.take() {
+        let started = match start.take().or_else(|| seeds.pop()) {
             Some(action) => search.forced(state, &action, &memory),
             None => None,
         };
@@ -728,6 +775,21 @@ pub fn think_with(
         }
         if stop {
             break;
+        }
+        if SPLITS != 0 && thought.climbs == 1 {
+            seeds = search.splits(state, &memory, SPLITS);
+        }
+        if PERTURB != 0 && !more && !perturbed && seeds.is_empty() {
+            perturbed = true;
+            let best = plans
+                .iter()
+                .filter(|p| !p.commands.is_empty())
+                .map(|p| (search.rate(&p.end, &memory, i64::MIN), p))
+                .max_by_key(|(score, _)| *score)
+                .map(|(_, p)| p.commands.clone());
+            if let Some(commands) = best {
+                seeds = explore::perturbations(&commands, PERTURB);
+            }
         }
         // A climb against the same memory would find the same plan again:
         // the next one starts elsewhere (E014). When the plan was empty, no
