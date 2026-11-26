@@ -115,11 +115,15 @@ pub enum Order {
     /// ([`front_centres`]) counts 2 when the side holds it actively and the
     /// enemy cannot take it at its next turn, 1 when it holds it but the
     /// enemy can, -2 when the enemy holds it; the middle front's `middle`
-    /// times.
+    /// times. With `support` (the owner, 2026-11-26: strong in the centre,
+    /// no fight lost on arrival), a centre counts 2 only when one of the
+    /// side's units stands next to it or one of its towers on or next to it
+    /// as well, 1 otherwise.
     Race {
         decay: Decay,
         middle: i64,
         land_first: bool,
+        support: bool,
     },
     /// The active cells, then the least total distance from them to the
     /// frontier's cells (ring 0: even between the HQs), each distance at
@@ -614,7 +618,7 @@ pub fn front_centres(state: &State, seat: usize) -> [usize; 3] {
 }
 
 /// The areas of interest `seat` holds strongly ([`Order::Race`]).
-fn areas(state: &State, seat: usize, centres: [usize; 3], middle: i64) -> i64 {
+fn areas(state: &State, seat: usize, centres: [usize; 3], middle: i64, support: bool) -> i64 {
     let enemy = 1 - seat;
     let budget = state.gold(enemy) + state.income(enemy);
     let reach = ice_and_fire_tactics::chain::reach_within(state, enemy, true, budget);
@@ -625,7 +629,11 @@ fn areas(state: &State, seat: usize, centres: [usize; 3], middle: i64) -> i64 {
         }
         let weight = if l == 1 { middle } else { 1 };
         let value = if state.active(seat).test(c) {
-            if reach.test(c) {
+            let around = Bits::cell(c).neighbours();
+            let towers = state.towers() & state.active(seat);
+            let backed = !(state.units(seat) & around).is_empty()
+                || !(towers & (around | Bits::cell(c))).is_empty();
+            if reach.test(c) || (support && !backed) {
                 1
             } else {
                 2
@@ -658,11 +666,14 @@ pub fn key(state: &State, seat: usize, objective: &Objective, zones: Zones) -> K
             [i64::from(active.count()), weighed, sum, 0]
         }
         Order::Race {
-            middle, land_first, ..
+            middle,
+            land_first,
+            support,
+            ..
         } => {
             let active = state.active(seat);
             let weighed: i64 = active.iter().map(|c| zones.weights[c]).sum();
-            let held = areas(state, seat, zones.centres, middle);
+            let held = areas(state, seat, zones.centres, middle, support);
             let land = i64::from(active.count());
             if land_first {
                 [land, held, weighed, sum]

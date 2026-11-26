@@ -146,10 +146,14 @@ const OPENING_RACE: i64 = 0;
 /// Whether that race comes after the land rather than before it (E086).
 const OPENING_LAND_FIRST: bool = false;
 
+/// Whether a centre counts fully in that race only when supported: one of
+/// our units next to it, or our tower on or next to it (E086).
+const OPENING_SUPPORT: bool = false;
+
 /// Whether the opening's plans meet an opponent that plays the opening's
 /// own rules rather than one that passes (E086,
 /// `solo::OPPONENT_PLAYS`).
-const OPENING_OPPONENT: bool = true;
+const OPENING_OPPONENT: bool = false;
 
 /// How the opening compares its plans (E073): the weighted sum above in
 /// v029; with [`OPENING_RACE`], the race to the areas of interest (E086).
@@ -160,6 +164,7 @@ const ORDER: Order = if OPENING_RACE == 0 {
         decay: Decay::Linear(7),
         middle: OPENING_RACE,
         land_first: OPENING_LAND_FIRST,
+        support: OPENING_SUPPORT,
     }
 };
 
