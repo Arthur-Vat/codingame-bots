@@ -467,7 +467,7 @@ pub const GOAL: i64 = 0;
 /// See [`GOAL`].
 pub const GOAL_MARGIN: u8 = 1;
 /// See [`GOAL`].
-pub const GOAL_OWNED: i64 = 4;
+pub const GOAL_OWNED: i64 = 0;
 /// See [`GOAL`].
 pub const GOAL_GUARD: i64 = 0;
 /// See [`GOAL`].
