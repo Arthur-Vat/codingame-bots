@@ -167,7 +167,20 @@ stopped the dispatch command, which had already started it): pull4
 (`CENTRE_PULL` 4, `CENTRE_HOLD` 24, commit 5a579353dd66), pull8 (8, 48,
 26d89cba8641), pull4-moving (pull4 with moving goal cells 4 / 8 / 12,
 fd3af5455963) and moving4 (moving goal cells 4 / 8 / 12 alone,
-0faf2e07cbab), against v032, full games, 400 pairs each: pending.
+0faf2e07cbab), against v032, full games, 400 pairs each, no fault on
+either side:
+
+| Variant | Elo over v032 [95%] |
+| --- | --- |
+| pull4 | +7.8 [-3.6, +19.2] |
+| pull8 | +4.3 [-8.7, +17.4] |
+| moving4 | +4.3 [-17.3, +26.0] |
+| pull4-moving | -42.8 [-66.1, -19.8] |
+
+The pull alone and the moving goal cells alone lean positive, none with
+an interval above 0; together they are clearly weaker. The pull's
+intervals are narrower: it acts only on maps with a middle front, so many
+of its games are v032's.
 
 Games on the owner's request, against v032 at CodinGame's limits on the
 six maps, both seats: open-pull2 (`OPENING_PULL` 2, commit 7ba4d1c1fc2c)
