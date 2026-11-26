@@ -43,4 +43,22 @@ In `bots/plan/src/eval.rs`, for each side, less the enemy's:
 
 ## Screening
 
-Pending.
+`screen.yml` run 45848004354 on the owner's approval (2026-11-26), full
+games against v032, 400 pairs per variant over 2 shards, no fault on either
+side:
+
+| Variant | Commit | Secure | Band | Threat (quarters) | Elo over v032 [95%] |
+| --- | --- | --- | --- | --- | --- |
+| sec4 | aeddf17148eb | 4 | 0 | 5 | -100.0 [-124.3, -76.5] |
+| sec8 | de59f295625b | 8 | 0 | 5 | -176.1 [-202.4, -151.5] |
+| sec16 | a0180d00bc11 | 16 | 0 | 5 | -231.5 [-261.6, -204.1] |
+| sec8-nothreat | 11d4279acd2f | 8 | 0 | 0 | -156.6 [-183.7, -131.2] |
+| sec8-band-nothreat | 8a4f9a74db5f | 8 | 4 | 0 | -197.9 [-226.7, -171.3] |
+| sec16-band-nothreat | 0d3639e7bf83 | 16 | 8 | 0 | -235.4 [-264.6, -208.9] |
+| nothreat | 9b1528e3bc30 | 0 | 0 | 0 | -59.6 [-82.1, -37.6] |
+
+Every variant is clearly weaker, the more the heavier the secure term,
+and removing E023's charge on threatened cells alone costs about 60 Elo:
+that charge is worth keeping. A likely cause, as for E083's race: a free
+cell nearer to a side counts as its territory as soon as the enemy cannot
+reach it, so taking it adds nothing, and the search stops taking land.
