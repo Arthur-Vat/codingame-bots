@@ -150,7 +150,7 @@ const OPENING_SAFE_SPOT: u8 = u8::MAX;
 
 /// How much more a mine spot is worth to the opening's moves and trainings
 /// (E089, `Params::spot`): 0 in v032, as in every set of the solo planner.
-const OPENING_SPOT: i64 = 2;
+const OPENING_SPOT: i64 = 1;
 
 /// How much less a cell is worth to the opening's moves and trainings for
 /// each of our units next to it (E051): 0 in v022; 2 won the screening (4
