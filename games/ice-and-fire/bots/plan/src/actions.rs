@@ -36,7 +36,7 @@ pub const GUARD_BY_CUT: bool = false;
 /// How many steps from the enemy's active cells or units a guard tower may
 /// stand (E092, the owner: a tower near the border guards best; a cheap
 /// stand-in for [`GUARD_BY_CUT`]): 0 for anywhere (v032).
-pub const GUARD_NEAR: u8 = 2;
+pub const GUARD_NEAR: u8 = 3;
 
 /// Whether [`GUARD_NEAR`] binds the HQ guard too (E092).
 pub const GUARD_NEAR_HQ: bool = false;
