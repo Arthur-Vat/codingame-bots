@@ -139,3 +139,46 @@ the games' page now moves each front's goals with it (E just past the
 side's furthest cell on the front's axis, C the centre or E once past it,
 O two steps beyond C), and `front.rs` does not yet.
 
+### Round 3: goals that move, and a pull toward the centre
+
+The owner (2026-11-26): the goal cells should move with the front, the
+entrance not next to our front cell but between it and the front's region;
+the variants do not take the centre enough: on an open field the centre is
+a must, and the land should extend toward it every turn, from the first
+turns.
+
+- `MOVING` (`front.rs`): each front's axis is the most central path from
+  the side's HQ to the front's centre, then on to the enemy's HQ; the
+  entrance lies halfway between the side's furthest cell on the axis and
+  the front's region (its entrance cell; once in the region, its centre;
+  once past the centre, the next cell), the centre is the front's centre
+  (or the entrance once past it), the outpost two steps beyond.
+- `CENTRE_PULL` and `CENTRE_HOLD` (`front.rs`, the search from game turn
+  7): each step between a side's active land and the middle front's centre
+  (the enemy's: its mirror) costs it `CENTRE_PULL`, and holding the centre
+  counts `CENTRE_HOLD`, on maps with a middle front.
+- `OPENING_PULL` (`main.rs`) and `Order::CentralPull`
+  (`opening/src/solo.rs`): the opening (game turns 1 to 6) ranks its plans
+  by their active cells less `OPENING_PULL` for each step between their
+  land and the middle front's centre, then as `Order::Central`.
+
+`screen.yml` run 45827669985, on the owner's approval (the owner then
+stopped the dispatch command, which had already started it): pull4
+(`CENTRE_PULL` 4, `CENTRE_HOLD` 24, commit 5a579353dd66), pull8 (8, 48,
+26d89cba8641), pull4-moving (pull4 with moving goal cells 4 / 8 / 12,
+fd3af5455963) and moving4 (moving goal cells 4 / 8 / 12 alone,
+0faf2e07cbab), against v032, full games, 400 pairs each: pending.
+
+Games on the owner's request, against v032 at CodinGame's limits on the
+six maps, both seats: open-pull2 (`OPENING_PULL` 2, commit 7ba4d1c1fc2c)
+won 6 and lost 6, open-pull2-pull8 (with `CENTRE_PULL` 8 and
+`CENTRE_HOLD` 48, 6641ba8f1825) won 6 and lost 6. v032's opening already
+extends toward the centre nearly as fast as it can (its steps to the
+middle front's centre at game turns 2, 4 and 6: 8, 6 and 3 as red, 7, 5
+and 1 to 3 as blue, from 10 at the start): the opening pull changes the
+first six turns in one game of the eight on maps with a middle front (map
+925707781 as blue: 1 step at turn 6 rather than 3), and both pulled
+variants hold the centre from game turn 8 in nearly every game (v032's
+opening held it at turn 8 in 5 of the 8). Pictures, action by action:
+https://claude.ai/artifact/Fi8iV1NgUNDd48v9GkD4Ks.
+
