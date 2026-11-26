@@ -82,3 +82,24 @@ than leaving it exposed (E023's charge kept):
 - `SECURE_FREE`: each free cell nearer the side's land than the enemy's
   that the enemy cannot take, at a weight below a taken cell's 7.
 
+`screen.yml` run 45851250571 on the owner's approval (2026-11-26), full
+games against v032, 400 pairs per variant over 2 shards, no fault on either
+side:
+
+| Variant | Commit | Held | Front | Band | Free | Elo over v032 [95%] |
+| --- | --- | --- | --- | --- | --- | --- |
+| held2 | 906e51729e40 | 2 | 0 | 0 | 0 | -0.0 [-22.4, +22.4] |
+| held4 | 4711e79ed6d1 | 4 | 0 | 0 | 0 | -63.2 [-85.8, -41.1] |
+| held4-band2 | 1aaec24fbe8a | 4 | 0 | 2 | 0 | -48.1 [-70.5, -26.1] |
+| held4-free1 | 0e084b263095 | 4 | 0 | 0 | 1 | -43.7 [-65.9, -21.8] |
+| front4 | 16ccfee86b7b | 0 | 4 | 0 | 0 | -34.9 [-58.1, -11.9] |
+| front8 | 9f289e5370cf | 0 | 8 | 0 | 0 | -82.3 [-106.4, -58.9] |
+| held2-front4 | 333afb5dbc1e | 2 | 4 | 0 | 0 | -60.5 [-84.2, -37.4] |
+
+Rewarding held land only is far less harmful than round 1, but nothing
+beats v032: the lightest weight (held2) is level, and every heavier one is
+weaker, the more the heavier. Along this axis (safety against expansion)
+v032's balance, its threat charge of 5/4 on each cell the enemy can take,
+already seems near the best; what separates v032 from zasmu is where it
+plays, not how much it values safety (E084's `codingame-judge`).
+
