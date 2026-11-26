@@ -79,7 +79,7 @@ pub const THREAT_QUARTERS: i64 = 5;
 /// What a threatened cell costs up to game turn
 /// [`crate::actions::EARLY_UNTIL`] (E093: hold the ground that sets the
 /// frontier). [`THREAT_QUARTERS`] in v032.
-pub const EARLY_THREAT_QUARTERS: i64 = 5;
+pub const EARLY_THREAT_QUARTERS: i64 = 8;
 
 /// The quarters a threatened cell costs in `state` ([`THREAT_QUARTERS`],
 /// [`EARLY_THREAT_QUARTERS`]).
