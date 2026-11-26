@@ -69,13 +69,13 @@ pub const REPLY_STEPS: u8 = 3;
 pub const SCATTER_CUTS: usize = 3;
 
 /// The scattered cuts' longest set of trainings and the beam's width.
-pub const SCATTER_LENGTH: usize = 5;
+pub const SCATTER_LENGTH: usize = 4;
 /// See [`SCATTER_LENGTH`].
-pub const SCATTER_WIDTH: usize = 60;
+pub const SCATTER_WIDTH: usize = 30;
 
 /// Whether each single step of [`REPLY_STEPS`]' bit 2 is also followed by
 /// the best scattered cut.
-pub const SCATTER_AFTER_STEPS: bool = false;
+pub const SCATTER_AFTER_STEPS: bool = true;
 
 /// Most pairs of steps tried by [`REPLY_STEPS`]' bit 4.
 pub const STEP_PAIRS: usize = 10;

@@ -123,7 +123,7 @@ pub const RUSH_DEFEND: bool = false;
 
 /// Scattered cuts (E087, `scatter_cuts`) offered as macro actions: 0 for
 /// none (v032).
-pub const MACRO_SCATTER: usize = 0;
+pub const MACRO_SCATTER: usize = 2;
 
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
