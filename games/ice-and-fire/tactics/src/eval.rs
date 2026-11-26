@@ -24,6 +24,36 @@ pub const EARLY_TOWER_VALUE: i64 = 10;
 /// See [`EARLY_TOWER_VALUE`]: the plan bot's early game (E093).
 pub const EARLY_TOWER_UNTIL: u32 = 10;
 
+/// What each distinct active cell of a side that one of its towers protects
+/// (the tower's cell and the cells next to it) counts, so that towers
+/// protecting the same cells count it once (E095). 0 in v032.
+pub const COVER_WEIGHT: i64 = 0;
+
+/// With [`COVER_WEIGHT`], only the protected cells at most this many steps,
+/// over non-void cells, from the enemy's active cells or units count; 0 for
+/// all of them (E095).
+pub const COVER_NEAR: u8 = 0;
+
+/// The active cells of `seat` its active towers protect (E095), those near
+/// the enemy by [`COVER_NEAR`].
+pub fn covered(state: &State, seat: usize) -> Bits {
+    let active = state.active(seat);
+    let towers = state.towers() & active;
+    let mut cells = (towers | towers.neighbours()) & active;
+    if COVER_NEAR != 0 {
+        let valid = state.map().valid;
+        let enemy = 1 - seat;
+        let mut zone = state.active(enemy) | state.units(enemy);
+        let mut left = COVER_NEAR;
+        while left != 0 {
+            zone |= zone.neighbours() & valid;
+            left -= 1;
+        }
+        cells &= zone;
+    }
+    cells
+}
+
 /// What a side has: gold, income, active cells, units on active cells (by
 /// training cost) and its active towers.
 fn side(state: &State, seat: usize) -> i64 {
@@ -42,6 +72,11 @@ fn side(state: &State, seat: usize) -> i64 {
         } else {
             TOWER_VALUE
         } * i64::from((state.towers() & active).count())
+        + if COVER_WEIGHT == 0 {
+            0
+        } else {
+            COVER_WEIGHT * i64::from(covered(state, seat).count())
+        }
 }
 
 /// What `seat`'s gold and income leave once it has paid for its cheapest

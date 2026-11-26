@@ -88,3 +88,4 @@ One entry per experiment, failures included, so that ideas are not retried blind
 | [E092](E092-tower-value.md) | 2026-11-26 | Towers only where they shrink the enemy's best cut, the HQ guard only against next turn's chain, and no value for a tower itself, beat `ice-and-fire-v032` | Pending | Pending |
 | [E093](E093-early-hold.md) | 2026-11-26 | Up to game turn 10, the step and guard from every unit near the enemy, a dearer threatened cell or a dearer tower beat `ice-and-fire-v032` | Pending | Pending |
 | [E094](E094-tower-mixes.md) | 2026-11-26 | E092's and E093's tower changes that did not lose, together, beat `ice-and-fire-v032` | Pending | Pending |
+| [E095](E095-protected-cells.md) | 2026-11-26 | A value per distinct cell our towers protect, instead of or beside a flat value per tower, beats `ice-and-fire-v032` | Pending | Pending |
