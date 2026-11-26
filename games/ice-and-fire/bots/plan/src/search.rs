@@ -58,10 +58,10 @@ mod repair;
 /// on. 0 in v032.
 pub const REPAIR: usize = 2;
 /// The most steps of one repair (E091).
-pub const REPAIR_STEPS: usize = 4;
+pub const REPAIR_STEPS: usize = 2;
 /// Whether a repair may add any action offered, not only counters to the
 /// worst reply and the dropping of a command (E091).
-pub const REPAIR_ANY: bool = false;
+pub const REPAIR_ANY: bool = true;
 
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8;
