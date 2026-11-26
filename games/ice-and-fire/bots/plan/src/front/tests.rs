@@ -78,3 +78,14 @@ fn the_moving_entrance_lies_between_the_front_line_and_the_region() {
         }
     });
 }
+
+#[test]
+fn the_pull_toward_the_centre_counts_the_steps_of_each_side() {
+    let state = map_925707787();
+    with_fronts(&state, |fronts| {
+        let middle = fronts.iter().find(|f| f.lane == 1).expect("a middle front");
+        // From red's HQ to (5, 5), and from blue's two cells to (6, 6).
+        assert_eq!(middle.from_centre[0], 10);
+        assert_eq!(middle.from_mirror[143], 10);
+    });
+}

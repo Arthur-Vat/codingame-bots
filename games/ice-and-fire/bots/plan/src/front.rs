@@ -19,9 +19,9 @@ pub const RACE: i64 = 0;
 /// What a front counts for a side whose deepest goal cell held or reached
 /// first is its entrance, centre or outpost ([`goal_cells`]): 0 for
 /// nothing (v032).
-pub const GOAL_E: i64 = 4;
+pub const GOAL_E: i64 = 0;
 /// See [`GOAL_E`].
-pub const GOAL_C: i64 = 8;
+pub const GOAL_C: i64 = 0;
 /// See [`GOAL_E`].
 pub const GOAL_O: i64 = 0;
 
@@ -37,12 +37,23 @@ pub const GOAL_MIDDLE: i64 = 1;
 /// the centre, the next cell), the centre is the front's centre or the
 /// entrance once past it, the outpost two steps beyond; false keeps the
 /// turn-1 cells.
-pub const MOVING: bool = true;
+pub const MOVING: bool = false;
 
 /// What each band cell in the middle (`|x - y|` at most 3, the middle
 /// front's place, red's view) a side holds actively counts beyond E073's
 /// band cells held: 0 for nothing (v032).
 pub const CENTRE: i64 = 0;
+
+/// What each step between a side's active land and the middle front's
+/// centre costs it (the enemy's is its mirror), on maps with a middle
+/// front, until [`FRONT_UNTIL`] (the owner, 2026-11-26: on an open field
+/// the centre is a must, and the land extends toward it every turn): 0 for
+/// nothing (v032).
+pub const CENTRE_PULL: i64 = 0;
+
+/// What holding the middle front's centre actively counts for a side: 0
+/// for nothing (v032).
+pub const CENTRE_HOLD: i64 = 0;
 
 /// What each unit of a side on a band cell it holds actively, which the
 /// enemy cannot take at its next turn, counts: 0 for nothing (v032).
@@ -118,6 +129,10 @@ struct Front {
     axis: Vec<usize>,
     centre: usize,
     entrance: usize,
+    /// The steps from its centre, and from the centre's mirror (the
+    /// enemy's), to each cell.
+    from_centre: [u8; CELLS],
+    from_mirror: [u8; CELLS],
 }
 
 thread_local! {
@@ -274,6 +289,8 @@ fn compute_goals(state: &State) -> Vec<Front> {
             axis,
             centre: path.len() - 1,
             entrance: entry,
+            from_centre: distances(state, Bits::cell(centre)),
+            from_mirror: distances(state, Bits::cell(CELLS - 1 - centre)),
         });
     }
     out
@@ -282,14 +299,48 @@ fn compute_goals(state: &State) -> Vec<Front> {
 /// The race and goal terms for `seat`, less the enemy's (0 after
 /// [`FRONT_UNTIL`]); `band` is E073's band.
 pub fn score(state: &State, seat: usize, band: Bits) -> i64 {
-    if (RACE == 0 && GOAL_E == 0 && GOAL_C == 0 && GOAL_O == 0 && CENTRE == 0)
+    if (RACE == 0
+        && GOAL_E == 0
+        && GOAL_C == 0
+        && GOAL_O == 0
+        && CENTRE == 0
+        && CENTRE_PULL == 0
+        && CENTRE_HOLD == 0)
         || state.game_turn() > FRONT_UNTIL
     {
         return 0;
     }
-    let ours = arrivals(state, seat);
-    let theirs = arrivals(state, 1 - seat);
+    let racing = RACE != 0 || GOAL_E != 0 || GOAL_C != 0 || GOAL_O != 0;
+    let (ours, theirs) = if racing {
+        (arrivals(state, seat), arrivals(state, 1 - seat))
+    } else {
+        ([Bits::EMPTY; CAP + 1], [Bits::EMPTY; CAP + 1])
+    };
     let mut total = RACE * race_net(&ours, &theirs, band);
+    if CENTRE_PULL != 0 || CENTRE_HOLD != 0 {
+        total += with_fronts(state, |fronts| {
+            let Some(front) = fronts.iter().find(|f| f.lane == 1) else {
+                return 0;
+            };
+            let mut sum = 0;
+            for side in 0..2 {
+                let (cell, steps) = if side == 0 {
+                    (front.cells[1], &front.from_centre)
+                } else {
+                    (CELLS - 1 - front.cells[1], &front.from_mirror)
+                };
+                let active = state.active(side);
+                let value = if active.test(cell) {
+                    CENTRE_HOLD
+                } else {
+                    let d = active.iter().map(|c| steps[c]).min().unwrap_or(u8::MAX);
+                    -CENTRE_PULL * i64::from(d.min(SIZE as u8))
+                };
+                sum += if side == seat { value } else { -value };
+            }
+            sum
+        });
+    }
     if CENTRE != 0 {
         let middle = band & middle_cells();
         let held = |side: usize| i64::from((state.active(side) & middle).count());
