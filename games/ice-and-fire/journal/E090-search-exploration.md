@@ -5,13 +5,13 @@ pull_request: "#NN"
 parent: ice-and-fire-v032
 hypothesis: A search that also starts from spending splits (towers where they most lower the enemy's best cut, then trainings), that can remove or swap an action when nothing more improves its plan, and that re-climbs from its best plan with actions removed, finds mixes of purchases the greedy climb misses, and beats ice-and-fire-v032.
 change: Three settings of the search (`SPLITS`, `SWAPS`, `PERTURB`, `search/explore.rs`), each at its v032 value v032.
-release: pending
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
-cg_rank: not reported
+release: none
+sprt: not run: no variant above 0 in screening
+elo: none
+pairs: none
+full_time: none
+decision: dropped
+cg_rank: none
 ---
 
 ## Why
@@ -102,3 +102,8 @@ found, and they take the climbs that would have found others, so a plan
 fitted to a few replies wins the choice and meets the replies left out.
 Finding plans the evaluation rates higher does not, alone, make the bot
 stronger.
+
+## Result
+
+Dropped (the owner, 2026-11-26), for E091: a repair of the latest plan
+against its worst reply, with a fresh reply search after each repair.
