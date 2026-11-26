@@ -132,7 +132,7 @@ pub const SECURE: i64 = 0;
 /// What each held secure cell of a side in the contested band (E073's band,
 /// the areas of interest) counts more: 0 for nothing (v032). (Round 1
 /// counted it on [`secure`]'s cells, free ones included.)
-pub const SECURE_BAND: i64 = 2;
+pub const SECURE_BAND: i64 = 0;
 
 /// What each active cell a side holds that the enemy cannot take at its
 /// next turn counts for it (E085, round 2: held land only, so that taking a
@@ -148,7 +148,7 @@ pub const SECURE_FRONT: i64 = 0;
 /// What each free cell nearer a side's active land than the enemy's, that
 /// the enemy cannot take at its next turn, counts for it (below a taken
 /// cell's 7, so that taking it still pays): 0 for nothing (v032).
-pub const SECURE_FREE: i64 = 0;
+pub const SECURE_FREE: i64 = 1;
 
 /// The secure territory of `seat` ([`SECURE`]) when the enemy's next turn
 /// reaches `enemy_reach`.
