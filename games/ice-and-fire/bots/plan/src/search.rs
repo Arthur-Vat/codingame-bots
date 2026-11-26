@@ -55,6 +55,27 @@ pub mod judge;
 const MEMORY_CAP: usize = 8;
 /// The opponent's best cuts added to the memory after a climb.
 const REPLY_CUTS: usize = 3;
+/// The opponent's replies with steps before a cut (E087, the owner,
+/// 2026-11-26: every kind of cut in the opponent's replies): bit 1, all its
+/// movable units step toward our land, then its best cuts; bit 2, each such
+/// step alone, then its best cut. 0 for none (v032).
+pub const REPLY_STEPS: u8 = 0;
+
+/// Most single steps tried by [`REPLY_STEPS`]' bit 2, the nearest our land
+/// first.
+pub const STEP_REPLIES: usize = 8;
+
+/// The cut finder's longest chain after the steps (E087).
+pub const STEP_CUT_LENGTH: usize = 4;
+
+/// What the damage of a plan's second-worst reply costs it, in quarters
+/// (E087): the opponent plays one reply, but a plan that opens two
+/// weaknesses is riskier than one that opens one, though its worst reply is
+/// the same (the owner's unit 11, E086's entry). The damage is the
+/// evaluation of the plan's end state, with no reply, less the evaluation
+/// after that reply. 0 for nothing (v032, the worst reply alone).
+pub const SECOND_QUARTERS: i64 = 0;
+
 /// Most climbs in one turn.
 const MAX_CLIMBS: usize = 32;
 /// Most plans scored by the opponent's climb in one reply search (E019).
@@ -363,13 +384,27 @@ impl Search {
             return self.value(end);
         }
         let mut worst = i64::MAX;
+        let mut second = i64::MAX;
         for reply in memory {
-            worst = worst.min(self.value(&after_reply(end, &reply.commands)));
+            let value = self.value(&after_reply(end, &reply.commands));
+            if value < worst {
+                second = worst;
+                worst = value;
+            } else if value < second {
+                second = value;
+            }
+            // The second-worst charge only lowers the score: stopping here
+            // still gives an upper bound.
             if worst <= bound {
-                break;
+                return worst;
             }
         }
-        worst
+        if SECOND_QUARTERS != 0 && second != i64::MAX {
+            let damage = (self.value(end) - second).max(0);
+            worst - SECOND_QUARTERS * damage / 4
+        } else {
+            worst
+        }
     }
 
     /// The evaluation of `state` for us, with the objectives' term of the
@@ -533,6 +568,25 @@ impl Search {
         }
         for cut in cuts(&next, CUT_LENGTH, gold, REPLY_CUTS) {
             out.push(cut.commands);
+        }
+        if REPLY_STEPS & 1 != 0 {
+            let (moves, stepped) = all_steps(&next);
+            if !moves.is_empty() {
+                for cut in cuts(&stepped, STEP_CUT_LENGTH, gold, 2) {
+                    let mut commands = moves.clone();
+                    commands.extend(cut.commands);
+                    out.push(commands);
+                }
+            }
+        }
+        if REPLY_STEPS & 2 != 0 {
+            for (step, stepped) in single_steps(&next, STEP_REPLIES) {
+                if let Some(cut) = cuts(&stepped, STEP_CUT_LENGTH, gold, 1).into_iter().next() {
+                    let mut commands = vec![step];
+                    commands.extend(cut.commands);
+                    out.push(commands);
+                }
+            }
         }
         let mut greedy = Vec::new();
         greedy_turn(&next, &mut greedy);
@@ -818,4 +872,68 @@ pub fn think_with(
         }
     }
     thought
+}
+
+/// The steps toward our land of the player to act in `state` (E087): for
+/// each of its movable units, onto a cell of the enemy's it may take, else
+/// onto a free cell next to the enemy's land, if any; each with the state
+/// after it.
+fn step_options(state: &State) -> Vec<(Command, State)> {
+    let me = state.to_act();
+    let enemy_land = state.owned(1 - me);
+    let near = enemy_land.neighbours() & state.map().valid;
+    let mut out = Vec::new();
+    for from in state.movable_units().iter() {
+        let Some((id, _)) = state.unit_at(from) else {
+            continue;
+        };
+        let targets = Bits::cell(from).neighbours() & (enemy_land | near).and_not(state.owned(me));
+        for to in targets.iter() {
+            let (x, y) = (to % SIZE, to / SIZE);
+            let command = Command::Move {
+                id,
+                x: x as u8,
+                y: y as u8,
+            };
+            let mut after = state.clone();
+            if after.apply(command) {
+                out.push((command, after));
+            }
+        }
+    }
+    // Captures first, then the steps next to the enemy's land.
+    out.sort_by_key(|(c, _)| match *c {
+        Command::Move { x, y, .. } => !enemy_land.test(usize::from(y) * SIZE + usize::from(x)),
+        _ => true,
+    });
+    out
+}
+
+/// Each of [`step_options`] alone, at most `most` (E087).
+fn single_steps(state: &State, most: usize) -> Vec<(Command, State)> {
+    let mut out = step_options(state);
+    out.truncate(most);
+    out
+}
+
+/// All the movable units of the player to act step toward the enemy's land
+/// at once, each the first of its [`step_options`] the rules still accept
+/// after the steps before it (E087): the steps and the state after them.
+fn all_steps(state: &State) -> (Vec<Command>, State) {
+    let mut cur = state.clone();
+    let mut moves = Vec::new();
+    let mut moved = Vec::new();
+    for (command, _) in step_options(state) {
+        let Command::Move { id, .. } = command else {
+            continue;
+        };
+        if moved.contains(&id) {
+            continue;
+        }
+        if cur.apply(command) {
+            moves.push(command);
+            moved.push(id);
+        }
+    }
+    (moves, cur)
 }

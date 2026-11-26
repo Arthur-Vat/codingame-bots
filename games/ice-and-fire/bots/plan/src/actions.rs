@@ -303,6 +303,61 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
             out.push(Action::Many(chain.commands));
         }
     }
+
+    // Spending bundles (E087): pairs of purchases near the front.
+    if BUNDLE_CANDIDATES != 0 && gold >= 20 {
+        bundles(state, gold, out);
+    }
+}
+
+/// How many purchases near the front the spending bundles pair up (E087,
+/// the owner, 2026-11-26: with K gold, try several units, several towers,
+/// both, or saving): each pair of them that the gold pays for is offered
+/// as one action, so that a pair can be bought though neither alone raises
+/// the score; saving stays the climb's default. 0 for none (v032).
+pub const BUNDLE_CANDIDATES: usize = 0;
+
+/// What a purchase costs: its training's level times 10, or a building's
+/// cost; 0 for anything else.
+fn cost_of(command: &Command) -> i64 {
+    match *command {
+        Command::Train { level, .. } => 10 * i64::from(level),
+        Command::BuildTower { .. } | Command::BuildMine { .. } => BUILD_COST,
+        _ => 0,
+    }
+}
+
+/// The spending bundles ([`BUNDLE_CANDIDATES`]): the single trainings and
+/// towers of `out` on a cell next to the enemy's land or to a cell it can
+/// take at its next turn, the first [`BUNDLE_CANDIDATES`] of them, paired.
+fn bundles(state: &State, gold: i64, out: &mut Vec<Action>) {
+    let me = state.to_act();
+    let front = (state.owned(1 - me) | crate::eval::reach(state, 1 - me)).neighbours();
+    let mut picks: Vec<Command> = Vec::new();
+    for action in out.iter() {
+        let Action::One(command) = action else {
+            continue;
+        };
+        let cell = match *command {
+            Command::Train { x, y, .. } | Command::BuildTower { x, y } => {
+                usize::from(y) * SIZE + usize::from(x)
+            }
+            _ => continue,
+        };
+        if front.test(cell) && !picks.contains(command) {
+            picks.push(*command);
+            if picks.len() == BUNDLE_CANDIDATES {
+                break;
+            }
+        }
+    }
+    for (i, a) in picks.iter().enumerate() {
+        for b in &picks[i + 1..] {
+            if cost_of(a) + cost_of(b) <= gold {
+                out.push(Action::Many(vec![*a, *b]));
+            }
+        }
+    }
 }
 
 /// The fall-back-and-guard actions (E076, [`FALL_BACK`]) of the player to
