@@ -78,3 +78,34 @@ positive without an interval above 0. A likely cause, to check on games:
 the shape term (E010, E081) already charges the cells one loss cuts off
 near the enemy, so the cut term counts them twice and the search plays too
 defensively.
+
+### Compared with zasmu
+
+The owner (2026-11-26), on the results: compare with zasmu. v032's 195
+CodinGame games against zasmu (the first of the leaderboard; v032 won 17),
+replayed as the study of the lost fights, both sides read at the start of
+their plies up to game turn 12 (medians, except trainings, towers built and
+cells lost: means a ply):
+
+| Game turn | Cells v032 / zasmu | Income | Gold kept after the ply | Trainings (level 2+) | Towers built | Cells lost at the enemy's next ply |
+| --- | --- | --- | --- | --- | --- | --- |
+| 5 | 10 / 11 | 7 / 8 | 7 / 2 | 0.03 / 0.97 | 0 / 0 | 0 / 0 |
+| 7 | 17 / 20 | 13 / 15 | 0 / 3 | 1.56 (0.12) / 0.09 (0) | 0 / 0.76 | 0 / 0.03 |
+| 8 | 23 / 25 | 17 / 20 | 2 / 8 | 0.34 (0.03) / 0.45 (0.15) | 0.57 / 0.31 | 0.29 / 0.30 |
+| 9 | 27 / 29 | 21 / 25 | 9 / 13 | 0.33 (0.05) / 0.70 (0.26) | 0.60 / 0.39 | 0.64 / 0.81 |
+| 10 | 29 / 32 | 26 / 29 | 16 / 17 | 0.70 (0.21) / 0.69 (0.27) | 0.50 / 0.45 | 1.17 / 1.10 |
+| 11 | 32 / 35 | 29 / 33 | 10 / 17 | 0.82 (0.23) / 0.97 (0.42) | 0.70 / 0.35 | 2.22 / 1.53 |
+| 12 | 33 / 38 | 31 / 34 | 11 / 22 | 0.87 (0.30) / 0.85 (0.32) | 0.66 / 0.58 | 2.75 / 1.58 |
+
+- zasmu is a cell ahead from game turn 4 (8 to 7) and the lead grows (38
+  to 33 at turn 12), with as many units or fewer and more income.
+- At game turn 5 v032's opening saves its gold (it trains in 3% of the
+  games) while zasmu trains (97%); at turn 7 v032 spends everything on
+  units (1.56 trainings, 0 gold kept) while zasmu builds a tower in 76% of
+  its games, before the fights, and keeps a little gold.
+- In the fights (turns 9 to 12) zasmu trains more level-2 units (0.26 to
+  0.42 a ply against 0.05 to 0.30) and keeps more gold (13 to 22 against 9
+  to 16), and v032 loses more at turns 11 and 12 (2.2 and 2.8 cells a ply
+  against 1.5 and 1.6). Large losses before turn 12: 0.89 a game for v032,
+  0.74 for zasmu.
+
