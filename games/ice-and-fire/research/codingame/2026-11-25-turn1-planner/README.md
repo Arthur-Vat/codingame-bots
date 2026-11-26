@@ -47,6 +47,14 @@ not part of the build or the checks.
   each unit's room (the free cells nearer to it than to our other units, up
   to 3), then the Voronoi share, then the fewest cells along the void. It
   also counts the distinct endings (land and unit cells).
+- `planner4.py`: the fourth version (the owner, 2026-11-26), reading
+  `plans3.json`, run on four processes. The same macro plans in two modes,
+  independent (version 3) and coordinated (a training opens its sub-goals;
+  every turn they are matched to our units, the nearest pair first; the
+  other units grow into their own share of the free cells, each target
+  reserved), each played 3 turns past game turn 10 with free growth, and
+  five calibrations of the score (land, land + room, tolerance 1 and 2,
+  later land).
 
 The pictures: fronts and goals https://claude.ai/artifact/CjVo3RiA1NCXV7eczk8vim,
 cell values and entrances https://claude.ai/artifact/1hsAEqAvnM83ZDnRKACE6y,

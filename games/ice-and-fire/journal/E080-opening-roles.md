@@ -548,3 +548,60 @@ Pictures, playable action by action, with each decision's sub-goals, the
 forks and each unit's room:
 https://claude.ai/artifact/45xi3imE6WxsU2h4zUEDGP.
 
+## Calibrations, and the units coordinated
+
+The owner (2026-11-26): the room term must not cost much territory, but a
+little land at the end of the early game may be given up for more captured
+in the turns after; and the units plan independently, whereas this is a
+coordination problem.
+
+`planner4.py` (research/codingame/2026-11-25-turn1-planner) plays version
+3's macro plans (`K = 4`) in two modes and 3 turns past game turn 10 with
+free growth:
+- independent: each unit keeps its training's sub-goal (version 3);
+- coordinated: a training opens its sub-goal; every turn the open
+  sub-goals are matched to our units, the nearest pair first, so a sub-goal
+  goes to whichever unit is nearest; the other units grow into their own
+  share (the free cells nearer to them than to our other units), each
+  target reserved so that two units never chase the same cell.
+
+Calibrations: land (the most at turn 10); land + room (version 3);
+tolerance `n` (within `n` cells of the most land at turn 10, the most at
+turn 13); later land (the most at turn 13). Without an enemy, turn 13's
+land is an upper bound.
+
+| Map | Coordinated, tolerance 1: land at 10, at 13 | Coordinated, best land at 10 | Independent, tolerance 1: at 10, at 13 | Free growth (independent): at 10, at 13 |
+| --- | --- | --- | --- | --- |
+| three fronts, 925707781 | 40, 87 | 40 | 40, 85 | 39, 80 |
+| three fronts, 925707787 | 33, 68 | 33 | 32, 71 | 32, 68 |
+| two flanks, 925677145 | 39, 73 | 40 | 37, 69 | 28, 54 |
+| two flanks, 925707764 | 40, 71 | 40 | 38, 69 | 32, 50 |
+| middle only, 925708443 | 32, 53 | 32 | 29, 49 | 25, 42 |
+| middle only, 925709109 | 32, 48 | 32 | 31, 50 | 26, 46 |
+
+What it shows:
+- Coordination holds more land at turn 10 on four maps of six (up to 3
+  cells more), never less; at turn 13 it is ahead on four maps and behind
+  on two (925707787 by 3, 925709109 by 2), where its free growth (the
+  shares) does worse than the independent units' after turn 10.
+- Tolerance 1 is enough: it gives up at most 1 cell at turn 10 for up to 6
+  more at turn 13, and tolerance 2 and later land pick the same plans
+  almost everywhere.
+- Land + room is never the best at turn 13 and costs up to 3 cells at
+  turn 10 (independent, 925708443): the room term is dropped for the
+  measured later land.
+- Coordination has fewer distinct endings (2,101 against 2,906 on
+  925707781): matching the sub-goals to the nearest unit makes plans that
+  differ only in which unit goes where end the same way.
+
+A better formulation than these hand rules: the macro plan is the set of
+open sub-goals, and each turn is decided jointly, all units' moves and
+the trainings together. The opening's step already does part of it
+(`Targets::Matched`, the Hungarian matching of units and trainings to
+targets in `frontline/step.rs`); the rest is a joint turn search (the solo
+beam planner's whole turns) scored by land, progress to the open
+sub-goals and the land a few turns later.
+
+Pictures, every calibration in both modes, playable action by action:
+https://claude.ai/artifact/45xi3imE6WxsU2h4zUEDGP.
+
