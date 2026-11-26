@@ -27,7 +27,7 @@ pub const EARLY_TOWER_UNTIL: u32 = 10;
 /// What each distinct active cell of a side that one of its towers protects
 /// (the tower's cell and the cells next to it) counts, so that towers
 /// protecting the same cells count it once (E095). 0 in v032.
-pub const COVER_WEIGHT: i64 = 2;
+pub const COVER_WEIGHT: i64 = 3;
 
 /// With [`COVER_WEIGHT`], only the protected cells at most this many steps,
 /// over non-void cells, from the enemy's active cells or units count; 0 for
