@@ -113,6 +113,19 @@ games (+32.1 after +37.5; about +34 over its 1,800 pairs). E073 found
 that longer plans add nothing measurable to the land-first orders; here
 fr8-t12 scores highest but within the noise of the others.
 
+## Third screening: fr8 against fr8-t12
+
+The owner (2026-11-27): fr8-t12 looks better; play the two longer before
+choosing. 2,000 seat-swapped pairs per variant against
+`ice-and-fire-v032`, whole games at CodinGame's limits, 8 shards (the
+workflow's most), seed 9502
+([run 45988059330](https://github.com/Arthur-Vat/codingame-bots/actions/runs/45988059330)):
+
+| Variant | Commit | Turns planned | Elo over v032 [95%] | Score |
+| --- | --- | ---: | ---: | ---: |
+| `fr8` | `a30dd55` | 9 | pending | pending |
+| `fr8-t12` | `1cdb45e` | 12 | pending | pending |
+
 ## The variants on the owner's ten games
 
 The owner asked (2026-11-27) whether the variants behave better before the
