@@ -129,7 +129,7 @@ pub const BEST_CUT: bool = true;
 /// ([`unit_quarters`]); the shared evaluation counts a cell 7 (4 as a cell,
 /// 3 as its income), a mine 12 more and a unit its training cost, and a
 /// threatened cell 5 of its 7, so the same share of each.
-pub const CELL_VALUES: bool = false;
+pub const CELL_VALUES: bool = true;
 
 /// What a threatened cell counts with [`CELL_VALUES`], in quarters.
 pub const CELL_QUARTERS: i64 = 5;
