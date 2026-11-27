@@ -91,5 +91,6 @@ No variant beats v033. More climbs of the opponent during the search lose
 (`c2` −8.3, `c4` −28.3, clearly): the search plans against more threats and
 has less time to find its own plans, as E064 found with more cuts. More
 climbs only for the plan chosen are level (`k4` +0.9, `k8` +4.8): the
-check sees more of the cuts it would suffer, but the next best plan is
-then as exposed, or no better plan is at hand in the time left.
+check sees more of the cuts it would suffer, but that does not win games:
+not measured, the likely reasons are that the other plans found are as
+exposed, or that the time left holds no better plan.
