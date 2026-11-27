@@ -56,7 +56,7 @@ pub mod judge;
 /// with a move whose gain alone is small).
 const FULL_FIRST: bool = false;
 /// Replies kept in the memory.
-const MEMORY_CAP: usize = 12;
+const MEMORY_CAP: usize = 8;
 /// The opponent's best cuts added to the memory after a climb.
 const REPLY_CUTS: usize = 3;
 /// Most climbs in one turn.
