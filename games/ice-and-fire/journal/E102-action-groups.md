@@ -89,11 +89,26 @@ whole games at CodinGame's limits, 2 shards
 
 | Variant | Change | Elo over v034 [95%] |
 | --- | --- | ---: |
-| `off` | none (control) | pending |
-| `nofar` | `FAR_TRAININGS` 3 (E101's best, again) | pending |
-| `towerall` | `GUARD_FILTER` off: towers on every free border cell | pending |
-| `wall` | `WALL_TOWERS`: towers also where they guard an unguarded frontier cell | pending |
-| `blknbr` | `BLOCK_NEIGHBOURS`: blockers also next to the cells a reply enters | pending |
-| `cuts8` | `MACRO_CUTS` 8 rather than 4 | pending |
-| `fullfirst` | `FULL_FIRST`: every action tried at a climb's first step | pending |
-| `mem12` | `MEMORY_CAP` 12 rather than 8 | pending |
+| `off` | none (control) | −7.8 [−13.6, −2.0] |
+| `nofar` | `FAR_TRAININGS` 3 (E101's best, again) | +13.3 [+4.2, +22.3] |
+| `towerall` | `GUARD_FILTER` off: towers on every free border cell | −28.9 [−38.7, −19.3] |
+| `wall` | `WALL_TOWERS`: towers also where they guard an unguarded frontier cell | +7.6 [−0.5, +15.7] |
+| `blknbr` | `BLOCK_NEIGHBOURS`: blockers also next to the cells a reply enters | −6.1 [−15.1, +2.9] |
+| `cuts8` | `MACRO_CUTS` 8 rather than 4 | +11.3 [+2.3, +20.3] |
+| `fullfirst` | `FULL_FIRST`: every action tried at a climb's first step | −0.7 [−10.7, +9.4] |
+| `mem12` | `MEMORY_CAP` 12 rather than 8 | −8.0 [−17.4, +1.3] |
+
+Commits: `off` `eb03b73`, `nofar` `088712f`, `towerall` `44e4c76`, `wall`
+`9fc5358`, `blknbr` `b5392ba`, `cuts8` `3dd5650`, `fullfirst` `dc6d8f8`,
+`mem12` `a272df6`. Two timeouts of v034 against `blknbr`; no other fault.
+
+The control, which plays as v034, scored −7.8 here and +11.3 in E101's
+screening: even at 1,600 pairs a screening's noise is of that size, so the
+variants are read against both. Offering towers on every border cell loses
+clearly (−28.9): E026's guard filter still pays, though the top players
+build most of their towers where it offers none. The far trainings left
+out (`nofar`, E101's variant) are positive in both screenings (+16.1 on
+800 pairs, +13.3 on 1,600) and above the control each time (by 4.8 and
+21.1); 8 cuts offered rather than 4 (`cuts8`, +11.3) and the wall towers
+(+7.6) come next. A full first step, blockers on the neighbours and a
+memory of 12 do nothing or a little less.
