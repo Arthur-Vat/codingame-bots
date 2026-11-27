@@ -1,7 +1,7 @@
 ---
 id: E095
 date: 2026-11-27
-pull_request: "#NN"
+pull_request: "#395"
 parent: ice-and-fire-v032
 hypothesis: Holding both flanks early, as the top players do and v032 rarely does, makes our land wider and claims the flank we now leave to the enemy, and beats ice-and-fire-v032 (candidate ice-and-fire-v033).
 change: The opening's plans are ranked by the most active cells, then by E073's `Frontier { cap: 8 }` (the least total distance from our land to each cell of the frontier, each distance capped at 8) rather than `Central(Linear(7))`; the search's weaker-flank term (`eval::FLANK`, `FLANK_CAP`, `FLANK_UNTIL`) is added at 0, as it lost the screening.
