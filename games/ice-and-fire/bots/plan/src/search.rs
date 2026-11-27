@@ -51,6 +51,10 @@ use crate::strategy::Guide;
 #[cfg(feature = "analysis")]
 pub mod judge;
 
+/// Whether a climb's first step tries every action rather than stopping
+/// lazily (E102: 27% of the plans played began with a forced climb, most
+/// with a move whose gain alone is small).
+const FULL_FIRST: bool = false;
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8;
 /// The opponent's best cuts added to the memory after a climb.
@@ -500,7 +504,9 @@ impl Search {
             // A lazy pass, then a full one if the lazy one skipped actions
             // and found no gain.
             let mut best = None;
-            for lazy in [true, false] {
+            // With FULL_FIRST, every action is tried at a climb's first
+            // step (E102).
+            for lazy in [!(FULL_FIRST && commands.is_empty()), false] {
                 let (found, skipped) = self.pass(
                     &cur, cur_score, &actions, &order, &mut done, memory, &mut gains, lazy,
                 );

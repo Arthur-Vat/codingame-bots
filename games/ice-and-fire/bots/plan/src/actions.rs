@@ -53,6 +53,11 @@ fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64) -> 
     hq_guard && cost_to(&after, enemy, false, HQ[me]) > chain
 }
 
+/// Whether towers are offered only where they guard something (E026);
+/// off, on every free border cell (E102: the top players build most of
+/// their towers where this filter offers none).
+pub const GUARD_FILTER: bool = true;
+
 /// Whether a tower is also offered on each free border cell that would
 /// guard a frontier cell of ours not yet guarded (E068's tower wall).
 pub const WALL_TOWERS: bool = false;
@@ -249,7 +254,9 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
             };
             for cell in cells.iter().filter(|&cell| {
                 let zone = Bits::cell(cell) | Bits::cell(cell).neighbours();
-                !(zone & open).is_empty() || guards(state, cell, threats, reach, chain)
+                !GUARD_FILTER
+                    || !(zone & open).is_empty()
+                    || guards(state, cell, threats, reach, chain)
             }) {
                 let (x, y) = xy(cell);
                 out.push(Action::One(Command::BuildTower { x, y }));
