@@ -71,6 +71,13 @@ pub struct State {
     pub(crate) game_turn: u32,
     pub(crate) next_id: u32,
     pub(crate) outcome: Option<Outcome>,
+    /// Whether `active` is known to hold exactly the cells joined to each
+    /// HQ: from [`State::new`] and every start of turn on, which mark them,
+    /// and every capture, which keeps them marked. A position read from
+    /// text keeps the marks it was given until its next start of turn, as
+    /// the referee's protocol states them; if they are not those, the
+    /// cells are flooded from the HQs as before (`apply`, `start_turn`).
+    pub(crate) marked: bool,
 }
 
 /// The cells of `own` joined to `region`, which `own` holds: [`flood`]
@@ -87,7 +94,7 @@ fn grow(mut region: Bits, own: Bits) -> Bits {
 }
 
 /// The cells joined to `hq` through the cells of `own`.
-fn flood(own: Bits, hq: usize) -> Bits {
+pub(crate) fn flood(own: Bits, hq: usize) -> Bits {
     if !own.test(hq) {
         return Bits::EMPTY;
     }
@@ -146,6 +153,7 @@ impl State {
             game_turn: 1,
             next_id: 1,
             outcome: None,
+            marked: true,
         };
         state.active = [flood(state.own[0], HQ[0]), flood(state.own[1], HQ[1])];
         state.start_turn(0);
@@ -260,11 +268,17 @@ impl State {
     /// A player's start of turn (RULES.md, "Start of a player's turn").
     fn start_turn(&mut self, seat: usize) {
         // 1. Mark the cells: `apply` keeps them marked after every capture,
-        // so they are marked already (a debug build checks it).
-        debug_assert_eq!(
-            self.active,
-            [flood(self.own[0], HQ[0]), flood(self.own[1], HQ[1])]
-        );
+        // so they are marked already (a debug build checks it), unless the
+        // position was read with other marks.
+        if self.marked {
+            debug_assert_eq!(
+                self.active,
+                [flood(self.own[0], HQ[0]), flood(self.own[1], HQ[1])]
+            );
+        } else {
+            self.active = [flood(self.own[0], HQ[0]), flood(self.own[1], HQ[1])];
+            self.marked = true;
+        }
         // 2. Units on inactive cells die.
         let dead = self.units[seat].and_not(self.active[seat]);
         self.remove_units(dead);
@@ -456,15 +470,20 @@ impl State {
             Capture::Same => {}
             // The seat's cells only grew: its marked land grows from where it
             // was (the HQ's land holds it). The opponent's may have split.
-            Capture::Neutral => self.active[seat] = grow(self.active[seat], self.own[seat]),
-            Capture::Opponent => {
+            Capture::Neutral if self.marked => {
+                self.active[seat] = grow(self.active[seat], self.own[seat]);
+            }
+            Capture::Opponent if self.marked => {
                 self.active[seat] = grow(self.active[seat], self.own[seat]);
                 self.active[1 - seat] = flood(self.own[1 - seat], HQ[1 - seat]);
             }
+            Capture::Neutral => self.active[seat] = flood(self.own[seat], HQ[seat]),
+            Capture::Opponent => {
+                self.active = [flood(self.own[0], HQ[0]), flood(self.own[1], HQ[1])];
+            }
         }
-        debug_assert_eq!(
-            self.active,
-            [flood(self.own[0], HQ[0]), flood(self.own[1], HQ[1])]
+        debug_assert!(
+            !self.marked || self.active == [flood(self.own[0], HQ[0]), flood(self.own[1], HQ[1])]
         );
         self.compute_incomes();
         if !self.own[0].test(HQ[0]) {

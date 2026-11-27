@@ -7,7 +7,7 @@ use std::str::Lines;
 use crate::bits::{Bits, CELLS, SIZE};
 use crate::league::League;
 use crate::map::MapData;
-use crate::state::{State, HQ};
+use crate::state::{flood, State, HQ};
 
 /// The largest gold or income `read` accepts, in absolute value. A real game
 /// stays far below it; the bound keeps later sums from overflowing.
@@ -222,6 +222,7 @@ impl State {
             game_turn,
             next_id: 1,
             outcome: None,
+            marked: false,
         };
         for relative in 0..2 {
             let owner = absolute(relative);
@@ -281,6 +282,9 @@ impl State {
                 .ok_or_else(|| format!("unit id {largest_id} is out of range"))?;
         }
         state.movable = state.units[seat];
+        // The marks as given are kept; the engine trusts them from here
+        // only if they are the cells joined to each HQ.
+        state.marked = state.active == [flood(state.own[0], HQ[0]), flood(state.own[1], HQ[1])];
         Ok(state)
     }
 }
