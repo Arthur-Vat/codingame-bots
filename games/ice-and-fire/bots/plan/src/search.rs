@@ -62,7 +62,7 @@ const REPLY_EVALS: u64 = 300;
 /// How the opponent's climb tries its actions (E104): 0, lazily as ours
 /// (v034); 1, every action at its first step; 2, every action at every
 /// step.
-const OPP_FULL: u8 = 0;
+const OPP_FULL: u8 = 1;
 /// The opponent's climbs in a reply search, each barred from the first
 /// actions of the earlier ones, of which only the plan the opponent's
 /// evaluation rates best is kept as its reply (E104): one reply, a
