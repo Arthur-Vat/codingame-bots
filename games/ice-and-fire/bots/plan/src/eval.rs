@@ -493,7 +493,7 @@ pub const VORONOI_UNTIL: u32 = 14;
 /// to a fifth as well as an active one, and the top players sealed more
 /// than v032 (research/codingame/2026-11-27-cell-values.md, "Sealed land").
 /// 0 for nothing (v032).
-pub const SEALED: i64 = 0;
+pub const SEALED: i64 = 6;
 /// The last game turn at which [`SEALED`] counts.
 pub const SEALED_UNTIL: u32 = 14;
 
