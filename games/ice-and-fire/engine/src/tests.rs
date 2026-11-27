@@ -829,3 +829,51 @@ fn accessors_show_units_and_buildings() {
     assert_eq!(state.towers(), Bits::cell(SIZE));
     assert!(state.mines().is_empty());
 }
+
+#[test]
+fn marks_read_otherwise_are_flooded_again_as_before() {
+    // E100: a position whose active cells are not those joined to its HQ
+    // (as a doctored input could give) keeps them until a capture or its
+    // next start of turn floods them from the HQs, as before; once marked,
+    // the cells stay marked through captures and starts of turn.
+    let mut state = State::new(&[false; CELLS], &[], League::Bronze);
+    assert!(state.marked);
+    let stray = 6 * SIZE + 6;
+    state.own[0].set(stray);
+    state.active[0].set(stray);
+    state.marked = false;
+    // A training next to red's HQ land: the stray cell is not joined to it.
+    assert!(state.apply(Command::Train {
+        level: 1,
+        x: 1,
+        y: 0
+    }));
+    assert_eq!(state.active[0], crate::state::flood(state.own[0], HQ[0]));
+    assert!(!state.active[0].test(stray));
+    state.end_turn();
+    assert!(state.marked);
+    assert_eq!(
+        state.active,
+        [
+            crate::state::flood(state.own[0], HQ[0]),
+            crate::state::flood(state.own[1], HQ[1])
+        ]
+    );
+    // From a start of turn on, captures grow the marks.
+    let mut rng = Rng::new(3);
+    for _ in 0..40 {
+        if state.outcome().is_some() {
+            break;
+        }
+        let mut commands = Vec::new();
+        state.random_turn(&mut rng, &mut commands);
+        state.play_turn(&commands);
+        assert_eq!(
+            state.active,
+            [
+                crate::state::flood(state.own[0], HQ[0]),
+                crate::state::flood(state.own[1], HQ[1])
+            ]
+        );
+    }
+}

@@ -223,6 +223,15 @@ fn weakness(state: &State, seat: usize) -> i64 {
         }
         let value = if SHAPE_REACH == 0 {
             weakness_of(active, HQ[seat])
+        } else if SHAPE_REACH == 1 {
+            // The cells within SHAPE_NEAR steps of the enemy's land, as
+            // `econ::distances` counts steps (through cells of the map).
+            let valid = state.map().valid;
+            let mut near = enemy & valid;
+            for _ in 0..SHAPE_NEAR {
+                near = (near | near.neighbours()) & valid;
+            }
+            weakness_near(active, HQ[seat], near)
         } else {
             let d = ice_and_fire_opening::econ::distances(state, enemy);
             let mut weights = [0u8; CELLS];
@@ -249,6 +258,85 @@ thread_local! {
     /// map with the same two lands.
     static WEAKNESS: std::cell::RefCell<Vec<(Bits, Bits, u8, i64)>> =
         std::cell::RefCell::new(vec![(Bits::EMPTY, Bits::EMPTY, 0, 0); WEAKNESS_SLOTS]);
+}
+
+/// The cells of `active` whose removal might cut off others, for all cells
+/// at once, with bitwise operations only. Around a cell, its held
+/// neighbours (north, east, south, west) and the 4 corners between them
+/// form a ring; two neighbours a quarter-turn apart are joined on the ring
+/// when the corner between them is held. If the held neighbours make one
+/// piece on the ring (or none), taking the cell away cuts nothing off: a
+/// path through it can go round it (digital topology's test of a cell that
+/// can be removed without changing the connectivity). The held neighbours
+/// make one piece or none exactly when their number less the number of
+/// joined pairs is at most 1 (a ring held all round: 4 less 4). Both
+/// numbers are added on bit planes, three bits each, and subtracted the
+/// same way; the cells left are those where the difference is 2 or more.
+fn possibly_cut(active: Bits) -> Bits {
+    // The planes: `n` holds the cells whose northern neighbour is held.
+    let n = active.shift_down();
+    let s = active.shift_up();
+    let e = active.shift_left();
+    let w = active.shift_right();
+    let ne = e.shift_down();
+    let nw = w.shift_down();
+    let se = e.shift_up();
+    let sw = w.shift_up();
+    let joined = [n & ne & e, e & se & s, s & sw & w, w & nw & n];
+    let xor = |a: Bits, b: Bits| (a | b).and_not(a & b);
+    // Three-bit sums of four one-bit planes.
+    let add4 = |[a, b, c, d]: [Bits; 4]| {
+        let (s1, c1) = (xor(a, b), a & b);
+        let (s2, c2) = (xor(c, d), c & d);
+        let t = s1 & s2;
+        let c12 = xor(c1, c2);
+        (xor(s1, s2), xor(c12, t), (c1 & c2) | (t & c12))
+    };
+    let (h0, h1, h2) = add4([n, e, s, w]);
+    let (e0, e1, e2) = add4(joined);
+    // h - e, which is never negative: at least 2 when bit 1 or bit 2 is set.
+    let b0 = e0.and_not(h0);
+    let x1 = xor(h1, e1);
+    let d1 = xor(x1, b0);
+    let b1 = e1.and_not(h1) | b0.and_not(x1);
+    let d2 = xor(xor(h2, e2), b1);
+    active & (d1 | d2)
+}
+
+/// [`weakness_weighted`] when every joint near the enemy weighs 4 quarters
+/// and the others nothing ([`SHAPE_REACH`] 1), with bitwise operations:
+/// the joints are looked for only among the cells of `near` that
+/// [`possibly_cut`] leaves (about 4 of the 17 cells of our land near the
+/// enemy's in v033's CodinGame games); each one left is taken away and the
+/// land flooded again from the HQ, the cells it no longer reaches being
+/// those the joint cuts off. The same value as the depth-first search.
+pub fn weakness_near(active: Bits, root: usize, near: Bits) -> i64 {
+    if !active.test(root) {
+        return 0;
+    }
+    let total = active.count();
+    let mut joints = 0i64;
+    let mut most = 0i64;
+    for v in (possibly_cut(active) & near).iter() {
+        if v == root {
+            continue;
+        }
+        let rest = active.and_not(Bits::cell(v));
+        let mut region = Bits::cell(root);
+        loop {
+            let next = (region | region.neighbours()) & rest;
+            if next == region {
+                break;
+            }
+            region = next;
+        }
+        let cut = i64::from(total - 1 - region.count());
+        if cut > 0 {
+            joints += 4;
+            most = most.max(4 * cut);
+        }
+    }
+    (joints + most) / 4
 }
 
 /// [`weakness`] of the territory `active` whose HQ is `root`, every joint
