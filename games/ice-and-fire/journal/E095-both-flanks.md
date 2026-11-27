@@ -60,6 +60,27 @@ The second lever is the opening's order, `main.rs`'s `ORDER`:
 `Frontier { cap: 8 }` (E073: the most land, then the least total distance
 from our land to the frontier's cells), in place of `Central(Linear(7))`.
 
+## Before the screening
+
+A local look at the mechanism (`w4`: the term at 4, cap 4, until game turn
+12; 104 games against v032, seed 95, at 3 times CodinGame's time, measured
+by `review/examples/growth.rs`): both flanks held by game turn 8 in 16% of
+w4's games against 12% of v032's, by game turn 10 in 61% against 56%; the
+weaker flank's Voronoi share at game turn 8 0.27 against 0.26. At 4 the
+term hardly moves the units, so the screening also tries 8 and 16.
+
 ## Screening
 
-Pending.
+800 seat-swapped pairs per variant against `ice-and-fire-v032`, whole
+games at CodinGame's limits, 4 shards
+([run 45980440646](https://github.com/Arthur-Vat/codingame-bots/actions/runs/45980440646)):
+
+| Variant | Commit | `FLANK` | Opening order | Elo over v032 [95%] |
+| --- | --- | ---: | --- | ---: |
+| `off` | `a54381f` | 0 | `Central(Linear(7))` | pending |
+| `w4` | `51b6683` | 4 | `Central(Linear(7))` | pending |
+| `w8` | `34438ae` | 8 | `Central(Linear(7))` | pending |
+| `w16` | `076aea7` | 16 | `Central(Linear(7))` | pending |
+| `fr8` | `a30dd55` | 0 | `Frontier { cap: 8 }` | pending |
+
+`FLANK_CAP` 4 and `FLANK_UNTIL` 12 in every variant.
