@@ -63,7 +63,7 @@ const REPLY_EVALS: u64 = 300;
 /// barred from the first actions of the earlier ones and with
 /// [`REPLY_EVALS`] tries more: one climb alone always ends on the same
 /// local best.
-pub const REPLY_CLIMBS: usize = 2;
+pub const REPLY_CLIMBS: usize = 4;
 /// The opponent's climbs in the reply search of the plan chosen, before it
 /// is played (E098): `None` keeps the replies searched during the climbs.
 pub const CHECK_CLIMBS: Option<usize> = None;
