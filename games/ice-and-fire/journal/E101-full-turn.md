@@ -59,10 +59,23 @@ games at CodinGame's limits, 2 shards
 
 | Variant | Change | Elo over v034 [95%] |
 | --- | --- | ---: |
-| `off` | none (control) | pending |
-| `cap64` | `MAX_CLIMBS` 64 | pending |
-| `capinf` | no cap on climbs | pending |
-| `spare` | `SPARE_CHECK` 4 climbs, 3 plans | pending |
-| `restart` | `RESTART` | pending |
-| `nofar` | `FAR_TRAININGS` 3 | pending |
-| `lean` | `REPLY_GREEDY` off, `REPLY_CUTS` 1 | pending |
+| `off` | none (control) | +11.3 [+2.7, +19.9] |
+| `cap64` | `MAX_CLIMBS` 64 | +3.9 [−7.1, +14.9] |
+| `capinf` | no cap on climbs | +1.7 [−8.8, +12.3] |
+| `spare` | `SPARE_CHECK` 4 climbs, 3 plans | −6.9 [−19.4, +5.5] |
+| `restart` | `RESTART` | +0.4 [−8.9, +9.7] |
+| `nofar` | `FAR_TRAININGS` 3 | +16.1 [+3.6, +28.6] |
+| `lean` | `REPLY_GREEDY` off, `REPLY_CUTS` 1 | −5.6 [−18.9, +7.6] |
+
+Commits: `off` `b04ff1b`, `cap64` `e510898`, `capinf` `2e6bd62`, `spare`
+`f6786e6`, `restart` `8179a66`, `nofar` `9a90cbf`, `lean` `98f2115`. One
+timeout of v034 against `lean`; no other fault.
+
+The control, which plays as v034, scored +11.3 with an interval that
+leaves out 0: the run-to-run noise of a screening of 800 pairs is about
+that large, so every variant is read against the control rather than 0.
+None stands clearly above it. `nofar` is the highest (+16.1, +4.8 over
+the control); the higher caps use the time (median answer 34 ms against
+27 for v034 on the same runner) for nothing measurable (+3.9, +1.7); the
+spare check and the lighter replies are a little below (−6.9, −5.6), the
+restarts level (+0.4).
