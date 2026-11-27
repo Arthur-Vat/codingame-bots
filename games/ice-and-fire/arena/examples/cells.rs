@@ -24,8 +24,9 @@
 //!   active cells after game turn 12, and the cells each side then holds
 //!   among those contested at game turn 4 (|m| ≤ 1).
 //!
-//! It writes one JSON file of histograms and per-game rows; the analysis
-//! reads it.
+//! It writes one JSON file of histograms and per-game rows, which
+//! `games/ice-and-fire/research/codingame/2026-11-27-cell-values/analyse.py`
+//! reads.
 
 use std::collections::BTreeMap;
 use std::fs;

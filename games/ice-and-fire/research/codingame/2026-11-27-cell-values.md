@@ -43,7 +43,7 @@ AUC: the chance that a cell lost at a ply ranks as more exposed than a cell kept
 | 21 to 40 | they | 189,342 | 10.0% | **0.875** | 0.868 | 0.746 |
 | 21 to 40 | we | 180,789 | 14.1% | **0.868** | 0.845 | 0.750 |
 
-No cell is lost before game turn 7. The cuts add 1 to 3 points of AUC everywhere, most where we attack (we cut more), and both prices are far ahead of distance.
+No cell is lost before game turn 7. The cuts add 0.7 to 3.2 points of AUC everywhere, most where we attack (we cut more), and both prices are far ahead of distance.
 
 **Cut off rather than taken.** Of the cells lost, 49% at game turns 7 to 12 and 62 to 65% from game turn 13 were cut off from their HQ, not captured. The evaluation's `threatened` term counts only the cells the enemy's chains enter; the shape term counts joints whatever the enemy can afford. Neither counts the cells behind an affordable cut.
 
@@ -72,7 +72,7 @@ The share of neutral cells that red (we) and blue hold after game turn 12, by th
 | +1 | 55% / 19% | 49% / 15% | 57% / 12% | 42% / 9% |
 | +2 | 50% / 17% | 64% / 9% | 58% / 7% | 46% / 3% |
 
-The rest stays neutral (a third to a half by game turn 10, often pockets inside a side's land). Up to game turn 6 the margin decides little: a cell 2 steps nearer blue still ends red's 27 to 32% of the time, as the race is still open. From game turn 8 it sets the owner on blue's side (m ≤ −2: blue's 3 to 15 times as often), less on ours, since many cells near our land stay neutral pockets. The cells at m between −1 and +1 are where a unit sent or a training changes the owner; those are the ones a kernel on the margin would weigh most.
+The rest stays neutral (a third to a half by game turn 10, often pockets inside a side's land). Up to game turn 6 the margin decides little: a cell 2 steps nearer blue still ends red's 27 to 32% of the time, as the race is still open. From game turn 8 it sets the owner on blue's side (m ≤ −2 at game turns 8 and 10: blue's about 4 to 30 times as often, the more so the further), less on ours, since many cells near our land stay neutral pockets. The cells at m between −1 and +1 are where a unit sent or a training changes the owner; those are the ones a kernel on the margin would weigh most.
 
 What wins: the difference after game turn 12, against the winner (AUC over the games):
 
@@ -87,7 +87,7 @@ All the land at game turn 12 tells the winner better than the contested cells al
 ## What follows
 
 1. **The price with cuts is a good fight value**, better than what the evaluation counts. The smallest experiment: the `threatened` cells of E023 and E037 become those whose price with cuts is within the enemy's gold, the cells behind an affordable cut included, at the same count of `THREAT_QUARTERS`. A second one weighs them by their margin, as in the table above. Each is one experiment against v032.
-2. **The fortress plan does not apply yet at this level**: no game reaches turn 30 in a tenth of the games. Its parts that do apply now are the defence by price (towers where they raise the price of the cheapest chain and of the worst cut the most) during game turns 12 to 20.
+2. **The fortress plan does not apply yet at this level**: nine games in ten end by game turn 27, and none reaches turn 100. Its parts that do apply now are the defence by price (towers where they raise the price of the cheapest chain and of the worst cut the most) during game turns 12 to 20.
 3. **The early game**: the contest margin sets the owner from game turn 8 only, and the land at game turn 12 predicts the winner best. Allocating units by the margin (to the cells at |m| ≤ 1 from game turns 4 to 8) is a candidate for the opening's goals, to compare with E073's band and E080's turn-1 plan; it needs a measure of where our units went against those cells, which this study does not make.
 
-The data are not committed (they rebuild from the data branch in a second).
+The tables come from [analyse.py](2026-11-27-cell-values/analyse.py) (`python3 -I analyse.py DIR`, DIR holding the tool's `cells.json` and the data branch's `index.jsonl`). The data are not committed: they rebuild from the data branch in a second.
