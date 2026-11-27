@@ -91,3 +91,19 @@ All the land at game turn 12 tells the winner better than the contested cells al
 3. **The early game**: the contest margin sets the owner from game turn 8 only, and the land at game turn 12 predicts the winner best. Allocating units by the margin (to the cells at |m| ≤ 1 from game turns 4 to 8) is a candidate for the opening's goals, to compare with E073's band and E080's turn-1 plan; it needs a measure of where our units went against those cells, which this study does not make.
 
 The tables come from [analyse.py](2026-11-27-cell-values/analyse.py) (`python3 -I analyse.py DIR`, DIR holding the tool's `cells.json` and the data branch's `index.jsonl`). The data are not committed: they rebuild from the data branch in a second.
+
+## Sealed land: the cells a position opens (later the same day)
+
+The owner then made his idea precise (2026-11-27): a cell's importance is also the larger territory it opens. Measured as **sealed land**: the neutral cells the enemy cannot reach from its active land without entering one of the side's cells, so that the side can take them later at leisure; a cell's opportunity is what its capture seals. The tool now writes, at red's starts of game turns 8, 10 and 12, each side's active and sealed cells; [sealed.py](2026-11-27-cell-values/sealed.py) reads them (same games, same directory as `analyse.py`).
+
+| Game turn | Sealed, ours / theirs (mean) | Winner / loser (mean) | AUC: active difference | AUC: sealed difference | AUC: both, a cell each | Logistic fit: a sealed cell against an active cell |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 8 | 4.1 / 6.1 | 5.0 / 5.1 | 0.576 | 0.533 | 0.557 | 0.09 |
+| 10 | 6.7 / 8.4 | 8.0 / 7.0 | 0.714 | 0.623 | 0.699 | 0.14 |
+| 12 | 8.4 / 8.3 | 9.4 / 7.3 | 0.809 | 0.643 | 0.788 | 0.19 |
+
+- **Sealed cells say something, but much less than held ones.** Counted as a cell each, they make the prediction worse; fitted with the active cells, a sealed cell is worth a tenth to a fifth of an active one, rising with the game turn. They are not "almost ours".
+- **Where the land is level they matter.** At game turn 10, in the 1,056 games within 2 active cells: our score is 0.80 when we have sealed 3 or more cells more, 0.66 within 2, 0.64 when 3 or more fewer.
+- **The top players seal more than we do.** At game turn 10: karliso 11.6 against our 5.1, reCurse 9.7 against 6.3, Pduhard- 9.2 against 6.1, zasmu 8.8 against 5.7, while also slightly ahead in active cells. Against the weaker half of the top 10 we seal as much or more.
+
+What follows: an evaluation term worth trying counts each sealed cell at a fifth to a third of an active cell until the middle game (one flood from the enemy's land per side and evaluation). It differs from E076's Voronoi term (every nearer cell at 1, level in screening), which counted cells the enemy can still reach.
