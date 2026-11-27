@@ -6,10 +6,10 @@ parent: ice-and-fire-v033
 hypothesis: The same search made about 45% cheaper, with every answer unchanged, gets about 1.8 times the tries in each turn of CodinGame's time and beats ice-and-fire-v033.
 change: Four changes that leave every score and answer as they are; the lethal chain's search is skipped when the gold cannot pay for the shortest path to the target; the start of a turn no longer marks the cells again; a capture grows the seat's marked land from where it was; and the shape term finds its joints with bitwise operations.
 release: ice-and-fire-v034
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
+sprt: accepted
+elo: +32.7 [+15.7, +49.7]
+pairs: 480
+full_time: +32.7 [+15.7, +49.7]
 decision: pending
 cg_rank: not reported
 ---
@@ -84,4 +84,36 @@ In all, 9.89 to 5.48 billion instructions for the same searches (−45%).
 
 ## SPRT
 
-Pending.
+On the pull request at `26ea7d5`, in blocks of 10 pairs over 8 runners
+calibrated to CodinGame's speed and real limit
+([run 46052864652](https://github.com/Arthur-Vat/codingame-bots/actions/runs/46052864652)):
+
+```
+ice-and-fire-v034 vs ice-and-fire-v033: 960 games, 480 complete pairs
+  ice-and-fire-v034: 525 wins, 0 draws, 435 losses (score 54.7%)
+  Elo of ice-and-fire-v034 over ice-and-fire-v033: +32.7 [+15.7, +49.7] (95%, from pairs)
+  pairs by ice-and-fire-v034's points (0, 1/2, 1, 3/2, 2): [50, 0, 335, 0, 95]
+  ice-and-fire-v034 faults: 1 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v033 faults: 3 timeouts, 0 crashes, 0 invalid answers
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.74 (bounds -2.94, 2.94) after 480 pairs
+Verdict: ACCEPTED: ice-and-fire-v034 is stronger than ice-and-fire-v033
+```
+
+The smoke test against `random`: 200 wins in 200 games, no fault.
+
+## What was learned
+
+Speed alone, with every decision the same at equal tries, is worth
+about 33 Elo here, as E099's half-time screening (−32.2) foretold. The
+speed is not all used: in 8 local self-play pairs of each release at
+CodinGame's speed, v034's tries a turn from game turn 7 rose 43% (602
+against 421), not the 80% the instructions allow, since 26% of its turns
+reach the cap of 32 climbs (`MAX_CLIMBS`, 5% for v033) and 75% run out of
+first actions (57%), so that 31% of its turns end before 30 ms (8%). A
+higher cap is a change of the search's choices, an experiment of its own.
+
+The rules reviewer found no case where the engine's results differ from
+before, and proposed a test of how `State::read` sets `State::marked`
+(the new engine test sets the field by hand): left for a test-only pull
+request after this one, since a code commit here would run the SPRT
+again.
