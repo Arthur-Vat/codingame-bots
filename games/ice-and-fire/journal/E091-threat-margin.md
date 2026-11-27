@@ -1,7 +1,7 @@
 ---
 id: E091
 date: 2026-11-27
-pull_request: "pending"
+pull_request: "#391"
 parent: ice-and-fire-v032
 hypothesis: Weighing each threatened cell by how much gold the enemy has to spare when it reaches it, as the cells lost in v032's games against the top 10 say, beats ice-and-fire-v032.
 change: With `eval::DEEP_MARGIN = 50`, a threatened cell that the enemy reaches with 50 gold to spare costs `DEEP_QUARTERS` (7) quarters and the others `SHALLOW_QUARTERS` (4), instead of `THREAT_QUARTERS` (5) each; with and without E090's cuts; off in v032.

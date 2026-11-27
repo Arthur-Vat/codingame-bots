@@ -1,7 +1,7 @@
 ---
 id: E090
 date: 2026-11-27
-pull_request: "pending"
+pull_request: "#391"
 parent: ice-and-fire-v032
 hypothesis: Counting as threatened the cells behind a cut the enemy can afford, not only the cells its chains enter, makes the search guard the cells it actually loses and beats ice-and-fire-v032.
 change: With `eval::THREAT_CUTS`, the exposed cells of a side (E023, E037) also include its active cells that the loss of any one exposed cell cuts off from its HQ, at the same `THREAT_QUARTERS` each; off in v032.
