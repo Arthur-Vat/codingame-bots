@@ -54,11 +54,11 @@ pub mod judge;
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8;
 /// The opponent's best cuts added to the memory after a climb.
-const REPLY_CUTS: usize = 3;
+const REPLY_CUTS: usize = 1;
 /// Most climbs in one turn.
 const MAX_CLIMBS: usize = 32;
 /// Most plans scored by the opponent's climb in one reply search (E019).
-const REPLY_EVALS: u64 = 100;
+const REPLY_EVALS: u64 = 300;
 /// Whether the replies hold the opponent's own climb (E019); E099's
 /// ablation turns it off.
 const REPLY_OWN: bool = true;
