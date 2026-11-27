@@ -25,7 +25,7 @@ use ice_and_fire_engine::{Bits, Command, State, SIZE};
 /// What the search does with the sweeper's moves: 0 nothing (v033); 1 they
 /// are played first and the search plans the rest of the turn; 2 they are
 /// offered to the search as one macro action.
-pub const MODE: u8 = 0;
+pub const MODE: u8 = 1;
 /// A unit or a free cell more than this many steps from the enemy's land is
 /// behind the front.
 pub const DIST: u32 = 4;
