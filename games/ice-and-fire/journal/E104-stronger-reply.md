@@ -44,7 +44,8 @@ at 600 tries on those positions (407 of them, one core): v034 14.58 ms,
 ## Screening
 
 Variants against `ice-and-fire-v034`, 1,600 seat-swapped pairs each, whole
-games at CodinGame's limits, 4 shards. E101 and E102 found a screening's
+games at CodinGame's limits, 4 shards
+([run 46077199032](https://github.com/Arthur-Vat/codingame-bots/actions/runs/46077199032)). E101 and E102 found a screening's
 error near ±15 Elo, so only a larger effect is read from it; the best goes
 to the SPRT.
 
