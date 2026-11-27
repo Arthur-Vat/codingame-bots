@@ -5,13 +5,13 @@ pull_request: "#NN"
 parent: ice-and-fire-v033
 hypothesis: A layer before the search that sends each unit behind the front to its own free cell, on its own path, takes the free land far from the front as the top players do without pulling units from the middle, and beats ice-and-fire-v033.
 change: `sweep::sweep` matches our level-1 units more than `DIST` steps from the enemy's land to free cells as far from it, nearest pairs first, each cell and unit once, and steps each matched unit toward its cell (a neutral step first, never onto another unit's step); with `sweep::MODE` 1 its moves are played first and the search plans the rest of the turn, with 2 they are offered to the search as one macro action; 0, nothing, in v033.
-release: pending
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
-cg_rank: not reported
+release: none
+sprt: not run: no variant gained in screening
+elo: none
+pairs: none
+full_time: none
+decision: dropped
+cg_rank: none
 ---
 
 ## Why
@@ -93,3 +93,22 @@ fight, loses clearly (−32.7). So taking the far land earlier, which the
 sweeper does (70% more at game turns 8 to 12 in the local games), does not
 win games: in the top players' games it goes with their strength rather
 than causing it, and every unit sent to it is missing from the middle.
+
+## What was learned
+
+Dropped. Two experiments in a row (E096, E097) moved the units behind the
+front toward the far free land, one by the evaluation and one by a fixed
+rule before the search, and neither won a game more. How much far land a
+side takes goes with its strength in the top players' games but does not
+make it: the units it takes are units missing from the middle, where the
+owner's notes place the losses (crowding in the centre in 7 of 14 annotated
+losses, cuts we did not see coming in 6). Removing those units from the
+search saves little time as well: in v033's 159 CodinGame games, moves of
+units more than 4 steps from the enemy are 2 to 3 of the 30 or more
+options each step of the search's climb scores (tool `options.rs`, not
+kept). The owner then asked for a design of a planner that gives every
+unit a role (2026-11-27).
+
+The code stays reachable on the branch `claude/ice-and-fire-e097-sweeper`
+(commits `7af1128` to `ef127aa`: `sweep.rs` with its tests and the
+variants).
