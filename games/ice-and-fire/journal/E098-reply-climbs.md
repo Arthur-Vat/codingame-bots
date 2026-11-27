@@ -72,12 +72,12 @@ answers on 300 positions of v033's games at 600 tries.
 Variants (one commit each on this branch), 800 seat-swapped pairs each
 against `ice-and-fire-v033`, whole games at CodinGame's limits, 4 shards:
 
-| Variant | `REPLY_CLIMBS` | `CHECK_CLIMBS` |
-| --- | ---: | ---: |
-| `off` | 1 | none |
-| `c2` | 2 | none |
-| `c4` | 4 | none |
-| `k4` | 1 | 4 |
-| `k8` | 1 | 8 |
+([run 46026478326](https://github.com/Arthur-Vat/codingame-bots/actions/runs/46026478326)):
 
-Results: pending.
+| Variant | Commit | `REPLY_CLIMBS` | `CHECK_CLIMBS` | Elo over v033 [95%] |
+| --- | --- | ---: | ---: | ---: |
+| `off` | `490d49d` | 1 | none | pending |
+| `c2` | `59e17e5` | 2 | none | pending |
+| `c4` | `8bd4047` | 4 | none | pending |
+| `k4` | `06a63c9` | 1 | 4 | pending |
+| `k8` | `386eb73` | 1 | 8 | pending |
