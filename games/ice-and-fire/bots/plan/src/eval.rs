@@ -113,7 +113,7 @@ pub fn reach(state: &State, side: usize) -> Bits {
 /// exposed too (E090): in v032's games against the top 10, 49 to 65% of the
 /// cells lost at a ply were cut off from their HQ, not captured
 /// (research/codingame/2026-11-27-cell-values.md).
-pub const THREAT_CUTS: bool = true;
+pub const THREAT_CUTS: bool = false;
 
 /// The enemy's gold to spare from which an exposed cell counts
 /// [`DEEP_QUARTERS`] and below which it counts [`SHALLOW_QUARTERS`] (E091):
