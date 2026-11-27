@@ -180,7 +180,7 @@ fn towers_protecting_the_same_cells_count_them_once() {
     let state = Position {
         rows: [
             "OOOOOO......",
-            "OOOOOO......",
+            "OOOOOOX.....",
             "OOOOOO......",
             empty,
             empty,
@@ -193,7 +193,8 @@ fn towers_protecting_the_same_cells_count_them_once() {
             "...........X",
         ],
         gold: [0, 0],
-        buildings: &[(0, 2, 2, 1), (0, 2, 3, 1)],
+        // A blue tower next to red's land protects no red cell.
+        buildings: &[(0, 2, 2, 1), (0, 2, 3, 1), (1, 2, 6, 1)],
         units: &[],
     }
     .state();
@@ -212,5 +213,8 @@ fn towers_protecting_the_same_cells_count_them_once() {
         assert!(all.contains(&(c % 12, c / 12)), "cell {c}");
     }
     assert_eq!(cells.count(), 8);
-    assert_eq!(covered(&state, 1).count(), 0);
+    // Blue's tower at (6, 1) protects its own cell, not red's (5, 1) next
+    // to it.
+    let blue: Vec<usize> = covered(&state, 1).iter().collect();
+    assert_eq!(blue, vec![12 + 6]);
 }
