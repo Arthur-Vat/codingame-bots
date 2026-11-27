@@ -157,7 +157,29 @@ Each step is one pull request with a check; the owner decides at each check.
 6. **Paths over more turns and mines (an experiment each)**, if the
    earlier steps gain.
 
-## Open questions for the owner
+## The owner's decisions (2026-11-27)
+
+1. **First roles**: guards and reserves (the cuts we did not see coming).
+2. **Horizon**: paths over 3 turns; 5 can come in a later step.
+3. **The search's freedom**: a unit the search plays off its path keeps its
+   role and task; the planner plans its path again from where it stands.
+   Roles change only by the planner's rules (a unit two turns nearer, a
+   task gone).
+4. **From game turn 5**, just before contact, not 7 and not 1. The opening
+   plays game turns 1 to 6 today (E095's order) and the search from turn 7
+   (E067; handing over at turn 6 lost −26.8 there, −6.1 in E096). So step 3
+   screens two ways in: the search, started from the planner's plan, from
+   game turn 5; and the opening kept at game turns 5 and 6 with its units'
+   steps checked against the roles (no step that uncovers a guarded joint).
+5. **The centre, held but not crowded** (the owner): we should get the
+   centre without packing it. So the pusher tasks ask for at most two or
+   three units abreast at a contested cell, a guard stands on or next to its
+   joint and nowhere else, and a unit with no task near the centre is a
+   sweeper, never a third unit beside two others. Step 1 measures how many
+   units we keep within two steps of the line even between the HQs against
+   zasmu's, so that the cap has a number.
+
+## The questions as they were asked
 
 1. **The first roles to build**: guards and reserves first (the unseen
    cuts), or pushers in formation first (the crowding and zasmu's pattern)?
