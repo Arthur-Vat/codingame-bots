@@ -9,7 +9,8 @@ use ice_and_fire_opening::planned::Planned;
 use ice_and_fire_policy::io::turns;
 
 use crate::search::{think, think_with, Limit};
-use crate::strategy::{self, Memory};
+use crate::strategy::{self, Guide, Memory};
+use crate::sweep;
 
 /// Plays turns of a Bronze game until the input ends. `limit` gives the
 /// search's limits from the instant the turn's first line arrived and the
@@ -31,11 +32,34 @@ pub fn play(
         |initial, text, turn, start| match State::read(initial, text, League::Bronze, turn) {
             Ok(state) => {
                 let layer = strategy::guide(&state, &mut roles);
-                let thought = match layer {
-                    Some(guide) => {
-                        think_with(&state, limit(start, turn), &mut opening, Some(guide))
+                // The sweeper's moves for the units behind the front (E097).
+                let swept = sweep::sweep(&state);
+                let thought = if !swept.is_empty() && sweep::MODE == 1 {
+                    // Played first; the search plans the rest of the turn.
+                    let mut after = state.clone();
+                    for &command in &swept {
+                        after.apply(command);
                     }
-                    None => think(&state, limit(start, turn), &mut opening),
+                    let mut thought = think(&after, limit(start, turn), &mut opening);
+                    let mut commands = swept;
+                    commands.append(&mut thought.commands);
+                    thought.commands = commands;
+                    thought
+                } else if !swept.is_empty() && sweep::MODE == 2 && layer.is_none() {
+                    // Offered to the search as one macro action.
+                    let guide = Guide {
+                        plan: swept,
+                        offered: true,
+                        ..Guide::default()
+                    };
+                    think_with(&state, limit(start, turn), &mut opening, Some(guide))
+                } else {
+                    match layer {
+                        Some(guide) => {
+                            think_with(&state, limit(start, turn), &mut opening, Some(guide))
+                        }
+                        None => think(&state, limit(start, turn), &mut opening),
+                    }
                 };
                 eprintln!(
                     "turn {turn}: climbs {} tries {} memory {} checks {} forced {} strategic {} {} {:?}",
