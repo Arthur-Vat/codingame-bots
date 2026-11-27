@@ -64,14 +64,14 @@ const REPLY_GREEDY: bool = true;
 /// have their replies searched again with this many climbs of the opponent,
 /// each barred from the first actions of the earlier ones, in the time left
 /// before that deadline (E101); `None`: no such check (v034).
-const SPARE_CHECK: Option<usize> = Some(4);
+const SPARE_CHECK: Option<usize> = None;
 /// The plans checked so, the best first (E101).
 const SPARE_PLANS: usize = 3;
 /// Whether, when every first action has started a climb and time is left,
 /// the climbs start again from the best plan less one of its commands, each
 /// in turn (E101): a climb from a plan's neighbour can find a combination
 /// that no climb from the root does.
-const RESTART: bool = false;
+const RESTART: bool = true;
 /// Most plans scored by the opponent's climb in one reply search (E019).
 const REPLY_EVALS: u64 = 300;
 /// Where between the soft and the hard limit the middle game's climbs stop
