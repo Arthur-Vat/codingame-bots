@@ -1,7 +1,7 @@
 ---
 id: E102
 date: 2026-11-27
-pull_request: "none yet"
+pull_request: "#401"
 parent: ice-and-fire-v034
 hypothesis: The groups of actions that decide v034's plans (moves, blockers, cuts) and those the top players use but the search is never offered (towers off the guard filter) point to changes in what the search considers; with v034's speed, offering more of the valuable groups or exploring plans that start with a weak move beats ice-and-fire-v034.
 change: Switches that leave v034 as it plays, and one variant commit for each change of what the search offers or explores, screened together against ice-and-fire-v034.
