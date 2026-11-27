@@ -673,7 +673,7 @@ pub const HOME_UNTIL: u32 = 12;
 /// belongs to its nearest unit (the first found on a tie); each unit's cells,
 /// up to [`ROOM_CAP`], count this much for its side, net of the enemy's,
 /// until game turn [`ROOM_UNTIL`]; 0 for nothing (v033).
-pub const ROOM: i64 = 1;
+pub const ROOM: i64 = 2;
 /// See [`ROOM`].
 pub const ROOM_RANGE: u8 = 4;
 /// See [`ROOM`].
