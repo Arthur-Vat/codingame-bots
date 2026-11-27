@@ -119,7 +119,7 @@ pub const THREAT_CUTS: bool = false;
 /// [`DEEP_QUARTERS`] and below which it counts [`SHALLOW_QUARTERS`] (E091):
 /// a cell lost a third of the time against one lost a sixth of the time in
 /// the same study. 0 for off: every exposed cell counts [`THREAT_QUARTERS`].
-pub const DEEP_MARGIN: i64 = 50;
+pub const DEEP_MARGIN: i64 = 0;
 
 /// What an exposed cell reached with [`DEEP_MARGIN`] gold to spare costs its
 /// side, in quarters (E091).

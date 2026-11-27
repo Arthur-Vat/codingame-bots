@@ -1039,7 +1039,7 @@ fn a_side_that_can_pay_for_its_chain_to_the_enemy_hq_holds_a_threat() {
 
 #[test]
 fn an_enemy_unit_of_level_two_moves_toward_our_hq() {
-    use crate::eval::{eval, shape, strong_units, threatened, THREAT_QUARTERS};
+    use crate::eval::{eval, shape, strong_units, threat};
     use ice_and_fire_engine::{Bits, SIZE};
     use ice_and_fire_tactics::eval::{margin, margin_moving};
     // E043: blue's level-2 unit on (6, 11) steps first onto red's (5, 11),
@@ -1069,7 +1069,7 @@ fn an_enemy_unit_of_level_two_moves_toward_our_hq() {
     // included (E073).
     let expected = bot_shared(&state, 0) + shape(&state, 0) + strong_units(&state, 0)
         - strong_units(&state, 1)
-        + THREAT_QUARTERS * (threatened(&state, 1) - threatened(&state, 0)) / 4
+        + (threat(&state, 1).quarters - threat(&state, 0).quarters) / 4
         + crate::eval::goal(&state, 0);
     assert_eq!(eval(&state, 0), expected);
 }
