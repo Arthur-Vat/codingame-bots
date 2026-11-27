@@ -58,10 +58,10 @@ const REPLY_CUTS: usize = 3;
 /// Most climbs in one turn.
 const MAX_CLIMBS: usize = 32;
 /// Most plans scored by the opponent's climb in one reply search (E019).
-const REPLY_EVALS: u64 = 300;
+const REPLY_EVALS: u64 = 100;
 /// Whether the replies hold the opponent's own climb (E019); E099's
 /// ablation turns it off.
-const REPLY_OWN: bool = false;
+const REPLY_OWN: bool = true;
 /// Whether a climb's steps are lazy (see the module's docs); E099's
 /// ablation tries every action at every step.
 const LAZY: bool = true;
