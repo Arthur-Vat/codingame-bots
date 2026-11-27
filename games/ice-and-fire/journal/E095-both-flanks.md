@@ -89,6 +89,23 @@ side in any variant; the runners' time scales were 0.42 to 1.02.
 The flank term loses, the more the heavier (w16 clearly); the opening
 ordered by `Frontier { cap: 8 }` wins clearly, and the control is level.
 
+## Second screening: the frontier order's settings
+
+The owner (2026-11-27): screen the frontier order's settings before an
+SPRT. 1,000 seat-swapped pairs per variant against `ice-and-fire-v032`,
+whole games at CodinGame's limits, 5 shards, seed 9501 (fr8 played again
+on new games)
+([run 45985603993](https://github.com/Arthur-Vat/codingame-bots/actions/runs/45985603993)):
+
+| Variant | Commit | Opening order | Turns planned | Elo over v032 [95%] | Score |
+| --- | --- | --- | ---: | ---: | ---: |
+| `fr4` | `d3b7046` | `Frontier { cap: 4 }` | 9 | pending | pending |
+| `fr8` | `a30dd55` | `Frontier { cap: 8 }` | 9 | pending | pending |
+| `fr12` | `6520b1b` | `Frontier { cap: 12 }` | 9 | pending | pending |
+| `fr8-t12` | `1cdb45e` | `Frontier { cap: 8 }` | 12 | pending | pending |
+
+`FLANK` 0 in every variant.
+
 ## The variants on the owner's ten games
 
 The owner asked (2026-11-27) whether the variants behave better before the
