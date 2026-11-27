@@ -653,7 +653,7 @@ pub fn flank(state: &State, seat: usize) -> i64 {
 /// E096: each active cell of a side more than [`FAR_DIST`] steps from the
 /// enemy's land counts this much more for it, net of the enemy's, until game
 /// turn [`FAR_UNTIL`]; 0 for nothing (v033).
-pub const FAR: i64 = 0;
+pub const FAR: i64 = 4;
 /// See [`FAR`].
 pub const FAR_DIST: u32 = 4;
 /// See [`FAR`].
