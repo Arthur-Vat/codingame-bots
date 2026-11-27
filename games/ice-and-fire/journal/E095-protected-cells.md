@@ -1,7 +1,7 @@
 ---
 id: E095
 date: 2026-11-26
-pull_request: "#NN"
+pull_request: "#389"
 parent: ice-and-fire-v032
 hypothesis: Valuing the distinct cells our towers protect (each tower's cell and its neighbours, a cell protected twice counting once), near the enemy or everywhere, instead of or beside a flat value per tower, places towers where they guard the front and coordinates them, and beats ice-and-fire-v032.
 change: The shared evaluation (`tactics/src/eval.rs`) counts 2 for each distinct active cell a side's towers protect (`COVER_WEIGHT`, `covered`) in place of 10 for each of its active towers.
