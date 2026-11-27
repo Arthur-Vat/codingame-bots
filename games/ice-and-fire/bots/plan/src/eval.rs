@@ -663,7 +663,7 @@ pub const FAR_UNTIL: u32 = 14;
 /// [`FAR_DIST`] steps from the enemy's land) with a neutral cell within 2
 /// steps, up to [`HOME_CAP`], counts this much for it, net of the enemy's,
 /// until game turn [`HOME_UNTIL`]; 0 for nothing (v033).
-pub const HOME: i64 = 8;
+pub const HOME: i64 = 0;
 /// See [`HOME`].
 pub const HOME_CAP: u32 = 1;
 /// See [`HOME`].
@@ -673,7 +673,7 @@ pub const HOME_UNTIL: u32 = 12;
 /// belongs to its nearest unit (the first found on a tie); each unit's cells,
 /// up to [`ROOM_CAP`], count this much for its side, net of the enemy's,
 /// until game turn [`ROOM_UNTIL`]; 0 for nothing (v033).
-pub const ROOM: i64 = 0;
+pub const ROOM: i64 = 1;
 /// See [`ROOM`].
 pub const ROOM_RANGE: u8 = 4;
 /// See [`ROOM`].
