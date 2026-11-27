@@ -67,7 +67,7 @@ const OPP_FULL: u8 = 0;
 /// actions of the earlier ones, of which only the plan the opponent's
 /// evaluation rates best is kept as its reply (E104): one reply, a
 /// stronger one; 1 in v034.
-const OPP_PICK: usize = 3;
+const OPP_PICK: usize = 1;
 /// Where between the soft and the hard limit the middle game's climbs stop
 /// (E027): at 36 ms of a 40 ms turn rather than 24; the rest is for the
 /// final choice and its check.
