@@ -63,6 +63,9 @@
 //!   search takes over at game turn 7 without it. Until game turn
 //!   [`GOAL_UNTIL`], band cells near a side's land, held by it, guarded by
 //!   its towers, and the middle chokes it holds count for it ([`goal`]).
+//! - **Sealed land** (E094; off in v032): until game turn
+//!   [`SEALED_UNTIL`], each neutral cell the enemy cannot reach without
+//!   entering a side's cells counts [`SEALED`] quarters for it ([`sealed`]).
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::reach_within_moving;
@@ -483,6 +486,44 @@ pub const VORONOI: i64 = 0;
 /// See [`VORONOI`].
 pub const VORONOI_UNTIL: u32 = 14;
 
+/// What each neutral cell sealed for a side counts for it, in quarters
+/// (E094): a cell the enemy cannot reach from its active land without
+/// entering one of the side's cells, which the side can take later. In
+/// v032's games against the top 10, a sealed cell told the winner a tenth
+/// to a fifth as well as an active one, and the top players sealed more
+/// than v032 (research/codingame/2026-11-27-cell-values.md, "Sealed land").
+/// 0 for nothing (v032).
+pub const SEALED: i64 = 0;
+/// The last game turn at which [`SEALED`] counts.
+pub const SEALED_UNTIL: u32 = 14;
+
+/// The neutral cells sealed for `seat`: those the enemy cannot reach from
+/// its active land over cells that are not `seat`'s.
+pub fn sealed_cells(state: &State, seat: usize) -> Bits {
+    let valid = state.map().valid;
+    let open = valid.and_not(state.owned(seat));
+    let mut region = state.active(1 - seat) & open;
+    loop {
+        let next = (region | region.neighbours()) & open;
+        if next == region {
+            break;
+        }
+        region = next;
+    }
+    valid.and_not(state.owned(0) | state.owned(1) | region)
+}
+
+/// [`SEALED`] for `seat`: its weight times the cells sealed for it less
+/// those sealed for the enemy, until game turn [`SEALED_UNTIL`].
+pub fn sealed(state: &State, seat: usize) -> i64 {
+    if SEALED == 0 || state.game_turn() > SEALED_UNTIL {
+        return 0;
+    }
+    let net = i64::from(sealed_cells(state, seat).count())
+        - i64::from(sealed_cells(state, 1 - seat).count());
+    SEALED * net / 4
+}
+
 /// [`VORONOI`] for `seat`: its weight times the cells nearer to `seat`'s
 /// active land less those nearer to the enemy's.
 pub fn voronoi(state: &State, seat: usize) -> i64 {
@@ -612,4 +653,5 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         - wall(state, 1 - seat)
         + goal(state, seat)
         + voronoi(state, seat)
+        + sealed(state, seat)
 }
