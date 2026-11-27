@@ -59,6 +59,17 @@ const REPLY_CUTS: usize = 3;
 const MAX_CLIMBS: usize = 32;
 /// Most plans scored by the opponent's climb in one reply search (E019).
 const REPLY_EVALS: u64 = 300;
+/// Whether the replies hold the opponent's own climb (E019); E099's
+/// ablation turns it off.
+const REPLY_OWN: bool = true;
+/// Whether a climb's steps are lazy (see the module's docs); E099's
+/// ablation tries every action at every step.
+const LAZY: bool = true;
+/// Whether the check of the plan chosen (E027) starts a reply search only
+/// when the longest reply search of the turn so far still fits before the
+/// hard limit; when it does not, the best plan whose replies were searched
+/// is played (E099). False in v033, where the check may end past the limit.
+const VERIFY_FITS: bool = false;
 /// Where between the soft and the hard limit the middle game's climbs stop
 /// (E027): at 36 ms of a 40 ms turn rather than 24; the rest is for the
 /// final choice and its check.
@@ -485,7 +496,7 @@ impl Search {
             // A lazy pass, then a full one if the lazy one skipped actions
             // and found no gain.
             let mut best = None;
-            for lazy in [true, false] {
+            for lazy in [LAZY, false] {
                 let (found, skipped) = self.pass(
                     &cur, cur_score, &actions, &order, &mut done, memory, &mut gains, lazy,
                 );
@@ -552,7 +563,9 @@ impl Search {
             strike: false,
             guide: None,
         };
-        out.push(theirs.climb(&next, &[], &[], true).commands);
+        if REPLY_OWN {
+            out.push(theirs.climb(&next, &[], &[], true).commands);
+        }
         out.retain(|commands| !commands.is_empty());
         out
     }
@@ -681,6 +694,8 @@ pub fn think_with(
         guide,
     };
     let mut memory = Vec::new();
+    // The longest reply search of the turn (E099's VERIFY_FITS).
+    let mut reply_cost = std::time::Duration::ZERO;
     let mut plans: Vec<Plan> = Vec::new();
     let mut banned = Vec::new();
     // Set when no first action left improves the plan (E029).
@@ -719,7 +734,9 @@ pub fn think_with(
         let mut plan = plan;
         let mut more = false;
         if !stop && !same {
+            let started = Instant::now();
             let found = search.answers(&plan.end);
+            reply_cost = reply_cost.max(started.elapsed());
             more = remember(&found, &mut memory);
             plan.own = Some(found);
         }
@@ -788,6 +805,21 @@ pub fn think_with(
     search.limit.soft = limit.hard;
     while let Some((_, index)) = best {
         if !VERIFY || plans[index].own.is_some() || late() {
+            break;
+        }
+        let fits = limit
+            .hard
+            .is_none_or(|hard| Instant::now() + reply_cost <= hard);
+        if VERIFY_FITS && !fits {
+            // No time to check it: the best plan already checked, if any.
+            let checked: Vec<Option<i64>> = scores
+                .iter()
+                .zip(&plans)
+                .map(|(score, plan)| score.filter(|_| plan.own.is_some()))
+                .collect();
+            if let Some(found) = pick(&checked) {
+                best = Some(found);
+            }
             break;
         }
         let found = search.answers(&plans[index].end);
