@@ -34,4 +34,23 @@ No new code: the switches of E092 to E095 on E093's branch.
 
 ## Screening
 
-Pending.
+Each variant against `ice-and-fire-v032`, 1,600 pairs over two shards,
+seed 20261127, full games, no faults (run 45961697357). All carry cover2
+(`COVER_WEIGHT` 2, `TOWER_VALUE` and `EARLY_TOWER_VALUE` 0):
+
+| Variant | Added to cover2 | Elo |
+|---|---|---|
+| cover2 | nothing (the control) | +12.4 [+2.4, +22.4] |
+| cover2-near4 | `GUARD_NEAR` 4 | +13.5 [+3.4, +23.6] |
+| cover2-fwd2 | `STEP_GUARD_NEAR` 2 | +15.4 [+5.1, +25.8] |
+| cover2-near3-fwd2 | `GUARD_NEAR` 3, `STEP_GUARD_NEAR` 2 | +19.1 [+9.0, +29.3] |
+| cover2-near4-fwd2 | `GUARD_NEAR` 4, `STEP_GUARD_NEAR` 2 | +9.3 [-0.8, +19.5] |
+| cover2-near5-fwd2 | `GUARD_NEAR` 5, `STEP_GUARD_NEAR` 2 | +19.1 [+8.6, +29.7] |
+| cover2-near4-fwd3 | `GUARD_NEAR` 4, `STEP_GUARD_NEAR` 3 | +4.1 [-6.2, +14.4] |
+| cover2-near4-fwd2-hqnow | the same, `HQ_GUARD_TURNS` 1 | +15.2 [+4.8, +25.6] |
+
+Every variant leans above v032 on these new games, seven of eight with an
+interval above 0; cover2 alone measures +12.4 here (+16.3 on the
+screening's games, +5.4 in its SPRT). The differences between the variants
+(4 to 19) are within their intervals: the guard zone and the early step
+and guard add little or nothing that this screening can tell from cover2.
