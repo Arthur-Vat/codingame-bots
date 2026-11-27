@@ -179,6 +179,51 @@ Each step is one pull request with a check; the owner decides at each check.
    units we keep within two steps of the line even between the HQs against
    zasmu's, so that the cap has a number.
 
+## Step 1: the results (2026-11-27)
+
+Tool `review/examples/guards.rs` (not merged; a cut is an enemy ply that
+takes or cuts off 4 or more of the side's active cells, seen at the start of
+that ply; a joint a cell whose loss cuts off 3 or more; a threatened joint
+one within 3 steps of the enemy's land), on v033's 159 CodinGame ranking
+games and, for the roles, v032's 2,350 test games against the top 10:
+
+| Cuts against us | Cuts | Cells each | Through a joint | Of those, unguarded (no unit on it, no tower) | A unit of ours within 2 steps | A cell taken back next turn |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| All games | 389 | 13.0 | 51% | 46% | 98% | 22% |
+| Games we lost, 8 cells or more | 151 | 22.2 | 53% | 42% | 97% | 22% |
+| The owner's 6 games with an unseen cut | 22 | 20.3 | 50% | 27% | 95% | 24% |
+
+| Side (v032's test games) | Threatened joints a ply | With a unit on | With a tower covering | Either | Units: guard / pusher / reserve / back | Units in the middle (rings 0 and 1) |
+| --- | ---: | ---: | ---: | ---: | --- | ---: |
+| Us (red) | 0.55 | 21% | 49% | 65% | 7 / 42 / 26 / 25% | 2.84 |
+| zasmu | 0.82 | 9% | 44% | 50% | 7 / 42 / 22 / 29% | 2.59 |
+| karliso | 0.95 | 8% | 69% | 74% | 6 / 33 / 28 / 33% | 1.98 |
+| Other top players | 0.98 | 14% | 42% | 53% | 9 / 42 / 25 / 24% | 1.93 |
+
+**The check fails for guards.** About a quarter of the big cuts in our
+losses go through a joint a guard would have held (53% through a joint,
+42% of those unguarded); we already guard our threatened joints more than
+the top players do, and have fewer of them. A unit stands within 2 steps
+of nearly every cut, yet we take a cell back after only 22%: reserves are
+there and do not answer. The roles of zasmu's units, by these rules, are in
+the same shares as ours; only the middle differs, where we keep more units
+(2.84 against 1.9 to 2.6), as the owner noted.
+
+**What the unseen cuts are.** The review tool's surprise check
+(`codingame-surprise`, judged by v033's own search, 600 tries, 2,031 of our
+plies in 159 games): 59 plies (3.2%) are large misses (the reply cost 50 or
+more beyond what the search expected: 4.1 cells taken, 11.8 cut off, 51 of
+units lost on average); the real reply was among the replies the search
+modeled in 5% of them; and the causes are **moves needed** (the cut uses
+the enemy's unit moves as well as its trainings) in 54%, a chain of
+trainings neither cut finder finds as large in 22%, one only the wider
+finder finds in 15%. Games with a large miss are lost 59% of the time,
+against 29% without, 4 turns after the first miss (median). So the cuts we
+do not see coming are mostly the enemy's moves and trainings together,
+which the search's model of the enemy's replies does not search: its cut
+finder chains trainings only (5 at most, its 3 best cuts). That is a lever
+in the search's enemy model, not in our units' roles.
+
 ## The questions as they were asked
 
 1. **The first roles to build**: guards and reserves first (the unseen
