@@ -4,14 +4,14 @@ date: 2026-11-27
 pull_request: "#400"
 parent: ice-and-fire-v034
 hypothesis: v034 ends a third of its turns with time left, and spends tries and replies on actions and answers that rarely matter; using the time left (a higher cap on climbs, a second look at the best plans' replies, climbs restarted from the best plan) or pruning (no far trainings, fewer replies) gives the search more of what decides games, and beats ice-and-fire-v034.
-change: Switches in `search.rs` and `actions.rs` that leave v034 as it plays, one variant commit for each, screened against ice-and-fire-v034; the candidate ice-and-fire-v035 offers trainings only on cells at most 3 steps from the enemy's land (`FAR_TRAININGS` 3), the only variant above the control.
-release: ice-and-fire-v035
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
-cg_rank: not reported
+change: Switches in `search.rs` and `actions.rs` that leave v034 as it plays, one variant commit for each, screened against ice-and-fire-v034; the candidate ice-and-fire-v035 offered trainings only on cells at most 3 steps from the enemy's land (`FAR_TRAININGS` 3), the only variant above the control, and was rejected by the SPRT.
+release: none
+sprt: rejected
+elo: −0.6 [−8.5, +7.2]
+pairs: 2240
+full_time: −0.6 [−8.5, +7.2]
+decision: dropped
+cg_rank: none
 ---
 
 ## Why
@@ -92,4 +92,38 @@ screening of E102's other variants meanwhile (2026-11-27).
 
 ## SPRT
 
-Pending.
+On #400 at `49fed59`, in blocks of 10 pairs over 8 runners calibrated to
+CodinGame's speed and real limit
+([run 46060784599](https://github.com/Arthur-Vat/codingame-bots/actions/runs/46060784599)):
+
+```
+ice-and-fire-v035 vs ice-and-fire-v034: 4480 games, 2240 complete pairs
+  ice-and-fire-v035: 2236 wins, 0 draws, 2244 losses (score 49.9%)
+  Elo of ice-and-fire-v035 over ice-and-fire-v034: -0.6 [-8.5, +7.2] (95%, from pairs)
+  pairs by ice-and-fire-v035's points (0, 1/2, 1, 3/2, 2): [334, 0, 1576, 0, 330]
+  ice-and-fire-v035 faults: 3 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v034 faults: 0 timeouts, 0 crashes, 0 invalid answers
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR -3.52 (bounds -2.94, 2.94) after 2240 pairs
+Verdict: REJECTED: ice-and-fire-v035 is not stronger than ice-and-fire-v034
+```
+
+(The first SPRT run, on `bc7506e`, was cancelled after three minutes by a
+Markdown commit.) The smoke test against `random`: 200 wins in 200 games.
+
+## What was learned
+
+Dropped. Leaving out the trainings far from the enemy plays as v034
+(−0.6 over 2,240 pairs); its two screenings (+16.1 on 800 pairs, +13.3 on
+1,600) were noise. So were the controls, which play as v034 and scored
++11.3 and −7.8 with intervals that left out 0: a screening's error is
+larger than its interval says, about ±15 Elo whatever the number of pairs,
+so an effect of 10 to 15 Elo cannot be told from noise by a screening and
+needs an SPRT (or several screenings on other seeds). Using the time v034
+leaves (more climbs, a second look at the best plans' replies, restarts)
+did nothing measurable either: at v034's speed, the search's own model,
+not its time, limits it.
+
+The code stays reachable on the branch `claude/ice-and-fire-e101-full-turn`
+(commits up to `49fed59c`: the switches `MAX_CLIMBS`, `SPARE_CHECK`,
+`SPARE_PLANS`, `RESTART`, `FAR_TRAININGS`, `REPLY_GREEDY` and the variants;
+the release `ice-and-fire-v035` was removed from this pull request).
