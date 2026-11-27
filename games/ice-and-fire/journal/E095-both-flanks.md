@@ -6,11 +6,11 @@ parent: ice-and-fire-v032
 hypothesis: Holding both flanks early, as the top players do and v032 rarely does, makes our land wider and claims the flank we now leave to the enemy, and beats ice-and-fire-v032 (candidate ice-and-fire-v033).
 change: The opening's plans are ranked by the most active cells, then by E073's `Frontier { cap: 8 }` (the least total distance from our land to each cell of the frontier, each distance capped at 8) rather than `Central(Linear(7))`; the search's weaker-flank term (`eval::FLANK`, `FLANK_CAP`, `FLANK_UNTIL`) is added at 0, as it lost the screening.
 release: ice-and-fire-v033
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +49.8 [+28.0, +72.1]
+pairs: 400
+full_time: +49.8 [+28.0, +72.1]
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -140,13 +140,31 @@ kept at 0.
 
 ## SPRT
 
-Pending.
+The SPRT on #395 (run 45990973435), against v032 at CodinGame's speed and
+real limit over 8 calibrated runners:
+
+```
+ice-and-fire-v033 vs ice-and-fire-v032: 800 games, 400 complete pairs
+  ice-and-fire-v033: 457 wins, 0 draws, 343 losses (score 57.1%)
+  Elo of ice-and-fire-v033 over ice-and-fire-v032: +49.8 [+28.0, +72.1] (95%, from pairs)
+  pairs by ice-and-fire-v033's points (0, 1/2, 1, 3/2, 2): [56, 0, 231, 0, 113]
+  ice-and-fire-v033 faults: 3 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v032 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  slowest answer: ice-and-fire-v033 499.4 ms, ice-and-fire-v032 505.3 ms
+Checked 5 rounds of 8 blocks (40 blocks counted, 56 left out)
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.67 (bounds -2.94, 2.94) after 400 pairs
+Verdict: ACCEPTED: ice-and-fire-v033 is stronger than ice-and-fire-v032
+```
+
+Accepted at +49.8, above the screenings' +32 to +38 for fr8. The 3
+timeouts in 800 games are within the 1% the SPRT allows; fr8 had 1 in
+its 7,600 screening games.
 
 ## The variants on the owner's ten games
 
 The owner asked (2026-11-27) whether the variants behave better before the
 territories meet on the ten short losses he commented. A tool
-(`review/examples/replay_vs.rs` on the session branch
+(`review/examples/replay_vs.rs`, not merged: on the session branch
 `claude/pensive-darwin-879zmo`) plays a bot in our seat on each game's map,
 untimed with 800 tries a turn, against the opponent's recorded answers,
 which hold until contact (game turn 7 or 8 in these games; the opponent's
