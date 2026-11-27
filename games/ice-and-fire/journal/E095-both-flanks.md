@@ -3,9 +3,9 @@ id: E095
 date: 2026-11-27
 pull_request: "#NN"
 parent: ice-and-fire-v032
-hypothesis: Holding both flanks early, as the top players do and v032 rarely does, makes our land wider and claims the flank we now leave to the enemy, and beats ice-and-fire-v032.
-change: With `eval::FLANK`, `FLANK_CAP` and `FLANK_UNTIL`, each active cell of a side on its weaker flank (the cells 4 or more columns off the diagonal between the HQs, on the side where it holds fewer), up to the cap, counts for it, net of the enemy's, until that game turn; and, as a second lever, the opening's plans ordered by E073's `Frontier { cap: 8 }`; v032 has neither.
-release: pending
+hypothesis: Holding both flanks early, as the top players do and v032 rarely does, makes our land wider and claims the flank we now leave to the enemy, and beats ice-and-fire-v032 (candidate ice-and-fire-v033).
+change: The opening's plans are ranked by the most active cells, then by E073's `Frontier { cap: 8 }` (the least total distance from our land to each cell of the frontier, each distance capped at 8) rather than `Central(Linear(7))`; the search's weaker-flank term (`eval::FLANK`, `FLANK_CAP`, `FLANK_UNTIL`) is added at 0, as it lost the screening.
+release: ice-and-fire-v033
 sprt: pending
 elo: pending
 pairs: pending
@@ -131,6 +131,16 @@ hold: over all its screenings (weighted by pairs) fr8 scores about +33.6
 on 3,800 pairs (+37.5, +32.1, +32.8) and fr8-t12 about +30.7 on 3,000
 (+42.6, +24.7), the same within the noise, as E073 found for longer plans.
 fr8 is the simpler change.
+
+## The candidate
+
+The owner chose fr8 (2026-11-27): `ice-and-fire-v033` is v032 with the
+opening ordered by `Frontier { cap: 8 }` over 9 turns, the flank term
+kept at 0.
+
+## SPRT
+
+Pending.
 
 ## The variants on the owner's ten games
 

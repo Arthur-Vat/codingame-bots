@@ -67,7 +67,9 @@
 //!   as the top players to game turn 10, but on one flank: both flanks by
 //!   game turn 8 in 12 to 14% of our games against 33 to 41% of theirs.
 //!   Until game turn [`FLANK_UNTIL`], a side's active cells on its weaker
-//!   flank, up to [`FLANK_CAP`], count [`FLANK`] each for it ([`flank`]).
+//!   flank, up to [`FLANK_CAP`], count [`FLANK`] each for it ([`flank`]):
+//!   off, since it lost the screening at every weight tried (4, 8, 16);
+//!   E095's opening order holds both flanks instead.
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ, SIZE};
 use ice_and_fire_tactics::chain::reach_within_moving;
@@ -593,7 +595,8 @@ pub fn goal(state: &State, seat: usize) -> i64 {
 pub const FLANK_OFF: i64 = 4;
 /// Each active cell of a side on its weaker flank (the flank where it holds
 /// fewer), up to [`FLANK_CAP`], counts this much for it, net of the enemy's,
-/// until game turn [`FLANK_UNTIL`]; 0 for nothing (v032).
+/// until game turn [`FLANK_UNTIL`]; 0 for nothing (v032, v033: E095's
+/// screening, 4 −5.6, 8 −15.6 and 16 −37.1 Elo).
 pub const FLANK: i64 = 0;
 /// See [`FLANK`].
 pub const FLANK_CAP: i64 = 4;
