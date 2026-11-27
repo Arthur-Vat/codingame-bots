@@ -60,7 +60,7 @@ pub const GUARD_FILTER: bool = true;
 
 /// Whether a tower is also offered on each free border cell that would
 /// guard a frontier cell of ours not yet guarded (E068's tower wall).
-pub const WALL_TOWERS: bool = true;
+pub const WALL_TOWERS: bool = false;
 
 /// Which of our own empty active cells get a training offered (E045): 0,
 /// all of them (v021); 1, those next to a cell that is not active for us;
