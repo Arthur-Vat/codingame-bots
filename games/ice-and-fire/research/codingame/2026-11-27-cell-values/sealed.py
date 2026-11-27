@@ -1,6 +1,6 @@
 import json, sys, bisect, math, collections
 S = sys.argv[1]
-d = json.load(open(S + '/cells2.json'))
+d = json.load(open(S + '/cells.json'))
 ranking = set()
 for l in open(S + '/index.jsonl'):
     x = json.loads(l)
@@ -24,7 +24,6 @@ def logit(rows):
                 g[i] += (y - p) * x[i]
                 for j in range(3): H[i][j] += p*(1-p)*x[i]*x[j]
         # solve H d = g
-        import copy
         A = [H[i][:] + [g[i]] for i in range(3)]
         for i in range(3):
             piv = A[i][i]

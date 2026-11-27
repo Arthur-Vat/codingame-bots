@@ -96,7 +96,7 @@ The tables come from [analyse.py](2026-11-27-cell-values/analyse.py) (`python3 -
 
 The owner then made his idea precise (2026-11-27): a cell's importance is also the larger territory it opens. Measured as **sealed land**: the neutral cells the enemy cannot reach from its active land without entering one of the side's cells, so that the side can take them later at leisure; a cell's opportunity is what its capture seals. The tool now writes, at red's starts of game turns 8, 10 and 12, each side's active and sealed cells; [sealed.py](2026-11-27-cell-values/sealed.py) reads them (same games, same directory as `analyse.py`).
 
-| Game turn | Sealed, ours / theirs (mean) | Winner / loser (mean) | AUC: active difference | AUC: sealed difference | AUC: both, a cell each | Logistic fit: a sealed cell against an active cell |
+| Game turn | Sealed, ours (red) / theirs (mean) | Winner / loser (mean) | AUC: active difference | AUC: sealed difference | AUC: both, a cell each | Logistic fit: a sealed cell against an active cell |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | 8 | 4.1 / 6.1 | 5.0 / 5.1 | 0.576 | 0.533 | 0.557 | 0.09 |
 | 10 | 6.7 / 8.4 | 8.0 / 7.0 | 0.714 | 0.623 | 0.699 | 0.14 |
