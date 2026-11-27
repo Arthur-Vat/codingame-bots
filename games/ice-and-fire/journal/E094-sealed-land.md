@@ -1,7 +1,7 @@
 ---
 id: E094
 date: 2026-11-27
-pull_request: "pending"
+pull_request: "#394"
 parent: ice-and-fire-v032
 hypothesis: Counting the neutral cells a side has sealed off from the enemy, which the top players hold more of than v032 and which tell the winner where the land is level, makes the search take the cells that open a larger territory, and beats ice-and-fire-v032.
 change: With `eval::SEALED` quarters and `SEALED_UNTIL`, each neutral cell the enemy cannot reach from its active land without entering one of a side's cells counts for that side, net of the enemy's, until that game turn (`sealed`, one flood from each side's enemy); 0, nothing, in v032.
