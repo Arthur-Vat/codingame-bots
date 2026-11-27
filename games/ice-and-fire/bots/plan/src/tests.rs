@@ -1039,7 +1039,7 @@ fn a_side_that_can_pay_for_its_chain_to_the_enemy_hq_holds_a_threat() {
 
 #[test]
 fn an_enemy_unit_of_level_two_moves_toward_our_hq() {
-    use crate::eval::{eval, exposed, shape, strong_units, threat_quarters};
+    use crate::eval::{eval, shape, strong_units, threatened, THREAT_QUARTERS};
     use ice_and_fire_engine::{Bits, SIZE};
     use ice_and_fire_tactics::eval::{margin, margin_moving};
     // E043: blue's level-2 unit on (6, 11) steps first onto red's (5, 11),
@@ -1069,9 +1069,7 @@ fn an_enemy_unit_of_level_two_moves_toward_our_hq() {
     // included (E073).
     let expected = bot_shared(&state, 0) + shape(&state, 0) + strong_units(&state, 0)
         - strong_units(&state, 1)
-        + (threat_quarters(&state, 1, exposed(&state, 1))
-            - threat_quarters(&state, 0, exposed(&state, 0)))
-            / 4
+        + THREAT_QUARTERS * (threatened(&state, 1) - threatened(&state, 0)) / 4
         + crate::eval::goal(&state, 0);
     assert_eq!(eval(&state, 0), expected);
 }
@@ -1870,38 +1868,4 @@ fn only_joints_near_the_enemy_count_from_v032() {
         crate::eval::weakness_of(state.active(0), ice_and_fire_engine::HQ[0]),
         2 + 2
     );
-}
-
-#[test]
-fn the_best_cut_counts_the_cells_behind_it() {
-    use crate::eval::{best_cut, THREAT_QUARTERS};
-    let dots = "............";
-    let state = position(
-        [
-            "OOOOO.......",
-            "O...........",
-            dots,
-            dots,
-            dots,
-            dots,
-            dots,
-            dots,
-            dots,
-            dots,
-            dots,
-            "...........X",
-        ],
-        [0, 0],
-        &[],
-    );
-    let cell = |x: usize, y: usize| y * SIZE + x;
-    // Taking (2, 0) cuts off (3, 0) and (4, 0); taking (3, 0) only (4, 0);
-    // the best of the two counts.
-    let mut taken = Bits::cell(cell(2, 0));
-    taken.set(cell(3, 0));
-    assert_eq!(best_cut(&state, 0, taken), 2 * THREAT_QUARTERS);
-    // A tip, or a cell whose loss leaves the rest joined, cuts off nothing.
-    let mut tip = Bits::cell(cell(4, 0));
-    tip.set(cell(0, 1));
-    assert_eq!(best_cut(&state, 0, tip), 0);
 }

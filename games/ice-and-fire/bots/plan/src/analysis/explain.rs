@@ -15,7 +15,7 @@ use ice_and_fire_engine::{answer_line, Command, State};
 use super::{read_bank, ready};
 use crate::eval::{
     debt, eval, exposed, goal, idle, mines, movers_from, shape, standing, strong_units, voronoi,
-    wall, MARGIN_MOVER_LEVEL,
+    wall, MARGIN_MOVER_LEVEL, THREAT_QUARTERS,
 };
 use crate::search::{think, Limit};
 use ice_and_fire_tactics::eval::evaluate_with_movers;
@@ -146,8 +146,7 @@ pub fn terms(state: &State, seat: usize) -> Vec<(&'static str, i64)> {
     let (score, margins) = evaluate_with_movers(state, seat, movers);
     let ours = exposed(state, seat);
     let theirs = exposed(state, 1 - seat);
-    let threats = crate::eval::threat_quarters(state, 1 - seat, theirs)
-        - crate::eval::threat_quarters(state, seat, ours);
+    let threats = i64::from(theirs.count()) - i64::from(ours.count());
     vec![
         ("shared", score),
         ("standing", standing(margins[0]) - standing(margins[1])),
@@ -159,7 +158,7 @@ pub fn terms(state: &State, seat: usize) -> Vec<(&'static str, i64)> {
             strong_units(state, seat) - strong_units(state, 1 - seat),
         ),
         ("idle", -idle(state, seat) + idle(state, 1 - seat)),
-        ("threats", threats / 4),
+        ("threats", THREAT_QUARTERS * threats / 4),
         (
             "mines",
             mines(state, seat, ours) - mines(state, 1 - seat, theirs),
