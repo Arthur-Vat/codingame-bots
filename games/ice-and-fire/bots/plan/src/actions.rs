@@ -60,7 +60,7 @@ pub const GUARD_FILTER: bool = true;
 
 /// Whether a tower is also offered on each free border cell that would
 /// guard a frontier cell of ours not yet guarded (E068's tower wall).
-pub const WALL_TOWERS: bool = true;
+pub const WALL_TOWERS: bool = false;
 
 /// Which of our own empty active cells get a training offered (E045): 0,
 /// all of them (v021); 1, those next to a cell that is not active for us;
@@ -130,7 +130,7 @@ pub const RUSH_DEFEND: bool = false;
 /// enemy's land (E101: in v033's CodinGame games, level-1 trainings farther
 /// than 3 steps were 13.6% of the tries and 0.8% of the actions chosen);
 /// `None`: every cell (v034).
-pub const FAR_TRAININGS: Option<u8> = Some(3);
+pub const FAR_TRAININGS: Option<u8> = None;
 
 /// The cells of the map at most `steps` steps from the enemy's land of the
 /// player `me`, through cells of the map.
@@ -144,7 +144,7 @@ fn near_enemy(state: &State, me: usize, steps: u8) -> Bits {
 }
 
 /// Cuts offered as macro actions.
-pub const MACRO_CUTS: usize = 8;
+pub const MACRO_CUTS: usize = 4;
 /// Longest cut, in trainings: 5 since E014 (4 before).
 pub const CUT_LENGTH: usize = 5;
 
