@@ -59,25 +59,6 @@ const REPLY_CUTS: usize = 3;
 const MAX_CLIMBS: usize = 32;
 /// Most plans scored by the opponent's climb in one reply search (E019).
 const REPLY_EVALS: u64 = 300;
-/// Whether the opponent's climbs of a turn share what they learnt of each
-/// action's gain (E103), as our own climbs do within a turn: a later reply
-/// search tries first what paid in the earlier ones.
-///
-/// With [`OPP_WARM`], ice-and-fire-v035: the same large misses on v033's
-/// CodinGame positions as v034 (3.0% against 3.2%) for 29% less time a
-/// search at fixed tries.
-const OPP_HINTS: bool = true;
-/// Whether the opponent's climb starts from the best of its plans found
-/// earlier in the turn that still applies to the position, rather than
-/// from nothing (E103): half of the opponent's climbs of a turn end on a
-/// plan found before.
-const OPP_WARM: bool = true;
-/// Whether, after the warm start, one more climb of the opponent starts
-/// elsewhere (barred from the warm plan's first action), with the time the
-/// warm start saves (E103).
-const OPP_DIVERSE: bool = false;
-/// The most plans of the opponent kept in a turn for the warm start.
-const OPP_PLANS: usize = 16;
 /// Where between the soft and the hard limit the middle game's climbs stop
 /// (E027): at 36 ms of a 40 ms turn rather than 24; the rest is for the
 /// final choice and its check.
@@ -175,11 +156,6 @@ struct Search {
     /// The strategic layer's guide this turn (E077): its plan and the
     /// objectives' term.
     guide: Option<Guide>,
-    /// What the opponent's climbs of this turn learnt of each action's gain
-    /// ([`OPP_HINTS`]).
-    opp_hints: std::cell::RefCell<Gains>,
-    /// The opponent's plans found this turn ([`OPP_WARM`]).
-    opp_plans: std::cell::RefCell<Vec<Vec<Command>>>,
 }
 
 /// The strike reserve (E069, stage B of the curriculum in
@@ -575,59 +551,8 @@ impl Search {
             // The opponent's model keeps no reserve, as before E069.
             strike: false,
             guide: None,
-            opp_hints: std::cell::RefCell::default(),
-            opp_plans: std::cell::RefCell::default(),
         };
-        if OPP_HINTS {
-            theirs.hints = self.opp_hints.borrow().clone();
-        }
-        // The warm start: the earlier plan of the turn that applies here
-        // and that the opponent's evaluation rates best.
-        let warm = if OPP_WARM {
-            self.opp_plans
-                .borrow()
-                .iter()
-                .filter_map(|commands| {
-                    let mut after = next.clone();
-                    apply_all(&mut after, commands)
-                        .then(|| (theirs.value(&after), commands.clone()))
-                })
-                .max_by_key(|(score, _)| *score)
-                .map(|(_, commands)| commands)
-        } else {
-            None
-        };
-        let plan =
-            match warm.and_then(|commands| theirs.forced(&next, &Action::Many(commands), &[])) {
-                Some(plan) => plan,
-                None => theirs.climb(&next, &[], &[], true),
-            };
-        if OPP_DIVERSE && OPP_WARM {
-            if let Some(first) = plan.first.filter(|_| !theirs.spent()) {
-                theirs.limit.max_evals = theirs.evals + REPLY_EVALS;
-                let other = theirs.climb(&next, &[], &[first], true);
-                if other.commands != plan.commands {
-                    out.push(other.commands);
-                }
-            }
-        }
-        if OPP_WARM && !plan.commands.is_empty() {
-            let mut plans = self.opp_plans.borrow_mut();
-            if !plans.contains(&plan.commands) {
-                if plans.len() >= OPP_PLANS {
-                    plans.remove(0);
-                }
-                plans.push(plan.commands.clone());
-            }
-        }
-        if OPP_HINTS {
-            let mut hints = self.opp_hints.borrow_mut();
-            for (key, gain) in theirs.hints.iter() {
-                let hint = hints.entry(*key).or_insert(*gain);
-                *hint = (*hint).max(*gain);
-            }
-        }
-        out.push(plan.commands);
+        out.push(theirs.climb(&next, &[], &[], true).commands);
         out.retain(|commands| !commands.is_empty());
         out
     }
@@ -754,8 +679,6 @@ pub fn think_with(
         root_actions: None,
         strike: strike_reserve(state),
         guide,
-        opp_hints: std::cell::RefCell::default(),
-        opp_plans: std::cell::RefCell::default(),
     };
     let mut memory = Vec::new();
     let mut plans: Vec<Plan> = Vec::new();
