@@ -141,7 +141,7 @@ const REPLAN_FROM: u32 = 0;
 
 /// How the opening compares its plans (E073): the weighted sum above in
 /// v029.
-const ORDER: Order = Order::Frontier { cap: 4 };
+const ORDER: Order = Order::Frontier { cap: 12 };
 
 /// The opening uses a mine spot only when the enemy's territory is more than
 /// this many steps from it: `u8::MAX`, so it builds no mine (E034; v003's
