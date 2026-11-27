@@ -64,7 +64,7 @@ const REPLY_EVALS: u64 = 300;
 const REPLY_OWN: bool = true;
 /// Whether a climb's steps are lazy (see the module's docs); E099's
 /// ablation tries every action at every step.
-const LAZY: bool = false;
+const LAZY: bool = true;
 /// Whether the check of the plan chosen (E027) starts a reply search only
 /// when the longest reply search of the turn so far still fits before the
 /// hard limit; when it does not, the best plan whose replies were searched
