@@ -63,8 +63,15 @@
 //!   search takes over at game turn 7 without it. Until game turn
 //!   [`GOAL_UNTIL`], band cells near a side's land, held by it, guarded by
 //!   its towers, and the middle chokes it holds count for it ([`goal`]).
+//! - **Both flanks** (E095): in v032's CodinGame games we hold as much land
+//!   as the top players to game turn 10, but on one flank: both flanks by
+//!   game turn 8 in 12 to 14% of our games against 33 to 41% of theirs.
+//!   Until game turn [`FLANK_UNTIL`], a side's active cells on its weaker
+//!   flank, up to [`FLANK_CAP`], count [`FLANK`] each for it ([`flank`]):
+//!   off, since it lost the screening at every weight tried (4, 8, 16);
+//!   E095's opening order holds both flanks instead.
 
-use ice_and_fire_engine::{Bits, State, CELLS, HQ};
+use ice_and_fire_engine::{Bits, State, CELLS, HQ, SIZE};
 use ice_and_fire_tactics::chain::reach_within_moving;
 use ice_and_fire_tactics::eval::evaluate_with_movers;
 
@@ -582,6 +589,56 @@ pub fn goal(state: &State, seat: usize) -> i64 {
     total
 }
 
+/// The flanks (E095): the cells this many columns or more off the diagonal
+/// between the HQs, (0, 0) to (11, 11), on either side of it: toward
+/// (11, 0) for the first flank, toward (0, 11) for the second.
+pub const FLANK_OFF: i64 = 4;
+/// Each active cell of a side on its weaker flank (the flank where it holds
+/// fewer), up to [`FLANK_CAP`], counts this much for it, net of the enemy's,
+/// until game turn [`FLANK_UNTIL`]; 0 for nothing (v032, v033: E095's
+/// screening, 4 −5.6, 8 −15.6 and 16 −37.1 Elo).
+pub const FLANK: i64 = 0;
+/// See [`FLANK`].
+pub const FLANK_CAP: i64 = 4;
+/// See [`FLANK`].
+pub const FLANK_UNTIL: u32 = 12;
+
+/// The two flanks of [`FLANK_OFF`], as cells of the board, computed once.
+pub fn flanks() -> [Bits; 2] {
+    static FLANKS: std::sync::OnceLock<[Bits; 2]> = std::sync::OnceLock::new();
+    *FLANKS.get_or_init(flanks_of)
+}
+
+/// [`flanks`], computed.
+fn flanks_of() -> [Bits; 2] {
+    let mut out = [Bits::EMPTY; 2];
+    for c in 0..CELLS {
+        let (x, y) = ((c % SIZE) as i64, (c / SIZE) as i64);
+        if x - y >= FLANK_OFF {
+            out[0].set(c);
+        } else if y - x >= FLANK_OFF {
+            out[1].set(c);
+        }
+    }
+    out
+}
+
+/// The active cells of `seat` on its weaker flank, at most [`FLANK_CAP`].
+pub fn weaker_flank(state: &State, seat: usize) -> i64 {
+    let [a, b] = flanks();
+    let active = state.active(seat);
+    i64::from((active & a).count().min((active & b).count())).min(FLANK_CAP)
+}
+
+/// [`FLANK`] for `seat`: its weight times our [`weaker_flank`] less the
+/// enemy's; 0 after [`FLANK_UNTIL`].
+pub fn flank(state: &State, seat: usize) -> i64 {
+    if FLANK == 0 || state.game_turn() > FLANK_UNTIL {
+        return 0;
+    }
+    FLANK * (weaker_flank(state, seat) - weaker_flank(state, 1 - seat))
+}
+
 /// The score of `state` for `seat`, higher is better for it.
 pub fn eval(state: &State, seat: usize) -> i64 {
     let movers = [
@@ -612,4 +669,5 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         - wall(state, 1 - seat)
         + goal(state, seat)
         + voronoi(state, seat)
+        + flank(state, seat)
 }
