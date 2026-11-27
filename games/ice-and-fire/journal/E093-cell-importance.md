@@ -1,7 +1,7 @@
 ---
 id: E093
 date: 2026-11-27
-pull_request: "pending"
+pull_request: "#392"
 parent: ice-and-fire-v032
 hypothesis: Valuing each threatened cell by its importance (a cell, a mine on it, the unit on it), with and without E092's best cut, makes the search defend what it would lose and beats ice-and-fire-v032.
 change: With `eval::CELL_VALUES`, a threatened cell costs 5 quarters, 9 more with a mine, and 7, 14 or 21 more with a unit of level 1, 2 or 3 (its training cost times 5/7), instead of `THREAT_QUARTERS` (5) whatever it holds; off in v032.

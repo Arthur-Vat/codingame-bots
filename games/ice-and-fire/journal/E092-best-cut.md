@@ -1,7 +1,7 @@
 ---
 id: E092
 date: 2026-11-27
-pull_request: "pending"
+pull_request: "#392"
 parent: ice-and-fire-v032
 hypothesis: Counting in the threat what the enemy's best affordable cut severs beyond the cell it takes, found in one depth-first search a side so that the search keeps its speed, beats ice-and-fire-v032 where E090's union of every cut, 37% slower, did not.
 change: With `eval::BEST_CUT`, a side's threat adds, to its exposed cells (E023, E037), the cells behind the best single capture among them (`best_cut`, a depth-first search for the joints, as the shape term's), at `THREAT_QUARTERS` each; off in v032.
