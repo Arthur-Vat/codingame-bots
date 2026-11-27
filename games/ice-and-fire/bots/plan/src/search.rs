@@ -56,7 +56,7 @@ const MEMORY_CAP: usize = 8;
 /// The opponent's best cuts added to the memory after a climb.
 const REPLY_CUTS: usize = 3;
 /// Most climbs in one turn.
-const MAX_CLIMBS: usize = 32;
+const MAX_CLIMBS: usize = 64;
 /// Whether the replies hold bronze's greedy turn (E101: it decides 2 to 4%
 /// of the scores for about 6% of the turn).
 const REPLY_GREEDY: bool = true;
