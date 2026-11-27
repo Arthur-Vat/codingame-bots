@@ -308,6 +308,33 @@ fn attempt(state: &State, me: usize, goals: &[usize], budget: i64) -> Option<Cha
 /// cheaper. The cheapest successful attempt wins, the plain one on a tie.
 /// Applying its commands in order to `state` succeeds, and then `target` is
 /// the player's (or the player has won).
+/// The fewest cells not owned by `me` on a path from its active cells to
+/// `target`: each is one training of at least 10 gold in any chain, so
+/// that 10 times this bounds the cost of every chain from below.
+/// `i64::MAX / 20` when no path reaches it.
+pub fn trainings_needed(state: &State, me: usize, target: usize) -> i64 {
+    let valid = state.map().valid;
+    let owned = state.owned(me) & valid;
+    let close = |mut cur: Bits| loop {
+        let next = cur | (cur.neighbours() & owned);
+        if next == cur {
+            return cur;
+        }
+        cur = next;
+    };
+    let mut cur = close(state.active(me));
+    let mut steps = 0;
+    while !cur.test(target) {
+        let new = cur.neighbours().and_not(cur) & valid;
+        if new.is_empty() {
+            return i64::MAX / 20;
+        }
+        cur = close(cur | new);
+        steps += 1;
+    }
+    steps
+}
+
 pub fn chain_to(state: &State, target: usize, budget: i64) -> Option<Chain> {
     if budget < 0 || state.outcome().is_some() || target >= CELLS || state.map().void.test(target) {
         return None;
@@ -318,6 +345,12 @@ pub fn chain_to(state: &State, target: usize, budget: i64) -> Option<Chain> {
             commands: Vec::new(),
             cost: 0,
         });
+    }
+    // Every chain trains each cell not ours on its path, 10 gold at least
+    // each: when the gold cannot pay for the shortest path, no chain can,
+    // and the search of `Reach` and of the tower variants is skipped.
+    if 10 * trainings_needed(state, me, target) > budget {
+        return None;
     }
     let mut best = attempt(state, me, &[target], budget);
     let first = Reach::new(state, me, false);
