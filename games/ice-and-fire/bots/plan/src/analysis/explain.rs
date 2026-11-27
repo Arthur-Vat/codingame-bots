@@ -166,6 +166,5 @@ pub fn terms(state: &State, seat: usize) -> Vec<(&'static str, i64)> {
         ("wall", wall(state, seat) - wall(state, 1 - seat)),
         ("goal", goal(state, seat)),
         ("voronoi", voronoi(state, seat)),
-        ("sealed", crate::eval::sealed(state, seat)),
     ]
 }

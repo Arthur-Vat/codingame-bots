@@ -1869,35 +1869,3 @@ fn only_joints_near_the_enemy_count_from_v032() {
         2 + 2
     );
 }
-
-#[test]
-fn neutral_cells_behind_our_land_are_sealed() {
-    use crate::eval::sealed_cells;
-    let dots = "............";
-    // Red's land rings (0, 1) and (1, 1): blue cannot reach them without
-    // entering a red cell.
-    let state = position(
-        [
-            "OOO.........",
-            "..O.........",
-            "OOO.........",
-            dots,
-            dots,
-            dots,
-            dots,
-            dots,
-            dots,
-            dots,
-            dots,
-            "...........X",
-        ],
-        [0, 0],
-        &[],
-    );
-    let cell = |x: usize, y: usize| y * SIZE + x;
-    let mut expected = Bits::cell(cell(0, 1));
-    expected.set(cell(1, 1));
-    assert_eq!(sealed_cells(&state, 0), expected);
-    // Nothing is sealed for blue: red's land is open to the rest of the map.
-    assert_eq!(sealed_cells(&state, 1), Bits::EMPTY);
-}

@@ -6,12 +6,12 @@ parent: ice-and-fire-v032
 hypothesis: Counting the neutral cells a side has sealed off from the enemy, which the top players hold more of than v032 and which tell the winner where the land is level, makes the search take the cells that open a larger territory, and beats ice-and-fire-v032.
 change: With `eval::SEALED` quarters and `SEALED_UNTIL`, each neutral cell the enemy cannot reach from its active land without entering one of a side's cells counts for that side, net of the enemy's, until that game turn (`sealed`, one flood from each side's enemy); 0, nothing, in v032.
 release: none
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
-cg_rank: not reported
+sprt: not run: clearly weaker in screening
+elo: none
+pairs: none
+full_time: none
+decision: dropped
+cg_rank: none
 ---
 
 ## Why
@@ -42,8 +42,31 @@ the fastest of 2 runs): `off` 22.6 tries a ms, `w9-t20` 24.1: no cost.
 
 ## Screening
 
-Variants `off` (everything off), `w6-t14`, `w6-t20`, `w9-t14`, `w9-t20`
-against v032, whole games at CodinGame's limits, 800 pairs each in 4
-shards: run 45966202678.
+800 seat-swapped pairs per variant against `ice-and-fire-v032`, whole
+games at CodinGame's limits, 4 shards, no faults on either side
+([run 45966202678](https://github.com/Arthur-Vat/codingame-bots/actions/runs/45966202678)):
 
-Pending.
+| Variant | Commit | `SEALED` | `SEALED_UNTIL` | Elo over v032 [95%] | Score |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `off` | `627f043` | 0 | 14 | +2.2 [−6.7, +11.1] | 50.3% |
+| `w6-t14` | `30b225c` | 6 | 14 | −25.2 [−40.4, −10.2] | 46.4% |
+| `w6-t20` | `ecf9994` | 6 | 20 | −35.3 [−50.2, −20.5] | 44.9% |
+| `w9-t14` | `90059c7` | 9 | 14 | −54.3 [−69.8, −39.0] | 42.2% |
+| `w9-t20` | `d47280f` | 9 | 20 | −60.5 [−76.2, −45.1] | 41.4% |
+
+## What was learned
+
+Dropped, and clearly: every variant loses, the more the heavier the
+weight and the longer it counts, at no cost in speed. Sealed cells go with
+winning in the games, but counting them makes the search close pockets
+that are already safe instead of taking land and fighting at the front, as
+the shape term made it train behind its own lines before E081. The
+correlation runs mostly the other way: a side that wins the front seals
+land behind it. A cell's opening value, as a term of the evaluation, does
+not pay; if it helps at all, it would be in choosing where the opening's
+units go before contact (E080's turn-1 planner), not in the middle game's
+search.
+
+The code stays on the branch `claude/ice-and-fire-e094-sealed-land`
+(commits `627f043` to `d47280f`; `sealed_cells` and `sealed` in
+`bots/plan/src/eval.rs`, the test `neutral_cells_behind_our_land_are_sealed`).
