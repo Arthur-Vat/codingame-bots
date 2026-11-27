@@ -84,7 +84,8 @@ on the 2,031 positions at 600 tries): `actions::GUARD_FILTER` (on) and
 ## Screening
 
 Variants against `ice-and-fire-v034`, 1,600 seat-swapped pairs each,
-whole games at CodinGame's limits, 2 shards:
+whole games at CodinGame's limits, 2 shards
+([run 46056838757](https://github.com/Arthur-Vat/codingame-bots/actions/runs/46056838757)):
 
 | Variant | Change | Elo over v034 [95%] |
 | --- | --- | ---: |
