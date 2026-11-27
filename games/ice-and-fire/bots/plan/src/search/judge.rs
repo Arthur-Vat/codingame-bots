@@ -84,6 +84,7 @@ pub(super) fn observe(search: &Search, root: &State, memory: &[Reply], best: Opt
             end,
             first: None,
             own: Some(own),
+            checked: false,
         };
         search.final_score(&plan, memory)
     });

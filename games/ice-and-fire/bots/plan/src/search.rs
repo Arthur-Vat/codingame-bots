@@ -59,6 +59,14 @@ const REPLY_CUTS: usize = 3;
 const MAX_CLIMBS: usize = 32;
 /// Most plans scored by the opponent's climb in one reply search (E019).
 const REPLY_EVALS: u64 = 300;
+/// The opponent's climbs in a reply search during the climbs (E098), each
+/// barred from the first actions of the earlier ones and with
+/// [`REPLY_EVALS`] tries more: one climb alone always ends on the same
+/// local best.
+pub const REPLY_CLIMBS: usize = 1;
+/// The opponent's climbs in the reply search of the plan chosen, before it
+/// is played (E098): `None` keeps the replies searched during the climbs.
+pub const CHECK_CLIMBS: Option<usize> = None;
 /// Where between the soft and the hard limit the middle game's climbs stop
 /// (E027): at 36 ms of a 40 ms turn rather than 24; the rest is for the
 /// final choice and its check.
@@ -135,6 +143,8 @@ struct Plan {
     first: Option<u64>,
     /// The opponent's replies to this plan, once searched (E027).
     own: Option<Vec<Reply>>,
+    /// Whether `own` was searched with [`CHECK_CLIMBS`] climbs (E098).
+    checked: bool,
 }
 
 /// The gain an action had when last tried, by [`key`].
@@ -513,13 +523,14 @@ impl Search {
             end: cur,
             first,
             own: None,
+            checked: false,
         }
     }
 
     /// The replies of the opponent to the plan that ends in `end`: its
     /// lethal chain, its best cuts, bronze's greedy turn and its own plan
     /// (one climb), on the state after our turn ends.
-    fn replies(&self, end: &State) -> Vec<Vec<Command>> {
+    fn replies(&self, end: &State, climbs: usize) -> Vec<Vec<Command>> {
         let mut next = end.clone();
         next.end_turn();
         let mut out = Vec::new();
@@ -537,12 +548,13 @@ impl Search {
         let mut greedy = Vec::new();
         greedy_turn(&next, &mut greedy);
         out.push(greedy);
-        // The opponent's own plan (E019): a climb from its seat, with moves,
-        // trainings and cuts, scored by the evaluation from its side.
+        // The opponent's own plans (E019): climbs from its seat, with moves,
+        // trainings and cuts, scored by the evaluation from its side, each
+        // barred from the first actions of the earlier ones (E098).
         let mut theirs = Search {
             me: opponent,
             limit: Limit {
-                max_evals: REPLY_EVALS,
+                max_evals: REPLY_EVALS * climbs as u64,
                 ..self.limit
             },
             evals: 0,
@@ -552,14 +564,31 @@ impl Search {
             strike: false,
             guide: None,
         };
-        out.push(theirs.climb(&next, &[], &[], true).commands);
+        let mut banned = Vec::new();
+        let mut found: Vec<Vec<Command>> = Vec::new();
+        for _ in 0..climbs {
+            let plan = theirs.climb(&next, &[], &banned, true);
+            if !found.contains(&plan.commands) {
+                found.push(plan.commands.clone());
+                out.push(plan.commands);
+            }
+            match plan.first {
+                Some(first) if !theirs.spent() => banned.push(first),
+                _ => break,
+            }
+        }
         out.retain(|commands| !commands.is_empty());
         out
     }
 
     /// The replies to the plan that ends in `end`, each with its damage.
     fn answers(&self, end: &State) -> Vec<Reply> {
-        self.replies(end)
+        self.answers_with(end, REPLY_CLIMBS)
+    }
+
+    /// [`Self::answers`] with `climbs` climbs of the opponent (E098).
+    fn answers_with(&self, end: &State, climbs: usize) -> Vec<Reply> {
+        self.replies(end, climbs)
             .into_iter()
             .map(|commands| {
                 let damage = self.value(&after_reply(end, &commands));
@@ -584,6 +613,7 @@ impl Search {
             end: rest.end,
             first: Some(key(action.commands())),
             own: None,
+            checked: false,
         })
     }
 
@@ -787,10 +817,17 @@ pub fn think_with(
     // climb stopping at the hard limit, and the choice made again.
     search.limit.soft = limit.hard;
     while let Some((_, index)) = best {
-        if !VERIFY || plans[index].own.is_some() || late() {
+        let done = plans[index].own.is_some() && (CHECK_CLIMBS.is_none() || plans[index].checked);
+        if !VERIFY || done || late() {
             break;
         }
-        let found = search.answers(&plans[index].end);
+        let found = match CHECK_CLIMBS {
+            Some(climbs) => {
+                plans[index].checked = true;
+                search.answers_with(&plans[index].end, climbs)
+            }
+            None => search.answers(&plans[index].end),
+        };
         plans[index].own = Some(found);
         thought.checks += 1;
         scores[index] = Some(search.final_score(&plans[index], &memory));
