@@ -495,7 +495,7 @@ pub const VORONOI_UNTIL: u32 = 14;
 /// 0 for nothing (v032).
 pub const SEALED: i64 = 6;
 /// The last game turn at which [`SEALED`] counts.
-pub const SEALED_UNTIL: u32 = 14;
+pub const SEALED_UNTIL: u32 = 20;
 
 /// The neutral cells sealed for `seat`: those the enemy cannot reach from
 /// its active land over cells that are not `seat`'s.
