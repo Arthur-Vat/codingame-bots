@@ -25,7 +25,7 @@ pub const HQ_GUARD: bool = true;
 /// The enemy's incomes, beyond its gold, within which its chain to our HQ
 /// must be affordable for [`HQ_GUARD`] to offer a tower (E026: 2; E092
 /// tries 1, its next turn alone).
-pub const HQ_GUARD_TURNS: i64 = 2;
+pub const HQ_GUARD_TURNS: i64 = 1;
 
 /// Whether a tower guards (E092, the owner: a tower must parry an immediate
 /// threat) only when it lowers the active cells the enemy's best cut
@@ -151,7 +151,7 @@ pub const EARLY_UNTIL: u32 = 10;
 /// Up to [`EARLY_UNTIL`], the step and guard (E070) is also offered from
 /// our units on cells at most this many steps from the enemy's active cells
 /// or units, not only from those the enemy can reach (E093). 0 in v032.
-pub const STEP_GUARD_NEAR: u8 = 3;
+pub const STEP_GUARD_NEAR: u8 = 2;
 
 /// The cells at most `steps` steps, over non-void cells, from the active
 /// cells and units of the enemy of the player to act.
