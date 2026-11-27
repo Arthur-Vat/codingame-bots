@@ -51,31 +51,12 @@ use crate::strategy::Guide;
 #[cfg(feature = "analysis")]
 pub mod judge;
 
-/// Whether a climb's first step tries every action rather than stopping
-/// lazily (E102: 27% of the plans played began with a forced climb, most
-/// with a move whose gain alone is small).
-const FULL_FIRST: bool = false;
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8;
 /// The opponent's best cuts added to the memory after a climb.
 const REPLY_CUTS: usize = 3;
 /// Most climbs in one turn.
 const MAX_CLIMBS: usize = 32;
-/// Whether the replies hold bronze's greedy turn (E101: it decides 2 to 4%
-/// of the scores for about 6% of the turn).
-const REPLY_GREEDY: bool = true;
-/// When the climbs end before their deadline, the plans that score best
-/// have their replies searched again with this many climbs of the opponent,
-/// each barred from the first actions of the earlier ones, in the time left
-/// before that deadline (E101); `None`: no such check (v034).
-const SPARE_CHECK: Option<usize> = None;
-/// The plans checked so, the best first (E101).
-const SPARE_PLANS: usize = 3;
-/// Whether, when every first action has started a climb and time is left,
-/// the climbs start again from the best plan less one of its commands, each
-/// in turn (E101): a climb from a plan's neighbour can find a combination
-/// that no climb from the root does.
-const RESTART: bool = false;
 /// Most plans scored by the opponent's climb in one reply search (E019).
 const REPLY_EVALS: u64 = 300;
 /// Where between the soft and the hard limit the middle game's climbs stop
@@ -504,9 +485,7 @@ impl Search {
             // A lazy pass, then a full one if the lazy one skipped actions
             // and found no gain.
             let mut best = None;
-            // With FULL_FIRST, every action is tried at a climb's first
-            // step (E102).
-            for lazy in [!(FULL_FIRST && commands.is_empty()), false] {
+            for lazy in [true, false] {
                 let (found, skipped) = self.pass(
                     &cur, cur_score, &actions, &order, &mut done, memory, &mut gains, lazy,
                 );
@@ -540,11 +519,7 @@ impl Search {
     /// The replies of the opponent to the plan that ends in `end`: its
     /// lethal chain, its best cuts, bronze's greedy turn and its own plan
     /// (one climb), on the state after our turn ends.
-    ///
-    /// With more than one of `climbs`, the opponent climbs that many times,
-    /// each barred from the first actions of the earlier ones (E101's spare
-    /// check).
-    fn replies_with(&self, end: &State, climbs: usize) -> Vec<Vec<Command>> {
+    fn replies(&self, end: &State) -> Vec<Vec<Command>> {
         let mut next = end.clone();
         next.end_turn();
         let mut out = Vec::new();
@@ -559,17 +534,15 @@ impl Search {
         for cut in cuts(&next, CUT_LENGTH, gold, REPLY_CUTS) {
             out.push(cut.commands);
         }
-        if REPLY_GREEDY {
-            let mut greedy = Vec::new();
-            greedy_turn(&next, &mut greedy);
-            out.push(greedy);
-        }
+        let mut greedy = Vec::new();
+        greedy_turn(&next, &mut greedy);
+        out.push(greedy);
         // The opponent's own plan (E019): a climb from its seat, with moves,
         // trainings and cuts, scored by the evaluation from its side.
         let mut theirs = Search {
             me: opponent,
             limit: Limit {
-                max_evals: REPLY_EVALS * climbs as u64,
+                max_evals: REPLY_EVALS,
                 ..self.limit
             },
             evals: 0,
@@ -579,31 +552,14 @@ impl Search {
             strike: false,
             guide: None,
         };
-        let mut banned = Vec::new();
-        let mut found: Vec<Vec<Command>> = Vec::new();
-        for _ in 0..climbs {
-            let plan = theirs.climb(&next, &[], &banned, true);
-            if !found.contains(&plan.commands) {
-                found.push(plan.commands.clone());
-                out.push(plan.commands);
-            }
-            match plan.first {
-                Some(first) if !theirs.spent() => banned.push(first),
-                _ => break,
-            }
-        }
+        out.push(theirs.climb(&next, &[], &[], true).commands);
         out.retain(|commands| !commands.is_empty());
         out
     }
 
     /// The replies to the plan that ends in `end`, each with its damage.
     fn answers(&self, end: &State) -> Vec<Reply> {
-        self.answers_with(end, 1)
-    }
-
-    /// [`Self::answers`] with `climbs` climbs of the opponent.
-    fn answers_with(&self, end: &State, climbs: usize) -> Vec<Reply> {
-        self.replies_with(end, climbs)
+        self.replies(end)
             .into_iter()
             .map(|commands| {
                 let damage = self.value(&after_reply(end, &commands));
@@ -730,10 +686,6 @@ pub fn think_with(
     // Set when no first action left improves the plan (E029).
     let mut exhausted = false;
     let mut forced: Vec<Action> = Vec::new();
-    // Set once the climbs started again from the best plan (E101).
-    let mut restarted = false;
-    // The longest reply search of the turn (E101's spare check).
-    let mut reply_cost = std::time::Duration::ZERO;
     // The first climb starts with the strategic turn (E077).
     let mut start = search
         .guide
@@ -748,23 +700,6 @@ pub fn think_with(
         let plan = if let Some(plan) = started {
             plan
         } else if exhausted {
-            if forced.is_empty() && RESTART && !restarted {
-                // Every first action started a climb: start again from the
-                // best plan so far, less one of its commands each time.
-                restarted = true;
-                let best = plans
-                    .iter()
-                    .max_by_key(|p| search.rate(&p.end, &memory, i64::MIN));
-                if let Some(best) = best {
-                    for skip in 0..best.commands.len() {
-                        let mut rest = best.commands.clone();
-                        rest.remove(skip);
-                        if !rest.is_empty() {
-                            forced.push(Action::Many(rest));
-                        }
-                    }
-                }
-            }
             let Some(action) = forced.pop() else {
                 break;
             };
@@ -784,9 +719,7 @@ pub fn think_with(
         let mut plan = plan;
         let mut more = false;
         if !stop && !same {
-            let started = Instant::now();
             let found = search.answers(&plan.end);
-            reply_cost = reply_cost.max(started.elapsed());
             more = remember(&found, &mut memory);
             plan.own = Some(found);
         }
@@ -817,33 +750,6 @@ pub fn think_with(
                     // Stable, so that ties keep the generator's order; the
                     // best gain last, since the climbs pop from the end.
                     forced.sort_by_key(gain);
-                }
-            }
-        }
-    }
-    // The climbs ended early: the best plans get their replies searched
-    // again, with more climbs of the opponent, in the time left (E101).
-    if let Some(climbs) = SPARE_CHECK {
-        let mut order: Vec<(i64, usize)> = plans
-            .iter()
-            .enumerate()
-            .map(|(i, p)| (search.final_score(p, &memory), i))
-            .collect();
-        order.sort_by(|a, b| b.0.cmp(&a.0).then(b.1.cmp(&a.1)));
-        let cost = reply_cost.mul_f64(climbs as f64);
-        for &(_, index) in order.iter().take(SPARE_PLANS) {
-            let fits = search
-                .limit
-                .soft
-                .is_none_or(|soft| Instant::now() + cost <= soft);
-            if !fits {
-                break;
-            }
-            let more = search.answers_with(&plans[index].end, climbs);
-            let own = plans[index].own.get_or_insert_with(Vec::new);
-            for reply in more {
-                if !own.iter().any(|r| r.commands == reply.commands) {
-                    own.push(reply);
                 }
             }
         }

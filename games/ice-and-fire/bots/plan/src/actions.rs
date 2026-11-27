@@ -53,11 +53,6 @@ fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64) -> 
     hq_guard && cost_to(&after, enemy, false, HQ[me]) > chain
 }
 
-/// Whether towers are offered only where they guard something (E026);
-/// off, on every free border cell (E102: the top players build most of
-/// their towers where this filter offers none).
-pub const GUARD_FILTER: bool = true;
-
 /// Whether a tower is also offered on each free border cell that would
 /// guard a frontier cell of ours not yet guarded (E068's tower wall).
 pub const WALL_TOWERS: bool = false;
@@ -125,23 +120,6 @@ pub const RUSH_LEAP: bool = false;
 /// it. Blocking the enemy's path needs no action of its own: every training
 /// on a trainable cell is offered.
 pub const RUSH_DEFEND: bool = false;
-
-/// The trainings offered only on cells at most this many steps from the
-/// enemy's land (E101: in v033's CodinGame games, level-1 trainings farther
-/// than 3 steps were 13.6% of the tries and 0.8% of the actions chosen);
-/// `None`: every cell (v034).
-pub const FAR_TRAININGS: Option<u8> = None;
-
-/// The cells of the map at most `steps` steps from the enemy's land of the
-/// player `me`, through cells of the map.
-fn near_enemy(state: &State, me: usize, steps: u8) -> Bits {
-    let valid = state.map().valid;
-    let mut near = state.owned(1 - me) & valid;
-    for _ in 0..steps {
-        near = (near | near.neighbours()) & valid;
-    }
-    near
-}
 
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
@@ -219,9 +197,6 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
         for lower in 1..level {
             cells = cells.and_not(enter[usize::from(lower)]);
         }
-        if let Some(steps) = FAR_TRAININGS {
-            cells &= near_enemy(state, me, steps);
-        }
         for cell in cells.iter() {
             let (x, y) = xy(cell);
             out.push(Action::One(Command::Train { level, x, y }));
@@ -254,9 +229,7 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
             };
             for cell in cells.iter().filter(|&cell| {
                 let zone = Bits::cell(cell) | Bits::cell(cell).neighbours();
-                !GUARD_FILTER
-                    || !(zone & open).is_empty()
-                    || guards(state, cell, threats, reach, chain)
+                !(zone & open).is_empty() || guards(state, cell, threats, reach, chain)
             }) {
                 let (x, y) = xy(cell);
                 out.push(Action::One(Command::BuildTower { x, y }));
