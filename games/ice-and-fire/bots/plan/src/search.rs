@@ -59,15 +59,6 @@ const REPLY_CUTS: usize = 3;
 const MAX_CLIMBS: usize = 32;
 /// Most plans scored by the opponent's climb in one reply search (E019).
 const REPLY_EVALS: u64 = 300;
-/// How the opponent's climb tries its actions (E104): 0, lazily as ours
-/// (v034); 1, every action at its first step; 2, every action at every
-/// step.
-const OPP_FULL: u8 = 0;
-/// The opponent's climbs in a reply search, each barred from the first
-/// actions of the earlier ones, of which only the plan the opponent's
-/// evaluation rates best is kept as its reply (E104): one reply, a
-/// stronger one; 1 in v034.
-const OPP_PICK: usize = 1;
 /// Where between the soft and the hard limit the middle game's climbs stop
 /// (E027): at 36 ms of a 40 ms turn rather than 24; the rest is for the
 /// final choice and its check.
@@ -165,10 +156,6 @@ struct Search {
     /// The strategic layer's guide this turn (E077): its plan and the
     /// objectives' term.
     guide: Option<Guide>,
-    /// Which steps of a climb try every action rather than lazily (E104's
-    /// `OPP_FULL`, for the opponent's climb only): 0 none, 1 the first,
-    /// 2 all.
-    full: u8,
 }
 
 /// The strike reserve (E069, stage B of the curriculum in
@@ -498,8 +485,7 @@ impl Search {
             // A lazy pass, then a full one if the lazy one skipped actions
             // and found no gain.
             let mut best = None;
-            let full = self.full == 2 || (self.full == 1 && commands.is_empty());
-            for lazy in [!full, false] {
+            for lazy in [true, false] {
                 let (found, skipped) = self.pass(
                     &cur, cur_score, &actions, &order, &mut done, memory, &mut gains, lazy,
                 );
@@ -565,27 +551,8 @@ impl Search {
             // The opponent's model keeps no reserve, as before E069.
             strike: false,
             guide: None,
-            full: OPP_FULL,
         };
-        // OPP_PICK climbs, each barred from the earlier first actions with
-        // its own budget; the plan the opponent rates best is its reply.
-        let mut best: Option<(i64, Vec<Command>)> = None;
-        let mut banned = Vec::new();
-        for _ in 0..OPP_PICK {
-            theirs.limit.max_evals = theirs.evals + REPLY_EVALS;
-            let plan = theirs.climb(&next, &[], &banned, true);
-            let score = theirs.value(&plan.end);
-            if best.as_ref().is_none_or(|(top, _)| score > *top) {
-                best = Some((score, plan.commands));
-            }
-            match plan.first {
-                Some(first) => banned.push(first),
-                None => break,
-            }
-        }
-        if let Some((_, commands)) = best {
-            out.push(commands);
-        }
+        out.push(theirs.climb(&next, &[], &[], true).commands);
         out.retain(|commands| !commands.is_empty());
         out
     }
@@ -712,7 +679,6 @@ pub fn think_with(
         root_actions: None,
         strike: strike_reserve(state),
         guide,
-        full: 0,
     };
     let mut memory = Vec::new();
     let mut plans: Vec<Plan> = Vec::new();

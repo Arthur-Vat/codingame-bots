@@ -5,13 +5,13 @@ pull_request: "none yet"
 parent: ice-and-fire-v034
 hypothesis: E103 lost about 70 Elo by making the opponent's climb lazier, so the quality of that one reply to each of our plans matters far more than its cost; a stronger climb of the opponent (fuller passes, or the best of several climbs, still one reply) makes the search trust fewer plans a real opponent punishes, and beats ice-and-fire-v034.
 change: Switches in `Search::replies` that leave v034 as it plays; variants where the opponent's climb tries every action at its first step or at every step, or where the opponent climbs two or three times from different first actions and only the plan it rates best is kept.
-release: none yet
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
-cg_rank: not reported
+release: none
+sprt: not run: no variant gained in screening
+elo: none
+pairs: none
+full_time: none
+decision: dropped
+cg_rank: none
 ---
 
 ## Why
@@ -51,8 +51,27 @@ to the SPRT.
 
 | Variant | `OPP_FULL` | `OPP_PICK` | Elo over v034 [95%] |
 | --- | ---: | ---: | ---: |
-| `off` | 0 | 1 | pending |
-| `oppfirst` | 1 | 1 | pending |
-| `oppfull` | 2 | 1 | pending |
-| `opp2pick` | 0 | 2 | pending |
-| `opp3pick` | 0 | 3 | pending |
+| `off` | 0 | 1 | −6.1 [−11.4, −0.8] |
+| `oppfirst` | 1 | 1 | −4.8 [−10.8, +1.2] |
+| `oppfull` | 2 | 1 | −3.3 [−12.9, +6.4] |
+| `opp2pick` | 0 | 2 | −11.5 [−21.2, −1.8] |
+| `opp3pick` | 0 | 3 | −2.4 [−12.4, +7.6] |
+
+Commits: `off` `82ff8c5`, `oppfirst` `37d18ed`, `oppfull` `24062f8`,
+`opp2pick` `d730f78`, `opp3pick` `4affe3e`. One timeout of `oppfull`; no
+other fault.
+
+## What was learned
+
+Dropped. Every variant is level with the control (−6.1): a stronger climb
+of the opponent, by fuller passes (−4.8, −3.3) or by the best of two or
+three climbs (−11.5, −2.4), gains nothing, though a weaker one (E103) lost
+about 70 Elo. The opponent's climb is past the point where more search
+improves the reply that matters: it maximizes the opponent's evaluation
+by our own measure, and climbing harder on that measure does not bring it
+closer to what a real opponent plays. A better reply model needs another
+measure of what the opponent wants, not more search on ours.
+
+The code stays reachable on the branch `claude/ice-and-fire-e104-stronger-reply`
+(commits up to `571b4396`: the switches `OPP_FULL` and `OPP_PICK`, and the
+variants).
