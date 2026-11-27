@@ -5,13 +5,13 @@ pull_request: "none yet"
 parent: ice-and-fire-v034
 hypothesis: The groups of actions that decide v034's plans (moves, blockers, cuts) and those the top players use but the search is never offered (towers off the guard filter) point to changes in what the search considers; with v034's speed, offering more of the valuable groups or exploring plans that start with a weak move beats ice-and-fire-v034.
 change: Switches that leave v034 as it plays, and one variant commit for each change of what the search offers or explores, screened together against ice-and-fire-v034.
-release: none yet
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
-cg_rank: not reported
+release: none
+sprt: not run: no variant gained in the confirmation screening
+elo: none
+pairs: none
+full_time: none
+decision: dropped
+cg_rank: none
 ---
 
 ## Why
@@ -123,9 +123,39 @@ controls to show the noise
 
 | Variant | Change | Elo over v034 [95%] |
 | --- | --- | ---: |
-| `off` | none (control) | pending |
-| `off2` | none (a second control, the same commit) | pending |
-| `cuts8` | `MACRO_CUTS` 8 | pending |
-| `wall` | `WALL_TOWERS` | pending |
-| `nofar-cuts8` | `FAR_TRAININGS` 3 and `MACRO_CUTS` 8 (`4569cda`) | pending |
-| `nofar-cuts8-wall` | the three (`a5d158b`) | pending |
+| `off` | none (control) | +1.4 [−2.8, +5.7] |
+| `off2` | none (a second control, the same commit) | −2.3 [−6.9, +2.3] |
+| `cuts8` | `MACRO_CUTS` 8 | −1.3 [−8.4, +5.8] |
+| `wall` | `WALL_TOWERS` | −4.8 [−10.7, +1.2] |
+| `nofar-cuts8` | `FAR_TRAININGS` 3 and `MACRO_CUTS` 8 (`4569cda`) | −2.2 [−9.9, +5.6] |
+| `nofar-cuts8-wall` | the three (`a5d158b`) | −1.4 [−9.2, +6.3] |
+
+One timeout of `nofar-cuts8` and one of v034 against `nofar-cuts8-wall`;
+no other fault.
+
+Every variant is level with v034, and so are both controls here (+1.4,
+−2.3). Meanwhile `nofar` alone (`ice-and-fire-v035`) was rejected by its
+SPRT, −0.6 [−8.5, +7.2] over 2,240 pairs (E101). The gains of the first
+screening (+11.3 for `cuts8`, +7.6 for `wall`, +13.3 for `nofar`) were
+the noise of a screening, whose controls had scored +11.3 and −7.8.
+
+## What was learned
+
+Dropped. What v034 offers the search is about right: the groups that
+decide its plans (moves, blockers, cuts) are all offered; more cuts, wall
+towers or a larger memory change nothing, towers on every border cell lose
+(−28.9), and the trainings far from the enemy it could leave out cost
+nothing to keep. The search's choices are limited by what it values and by
+its model of the opponent, not by what it is offered. The measures (what
+the plans are made of, what the top players play that the generator never
+offers) stand as a map for later work: the top players' towers away from
+the front are the largest group of their commands the search never
+considers.
+
+A screening of 800 to 1,600 pairs can be off by 10 to 15 Elo in either
+direction whatever its interval says; a gain that small needs a second
+screening on another seed, or the SPRT.
+
+The code stays reachable on the branch `claude/ice-and-fire-e102-action-groups`
+(commits up to `e15e12b5`: the switches `GUARD_FILTER` and `FULL_FIRST`, and
+the variants).
