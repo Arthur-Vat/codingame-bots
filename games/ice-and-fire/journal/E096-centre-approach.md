@@ -86,4 +86,16 @@ it; they are to be adjusted if such a variant becomes the candidate.
 
 ## Screening
 
-Pending.
+800 seat-swapped pairs per variant against `ice-and-fire-v033`, whole
+games at CodinGame's limits, 2 shards
+([run 46012271222](https://github.com/Arthur-Vat/codingame-bots/actions/runs/46012271222)):
+
+| Variant | Commit | Change from v033 | Elo over v033 [95%] | Score |
+| --- | --- | --- | ---: | ---: |
+| `off` | `9981967` | none (control) | pending | pending |
+| `t6` | `c4aa443` | `HANDOVER_TURN` 6 | pending | pending |
+| `far4` | `02e08ce` | `FAR` 4 | pending | pending |
+| `far8` | `3449889` | `FAR` 8 | pending | pending |
+| `home8` | `5427e63` | `HOME` 8 | pending | pending |
+| `room1` | `992f490` | `ROOM` 1 | pending | pending |
+| `room2` | `419e5f3` | `ROOM` 2 | pending | pending |
