@@ -63,6 +63,11 @@
 //!   search takes over at game turn 7 without it. Until game turn
 //!   [`GOAL_UNTIL`], band cells near a side's land, held by it, guarded by
 //!   its towers, and the middle chokes it holds count for it ([`goal`]).
+//! - **Best cut and importance** (E092, E093; off in v032): with
+//!   [`BEST_CUT`], a side's threat also counts what the enemy's best
+//!   affordable cut severs; with [`CELL_VALUES`], each threatened cell counts
+//!   its importance (a mine and a unit on it count more)
+//!   ([`threat_quarters`]).
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::reach_within_moving;
@@ -109,6 +114,121 @@ pub fn reach(state: &State, side: usize) -> Bits {
 /// ([`reach`]).
 pub(crate) fn exposed(state: &State, seat: usize) -> Bits {
     reach(state, 1 - seat) & state.active(seat)
+}
+
+/// Whether the threat of a side also counts what the enemy's best cut
+/// within its reach severs beyond the cell it takes (E092): in v032's games
+/// against the top 10, half to two thirds of the cells lost at a ply were
+/// cut off, not captured (research/codingame/2026-11-27-cell-values.md).
+/// One depth-first search a side, as the shape term's.
+pub const BEST_CUT: bool = false;
+
+/// Whether each threatened cell counts its importance instead of
+/// [`THREAT_QUARTERS`] (E093): [`CELL_QUARTERS`], [`MINE_QUARTERS`] more
+/// for a mine, and its unit's training cost scaled as a cell is
+/// ([`unit_quarters`]); the shared evaluation counts a cell 7 (4 as a cell,
+/// 3 as its income), a mine 12 more and a unit its training cost, and a
+/// threatened cell 5 of its 7, so the same share of each.
+pub const CELL_VALUES: bool = false;
+
+/// What a threatened cell counts with [`CELL_VALUES`], in quarters.
+pub const CELL_QUARTERS: i64 = 5;
+
+/// What a mine on a threatened cell counts more, in quarters.
+pub const MINE_QUARTERS: i64 = 9;
+
+/// What a unit of `level` on a threatened cell counts, in quarters: its
+/// training cost times 5 / 7.
+pub fn unit_quarters(level: u8) -> i64 {
+    [7, 14, 21][usize::from(level.clamp(1, 3)) - 1]
+}
+
+/// What losing `cell` costs its owner, in quarters: [`THREAT_QUARTERS`], or
+/// its importance with [`CELL_VALUES`].
+fn importance(state: &State, cell: usize) -> i64 {
+    if !CELL_VALUES {
+        return THREAT_QUARTERS;
+    }
+    let mut value = CELL_QUARTERS;
+    if state.mines().test(cell) {
+        value += MINE_QUARTERS;
+    }
+    if let Some(level) = state.unit_level(cell) {
+        value += unit_quarters(level);
+    }
+    value
+}
+
+/// What the best single capture among `taken` cuts off from `seat`'s HQ
+/// beyond the captured cell, in quarters ([`importance`]): the largest, over
+/// the joints of `seat`'s active land in `taken`, of the importance of the
+/// cells behind it (E092).
+pub fn best_cut(state: &State, seat: usize, taken: Bits) -> i64 {
+    struct Dfs<'a> {
+        state: &'a State,
+        active: Bits,
+        taken: Bits,
+        disc: [u8; CELLS],
+        low: [u8; CELLS],
+        time: u8,
+        best: i64,
+    }
+    fn visit(d: &mut Dfs<'_>, v: usize) -> i64 {
+        d.time += 1;
+        let disc = d.time;
+        d.disc[v] = disc;
+        let mut low = disc;
+        let mut value = importance(d.state, v);
+        let mut cut = 0i64;
+        for w in (Bits::cell(v).neighbours() & d.active).iter() {
+            if d.disc[w] == 0 {
+                let sub = visit(d, w);
+                value += sub;
+                low = low.min(d.low[w]);
+                if d.low[w] >= disc {
+                    cut += sub;
+                }
+            } else {
+                low = low.min(d.disc[w]);
+            }
+        }
+        d.low[v] = low;
+        if disc > 1 && d.taken.test(v) {
+            d.best = d.best.max(cut);
+        }
+        value
+    }
+    let active = state.active(seat);
+    if !active.test(HQ[seat]) || (taken & active).is_empty() {
+        return 0;
+    }
+    let mut d = Dfs {
+        state,
+        active,
+        taken,
+        disc: [0; CELLS],
+        low: [0; CELLS],
+        time: 0,
+        best: 0,
+    };
+    visit(&mut d, HQ[seat]);
+    d.best
+}
+
+/// What the cells of `seat` that the enemy can take at its next turn cost
+/// it, in quarters: the [`importance`] of each of `exposed`, plus with
+/// [`BEST_CUT`] what the best of those captures cuts off.
+pub(crate) fn threat_quarters(state: &State, seat: usize, exposed: Bits) -> i64 {
+    let direct: i64 = if CELL_VALUES {
+        exposed.iter().map(|cell| importance(state, cell)).sum()
+    } else {
+        THREAT_QUARTERS * i64::from(exposed.count())
+    };
+    if BEST_CUT {
+        direct + best_cut(state, seat, exposed)
+    } else {
+        direct
+    }
 }
 
 /// The number of active cells of `seat` that the enemy can take at its next
@@ -597,7 +717,7 @@ pub fn eval(state: &State, seat: usize) -> i64 {
     let score = score - crate::analysis::removed(state, seat);
     let ours = exposed(state, seat);
     let theirs = exposed(state, 1 - seat);
-    let threats = i64::from(theirs.count()) - i64::from(ours.count());
+    let threats = threat_quarters(state, 1 - seat, theirs) - threat_quarters(state, seat, ours);
     score - 2 * debt(state, seat)
         + 2 * debt(state, 1 - seat)
         + shape(state, seat)
@@ -605,7 +725,7 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         - strong_units(state, 1 - seat)
         - idle(state, seat)
         + idle(state, 1 - seat)
-        + THREAT_QUARTERS * threats / 4
+        + threats / 4
         + mines(state, seat, ours)
         - mines(state, 1 - seat, theirs)
         + wall(state, seat)
