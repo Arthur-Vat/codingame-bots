@@ -171,3 +171,50 @@ fn evaluate_with_movers_gives_each_seat_its_own_movers() {
         "{differ} positions where moves change a margin"
     );
 }
+
+#[test]
+fn towers_protecting_the_same_cells_count_them_once() {
+    // Two red towers side by side protect their cells and their neighbours:
+    // 10 cells counted with overlaps, 8 distinct.
+    let empty = "............";
+    let state = Position {
+        rows: [
+            "OOOOOO......",
+            "OOOOOOX.....",
+            "OOOOOO......",
+            empty,
+            empty,
+            empty,
+            empty,
+            empty,
+            empty,
+            empty,
+            empty,
+            "...........X",
+        ],
+        gold: [0, 0],
+        // A blue tower next to red's land protects no red cell.
+        buildings: &[(0, 2, 2, 1), (0, 2, 3, 1), (1, 2, 6, 1)],
+        units: &[],
+    }
+    .state();
+    let cells = covered(&state, 0);
+    let all = [
+        (1, 1),
+        (2, 1),
+        (3, 1),
+        (4, 1),
+        (2, 0),
+        (3, 0),
+        (2, 2),
+        (3, 2),
+    ];
+    for c in cells.iter() {
+        assert!(all.contains(&(c % 12, c / 12)), "cell {c}");
+    }
+    assert_eq!(cells.count(), 8);
+    // Blue's tower at (6, 1) protects its own cell, not red's (5, 1) next
+    // to it.
+    let blue: Vec<usize> = covered(&state, 1).iter().collect();
+    assert_eq!(blue, vec![12 + 6]);
+}

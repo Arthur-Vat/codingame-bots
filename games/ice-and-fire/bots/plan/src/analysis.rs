@@ -85,7 +85,8 @@ pub enum Variant {
     /// Without the pressure term: how far each side is from affording the
     /// chain to the other's HQ (`ice_and_fire_tactics::eval`).
     NoPressure,
-    /// Without the static value of active towers, 10 each.
+    /// Without the value of the cells active towers protect (E095; 10 an
+    /// active tower before).
     NoTowers,
 }
 
@@ -100,8 +101,6 @@ pub fn set_variant(variant: Variant) {
 
 /// The lowest pressure term of one side, as in the shared evaluation.
 pub const MAX_PRESSURE: i64 = 200;
-/// The static value of an active tower in the shared evaluation.
-pub const TOWER_VALUE: i64 = 10;
 
 /// The shared evaluation's pressure term of `seat`: 0 when its gold and
 /// income pay for its cheapest chain to the enemy HQ, else minus the
@@ -117,9 +116,10 @@ pub fn pressure(state: &State, seat: usize) -> i64 {
     (state.gold(seat) + state.income(seat) - cost).clamp(-MAX_PRESSURE, 0)
 }
 
-/// The active towers of `seat`.
+/// The active cells of `seat` its active towers protect (E095), as the
+/// shared evaluation counts them.
 pub fn towers(state: &State, seat: usize) -> i64 {
-    i64::from((state.towers() & state.active(seat)).count())
+    i64::from(ice_and_fire_tactics::eval::covered(state, seat).count())
 }
 
 /// The pressure term of the score of `seat`.
@@ -129,7 +129,7 @@ pub fn pressure_term(state: &State, seat: usize) -> i64 {
 
 /// The tower term of the score of `seat`.
 pub fn tower_term(state: &State, seat: usize) -> i64 {
-    TOWER_VALUE * (towers(state, seat) - towers(state, 1 - seat))
+    ice_and_fire_tactics::eval::COVER_WEIGHT * (towers(state, seat) - towers(state, 1 - seat))
 }
 
 /// What the variant of this thread removes from the score of `seat` in a
