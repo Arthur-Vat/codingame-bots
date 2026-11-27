@@ -655,7 +655,8 @@ fn cells_the_enemy_can_take_next_turn_count_less() {
     let shared = ice_and_fire_tactics::eval::evaluate(&state, 0)
         + crate::eval::shape(&state, 0)
         + standing_term(&state, 0)
-        + crate::eval::goal(&state, 0);
+        + crate::eval::goal(&state, 0)
+        + crate::eval::flank(&state, 0);
     assert_eq!(
         eval(&state, 0),
         shared + crate::eval::THREAT_QUARTERS * (1 - 2) / 4
@@ -728,6 +729,7 @@ fn a_mine_counts_more_with_a_larger_territory() {
             - crate::eval::shape(state, seat)
             - standing_term(state, seat)
             - crate::eval::goal(state, seat)
+            - crate::eval::flank(state, seat)
     };
     // Red holds 21 cells of the corridor and blue its HQ alone. Blue (20
     // gold, income 1) reaches (11, 9) for 20, and red blue's HQ: one
@@ -1070,7 +1072,8 @@ fn an_enemy_unit_of_level_two_moves_toward_our_hq() {
     let expected = bot_shared(&state, 0) + shape(&state, 0) + strong_units(&state, 0)
         - strong_units(&state, 1)
         + THREAT_QUARTERS * (threatened(&state, 1) - threatened(&state, 0)) / 4
-        + crate::eval::goal(&state, 0);
+        + crate::eval::goal(&state, 0)
+        + crate::eval::flank(&state, 0);
     assert_eq!(eval(&state, 0), expected);
 }
 
@@ -1479,6 +1482,44 @@ fn the_opening_goal_counts_the_band_cells_each_side_holds() {
     // After GOAL_UNTIL it counts nothing.
     let later = position_at(GOAL_UNTIL + 1, "0\n", rows, [20, 20], &[]);
     assert_eq!(goal(&later, 0), 0);
+}
+
+#[test]
+fn the_weaker_flank_counts_until_flank_until() {
+    use crate::eval::{flank, flanks, weaker_flank, FLANK, FLANK_CAP, FLANK_OFF, FLANK_UNTIL};
+    // E095: the flanks are the cells FLANK_OFF columns or more off the
+    // diagonal between the HQs, one on each side, and hold no HQ.
+    let [a, b] = flanks();
+    assert_eq!(a.count(), b.count());
+    assert!((a & b).is_empty());
+    assert!(a.test(11) && b.test(11 * SIZE), "(11, 0) and (0, 11)");
+    assert!(!a.test(FLANK_OFF as usize - 1) && a.test(FLANK_OFF as usize));
+    assert!(!a.test(0) && !b.test(0) && !a.test(SIZE * SIZE - 1));
+    // Red holds 6 cells of the first flank (row 0, x 4 to 9) and 3 of the
+    // second ((0, 4), (0, 5), (1, 5)); blue holds its corner, on neither flank but
+    // for (11, 7) on the first.
+    let rows = [
+        "OOOOOOOOOO..",
+        "OO..........",
+        "OO..........",
+        "OO..........",
+        "OO..........",
+        "OO..........",
+        "............",
+        "...........X",
+        "........XXXX",
+        "........XXXX",
+        "........XXXX",
+        "........XXXX",
+    ];
+    let state = position_at(FLANK_UNTIL, "0\n", rows, [20, 20], &[]);
+    assert_eq!(weaker_flank(&state, 0), 3.min(FLANK_CAP));
+    assert_eq!(weaker_flank(&state, 1), 0);
+    assert_eq!(flank(&state, 0), FLANK * 3.min(FLANK_CAP));
+    assert_eq!(flank(&state, 1), -flank(&state, 0));
+    // After FLANK_UNTIL it counts nothing.
+    let later = position_at(FLANK_UNTIL + 1, "0\n", rows, [20, 20], &[]);
+    assert_eq!(flank(&later, 0), 0);
 }
 
 #[test]
