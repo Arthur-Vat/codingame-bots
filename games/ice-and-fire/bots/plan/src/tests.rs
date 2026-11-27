@@ -1910,3 +1910,57 @@ fn only_joints_near_the_enemy_count_from_v032() {
         2 + 2
     );
 }
+
+#[test]
+fn the_bitwise_weakness_is_the_depth_first_one() {
+    // The joints near the enemy found with bitwise operations
+    // (`possibly_cut`, then a flood from the HQ without each cell left)
+    // weigh what the depth-first search finds, on the lands of many
+    // positions and on parts of them cut by random holes.
+    let mut rng = Rng::new(7);
+    let mut checked = 0;
+    for state in many_positions() {
+        for seat in 0..2 {
+            let enemy = state.active(1 - seat);
+            let d = ice_and_fire_opening::econ::distances(&state, enemy);
+            let mut w = [0u8; ice_and_fire_engine::CELLS];
+            for (w, &steps) in w.iter_mut().zip(d.iter()) {
+                *w = crate::eval::joint_weight(1, crate::eval::SHAPE_NEAR, 6, steps);
+            }
+            let valid = state.map().valid;
+            let mut near = enemy & valid;
+            for _ in 0..crate::eval::SHAPE_NEAR {
+                near = (near | near.neighbours()) & valid;
+            }
+            let hq = ice_and_fire_engine::HQ[seat];
+            let mut land = state.active(seat);
+            for _ in 0..4 {
+                assert_eq!(
+                    crate::eval::weakness_near(land, hq, near),
+                    crate::eval::weakness_weighted(land, hq, &w)
+                );
+                checked += 1;
+                // A random hole, and the part still joined to the HQ.
+                let cells: Vec<usize> = land.iter().collect();
+                if cells.len() < 3 {
+                    break;
+                }
+                let hole = cells[rng.below(cells.len() as u64) as usize];
+                if hole == hq {
+                    continue;
+                }
+                let rest = land.and_not(Bits::cell(hole));
+                let mut part = Bits::cell(hq);
+                loop {
+                    let next = (part | part.neighbours()) & rest;
+                    if next == part {
+                        break;
+                    }
+                    part = next;
+                }
+                land = part;
+            }
+        }
+    }
+    assert!(checked > 1000, "{checked}");
+}
