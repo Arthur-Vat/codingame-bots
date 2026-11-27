@@ -121,7 +121,7 @@ pub(crate) fn exposed(state: &State, seat: usize) -> Bits {
 /// against the top 10, half to two thirds of the cells lost at a ply were
 /// cut off, not captured (research/codingame/2026-11-27-cell-values.md).
 /// One depth-first search a side, as the shape term's.
-pub const BEST_CUT: bool = true;
+pub const BEST_CUT: bool = false;
 
 /// Whether each threatened cell counts its importance instead of
 /// [`THREAT_QUARTERS`] (E093): [`CELL_QUARTERS`], [`MINE_QUARTERS`] more
