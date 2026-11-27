@@ -73,6 +73,19 @@ pub struct State {
     pub(crate) outcome: Option<Outcome>,
 }
 
+/// The cells of `own` joined to `region`, which `own` holds: [`flood`]
+/// from cells already known to be joined to the HQ, so that it ends in a
+/// step or two when `own` only grew by a cell.
+fn grow(mut region: Bits, own: Bits) -> Bits {
+    loop {
+        let next = (region | region.neighbours()) & own;
+        if next == region {
+            return region;
+        }
+        region = next;
+    }
+}
+
 /// The cells joined to `hq` through the cells of `own`.
 fn flood(own: Bits, hq: usize) -> Bits {
     if !own.test(hq) {
@@ -134,6 +147,7 @@ impl State {
             next_id: 1,
             outcome: None,
         };
+        state.active = [flood(state.own[0], HQ[0]), flood(state.own[1], HQ[1])];
         state.start_turn(0);
         state
     }
@@ -245,8 +259,12 @@ impl State {
 
     /// A player's start of turn (RULES.md, "Start of a player's turn").
     fn start_turn(&mut self, seat: usize) {
-        // 1. Mark the cells.
-        self.active = [flood(self.own[0], HQ[0]), flood(self.own[1], HQ[1])];
+        // 1. Mark the cells: `apply` keeps them marked after every capture,
+        // so they are marked already (a debug build checks it).
+        debug_assert_eq!(
+            self.active,
+            [flood(self.own[0], HQ[0]), flood(self.own[1], HQ[1])]
+        );
         // 2. Units on inactive cells die.
         let dead = self.units[seat].and_not(self.active[seat]);
         self.remove_units(dead);
@@ -436,11 +454,18 @@ impl State {
         };
         match capture {
             Capture::Same => {}
-            Capture::Neutral => self.active[seat] = flood(self.own[seat], HQ[seat]),
+            // The seat's cells only grew: its marked land grows from where it
+            // was (the HQ's land holds it). The opponent's may have split.
+            Capture::Neutral => self.active[seat] = grow(self.active[seat], self.own[seat]),
             Capture::Opponent => {
-                self.active = [flood(self.own[0], HQ[0]), flood(self.own[1], HQ[1])];
+                self.active[seat] = grow(self.active[seat], self.own[seat]);
+                self.active[1 - seat] = flood(self.own[1 - seat], HQ[1 - seat]);
             }
         }
+        debug_assert_eq!(
+            self.active,
+            [flood(self.own[0], HQ[0]), flood(self.own[1], HQ[1])]
+        );
         self.compute_incomes();
         if !self.own[0].test(HQ[0]) {
             self.outcome = Some(Outcome::Win(1));
