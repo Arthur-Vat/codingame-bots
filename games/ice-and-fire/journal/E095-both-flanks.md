@@ -11,7 +11,7 @@ elo: +49.8 [+28.0, +72.1]
 pairs: 400
 full_time: +49.8 [+28.0, +72.1]
 decision: promoted
-cg_rank: not reported
+cg_rank: Legend, 2nd of 92 (2nd of 936 overall), score 31.13, ranking ended 2026-11-27: submitted through the API on the owner's approval, after three test games (submission 41833136)
 ---
 
 ## Why
@@ -159,6 +159,18 @@ Verdict: ACCEPTED: ice-and-fire-v033 is stronger than ice-and-fire-v032
 Accepted at +49.8, above the screenings' +32 to +38 for fr8. The 3
 timeouts in 800 games are within the 1% the SPRT allows; fr8 had 1 in
 its 7,600 screening games.
+
+## On CodinGame
+
+Submitted through the API on the owner's approval (form, 2026-11-27),
+after three test games against CodinGame's default bot (three wins, no
+timeout, the slowest answer after the first turn 42 ms by the bot's
+clock): submission 41833136 (file SHA-256
+d85dfd115963cd69bb741cb40be1b954192af9338bb161a1d87d80f541eacfb4),
+replacing v032 (2nd of 91, score 31.22). Its ranking ended 2nd of 92 in
+Legend (score 31.13, behind zasmu's 37.08 and ahead of karliso's 30.68),
+2nd of 936 overall: level with v032. It won 99 of its 159 ranking games and
+timed out in 2 of them.
 
 ## The variants on the owner's ten games
 
