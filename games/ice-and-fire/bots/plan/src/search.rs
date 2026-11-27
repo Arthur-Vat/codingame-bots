@@ -52,7 +52,7 @@ use crate::strategy::Guide;
 pub mod judge;
 
 /// Replies kept in the memory.
-const MEMORY_CAP: usize = 4;
+const MEMORY_CAP: usize = 8;
 /// The opponent's best cuts added to the memory after a climb.
 const REPLY_CUTS: usize = 3;
 /// Most climbs in one turn.
@@ -180,7 +180,7 @@ pub const STRIKE_TURNS: i64 = 0;
 
 /// The blockers offered (E044): towers on our cells that the opponent's
 /// remembered replies enter. Towers alone won the screening.
-pub const BLOCK_TOWERS: bool = true;
+pub const BLOCK_TOWERS: bool = false;
 /// Towers also on our free cells next to those cells (a tower guards its
 /// neighbours).
 pub const BLOCK_NEIGHBOURS: bool = false;
