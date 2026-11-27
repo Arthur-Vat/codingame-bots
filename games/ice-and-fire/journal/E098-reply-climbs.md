@@ -76,8 +76,20 @@ against `ice-and-fire-v033`, whole games at CodinGame's limits, 4 shards:
 
 | Variant | Commit | `REPLY_CLIMBS` | `CHECK_CLIMBS` | Elo over v033 [95%] |
 | --- | --- | ---: | ---: | ---: |
-| `off` | `490d49d` | 1 | none | pending |
-| `c2` | `59e17e5` | 2 | none | pending |
-| `c4` | `8bd4047` | 4 | none | pending |
-| `k4` | `06a63c9` | 1 | 4 | pending |
-| `k8` | `386eb73` | 1 | 8 | pending |
+| `off` | `490d49d` | 1 | none | +3.0 [−6.0, +12.1] |
+| `c2` | `59e17e5` | 2 | none | −8.3 [−22.0, +5.5] |
+| `c4` | `8bd4047` | 4 | none | −28.3 [−43.1, −13.6] |
+| `k4` | `06a63c9` | 1 | 4 | +0.9 [−11.8, +13.6] |
+| `k8` | `386eb73` | 1 | 8 | +4.8 [−9.0, +18.6] |
+
+One timeout of `k4` in its 1,600 games; no other fault. The median answer
+of `k4` and `k8` is about 2 ms longer than v033's (30 against 28 ms on the
+same runner: the deeper check of the plan chosen); `c2` and `c4` take the
+same time, their cost being fewer climbs of ours.
+
+No variant beats v033. More climbs of the opponent during the search lose
+(`c2` −8.3, `c4` −28.3, clearly): the search plans against more threats and
+has less time to find its own plans, as E064 found with more cuts. More
+climbs only for the plan chosen are level (`k4` +0.9, `k8` +4.8): the
+check sees more of the cuts it would suffer, but the next best plan is
+then as exposed, or no better plan is at hand in the time left.
