@@ -63,10 +63,10 @@ const REPLY_EVALS: u64 = 300;
 /// barred from the first actions of the earlier ones and with
 /// [`REPLY_EVALS`] tries more: one climb alone always ends on the same
 /// local best.
-pub const REPLY_CLIMBS: usize = 4;
+pub const REPLY_CLIMBS: usize = 1;
 /// The opponent's climbs in the reply search of the plan chosen, before it
 /// is played (E098): `None` keeps the replies searched during the climbs.
-pub const CHECK_CLIMBS: Option<usize> = None;
+pub const CHECK_CLIMBS: Option<usize> = Some(4);
 /// Where between the soft and the hard limit the middle game's climbs stop
 /// (E027): at 36 ms of a 40 ms turn rather than 24; the rest is for the
 /// final choice and its check.
