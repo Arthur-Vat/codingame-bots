@@ -99,12 +99,19 @@ on new games)
 
 | Variant | Commit | Opening order | Turns planned | Elo over v032 [95%] | Score |
 | --- | --- | --- | ---: | ---: | ---: |
-| `fr4` | `d3b7046` | `Frontier { cap: 4 }` | 9 | pending | pending |
-| `fr8` | `a30dd55` | `Frontier { cap: 8 }` | 9 | pending | pending |
-| `fr12` | `6520b1b` | `Frontier { cap: 12 }` | 9 | pending | pending |
-| `fr8-t12` | `1cdb45e` | `Frontier { cap: 8 }` | 12 | pending | pending |
+| `fr4` | `d3b7046` | `Frontier { cap: 4 }` | 9 | +33.1 [+18.8, +47.5] | 54.8% |
+| `fr8` | `a30dd55` | `Frontier { cap: 8 }` | 9 | +32.1 [+17.9, +46.3] | 54.6% |
+| `fr12` | `6520b1b` | `Frontier { cap: 12 }` | 9 | +38.4 [+25.0, +51.9] | 55.5% |
+| `fr8-t12` | `1cdb45e` | `Frontier { cap: 8 }` | 12 | +42.6 [+28.2, +57.2] | 56.1% |
 
-`FLANK` 0 in every variant.
+`FLANK` 0 in every variant. One timeout in 2,000 games for fr8, one for
+v032 against fr4; no other fault.
+
+Every setting wins by about as much: the intervals overlap almost wholly,
+and no cap or plan length is told apart by 1,000 pairs. fr8 holds on new
+games (+32.1 after +37.5; about +34 over its 1,800 pairs). E073 found
+that longer plans add nothing measurable to the land-first orders; here
+fr8-t12 scores highest but within the noise of the others.
 
 ## The variants on the owner's ten games
 
