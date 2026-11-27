@@ -82,7 +82,8 @@ restarts level (+0.4).
 
 ## The candidate
 
-E102's screening (1,600 pairs against v034, another run) played `nofar`
+E102's screening (1,600 pairs against v034,
+[run 46056838757](https://github.com/Arthur-Vat/codingame-bots/actions/runs/46056838757)) played `nofar`
 again: +13.3 [+4.2, +22.3], its control −7.8 [−13.6, −2.0]. Positive in
 both screenings and above the control in each (by 4.8 and 21.1), it is
 the candidate: `ice-and-fire-v035` is v034 with `FAR_TRAININGS` 3 (the
