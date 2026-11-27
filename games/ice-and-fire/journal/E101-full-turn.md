@@ -1,7 +1,7 @@
 ---
 id: E101
 date: 2026-11-27
-pull_request: "none yet"
+pull_request: "#400"
 parent: ice-and-fire-v034
 hypothesis: v034 ends a third of its turns with time left, and spends tries and replies on actions and answers that rarely matter; using the time left (a higher cap on climbs, a second look at the best plans' replies, climbs restarted from the best plan) or pruning (no far trainings, fewer replies) gives the search more of what decides games, and beats ice-and-fire-v034.
 change: Switches in `search.rs` and `actions.rs` that leave v034 as it plays, one variant commit for each, screened against ice-and-fire-v034; the candidate ice-and-fire-v035 offers trainings only on cells at most 3 steps from the enemy's land (`FAR_TRAININGS` 3), the only variant above the control.
