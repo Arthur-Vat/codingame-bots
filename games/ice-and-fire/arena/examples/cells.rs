@@ -22,7 +22,10 @@
 //!   game turn 12.
 //! - **Games.** Per game: the winner, how and when it ended, both sides'
 //!   active cells after game turn 12, and the cells each side then holds
-//!   among those contested at game turn 4 (|m| ≤ 1).
+//!   among those contested at game turn 4 (|m| ≤ 1); and at red's starts of
+//!   game turns 8, 10 and 12, each side's active cells and its *sealed*
+//!   cells: neutral cells the enemy cannot reach from its active land
+//!   without entering one of the side's cells.
 //!
 //! It writes one JSON file of histograms and per-game rows, which
 //! `games/ice-and-fire/research/codingame/2026-11-27-cell-values/analyse.py`
@@ -82,6 +85,22 @@ fn flood(own: Bits, hq: usize) -> Bits {
         }
         region = next;
     }
+}
+
+/// The neutral cells sealed for `seat`: those the enemy cannot reach from
+/// its active land over cells that are not `seat`'s.
+fn sealed(state: &State, seat: usize) -> Bits {
+    let valid = state.map().valid;
+    let open = valid.and_not(state.owned(seat));
+    let mut region = state.active(1 - seat) & open;
+    loop {
+        let next = (region | region.neighbours()) & open;
+        if next == region {
+            break;
+        }
+        region = next;
+    }
+    valid.and_not(state.owned(0) | state.owned(1) | region)
 }
 
 /// Walking steps over `valid` cells from `from`; 255 where unreachable.
@@ -150,6 +169,7 @@ fn study(path: &PathBuf, out: &mut Out) -> Result<(), String> {
     let mut early_rows: Vec<(u32, usize, i32)> = Vec::new();
     let mut contested4 = Bits::EMPTY;
     let mut at12: Option<State> = None;
+    let mut seals: Vec<serde_json::Value> = Vec::new();
     let mut last_turn = 0;
     for answers in &record.turns {
         if state.outcome().is_some() {
@@ -161,6 +181,13 @@ fn study(path: &PathBuf, out: &mut Out) -> Result<(), String> {
         last_turn = turn;
         if a == 0 && turn == 13 && at12.is_none() {
             at12 = Some(state.clone());
+        }
+        if a == 0 && matches!(turn, 8 | 10 | 12) {
+            seals.push(serde_json::json!({
+                "turn": turn,
+                "active": [state.active(0).count(), state.active(1).count()],
+                "sealed": [sealed(&state, 0).count(), sealed(&state, 1).count()],
+            }));
         }
         // The early game, from red's starts of turn.
         if a == 0 && matches!(turn, 2 | 4 | 6 | 8 | 10) {
@@ -266,6 +293,7 @@ fn study(path: &PathBuf, out: &mut Out) -> Result<(), String> {
         "contested": contested4.count(),
         "gold12": [snap.gold(0), snap.gold(1)],
         "income12": [snap.income(0), snap.income(1)],
+        "seals": seals,
     }));
     Ok(())
 }
