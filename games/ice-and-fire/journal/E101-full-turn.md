@@ -4,8 +4,8 @@ date: 2026-11-27
 pull_request: "none yet"
 parent: ice-and-fire-v034
 hypothesis: v034 ends a third of its turns with time left, and spends tries and replies on actions and answers that rarely matter; using the time left (a higher cap on climbs, a second look at the best plans' replies, climbs restarted from the best plan) or pruning (no far trainings, fewer replies) gives the search more of what decides games, and beats ice-and-fire-v034.
-change: Switches in `search.rs` and `actions.rs` that leave v034 as it plays, and one variant commit for each, screened against ice-and-fire-v034.
-release: none yet
+change: Switches in `search.rs` and `actions.rs` that leave v034 as it plays, one variant commit for each, screened against ice-and-fire-v034; the candidate ice-and-fire-v035 offers trainings only on cells at most 3 steps from the enemy's land (`FAR_TRAININGS` 3), the only variant above the control.
+release: ice-and-fire-v035
 sprt: pending
 elo: pending
 pairs: pending
@@ -79,3 +79,16 @@ the control); the higher caps use the time (median answer 34 ms against
 27 for v034 on the same runner) for nothing measurable (+3.9, +1.7); the
 spare check and the lighter replies are a little below (−6.9, −5.6), the
 restarts level (+0.4).
+
+## The candidate
+
+E102's screening (1,600 pairs against v034, another run) played `nofar`
+again: +13.3 [+4.2, +22.3], its control −7.8 [−13.6, −2.0]. Positive in
+both screenings and above the control in each (by 4.8 and 21.1), it is
+the candidate: `ice-and-fire-v035` is v034 with `FAR_TRAININGS` 3 (the
+other switches as in v034). The owner asked for its SPRT, and for a larger
+screening of E102's other variants meanwhile (2026-11-27).
+
+## SPRT
+
+Pending.

@@ -124,8 +124,9 @@ pub const RUSH_DEFEND: bool = false;
 /// The trainings offered only on cells at most this many steps from the
 /// enemy's land (E101: in v033's CodinGame games, level-1 trainings farther
 /// than 3 steps were 13.6% of the tries and 0.8% of the actions chosen);
-/// `None`: every cell (v034).
-pub const FAR_TRAININGS: Option<u8> = None;
+/// `None`: every cell (v034); 3 is ice-and-fire-v035 (+16.1 and +13.3 in
+/// two screenings against v034).
+pub const FAR_TRAININGS: Option<u8> = Some(3);
 
 /// The cells of the map at most `steps` steps from the enemy's land of the
 /// player `me`, through cells of the map.
