@@ -112,3 +112,20 @@ out (`nofar`, E101's variant) are positive in both screenings (+16.1 on
 21.1); 8 cuts offered rather than 4 (`cuts8`, +11.3) and the wall towers
 (+7.6) come next. A full first step, blockers on the neighbours and a
 memory of 12 do nothing or a little less.
+
+## Confirmation
+
+The owner asked (2026-11-27) for `nofar`'s SPRT on its own (E101,
+`ice-and-fire-v035`, #400) and, meanwhile, a larger screening of the other
+variants against v034: 2,400 pairs each, 3 shards, seed 7702, with two
+controls to show the noise
+([run 46059408079](https://github.com/Arthur-Vat/codingame-bots/actions/runs/46059408079)):
+
+| Variant | Change | Elo over v034 [95%] |
+| --- | --- | ---: |
+| `off` | none (control) | pending |
+| `off2` | none (a second control, the same commit) | pending |
+| `cuts8` | `MACRO_CUTS` 8 | pending |
+| `wall` | `WALL_TOWERS` | pending |
+| `nofar-cuts8` | `FAR_TRAININGS` 3 and `MACRO_CUTS` 8 (`4569cda`) | pending |
+| `nofar-cuts8-wall` | the three (`a5d158b`) | pending |
