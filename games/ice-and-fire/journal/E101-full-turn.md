@@ -54,7 +54,8 @@ the 2,031 positions of v033's CodinGame games at 600 tries):
 ## Screening
 
 Variants against `ice-and-fire-v034`, 800 seat-swapped pairs each, whole
-games at CodinGame's limits, 2 shards:
+games at CodinGame's limits, 2 shards
+([run 46054521377](https://github.com/Arthur-Vat/codingame-bots/actions/runs/46054521377)):
 
 | Variant | Change | Elo over v034 [95%] |
 | --- | --- | ---: |
