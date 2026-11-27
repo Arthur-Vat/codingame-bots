@@ -79,8 +79,17 @@ games at CodinGame's limits, 4 shards
 
 | Variant | Commit | `MODE` | `DIST` | `UNTIL` | Elo over v033 [95%] | Score |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| `off` | `7af1128` | 0 | 4 | 20 | pending | pending |
-| `d4` | `5806d9b` | 1 | 4 | 20 | pending | pending |
-| `d3` | `97d77c3` | 1 | 3 | 20 | pending | pending |
-| `d5` | `29dd6ef` | 1 | 5 | 20 | pending | pending |
-| `d4-u14` | `ef127aa` | 1 | 4 | 14 | pending | pending |
+| `off` | `7af1128` | 0 | 4 | 20 | −0.9 [−10.9, +9.1] | 49.9% |
+| `d4` | `5806d9b` | 1 | 4 | 20 | −6.9 [−21.5, +7.5] | 49.0% |
+| `d3` | `97d77c3` | 1 | 3 | 20 | −32.7 [−48.7, −16.8] | 45.3% |
+| `d5` | `29dd6ef` | 1 | 5 | 20 | −6.1 [−20.5, +8.3] | 49.1% |
+| `d4-u14` | `ef127aa` | 1 | 4 | 14 | −8.7 [−23.3, +5.8] | 48.8% |
+
+One timeout of v033 against `off` in 8,000 games; no other fault.
+
+No variant beats v033. Sweeping from 4 or 5 steps is level or slightly
+below (−6 to −9), and from 3 steps, which sends more units away from the
+fight, loses clearly (−32.7). So taking the far land earlier, which the
+sweeper does (70% more at game turns 8 to 12 in the local games), does not
+win games: in the top players' games it goes with their strength rather
+than causing it, and every unit sent to it is missing from the middle.
