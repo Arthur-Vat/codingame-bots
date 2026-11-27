@@ -92,10 +92,22 @@ games at CodinGame's limits, 2 shards
 
 | Variant | Commit | Change from v033 | Elo over v033 [95%] | Score |
 | --- | --- | --- | ---: | ---: |
-| `off` | `9981967` | none (control) | pending | pending |
-| `t6` | `c4aa443` | `HANDOVER_TURN` 6 | pending | pending |
-| `far4` | `02e08ce` | `FAR` 4 | pending | pending |
-| `far8` | `3449889` | `FAR` 8 | pending | pending |
-| `home8` | `5427e63` | `HOME` 8 | pending | pending |
-| `room1` | `992f490` | `ROOM` 1 | pending | pending |
-| `room2` | `419e5f3` | `ROOM` 2 | pending | pending |
+| `off` | `9981967` | none (control) | +0.9 [−10.1, +11.8] | 50.1% |
+| `t6` | `c4aa443` | `HANDOVER_TURN` 6 | −6.1 [−20.7, +8.5] | 49.1% |
+| `far4` | `02e08ce` | `FAR` 4 | −16.1 [−31.7, −0.5] | 47.7% |
+| `far8` | `3449889` | `FAR` 8 | −64.1 [−80.4, −48.2] | 40.9% |
+| `home8` | `5427e63` | `HOME` 8 | −3.5 [−17.4, +10.4] | 49.5% |
+| `room1` | `992f490` | `ROOM` 1 | +1.7 [−13.2, +16.6] | 50.2% |
+| `room2` | `419e5f3` | `ROOM` 2 | −25.7 [−41.2, −10.2] | 46.3% |
+
+One timeout of far4 and one of v033 against far8 in 11,200 games; no other
+fault.
+
+No variant beats v033. The far-land term loses, the more the heavier
+(far8 −64.1): paying for land far from the enemy pulls units and
+trainings away from the middle, where the games are decided. The room term
+is level at 1 and loses at 2, with its 10% of speed. Handing over at game
+turn 6 and keeping a unit at home are level. So the gap the measures show
+(far land taken later, crowded units) is not closed by valuing far land or
+room in the search's evaluation, as the cell-value terms of E090 to E094
+were not.
