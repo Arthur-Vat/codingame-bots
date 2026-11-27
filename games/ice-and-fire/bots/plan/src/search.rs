@@ -191,7 +191,7 @@ pub const STRIKE_TURNS: i64 = 0;
 pub const BLOCK_TOWERS: bool = true;
 /// Towers also on our free cells next to those cells (a tower guards its
 /// neighbours).
-pub const BLOCK_NEIGHBOURS: bool = true;
+pub const BLOCK_NEIGHBOURS: bool = false;
 /// A training at this level on those cells when they are empty (`None`:
 /// none).
 pub const BLOCK_LEVEL: Option<u8> = None;
