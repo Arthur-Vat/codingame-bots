@@ -52,9 +52,9 @@ use crate::strategy::Guide;
 pub mod judge;
 
 /// Replies kept in the memory.
-const MEMORY_CAP: usize = 8;
+const MEMORY_CAP: usize = 4;
 /// The opponent's best cuts added to the memory after a climb.
-const REPLY_CUTS: usize = 1;
+const REPLY_CUTS: usize = 3;
 /// Most climbs in one turn.
 const MAX_CLIMBS: usize = 32;
 /// Most plans scored by the opponent's climb in one reply search (E019).
