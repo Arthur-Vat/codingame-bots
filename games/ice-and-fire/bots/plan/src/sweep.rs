@@ -28,7 +28,7 @@ use ice_and_fire_engine::{Bits, Command, State, SIZE};
 pub const MODE: u8 = 1;
 /// A unit or a free cell more than this many steps from the enemy's land is
 /// behind the front.
-pub const DIST: u32 = 4;
+pub const DIST: u32 = 3;
 /// The farthest free cell a unit is sent to, in steps.
 pub const RANGE: u8 = 6;
 /// The first game turn of the sweeper (the search's first, E067).
