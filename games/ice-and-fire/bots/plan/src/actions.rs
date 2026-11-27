@@ -121,6 +121,23 @@ pub const RUSH_LEAP: bool = false;
 /// on a trainable cell is offered.
 pub const RUSH_DEFEND: bool = false;
 
+/// The trainings offered only on cells at most this many steps from the
+/// enemy's land (E101: in v033's CodinGame games, level-1 trainings farther
+/// than 3 steps were 13.6% of the tries and 0.8% of the actions chosen);
+/// `None`: every cell (v034).
+pub const FAR_TRAININGS: Option<u8> = None;
+
+/// The cells of the map at most `steps` steps from the enemy's land of the
+/// player `me`, through cells of the map.
+fn near_enemy(state: &State, me: usize, steps: u8) -> Bits {
+    let valid = state.map().valid;
+    let mut near = state.owned(1 - me) & valid;
+    for _ in 0..steps {
+        near = (near | near.neighbours()) & valid;
+    }
+    near
+}
+
 /// Cuts offered as macro actions.
 pub const MACRO_CUTS: usize = 4;
 /// Longest cut, in trainings: 5 since E014 (4 before).
@@ -196,6 +213,9 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
         let mut cells = trainable & enter[usize::from(level)];
         for lower in 1..level {
             cells = cells.and_not(enter[usize::from(lower)]);
+        }
+        if let Some(steps) = FAR_TRAININGS {
+            cells &= near_enemy(state, me, steps);
         }
         for cell in cells.iter() {
             let (x, y) = xy(cell);
