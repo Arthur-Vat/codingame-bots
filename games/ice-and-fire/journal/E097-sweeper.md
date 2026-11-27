@@ -51,6 +51,36 @@ it scores better.
 
 ## Local check
 
-Pending: each form against v033 in local games, measured for far land, the
-middle and crowding with E096's tools, before any screening (the owner's
-order).
+Each form against v033 in local games (seed 97, twice CodinGame's time, one
+game at a time; about 46 games each), measured with E096's tools, the
+variant's side against v033's in the same games:
+
+| Measure | fixed | v033 | offered | v033 |
+| --- | ---: | ---: | ---: | ---: |
+| Far free cells taken a turn, game turns 8 to 12 | 0.88 | 0.51 | 0.47 | 0.47 |
+| Near free cells taken a turn, game turns 8 to 12 | 2.60 | 2.91 | 2.76 | 2.75 |
+| Own units next to each unit, game turns 8 to 12 | 0.55 | 0.60 | 0.62 | 0.61 |
+| Units at home at game turn 8 | 1.04 | 0.38 | 0.39 | 0.37 |
+| Units in the middle at game turn 8 | 2.83 | 3.34 | 3.46 | 3.48 |
+| Cells, game turns 13 to 18 | 46.9 | 45.8 | 45.8 | 45.3 |
+| Wins | 22 of 47 | 25 | 22 of 46 | 24 |
+
+The fixed form does what it was built for: 70% more far land at game turns
+8 to 12, a unit kept at home as zasmu does (1.47 at turn 8 in v032's
+CodinGame games), slightly less crowding and as much land, for a little
+less of the middle. The offered form changes nothing: the search almost
+never takes the macro action. Only the fixed form is screened.
+
+## Screening
+
+800 seat-swapped pairs per variant against `ice-and-fire-v033`, whole
+games at CodinGame's limits, 4 shards
+([run 46017255301](https://github.com/Arthur-Vat/codingame-bots/actions/runs/46017255301)):
+
+| Variant | Commit | `MODE` | `DIST` | `UNTIL` | Elo over v033 [95%] | Score |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `off` | `7af1128` | 0 | 4 | 20 | pending | pending |
+| `d4` | `5806d9b` | 1 | 4 | 20 | pending | pending |
+| `d3` | `97d77c3` | 1 | 3 | 20 | pending | pending |
+| `d5` | `29dd6ef` | 1 | 5 | 20 | pending | pending |
+| `d4-u14` | `ef127aa` | 1 | 4 | 14 | pending | pending |
