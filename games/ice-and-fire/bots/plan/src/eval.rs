@@ -594,7 +594,7 @@ pub const FLANK_OFF: i64 = 4;
 /// Each active cell of a side on its weaker flank (the flank where it holds
 /// fewer), up to [`FLANK_CAP`], counts this much for it, net of the enemy's,
 /// until game turn [`FLANK_UNTIL`]; 0 for nothing (v032).
-pub const FLANK: i64 = 8;
+pub const FLANK: i64 = 0;
 /// See [`FLANK`].
 pub const FLANK_CAP: i64 = 4;
 /// See [`FLANK`].
