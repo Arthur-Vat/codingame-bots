@@ -63,6 +63,10 @@
 //!   search takes over at game turn 7 without it. Until game turn
 //!   [`GOAL_UNTIL`], band cells near a side's land, held by it, guarded by
 //!   its towers, and the middle chokes it holds count for it ([`goal`]).
+//! - **Cuts and margins** (E090, E091; off in v032): with [`THREAT_CUTS`],
+//!   the exposed cells include those an affordable cut severs; with
+//!   [`DEEP_MARGIN`], an exposed cell costs more when the enemy reaches it
+//!   with gold to spare ([`threat`]).
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::reach_within_moving;
@@ -105,10 +109,109 @@ pub fn reach(state: &State, side: usize) -> Bits {
     reach_within_moving(state, side, movers(state, side), budget)
 }
 
+/// Whether the active cells that an affordable cut would sever count as
+/// exposed too (E090): in v032's games against the top 10, 49 to 65% of the
+/// cells lost at a ply were cut off from their HQ, not captured
+/// (research/codingame/2026-11-27-cell-values.md).
+pub const THREAT_CUTS: bool = false;
+
+/// The enemy's gold to spare from which an exposed cell counts
+/// [`DEEP_QUARTERS`] and below which it counts [`SHALLOW_QUARTERS`] (E091):
+/// a cell lost a third of the time against one lost a sixth of the time in
+/// the same study. 0 for off: every exposed cell counts [`THREAT_QUARTERS`].
+pub const DEEP_MARGIN: i64 = 0;
+
+/// What an exposed cell reached with [`DEEP_MARGIN`] gold to spare costs its
+/// side, in quarters (E091).
+pub const DEEP_QUARTERS: i64 = 7;
+
+/// What the other exposed cells cost their side, in quarters (E091).
+pub const SHALLOW_QUARTERS: i64 = 4;
+
+/// The active cells of `seat` the enemy can take at its next turn, and what
+/// they cost `seat` in quarters.
+pub(crate) struct Threat {
+    pub(crate) cells: Bits,
+    pub(crate) quarters: i64,
+}
+
+/// The cells of `active` joined to `root` through `active`.
+fn flood(active: Bits, root: usize) -> Bits {
+    if !active.test(root) {
+        return Bits::EMPTY;
+    }
+    let mut region = Bits::cell(root);
+    loop {
+        let next = (region | region.neighbours()) & active;
+        if next == region {
+            return region;
+        }
+        region = next;
+    }
+}
+
+/// The cells of `taken` and the active cells of `seat` that the loss of any
+/// one of them cuts off from its HQ (E090).
+pub(crate) fn with_severed(state: &State, seat: usize, taken: Bits) -> Bits {
+    let active = state.active(seat);
+    let mut severed = Bits::EMPTY;
+    for cut in (taken & active).iter() {
+        // A cell already cut off by another cuts off no more than it; a cell
+        // with at most one active neighbour cuts off nothing.
+        if cut == HQ[seat]
+            || severed.test(cut)
+            || (Bits::cell(cut).neighbours() & active).count() < 2
+        {
+            continue;
+        }
+        severed |= active.and_not(flood(active.and_not(Bits::cell(cut)), HQ[seat]));
+    }
+    taken | severed
+}
+
 /// The active cells of `seat` that the enemy can take at its next turn
-/// ([`reach`]).
+/// ([`reach`]; with [`THREAT_CUTS`], those an affordable cut severs too), and
+/// their cost ([`THREAT_QUARTERS`] each, or by margin with [`DEEP_MARGIN`]).
+pub(crate) fn threat(state: &State, seat: usize) -> Threat {
+    let enemy = 1 - seat;
+    let active = state.active(seat);
+    let budget = state.gold(enemy) + state.income(enemy);
+    let movers = movers(state, enemy);
+    let widen = |reached: Bits| {
+        if THREAT_CUTS {
+            with_severed(state, seat, reached & active) & active
+        } else {
+            reached & active
+        }
+    };
+    let cells = widen(reach_within_moving(state, enemy, movers, budget));
+    let count = |bits: Bits| i64::from(bits.count());
+    if DEEP_MARGIN == 0 {
+        return Threat {
+            cells,
+            quarters: THREAT_QUARTERS * count(cells),
+        };
+    }
+    let deep = if budget < DEEP_MARGIN {
+        Bits::EMPTY
+    } else {
+        widen(reach_within_moving(
+            state,
+            enemy,
+            movers,
+            budget - DEEP_MARGIN,
+        ))
+    };
+    Threat {
+        cells,
+        quarters: DEEP_QUARTERS * count(deep) + SHALLOW_QUARTERS * count(cells.and_not(deep)),
+    }
+}
+
+/// The active cells of `seat` that the enemy can take at its next turn
+/// ([`threat`]).
 pub(crate) fn exposed(state: &State, seat: usize) -> Bits {
-    reach(state, 1 - seat) & state.active(seat)
+    threat(state, seat).cells
 }
 
 /// The number of active cells of `seat` that the enemy can take at its next
@@ -595,9 +698,9 @@ pub fn eval(state: &State, seat: usize) -> i64 {
     }
     #[cfg(feature = "analysis")]
     let score = score - crate::analysis::removed(state, seat);
-    let ours = exposed(state, seat);
-    let theirs = exposed(state, 1 - seat);
-    let threats = i64::from(theirs.count()) - i64::from(ours.count());
+    let (ours, theirs) = (threat(state, seat), threat(state, 1 - seat));
+    let threats = theirs.quarters - ours.quarters;
+    let (ours, theirs) = (ours.cells, theirs.cells);
     score - 2 * debt(state, seat)
         + 2 * debt(state, 1 - seat)
         + shape(state, seat)
@@ -605,7 +708,7 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         - strong_units(state, 1 - seat)
         - idle(state, seat)
         + idle(state, 1 - seat)
-        + THREAT_QUARTERS * threats / 4
+        + threats / 4
         + mines(state, seat, ours)
         - mines(state, 1 - seat, theirs)
         + wall(state, seat)

@@ -1869,3 +1869,40 @@ fn only_joints_near_the_enemy_count_from_v032() {
         2 + 2
     );
 }
+
+#[test]
+fn a_cut_severs_the_cells_behind_it() {
+    use crate::eval::with_severed;
+    let dots = "............";
+    let state = position(
+        [
+            "OOOOO.......",
+            "O...........",
+            dots,
+            dots,
+            dots,
+            dots,
+            dots,
+            dots,
+            dots,
+            dots,
+            dots,
+            "...........X",
+        ],
+        [0, 0],
+        &[],
+    );
+    let cell = |x: usize, y: usize| y * SIZE + x;
+    let mut taken = Bits::EMPTY;
+    taken.set(cell(2, 0));
+    let mut expected = taken;
+    expected.set(cell(3, 0));
+    expected.set(cell(4, 0));
+    assert_eq!(with_severed(&state, 0, taken), expected);
+    // A cell at the tip, or one whose loss leaves the rest joined, cuts off
+    // nothing.
+    let mut tip = Bits::EMPTY;
+    tip.set(cell(4, 0));
+    tip.set(cell(0, 1));
+    assert_eq!(with_severed(&state, 0, tip), tip);
+}
