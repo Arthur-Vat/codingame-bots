@@ -75,12 +75,35 @@ term hardly moves the units, so the screening also tries 8 and 16.
 games at CodinGame's limits, 4 shards
 ([run 45980440646](https://github.com/Arthur-Vat/codingame-bots/actions/runs/45980440646)):
 
-| Variant | Commit | `FLANK` | Opening order | Elo over v032 [95%] |
-| --- | --- | ---: | --- | ---: |
-| `off` | `a54381f` | 0 | `Central(Linear(7))` | pending |
-| `w4` | `51b6683` | 4 | `Central(Linear(7))` | pending |
-| `w8` | `34438ae` | 8 | `Central(Linear(7))` | pending |
-| `w16` | `076aea7` | 16 | `Central(Linear(7))` | pending |
-| `fr8` | `a30dd55` | 0 | `Frontier { cap: 8 }` | pending |
+| Variant | Commit | `FLANK` | Opening order | Elo over v032 [95%] | Score |
+| --- | --- | ---: | --- | ---: | ---: |
+| `off` | `a54381f` | 0 | `Central(Linear(7))` | −7.8 [−17.7, +2.0] | 48.9% |
+| `w4` | `51b6683` | 4 | `Central(Linear(7))` | −5.6 [−18.3, +7.0] | 49.2% |
+| `w8` | `34438ae` | 8 | `Central(Linear(7))` | −15.6 [−29.5, −1.8] | 47.8% |
+| `w16` | `076aea7` | 16 | `Central(Linear(7))` | −37.1 [−51.1, −23.1] | 44.7% |
+| `fr8` | `a30dd55` | 0 | `Frontier { cap: 8 }` | +37.5 [+22.3, +52.8] | 55.4% |
 
-`FLANK_CAP` 4 and `FLANK_UNTIL` 12 in every variant.
+`FLANK_CAP` 4 and `FLANK_UNTIL` 12 in every variant. No fault on either
+side in any variant; the runners' time scales were 0.42 to 1.02.
+
+The flank term loses, the more the heavier (w16 clearly); the opening
+ordered by `Frontier { cap: 8 }` wins clearly, and the control is level.
+
+## The variants on the owner's ten games
+
+The owner asked (2026-11-27) whether the variants behave better before the
+territories meet on the ten short losses he commented. A tool
+(`review/examples/replay_vs.rs` on the session branch
+`claude/pensive-darwin-879zmo`) plays a bot in our seat on each game's map,
+untimed with 800 tries a turn, against the opponent's recorded answers,
+which hold until contact (game turn 7 or 8 in these games; the opponent's
+answers start being refused after it). `w8` and `w16` play exactly as `off`
+until contact: the opening is the same and the term starts at game turn 7.
+`fr8` differs from game turn 2 to 6 and, in the five red games, holds both
+flanks before contact where `off` holds one: at game turn 8, cells on each
+flank 3 / 3 against 6 / 0, 3 / 3 against 8 / 0, 1 / 2 against 0 / 4, 1 / 2
+against 3 / 0, and its land is wider (11 columns against 7 in the first
+two). In the blue games it changes less (one game switches flank, one
+holds both). The boards are on the owner's page
+(https://claude.ai/artifact/F9jwgANcMvoB6m5HfMT7xQ, "E095 variants
+compared").
