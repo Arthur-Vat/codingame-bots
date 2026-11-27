@@ -61,7 +61,7 @@ const MAX_CLIMBS: usize = 32;
 const REPLY_EVALS: u64 = 300;
 /// Whether the replies hold the opponent's own climb (E019); E099's
 /// ablation turns it off.
-const REPLY_OWN: bool = true;
+const REPLY_OWN: bool = false;
 /// Whether a climb's steps are lazy (see the module's docs); E099's
 /// ablation tries every action at every step.
 const LAZY: bool = true;
@@ -69,7 +69,7 @@ const LAZY: bool = true;
 /// when the longest reply search of the turn so far still fits before the
 /// hard limit; when it does not, the best plan whose replies were searched
 /// is played (E099). False in v033, where the check may end past the limit.
-const VERIFY_FITS: bool = true;
+const VERIFY_FITS: bool = false;
 /// Where between the soft and the hard limit the middle game's climbs stop
 /// (E027): at 36 ms of a 40 ms turn rather than 24; the rest is for the
 /// final choice and its check.
