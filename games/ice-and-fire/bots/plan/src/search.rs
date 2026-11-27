@@ -71,7 +71,7 @@ const SPARE_PLANS: usize = 3;
 /// the climbs start again from the best plan less one of its commands, each
 /// in turn (E101): a climb from a plan's neighbour can find a combination
 /// that no climb from the root does.
-const RESTART: bool = true;
+const RESTART: bool = false;
 /// Most plans scored by the opponent's climb in one reply search (E019).
 const REPLY_EVALS: u64 = 300;
 /// Where between the soft and the hard limit the middle game's climbs stop
