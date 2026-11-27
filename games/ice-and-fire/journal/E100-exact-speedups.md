@@ -1,7 +1,7 @@
 ---
 id: E100
 date: 2026-11-27
-pull_request: "none yet"
+pull_request: "#399"
 parent: ice-and-fire-v033
 hypothesis: The same search made about 45% cheaper, with every answer unchanged, gets about 1.8 times the tries in each turn of CodinGame's time and beats ice-and-fire-v033.
 change: Four changes that leave every score and answer as they are; the lethal chain's search is skipped when the gold cannot pay for the shortest path to the target; the start of a turn no longer marks the cells again; a capture grows the seat's marked land from where it was; and the shape term finds its joints with bitwise operations.
