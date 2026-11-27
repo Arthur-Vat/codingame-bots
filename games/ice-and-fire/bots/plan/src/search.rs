@@ -56,7 +56,7 @@ const MEMORY_CAP: usize = 8;
 /// The opponent's best cuts added to the memory after a climb.
 const REPLY_CUTS: usize = 3;
 /// Most climbs in one turn.
-const MAX_CLIMBS: usize = usize::MAX;
+const MAX_CLIMBS: usize = 32;
 /// Whether the replies hold bronze's greedy turn (E101: it decides 2 to 4%
 /// of the scores for about 6% of the turn).
 const REPLY_GREEDY: bool = true;
@@ -64,7 +64,7 @@ const REPLY_GREEDY: bool = true;
 /// have their replies searched again with this many climbs of the opponent,
 /// each barred from the first actions of the earlier ones, in the time left
 /// before that deadline (E101); `None`: no such check (v034).
-const SPARE_CHECK: Option<usize> = None;
+const SPARE_CHECK: Option<usize> = Some(4);
 /// The plans checked so, the best first (E101).
 const SPARE_PLANS: usize = 3;
 /// Whether, when every first action has started a climb and time is left,
