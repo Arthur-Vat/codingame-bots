@@ -5,13 +5,13 @@ pull_request: "#389"
 parent: ice-and-fire-v032
 hypothesis: Valuing the distinct cells our towers protect (each tower's cell and its neighbours, a cell protected twice counting once), near the enemy or everywhere, instead of or beside a flat value per tower, places towers where they guard the front and coordinates them, and beats ice-and-fire-v032.
 change: The shared evaluation (`tactics/src/eval.rs`) counts 2 for each distinct active cell a side's towers protect (`COVER_WEIGHT`, `covered`) in place of 10 for each of its active towers.
-release: ice-and-fire-v033
+release: none
 sprt: inconclusive
 elo: "+5.4 [+0.9, +9.9]"
 pairs: 8000
 full_time: pending
-decision: pending
-cg_rank: not reported
+decision: dropped
+cg_rank: none
 ---
 
 ## Why
@@ -80,4 +80,10 @@ Verdict: INCONCLUSIVE after 8000 pairs
 A gain, its interval above 0, but about a third of the screening's +16.3
 and below the +10 the test is set for. The owner (2026-11-27): stack E094's
 near4-fwd2 on cover2 and screen the combination before a new candidate.
+
+## Result
+
+Dropped as a release of its own: the candidate `ice-and-fire-v033` of the
+same pull request is now E096's, cover2 with E092's guard zone and E093's
+early step and guard (the owner, 2026-11-27, after E096's screening).
 

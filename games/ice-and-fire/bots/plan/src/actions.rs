@@ -34,12 +34,13 @@ pub const HQ_GUARD: bool = true;
 /// it (RULES.md, protection), so where none of them is in `reach` it cannot
 /// lower `threats`, and the state is not copied unless the HQ guard may
 /// apply: the same answer, cheaper.
-fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64) -> bool {
+fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64, near: Bits) -> bool {
     let me = state.to_act();
     let enemy = 1 - me;
     let hq_guard = HQ_GUARD && chain <= state.gold(enemy) + 2 * state.income(enemy).max(0);
+    let in_zone = near.test(cell);
     let zone = Bits::cell(cell) | Bits::cell(cell).neighbours();
-    if !hq_guard && (zone & reach).is_empty() {
+    if !hq_guard && (!in_zone || (zone & reach).is_empty()) {
         return false;
     }
     let (x, y) = xy(cell);
@@ -47,7 +48,7 @@ fn guards(state: &State, cell: usize, threats: i64, reach: Bits, chain: i64) -> 
     if !after.apply(Command::BuildTower { x, y }) {
         return false;
     }
-    if threatened(&after, me) < threats {
+    if in_zone && threatened(&after, me) < threats {
         return true;
     }
     hq_guard && cost_to(&after, enemy, false, HQ[me]) > chain
@@ -69,6 +70,46 @@ pub const OWN_CELLS: u8 = 2;
 /// 0: none (v028); 1: a tower on the cell it leaves; 2: a level-1 training
 /// on the cell it leaves.
 pub const STEP_GUARD: u8 = 1;
+
+/// How many steps from the enemy's active cells or units a tower may stand
+/// to be offered for guarding the cells the enemy can take (E096, after
+/// E092: a tower near the border guards best); the HQ guard is not bound
+/// by it. 0 for anywhere (v032).
+pub const GUARD_NEAR: u8 = 3;
+
+/// The last game turn of the early step and guard (E096, after E093).
+pub const EARLY_UNTIL: u32 = 10;
+
+/// Up to [`EARLY_UNTIL`], the step and guard (E070) is also offered from
+/// our units on cells at most this many steps from the enemy's active cells
+/// or units, not only from those the enemy can reach (E096, after E093: as
+/// zasmu moves forward and builds a tower behind its unit at game turn 7).
+/// 0 for none (v032).
+pub const STEP_GUARD_NEAR: u8 = 2;
+
+/// The cells at most `steps` steps, over non-void cells, from the active
+/// cells and units of the enemy of the player to act.
+pub(crate) fn near_enemy(state: &State, steps: u8) -> Bits {
+    let valid = state.map().valid;
+    let enemy = 1 - state.to_act();
+    let mut zone = state.active(enemy) | state.units(enemy);
+    let mut left = steps;
+    while left != 0 {
+        zone |= zone.neighbours() & valid;
+        left -= 1;
+    }
+    zone
+}
+
+/// The cells where a guard tower may stand by [`GUARD_NEAR`] for the player
+/// to act; every cell when it is 0.
+pub(crate) fn guard_zone(state: &State) -> Bits {
+    if GUARD_NEAR == 0 {
+        state.map().valid
+    } else {
+        near_enemy(state, GUARD_NEAR)
+    }
+}
 
 /// The fall-back-and-guard macro action (E076, after zasmu's games): a unit
 /// on a cell of ours the enemy can reach at its next turn steps onto a cell
@@ -220,6 +261,7 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
             let reach = crate::eval::reach(state, 1 - me);
             let threats = i64::from((reach & state.active(me)).count());
             let chain = cost_to(state, 1 - me, false, HQ[me]);
+            let near = guard_zone(state);
             // Frontier cells of ours not yet guarded by a tower (E068).
             let open = if WALL_TOWERS {
                 let (front, guarded) = crate::eval::frontier(state, me);
@@ -229,7 +271,7 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
             };
             for cell in cells.iter().filter(|&cell| {
                 let zone = Bits::cell(cell) | Bits::cell(cell).neighbours();
-                !(zone & open).is_empty() || guards(state, cell, threats, reach, chain)
+                !(zone & open).is_empty() || guards(state, cell, threats, reach, chain, near)
             }) {
                 let (x, y) = xy(cell);
                 out.push(Action::One(Command::BuildTower { x, y }));
@@ -244,7 +286,10 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
         _ => i64::MAX,
     };
     if gold >= guard_cost {
-        let reach = crate::eval::reach(state, 1 - me);
+        let mut reach = crate::eval::reach(state, 1 - me);
+        if STEP_GUARD_NEAR != 0 && state.game_turn() <= EARLY_UNTIL {
+            reach |= near_enemy(state, STEP_GUARD_NEAR);
+        }
         let neutral = state
             .map()
             .valid

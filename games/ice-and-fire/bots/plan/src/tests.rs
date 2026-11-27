@@ -935,8 +935,11 @@ fn towers_are_offered_where_a_copy_of_the_state_says_they_guard() {
                 let zone = Bits::cell(cell) | Bits::cell(cell).neighbours();
                 !(zone & front.and_not(guarded)).is_empty()
             };
+            // E096: guarding the cells the enemy can take only within the
+            // guard zone.
+            let near = crate::actions::guard_zone(&state).test(cell);
             let guards = walls
-                || crate::eval::threatened(&after, me) < threats
+                || near && crate::eval::threatened(&after, me) < threats
                 || (crate::actions::HQ_GUARD
                     && chain <= state.gold(enemy) + 2 * state.income(enemy).max(0)
                     && cost_to(&after, enemy, false, HQ[me]) > chain);
