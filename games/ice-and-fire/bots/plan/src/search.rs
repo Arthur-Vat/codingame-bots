@@ -54,12 +54,12 @@ pub mod judge;
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8;
 /// The opponent's best cuts added to the memory after a climb.
-const REPLY_CUTS: usize = 3;
+const REPLY_CUTS: usize = 1;
 /// Most climbs in one turn.
 const MAX_CLIMBS: usize = 32;
 /// Whether the replies hold bronze's greedy turn (E101: it decides 2 to 4%
 /// of the scores for about 6% of the turn).
-const REPLY_GREEDY: bool = true;
+const REPLY_GREEDY: bool = false;
 /// When the climbs end before their deadline, the plans that score best
 /// have their replies searched again with this many climbs of the opponent,
 /// each barred from the first actions of the earlier ones, in the time left
