@@ -64,7 +64,7 @@ const REPLY_EVALS: u64 = 300;
 const REPLY_OWN: bool = true;
 /// Whether a climb's steps are lazy (see the module's docs); E099's
 /// ablation tries every action at every step.
-const LAZY: bool = true;
+const LAZY: bool = false;
 /// Whether the check of the plan chosen (E027) starts a reply search only
 /// when the longest reply search of the turn so far still fits before the
 /// hard limit; when it does not, the best plan whose replies were searched
@@ -180,7 +180,7 @@ pub const STRIKE_TURNS: i64 = 0;
 
 /// The blockers offered (E044): towers on our cells that the opponent's
 /// remembered replies enter. Towers alone won the screening.
-pub const BLOCK_TOWERS: bool = false;
+pub const BLOCK_TOWERS: bool = true;
 /// Towers also on our free cells next to those cells (a tower guards its
 /// neighbours).
 pub const BLOCK_NEIGHBOURS: bool = false;
