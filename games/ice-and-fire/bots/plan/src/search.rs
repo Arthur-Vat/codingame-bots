@@ -54,7 +54,7 @@ pub mod judge;
 /// Whether a climb's first step tries every action rather than stopping
 /// lazily (E102: 27% of the plans played began with a forced climb, most
 /// with a move whose gain alone is small).
-const FULL_FIRST: bool = false;
+const FULL_FIRST: bool = true;
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8;
 /// The opponent's best cuts added to the memory after a climb.

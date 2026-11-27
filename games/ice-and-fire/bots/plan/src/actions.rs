@@ -144,7 +144,7 @@ fn near_enemy(state: &State, me: usize, steps: u8) -> Bits {
 }
 
 /// Cuts offered as macro actions.
-pub const MACRO_CUTS: usize = 8;
+pub const MACRO_CUTS: usize = 4;
 /// Longest cut, in trainings: 5 since E014 (4 before).
 pub const CUT_LENGTH: usize = 5;
 
