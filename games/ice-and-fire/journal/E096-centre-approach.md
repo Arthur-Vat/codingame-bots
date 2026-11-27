@@ -5,13 +5,13 @@ pull_request: "#NN"
 parent: ice-and-fire-v033
 hypothesis: A better approach to the centre (the search a turn earlier, units that keep their own room instead of crowding, a unit or two kept at home, the far free land valued) lets our units take the free land far from the front as the top players do while holding the middle, and beats ice-and-fire-v033.
 change: Three terms in the search's evaluation, each net of the enemy's and each 0 in v033 (`eval::far`, `eval::home`, `eval::room`), and the search's handover from the opening at game turn 6 rather than 7 (`search::HANDOVER_TURN`); one variant each.
-release: pending
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
-cg_rank: not reported
+release: none
+sprt: not run: no variant gained in screening
+elo: none
+pairs: none
+full_time: none
+decision: dropped
+cg_rank: none
 ---
 
 ## Why
@@ -111,3 +111,19 @@ turn 6 and keeping a unit at home are level. So the gap the measures show
 (far land taken later, crowded units) is not closed by valuing far land or
 room in the search's evaluation, as the cell-value terms of E090 to E094
 were not.
+
+## What was learned
+
+Dropped. The gaps the measures show are real (crowded units at game
+turns 8 to 12, far land taken later, fewer units at home, a burst into the
+middle at turn 7), but no term in the search's evaluation closes them:
+valuing far land loses, and the more the heavier; giving each unit its own
+room is level at a weight of 1 and loses at 2; keeping a unit at home and
+the handover at game turn 6 are level. The owner then asked for a
+structural change instead (2026-11-27): a layer before the search that
+gives the units behind the front their own free cells and paths (E097).
+
+The code stays reachable on the branch `claude/ice-and-fire-e096-centre-approach`
+(commits `9981967` to `419e5f3`: `eval::far`, `eval::home` and
+`eval::room` with their test, and the variants), and the measuring tools
+(`review/examples/midgame.rs` and `rush.rs`) on `claude/pensive-darwin-879zmo`.

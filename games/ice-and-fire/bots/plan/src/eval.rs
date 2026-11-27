@@ -70,17 +70,6 @@
 //!   flank, up to [`FLANK_CAP`], count [`FLANK`] each for it ([`flank`]):
 //!   off, since it lost the screening at every weight tried (4, 8, 16);
 //!   E095's opening order holds both flanks instead.
-//! - **The approach to the centre** (E096): in v032's CodinGame games the top
-//!   players reach the middle a turn before us with one training, keep a
-//!   unit or two at home that take the free land far from the front, and
-//!   their units stand apart (0.33 to 0.39 of their own units next to each
-//!   unit at game turns 8 to 12, against our 0.67), while we rush nearly every
-//!   unit into the middle. Three terms, each net of the enemy's, until their
-//!   own game turn: [`far`] counts the active cells more than [`FAR_DIST`]
-//!   steps from the enemy's land, [`home`] the units kept at home that still
-//!   have a free cell near them, and [`room`] the free cells each unit is
-//!   the nearest unit to, within [`ROOM_RANGE`] steps and up to
-//!   [`ROOM_CAP`] a unit, so that units do not crowd or chase the same cells.
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ, SIZE};
 use ice_and_fire_tactics::chain::reach_within_moving;
@@ -650,137 +639,6 @@ pub fn flank(state: &State, seat: usize) -> i64 {
     FLANK * (weaker_flank(state, seat) - weaker_flank(state, 1 - seat))
 }
 
-/// E096: each active cell of a side more than [`FAR_DIST`] steps from the
-/// enemy's land counts this much more for it, net of the enemy's, until game
-/// turn [`FAR_UNTIL`]; 0 for nothing (v033).
-pub const FAR: i64 = 0;
-/// See [`FAR`].
-pub const FAR_DIST: u32 = 4;
-/// See [`FAR`].
-pub const FAR_UNTIL: u32 = 14;
-
-/// E096: each unit of a side kept at home (on an active cell more than
-/// [`FAR_DIST`] steps from the enemy's land) with a neutral cell within 2
-/// steps, up to [`HOME_CAP`], counts this much for it, net of the enemy's,
-/// until game turn [`HOME_UNTIL`]; 0 for nothing (v033).
-pub const HOME: i64 = 0;
-/// See [`HOME`].
-pub const HOME_CAP: u32 = 1;
-/// See [`HOME`].
-pub const HOME_UNTIL: u32 = 12;
-
-/// E096: each neutral cell within [`ROOM_RANGE`] steps of a side's units
-/// belongs to its nearest unit (the first found on a tie); each unit's cells,
-/// up to [`ROOM_CAP`], count this much for its side, net of the enemy's,
-/// until game turn [`ROOM_UNTIL`]; 0 for nothing (v033).
-pub const ROOM: i64 = 2;
-/// See [`ROOM`].
-pub const ROOM_RANGE: u8 = 4;
-/// See [`ROOM`].
-pub const ROOM_CAP: i64 = 4;
-/// See [`ROOM`].
-pub const ROOM_UNTIL: u32 = 16;
-
-/// The valid cells within `steps` of `cells`, `cells` included.
-fn grown(state: &State, cells: Bits, steps: u32) -> Bits {
-    let valid = state.map().valid;
-    let mut out = cells & valid;
-    for _ in 0..steps {
-        out = (out | out.neighbours()) & valid;
-    }
-    out
-}
-
-/// The active cells of `seat` more than [`FAR_DIST`] steps from the enemy's
-/// land.
-pub fn far_cells(state: &State, seat: usize) -> Bits {
-    state
-        .active(seat)
-        .and_not(grown(state, state.owned(1 - seat), FAR_DIST))
-}
-
-/// [`FAR`] for `seat`.
-pub fn far(state: &State, seat: usize) -> i64 {
-    if FAR == 0 || state.game_turn() > FAR_UNTIL {
-        return 0;
-    }
-    FAR * (i64::from(far_cells(state, seat).count())
-        - i64::from(far_cells(state, 1 - seat).count()))
-}
-
-/// The units of `seat` kept at home with a neutral cell within 2 steps, at
-/// most [`HOME_CAP`].
-pub fn home_units(state: &State, seat: usize) -> i64 {
-    let neutral = state.map().valid.and_not(state.owned(0) | state.owned(1));
-    let near_free = grown(state, neutral, 2);
-    let units = state.units(seat) & far_cells(state, seat) & near_free;
-    i64::from(units.count().min(HOME_CAP))
-}
-
-/// [`HOME`] for `seat`.
-pub fn home(state: &State, seat: usize) -> i64 {
-    if HOME == 0 || state.game_turn() > HOME_UNTIL {
-        return 0;
-    }
-    HOME * (home_units(state, seat) - home_units(state, 1 - seat))
-}
-
-/// The neutral cells within [`ROOM_RANGE`] steps of the units of `seat`,
-/// each given to its nearest unit, counted up to [`ROOM_CAP`] a unit and
-/// summed over the units: the land the units can take without getting in
-/// each other's way.
-pub fn unit_room(state: &State, seat: usize) -> i64 {
-    let map = state.map();
-    let valid = map.valid;
-    let neutral = valid.and_not(state.owned(0) | state.owned(1));
-    let mut dist = [u8::MAX; CELLS];
-    let mut owner = [usize::MAX; CELLS];
-    let mut queue = [0usize; CELLS];
-    let (mut head, mut tail) = (0, 0);
-    let mut count = [0i64; CELLS];
-    for cell in state.units(seat).iter() {
-        dist[cell] = 0;
-        owner[cell] = cell;
-        queue[tail] = cell;
-        tail += 1;
-    }
-    while head < tail {
-        let cell = queue[head];
-        head += 1;
-        if dist[cell] >= ROOM_RANGE {
-            continue;
-        }
-        for &next in &map.neighbours[0][cell] {
-            if next == ice_and_fire_engine::map::NONE {
-                break;
-            }
-            let next = usize::from(next);
-            if dist[next] == u8::MAX {
-                dist[next] = dist[cell] + 1;
-                owner[next] = owner[cell];
-                if neutral.test(next) {
-                    count[owner[cell]] += 1;
-                }
-                queue[tail] = next;
-                tail += 1;
-            }
-        }
-    }
-    state
-        .units(seat)
-        .iter()
-        .map(|cell| count[cell].min(ROOM_CAP))
-        .sum()
-}
-
-/// [`ROOM`] for `seat`.
-pub fn room(state: &State, seat: usize) -> i64 {
-    if ROOM == 0 || state.game_turn() > ROOM_UNTIL {
-        return 0;
-    }
-    ROOM * (unit_room(state, seat) - unit_room(state, 1 - seat))
-}
-
 /// The score of `state` for `seat`, higher is better for it.
 pub fn eval(state: &State, seat: usize) -> i64 {
     let movers = [
@@ -812,7 +670,4 @@ pub fn eval(state: &State, seat: usize) -> i64 {
         + goal(state, seat)
         + voronoi(state, seat)
         + flank(state, seat)
-        + far(state, seat)
-        + home(state, seat)
-        + room(state, seat)
 }

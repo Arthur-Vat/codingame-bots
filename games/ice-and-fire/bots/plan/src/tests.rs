@@ -656,10 +656,7 @@ fn cells_the_enemy_can_take_next_turn_count_less() {
         + crate::eval::shape(&state, 0)
         + standing_term(&state, 0)
         + crate::eval::goal(&state, 0)
-        + crate::eval::flank(&state, 0)
-        + crate::eval::far(&state, 0)
-        + crate::eval::home(&state, 0)
-        + crate::eval::room(&state, 0);
+        + crate::eval::flank(&state, 0);
     assert_eq!(
         eval(&state, 0),
         shared + crate::eval::THREAT_QUARTERS * (1 - 2) / 4
@@ -733,9 +730,6 @@ fn a_mine_counts_more_with_a_larger_territory() {
             - standing_term(state, seat)
             - crate::eval::goal(state, seat)
             - crate::eval::flank(state, seat)
-            - crate::eval::far(state, seat)
-            - crate::eval::home(state, seat)
-            - crate::eval::room(state, seat)
     };
     // Red holds 21 cells of the corridor and blue its HQ alone. Blue (20
     // gold, income 1) reaches (11, 9) for 20, and red blue's HQ: one
@@ -1079,10 +1073,7 @@ fn an_enemy_unit_of_level_two_moves_toward_our_hq() {
         - strong_units(&state, 1)
         + THREAT_QUARTERS * (threatened(&state, 1) - threatened(&state, 0)) / 4
         + crate::eval::goal(&state, 0)
-        + crate::eval::flank(&state, 0)
-        + crate::eval::far(&state, 0)
-        + crate::eval::home(&state, 0)
-        + crate::eval::room(&state, 0);
+        + crate::eval::flank(&state, 0);
     assert_eq!(eval(&state, 0), expected);
 }
 
@@ -1529,75 +1520,6 @@ fn the_weaker_flank_counts_until_flank_until() {
     // After FLANK_UNTIL it counts nothing.
     let later = position_at(FLANK_UNTIL + 1, "0\n", rows, [20, 20], &[]);
     assert_eq!(flank(&later, 0), 0);
-}
-
-#[test]
-fn far_land_home_units_and_unit_room_count_until_their_turn() {
-    use crate::eval::{
-        far, far_cells, home, home_units, room, unit_room, FAR, FAR_UNTIL, HOME, HOME_CAP,
-        HOME_UNTIL, ROOM, ROOM_CAP, ROOM_UNTIL,
-    };
-    // E096. Red holds the top-left block; blue the bottom-right corner, so
-    // red's cells within FAR_DIST (4) steps of blue's land are not far.
-    let rows = [
-        "OOOOO.......",
-        "OOOOO.......",
-        "OOOOO.......",
-        "............",
-        "............",
-        "............",
-        "............",
-        "............",
-        "........XXXX",
-        "........XXXX",
-        "........XXXX",
-        "........XXXX",
-    ];
-    // Two red units side by side on red's land, at (1, 1) and (2, 1), and
-    // one on the block's edge at (4, 2).
-    let units = [(0, 1, 1, 1, 1), (0, 2, 1, 2, 1), (0, 3, 1, 4, 2)];
-    let state = position_at(10, "0\n", rows, [20, 20], &units);
-    // Every red cell is more than 4 steps from blue's land: (4, 2) is 4 + 6
-    // = 10 steps from (8, 8). Blue's cells are as far from red's.
-    assert_eq!(far_cells(&state, 0).count(), 15);
-    assert_eq!(far_cells(&state, 1).count(), 16);
-    // Red's units at home with a free cell within 2 steps: (1, 1) is 2 steps
-    // from (1, 3), (2, 1) from (2, 3), (4, 2) next to (5, 2): 3, capped.
-    assert_eq!(home_units(&state, 0), i64::from(3.min(HOME_CAP)));
-    assert_eq!(home_units(&state, 1), 0);
-    // Room: the units at (1, 1) and (2, 1) share the free cells below the
-    // block; with one unit there instead the total cannot be larger.
-    let alone = position_at(
-        10,
-        "0\n",
-        rows,
-        [20, 20],
-        &[(0, 1, 1, 1, 1), (0, 3, 1, 4, 2)],
-    );
-    let packed = unit_room(&state, 0);
-    assert!(packed >= unit_room(&alone, 0));
-    assert!(packed <= 3 * ROOM_CAP);
-    assert!(unit_room(&alone, 0) <= 2 * ROOM_CAP);
-    // Each unit has free cells within 4 steps, so each counts at least one.
-    assert!(packed >= 3);
-    assert_eq!(unit_room(&state, 1), 0);
-    // The terms are their weights times the side's count less the enemy's.
-    assert_eq!(far(&state, 0), FAR * (15 - 16));
-    assert_eq!(home(&state, 0), HOME * i64::from(3.min(HOME_CAP)));
-    assert_eq!(room(&state, 0), ROOM * packed);
-    assert_eq!(room(&state, 1), -room(&state, 0));
-    // After their game turns they count nothing.
-    let later = position_at(
-        FAR_UNTIL.max(HOME_UNTIL).max(ROOM_UNTIL) + 1,
-        "0\n",
-        rows,
-        [20, 20],
-        &units,
-    );
-    assert_eq!(
-        (far(&later, 0), home(&later, 0), room(&later, 0)),
-        (0, 0, 0)
-    );
 }
 
 #[test]
