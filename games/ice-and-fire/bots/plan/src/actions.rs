@@ -216,11 +216,9 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
             // Towers only on cells next to a cell that is not ours.
             let border = state.map().valid.and_not(state.owned(me)).neighbours();
             let cells = (free & border).and_not(state.map().spots);
-            // The enemy's reach, for the shortcut of `guards`; the threats
-            // are `threatened`'s, the cells an affordable cut severs
-            // included when `eval::THREAT_CUTS` is on (E090).
+            // `threatened(state, me)`, keeping the enemy's reach.
             let reach = crate::eval::reach(state, 1 - me);
-            let threats = threatened(state, me);
+            let threats = i64::from((reach & state.active(me)).count());
             let chain = cost_to(state, 1 - me, false, HQ[me]);
             // Frontier cells of ours not yet guarded by a tower (E068).
             let open = if WALL_TOWERS {
