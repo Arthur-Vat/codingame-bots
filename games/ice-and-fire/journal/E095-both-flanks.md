@@ -123,8 +123,14 @@ workflow's most), seed 9502
 
 | Variant | Commit | Turns planned | Elo over v032 [95%] | Score |
 | --- | --- | ---: | ---: | ---: |
-| `fr8` | `a30dd55` | 9 | pending | pending |
-| `fr8-t12` | `1cdb45e` | 12 | pending | pending |
+| `fr8` | `a30dd55` | 9 | +32.8 [+23.0, +42.6] | 54.7% |
+| `fr8-t12` | `1cdb45e` | 12 | +24.7 [+14.5, +35.0] | 53.5% |
+
+No fault on either side. fr8-t12's lead in the second screening does not
+hold: over all its screenings (weighted by pairs) fr8 scores about +33.6
+on 3,800 pairs (+37.5, +32.1, +32.8) and fr8-t12 about +30.7 on 3,000
+(+42.6, +24.7), the same within the noise, as E073 found for longer plans.
+fr8 is the simpler change.
 
 ## The variants on the owner's ten games
 
