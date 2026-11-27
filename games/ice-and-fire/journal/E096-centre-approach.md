@@ -1,7 +1,7 @@
 ---
 id: E096
 date: 2026-11-27
-pull_request: "#NN"
+pull_request: "#397"
 parent: ice-and-fire-v033
 hypothesis: A better approach to the centre (the search a turn earlier, units that keep their own room instead of crowding, a unit or two kept at home, the far free land valued) lets our units take the free land far from the front as the top players do while holding the middle, and beats ice-and-fire-v033.
 change: Three terms in the search's evaluation, each net of the enemy's and each 0 in v033 (`eval::far`, `eval::home`, `eval::room`), and the search's handover from the opening at game turn 6 rather than 7 (`search::HANDOVER_TURN`); one variant each.
