@@ -51,6 +51,7 @@ use crate::strategy::Guide;
 #[cfg(feature = "analysis")]
 pub mod judge;
 mod steer;
+mod towers;
 
 use steer::Steer;
 
@@ -93,6 +94,14 @@ pub const TYPE_ORDER: bool = false;
 /// The game turn from which [`TYPE_KINDS`] and [`TYPE_ORDER`] apply, by the
 /// game turn of a climb's root (E106).
 pub const TYPE_FROM_TURN: u32 = 7;
+/// Our climbs (never the opponent's model) keep a tower only within this many
+/// steps of the enemy's land, or where its zone holds a cell of the enemy's
+/// affordable cuts or chain to our HQ at its next turn (E112). `None`: every
+/// tower kept.
+pub const TOWER_KEEP: Option<u8> = None;
+/// Whether our climbs try, among actions of equal last gain, the towers
+/// nearest the enemy's land first (E112).
+pub const TOWER_NEAR_FIRST: bool = false;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
@@ -160,6 +169,9 @@ type Gains = HashMap<u64, i64, BuildHasherDefault<DefaultHasher>>;
 
 struct Search {
     me: usize,
+    /// The cells of the enemy's affordable strikes at our turn's start, for
+    /// [`TOWER_KEEP`] (E112; empty when it is off and for the opponent).
+    tower_threat: Bits,
     /// Whether this is the opponent's model, which the type switches never
     /// touch (E106).
     opponent: bool,
@@ -497,6 +509,9 @@ impl Search {
                 self.add_pieces(&mut actions);
             }
             blockers(&cur, memory, &mut actions);
+            if let Some(k) = TOWER_KEEP.filter(|_| !self.opponent) {
+                towers::keep_towers(&cur, self.me, k, self.tower_threat, &mut actions);
+            }
             let steer = self.steer(root, &cur);
             if let (Some(steer), Some(k)) = (&steer, TYPE_KINDS) {
                 steer.filter(&cur, k, &mut actions);
@@ -516,6 +531,17 @@ impl Search {
                     order.sort_by(|a, b| {
                         (b.0.cmp(&a.0))
                             .then(priors[b.1].cmp(&priors[a.1]))
+                            .then(a.1.cmp(&b.1))
+                    });
+                }
+                None if TOWER_NEAR_FIRST && !self.opponent => {
+                    let ranks: Vec<u8> = actions
+                        .iter()
+                        .map(|a| towers::rank(&cur, self.me, a))
+                        .collect();
+                    order.sort_by(|a, b| {
+                        (b.0.cmp(&a.0))
+                            .then(ranks[a.1].cmp(&ranks[b.1]))
                             .then(a.1.cmp(&b.1))
                     });
                 }
@@ -587,6 +613,7 @@ impl Search {
         let mut theirs = Search {
             me: opponent,
             opponent: true,
+            tower_threat: Bits::EMPTY,
             limit: Limit {
                 max_evals: REPLY_EVALS,
                 ..self.limit
@@ -717,6 +744,11 @@ pub fn think_with(
     let mut search = Search {
         me,
         opponent: false,
+        tower_threat: if TOWER_KEEP.is_some() {
+            towers::threat_cells(state, me)
+        } else {
+            Bits::EMPTY
+        },
         limit: Limit {
             soft: at(CLIMB_SHARE),
             ..limit
@@ -787,6 +819,9 @@ pub fn think_with(
                     exhausted = true;
                     forced = search.root_actions.clone().unwrap_or_default();
                     forced.retain(|a| !banned.contains(&key(a.commands())));
+                    if let Some(k) = TOWER_KEEP {
+                        towers::keep_towers(state, me, k, search.tower_threat, &mut forced);
+                    }
                     let steer = search.steer(state, state);
                     if let (Some(steer), Some(k)) = (&steer, TYPE_KINDS) {
                         steer.filter(state, k, &mut forced);
