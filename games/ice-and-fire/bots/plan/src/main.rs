@@ -164,7 +164,7 @@ const OPENING_CROWD: i64 = 2;
 /// (`Params::horizon`, E056): 15 in v023, as in v003's opening; 18 won the
 /// screening (17 and 19 did not gain, 21 lost), so that the opening buys a
 /// few more units once they spread (E051).
-const OPENING_HORIZON: i64 = 21;
+const OPENING_HORIZON: i64 = 18;
 
 /// The game turns, first and last, on which the opening trains at least one
 /// unit whenever the gold pays one, on the free cell worth most next to our
