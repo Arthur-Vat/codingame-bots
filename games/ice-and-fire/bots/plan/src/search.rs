@@ -100,12 +100,12 @@ pub const TYPE_FROM_TURN: u32 = 7;
 /// start climbs of their own, the best by the search's score of them: from
 /// [`MATCH_SAMPLES`] sampled, at the root of our turn from [`MATCH_FROM_TURN`].
 /// 0: none, nothing changes.
-pub const MATCH_STARTS: usize = 0;
+pub const MATCH_STARTS: usize = 2;
 /// The turns sampled to find those [`MATCH_STARTS`] starts.
 pub const MATCH_SAMPLES: u64 = 32;
 /// The game turn from which [`MATCH_STARTS`] apply, by the game turn of the
 /// root.
-pub const MATCH_FROM_TURN: u32 = 7;
+pub const MATCH_FROM_TURN: u32 = 5;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
