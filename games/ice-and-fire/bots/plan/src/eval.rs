@@ -169,7 +169,7 @@ pub const EARLY_MINE_PER_CELLS: i64 = MINE_PER_CELLS;
 /// from paying that chain) and the standing threat (what it would have left)
 /// are scaled by it, so that mines and land, which pay over several turns,
 /// win against gold kept. 100: today's weights.
-pub const INVEST_PERCENT: i64 = 0;
+pub const INVEST_PERCENT: i64 = 100;
 /// The first game turn of the invest strategy (E113).
 pub const INVEST_FROM: u32 = 9;
 /// The last game turn of the invest strategy (E113).
