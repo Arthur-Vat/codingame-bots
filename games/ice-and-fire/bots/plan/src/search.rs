@@ -100,12 +100,12 @@ pub const TYPE_FROM_TURN: u32 = 7;
 /// towers and mines by their kind's share in zasmu's spending table (E109,
 /// stage 6), from [`TYPE_FROM_TURN`]: before the moves and the other
 /// actions, or, with [`TYPE_ORDER`], after the moves.
-pub const SPEND_ORDER: bool = true;
+pub const SPEND_ORDER: bool = false;
 /// The number of the most frequent kinds of purchase of the turn band and
 /// gold band that our climbs offer (E109); the others are not. `None`: all.
 /// Cuts, the lethal chain and blockers are always offered, and all purchases
 /// on a turn when a chain to an HQ can be paid.
-pub const SPEND_KINDS: Option<usize> = Some(6);
+pub const SPEND_KINDS: Option<usize> = None;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
