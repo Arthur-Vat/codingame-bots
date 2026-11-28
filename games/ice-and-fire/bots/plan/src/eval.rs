@@ -740,8 +740,12 @@ pub const TERMS: usize = 17;
 /// units ([`idle`]); the threatened cells (`THREAT_QUARTERS * threats / 4`);
 /// the [`mines`]; the [`wall`]; the [`goal`]; the [`voronoi`] term; the
 /// [`flank`] term. The threat of losing the HQ (`-WIN / 2`) and the finished
-/// games are not weighed.
-pub const WEIGHTS: [i64; TERMS] = [100; TERMS];
+/// games are not weighed. A quarter of the way from 100 to the weights
+/// fitted on the outcomes of 4,798 games of v034 against itself (E116): the
+/// fit itself lost, a quarter, a half and three quarters of the way won.
+pub const WEIGHTS: [i64; TERMS] = [
+    82, 110, 124, 86, 81, 97, 123, 92, 96, 107, 126, 121, 109, 88, 100, 100, 100,
+];
 
 /// `term` at `weight` percent.
 fn scaled(term: i64, weight: i64) -> i64 {

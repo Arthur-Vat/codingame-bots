@@ -9,6 +9,12 @@ use ice_and_fire_referee::{IceAndFireReferee, League as RefereeLeague};
 use crate::actions::{generate as actions_of, Action};
 use crate::search::{think, Limit};
 
+/// The evaluation with every term at its full weight (E116's `WEIGHTS` all
+/// 100): the terms' own formulas, which the tests below check.
+fn eval100(state: &State, seat: usize) -> i64 {
+    crate::eval::eval_with(state, seat, &[100; crate::eval::TERMS])
+}
+
 /// The bot's opening, new for each call, with narrow beams: the tests'
 /// limits have no deadline.
 fn opening() -> ice_and_fire_opening::planned::Planned {
@@ -516,7 +522,7 @@ fn a_level_two_unit_counts_less_than_its_cost() {
     for (level, discount) in [(1, 0), (2, crate::eval::LEVEL2_DISCOUNT)] {
         let state = position(rows, [30, 20], &[(0, 1, level, 2, 0)]);
         let shared = bot_shared(&state, 0) + crate::eval::shape(&state, 0);
-        assert_eq!(crate::eval::eval(&state, 0), shared - discount);
+        assert_eq!(eval100(&state, 0), shared - discount);
     }
 }
 
@@ -548,8 +554,8 @@ fn a_level_three_unit_is_charged_one_turn_of_upkeep() {
     // Each side's term counts for it and against the other.
     let state = units(3);
     let shared = ice_and_fire_tactics::eval::evaluate(&state, 0) + crate::eval::shape(&state, 0);
-    assert_eq!(crate::eval::eval(&state, 0) - shared, 2 * 20);
-    assert_eq!(crate::eval::eval(&state, 1) + shared, -2 * 20);
+    assert_eq!(eval100(&state, 0) - shared, 2 * 20);
+    assert_eq!(eval100(&state, 1) + shared, -2 * 20);
     // Only units on active cells pay upkeep (RULES.md, "Income"), so a
     // level-3 unit on a cell cut off from the HQ gets nothing back.
     let mut cut = rows;
@@ -583,11 +589,11 @@ fn a_side_that_cannot_pay_its_upkeep_counts_its_units_as_lost() {
     let state = position(rows, [5, 20], &[(0, 1, 3, 2, 0)]);
     assert_eq!(state.income(0), -17);
     let shared = bot_shared(&state, 0) + crate::eval::shape(&state, 0);
-    assert_eq!(crate::eval::eval(&state, 0), shared - 2 * 30 + back);
+    assert_eq!(eval100(&state, 0), shared - 2 * 30 + back);
     // With the gold to pay it, nothing is taken.
     let state = position(rows, [17, 20], &[(0, 1, 3, 2, 0)]);
     let shared = bot_shared(&state, 0) + crate::eval::shape(&state, 0);
-    assert_eq!(crate::eval::eval(&state, 0), shared + back);
+    assert_eq!(eval100(&state, 0), shared + back);
     // Blue's debt counts for red; so does the discount of its level-2 unit
     // (E020).
     rows[0] = "O...........";
@@ -595,7 +601,7 @@ fn a_side_that_cannot_pay_its_upkeep_counts_its_units_as_lost() {
     assert_eq!(state.income(1), 2 - 4);
     let shared = bot_shared(&state, 0) + crate::eval::shape(&state, 0);
     assert_eq!(
-        crate::eval::eval(&state, 0),
+        eval100(&state, 0),
         shared + 2 * 20 + crate::eval::LEVEL2_DISCOUNT
     );
 }
@@ -638,7 +644,7 @@ fn a_cell_that_cuts_others_off_weakens_its_side() {
 
 #[test]
 fn cells_the_enemy_can_take_next_turn_count_less() {
-    use crate::eval::{eval, threatened};
+    use crate::eval::threatened;
     // E023: blue's chains along the corridor cost 10 for (11, 10), then 10
     // a cell of red's from (11, 9) up. With gold 20 and income 1 blue can
     // pay 20: it threatens (11, 9).
@@ -658,7 +664,7 @@ fn cells_the_enemy_can_take_next_turn_count_less() {
         + crate::eval::goal(&state, 0)
         + crate::eval::flank(&state, 0);
     assert_eq!(
-        eval(&state, 0),
+        eval100(&state, 0),
         shared + crate::eval::THREAT_QUARTERS * (1 - 2) / 4
     );
     // Far from each other, nothing is threatened.
@@ -713,7 +719,7 @@ fn an_enemy_unit_of_level_two_threatens_the_cells_it_can_step_onto() {
 
 #[test]
 fn a_mine_counts_more_with_a_larger_territory() {
-    use crate::eval::{eval, mine_bonus, threatened};
+    use crate::eval::{mine_bonus, threatened};
     // E033: a mine counts one more than its income for every 4 active cells
     // of its side.
     assert_eq!(
@@ -724,7 +730,7 @@ fn a_mine_counts_more_with_a_larger_territory() {
     // What the bot's evaluation adds to the shared one, the shape term and
     // the opening's goal (E073, early turns).
     let own = |state: &State, seat: usize| {
-        eval(state, seat)
+        eval100(state, seat)
             - ice_and_fire_tactics::eval::evaluate(state, seat)
             - crate::eval::shape(state, seat)
             - standing_term(state, seat)
@@ -1041,7 +1047,7 @@ fn a_side_that_can_pay_for_its_chain_to_the_enemy_hq_holds_a_threat() {
 
 #[test]
 fn an_enemy_unit_of_level_two_moves_toward_our_hq() {
-    use crate::eval::{eval, shape, strong_units, threatened, THREAT_QUARTERS};
+    use crate::eval::{shape, strong_units, threatened, THREAT_QUARTERS};
     use ice_and_fire_engine::{Bits, SIZE};
     use ice_and_fire_tactics::eval::{margin, margin_moving};
     // E043: blue's level-2 unit on (6, 11) steps first onto red's (5, 11),
@@ -1074,7 +1080,7 @@ fn an_enemy_unit_of_level_two_moves_toward_our_hq() {
         + THREAT_QUARTERS * (threatened(&state, 1) - threatened(&state, 0)) / 4
         + crate::eval::goal(&state, 0)
         + crate::eval::flank(&state, 0);
-    assert_eq!(eval(&state, 0), expected);
+    assert_eq!(eval100(&state, 0), expected);
 }
 
 #[test]
@@ -1190,7 +1196,7 @@ fn the_opening_buys_units_that_pay_back_by_turn_18() {
 
 #[test]
 fn a_safe_mine_counts_more_early_in_the_middle_game() {
-    use crate::eval::{eval, threatened, EARLY_MINE_BONUS, EARLY_MINE_PER_CELLS, EARLY_MINE_TURN};
+    use crate::eval::{threatened, EARLY_MINE_BONUS, EARLY_MINE_PER_CELLS, EARLY_MINE_TURN};
     // E058: until game turn 15 a safe mine counts 6 more than E033's bonus.
     assert_eq!((EARLY_MINE_TURN, EARLY_MINE_BONUS), (15, 6));
     assert_eq!(EARLY_MINE_PER_CELLS, crate::eval::MINE_PER_CELLS);
@@ -1198,7 +1204,7 @@ fn a_safe_mine_counts_more_early_in_the_middle_game() {
     // out of blue's reach, with red's 21 cells: 21 / 4 + 6 = 11 until game
     // turn 15, E033's 21 / 4 = 5 alone from turn 16.
     let own = |state: &State, seat: usize| {
-        eval(state, seat)
+        eval100(state, seat)
             - ice_and_fire_tactics::eval::evaluate(state, seat)
             - crate::eval::shape(state, seat)
             - standing_term(state, seat)
@@ -1239,7 +1245,7 @@ fn a_safe_mine_counts_more_early_in_the_middle_game() {
 
 #[test]
 fn a_unit_far_from_land_to_take_costs_its_side() {
-    use crate::eval::{eval, IDLE_CAP, IDLE_LEVEL, IDLE_STEP};
+    use crate::eval::{IDLE_CAP, IDLE_LEVEL, IDLE_STEP};
     // E060: each unit costs its side 2 for every step beyond the first to
     // the nearest cell that is not its side's, counted up to 4 steps.
     assert_eq!((IDLE_STEP, IDLE_CAP, IDLE_LEVEL), (2, 4, 3));
@@ -1249,8 +1255,8 @@ fn a_unit_far_from_land_to_take_costs_its_side() {
     // anything else the evaluation counts.
     let near = position(CORRIDOR, [0, 20], &[(0, 1, 1, 11, 7)]);
     let far = position(CORRIDOR, [0, 20], &[(0, 1, 1, 5, 0)]);
-    assert_eq!(eval(&near, 0) - eval(&far, 0), 8 - 4);
-    assert_eq!(eval(&near, 1) - eval(&far, 1), -(8 - 4));
+    assert_eq!(eval100(&near, 0) - eval100(&far, 0), 8 - 4);
+    assert_eq!(eval100(&near, 1) - eval100(&far, 1), -(8 - 4));
 }
 
 #[test]

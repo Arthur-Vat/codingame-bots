@@ -341,13 +341,13 @@ fn unweighted(state: &State, seat: usize) -> i64 {
 
 #[test]
 fn weights_of_100_leave_the_evaluation_as_it_was() {
-    use crate::eval::{eval_with, TERMS};
+    use crate::eval::{eval_with, TERMS, WEIGHTS};
     let mut seen = 0;
     for state in random_states(0..40) {
         for seat in 0..2 {
             let before = unweighted(&state, seat);
-            assert_eq!(eval(&state, seat), before);
             assert_eq!(eval_with(&state, seat, &[100; TERMS]), before);
+            assert_eq!(eval(&state, seat), eval_with(&state, seat, &WEIGHTS));
             seen += 1;
         }
     }
@@ -366,7 +366,7 @@ fn the_terms_add_up_to_the_evaluation_and_each_weight_scales_its_own() {
         let seat = state.to_act();
         let terms = terms::raw(&state, seat);
         let sum: i64 = terms.iter().sum();
-        let threat = eval(&state, seat) - sum;
+        let threat = eval_with(&state, seat, &[100; TERMS]) - sum;
         assert!(threat == 0 || threat == -WIN / 2, "{threat}");
         let mut w = [100; TERMS];
         for x in w.iter_mut() {
