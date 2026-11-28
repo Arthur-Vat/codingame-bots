@@ -162,6 +162,26 @@ pub const EARLY_MINE_BONUS: i64 = 6;
 /// [`EARLY_MINE_TURN`] (E058): [`MINE_PER_CELLS`] in v024.
 pub const EARLY_MINE_PER_CELLS: i64 = MINE_PER_CELLS;
 
+/// The gold a side holds towards its chain to the enemy HQ, as the shared
+/// evaluation's pressure term and the standing threat count it, scaled to
+/// this percentage in every turn (E115, after E113 found that counting it
+/// less loses): 100, today's weights.
+pub const STRIKE_GOLD_PERCENT: i64 = 100;
+/// The shared evaluation's bound on the pressure term
+/// (`ice_and_fire_tactics::eval`, `MAX_PRESSURE`).
+const PRESSURE_BOUND: i64 = 200;
+
+/// What [`STRIKE_GOLD_PERCENT`] adds to the score for the seat whose margin
+/// is `margins[0]` (E115): the pressure and standing-threat terms, ours less
+/// the enemy's, times the percentage beyond 100. 0 at 100.
+fn strike_gold_extra(margins: [i64; 2]) -> i64 {
+    if STRIKE_GOLD_PERCENT == 100 {
+        return 0;
+    }
+    let part = |m: i64| m.clamp(-PRESSURE_BOUND, 0) + standing(m);
+    (part(margins[0]) - part(margins[1])) * (STRIKE_GOLD_PERCENT - 100) / 100
+}
+
 /// The weight of a joint and of a cell that one capture cuts off.
 const SHAPE: i64 = 2;
 
@@ -738,6 +758,7 @@ pub fn eval(state: &State, seat: usize) -> i64 {
     if state.outcome().is_some() {
         return score;
     }
+    let score = score + strike_gold_extra(margins);
     #[cfg(feature = "analysis")]
     let score = score - crate::analysis::removed(state, seat);
     let ours = exposed(state, seat);
