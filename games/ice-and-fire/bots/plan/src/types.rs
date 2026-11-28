@@ -1,6 +1,6 @@
 //! Unit types and the tables of zasmu's actions by type (the design of
 //! `games/ice-and-fire/research/codingame/2026-11-28-type-planner.md`,
-//! stage 1: no play uses this yet).
+//! stage 1; used by the search's switches of stage 2, E106, all off).
 //!
 //! [`Typing::new`] looks once at a position for the side to act: its
 //! distance to the enemy's land, its joints (cells whose loss cuts off part

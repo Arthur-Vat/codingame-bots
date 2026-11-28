@@ -130,7 +130,8 @@ expect REJECTED --candidate "bronze=$bin/ice-and-fire-bronze" --baseline "bronze
 grep -q '^  1\. bronze ' target/cg/ice-and-fire-league.txt
 
 echo "== The plan bot's analysis mode"
-# Bots never carry it, so only this step tests it (ci.yml's lint job lints it).
+# The analysis mode is never in a bot, so only this step tests it, with the
+# analysis-gated tests of `types::` (ci.yml's lint job lints it).
 scripts/annotate.sh run "Plan bot analysis mode" \
   cargo test --release --locked -p ice-and-fire-bot-plan --features analysis -- analysis:: types:: \
   | tee target/ice-and-fire-analysis-tests.txt

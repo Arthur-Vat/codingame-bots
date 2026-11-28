@@ -54,7 +54,9 @@ fn the_filter_keeps_every_other_action_and_only_moves_of_the_top_kinds() {
         let left = kept.iter().filter(|a| is_move(a)).count();
         assert!(left <= previous, "k {k}: {left} moves after {previous}");
         previous = left;
-        for action in kept.iter().filter(|a| is_move(a)) {
+        // Exactly the moves whose kind is among the unit's k likeliest stay,
+        // in the order generated.
+        let in_top = |action: &Action| -> bool {
             let Action::One(Command::Move { id, x, y }) = action else {
                 unreachable!()
             };
@@ -65,9 +67,19 @@ fn the_filter_keeps_every_other_action_and_only_moves_of_the_top_kinds() {
                 .expect("a movable unit");
             let to = usize::from(*y) * SIZE + usize::from(*x);
             let kind = steer.typing.kind(&state, from, to);
-            let top: Vec<Kind> = likeliest(&p).into_iter().take(k).collect();
-            assert!(top.contains(&kind), "k {k}: {kind:?} not in {top:?}");
-        }
+            likeliest(&p).into_iter().take(k).any(|top| top == kind)
+        };
+        let expected: Vec<Vec<Command>> = all
+            .iter()
+            .filter(|a| is_move(a) && in_top(a))
+            .map(|a| a.commands().to_vec())
+            .collect();
+        let got: Vec<Vec<Command>> = kept
+            .iter()
+            .filter(|a| is_move(a))
+            .map(|a| a.commands().to_vec())
+            .collect();
+        assert_eq!(got, expected, "k {k}");
     }
     // All eight kinds keep every move; one kind removes some.
     let mut every = all.clone();
