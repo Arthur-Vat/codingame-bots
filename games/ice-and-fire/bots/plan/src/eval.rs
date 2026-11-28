@@ -164,7 +164,7 @@ pub(crate) fn mines(state: &State, seat: usize, exposed: Bits) -> i64 {
 /// What a safe mine counts more from game turn [`MID_MINE_FROM`] to
 /// [`MID_MINE_TO`] (E111: zasmu builds 0.41 mines a turn at game turns 9 to 14,
 /// we 0.15). 0: none.
-pub const MID_MINE_BONUS: i64 = 4;
+pub const MID_MINE_BONUS: i64 = 0;
 /// The first game turn of [`MID_MINE_BONUS`] (E111).
 pub const MID_MINE_FROM: u32 = 9;
 /// The last game turn of [`MID_MINE_BONUS`] (E111).
@@ -172,7 +172,7 @@ pub const MID_MINE_TO: u32 = 14;
 /// What each free mine spot on a side's active cells, that the enemy cannot
 /// take at its next turn, counts until game turn [`SPOT_UNTIL`] (E111: a
 /// small nudge to take land that holds mine spots). 0: none.
-pub const SPOT_BONUS: i64 = 1;
+pub const SPOT_BONUS: i64 = 0;
 /// The last game turn of [`SPOT_BONUS`] (E111).
 pub const SPOT_UNTIL: u32 = 14;
 
