@@ -59,6 +59,14 @@ const REPLY_CUTS: usize = 3;
 const MAX_CLIMBS: usize = 32;
 /// Most plans scored by the opponent's climb in one reply search (E019).
 const REPLY_EVALS: u64 = 300;
+/// The most trainings in the opponent's modeled plan (E105): real
+/// opponents train two units or fewer in 90% of their replies, the
+/// opponent's climb three or more in 18%. `None`: no cap (v034).
+pub const OPP_MAX_TRAINS: Option<usize> = None;
+/// Whether the opponent's climb places its moves, towers and mines first
+/// and only then may train (E105): in the largest group of its misses, the
+/// real reply trained nobody while the climb trained four units.
+pub const OPP_MOVES_FIRST: bool = false;
 /// Where between the soft and the hard limit the middle game's climbs stop
 /// (E027): at 36 ms of a 40 ms turn rather than 24; the rest is for the
 /// final choice and its check.
@@ -156,6 +164,8 @@ struct Search {
     /// The strategic layer's guide this turn (E077): its plan and the
     /// objectives' term.
     guide: Option<Guide>,
+    /// Whether this is the opponent's modeled climb (E105).
+    opponent: bool,
 }
 
 /// The strike reserve (E069, stage B of the curriculum in
@@ -448,6 +458,8 @@ impl Search {
         let mut gains = Gains::default();
         let mut actions = Vec::new();
         let mut order = Vec::new();
+        // E105: the opponent's climb trains only in its second stage.
+        let mut may_train = !(self.opponent && OPP_MOVES_FIRST);
         while cur.outcome().is_none() && !self.spent() {
             if commands.is_empty() && cached {
                 match &self.root_actions {
@@ -467,6 +479,13 @@ impl Search {
                 self.add_pieces(&mut actions);
             }
             blockers(&cur, memory, &mut actions);
+            if self.opponent {
+                let cap = OPP_MAX_TRAINS.map(|cap| cap.saturating_sub(trainings(&commands)));
+                actions.retain(|action| {
+                    let n = trainings(action.commands());
+                    n == 0 || (may_train && cap.is_none_or(|cap| n <= cap))
+                });
+            }
             order.clear();
             for (index, action) in actions.iter().enumerate() {
                 let k = key(action.commands());
@@ -495,6 +514,10 @@ impl Search {
                 }
             }
             let Some((index, next, score)) = best else {
+                if !may_train {
+                    may_train = true;
+                    continue;
+                }
                 break;
             };
             if commands.is_empty() {
@@ -551,6 +574,7 @@ impl Search {
             // The opponent's model keeps no reserve, as before E069.
             strike: false,
             guide: None,
+            opponent: true,
         };
         out.push(theirs.climb(&next, &[], &[], true).commands);
         out.retain(|commands| !commands.is_empty());
@@ -596,6 +620,11 @@ impl Search {
             _ => score,
         }
     }
+}
+
+/// The trainings among `commands`.
+fn trainings(commands: &[Command]) -> usize {
+    commands.iter().filter(|c| matches!(c, Command::Train { .. })).count()
 }
 
 /// Adds the replies `found` that the memory does not hold, then keeps the
@@ -679,6 +708,7 @@ pub fn think_with(
         root_actions: None,
         strike: strike_reserve(state),
         guide,
+        opponent: false,
     };
     let mut memory = Vec::new();
     let mut plans: Vec<Plan> = Vec::new();
