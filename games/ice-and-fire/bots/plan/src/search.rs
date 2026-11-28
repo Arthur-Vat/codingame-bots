@@ -72,7 +72,7 @@ const CLIMB_SHARE: f64 = 0.75;
 /// The game turn from which the search plays whatever the opening would do
 /// (E067): `None` for never (v026, where the opening plays until we can
 /// pay a chain of trainings to an enemy cell).
-pub const HANDOVER_TURN: Option<u32> = Some(5);
+pub const HANDOVER_TURN: Option<u32> = Some(7);
 /// Whether the search also takes over, for good, at the first turn the
 /// opening would buy nothing while we hold [`HANDOVER_GOLD`] or more, from
 /// game turn [`HANDOVER_IDLE_FROM`] (E067).
@@ -100,12 +100,12 @@ pub const TYPE_FROM_TURN: u32 = 7;
 /// start climbs of their own, the best by the search's score of them: from
 /// [`MATCH_SAMPLES`] sampled, at the root of our turn from [`MATCH_FROM_TURN`].
 /// 0: none, nothing changes.
-pub const MATCH_STARTS: usize = 4;
+pub const MATCH_STARTS: usize = 0;
 /// The turns sampled to find those [`MATCH_STARTS`] starts.
 pub const MATCH_SAMPLES: u64 = 32;
 /// The game turn from which [`MATCH_STARTS`] apply, by the game turn of the
 /// root.
-pub const MATCH_FROM_TURN: u32 = 5;
+pub const MATCH_FROM_TURN: u32 = 7;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
