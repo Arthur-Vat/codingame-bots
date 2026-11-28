@@ -10,7 +10,7 @@ sprt: accepted
 elo: +7.9 [+1.8, +14.0]
 pairs: 4400
 full_time: +7.9 [+1.8, +14.0]
-decision: promoted
+decision: waiting
 cg_rank: not reported
 ---
 
@@ -123,6 +123,14 @@ ice-and-fire-v035 vs ice-and-fire-v034: 8800 games, 4400 complete pairs
 SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.03 (bounds -2.94, 2.94) after 4400 pairs
 Verdict: ACCEPTED: ice-and-fire-v035 is stronger than ice-and-fire-v034
 ```
+
+## Waiting
+
+Below +15 Elo, so not released alone ([ADR 0062](../../../docs/adr/0062-small-gains-wait-for-the-next-release.md)):
+the owner chose (2026-11-28) to combine it with the next experiment that
+gains ("Combine with E120 if it gains"). The SPRT above tested
+`ice-and-fire-v035` as built by pull request #411 at its head commit
+`3e124d07`; a combined release takes that number.
 
 ## What was learned
 
