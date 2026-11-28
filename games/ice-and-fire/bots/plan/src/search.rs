@@ -50,8 +50,10 @@ use crate::strategy::Guide;
 
 #[cfg(feature = "analysis")]
 pub mod judge;
+mod matching;
 mod steer;
 
+use matching::Matcher;
 use steer::Steer;
 
 /// Replies kept in the memory.
@@ -93,6 +95,17 @@ pub const TYPE_ORDER: bool = false;
 /// The game turn from which [`TYPE_KINDS`] and [`TYPE_ORDER`] apply, by the
 /// game turn of a climb's root (E106).
 pub const TYPE_FROM_TURN: u32 = 7;
+
+/// The whole turns built by a matching that keeps units apart (E107) that
+/// start climbs of their own, the best by the search's score of them: from
+/// [`MATCH_SAMPLES`] sampled, at the root of our turn from [`MATCH_FROM_TURN`].
+/// 0: none, nothing changes.
+pub const MATCH_STARTS: usize = 0;
+/// The turns sampled to find those [`MATCH_STARTS`] starts.
+pub const MATCH_SAMPLES: u64 = 32;
+/// The game turn from which [`MATCH_STARTS`] apply, by the game turn of the
+/// root.
+pub const MATCH_FROM_TURN: u32 = 7;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
@@ -410,6 +423,33 @@ impl Search {
             && !self.opponent
             && root.game_turn() >= TYPE_FROM_TURN;
         on.then(|| Steer::new(cur))
+    }
+
+    /// The starts of [`MATCH_STARTS`] (E107): the best distinct sampled turns
+    /// of `root`, the best last, each as one macro action; none for the
+    /// opponent's model, before [`MATCH_FROM_TURN`] or with the starts off.
+    fn matched(&mut self, root: &State, memory: &[Reply]) -> Vec<Action> {
+        if MATCH_STARTS == 0 || self.opponent || root.game_turn() < MATCH_FROM_TURN {
+            return Vec::new();
+        }
+        let matcher = Matcher::new(root);
+        let mut found: Vec<(i64, Vec<Command>)> = Vec::new();
+        for sample in 0..MATCH_SAMPLES {
+            let (commands, end) = matcher.sample(root, matcher.seed(root, sample));
+            if commands.is_empty() || found.iter().any(|(_, c)| *c == commands) {
+                continue;
+            }
+            let score = self.score(&end, memory, i64::MIN);
+            found.push((score, commands));
+        }
+        // Stable: the earlier sample first on a tie.
+        found.sort_by(|a, b| b.0.cmp(&a.0));
+        found.truncate(MATCH_STARTS);
+        found
+            .into_iter()
+            .rev()
+            .map(|(_, commands)| Action::Many(commands))
+            .collect()
     }
 
     /// Adds the strategic turn's pieces to `actions` (E077).
@@ -739,8 +779,10 @@ pub fn think_with(
         .as_ref()
         .filter(|g| g.start)
         .map(|g| Action::Many(g.plan.clone()));
+    // The matched turns (E107), the best last, since they are popped.
+    let mut matched = search.matched(state, &memory);
     while thought.climbs < MAX_CLIMBS && (plans.is_empty() || !search.spent()) {
-        let started = match start.take() {
+        let started = match start.take().or_else(|| matched.pop()) {
             Some(action) => search.forced(state, &action, &memory),
             None => None,
         };
