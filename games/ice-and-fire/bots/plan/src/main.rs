@@ -81,7 +81,7 @@ const FIRST_BUDGET_MS: f64 = 800.0;
 /// CodinGame's limits. Above 1 the bot is a teacher (E117), for an arena
 /// that gives it room (`--time-tolerance-ms`, the screening's
 /// `extra_tolerance_ms`); on CodinGame it would time out.
-const THINK_SCALE: f64 = 1.0;
+const THINK_SCALE: f64 = 44.0;
 
 /// The share of the budget that the soft limit marks: the opening's choice
 /// stops 40% of the way from it to the hard limit, and the middle game's

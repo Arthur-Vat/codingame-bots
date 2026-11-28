@@ -57,10 +57,10 @@ use steer::Steer;
 /// How many times the caps below are multiplied: 1 at CodinGame's limits.
 /// A teacher (E117) thinks `THINK_SCALE` times longer and scales its caps
 /// with it, since at CodinGame's caps most of its turns end at a cap.
-const CAP_SCALE: usize = 1;
+const CAP_SCALE: usize = 44;
 /// Cells added to the opponent's cuts in its replies, beyond our own
 /// `CUT_LENGTH` (E117's teacher).
-const REPLY_CUT_EXTRA: usize = 0;
+const REPLY_CUT_EXTRA: usize = 2;
 /// A deeper teacher (E118, `research/codingame/2026-11-28-deep-teacher.md`):
 /// `Some(n)` makes the middle game's turn compare its `n` best plans, and the
 /// plan today's search would play, by what our next turn can do after each of
@@ -68,7 +68,7 @@ const REPLY_CUT_EXTRA: usize = 0;
 /// after the reply, its score taken, and the worst reply counting), and play
 /// the best. `None`: today's search alone, as in every release. Offline only:
 /// a deep turn takes [`DEEP_MS`], far beyond CodinGame's limit.
-pub const DEEP: Option<usize> = Some(8);
+pub const DEEP: Option<usize> = None;
 /// A deep turn's budget in milliseconds at CodinGame's time scale, multiplied
 /// by `CG_TIME_SCALE` as the other budgets are (E118). Today's search keeps
 /// its own budget at the start of it; the deep step runs until this.
