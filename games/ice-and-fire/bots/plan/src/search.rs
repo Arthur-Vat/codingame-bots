@@ -57,10 +57,10 @@ use steer::Steer;
 /// How many times the caps below are multiplied: 1 at CodinGame's limits.
 /// A teacher (E117) thinks `THINK_SCALE` times longer and scales its caps
 /// with it, since at CodinGame's caps most of its turns end at a cap.
-const CAP_SCALE: usize = 44;
+const CAP_SCALE: usize = 1;
 /// Cells added to the opponent's cuts in its replies, beyond our own
 /// `CUT_LENGTH` (E117's teacher).
-const REPLY_CUT_EXTRA: usize = 2;
+const REPLY_CUT_EXTRA: usize = 0;
 /// A deeper teacher (E118, `research/codingame/2026-11-28-deep-teacher.md`):
 /// `Some(n)` makes the middle game's turn compare its `n` best plans, and the
 /// plan today's search would play, by what our next turn can do after each of
