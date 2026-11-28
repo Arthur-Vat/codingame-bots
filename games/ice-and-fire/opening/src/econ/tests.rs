@@ -227,3 +227,35 @@ fn the_crowd_term_spreads_the_units() {
         "crowd 2: {spread} of {spread_units}, crowd 0: {packed} of {packed_units}"
     );
 }
+
+#[test]
+fn a_forced_training_is_made_on_its_game_turns_only() {
+    // E108: from `train_from` to `train_to` a turn that bought nothing trains
+    // one unit when the gold pays it; off (`train_to` 0) the turn is as before.
+    let keep = Buy::Exact { mines: 0, units: 0 };
+    let mut state = start(3);
+    while state.game_turn() < 4 {
+        state.play_turn(&turn_with(&state, &Params::V003, keep));
+    }
+    let on = Params {
+        train_from: 5,
+        train_to: 6,
+        ..Params::V003
+    };
+    let trains = |state: &State, params: &Params| {
+        turn_with(state, params, keep)
+            .iter()
+            .filter(|c| matches!(c, Command::Train { .. }))
+            .count()
+    };
+    for turn in 4..=7 {
+        while state.game_turn() < turn {
+            state.play_turn(&turn_with(&state, &Params::V003, keep));
+        }
+        assert!(state.gold(state.to_act()) >= 10, "turn {turn}");
+        // Off: nothing bought, whatever the turn; the same with the switch on
+        // outside its turns; one training inside them.
+        assert_eq!(trains(&state, &Params::V003), 0);
+        assert_eq!(trains(&state, &on), usize::from((5..=6).contains(&turn)));
+    }
+}

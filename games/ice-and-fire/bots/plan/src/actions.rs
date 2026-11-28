@@ -148,9 +148,20 @@ pub fn xy(cell: usize) -> (u8, u8) {
     ((cell % SIZE) as u8, (cell / SIZE) as u8)
 }
 
+/// The game turn from which the search builds mines (E108): 0 builds them
+/// whenever the rules allow, as before E108; 7 none before game turn 7, as
+/// zasmu's opening builds its first mines then. The opening itself builds none
+/// (`OPENING_SAFE_SPOT`).
+pub const MINE_FROM: u32 = 0;
+
 /// The actions for the player to act in `state`, in `out` (cleared first), in
 /// a fixed order.
 pub fn generate(state: &State, out: &mut Vec<Action>) {
+    generate_from(state, out, MINE_FROM);
+}
+
+/// [`generate`] with mines from game turn `mine_from` (E108).
+pub fn generate_from(state: &State, out: &mut Vec<Action>, mine_from: u32) {
     out.clear();
     if state.outcome().is_some() {
         return;
@@ -206,7 +217,7 @@ pub fn generate(state: &State, out: &mut Vec<Action>) {
     // Buildings.
     if gold >= BUILD_COST {
         let free = state.owned(me) & near & state.empty_cells();
-        if state.league().allows_mines() {
+        if state.league().allows_mines() && state.game_turn() >= mine_from {
             for cell in (free & state.map().spots).iter() {
                 let (x, y) = xy(cell);
                 out.push(Action::One(Command::BuildMine { x, y }));

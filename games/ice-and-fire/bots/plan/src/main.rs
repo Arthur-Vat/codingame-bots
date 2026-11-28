@@ -166,6 +166,12 @@ const OPENING_CROWD: i64 = 2;
 /// few more units once they spread (E051).
 const OPENING_HORIZON: i64 = 18;
 
+/// The game turns, first and last, on which the opening trains at least one
+/// unit whenever the gold pays one, on the free cell worth most next to our
+/// land (`Params::train_from`, `Params::train_to`, E108): `(0, 0)` never, as
+/// before E108; `(5, 6)` as zasmu trains at game turns 5 and 6.
+const OPENING_TRAIN_TURNS: (u32, u32) = (0, 0);
+
 /// The cells a unit is expected to take after the territories meet
 /// (`Params::after_contact`, E056): 0 in v023.
 const OPENING_AFTER_CONTACT: i64 = 0;
@@ -200,6 +206,8 @@ const ASSIGN_SETTINGS: assign::Settings = assign::Settings {
         crowd: OPENING_CROWD,
         horizon: OPENING_HORIZON,
         after_contact: OPENING_AFTER_CONTACT,
+        train_from: OPENING_TRAIN_TURNS.0,
+        train_to: OPENING_TRAIN_TURNS.1,
         ..Params::V003
     },
 };
@@ -229,6 +237,8 @@ fn opening_of(width: usize) -> Planned {
             crowd: OPENING_CROWD,
             horizon: OPENING_HORIZON,
             after_contact: OPENING_AFTER_CONTACT,
+            train_from: OPENING_TRAIN_TURNS.0,
+            train_to: OPENING_TRAIN_TURNS.1,
             ..params
         })
         .collect();

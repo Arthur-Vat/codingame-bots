@@ -25,6 +25,8 @@ const fn set(w: [i64; 10]) -> Params {
         inside: 0,
         toward: 0,
         crowd: 0,
+        train_from: 0,
+        train_to: 0,
     }
 }
 

@@ -85,6 +85,12 @@ pub struct Params {
     /// after this turn's moves and trainings so far (E051), so that units
     /// spread and each finds a free cell at its next turn.
     pub crowd: i64,
+    /// E108: from game turn `train_from` to `train_to`, both included, a turn
+    /// whose purchase made no training makes one if the gold pays it, on
+    /// the free cell worth most next to our territory, whatever the payback
+    /// rule or the step's purchase says (`train_to` 0: never).
+    pub train_from: u32,
+    pub train_to: u32,
 }
 
 impl Params {
@@ -106,6 +112,8 @@ impl Params {
         inside: 0,
         toward: 0,
         crowd: 0,
+        train_from: 0,
+        train_to: 0,
     };
 
     /// These weights with the shape terms `group`, `thin` and `spot` (E010).
@@ -312,6 +320,7 @@ pub fn turn_with(state: &State, params: &Params, buy: Buy) -> Vec<Command> {
         Buy::Payback => purchases(&mut scratch, &mut turn, &mut out),
         Buy::Exact { mines, units } => exact(&mut scratch, &mut turn, mines, units, &mut out),
     }
+    forced_training(&mut scratch, &mut turn, &mut out);
     out
 }
 
@@ -404,6 +413,28 @@ fn purchases(state: &mut State, turn: &mut Turn<'_>, out: &mut Vec<Command>) {
         if !play(state, Command::Train { level: 1, x, y }, out) {
             break;
         }
+        turn.claim(cell);
+    }
+}
+
+/// E108: a training on the free cell worth most next to our territory, on the
+/// game turns `train_from` to `train_to` when the turn made none and the gold
+/// pays one.
+fn forced_training(state: &mut State, turn: &mut Turn<'_>, out: &mut Vec<Command>) {
+    let p = turn.params;
+    let game_turn = state.game_turn();
+    if p.train_to == 0 || game_turn < p.train_from || game_turn > p.train_to {
+        return;
+    }
+    if out.iter().any(|c| matches!(c, Command::Train { .. })) || state.gold(turn.me) < UNIT_COST {
+        return;
+    }
+    let me = turn.me;
+    let Some(cell) = turn.best(state.near_active(me) & turn.free & state.enterable(me, 1)) else {
+        return;
+    };
+    let (x, y) = xy(cell);
+    if play(state, Command::Train { level: 1, x, y }, out) {
         turn.claim(cell);
     }
 }
