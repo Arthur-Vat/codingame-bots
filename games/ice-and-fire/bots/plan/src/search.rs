@@ -66,7 +66,7 @@ pub const OPP_MAX_TRAINS: Option<usize> = Some(2);
 /// Whether the opponent's climb places its moves, towers and mines first
 /// and only then may train (E105): in the largest group of its misses, the
 /// real reply trained nobody while the climb trained four units.
-pub const OPP_MOVES_FIRST: bool = false;
+pub const OPP_MOVES_FIRST: bool = true;
 /// Where between the soft and the hard limit the middle game's climbs stop
 /// (E027): at 36 ms of a 40 ms turn rather than 24; the rest is for the
 /// final choice and its check.
