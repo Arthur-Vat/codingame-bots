@@ -19,7 +19,7 @@
 //! ice-and-fire-review codingame-early --data DIR --me NAME [--kinds ranking,test] [--turns T] > early.csv
 //! ice-and-fire-review codingame-capability-suite --data DIR --me NAME [--reference PLAYER] [--per N] [--per-game N] [--seed S] [--mover PLAYER] [--kinds ranking,test] [--release NAME] [--jobs N] > suite.tsv
 //! ice-and-fire-review codingame-capabilities --data DIR --me NAME --suite FILE [--bot NAME=COMMAND...] [--tries N] [--reference PLAYER] [--csv FILE] [--jobs N] > capabilities.md
-//! ice-and-fire-review codingame-judge --data DIR --me NAME --judge BIN [--release NAME] [--players A,B | --top N] [--tries N] [--limit PLIES] [--jobs N] --out DIR
+//! ice-and-fire-review codingame-judge --data DIR --me NAME (--judge BIN --out DIR | --bank FILE) [--release NAME] [--players A,B | --top N] [--tries N] [--limit PLIES] [--jobs N]
 //! ```
 
 mod bank;
@@ -676,8 +676,8 @@ enum Command {
         me: String,
         /// The plan bot built with `--features analysis`
         /// (`target/release/ice-and-fire-bot-plan`).
-        #[arg(long)]
-        judge: PathBuf,
+        #[arg(long, required_unless_present = "bank")]
+        judge: Option<PathBuf>,
         /// Only our games played by this release (see `codingame-report`).
         #[arg(long)]
         release: Option<String>,
@@ -701,8 +701,13 @@ enum Command {
         jobs: usize,
         /// The folder to write to, created if missing: judgements.csv,
         /// summary.csv, largest-gaps.md and README.md.
-        #[arg(long)]
-        out: PathBuf,
+        #[arg(long, required_unless_present = "bank")]
+        out: Option<PathBuf>,
+        /// Instead of judging, write the bank block of every chosen ply
+        /// (with its `played` line) to this file, in the order they are
+        /// read, and stop: no bot runs. `--limit` still applies.
+        #[arg(long, conflicts_with_all = ["judge", "out"])]
+        bank: Option<PathBuf>,
     },
 }
 
@@ -1258,6 +1263,7 @@ fn run(cli: Cli) -> Result<(), String> {
             leaderboard,
             jobs,
             out,
+            bank,
         } => {
             judge::run(&judge::Request {
                 data,
@@ -1271,6 +1277,7 @@ fn run(cli: Cli) -> Result<(), String> {
                 jobs,
                 leaderboard,
                 out,
+                bank,
             })?;
             Ok(())
         }

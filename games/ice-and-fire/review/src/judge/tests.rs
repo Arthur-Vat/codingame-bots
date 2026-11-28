@@ -52,7 +52,7 @@ fn request(dir: &Path, judge: PathBuf) -> Request {
     Request {
         data: dir.to_path_buf(),
         me: "Tarleya".to_string(),
-        judge,
+        judge: Some(judge),
         players: vec![],
         release: None,
         top: 10,
@@ -60,13 +60,14 @@ fn request(dir: &Path, judge: PathBuf) -> Request {
         limit: None,
         jobs: 2,
         leaderboard: None,
-        out: dir.join("out"),
+        out: Some(dir.join("out")),
+        bank: None,
     }
 }
 
 /// Runs the request and reads back a file of its folder.
 fn read(request: &Request, file: &str) -> String {
-    fs::read_to_string(request.out.join(file)).expect(file)
+    fs::read_to_string(request.out.as_ref().expect("an out folder").join(file)).expect(file)
 }
 
 #[test]
@@ -231,4 +232,47 @@ fn plies_are_spread_evenly() {
     assert_eq!(spread(all.clone(), Some(20)), all);
     assert_eq!(spread(all.clone(), None), all);
     assert_eq!(spread(all, Some(0)), Vec::<usize>::new());
+}
+
+#[test]
+fn a_bank_request_writes_the_played_blocks_and_runs_no_bot() {
+    let dir = data_dir("judge-bank");
+    let mut asked = request(&dir, dir.join("missing"));
+    asked.judge = None;
+    asked.out = None;
+    asked.players = vec!["Gabbek".to_string()];
+    let file = dir.join("all.bank");
+    asked.bank = Some(file.clone());
+    run(&asked).expect("a bank");
+    let text = fs::read_to_string(&file).expect("the bank");
+    let blocks: Vec<&str> = text.split_inclusive("end\n").collect();
+    assert!(blocks.len() > 10, "{}", blocks.len());
+    for block in &blocks {
+        assert!(block.starts_with("position "), "{block}");
+        assert!(block.contains("\nturn\n"), "{block}");
+        let last = block.lines().rev().nth(1).expect("a played line");
+        assert!(last.starts_with("played "), "{block}");
+    }
+    // In reading order: the plies of a game follow each other.
+    let plies: Vec<(&str, usize)> = text
+        .lines()
+        .filter(|l| l.starts_with("position "))
+        .map(|l| {
+            let w: Vec<&str> = l.split(' ').collect();
+            (w[1], w[2].parse().expect("a ply"))
+        })
+        .collect();
+    assert!(plies
+        .windows(2)
+        .all(|p| p[0].0 != p[1].0 || p[0].1 < p[1].1));
+    // `--limit` still applies, and nothing else is written.
+    asked.limit = Some(4);
+    run(&asked).expect("a limited bank");
+    let limited = fs::read_to_string(&file).expect("the bank");
+    assert_eq!(limited.matches("\nend\n").count(), 4, "{limited}");
+    assert!(!dir.join("out").exists());
+    // Without a bank, a judge and a folder are needed.
+    asked.bank = None;
+    let err = run(&asked).expect_err("no judge");
+    assert!(err.contains("--judge"), "{err}");
 }
