@@ -34,7 +34,7 @@
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::BuildHasherDefault;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use ice_and_fire_engine::state::BUILD_COST;
 use ice_and_fire_engine::{Bits, Command, Outcome, State, HQ, SIZE};
@@ -82,6 +82,10 @@ pub enum Leaf {
     /// One climb of ours from that state, with no reply search, its end
     /// scored by `value`: a cheap estimate of our next turn.
     Climb,
+    /// E120: a whole turn search where the time left per leaf is at least
+    /// [`MIN_THINK_US`] (scaled by the time scale), else, for that candidate,
+    /// one climb per leaf as `Climb`.
+    Fit,
 }
 
 /// A lean deep step (E119, E118 made small enough for CodinGame's limit).
@@ -98,7 +102,22 @@ pub struct Lean {
     pub replies: usize,
     /// What a leaf is.
     pub leaf: Leaf,
+    /// E120: today's search keeps its whole limits (`share` is not used) and
+    /// the deep step runs only in the time it leaves before the hard limit
+    /// (with `CG_FIXED_ITERS`, in [`FREE_TRIES_PCT`]% more tries), only when
+    /// it ended before its time limit, its tries or the climb cap. A
+    /// `Think` leaf that would get less than [`MIN_THINK_US`] is skipped,
+    /// and its candidate not compared.
+    pub free: bool,
 }
+
+/// E120: the smallest time, in microseconds at CodinGame's time scale
+/// (multiplied by `CG_TIME_SCALE`), a `Think` leaf of a free-time deep step
+/// gets; with less, the leaf is skipped.
+const MIN_THINK_US: f64 = 1000.0;
+/// E120: with `CG_FIXED_ITERS`, the tries of a free-time deep step, in
+/// percent of the tries of today's search.
+const FREE_TRIES_PCT: u128 = 50;
 
 /// The lean deep step (E119): after today's search, which has `share`% of the
 /// turn, the candidates' leaves are searched one candidate after the other,
@@ -877,7 +896,12 @@ impl Search {
             leaves.push(rated.into_iter().map(|(_, after)| after).collect());
         }
         let total: usize = leaves.iter().map(Vec::len).sum();
-        let tries = u128::from(full.max_evals) * u128::from(100 - lean.share.min(100)) / 100;
+        let tries = if lean.free {
+            u128::from(full.max_evals) * FREE_TRIES_PCT / 100
+        } else {
+            u128::from(full.max_evals) * u128::from(100 - lean.share.min(100)) / 100
+        };
+        let min_think = Duration::from_secs_f64(MIN_THINK_US / 1e6 * cg_core::time::time_scale());
         let each = (tries / total.max(1) as u128).max(1) as u64;
         let mut left = total;
         let mut best: Option<(i64, bool, usize)> = None;
@@ -887,9 +911,34 @@ impl Search {
             } else {
                 i64::MAX
             };
+            // Whether the time left gives each leaf a whole turn search
+            // (E120, free time only).
+            let fits = |left: usize| match full.hard {
+                Some(hard) if lean.free => {
+                    hard.saturating_duration_since(Instant::now())
+                        .div_f64(left.max(1) as f64)
+                        >= min_think
+                }
+                _ => true,
+            };
+            let mut kind = kind;
+            let mut complete = true;
+            if lean.free && kind == Leaf::Think && !leaves[rank].is_empty() && !fits(left) {
+                if lean.leaf == Leaf::Fit {
+                    kind = Leaf::Climb;
+                } else {
+                    left -= leaves[rank].len();
+                    continue;
+                }
+            }
             for leaf in &leaves[rank] {
                 if full.hard.is_some_and(|hard| Instant::now() >= hard) {
                     return best.map(|(_, _, rank)| candidates[rank]);
+                }
+                if kind == Leaf::Think && !fits(left) {
+                    complete = false;
+                    left -= 1;
+                    continue;
                 }
                 let mut leaf_limit = Limit {
                     soft: None,
@@ -911,6 +960,9 @@ impl Search {
                 left -= 1;
                 deep = deep.min(value);
             }
+            if !complete {
+                continue;
+            }
             let key = (deep, index == today, std::cmp::Reverse(rank));
             let better = best.is_none_or(|(d, t, r)| key > (d, t, std::cmp::Reverse(r)));
             if better {
@@ -931,7 +983,7 @@ impl Search {
                 let thought = think_in(state, limit, opening, None, (None, None));
                 thought.score.unwrap_or_else(|| self.value(state))
             }
-            Leaf::Climb => {
+            Leaf::Climb | Leaf::Fit => {
                 if lethal(state).is_some() {
                     return WIN;
                 }
@@ -1038,7 +1090,10 @@ fn think_in(
     }
     // A lean deep turn (E119) gives today's search a share of the turn.
     let full = limit;
-    let limit = lean.map_or(limit, |lean| lean_limit(limit, lean.share));
+    // A free-time one (E120) leaves today's search all of it.
+    let limit = lean
+        .filter(|lean| !lean.free)
+        .map_or(limit, |lean| lean_limit(limit, lean.share));
     let at = |share: f64| match (limit.soft, limit.hard) {
         (Some(soft), Some(hard)) => Some(soft + (hard - soft).mul_f64(share)),
         _ => None,
@@ -1140,6 +1195,8 @@ fn think_in(
             }
         }
     }
+    // E120: whether today's search ended before its limits.
+    let ended_early = !search.spent();
     thought.forced = usize::from(exhausted);
     thought.evals = search.evals;
     thought.memory = memory.len();
@@ -1184,7 +1241,7 @@ fn think_in(
     }
     #[cfg(feature = "analysis")]
     judge::observe(&search, state, &memory, best);
-    if let Some(lean) = lean {
+    if let Some(lean) = lean.filter(|lean| !lean.free || ended_early) {
         let today = best.map(|(_, index)| index);
         let chosen = search.lean_step(&plans, &scores, &memory, (today, lean), (full, opening));
         if let Some(index) = chosen {
