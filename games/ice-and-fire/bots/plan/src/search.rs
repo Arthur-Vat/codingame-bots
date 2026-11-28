@@ -68,7 +68,7 @@ const REPLY_CUT_EXTRA: usize = 0;
 /// after the reply, its score taken, and the worst reply counting), and play
 /// the best. `None`: today's search alone, as in every release. Offline only:
 /// a deep turn takes [`DEEP_MS`], far beyond CodinGame's limit.
-pub const DEEP: Option<usize> = None;
+pub const DEEP: Option<usize> = Some(4);
 /// A deep turn's budget in milliseconds at CodinGame's time scale, multiplied
 /// by `CG_TIME_SCALE` as the other budgets are (E118). Today's search keeps
 /// its own budget at the start of it; the deep step runs until this.
