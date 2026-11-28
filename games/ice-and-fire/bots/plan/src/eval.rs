@@ -141,13 +141,40 @@ pub(crate) fn mines(state: &State, seat: usize, exposed: Bits) -> i64 {
     let active = state.active(seat);
     let mines = (state.mines() & active).and_not(exposed);
     let cells = i64::from(active.count());
-    let bonus = if state.game_turn() <= EARLY_MINE_TURN {
+    let turn = state.game_turn();
+    let mut bonus = if turn <= EARLY_MINE_TURN {
         cells / EARLY_MINE_PER_CELLS + EARLY_MINE_BONUS
     } else {
         mine_bonus(cells)
     };
-    bonus * i64::from(mines.count())
+    if (MID_MINE_FROM..=MID_MINE_TO).contains(&turn) {
+        bonus += MID_MINE_BONUS;
+    }
+    let mut value = bonus * i64::from(mines.count());
+    if SPOT_BONUS != 0 && turn <= SPOT_UNTIL {
+        // Free mine spots held (E111): land where mines can go.
+        let spots = (state.map().spots & active)
+            .and_not(state.mines())
+            .and_not(exposed);
+        value += SPOT_BONUS * i64::from(spots.count());
+    }
+    value
 }
+
+/// What a safe mine counts more from game turn [`MID_MINE_FROM`] to
+/// [`MID_MINE_TO`] (E111: zasmu builds 0.41 mines a turn at game turns 9 to 14,
+/// we 0.15). 0: none.
+pub const MID_MINE_BONUS: i64 = 0;
+/// The first game turn of [`MID_MINE_BONUS`] (E111).
+pub const MID_MINE_FROM: u32 = 9;
+/// The last game turn of [`MID_MINE_BONUS`] (E111).
+pub const MID_MINE_TO: u32 = 14;
+/// What each free mine spot on a side's active cells, that the enemy cannot
+/// take at its next turn, counts until game turn [`SPOT_UNTIL`] (E111: a
+/// small nudge to take land that holds mine spots). 0: none.
+pub const SPOT_BONUS: i64 = 0;
+/// The last game turn of [`SPOT_BONUS`] (E111).
+pub const SPOT_UNTIL: u32 = 14;
 
 /// The last game turn on which a safe mine counts [`EARLY_MINE_BONUS`] more
 /// and one more per [`EARLY_MINE_PER_CELLS`] active cells (E058): 0 for
