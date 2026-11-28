@@ -105,7 +105,7 @@ pub const SPEND_ORDER: bool = true;
 /// gold band that our climbs offer (E109); the others are not. `None`: all.
 /// Cuts, the lethal chain and blockers are always offered, and all purchases
 /// on a turn when a chain to an HQ can be paid.
-pub const SPEND_KINDS: Option<usize> = Some(4);
+pub const SPEND_KINDS: Option<usize> = Some(6);
 
 /// When the search stops.
 #[derive(Clone, Copy)]
