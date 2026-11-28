@@ -18,9 +18,12 @@ use std::sync::OnceLock;
 use ice_and_fire_engine::{Bits, State, CELLS, HQ};
 use ice_and_fire_tactics::chain::{cost_to, UNREACHABLE};
 
+mod spending;
 mod table;
 #[cfg(test)]
 mod tests;
+
+pub use spending::{Buy, SpendTable, BUYS, ROWS, WIDTH};
 
 /// The distance of a cell from land that is not there: no enemy cell, no
 /// joint, or no path.

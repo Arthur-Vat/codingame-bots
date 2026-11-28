@@ -50,8 +50,10 @@ use crate::strategy::Guide;
 
 #[cfg(feature = "analysis")]
 pub mod judge;
+mod spending;
 mod steer;
 
+use spending::Spending;
 use steer::Steer;
 
 /// Replies kept in the memory.
@@ -93,6 +95,17 @@ pub const TYPE_ORDER: bool = false;
 /// The game turn from which [`TYPE_KINDS`] and [`TYPE_ORDER`] apply, by the
 /// game turn of a climb's root (E106).
 pub const TYPE_FROM_TURN: u32 = 7;
+
+/// Whether our climbs break ties of the last gain among the trainings,
+/// towers and mines by their kind's share in zasmu's spending table (E109,
+/// stage 6), from [`TYPE_FROM_TURN`]: before the moves and the other
+/// actions, or, with [`TYPE_ORDER`], after the moves.
+pub const SPEND_ORDER: bool = false;
+/// The number of the most frequent kinds of purchase of the turn band and
+/// gold band that our climbs offer (E109); the others are not. `None`: all.
+/// Cuts, the lethal chain and blockers are always offered, and all purchases
+/// on a turn when a chain to an HQ can be paid.
+pub const SPEND_KINDS: Option<usize> = None;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
@@ -412,6 +425,15 @@ impl Search {
         on.then(|| Steer::new(cur))
     }
 
+    /// The spending of a climb from `root`, when [`SPEND_ORDER`] or
+    /// [`SPEND_KINDS`] apply to it (E109): ours only, from [`TYPE_FROM_TURN`].
+    fn spending(&self, root: &State) -> Option<Spending> {
+        let on = (SPEND_KINDS.is_some() || SPEND_ORDER)
+            && !self.opponent
+            && root.game_turn() >= TYPE_FROM_TURN;
+        on.then(|| Spending::new(root))
+    }
+
     /// Adds the strategic turn's pieces to `actions` (E077).
     fn add_pieces(&self, actions: &mut Vec<Action>) {
         if let Some(guide) = &self.guide {
@@ -478,6 +500,7 @@ impl Search {
         let mut gains = Gains::default();
         let mut actions = Vec::new();
         let mut order = Vec::new();
+        let spend = self.spending(root);
         while cur.outcome().is_none() && !self.spent() {
             if commands.is_empty() && cached {
                 match &self.root_actions {
@@ -496,6 +519,9 @@ impl Search {
                 generate(&cur, &mut actions);
                 self.add_pieces(&mut actions);
             }
+            if let (Some(spend), Some(k)) = (&spend, SPEND_KINDS) {
+                spend.filter(k, &mut actions);
+            }
             blockers(&cur, memory, &mut actions);
             let steer = self.steer(root, &cur);
             if let (Some(steer), Some(k)) = (&steer, TYPE_KINDS) {
@@ -510,16 +536,31 @@ impl Search {
             // Highest last gain first, new actions before all, then in the
             // order generated.
             // With [`TYPE_ORDER`], ties go by the prior (E106).
-            match steer.as_ref().filter(|_| TYPE_ORDER) {
-                Some(steer) => {
-                    let priors: Vec<u8> = actions.iter().map(|a| steer.prior(&cur, a)).collect();
-                    order.sort_by(|a, b| {
-                        (b.0.cmp(&a.0))
-                            .then(priors[b.1].cmp(&priors[a.1]))
-                            .then(a.1.cmp(&b.1))
-                    });
+            let spend_on = spend.as_ref().filter(|_| SPEND_ORDER);
+            let moves_on = steer.as_ref().filter(|_| TYPE_ORDER);
+            if let Some(spend) = spend_on {
+                let ties: Vec<u16> = actions
+                    .iter()
+                    .map(|a| spend.tie(a, moves_on.map(|s| s.prior(&cur, a))))
+                    .collect();
+                order.sort_by(|a, b| {
+                    (b.0.cmp(&a.0))
+                        .then(ties[b.1].cmp(&ties[a.1]))
+                        .then(a.1.cmp(&b.1))
+                });
+            } else {
+                match steer.as_ref().filter(|_| TYPE_ORDER) {
+                    Some(steer) => {
+                        let priors: Vec<u8> =
+                            actions.iter().map(|a| steer.prior(&cur, a)).collect();
+                        order.sort_by(|a, b| {
+                            (b.0.cmp(&a.0))
+                                .then(priors[b.1].cmp(&priors[a.1]))
+                                .then(a.1.cmp(&b.1))
+                        });
+                    }
+                    None => order.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1))),
                 }
-                None => order.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1))),
             }
             let mut done = vec![false; actions.len()];
             if commands.is_empty() {
@@ -787,6 +828,9 @@ pub fn think_with(
                     exhausted = true;
                     forced = search.root_actions.clone().unwrap_or_default();
                     forced.retain(|a| !banned.contains(&key(a.commands())));
+                    if let (Some(spend), Some(k)) = (search.spending(state), SPEND_KINDS) {
+                        spend.filter(k, &mut forced);
+                    }
                     let steer = search.steer(state, state);
                     if let (Some(steer), Some(k)) = (&steer, TYPE_KINDS) {
                         steer.filter(state, k, &mut forced);
@@ -800,11 +844,19 @@ pub fn think_with(
                     };
                     // Stable, so that ties keep the generator's order; the
                     // best gain last, since the climbs pop from the end.
-                    match steer.as_ref().filter(|_| TYPE_ORDER) {
-                        Some(steer) => {
-                            forced.sort_by_key(|a| (gain(a), steer.prior(state, a)));
+                    let spend = search.spending(state).filter(|_| SPEND_ORDER);
+                    let moves_on = steer.as_ref().filter(|_| TYPE_ORDER);
+                    if let Some(spend) = spend {
+                        forced.sort_by_key(|a| {
+                            (gain(a), spend.tie(a, moves_on.map(|s| s.prior(state, a))))
+                        });
+                    } else {
+                        match moves_on {
+                            Some(steer) => {
+                                forced.sort_by_key(|a| (gain(a), steer.prior(state, a)));
+                            }
+                            None => forced.sort_by_key(gain),
                         }
-                        None => forced.sort_by_key(gain),
                     }
                 }
             }

@@ -137,7 +137,7 @@ pub fn kinds_of(state: &State, typing: &Typing, commands: &[Command]) -> BTreeMa
 }
 
 /// A JSON string.
-fn json_string(text: &str) -> String {
+pub(super) fn json_string(text: &str) -> String {
     let mut out = String::from("\"");
     for c in text.chars() {
         match c {
@@ -201,7 +201,7 @@ pub fn unit_line(position: &Position) -> Result<String, String> {
 }
 
 /// The value after `flag` in `args`.
-fn option(args: &[String], flag: &str) -> Result<Option<String>, String> {
+pub(super) fn option(args: &[String], flag: &str) -> Result<Option<String>, String> {
     let Some(at) = args.iter().position(|a| a == flag) else {
         return Ok(None);
     };
@@ -212,7 +212,7 @@ fn option(args: &[String], flag: &str) -> Result<Option<String>, String> {
 }
 
 /// Refuses arguments other than `known` flags with their values.
-fn check_flags(args: &[String], known: &[&str]) -> Result<(), String> {
+pub(super) fn check_flags(args: &[String], known: &[&str]) -> Result<(), String> {
     let mut args = args.iter();
     while let Some(arg) = args.next() {
         if !known.contains(&arg.as_str()) {

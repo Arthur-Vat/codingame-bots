@@ -21,11 +21,18 @@
 //!   types --positions FILE
 //! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
 //!   types-table --json FILE --out FILE
+//! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
+//!   spending --positions FILE
+//! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
+//!   spending-table --json FILE --out FILE
 //! ```
 //!
 //! `types` and `types-table` (the [`typing`] module) print the unit types of
 //! a bank's positions with the kind of action played, and write the table of
 //! zasmu's actions by type that the builder counted.
+//!
+//! `spending` and `spending-table` (the [`spending`] module) do the same for
+//! zasmu's purchases (E109).
 //!
 //! `speed` (the [`speed`] module) times the search alone on a bank.
 //!
@@ -65,6 +72,7 @@ pub mod frontline;
 pub mod guide;
 pub mod judge;
 pub mod speed;
+pub mod spending;
 pub mod surprise;
 pub mod typing;
 
@@ -625,6 +633,30 @@ pub fn main_if_asked() {
             }
             Err(err) => {
                 eprintln!("plan types-table: {err}");
+                std::process::exit(2);
+            }
+        }
+    }
+    if args.first().map(String::as_str) == Some("spending") {
+        match spending::run_positions(&args[1..]) {
+            Ok(text) => {
+                print!("{text}");
+                std::process::exit(0);
+            }
+            Err(err) => {
+                eprintln!("plan spending: {err}");
+                std::process::exit(2);
+            }
+        }
+    }
+    if args.first().map(String::as_str) == Some("spending-table") {
+        match spending::run_table(&args[1..]) {
+            Ok(text) => {
+                print!("{text}");
+                std::process::exit(0);
+            }
+            Err(err) => {
+                eprintln!("plan spending-table: {err}");
                 std::process::exit(2);
             }
         }
