@@ -164,13 +164,13 @@ const OPENING_CROWD: i64 = 2;
 /// (`Params::horizon`, E056): 15 in v023, as in v003's opening; 18 won the
 /// screening (17 and 19 did not gain, 21 lost), so that the opening buys a
 /// few more units once they spread (E051).
-const OPENING_HORIZON: i64 = 18;
+const OPENING_HORIZON: i64 = 21;
 
 /// The game turns, first and last, on which the opening trains at least one
 /// unit whenever the gold pays one, on the free cell worth most next to our
 /// land (`Params::train_from`, `Params::train_to`, E108): `(0, 0)` never, as
 /// before E108; `(5, 6)` as zasmu trains at game turns 5 and 6.
-const OPENING_TRAIN_TURNS: (u32, u32) = (5, 6);
+const OPENING_TRAIN_TURNS: (u32, u32) = (0, 0);
 
 /// The cells a unit is expected to take after the territories meet
 /// (`Params::after_contact`, E056): 0 in v023.

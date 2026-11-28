@@ -152,7 +152,7 @@ pub fn xy(cell: usize) -> (u8, u8) {
 /// whenever the rules allow, as before E108; 7 none before game turn 7, as
 /// zasmu's opening builds its first mines then. The opening itself builds none
 /// (`OPENING_SAFE_SPOT`).
-pub const MINE_FROM: u32 = 7;
+pub const MINE_FROM: u32 = 0;
 
 /// The actions for the player to act in `state`, in `out` (cleared first), in
 /// a fixed order.
