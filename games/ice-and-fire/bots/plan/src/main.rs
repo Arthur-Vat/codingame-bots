@@ -67,7 +67,7 @@ use ice_and_fire_opening::econ::Params;
 use ice_and_fire_opening::planned::{Planned, Planner};
 use ice_and_fire_opening::solo::{self, Objective, Order};
 
-use crate::search::Limit;
+use crate::search::{Limit, DEEP, DEEP_MS};
 
 /// The time of a turn at CodinGame's limits, milliseconds: 50 ms, less a
 /// margin for the input, the output and a busy machine; 40 before E055,
@@ -102,20 +102,35 @@ fn limit(start: Instant, turn: u32) -> Limit {
         return Limit {
             soft: None,
             hard: None,
+            deep: None,
             max_evals,
         };
     }
     // A scale beyond 100 is no use and could overflow the clock.
-    let scale = (cg_core::time::time_scale() * THINK_SCALE).min(100.0);
+    // The first turn is the opening's: a teacher's scale is capped at 10
+    // there (E118), so that it stays within about 8 s of the time scale.
+    let think = if turn == 1 {
+        THINK_SCALE.min(10.0)
+    } else {
+        THINK_SCALE
+    };
+    let scale = (cg_core::time::time_scale() * think).min(100.0);
     let ms = if turn == 1 {
         FIRST_BUDGET_MS
     } else {
         BUDGET_MS
     };
     let budget = Duration::from_secs_f64(ms / 1000.0 * scale);
+    // A deep turn (E118) ends at DEEP_MS of CodinGame's time scale, after
+    // today's search at its own budget.
+    let deep = DEEP.map(|_| {
+        let scale = cg_core::time::time_scale().min(100.0);
+        start + Duration::from_secs_f64(DEEP_MS / 1000.0 * scale)
+    });
     Limit {
         soft: Some(start + budget.mul_f64(SOFT_SHARE)),
         hard: Some(start + budget),
+        deep,
         max_evals: u64::MAX,
     }
 }

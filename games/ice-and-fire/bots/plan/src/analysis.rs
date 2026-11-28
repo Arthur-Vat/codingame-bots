@@ -283,6 +283,7 @@ pub fn plan(position: &Position, variant: Variant, tries: u64) -> Result<Vec<Com
         soft: None,
         hard: None,
         max_evals: tries,
+        deep: None,
     };
     let thought = think(&state, limit, &mut opening);
     set_variant(Variant::Full);

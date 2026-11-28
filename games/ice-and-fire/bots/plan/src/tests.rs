@@ -22,6 +22,7 @@ fn evals(max_evals: u64) -> Limit {
         soft: None,
         hard: None,
         max_evals,
+        deep: None,
     }
 }
 
@@ -265,6 +266,7 @@ fn the_search_respects_its_deadline_on_a_heavy_position() {
             soft: Some(start + budget.mul_f64(0.75)),
             hard: Some(start + budget),
             max_evals: u64::MAX,
+            deep: None,
         };
         let thought = think(&state, limit, &mut opening());
         let elapsed = start.elapsed();

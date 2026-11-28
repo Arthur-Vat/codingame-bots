@@ -100,6 +100,7 @@ pub fn judge(position: &Position, tries: u64) -> Result<Judgement, String> {
         soft: None,
         hard: None,
         max_evals: tries,
+        deep: None,
     };
     let thought = think(&state, limit, &mut opening);
     let (ours_score, played_score) = match take() {

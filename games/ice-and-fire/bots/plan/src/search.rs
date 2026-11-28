@@ -61,6 +61,18 @@ const CAP_SCALE: usize = 1;
 /// Cells added to the opponent's cuts in its replies, beyond our own
 /// `CUT_LENGTH` (E117's teacher).
 const REPLY_CUT_EXTRA: usize = 0;
+/// A deeper teacher (E118, `research/codingame/2026-11-28-deep-teacher.md`):
+/// `Some(n)` makes the middle game's turn compare its `n` best plans, and the
+/// plan today's search would play, by what our next turn can do after each of
+/// the opponent's replies to them (a whole turn search of ours from the state
+/// after the reply, its score taken, and the worst reply counting), and play
+/// the best. `None`: today's search alone, as in every release. Offline only:
+/// a deep turn takes [`DEEP_MS`], far beyond CodinGame's limit.
+pub const DEEP: Option<usize> = None;
+/// A deep turn's budget in milliseconds at CodinGame's time scale, multiplied
+/// by `CG_TIME_SCALE` as the other budgets are (E118). Today's search keeps
+/// its own budget at the start of it; the deep step runs until this.
+pub const DEEP_MS: f64 = 2000.0;
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8 * CAP_SCALE;
 /// The opponent's best cuts added to the memory after a climb.
@@ -109,6 +121,9 @@ pub struct Limit {
     pub soft: Option<Instant>,
     /// The choice among the plans stops scoring more of them after this.
     pub hard: Option<Instant>,
+    /// Where a deep turn ends (E118): the deep step, which follows today's
+    /// search, stops at this. Only used with [`DEEP`].
+    pub deep: Option<Instant>,
     /// Most plans scored (one try of an action is one) during the climbs. The
     /// tests use it in place of a deadline, so that they are deterministic.
     pub max_evals: u64,
@@ -132,6 +147,9 @@ pub struct Thought {
     /// Whether the climbs ran out of first actions and were then forced to
     /// start with each of the others (E029).
     pub forced: usize,
+    /// The final score of the plan played, when the search chose among plans
+    /// (E118: a leaf's value); `WIN` for a lethal turn.
+    pub score: Option<i64>,
     /// Whether the opening played the turn.
     pub opening: bool,
     /// Whether the plan played starts with the strategic turn (E077).
@@ -184,6 +202,8 @@ struct Search {
     /// The strategic layer's guide this turn (E077): its plan and the
     /// objectives' term.
     guide: Option<Guide>,
+    /// The deep step's candidates and leaves (E118).
+    deep_stats: (usize, usize),
 }
 
 /// The strike reserve (E069, stage B of the curriculum in
@@ -604,6 +624,7 @@ impl Search {
             // The opponent's model keeps no reserve, as before E069.
             strike: false,
             guide: None,
+            deep_stats: (0, 0),
         };
         out.push(theirs.climb(&next, &[], &[], true).commands);
         out.retain(|commands| !commands.is_empty());
@@ -651,6 +672,107 @@ impl Search {
     }
 }
 
+impl Search {
+    /// The deep step (E118): the index of the plan to play among `plans`
+    /// (scored `scores`, today's choice `today`), compared by what our next
+    /// turn can do. The candidates are the `width` best plans and today's; a
+    /// candidate's score is the worst over its replies (the memory's and its
+    /// own) of the final score of the plan a whole turn search of ours plays
+    /// from the state after the reply. The searches share the time to
+    /// `limit.deep` evenly, or the tries when there is no clock. On a tie
+    /// today's choice wins, then the earlier candidate.
+    fn deepen(
+        &mut self,
+        plans: &[Plan],
+        scores: &[Option<i64>],
+        memory: &[Reply],
+        (today, width): (Option<usize>, usize),
+        limit: Limit,
+        opening: &mut Planned,
+    ) -> Option<usize> {
+        let today = today?;
+        let score_of = |index: usize| scores[index].unwrap_or(i64::MIN);
+        // The best first, the earlier on a tie.
+        let mut order: Vec<usize> = (0..plans.len()).collect();
+        order.sort_by_key(|&index| std::cmp::Reverse(score_of(index)));
+        let mut candidates: Vec<usize> = order.into_iter().take(width).collect();
+        if !candidates.contains(&today) {
+            candidates.push(today);
+        }
+        // Each candidate's leaves: the states after its replies.
+        let mut leaves: Vec<Vec<State>> = Vec::new();
+        for &index in &candidates {
+            let plan = &plans[index];
+            let mut states = Vec::new();
+            if plan.end.outcome().is_none() {
+                let mut seen: Vec<&[Command]> = Vec::new();
+                let own = plan.own.iter().flatten();
+                for reply in memory.iter().chain(own) {
+                    if !seen.contains(&reply.commands.as_slice()) {
+                        seen.push(&reply.commands);
+                        states.push(after_reply(&plan.end, &reply.commands));
+                    }
+                }
+            }
+            leaves.push(states);
+        }
+        let total: usize = leaves.iter().map(Vec::len).sum();
+        self.deep_stats = (candidates.len(), total);
+        let mut left = total;
+        let mut best: Option<(i64, bool, usize)> = None;
+        for (rank, &index) in candidates.iter().enumerate() {
+            // A plan with no replies to search keeps its final score.
+            let mut deep = if leaves[rank].is_empty() {
+                self.final_score(&plans[index], memory)
+            } else {
+                i64::MAX
+            };
+            for leaf in &leaves[rank] {
+                let value = self.leaf_value(leaf, limit, left, opening);
+                left -= 1;
+                deep = deep.min(value);
+            }
+            let key = (deep, index == today, std::cmp::Reverse(rank));
+            let better = best.is_none_or(|(d, t, r)| key > (d, t, std::cmp::Reverse(r)));
+            if better {
+                best = Some((deep, index == today, rank));
+            }
+        }
+        best.map(|(_, _, rank)| candidates[rank])
+    }
+
+    /// The value of the leaf `state`, the start of our next turn: the final
+    /// score of the plan a turn search of ours plays from it, within an even
+    /// share of the deep time (or tries) left for the `left` leaves not yet
+    /// searched.
+    fn leaf_value(&self, state: &State, limit: Limit, left: usize, opening: &mut Planned) -> i64 {
+        if state.outcome().is_some() {
+            return self.value(state);
+        }
+        let share = left.max(1);
+        let leaf_limit = match limit.deep {
+            Some(deep) => {
+                let now = Instant::now();
+                let room = deep.saturating_duration_since(now).div_f64(share as f64);
+                Limit {
+                    soft: Some(now + room.mul_f64(0.6)),
+                    hard: Some(now + room),
+                    deep: None,
+                    max_evals: u64::MAX,
+                }
+            }
+            None => Limit {
+                soft: None,
+                hard: None,
+                deep: None,
+                max_evals: (limit.max_evals / share as u64).max(1),
+            },
+        };
+        let thought = think_in(state, leaf_limit, opening, None, None);
+        thought.score.unwrap_or_else(|| self.value(state))
+    }
+}
+
 /// Adds the replies `found` that the memory does not hold, then keeps the
 /// [`MEMORY_CAP`] most damaging. Whether the memory changed.
 fn remember(found: &[Reply], memory: &mut Vec<Reply>) -> bool {
@@ -682,6 +804,18 @@ pub fn think_with(
     opening: &mut Planned,
     guide: Option<Guide>,
 ) -> Thought {
+    think_in(state, limit, opening, guide, DEEP)
+}
+
+/// [`think_with`] with the deep step's width: `deep` is [`DEEP`] for a turn
+/// and `None` inside the deep step's own searches (E118), never recursive.
+fn think_in(
+    state: &State,
+    limit: Limit,
+    opening: &mut Planned,
+    guide: Option<Guide>,
+    deep: Option<usize>,
+) -> Thought {
     let me = state.to_act();
     let mut thought = Thought::default();
     if state.outcome().is_some() {
@@ -689,6 +823,7 @@ pub fn think_with(
     }
     if let Some(commands) = lethal(state) {
         thought.commands = commands;
+        thought.score = Some(WIN);
         return thought;
     }
     // A time between the soft and the hard limit.
@@ -733,6 +868,7 @@ pub fn think_with(
         root_actions: None,
         strike: strike_reserve(state),
         guide,
+        deep_stats: (0, 0),
     };
     let mut memory = Vec::new();
     let mut plans: Vec<Plan> = Vec::new();
@@ -861,6 +997,27 @@ pub fn think_with(
     }
     #[cfg(feature = "analysis")]
     judge::observe(&search, state, &memory, best);
+    if let Some(width) = deep {
+        let started = Instant::now();
+        for (index, score) in scores.iter_mut().enumerate() {
+            score.get_or_insert_with(|| search.final_score(&plans[index], &memory));
+        }
+        best = pick(&scores);
+        let today = best.map(|(_, index)| index);
+        let deep_best = search.deepen(&plans, &scores, &memory, (today, width), limit, opening);
+        if let Some(index) = deep_best {
+            best = Some((scores[index].unwrap_or(i64::MIN), index));
+        }
+        eprintln!(
+            "DEEP turn={} candidates={} leaves={} differs={} ms={:.1}",
+            state.game_turn(),
+            search.deep_stats.0,
+            search.deep_stats.1,
+            u8::from(deep_best.is_some() && deep_best != today),
+            started.elapsed().as_secs_f64() * 1000.0
+        );
+    }
+    thought.score = best.map(|(score, _)| score);
     if let Some((_, index)) = best {
         thought.strategic = search
             .guide

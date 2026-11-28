@@ -33,6 +33,7 @@ fn answer(after: &State, tries: u64) -> Vec<Command> {
         soft: None,
         hard: None,
         max_evals: tries,
+        deep: None,
     };
     think(after, limit, &mut opening).commands
 }
@@ -98,6 +99,7 @@ pub fn run(args: &[String]) -> Result<String, String> {
             soft: None,
             hard: None,
             max_evals: tries,
+            deep: None,
         };
         let search = think(&state, limit, &mut opening).commands;
         let goals = counted(&objectives(&state, seat));
