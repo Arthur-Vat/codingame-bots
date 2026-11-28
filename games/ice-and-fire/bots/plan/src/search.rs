@@ -57,16 +57,16 @@ use steer::Steer;
 /// How many times the caps below are multiplied: 1 at CodinGame's limits.
 /// A teacher (E117) thinks `THINK_SCALE` times longer and scales its caps
 /// with it, since at CodinGame's caps most of its turns end at a cap.
-const CAP_SCALE: usize = 1;
+const CAP_SCALE: usize = 3;
 /// Cells added to the opponent's cuts in its replies, beyond our own
 /// `CUT_LENGTH` (E117's teacher).
-const REPLY_CUT_EXTRA: usize = 0;
+const REPLY_CUT_EXTRA: usize = 1;
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8 * CAP_SCALE;
 /// The opponent's best cuts added to the memory after a climb.
 const REPLY_CUTS: usize = 3 * CAP_SCALE;
 /// Most climbs in one turn.
-const MAX_CLIMBS: usize = 1000 * CAP_SCALE;
+const MAX_CLIMBS: usize = 32 * CAP_SCALE;
 /// Most plans scored by the opponent's climb in one reply search (E019).
 const REPLY_EVALS: u64 = 300 * CAP_SCALE as u64;
 /// Where between the soft and the hard limit the middle game's climbs stop
