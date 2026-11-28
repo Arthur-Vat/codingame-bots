@@ -164,7 +164,7 @@ pub(crate) fn mines(state: &State, seat: usize, exposed: Bits) -> i64 {
 /// What a safe mine counts more from game turn [`MID_MINE_FROM`] to
 /// [`MID_MINE_TO`] (E111: zasmu builds 0.41 mines a turn at game turns 9 to 14,
 /// we 0.15). 0: none.
-pub const MID_MINE_BONUS: i64 = 4;
+pub const MID_MINE_BONUS: i64 = 8;
 /// The first game turn of [`MID_MINE_BONUS`] (E111).
 pub const MID_MINE_FROM: u32 = 9;
 /// The last game turn of [`MID_MINE_BONUS`] (E111).
