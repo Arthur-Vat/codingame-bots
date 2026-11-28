@@ -162,6 +162,35 @@ pub const EARLY_MINE_BONUS: i64 = 6;
 /// [`EARLY_MINE_TURN`] (E058): [`MINE_PER_CELLS`] in v024.
 pub const EARLY_MINE_PER_CELLS: i64 = MINE_PER_CELLS;
 
+/// The invest strategy (E113, the first of the strategy portfolio): from game
+/// turn [`INVEST_FROM`] to [`INVEST_TO`], the gold a side holds towards its
+/// chain to the enemy HQ counts only this percentage of what it counts in the
+/// other turns: the shared evaluation's pressure term (how far each side is
+/// from paying that chain) and the standing threat (what it would have left)
+/// are scaled by it, so that mines and land, which pay over several turns,
+/// win against gold kept. 100: today's weights.
+pub const INVEST_PERCENT: i64 = 100;
+/// The first game turn of the invest strategy (E113).
+pub const INVEST_FROM: u32 = 9;
+/// The last game turn of the invest strategy (E113).
+pub const INVEST_TO: u32 = 14;
+/// The shared evaluation's bound on the pressure term
+/// (`ice_and_fire_tactics::eval`, `MAX_PRESSURE`).
+const PRESSURE_BOUND: i64 = 200;
+
+/// What the invest strategy takes off the score for `seat` (E113): the part
+/// of the pressure and standing-threat terms, ours less the enemy's, beyond
+/// [`INVEST_PERCENT`]. 0 outside its turns or at 100.
+fn invest_discount(state: &State, margins: [i64; 2]) -> i64 {
+    let turn = state.game_turn();
+    if INVEST_PERCENT >= 100 || !(INVEST_FROM..=INVEST_TO).contains(&turn) {
+        return 0;
+    }
+    let part = |m: i64| m.clamp(-PRESSURE_BOUND, 0) + standing(m);
+    let full = part(margins[0]) - part(margins[1]);
+    full * (100 - INVEST_PERCENT) / 100
+}
+
 /// The weight of a joint and of a cell that one capture cuts off.
 const SHAPE: i64 = 2;
 
@@ -738,6 +767,7 @@ pub fn eval(state: &State, seat: usize) -> i64 {
     if state.outcome().is_some() {
         return score;
     }
+    let score = score - invest_discount(state, margins);
     #[cfg(feature = "analysis")]
     let score = score - crate::analysis::removed(state, seat);
     let ours = exposed(state, seat);
