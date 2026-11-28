@@ -4,7 +4,7 @@ One entry per experiment, failures included, so that ideas are not retried blind
 
 - **Entry:** `ENNN-short-name.md`, numbered in order, started from [template.md](template.md).
 - **Before the test:** the hypothesis, the change, and the candidate release the pull request adds.
-- **After the test:** the SPRT result from the pull request's comment, and the decision. A promoted experiment keeps the line naming its release, which CI requires; a dropped one says `none` there.
+- **After the test:** the SPRT result from the pull request's comment, and the decision. A promoted experiment keeps the line naming its release, which CI requires; a dropped one says `none` there; an accepted gain below +15 Elo has `decision: waiting` until a combined release ships it ([ADR 0062](../../../docs/adr/0062-small-gains-wait-for-the-next-release.md)).
 - **After pasting:** the rank on CodinGame, only when the owner reports one ([ADR 0036](../../../docs/adr/0036-ranks-optional.md)).
 
 ## Entries
@@ -108,4 +108,4 @@ One entry per experiment, failures included, so that ideas are not retried blind
 | [E112](E112-threat-towers.md) | 2026-11-28 | Towers offered only near the enemy's land or on its affordable cuts and chain, and the nearest tried first, beat `ice-and-fire-v034` | Not run: no gain in screening (within 2 +2.2, within 3 −1.3, nearest first +2.2, both −1.3; control −2.4; 1,600 pairs each) | Dropped |
 | [E113](E113-invest.md) | 2026-11-28 | Gold held for a strike counted less at game turns 9 to 14 (an invest strategy) makes us build mines and beats `ice-and-fire-v034` | Not run: lost in screening (at 50% −10.2, 25% −18.5, 0% −61.4; control +1.5; 1,600 pairs each) | Dropped |
 | [E115](E115-strike-gold.md) | 2026-11-28 | Gold held for a strike counted more in every turn beats `ice-and-fire-v034` | Not run: lost in screening (125% −11.5, 150% −16.1, 200% −70.9; control +1.5; 1,600 pairs each) | Dropped |
-| [E116](E116-weight-fit.md) | 2026-11-28 | The evaluation's 17 term weights a quarter of the way to a joint fit on the outcomes of v034's self-play beat `ice-and-fire-v034` (candidate `ice-and-fire-v035`) | Accepted, +7.9 Elo at CodinGame's limits | Promoted: `ice-and-fire-v035` |
+| [E116](E116-weight-fit.md) | 2026-11-28 | The evaluation's 17 term weights a quarter of the way to a joint fit on the outcomes of v034's self-play beat `ice-and-fire-v034` (candidate `ice-and-fire-v035`) | Accepted, +7.9 Elo at CodinGame's limits (#411 at `3e124d07`) | Waiting (ADR 0062) |
