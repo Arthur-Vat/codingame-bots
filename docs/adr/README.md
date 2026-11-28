@@ -19,7 +19,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0009](0009-manual-submission.md) | Manual submission to CodinGame | Superseded by 0047; the rank reported after each submission superseded earlier by 0036 |
 | [0010](0010-codingame-rust-toolchain.md) | Target CodinGame's Rust: 1.90.0, edition 2021 | Accepted; the decisions on local Rust and on `rust-toolchain.toml` superseded by 0055 |
 | [0011](0011-framework-structure.md) | Framework structure: text-protocol referees, reference rules, textual bundler | Accepted; the bundle's comments superseded by 0016 |
-| [0012](0012-evaluation.md) | Evaluation: SPRT on game pairs, seeded openings, frozen releases | Accepted; decision 7 superseded by 0013, part of decision 5 by 0015; decisions 10 and 12 completed by 0029; the league of decision 12 superseded by 0038; decision 9 completed by 0045 |
+| [0012](0012-evaluation.md) | Evaluation: SPRT on game pairs, seeded openings, frozen releases | Accepted; decision 7 superseded by 0013, part of decision 5 by 0015; decisions 10 and 12 completed by 0029; the league of decision 12 superseded by 0038; decision 9 completed by 0045; decision 11 superseded for gains below +15 Elo by 0062 |
 | [0013](0013-evaluation-time-limits.md) | Evaluation time limits: 20 ms plus 5 ms of tolerance, full time for strong bots | Accepted; decision 3 put in place by 0014, part of decision 1 superseded by 0015, and for games in Legend by 0020 and 0038; decisions 1 and 3 superseded by 0042 |
 | [0014](0014-full-time-confirmation.md) | Confirm accepted candidates at CodinGame's time limits | Accepted; part of decision 3 superseded by 0015; superseded for games in Legend by 0020, and for all games by 0042 |
 | [0015](0015-tolerate-rare-timeouts.md) | Tolerate rare timeouts: up to 1% of games, counted as losses | Accepted |
@@ -63,6 +63,7 @@ Use [template.md](template.md) for new records. Number them in order, in one seq
 | [0059](0059-collection-follows-the-newest-release.md) | The CodinGame collection follows the newest release | Accepted |
 | [0060](0060-probe-submissions.md) | Probe submissions: an experiment's bot judged on CodinGame | Accepted |
 | [0061](0061-daily-collection-against-zasmu.md) | The daily collection plays zasmu only | Accepted |
+| [0062](0062-small-gains-wait-for-the-next-release.md) | Small gains wait for the next release | Accepted |
 
 ## Ultimate Tic-Tac-Toe (`uttt`)
 
