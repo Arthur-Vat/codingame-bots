@@ -100,6 +100,10 @@ jobs:
             exit 1
           fi
           day="$(date -u +%F)"
+          if [ -n "$MAX_GAMES" ] && ! [[ $MAX_GAMES =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error title=CodinGame::max_games must be a whole number of 1 or more, not $MAX_GAMES"
+            exit 1
+          fi
           status=0
 
           # A refused token ends the run: nothing else would work.
