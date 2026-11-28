@@ -11,7 +11,7 @@ elo: +32.7 [+15.7, +49.7]
 pairs: 480
 full_time: +32.7 [+15.7, +49.7]
 decision: promoted
-cg_rank: Legend, 2nd of 92 (2nd of 936 overall), score 32.55, ranking ended 2026-11-28: submitted through the API on the owner's approval (submission 41836441)
+cg_rank: Legend, 2nd of 92 (2nd of 936 overall), score 32.55, ranking ended 2026-11-28: submitted through the API on the owner's approval, after three test games against the default bot (submission 41836441)
 ---
 
 ## Why

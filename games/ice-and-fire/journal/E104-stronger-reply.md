@@ -37,7 +37,7 @@ so every variant here keeps one reply from the opponent's own plan.
 
 With 0 and 1 the bot plays as v034 (the same answers and scores on the
 2,031 positions of v033's CodinGame games at 600 tries). The time a search
-at 600 tries on those positions (407 of them, one core): v034 14.58 ms,
+takes at 600 tries on those positions (407 of them, one core): v034 14.58 ms,
 `OPP_FULL` 1 14.92, `OPP_FULL` 2 17.42, `OPP_PICK` 2 17.19, `OPP_PICK` 3
 19.59.
 

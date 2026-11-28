@@ -38,7 +38,7 @@ The same was done on all 29,545 positions of v032's collected games.
 | Mines a reply, real against modeled | 0.25 / 0.03 | 0.18 / 0.04 |
 
 Both gaps grow with the opponent's strength: against the opponents who beat
-v032 three times in four or more, the model was 50 or more too pessimistic
+v032 three times in four or more (zasmu alone), the model was 50 or more too pessimistic
 in 26.8% of the positions and missed in 9.2%; against those who lost more
 than they won, 12.8% and 4.8%.
 
