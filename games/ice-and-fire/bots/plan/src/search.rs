@@ -57,10 +57,10 @@ use steer::Steer;
 /// How many times the caps below are multiplied: 1 at CodinGame's limits.
 /// A teacher (E117) thinks `THINK_SCALE` times longer and scales its caps
 /// with it, since at CodinGame's caps most of its turns end at a cap.
-const CAP_SCALE: usize = 3;
+const CAP_SCALE: usize = 10;
 /// Cells added to the opponent's cuts in its replies, beyond our own
 /// `CUT_LENGTH` (E117's teacher).
-const REPLY_CUT_EXTRA: usize = 1;
+const REPLY_CUT_EXTRA: usize = 2;
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8 * CAP_SCALE;
 /// The opponent's best cuts added to the memory after a climb.
