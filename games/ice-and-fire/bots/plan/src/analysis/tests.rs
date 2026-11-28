@@ -306,3 +306,97 @@ fn speed_writes_answers_that_it_then_expects() {
     assert!(same);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// The evaluation as it was before the term weights (E116), copied.
+fn unweighted(state: &State, seat: usize) -> i64 {
+    use crate::eval::*;
+    let movers = [
+        movers_from(state, seat, MARGIN_MOVER_LEVEL),
+        movers_from(state, 1 - seat, MARGIN_MOVER_LEVEL),
+    ];
+    let (score, margins) = ice_and_fire_tactics::eval::evaluate_with_movers(state, seat, movers);
+    let score = score + standing(margins[0]) - standing(margins[1]);
+    if state.outcome().is_some() {
+        return score;
+    }
+    let ours = exposed(state, seat);
+    let theirs = exposed(state, 1 - seat);
+    let threats = i64::from(theirs.count()) - i64::from(ours.count());
+    score - 2 * debt(state, seat)
+        + 2 * debt(state, 1 - seat)
+        + shape(state, seat)
+        + strong_units(state, seat)
+        - strong_units(state, 1 - seat)
+        - idle(state, seat)
+        + idle(state, 1 - seat)
+        + THREAT_QUARTERS * threats / 4
+        + mines(state, seat, ours)
+        - mines(state, 1 - seat, theirs)
+        + wall(state, seat)
+        - wall(state, 1 - seat)
+        + goal(state, seat)
+        + voronoi(state, seat)
+        + flank(state, seat)
+}
+
+#[test]
+fn weights_of_100_leave_the_evaluation_as_it_was() {
+    use crate::eval::{eval_with, TERMS, WEIGHTS};
+    let mut seen = 0;
+    for state in random_states(0..40) {
+        for seat in 0..2 {
+            let before = unweighted(&state, seat);
+            assert_eq!(eval_with(&state, seat, &[100; TERMS]), before);
+            assert_eq!(eval(&state, seat), eval_with(&state, seat, &WEIGHTS));
+            seen += 1;
+        }
+    }
+    assert!(seen > 1000);
+}
+
+#[test]
+fn the_terms_add_up_to_the_evaluation_and_each_weight_scales_its_own() {
+    use crate::eval::{eval_with, TERMS};
+    use ice_and_fire_tactics::eval::WIN;
+    let mut rng = Rng::new(116);
+    for state in random_states(0..30) {
+        if state.outcome().is_some() {
+            continue;
+        }
+        let seat = state.to_act();
+        let terms = terms::raw(&state, seat);
+        let sum: i64 = terms.iter().sum();
+        let threat = eval_with(&state, seat, &[100; TERMS]) - sum;
+        assert!(threat == 0 || threat == -WIN / 2, "{threat}");
+        let mut w = [100; TERMS];
+        for x in w.iter_mut() {
+            *x = 25 + rng.below(276) as i64;
+        }
+        let weighted: i64 = terms.iter().zip(w).map(|(t, w)| t * w / 100).sum();
+        assert_eq!(eval_with(&state, seat, &w), weighted + threat);
+    }
+}
+
+#[test]
+fn terms_prints_one_line_a_position() {
+    let states = random_states(0..2);
+    let dir = std::env::temp_dir().join(format!("e116-terms-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("a folder");
+    let bank = dir.join("bank.txt");
+    std::fs::write(&bank, bank_text(&states)).expect("written");
+    let args = |every: &str| {
+        vec![
+            "--positions".to_string(),
+            bank.display().to_string(),
+            "--every".to_string(),
+            every.to_string(),
+        ]
+    };
+    let all = terms::run(&args("1")).expect("a run");
+    assert_eq!(all.lines().count(), states.len());
+    assert!(all.lines().all(|l| l.contains("\"terms\":{\"gold\":")));
+    let some = terms::run(&args("3")).expect("a run");
+    assert_eq!(some.lines().count(), states.len().div_ceil(3));
+    assert!(terms::run(&args("0")).is_err());
+    let _ = std::fs::remove_dir_all(&dir);
+}
