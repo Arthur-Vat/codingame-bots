@@ -73,6 +73,40 @@ pub const DEEP: Option<usize> = None;
 /// by `CG_TIME_SCALE` as the other budgets are (E118). Today's search keeps
 /// its own budget at the start of it; the deep step runs until this.
 pub const DEEP_MS: f64 = 2000.0;
+/// What a lean deep leaf is (E119).
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Leaf {
+    /// A whole turn search of ours from the state after the reply, with no
+    /// deep step, its final score taken (E118's leaf).
+    Think,
+    /// One climb of ours from that state, with no reply search, its end
+    /// scored by `value`: a cheap estimate of our next turn.
+    Climb,
+}
+
+/// A lean deep step (E119, E118 made small enough for CodinGame's limit).
+#[derive(Clone, Copy)]
+pub struct Lean {
+    /// The part of the turn, in percent, that today's search gets: its
+    /// climbs, its final choice and its check end there.
+    pub share: u32,
+    /// The candidates compared: today's choice and the best others by
+    /// today's score.
+    pub candidates: usize,
+    /// The most damaging replies of each candidate searched: its own and the
+    /// memory's, without repeats, the worst for the candidate first.
+    pub replies: usize,
+    /// What a leaf is.
+    pub leaf: Leaf,
+}
+
+/// The lean deep step (E119): after today's search, which has `share`% of the
+/// turn, the candidates' leaves are searched one candidate after the other,
+/// today's choice first, each leaf with the time left divided by the leaves
+/// left, up to the turn's hard limit. A candidate with a leaf undone is not
+/// compared; with no other complete candidate, today's choice is played.
+/// `None`: today's search alone, as in every release.
+pub const LEAN_DEPTH: Option<Lean> = None;
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8 * CAP_SCALE;
 /// The opponent's best cuts added to the memory after a climb.
@@ -768,8 +802,154 @@ impl Search {
                 max_evals: (limit.max_evals / share as u64).max(1),
             },
         };
-        let thought = think_in(state, leaf_limit, opening, None, None);
+        let thought = think_in(state, leaf_limit, opening, None, (None, None));
         thought.score.unwrap_or_else(|| self.value(state))
+    }
+}
+
+/// `limit` with its clock and its tries cut to `share`% of what is left.
+fn lean_limit(limit: Limit, share: u32) -> Limit {
+    let now = Instant::now();
+    let part = f64::from(share) / 100.0;
+    let cut = |t: Instant| now + t.saturating_duration_since(now).mul_f64(part);
+    Limit {
+        soft: limit.soft.map(cut),
+        hard: limit.hard.map(cut),
+        deep: None,
+        max_evals: (u128::from(limit.max_evals) * u128::from(share) / 100).max(1) as u64,
+    }
+}
+
+impl Search {
+    /// The lean deep step (E119): the index of the plan to play among
+    /// `plans`, or `None` to keep today's choice. The candidates are today's
+    /// choice, then the best scored others, `lean.candidates` in all. A
+    /// candidate's leaves are the states after its `lean.replies` most
+    /// damaging replies (the memory's and its own, by the evaluation after
+    /// each from our seat); its deep score is the worst leaf, and only a
+    /// candidate with all its leaves done is compared. The leaves share the
+    /// time to `full.hard` evenly, each taking the time left divided by the
+    /// leaves left; with no clock, the tries `full` keeps beyond today's
+    /// share, in the same proportions. On a tie today's choice wins, then the
+    /// earlier candidate.
+    fn lean_step(
+        &self,
+        plans: &[Plan],
+        scores: &[Option<i64>],
+        memory: &[Reply],
+        (today, lean): (Option<usize>, Lean),
+        (full, opening): (Limit, &mut Planned),
+    ) -> Option<usize> {
+        let today = today?;
+        // The leaf's kind, read from the switch.
+        let kind = if lean.leaf == Leaf::Climb {
+            Leaf::Climb
+        } else {
+            Leaf::Think
+        };
+        let mut order: Vec<usize> = (0..plans.len())
+            .filter(|&index| index != today && scores[index].is_some())
+            .collect();
+        order.sort_by_key(|&index| std::cmp::Reverse(scores[index]));
+        let candidates: Vec<usize> = std::iter::once(today)
+            .chain(order)
+            .take(lean.candidates.max(1))
+            .collect();
+        // Each candidate's leaves, the worst for it first.
+        let mut leaves: Vec<Vec<State>> = Vec::new();
+        for &index in &candidates {
+            let plan = &plans[index];
+            let mut rated: Vec<(i64, State)> = Vec::new();
+            if plan.end.outcome().is_none() {
+                let mut seen: Vec<&[Command]> = Vec::new();
+                let own = plan.own.iter().flatten();
+                for reply in memory.iter().chain(own) {
+                    if !seen.contains(&reply.commands.as_slice()) {
+                        seen.push(&reply.commands);
+                        let after = after_reply(&plan.end, &reply.commands);
+                        rated.push((self.value(&after), after));
+                    }
+                }
+            }
+            // Stable: the memory's order on a tie.
+            rated.sort_by_key(|(damage, _)| *damage);
+            rated.truncate(lean.replies.max(1));
+            leaves.push(rated.into_iter().map(|(_, after)| after).collect());
+        }
+        let total: usize = leaves.iter().map(Vec::len).sum();
+        let tries = u128::from(full.max_evals) * u128::from(100 - lean.share.min(100)) / 100;
+        let each = (tries / total.max(1) as u128).max(1) as u64;
+        let mut left = total;
+        let mut best: Option<(i64, bool, usize)> = None;
+        for (rank, &index) in candidates.iter().enumerate() {
+            let mut deep = if leaves[rank].is_empty() {
+                self.final_score(&plans[index], memory)
+            } else {
+                i64::MAX
+            };
+            for leaf in &leaves[rank] {
+                if full.hard.is_some_and(|hard| Instant::now() >= hard) {
+                    return best.map(|(_, _, rank)| candidates[rank]);
+                }
+                let mut leaf_limit = Limit {
+                    soft: None,
+                    hard: None,
+                    deep: None,
+                    max_evals: each,
+                };
+                if let Some(hard) = full.hard {
+                    let now = Instant::now();
+                    let room = hard
+                        .saturating_duration_since(now)
+                        .div_f64(left.max(1) as f64);
+                    let soft = if kind == Leaf::Think { 0.6 } else { 0.9 };
+                    leaf_limit.soft = Some(now + room.mul_f64(soft));
+                    leaf_limit.hard = Some(now + room);
+                    leaf_limit.max_evals = u64::MAX;
+                }
+                let value = self.lean_leaf(leaf, kind, leaf_limit, opening);
+                left -= 1;
+                deep = deep.min(value);
+            }
+            let key = (deep, index == today, std::cmp::Reverse(rank));
+            let better = best.is_none_or(|(d, t, r)| key > (d, t, std::cmp::Reverse(r)));
+            if better {
+                best = Some((deep, index == today, rank));
+            }
+        }
+        best.map(|(_, _, rank)| candidates[rank])
+    }
+
+    /// The value of the leaf `state`, the start of our next turn, within
+    /// `limit`.
+    fn lean_leaf(&self, state: &State, kind: Leaf, limit: Limit, opening: &mut Planned) -> i64 {
+        if state.outcome().is_some() {
+            return self.value(state);
+        }
+        match kind {
+            Leaf::Think => {
+                let thought = think_in(state, limit, opening, None, (None, None));
+                thought.score.unwrap_or_else(|| self.value(state))
+            }
+            Leaf::Climb => {
+                if lethal(state).is_some() {
+                    return WIN;
+                }
+                let mut search = Search {
+                    me: self.me,
+                    opponent: false,
+                    limit,
+                    evals: 0,
+                    hints: Gains::default(),
+                    root_actions: None,
+                    strike: strike_reserve(state),
+                    guide: None,
+                    deep_stats: (0, 0),
+                };
+                let plan = search.climb(state, &[], &[], true);
+                search.rate(&plan.end, &[], i64::MIN)
+            }
+        }
     }
 }
 
@@ -804,7 +984,7 @@ pub fn think_with(
     opening: &mut Planned,
     guide: Option<Guide>,
 ) -> Thought {
-    think_in(state, limit, opening, guide, DEEP)
+    think_in(state, limit, opening, guide, (DEEP, LEAN_DEPTH))
 }
 
 /// [`think_with`] with the deep step's width: `deep` is [`DEEP`] for a turn
@@ -814,7 +994,7 @@ fn think_in(
     limit: Limit,
     opening: &mut Planned,
     guide: Option<Guide>,
-    deep: Option<usize>,
+    (deep, lean): (Option<usize>, Option<Lean>),
 ) -> Thought {
     let me = state.to_act();
     let mut thought = Thought::default();
@@ -856,6 +1036,13 @@ fn think_in(
         // The opening would keep its gold: the search plays from here on.
         opening.end();
     }
+    // A lean deep turn (E119) gives today's search a share of the turn.
+    let full = limit;
+    let limit = lean.map_or(limit, |lean| lean_limit(limit, lean.share));
+    let at = |share: f64| match (limit.soft, limit.hard) {
+        (Some(soft), Some(hard)) => Some(soft + (hard - soft).mul_f64(share)),
+        _ => None,
+    };
     let mut search = Search {
         me,
         opponent: false,
@@ -997,7 +1184,13 @@ fn think_in(
     }
     #[cfg(feature = "analysis")]
     judge::observe(&search, state, &memory, best);
-    if let Some(width) = deep {
+    if let Some(lean) = lean {
+        let today = best.map(|(_, index)| index);
+        let chosen = search.lean_step(&plans, &scores, &memory, (today, lean), (full, opening));
+        if let Some(index) = chosen {
+            best = Some((scores[index].unwrap_or(i64::MIN), index));
+        }
+    } else if let Some(width) = deep {
         let started = Instant::now();
         for (index, score) in scores.iter_mut().enumerate() {
             score.get_or_insert_with(|| search.final_score(&plans[index], &memory));
