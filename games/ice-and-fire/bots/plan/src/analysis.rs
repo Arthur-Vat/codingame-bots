@@ -17,7 +17,15 @@
 //!   guide --positions FILE [--tries 1000] [--guard 0|1|2] [--fill-behind] [--safe-step] [--back-only]
 //! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
 //!   surprise --positions FILE [--tries 600]
+//! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
+//!   types --positions FILE
+//! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
+//!   types-table --json FILE --out FILE
 //! ```
+//!
+//! `types` and `types-table` (the [`typing`] module) print the unit types of
+//! a bank's positions with the kind of action played, and write the table of
+//! zasmu's actions by type that the builder counted.
 //!
 //! `speed` (the [`speed`] module) times the search alone on a bank.
 //!
@@ -58,6 +66,7 @@ pub mod guide;
 pub mod judge;
 pub mod speed;
 pub mod surprise;
+pub mod typing;
 
 #[cfg(test)]
 mod tests;
@@ -533,7 +542,7 @@ pub fn bank(args: &[String]) -> Result<String, String> {
 }
 
 /// Runs the analysis mode and exits if the first argument names it
-/// (`bank`, `speed` or `judge`); returns otherwise, and the bot plays.
+/// (`bank`, `speed`, `judge`, `types`, ...); returns otherwise, and the bot plays.
 pub fn main_if_asked() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().map(String::as_str) == Some("judge") {
@@ -592,6 +601,30 @@ pub fn main_if_asked() {
             }
             Err(err) => {
                 eprintln!("plan surprise: {err}");
+                std::process::exit(2);
+            }
+        }
+    }
+    if args.first().map(String::as_str) == Some("types") {
+        match typing::run_positions(&args[1..]) {
+            Ok(text) => {
+                print!("{text}");
+                std::process::exit(0);
+            }
+            Err(err) => {
+                eprintln!("plan types: {err}");
+                std::process::exit(2);
+            }
+        }
+    }
+    if args.first().map(String::as_str) == Some("types-table") {
+        match typing::run_table(&args[1..]) {
+            Ok(text) => {
+                print!("{text}");
+                std::process::exit(0);
+            }
+            Err(err) => {
+                eprintln!("plan types-table: {err}");
                 std::process::exit(2);
             }
         }
