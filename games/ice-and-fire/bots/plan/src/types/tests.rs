@@ -327,6 +327,7 @@ fn the_embedded_table_decodes() {
     assert!(table::TABLE.chars().count() <= 8000);
 }
 
+#[cfg(feature = "analysis")]
 #[test]
 fn a_table_survives_its_bytes_and_the_packing() {
     let mut entries = Vec::new();
@@ -357,6 +358,7 @@ fn a_table_survives_its_bytes_and_the_packing() {
     assert_eq!(decoded.levels, table.levels);
 }
 
+#[cfg(feature = "analysis")]
 #[test]
 fn bad_bytes_are_errors() {
     let table = table_with(&[

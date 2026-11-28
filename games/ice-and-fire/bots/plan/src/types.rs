@@ -39,6 +39,7 @@ const LENGTHS: [usize; LEVELS] = [2, 3, 4, 8, 13];
 /// The bits of each field of a key's code.
 const WIDTHS: [u32; FIELDS] = [3, 1, 3, 2, 1, 2, 2, 1, 3, 2, 1, 2, 2];
 /// The largest value of each field of a key's code.
+#[allow(dead_code)]
 const MAXIMA: [u32; FIELDS] = [4, 1, 4, 3, 1, 2, 2, 1, 4, 3, 1, 2, 2];
 
 /// What a unit is for, from where it stands.
@@ -57,6 +58,7 @@ pub enum Type {
 }
 
 impl Type {
+    #[allow(dead_code)]
     pub const ALL: [Type; 5] = [
         Type::Pusher,
         Type::Guard,
@@ -65,10 +67,12 @@ impl Type {
         Type::BackShut,
     ];
 
+    #[allow(dead_code)]
     pub fn name(self) -> &'static str {
         ["pusher", "guard", "reserve", "back-free", "back-shut"][self as usize]
     }
 
+    #[allow(dead_code)]
     pub fn from_name(name: &str) -> Option<Type> {
         Type::ALL.into_iter().find(|t| t.name() == name)
     }
@@ -86,6 +90,7 @@ pub enum Band {
 }
 
 impl Band {
+    #[allow(dead_code)]
     pub const ALL: [Band; 5] = [Band::T5, Band::T7, Band::T9, Band::T13, Band::T21];
 
     pub fn of(turn: u32) -> Band {
@@ -98,10 +103,12 @@ impl Band {
         }
     }
 
+    #[allow(dead_code)]
     pub fn name(self) -> &'static str {
         ["5-6", "7-8", "9-12", "13-20", "21+"][self as usize]
     }
 
+    #[allow(dead_code)]
     pub fn from_name(name: &str) -> Option<Band> {
         Band::ALL.into_iter().find(|b| b.name() == name)
     }
@@ -118,12 +125,15 @@ pub enum Gold {
 }
 
 impl Gold {
+    #[allow(dead_code)]
     pub const ALL: [Gold; 4] = [Gold::Kill, Gold::Under40, Gold::Under80, Gold::Rich];
 
+    #[allow(dead_code)]
     pub fn name(self) -> &'static str {
         ["kill", "<40", "40-79", "80+"][self as usize]
     }
 
+    #[allow(dead_code)]
     pub fn from_name(name: &str) -> Option<Gold> {
         Gold::ALL.into_iter().find(|g| g.name() == name)
     }
@@ -158,6 +168,7 @@ impl Kind {
         Kind::Stay,
     ];
 
+    #[allow(dead_code)]
     pub fn name(self) -> &'static str {
         [
             "capture",
