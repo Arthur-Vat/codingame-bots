@@ -36,11 +36,74 @@ use super::judge::commands_of;
 use super::{read_bank, Position};
 use crate::types::{
     code_of, likeliest, prior, Band, Gold, Kind, Table, Type, Typing, FIELDS, KINDS, LENGTHS,
-    LEVELS, MAXIMA, WIDTHS,
+    LEVELS, WIDTHS,
 };
 
 #[cfg(test)]
 mod tests;
+
+/// The largest value of each field of a key's code.
+pub(crate) const MAXIMA: [u32; FIELDS] = [4, 1, 4, 3, 1, 2, 2, 1, 4, 3, 1, 2, 2];
+
+// The names of the types' enums, which only the analysis and the tests read
+// (the bot's bundle does not carry them).
+
+impl Type {
+    pub const ALL: [Type; 5] = [
+        Type::Pusher,
+        Type::Guard,
+        Type::Reserve,
+        Type::BackFree,
+        Type::BackShut,
+    ];
+
+    pub fn name(self) -> &'static str {
+        ["pusher", "guard", "reserve", "back-free", "back-shut"][self as usize]
+    }
+
+    pub fn from_name(name: &str) -> Option<Type> {
+        Type::ALL.into_iter().find(|t| t.name() == name)
+    }
+}
+
+impl Band {
+    pub const ALL: [Band; 5] = [Band::T5, Band::T7, Band::T9, Band::T13, Band::T21];
+
+    pub fn name(self) -> &'static str {
+        ["5-6", "7-8", "9-12", "13-20", "21+"][self as usize]
+    }
+
+    pub fn from_name(name: &str) -> Option<Band> {
+        Band::ALL.into_iter().find(|b| b.name() == name)
+    }
+}
+
+impl Gold {
+    pub const ALL: [Gold; 4] = [Gold::Kill, Gold::Under40, Gold::Under80, Gold::Rich];
+
+    pub fn name(self) -> &'static str {
+        ["kill", "<40", "40-79", "80+"][self as usize]
+    }
+
+    pub fn from_name(name: &str) -> Option<Gold> {
+        Gold::ALL.into_iter().find(|g| g.name() == name)
+    }
+}
+
+impl Kind {
+    pub fn name(self) -> &'static str {
+        [
+            "capture",
+            "forward-n",
+            "forward-o",
+            "side-n",
+            "side-o",
+            "back-n",
+            "back-o",
+            "stay",
+        ][self as usize]
+    }
+}
 
 /// The cell of the unit `id` of `seat` in `state`.
 fn cell_of(state: &State, seat: usize, id: u32) -> Option<usize> {

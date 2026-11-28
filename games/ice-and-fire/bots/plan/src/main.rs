@@ -57,7 +57,6 @@ mod eval;
 mod search;
 mod session;
 mod strategy;
-#[cfg(feature = "analysis")]
 mod types;
 
 use std::io;
