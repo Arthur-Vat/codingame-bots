@@ -125,7 +125,13 @@ const FREE_TRIES_PCT: u128 = 50;
 /// left, up to the turn's hard limit. A candidate with a leaf undone is not
 /// compared; with no other complete candidate, today's choice is played.
 /// `None`: today's search alone, as in every release.
-pub const LEAN_DEPTH: Option<Lean> = None;
+pub const LEAN_DEPTH: Option<Lean> = Some(Lean {
+    share: 100,
+    candidates: 2,
+    replies: 2,
+    leaf: Leaf::Think,
+    free: true,
+});
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8 * CAP_SCALE;
 /// The opponent's best cuts added to the memory after a climb.
