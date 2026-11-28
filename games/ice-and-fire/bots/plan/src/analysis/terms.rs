@@ -7,7 +7,7 @@
 //! ```
 //!
 //! One JSON line for every K-th position (default 1), for the side to act:
-//! the position's `name`, its game `turn`, `finished` (the game is over),
+//! the position's `name`, its `ply`, the `seat` to act, its game `turn`, `finished` (the game is over),
 //! `threat` (the opponent could take the HQ: the evaluation counts
 //! `-WIN / 2`, which no weight touches), `eval` (the bot's evaluation) and
 //! `terms`, the terms in the order of `crate::eval::WEIGHTS`, ours less
@@ -125,8 +125,8 @@ pub fn run(args: &[String]) -> Result<String, String> {
         }
         let _ = writeln!(
             out,
-            "{{\"name\":\"{}\",\"turn\":{},\"finished\":{finished},\"threat\":{threat},\"eval\":{value},\"terms\":{{{fields}}}}}",
-            position.name, position.game_turn
+            "{{\"name\":\"{}\",\"ply\":{},\"seat\":{seat},\"turn\":{},\"finished\":{finished},\"threat\":{threat},\"eval\":{value},\"terms\":{{{fields}}}}}",
+            position.name, position.ply, position.game_turn
         );
     }
     Ok(out)
