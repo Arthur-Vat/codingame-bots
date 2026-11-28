@@ -23,8 +23,8 @@ fn board(cells: &[(usize, usize, u8)], gold: [i64; 2], units: &[(u8, u32, u8, u8
 
 /// Red holds the column x = 0 down to (0, 10), a block of 3 by 3 at the
 /// bottom of it (x 0 to 2, y 7 to 9) and (1, 1); blue holds the whole row
-/// 11. Red's joints are (0, 1) to (0, 7) and (0, 9) to (0, 7)'s block side:
-/// those of the column.
+/// 11. Red's joints are (0, 1) to (0, 7), which join the block to the HQ,
+/// and (0, 9), which joins the leaf (0, 10) to the block.
 fn line(gold: [i64; 2], units: &[(u8, u32, u8, u8, u8)]) -> State {
     let mut cells = vec![(1, 1, b'O')];
     for y in 1..=10 {
@@ -80,8 +80,9 @@ fn a_unit_on_a_joint_near_the_enemy_guards() {
 
 #[test]
 fn a_unit_near_the_enemy_but_away_from_the_joints_is_a_reserve() {
-    // (2, 8) is 3 steps from the enemy's row; the joints within 3 steps of
-    // it are none ((0, 7) is 4 steps away, so the guard zone starts below).
+    // (2, 8) is 3 steps from the enemy's row. The joint (0, 9) is within 3
+    // steps of the enemy, but (2, 8) is 3 steps from it and not next to it, so
+    // it is outside the guard zone.
     let state = line([0, 0], &[(0, 1, 1, 2, 8)]);
     let key = key_at(&state, 2, 8);
     assert_eq!(key.typ, Type::Reserve);
@@ -347,7 +348,7 @@ fn a_table_survives_its_bytes_and_the_packing() {
         }
     }
     let table = table_with(&entries);
-    let bytes = table.to_bytes();
+    let bytes = crate::analysis::typing::to_bytes(&table);
     let back = Table::from_bytes(&bytes).expect("bytes");
     assert_eq!(back.levels, table.levels);
     let packed = crate::analysis::typing::pack(&bytes).expect("packed");
@@ -365,7 +366,7 @@ fn bad_bytes_are_errors() {
         (0, 3, [255, 0, 0, 0, 0, 0, 0, 0]),
         (1, 9, [100, 155, 0, 0, 0, 0, 0, 0]),
     ]);
-    let bytes = table.to_bytes();
+    let bytes = crate::analysis::typing::to_bytes(&table);
     assert!(Table::from_bytes(&bytes).is_ok());
     for cut in 0..bytes.len() {
         assert!(Table::from_bytes(&bytes[..cut]).is_err(), "cut at {cut}");

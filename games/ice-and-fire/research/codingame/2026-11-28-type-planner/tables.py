@@ -64,7 +64,7 @@ def count(units):
 
 def probs(row):
     total = sum(row)
-    return [(c + 0.5) / (total + len(KINDS)) for c in row]
+    return [(c + 0.5) / (total + len(KINDS) / 2) for c in row]
 
 
 def predict(counts, f, level):
