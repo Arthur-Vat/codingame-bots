@@ -741,7 +741,7 @@ pub const TERMS: usize = 17;
 /// the [`mines`]; the [`wall`]; the [`goal`]; the [`voronoi`] term; the
 /// [`flank`] term. The threat of losing the HQ (`-WIN / 2`) and the finished
 /// games are not weighed.
-pub const WEIGHTS: [i64; TERMS] = [74, 114, 134, 80, 74, 95, 132, 89, 94, 110, 136, 129, 113, 84, 100, 100, 100];
+pub const WEIGHTS: [i64; TERMS] = [100; TERMS];
 
 /// `term` at `weight` percent.
 fn scaled(term: i64, weight: i64) -> i64 {
