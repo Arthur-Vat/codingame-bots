@@ -85,11 +85,11 @@ pub const HANDOVER_IDLE_FROM: u32 = 6;
 /// `research/codingame/2026-11-28-type-planner.md`); a move of another kind
 /// is not offered. `None`: none removed. Trainings, buildings and macro
 /// actions are never removed, and the opponent's model is never pruned.
-pub const TYPE_KINDS: Option<usize> = Some(2);
+pub const TYPE_KINDS: Option<usize> = None;
 /// Whether our climbs break ties of the last gain by the table's prior (E106):
 /// moves by their kind's prior, highest first, then the other actions in the
 /// order generated. `false`: the order generated.
-pub const TYPE_ORDER: bool = true;
+pub const TYPE_ORDER: bool = false;
 /// The game turn from which [`TYPE_KINDS`] and [`TYPE_ORDER`] apply, by the
 /// game turn of a climb's root (E106).
 pub const TYPE_FROM_TURN: u32 = 7;
