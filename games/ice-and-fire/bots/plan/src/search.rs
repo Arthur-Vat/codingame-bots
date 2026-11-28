@@ -98,10 +98,10 @@ pub const TYPE_FROM_TURN: u32 = 7;
 /// steps of the enemy's land, or where its zone holds a cell of the enemy's
 /// affordable cuts or chain to our HQ at its next turn (E112). `None`: every
 /// tower kept.
-pub const TOWER_KEEP: Option<u8> = Some(3);
+pub const TOWER_KEEP: Option<u8> = None;
 /// Whether our climbs try, among actions of equal last gain, the towers
 /// nearest the enemy's land first (E112).
-pub const TOWER_NEAR_FIRST: bool = false;
+pub const TOWER_NEAR_FIRST: bool = true;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
