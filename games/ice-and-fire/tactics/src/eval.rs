@@ -13,20 +13,29 @@ pub const WIN: i64 = 1_000_000;
 /// The lowest pressure term of one side.
 const MAX_PRESSURE: i64 = 200;
 
-/// What a side has: gold, income, active cells, units on active cells (by
-/// training cost) and its active towers.
-fn side(state: &State, seat: usize) -> i64 {
+/// What a side has, in five parts: gold, 3 × income, 4 × active cells, units
+/// on active cells (by training cost) and 10 × its active towers. Their sum
+/// is what the evaluation counts for the side; the plan bot weighs the parts
+/// one by one (E116).
+pub fn side_parts(state: &State, seat: usize) -> [i64; 5] {
     let active = state.active(seat);
     let units: i64 = (state.units(seat) & active)
         .iter()
         .filter_map(|cell| state.unit_level(cell))
         .map(|level| 10 * i64::from(level))
         .sum();
-    state.gold(seat)
-        + 3 * state.income(seat)
-        + 4 * i64::from(active.count())
-        + units
-        + 10 * i64::from((state.towers() & active).count())
+    [
+        state.gold(seat),
+        3 * state.income(seat),
+        4 * i64::from(active.count()),
+        units,
+        10 * i64::from((state.towers() & active).count()),
+    ]
+}
+
+/// What a side has: the sum of [`side_parts`].
+fn side(state: &State, seat: usize) -> i64 {
+    side_parts(state, seat).iter().sum()
 }
 
 /// What `seat`'s gold and income leave once it has paid for its cheapest
@@ -57,7 +66,7 @@ fn from_cost(state: &State, seat: usize, cost: i64) -> i64 {
 /// The pressure term of a side whose [`margin`] is `margin`: 0 when it pays
 /// for the chain to the enemy HQ, else minus the shortfall, at least
 /// `-MAX_PRESSURE`.
-fn pressure(margin: i64) -> i64 {
+pub fn pressure(margin: i64) -> i64 {
     margin.clamp(-MAX_PRESSURE, 0)
 }
 
