@@ -16,9 +16,12 @@ then, after the measures below:
 > being too crowded and then have a slightly worse position. Our units find
 > it difficult to grab territory after.
 
-His choices in forms on 2026-11-28: the tables guide the search by
-ordering, never by pruning; they guide both climbs, ours and the
-opponent's, measured alone and together; hand-written types refined by the
+His choices in forms on 2026-11-28: the tables guide both climbs, ours and
+the opponent's, measured alone and together; our climb samples whole turns
+from the tables and offers each unit only its type's likeliest kinds
+(pruning our own options cannot hide a danger from us), while the
+opponent's climb stays complete, ordered by the tables, with a few sampled
+replies beside it (a missed reply is a danger we do not see: E103, E105); hand-written types refined by the
 data; learnt from zasmu only; the shape "a type planner and the search"; the
 new design from game turn 5; cells chosen by a matching that keeps units
 apart; progress measured by the land and units at game turn 12 and by the
@@ -108,14 +111,21 @@ against the opponent's replies (principle 1 of the role-planner note).
    that units do not block each other (the role-planner note's step 3; the
    Hungarian method in `ice_and_fire_opening::assign`). No planned step
    uncovers a cell the enemy can enter (principle 2).
-5. **The plan.** Each unit's matched action and the purchases the spending
-   table gives make the turn's plan, with two or three variants (without
-   the purchases, with the second kind for the units at the front).
-6. **In the search.** Our climbs start from the plan and its variants
-   (forced starts, E029) and then climb freely; in every climb, each unit's
-   actions are tried in the order its type's table gives, before the gains
-   learnt in the turn. The opponent's climb is ordered by the same tables
-   from its seat. Nothing is pruned.
+5. **Sampled turns.** Each unit's kind drawn from its type's table, the
+   kinds turned into cells by the matching, and purchases drawn from the
+   spending table, make one whole turn; K of them (K about 32) are drawn,
+   each scored against the remembered replies, and the best few start our
+   climbs (forced starts, E029). The search's time goes to promising, varied
+   turns rather than to one plan it can climb away from (E077's plan was
+   rejected in 99% of turns).
+6. **Our climb, pruned.** In every climb of ours, each unit is offered only
+   the cells of its type's likeliest kinds (the three likeliest hold 86% of
+   zasmu's actions from turn 7), tried in the tables' order; the lethal
+   chain, cuts and blockers stay offered.
+7. **The opponent's model.** Its climb stays complete (nothing pruned),
+   ordered by the same tables from its seat; a few turns sampled for it the
+   same way are added to its replies, so that the model is more like a real
+   player without missing what the climb finds.
 
 ## Stages
 
@@ -128,9 +138,9 @@ and later in the collected games against zasmu.
 | Stage | What | Check that can stop the work |
 | --- | --- | --- |
 | 1 | The tables and the spending table built offline, encoded in Rust, and the bot's typing checked against the Python one on the data branch's positions | The encoded tables predict zasmu's held-out replies as well as the Python ones (51% and 86% from turn 7; to be measured from turn 5) |
-| 2 | Our climb ordered by the tables, from game turn 7 (the opening as now) | Crowding and land at turn 12 move towards zasmu's figures; no loss in screening |
-| 3 | The opponent's climb ordered too (both sides) | Screening: each alone and both together |
-| 4 | The matching and the plan as the climbs' start | Crowding at turns 7 to 12 near zasmu's; no loss in screening |
+| 2 | Our climb pruned to the tables' likeliest kinds and ordered, from game turn 7 (the opening as now); variants by the number of kinds kept | Crowding and land at turn 12 move towards zasmu's figures; no loss in screening |
+| 3 | The opponent's climb ordered, and sampled replies added | Screening: each alone and both together |
+| 4 | The matching and the sampled turns as the climbs' starts | Crowding at turns 7 to 12 near zasmu's; how often the move played comes from a sampled turn; no loss in screening |
 | 5 | The new design from game turn 5 (the opening plays turns 1 to 4) | Units at turn 7 and land at turn 12; screening |
 | 6 | The spending table in the plan | Income at turn 12; screening; then the SPRT of the whole against v034 |
 
@@ -140,11 +150,14 @@ largest (the matching and the paths); stage 5 needs the opening's handover
 
 ## Risks
 
-- **A weaker model of the opponent** (E103, E105): only ordering, never
-  pruning, and stage 3 measures the opponent's side alone.
+- **A weaker model of the opponent** (E103, E105): its climb is never
+  pruned, and stage 3 measures the opponent's side alone.
+- **Our pruning hides a good move**: the three likeliest kinds miss 14% of
+  zasmu's actions; stage 2 screens the number of kinds kept, and the
+  tactical actions (lethal chain, cuts, blockers) stay offered.
 - **The search rejects the plan** (E077: rejected in 99% of turns): the
-  plan is only a start and an ordering, and stage 4 counts how often a
-  climb ends on a plan that began from it.
+  sampled turns are many and varied, our climb is pruned to the same kinds,
+  and stage 4 counts how often the move played comes from a sampled turn.
 - **Time**: the typing and the matching run every turn and in every climb's
   ordering; the typing is a few floods, the ordering a table lookup, the
   matching once per turn. Stage 2 measures the search's tries a turn.
