@@ -107,8 +107,8 @@ pub struct Lean {
 /// compared; with no other complete candidate, today's choice is played.
 /// `None`: today's search alone, as in every release.
 pub const LEAN_DEPTH: Option<Lean> = Some(Lean {
-    share: 50,
-    candidates: 3,
+    share: 40,
+    candidates: 6,
     replies: 3,
     leaf: Leaf::Climb,
 });
