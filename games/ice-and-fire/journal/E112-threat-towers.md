@@ -56,3 +56,5 @@ against `near`; no other fault.
 Dropped: all level. Our search's towers already answer threats (the tower
 study: 93% change the enemy's next turn), so a rule by threat or by distance
 removes few of them, and ordering them changes little.
+
+The code stays on the branch (commit `022b71c8`, the switches off).

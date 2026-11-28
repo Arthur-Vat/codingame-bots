@@ -46,6 +46,8 @@ Commits: `control` `03b4cfd`, `g125` `6ebc70a`, `g150` `62d0da6`, `g200`
 
 Dropped. With E113, the weight of the gold held for a strike loses on both
 sides of today's value (50%: −10.2, 125%: −11.5; further: −61.4 and −70.9):
-it is at an optimum against v034. The owner chose next (2026-11-28) to fit
+it is near an optimum against v034, between 50% and 125%. The owner chose next (2026-11-28) to fit
 the evaluation's weights jointly on game outcomes, since single weights look
 tuned while their combination may not be.
+
+The code stays on the branch (commit `03b4cfd0`, the switches off).

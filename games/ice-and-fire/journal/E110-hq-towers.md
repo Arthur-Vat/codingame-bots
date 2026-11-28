@@ -3,7 +3,7 @@ id: E110
 date: 2026-11-28
 pull_request: "#410"
 parent: ice-and-fire-v034
-hypothesis: We build 1.3 towers a game within 3 steps of our own HQ after game turn 14, rarely on the border later (the tower study, `research/codingame/2026-11-28-towers.md`); not offering them spends that gold better and beats ice-and-fire-v034.
+hypothesis: We build 1.3 towers a game within 3 steps of our own HQ, rarely on the border later (the tower study, [`2026-11-28-towers.md`](../research/codingame/2026-11-28-towers.md)); not offering them spends that gold better and beats ice-and-fire-v034.
 change: A switch in our climbs (never the opponent's model) that offers no tower within k steps of our HQ from game turn 15 (`HQ_TOWER_BAN`, `HQ_TOWER_FROM`).
 release: none
 sprt: not run: the variants lost in screening
@@ -51,3 +51,5 @@ come from the guard against an affordable chain to our HQ (E026's second
 variant, `HQ_GUARD`): they answer a threat that their presence then keeps
 from happening, which replays cannot show. The owner's next step was a rule
 by threat rather than by distance (E112).
+
+The code stays on the branch (commit `45e776bd`, the switches off).

@@ -57,3 +57,5 @@ again in its pressure term (how far a side is from paying its chain to the
 enemy HQ), so 15 gold spent costs about 30 while a mine's 4 of income brings
 about 16. Our evaluation saves for a strike, which a mine's bonus does not
 outweigh. That led to the invest strategy (E113).
+
+The code stays on the branch (commit `655f5096`, the switches off).

@@ -3,7 +3,7 @@ id: E113
 date: 2026-11-28
 pull_request: "#410"
 parent: ice-and-fire-v034
-hypothesis: Our evaluation counts gold twice (as material and in the pressure term towards the chain to the enemy HQ), so it never builds a mine when it could; at game turns 9 to 14, where zasmu builds 2.7 times our mines, counting the gold held for a strike less (an "invest" strategy, the first of a portfolio) makes us build mines and beats ice-and-fire-v034.
+hypothesis: Our evaluation counts gold twice (as material and in the pressure term towards the chain to the enemy HQ), so it rarely builds a mine when it could; at game turns 9 to 14, where zasmu builds 2.7 times our mines, counting the gold held for a strike less (an "invest" strategy, the first of a portfolio) makes us build mines and beats ice-and-fire-v034.
 change: A switch in the evaluation (both sides): from game turn 9 to 14, the pressure term and the standing threat scaled to `INVEST_PERCENT` of their value (100 elsewhere and when off).
 release: none
 sprt: not run: every variant lost in screening
@@ -34,8 +34,9 @@ pressure term (`margin.clamp(−200, 0)`) plus the standing threat
 (`standing`), ours less the enemy's, from `INVEST_FROM` (9) to `INVEST_TO`
 (14). At 100, nothing changes.
 
-On the same 800 turns, the plans the search chose built a mine in 103 (13%)
-with today's weights, 166 (21%) at 50% and 206 (26%) at 0%.
+On the same 800 turns, today's search re-run on each position (the games
+were played by older releases) chose a plan with a mine in 103 (13%) with
+today's weights, 166 (21%) at 50% and 206 (26%) at 0%.
 
 ## Screening
 
@@ -61,3 +62,5 @@ test is against our own bot; whether investing pays against zasmu is not
 known. The owner chose next to test the opposite, gold for the strike
 counted more (E115), before setting the weights of the portfolio's
 strategies.
+
+The code stays on the branch (commit `16e79989`, the switches off).
