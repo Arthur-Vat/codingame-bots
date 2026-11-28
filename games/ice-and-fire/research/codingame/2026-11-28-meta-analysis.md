@@ -21,8 +21,8 @@ run but not as separate wins.
 | E101 to E109 | 11-27 to 11-28 | 9 | 0 | 0% | 0 | – |
 
 Wins were nearly half of the experiments up to E060 (26 of 57), a third up
-to E100, and none of the last nine; the wins that remain are as large as before (median 42 to
-50), so what is left is rarer, not smaller.
+to E100, and none of the last nine; the wins that remain are as large as
+before (median 42 to 50), so what is left is rarer, not smaller.
 
 ## By kind of change
 
@@ -31,7 +31,7 @@ line):
 
 | Kind | Run | Promoted | Share | Elo | Up to E060 | From E061 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| The opening | 20 | 9 | 45% | 618 | 6 of 15 | 3 of 5 |
+| The opening | 20 | 9 | 45% | 617 | 6 of 15 | 3 of 5 |
 | Terms of the evaluation | 35 | 11 | 31% | 335 | 9 of 23 | 2 of 12 |
 | Actions offered to the search | 9 | 5 | 56% | 170 | 3 of 4 | 2 of 5 |
 | Speed, the same play | 3 | 3 | 100% | 103 | 2 of 2 | 1 of 1 |
@@ -81,8 +81,8 @@ The kinds, with their experiments (* promoted):
    gained nothing in the last experiments: their kinds of unit action (E106),
    their purchases (E109), their opening's trainings (E108); E045, a rule
    copied from the top 10 (no trainings on our own cells), won, but it also
-   removed options our own evaluation rated badly. By kind, our units already act like
-   zasmu's (its three likeliest kinds hold 87.7% of our actions, E106): the
+   removed options our own evaluation rated badly. By kind, our units
+   already act like zasmu's (its three likeliest kinds hold 87.7% of our actions, E106): the
    differences are in quantities and timing (mines at game turns 9 to 14,
    idle units, early towers that fall,
    [towers](2026-11-28-towers.md) and the phases in
@@ -92,9 +92,10 @@ The kinds, with their experiments (* promoted):
    The two recent wins narrowed a term rather than adding one (E081: joints
    counted only near the enemy, +51) or counted early what pays later (E068).
 5. **A screening's error is about ±10.** The controls (no change, 800 to
-   2,000 pairs each) of the last eight screenings came out at +11.3 (E101),
-   −7.8 (E102), −6.1, −1.0, −1.7, −0.2, +1.1 and −1.7: most within ±2, two of
-   eight at ±8 to ±11 with intervals that exclude 0. A variant within about
+   2,400 pairs each) of the screenings since E101 came out at +11.3 (E101),
+   −7.8, +1.4 and −2.3 (E102's two screenings), −6.1 (E104), −1.0, −1.7, −0.2,
+   +1.1 and −1.7: most within ±2, three of ten at ±6 to ±11 with intervals
+   that exclude 0. A variant within about
    ±10 of its control is level; only a larger difference, or an SPRT, says
    more.
 
@@ -104,7 +105,7 @@ The kinds, with their experiments (* promoted):
   phases where we lose (game turns 5 to 14), measured by phase, not over
   whole games.
 - Express a top player's habit as something the search values (a term, a
-  bonus for a phase), never as a filter on what it may play.
+  bonus for a phase) rather than as a filter on what it may play.
 - Leave the opponent's model and the search's control alone unless a
   measured failure points at them.
 - Screen with a control and 1,600 pairs; read a result within about ±10 of
