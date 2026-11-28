@@ -2,7 +2,8 @@ name: CodinGame collection
 
 # The collection of CodinGame games (ADR 0058, which supersedes ADR 0057's
 # session): every 3 hours it fetches our new ranking games, replays with the
-# current release our new ranking games where the opponent had seat 0, and
+# current release those against the opponent where it had seat 0 (since
+# REPLAY_SINCE, not yet replayed with that release, 20 a run at most), and
 # plays the day's batch of test games, the current release against one player
 # (ADR 0061: zasmu, 500 games on the 250 maps of codingame-seeds-250.txt), with
 # scripts/codingame.sh, which keeps 100 of the
@@ -35,7 +36,7 @@ on:
         type: boolean
         default: true
       max_games:
-        description: "Stop the batch after this many games (a trial run: 2); empty: no limit"
+        description: "Stop the replays and the batch after this many games each, 20 at most for the replays (a trial run: 2); empty: no limit"
         type: number
         required: false
 
@@ -116,9 +117,14 @@ jobs:
             echo "play is unchecked: no fetch (it would push), only the plan of the batch" >"$log/fetch.log"
           fi
 
-          # The opponent's seat-0 games: test games always seat us first.
+          # The opponent's seat-0 games: test games always seat us first. The
+          # replays get the job's time as the batch does (5.25 hours from the
+          # start of the job, less what has passed).
+          hours="$(awk -v s="$JOB_START" -v n="$(date +%s)" 'BEGIN { h = 5.25 - (n - s) / 3600; if (h < 0) h = 0; printf "%.4f", h }')"
+          limit=20
+          if [ -n "$MAX_GAMES" ] && [ "$MAX_GAMES" -lt 20 ]; then limit="$MAX_GAMES"; fi
           args=(replay "$GAME" "games/$GAME/releases/$release.rs" --opponents "$OPPONENT" --all
-            --seat 1 --since "$REPLAY_SINCE" --keep 100 --limit "${MAX_GAMES:-20}")
+            --seat 1 --since "$REPLAY_SINCE" --keep 100 --max-hours "$hours" --limit "$limit")
           if [ "$PLAY" = true ]; then args+=(--play --push); fi
           scripts/codingame.sh "${args[@]}" 2>&1 | tee "$log/replay.log"
           code=${PIPESTATUS[0]}

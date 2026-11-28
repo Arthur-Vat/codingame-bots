@@ -822,6 +822,8 @@ run replay toy "$release_file" --keep 100 --play --data "$rkdata"
 expect "replay keep exit" "$rc" 0
 expect "replay keep plays one game" "$(($(posts) - before))" 1
 contains "replay keep message" "$out" "stopped: 100 test games of the day left to the owner"
+run replay toy "$release_file" --max-hours abc
+expect "replay max-hours needs a number" "$rc" 2
 
 # --max-hours stops, cleanly, once the hours have passed (a clock file that
 # every start of a test game moves on by 30 minutes).
@@ -863,6 +865,20 @@ expect "deadline retry wait plays one start" "$(($(posts) - before))" 1
 contains "deadline retry wait message" "$out" "(the retry wait in 5000 s)"
 expect "deadline retry wait does not sleep" "$(cat "$STUB_DIR/sleeps.log")" ""
 expect "deadline retry wait leaves the game planned" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/tdl.json")" "done,planned"
+# replay --max-hours: the quota wait that would cross the deadline stops it.
+rhdata="$tmp_dir/rhours"
+mkdir -p "$rhdata/toy"
+{
+  rline 301 2026-01-05T00:00:00Z Alpha '[1,0]'
+  rline 302 2026-01-04T00:00:00Z Alpha '[1,0]'
+} >"$rhdata/toy/index.jsonl"
+enqueue "$post_name" 01 200 "$(done_reply 5431 "$(tglog 9431 seed=5 Alpha 11 0 '[300,100]')" 0 20000)"
+before="$(posts)"
+run replay toy "$release_file" --max-hours 1 --play --data "$rhdata"
+expect "replay deadline exit" "$rc" 0
+expect "replay deadline plays one game" "$(($(posts) - before))" 1
+contains "replay deadline message" "$out" "stopped: the next game cannot start before the deadline (the quota window resets in 20000 s)"
+expect "replay deadline does not sleep" "$(cat "$STUB_DIR/sleeps.log")" ""
 unset CODINGAME_NOW
 
 # The floor is read before every start, retries included.

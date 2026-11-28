@@ -8,7 +8,8 @@
 #         [--until-newer-release]
 #         [--play] [--data DIR] [--push]
 #   replay GAME RELEASE.rs [--opponents NAME,...] [--all] [--seat N]
-#         [--since DATE] [--limit N] [--keep N] [--play] [--data DIR] [--push]
+#         [--since DATE] [--limit N] [--keep N] [--max-hours H] [--play]
+#         [--data DIR] [--push]
 #   fetch-ids GAME [--kind ranking|test|replay] ID... [--data DIR] [--push]
 #
 # fetch downloads our own ranking games ("battles") of the game's puzzle and a
@@ -23,8 +24,8 @@
 # against the leaderboard's top players, on the fixed maps of
 # games/GAME/codingame-seeds.txt, one game at a time; replay plays our lost
 # ranking games again with a release (--seat N: only those where our seat was
-# N; --since DATE: only those that ended on that day or later; --keep N as for
-# batch); fetch-ids stores the logs of given game
+# N; --since DATE: only those that ended on that day or later; --keep N and
+# --max-hours H as for batch); fetch-ids stores the logs of given game
 # ids. batch and replay play nothing without --play (the only commands that
 # write to CodinGame); a test game never touches the owner's IDE (show_in_ide,
 # overwrite_ide_code and overwrite_ide_game_parameters are false) and no
@@ -79,8 +80,8 @@ Usage: scripts/codingame.sh fetch GAME [--submission ID] [--backfill-releases]
                 [--max-hours H] [--max-games N] [--until-newer-release]
                 [--play] [--data DIR] [--push]
        scripts/codingame.sh replay GAME RELEASE.rs [--opponents NAME,...] [--all]
-                [--seat N] [--since DATE] [--limit N] [--keep N] [--play]
-                [--data DIR] [--push]
+                [--seat N] [--since DATE] [--limit N] [--keep N] [--max-hours H]
+                [--play] [--data DIR] [--push]
        scripts/codingame.sh fetch-ids GAME [--kind ranking|test|replay] ID...
                 [--data DIR] [--push]
 
@@ -99,7 +100,7 @@ Usage: scripts/codingame.sh fetch GAME [--submission ID] [--backfill-releases]
   --keep N         batch, replay: stop (exit 0, games left planned) before a test
                    game that would leave fewer than N of the 600 of the last 24
                    hours (0: no floor)
-  --max-hours H    batch: stop (exit 0, resumable) after H hours (decimals allowed)
+  --max-hours H    batch, replay: stop (exit 0, resumable) after H hours (decimals allowed)
   --max-games N    batch: stop (exit 0, resumable) after N test games started in
                    this run, played or failed (a trial run)
   --until-newer-release
@@ -199,7 +200,7 @@ while (($#)); do
       shift 2
       ;;
     --max-hours)
-      only batch
+      only "batch replay"
       [[ ${2:-} =~ ^([0-9]+\.?[0-9]*|\.[0-9]+)$ ]] || bad_usage
       max_hours="$2"
       shift 2
@@ -1138,6 +1139,9 @@ run_batch() {
 
 run_replay() {
   local names_json="[]" names_arr=() count i gid opp result stored=0 failed_games=0 streak=0
+  if [[ -n $max_hours ]]; then
+    deadline=$(($(now_epoch) + $(awk -v h="$max_hours" 'BEGIN { printf "%d", h * 3600 }')))
+  fi
   if [[ -n $opp_names ]]; then
     IFS=, read -ra names_arr <<<"$opp_names"
     names_json="$(jq -cn '$ARGS.positional' --args "${names_arr[@]}")"

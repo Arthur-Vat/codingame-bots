@@ -15,13 +15,13 @@ Use `github-api` for the commands below (REST, `gh api`).
 
 - The runs: `gh run list --workflow codingame-collect.yml --limit 10` (REST: `gh api repos/<owner>/<repo>/actions/workflows/codingame-collect.yml/runs`). A run ends within 350 minutes; runs never overlap, so a long run delays the next. A scheduled run can start late.
 - A run's job summary lists the games fetched and played, won and lost by opponent for the day's batch, the test games left in the quota, and any top-10 player whose agent id changed since the previous UTC day. The run's log is readable (it never holds the token).
-- The games: the branch `claude/codingame-games` (`batches/<date>-<release>-daily.json` has each game's status; `index.jsonl` one line a game; `leaderboard/` the snapshots).
+- The games: the branch `claude/codingame-games` (`batches/<date>-<release>-zasmu.json` has each game's status (`-daily` before ADR 0061); `index.jsonl` one line a game; `leaderboard/` the snapshots).
 - Failures: a run that failed with the annotation "CodinGame refused the token" needs a new token (below); any other failure is in the step's log, and what was stored is pushed anyway. A run that finds the day's batch done, or the quota floor reached ("stopped: 100 test games of the day left to the owner"), ends cleanly. Tell the owner about a failure; do not retry by dispatching repeatedly.
 - GitHub disables a schedule after a quiet period: if no run appears for more than a day, the owner re-enables the workflow in the Actions page.
 
 ## Dispatch a trial run
 
-Only on the owner's word, after a change to the workflow or the token: `gh workflow run codingame-collect.yml --ref main -f max_games=2` plays 2 games at most. `-f play=false` only prints the day's plan and pushes nothing. A dispatch from another branch gets no secret (the environment allows `main` only), by design.
+Only on the owner's word, after a change to the workflow or the token: `gh workflow run codingame-collect.yml --ref main -f max_games=2` plays 4 games at most (2 replays, then 2 games of the batch). `-f play=false` only prints the day's plan and pushes nothing. A dispatch from another branch gets no secret (the environment allows `main` only), by design.
 
 ## Pause or stop
 
