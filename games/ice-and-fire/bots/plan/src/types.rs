@@ -33,13 +33,13 @@ pub const LEVELS: usize = 5;
 pub const KINDS: usize = 8;
 
 /// The number of fields of a key.
-const FIELDS: usize = 13;
+pub(crate) const FIELDS: usize = 13;
 /// How many leading fields a key has at each level.
-const LENGTHS: [usize; LEVELS] = [2, 3, 4, 8, 13];
+pub(crate) const LENGTHS: [usize; LEVELS] = [2, 3, 4, 8, 13];
 /// The bits of each field of a key's code.
-const WIDTHS: [u32; FIELDS] = [3, 1, 3, 2, 1, 2, 2, 1, 3, 2, 1, 2, 2];
+pub(crate) const WIDTHS: [u32; FIELDS] = [3, 1, 3, 2, 1, 2, 2, 1, 3, 2, 1, 2, 2];
 /// The largest value of each field of a key's code.
-const MAXIMA: [u32; FIELDS] = [4, 1, 4, 3, 1, 2, 2, 1, 4, 3, 1, 2, 2];
+pub(crate) const MAXIMA: [u32; FIELDS] = [4, 1, 4, 3, 1, 2, 2, 1, 4, 3, 1, 2, 2];
 
 /// What a unit is for, from where it stands.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -235,7 +235,7 @@ impl Key {
 }
 
 /// The number of the first `LENGTHS[depth]` of `fields`, packed by `WIDTHS`.
-fn code_of(fields: &[u32; FIELDS], depth: usize) -> u32 {
+pub(crate) fn code_of(fields: &[u32; FIELDS], depth: usize) -> u32 {
     fields
         .iter()
         .zip(WIDTHS)
@@ -451,35 +451,6 @@ impl Table {
         [0; KINDS]
     }
 
-    /// Drops the entries that give what the table gives without them: those
-    /// whose probabilities equal the finest coarser entry's. Lookups do not
-    /// change. Returns how many were dropped.
-    #[cfg(feature = "analysis")]
-    pub fn prune(&mut self) -> usize {
-        let mut dropped = 0;
-        for depth in 1..LEVELS {
-            let kept: Vec<(u32, [u8; KINDS])> = self.levels[depth]
-                .iter()
-                .copied()
-                .filter(|&(code, p)| {
-                    let mut at = code;
-                    for coarser in (0..depth).rev() {
-                        let cut: u32 = WIDTHS[LENGTHS[coarser]..LENGTHS[coarser + 1]].iter().sum();
-                        at >>= cut;
-                        let level = &self.levels[coarser];
-                        if let Ok(i) = level.binary_search_by_key(&at, |&(c, _)| c) {
-                            return level[i].1 != p;
-                        }
-                    }
-                    true
-                })
-                .collect();
-            dropped += self.levels[depth].len() - kept.len();
-            self.levels[depth] = kept;
-        }
-        dropped
-    }
-
     /// The table of the bytes `to_bytes` wrote, or why they are not one.
     pub fn from_bytes(bytes: &[u8]) -> Result<Table, String> {
         let mut at = 0;
@@ -522,27 +493,6 @@ impl Table {
         let bytes = cg_pack::unpack(packed).ok_or("the table is not packed text")?;
         Table::from_bytes(&bytes)
     }
-
-    /// The bytes of the table: for each level, the number of keys, then for
-    /// each key the difference of its code from the previous one (from 0
-    /// for the first) as LEB128, and the probabilities of the first seven
-    /// kinds, one byte each: the eighth is what is left of 255, so each
-    /// entry sums to 255.
-    #[cfg(feature = "analysis")]
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut out = Vec::new();
-        for level in &self.levels {
-            write_varint(&mut out, level.len() as u32);
-            let mut previous = 0;
-            for &(code, p) in level {
-                write_varint(&mut out, code - previous);
-                previous = code;
-                debug_assert_eq!(p.iter().map(|&q| u32::from(q)).sum::<u32>(), 255);
-                out.extend_from_slice(&p[..KINDS - 1]);
-            }
-        }
-        out
-    }
 }
 
 /// One LEB128 number of `bytes` at `at`, which moves on.
@@ -561,15 +511,6 @@ fn varint(bytes: &[u8], at: &mut usize) -> Result<u32, String> {
         }
     }
     Err("a number of the table is too long".to_string())
-}
-
-#[cfg(feature = "analysis")]
-fn write_varint(out: &mut Vec<u8>, mut value: u32) {
-    while value >= 0x80 {
-        out.push((value & 0x7f) as u8 | 0x80);
-        value >>= 7;
-    }
-    out.push(value as u8);
 }
 
 /// The probabilities of the eight kinds for `key`, quantized to 255, from
@@ -592,25 +533,4 @@ pub fn likeliest(p: &[u8; KINDS]) -> Vec<Kind> {
             .then((*a as usize).cmp(&(*b as usize)))
     });
     order.to_vec()
-}
-
-/// The code of the key `fields` of level `depth` (a table's JSON gives
-/// them), checked.
-#[cfg(feature = "analysis")]
-pub fn code_of_fields(fields: &[u32], depth: usize) -> Result<u32, String> {
-    let length = *LENGTHS.get(depth).ok_or("no such level")?;
-    if fields.len() != length {
-        return Err(format!(
-            "a key of level {depth} has {} fields, not {length}",
-            fields.len()
-        ));
-    }
-    let mut full = [0u32; FIELDS];
-    for (i, &v) in fields.iter().enumerate() {
-        if v > MAXIMA[i] {
-            return Err(format!("field {i} of a key is {v}, over {}", MAXIMA[i]));
-        }
-        full[i] = v;
-    }
-    Ok(code_of(&full, depth))
 }

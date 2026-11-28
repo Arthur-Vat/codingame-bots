@@ -35,7 +35,8 @@ use ice_and_fire_engine::{Command, State};
 use super::judge::commands_of;
 use super::{read_bank, Position};
 use crate::types::{
-    code_of_fields, likeliest, prior, Band, Gold, Kind, Table, Type, Typing, KINDS, LEVELS,
+    code_of, likeliest, prior, Band, Gold, Kind, Table, Type, Typing, FIELDS, KINDS, LENGTHS,
+    LEVELS, MAXIMA, WIDTHS,
 };
 
 #[cfg(test)]
@@ -457,6 +458,82 @@ pub fn table_of_json(text: &str) -> Result<Table, String> {
     Ok(table)
 }
 
+/// Drops the entries that give what the table gives without them: those
+/// whose probabilities equal the finest coarser entry's. Lookups do not
+/// change. Returns how many were dropped.
+pub fn prune(table: &mut Table) -> usize {
+    let mut dropped = 0;
+    for depth in 1..LEVELS {
+        let kept: Vec<(u32, [u8; KINDS])> = table.levels[depth]
+            .iter()
+            .copied()
+            .filter(|&(code, p)| {
+                let mut at = code;
+                for coarser in (0..depth).rev() {
+                    let cut: u32 = WIDTHS[LENGTHS[coarser]..LENGTHS[coarser + 1]].iter().sum();
+                    at >>= cut;
+                    let level = &table.levels[coarser];
+                    if let Ok(i) = level.binary_search_by_key(&at, |&(c, _)| c) {
+                        return level[i].1 != p;
+                    }
+                }
+                true
+            })
+            .collect();
+        dropped += table.levels[depth].len() - kept.len();
+        table.levels[depth] = kept;
+    }
+    dropped
+}
+
+/// The bytes of the table: for each level, the number of keys, then for
+/// each key the difference of its code from the previous one (from 0
+/// for the first) as LEB128, and the probabilities of the first seven
+/// kinds, one byte each: the eighth is what is left of 255, so each
+/// entry sums to 255.
+pub fn to_bytes(table: &Table) -> Vec<u8> {
+    let mut out = Vec::new();
+    for level in &table.levels {
+        write_varint(&mut out, level.len() as u32);
+        let mut previous = 0;
+        for &(code, p) in level {
+            write_varint(&mut out, code - previous);
+            previous = code;
+            debug_assert_eq!(p.iter().map(|&q| u32::from(q)).sum::<u32>(), 255);
+            out.extend_from_slice(&p[..KINDS - 1]);
+        }
+    }
+    out
+}
+
+fn write_varint(out: &mut Vec<u8>, mut value: u32) {
+    while value >= 0x80 {
+        out.push((value & 0x7f) as u8 | 0x80);
+        value >>= 7;
+    }
+    out.push(value as u8);
+}
+
+/// The code of the key `fields` of level `depth` (a table's JSON gives
+/// them), checked.
+pub fn code_of_fields(fields: &[u32], depth: usize) -> Result<u32, String> {
+    let length = *LENGTHS.get(depth).ok_or("no such level")?;
+    if fields.len() != length {
+        return Err(format!(
+            "a key of level {depth} has {} fields, not {length}",
+            fields.len()
+        ));
+    }
+    let mut full = [0u32; FIELDS];
+    for (i, &v) in fields.iter().enumerate() {
+        if v > MAXIMA[i] {
+            return Err(format!("field {i} of a key is {v}, over {}", MAXIMA[i]));
+        }
+        full[i] = v;
+    }
+    Ok(code_of(&full, depth))
+}
+
 /// `data` packed as `cg_packer::pack` does (docs/research/utf16-packing.md),
 /// decoded by `cg_pack::unpack`.
 pub fn pack(data: &[u8]) -> Result<String, String> {
@@ -503,7 +580,7 @@ pub fn pack(data: &[u8]) -> Result<String, String> {
 /// counts towards the bot's size) and the packed bytes. Also the number of
 /// bytes packed.
 pub fn module_text(table: &Table) -> Result<(String, usize), String> {
-    let bytes = table.to_bytes();
+    let bytes = to_bytes(table);
     let packed = pack(&bytes)?;
     Ok((
         format!("// `types-table`; do not edit.\npub const TABLE: &str = \"{packed}\";\n"),
@@ -518,7 +595,7 @@ pub fn run_table(args: &[String]) -> Result<String, String> {
     let out = option(args, "--out")?.ok_or("types-table needs --out FILE")?;
     let text = std::fs::read_to_string(&input).map_err(|e| format!("{input}: {e}"))?;
     let mut table = table_of_json(&text)?;
-    let pruned = table.prune();
+    let pruned = prune(&mut table);
     let (module, bytes) = module_text(&table)?;
     std::fs::write(&out, &module).map_err(|e| format!("{out}: {e}"))?;
     Ok(format!(
