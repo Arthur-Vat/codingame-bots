@@ -7,8 +7,8 @@
 #         [--seeds FILE] [--name NAME] [--keep N] [--max-hours H] [--max-games N]
 #         [--until-newer-release]
 #         [--play] [--data DIR] [--push]
-#   replay GAME RELEASE.rs [--opponents NAME,...] [--all] [--limit N] [--play]
-#         [--data DIR] [--push]
+#   replay GAME RELEASE.rs [--opponents NAME,...] [--all] [--seat N]
+#         [--since DATE] [--limit N] [--keep N] [--play] [--data DIR] [--push]
 #   fetch-ids GAME [--kind ranking|test|replay] ID... [--data DIR] [--push]
 #
 # fetch downloads our own ranking games ("battles") of the game's puzzle and a
@@ -22,7 +22,9 @@
 # batch plays test games of a frozen release (a file of games/GAME/releases/)
 # against the leaderboard's top players, on the fixed maps of
 # games/GAME/codingame-seeds.txt, one game at a time; replay plays our lost
-# ranking games again with a release; fetch-ids stores the logs of given game
+# ranking games again with a release (--seat N: only those where our seat was
+# N; --since DATE: only those that ended on that day or later; --keep N as for
+# batch); fetch-ids stores the logs of given game
 # ids. batch and replay play nothing without --play (the only commands that
 # write to CodinGame); a test game never touches the owner's IDE (show_in_ide,
 # overwrite_ide_code and overwrite_ide_game_parameters are false) and no
@@ -77,7 +79,8 @@ Usage: scripts/codingame.sh fetch GAME [--submission ID] [--backfill-releases]
                 [--max-hours H] [--max-games N] [--until-newer-release]
                 [--play] [--data DIR] [--push]
        scripts/codingame.sh replay GAME RELEASE.rs [--opponents NAME,...] [--all]
-                [--limit N] [--play] [--data DIR] [--push]
+                [--seat N] [--since DATE] [--limit N] [--keep N] [--play]
+                [--data DIR] [--push]
        scripts/codingame.sh fetch-ids GAME [--kind ranking|test|replay] ID...
                 [--data DIR] [--push]
 
@@ -93,8 +96,9 @@ Usage: scripts/codingame.sh fetch GAME [--submission ID] [--backfill-releases]
   --seeds FILE     batch: game options, one line a map (games/GAME/codingame-seeds.txt)
   --name NAME      batch: name of the batch (DATE-RELEASE-topN); a batch of
                    that name that exists is resumed, only planned games played
-  --keep N         batch: stop (exit 0, games left planned) before a test game that
-                   would leave fewer than N of the 600 of the last 24 hours (0: no floor)
+  --keep N         batch, replay: stop (exit 0, games left planned) before a test
+                   game that would leave fewer than N of the 600 of the last 24
+                   hours (0: no floor)
   --max-hours H    batch: stop (exit 0, resumable) after H hours (decimals allowed)
   --max-games N    batch: stop (exit 0, resumable) after N test games started in
                    this run, played or failed (a trial run)
@@ -105,6 +109,8 @@ Usage: scripts/codingame.sh fetch GAME [--submission ID] [--backfill-releases]
                    fetch: only add "release" to the ranking games of the index
                    from the game's file of releases; no request
   --all            replay: the games we won too, not only the lost ones
+  --seat N         replay: only the games where our seat was N (0 or 1)
+  --since DATE     replay: only the games that ended on DATE (YYYY-MM-DD) or later
   --limit N        replay: at most N games, newest first (20)
   --kind K         fetch-ids: the kind of the games in the index (ranking)
   --play           batch, replay: really play the test games; without it they
@@ -148,7 +154,7 @@ submission=""
 data_dir=""
 push=false
 top=10 per_opp=10 limit=20
-opp_names="" seeds_file="" batch_name="" kind="ranking"
+opp_names="" seeds_file="" batch_name="" kind="ranking" seat=-1 since=""
 play=false all=false keep=0 max_hours="" max_games=0 backfill=false until_newer=false
 while (($#)); do
   case "$1" in
@@ -187,7 +193,7 @@ while (($#)); do
       shift 2
       ;;
     --keep)
-      only batch
+      only "batch replay"
       [[ ${2:-} =~ ^[0-9]+$ ]] || bad_usage
       keep="$2"
       shift 2
@@ -241,6 +247,18 @@ while (($#)); do
       only replay
       all=true
       shift
+      ;;
+    --seat)
+      only replay
+      [[ ${2:-} =~ ^[01]$ ]] || bad_usage
+      seat="$2"
+      shift 2
+      ;;
+    --since)
+      only replay
+      [[ ${2:-} =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || bad_usage
+      since="$2"
+      shift 2
       ;;
     --data)
       [[ -n ${2:-} ]] || bad_usage
@@ -1125,10 +1143,13 @@ run_replay() {
     names_json="$(jq -cn '$ARGS.positional' --args "${names_arr[@]}")"
   fi
   if [[ -s $index ]]; then
-    jq -sc --arg rel "$release" --argjson names "$names_json" --argjson all "$all" --argjson limit "$limit" '
+    jq -sc --arg rel "$release" --argjson names "$names_json" --argjson all "$all" --argjson limit "$limit" \
+      --argjson seat "$seat" --arg since "$since" '
       ([.[] | select(.replay_of != null and .release == $rel) | .replay_of]) as $done
       | [.[] | select(.kind == "ranking" and .our_seat != null)
          | select($all or .ranking[0] != .our_seat)
+         | select($seat < 0 or .our_seat == $seat)
+         | select($since == "" or (.ended_at // "") >= $since)
          | select(([.players[] | select(.me != true) | .name]) as $opp
                   | ($names | length) == 0 or any($opp[]; IN($names[])))
          | select(.game_id as $g | ($done | index($g)) == null)]
