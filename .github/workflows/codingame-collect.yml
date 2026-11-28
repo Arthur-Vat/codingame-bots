@@ -1,9 +1,12 @@
 name: CodinGame collection
 
 # The collection of CodinGame games (ADR 0058, which supersedes ADR 0057's
-# session): every 3 hours it fetches our new ranking games and plays the day's
-# batch of test games, the current release against the top 10 (50 games each
-# on the 50 fixed maps), with scripts/codingame.sh, which keeps 100 of the
+# session): every 3 hours it fetches our new ranking games, replays with the
+# current release those against the opponent where it had seat 0 (since
+# REPLAY_SINCE, not yet replayed with that release, 20 a run at most), and
+# plays the day's batch of test games, the current release against one player
+# (ADR 0061: zasmu, 500 games on the 250 maps of codingame-seeds-250.txt), with
+# scripts/codingame.sh, which keeps 100 of the
 # 600 test games of 24 hours for the owner and stops by itself before the
 # job's time runs out (--max-hours 5.25 of the job's 350 minutes), or when a
 # newer release reaches main (--until-newer-release, ADR 0059): the Release
@@ -20,7 +23,8 @@ name: CodinGame collection
 # renewal: docs/CODINGAME.md, section "The collection's token".
 #
 # By hand (workflow_dispatch): `play` false only prints the day's plan;
-# `max_games` stops the batch after that many games (a trial: 2).
+# `max_games` stops the replays and the batch after that many games each (a
+# trial: 2).
 on:
   schedule:
     # Every 3 hours, off the hour.
@@ -32,7 +36,7 @@ on:
         type: boolean
         default: true
       max_games:
-        description: "Stop the batch after this many games (a trial run: 2); empty: no limit"
+        description: "Stop the replays and the batch after this many games each, 20 at most for the replays (a trial run: 2); empty: no limit"
         type: number
         required: false
 
@@ -45,6 +49,10 @@ defaults:
 
 env:
   GAME: ice-and-fire
+  # ADR 0061: the one player the daily games are played against, and the day
+  # from which its ranking games where it had seat 0 (ours 1) are replayed.
+  OPPONENT: zasmu
+  REPLAY_SINCE: "2026-11-01"
 
 jobs:
   collect:
@@ -92,6 +100,10 @@ jobs:
             exit 1
           fi
           day="$(date -u +%F)"
+          if [ -n "$MAX_GAMES" ] && ! [[ $MAX_GAMES =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error title=CodinGame::max_games must be a whole number of 1 or more, not $MAX_GAMES"
+            exit 1
+          fi
           status=0
 
           # A refused token ends the run: nothing else would work.
@@ -109,15 +121,29 @@ jobs:
             echo "play is unchecked: no fetch (it would push), only the plan of the batch" >"$log/fetch.log"
           fi
 
+          # The opponent's seat-0 games: test games always seat us first. The
+          # replays get the job's time as the batch does (5.25 hours from the
+          # start of the job, less what has passed).
+          hours="$(awk -v s="$JOB_START" -v n="$(date +%s)" 'BEGIN { h = 5.25 - (n - s) / 3600; if (h < 0) h = 0; printf "%.4f", h }')"
+          limit=20
+          if [ -n "$MAX_GAMES" ] && [ "$MAX_GAMES" -lt 20 ]; then limit="$MAX_GAMES"; fi
+          args=(replay "$GAME" "games/$GAME/releases/$release.rs" --opponents "$OPPONENT" --all
+            --seat 1 --since "$REPLAY_SINCE" --keep 100 --max-hours "$hours" --limit "$limit")
+          if [ "$PLAY" = true ]; then args+=(--play --push); fi
+          scripts/codingame.sh "${args[@]}" 2>&1 | tee "$log/replay.log"
+          code=${PIPESTATUS[0]}
+          [ "$code" -ne 3 ] || refused
+          [ "$code" -eq 0 ] || status=1
+
           # 5.25 hours from the start of the job, less what has passed.
           hours="$(awk -v s="$JOB_START" -v n="$(date +%s)" 'BEGIN { h = 5.25 - (n - s) / 3600; if (h < 0) h = 0; printf "%.4f", h }')"
           if [ "$hours" = "0.0000" ]; then
-            echo "::notice title=CodinGame::no time left for the batch after the fetch"
+            echo "::notice title=CodinGame::no time left for the batch after the fetch and the replays"
             exit "$status"
           fi
-          args=(batch "$GAME" "games/$GAME/releases/$release.rs" --top 10 --games-per-opponent 50
-            --seeds "games/$GAME/codingame-seeds-50.txt" --keep 100 --max-hours "$hours"
-            --name "$day-$release-daily" --until-newer-release)
+          args=(batch "$GAME" "games/$GAME/releases/$release.rs" --opponents "$OPPONENT"
+            --games-per-opponent 500 --seeds "games/$GAME/codingame-seeds-250.txt" --keep 100
+            --max-hours "$hours" --name "$day-$release-$OPPONENT" --until-newer-release)
           if [ -n "$MAX_GAMES" ]; then args+=(--max-games "$MAX_GAMES"); fi
           if [ "$PLAY" = true ]; then args+=(--play --push); fi
           scripts/codingame.sh "${args[@]}" 2>&1 | tee "$log/batch.log"

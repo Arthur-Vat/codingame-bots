@@ -538,6 +538,23 @@ expect "replay keys at the end" "$(jq -c 'keys_unsorted | .[-2:]' <<<"$rep")" '[
 expect "replay logs" "$(find "$rdata/toy/logs" -name '*.json' -printf '%f\n' | sort | tr '\n' ' ')" "9101.json 9102.json "
 run replay toy "$release_file" --opponents Alpha --data "$rdata"
 contains "replayed games are skipped" "$out" "0 games to play"
+# --seat and --since narrow the games; both are checked.
+{
+  rline 106 2026-01-07T00:00:00Z Alpha '[0,1]' | jq -c '.our_seat = 1 | .players = [{seat:0,name:"Alpha",agent_id:1},{seat:1,name:"Mine",agent_id:-1,me:true}]'
+  rline 107 2026-01-06T00:00:00Z Alpha '[0,1]' | jq -c '.our_seat = 1 | .players = [{seat:0,name:"Alpha",agent_id:1},{seat:1,name:"Mine",agent_id:-1,me:true}]'
+} >>"$rdata/toy/index.jsonl"
+run replay toy "$release_file" --opponents Alpha --all --seat 1 --data "$rdata"
+expect "replay --seat 1" "$(grep -o '^  [0-9]*' <<<"$out" | tr -d ' ' | tr '\n' ' ')" "106 107 "
+run replay toy "$release_file" --opponents Alpha --all --seat 0 --data "$rdata"
+expect "replay --seat 0" "$(grep -o '^  [0-9]*' <<<"$out" | tr -d ' ' | tr '\n' ' ')" "102 "
+run replay toy "$release_file" --opponents Alpha --all --seat 1 --since 2026-01-07 --data "$rdata"
+expect "replay --since" "$(grep -o '^  [0-9]*' <<<"$out" | tr -d ' ' | tr '\n' ' ')" "106 "
+run replay toy "$release_file" --seat 2
+expect "replay seat 0 or 1" "$rc" 2
+run replay toy "$release_file" --since 2026-1-7
+expect "replay since a date" "$rc" 2
+run batch toy "$release_file" --seat 1
+expect "seat is for replay" "$rc" 2
 
 # fetch-ids: the logs of given ids, ours or not.
 echo '{"game_id":8001,"game_options":"seed=3","agents":[{"index":0,"name":"Top1","agent_id":5},{"index":1,"name":"Top2","agent_id":6}],"frames":[],"scores":[1,0],"ranking":[0,1],"limits":{"x":1}}' \
@@ -790,6 +807,23 @@ expect "no 24 h window plays nothing" "$(posts)" "$before"
 rm "$STUB_DIR/$lim_name.json"
 run batch toy "$release_file" --opponents Gamma --keep abc
 expect "keep needs a number" "$rc" 2
+# replay --keep stops at the same floor.
+rkdata="$tmp_dir/rkeep"
+mkdir -p "$rkdata/toy"
+{
+  rline 201 2026-01-05T00:00:00Z Gamma '[1,0]'
+  rline 202 2026-01-04T00:00:00Z Gamma '[1,0]'
+} >"$rkdata/toy/index.jsonl"
+enqueue "$lim_name" 01 200 "$(lim24 101)"
+enqueue "$lim_name" 02 200 "$(lim24 100)"
+enqueue "$post_name" 01 200 "$(done_reply 5501 "$(tglog 9501 seed=5 Gamma 33 0 '[300,100]')" 5 20)"
+before="$(posts)"
+run replay toy "$release_file" --keep 100 --play --data "$rkdata"
+expect "replay keep exit" "$rc" 0
+expect "replay keep plays one game" "$(($(posts) - before))" 1
+contains "replay keep message" "$out" "stopped: 100 test games of the day left to the owner"
+run replay toy "$release_file" --max-hours abc
+expect "replay max-hours needs a number" "$rc" 2
 
 # --max-hours stops, cleanly, once the hours have passed (a clock file that
 # every start of a test game moves on by 30 minutes).
@@ -831,6 +865,20 @@ expect "deadline retry wait plays one start" "$(($(posts) - before))" 1
 contains "deadline retry wait message" "$out" "(the retry wait in 5000 s)"
 expect "deadline retry wait does not sleep" "$(cat "$STUB_DIR/sleeps.log")" ""
 expect "deadline retry wait leaves the game planned" "$(jq -r '[.games[].status] | join(",")' "$bdata/toy/batches/tdl.json")" "done,planned"
+# replay --max-hours: the quota wait that would cross the deadline stops it.
+rhdata="$tmp_dir/rhours"
+mkdir -p "$rhdata/toy"
+{
+  rline 301 2026-01-05T00:00:00Z Alpha '[1,0]'
+  rline 302 2026-01-04T00:00:00Z Alpha '[1,0]'
+} >"$rhdata/toy/index.jsonl"
+enqueue "$post_name" 01 200 "$(done_reply 5431 "$(tglog 9431 seed=5 Alpha 11 0 '[300,100]')" 0 20000)"
+before="$(posts)"
+run replay toy "$release_file" --max-hours 1 --play --data "$rhdata"
+expect "replay deadline exit" "$rc" 0
+expect "replay deadline plays one game" "$(($(posts) - before))" 1
+contains "replay deadline message" "$out" "stopped: the next game cannot start before the deadline (the quota window resets in 20000 s)"
+expect "replay deadline does not sleep" "$(cat "$STUB_DIR/sleeps.log")" ""
 unset CODINGAME_NOW
 
 # The floor is read before every start, retries included.
