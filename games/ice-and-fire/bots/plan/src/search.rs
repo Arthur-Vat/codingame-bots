@@ -97,7 +97,7 @@ pub const TYPE_FROM_TURN: u32 = 7;
 /// (never to the opponent's model) from game turn [`HQ_TOWER_FROM`] (E110:
 /// 1.3 towers a game near our HQ, rarely on the border later). `None`: none
 /// removed.
-pub const HQ_TOWER_BAN: Option<u8> = Some(2);
+pub const HQ_TOWER_BAN: Option<u8> = None;
 /// The game turn from which [`HQ_TOWER_BAN`] applies, by the climb's root.
 pub const HQ_TOWER_FROM: u32 = 15;
 
