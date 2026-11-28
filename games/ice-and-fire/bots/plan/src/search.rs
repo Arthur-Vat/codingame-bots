@@ -62,7 +62,7 @@ const REPLY_EVALS: u64 = 300;
 /// The most trainings in the opponent's modeled plan (E105): real
 /// opponents train two units or fewer in 90% of their replies, the
 /// opponent's climb three or more in 18%. `None`: no cap (v034).
-pub const OPP_MAX_TRAINS: Option<usize> = None;
+pub const OPP_MAX_TRAINS: Option<usize> = Some(2);
 /// Whether the opponent's climb places its moves, towers and mines first
 /// and only then may train (E105): in the largest group of its misses, the
 /// real reply trained nobody while the climb trained four units.
