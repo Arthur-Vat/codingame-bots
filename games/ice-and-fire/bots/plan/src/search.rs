@@ -107,10 +107,10 @@ pub struct Lean {
 /// compared; with no other complete candidate, today's choice is played.
 /// `None`: today's search alone, as in every release.
 pub const LEAN_DEPTH: Option<Lean> = Some(Lean {
-    share: 30,
-    candidates: 8,
-    replies: 4,
-    leaf: Leaf::Climb,
+    share: 50,
+    candidates: 2,
+    replies: 2,
+    leaf: Leaf::Think,
 });
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8 * CAP_SCALE;
