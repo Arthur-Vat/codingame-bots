@@ -61,7 +61,8 @@ Against `ice-and-fire-v034`, 1,600 pairs each, 4 shards
 | `m5x4` | 4 | 5 | 5 | −10.6 [−22.2, +0.9] |
 
 Commits: `control` `8781790`, `m7` `4781aea`, `h5` `6b5f6dd`, `m5` `b56816f`,
-`m5x4` `e3130af`. No fault in any variant.
+`m5x4` `e3130af`. No fault in any variant; v034 had one timeout against the
+control.
 
 ## What was learned
 

@@ -48,7 +48,8 @@ Against `ice-and-fire-v034`, 1,600 pairs each, 4 shards
 | `keep6` | on | 6 | −7.4 [−17.8, +3.0] |
 
 Commits: `control` `dd8984f`, `order` `d9a0bca`, `keep4` `060f2f9`, `keep6`
-`faf18e4`. One timeout of `order`'s side; none otherwise. With purchases
+`faf18e4`. One timeout of `order`, and one of v034 against the control; no
+other fault. With purchases
 pruned, `keep4` answered faster (median 14.6 against 21.7 ms on one shard):
 its climbs ran out of actions sooner.
 

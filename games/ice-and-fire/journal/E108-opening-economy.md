@@ -54,7 +54,7 @@ Against `ice-and-fire-v034`, 1,600 pairs each, 4 shards
 A horizon of 21 lost in 40 local pairs (−43.7 [−101, +11]) and had lost in
 E056: it was left out of the screening. Commits: `control` `f3449d1`,
 `train56` `f612ee6`, `mine7` `ccddd34`, `train56mine7` `85cc035`, `horizon21`
-`be5f2dc`.
+`be5f2dc`. One timeout of the control; no other fault.
 
 ## What was learned
 
