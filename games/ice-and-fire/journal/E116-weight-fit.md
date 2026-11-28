@@ -132,6 +132,10 @@ gains ("Combine with E120 if it gains"). The SPRT above tested
 `ice-and-fire-v035` as built by pull request #411 at its head commit
 `3e124d07`; a combined release takes that number.
 
+It ships in the combined `ice-and-fire-v035` with E120 (the deep step in
+free time), whose pull request carries this entry; the owner chose it on
+2026-11-28 ("Combine weights + f2t").
+
 ## What was learned
 
 - The gain is real but smaller than the screenings said: +7.9 over 4,400

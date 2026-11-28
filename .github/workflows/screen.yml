@@ -27,11 +27,6 @@ name: Screening
 #   seed      a decimal u64; empty: the game's SEED in evaluation.env
 #   arena     empty: whole games; `early`: games cut by the game's early arena
 #             (games/<game>/arena/src/bin/<game>-arena-early.rs)
-#   extra_tolerance_ms
-#             milliseconds added to the calibrated tolerance, 0 to 60000
-#             (default 0), told to no bot: room for a variant that thinks
-#             longer than CodinGame allows (a teacher, E117) while the
-#             baseline keeps its own budget
 #
 # Results come back in the run's step summary (a table per variant), in the
 # summary job's log, and as annotations on its check run (a notice per variant,
@@ -93,11 +88,6 @@ on:
         type: string
         required: false
         default: ""
-      extra_tolerance_ms:
-        description: "Milliseconds added to the calibrated tolerance, told to no bot, 0 to 60000"
-        type: string
-        required: false
-        default: "0"
 
 permissions:
   contents: read
@@ -126,7 +116,6 @@ jobs:
       shards: ${{ steps.plan.outputs.shards }}
       seed: ${{ steps.plan.outputs.seed }}
       arena: ${{ steps.plan.outputs.arena }}
-      extra_tolerance_ms: ${{ steps.plan.outputs.extra_tolerance_ms }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -145,7 +134,6 @@ jobs:
           SHARDS: ${{ inputs.shards }}
           SEED: ${{ inputs.seed }}
           ARENA: ${{ inputs.arena }}
-          EXTRA_TOLERANCE_MS: ${{ inputs.extra_tolerance_ms }}
         run: scripts/screen.sh plan
 
   play:
@@ -166,7 +154,6 @@ jobs:
       SHARDS: ${{ needs.plan.outputs.shards }}
       SEED: ${{ needs.plan.outputs.seed }}
       ARENA: ${{ needs.plan.outputs.arena }}
-      EXTRA_TOLERANCE_MS: ${{ needs.plan.outputs.extra_tolerance_ms }}
       VARIANT: ${{ matrix.variant }}
       SHA: ${{ matrix.sha }}
       SHARD: ${{ matrix.shard }}

@@ -20,14 +20,12 @@
 # 8; variants x shards at most 20) and SEED (a decimal u64, empty for the
 # game's SEED in evaluation.env), and ARENA (empty for whole games with the
 # game's arena, or `early` for games cut at the early arena's turn with
-# games/GAME/arena/src/bin/GAME-arena-early.rs), and EXTRA_TOLERANCE_MS (0 to
-# 60000, empty for 0: milliseconds added to the calibrated tolerance, told to
-# no bot, for a variant that thinks longer than CodinGame allows, E117). A bad input is an `::error`
+# games/GAME/arena/src/bin/GAME-arena-early.rs). A bad input is an `::error`
 # annotation and
 # exit status 1. It resolves each REF to a full SHA, checks that the bot exists
 # there, and prints, also to $GITHUB_OUTPUT: matrix (a JSON array of
 # {"variant":NAME,"sha":SHA,"shard":K}), game, bot, baseline (the file),
-# baseline_name, pairs, shards, seed, arena and extra_tolerance_ms.
+# baseline_name, pairs, shards, seed and arena.
 #
 # play: one variant's shard K of SHARDS. Makes a git worktree of REV in
 # target/screen/src-NAME, builds that tree's own bundler there and bundles the
@@ -119,7 +117,6 @@ resolve_ref() {
 plan() {
   local game="${GAME:-}" bot="${BOT:-}" variants="${VARIANTS:-}" baseline="${BASELINE:-}"
   local pairs="${PAIRS:-}" shards="${SHARDS:-}" seed="${SEED:-}" arena="${ARENA:-}"
-  local extra="${EXTRA_TOLERANCE_MS:-0}"
 
   [[ $game =~ $WORD_RE ]] || die "game must be a folder of games/ (letters, digits, - and _)"
   [[ -f games/$game/evaluation.env ]] || die "games/$game/evaluation.env does not exist"
@@ -129,9 +126,6 @@ plan() {
   if [[ $arena == early ]]; then
     [[ -f games/$game/arena/src/bin/$game-arena-early.rs ]] || die "games/$game has no early arena"
   fi
-  [[ -z $extra ]] && extra=0
-  [[ $extra =~ ^(0|[1-9][0-9]{0,4})$ ]] || die "extra_tolerance_ms must be a number from 0 to 60000"
-  ((extra <= 60000)) || die "extra_tolerance_ms must be a number from 0 to 60000"
 
   if [[ -z $baseline ]]; then
     baseline="$(releases "$game" | tail -n 1)"
@@ -195,7 +189,6 @@ plan() {
   emit "shards=$shards"
   emit "seed=$seed"
   emit "arena=$arena"
-  emit "extra_tolerance_ms=$extra"
 }
 
 play() {
@@ -246,11 +239,6 @@ play() {
   TIME_TOLERANCE_MS="${SPRT_TIME_TOLERANCE_MS:-$TIME_TOLERANCE_MS}"
   build_tools "$game"
   calibrate_settings "$game" "$work/calibration"
-  # Room for a variant that thinks longer (plan's EXTRA_TOLERANCE_MS, checked
-  # there), told to no bot.
-  local extra="${EXTRA_TOLERANCE_MS:-0}"
-  [[ $extra =~ ^(0|[1-9][0-9]{0,4})$ ]] || die "bad extra tolerance"
-  TIME_TOLERANCE_MS=$((TIME_TOLERANCE_MS + extra))
 
   local arena options shard_option=() status=0
   arena="$(arena_binary "$game")"
