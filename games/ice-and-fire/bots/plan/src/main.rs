@@ -77,6 +77,12 @@ const BUDGET_MS: f64 = 45.0;
 /// plan stops at 76% of it, about 610 ms.
 const FIRST_BUDGET_MS: f64 = 800.0;
 
+/// How many times longer than CodinGame allows the bot thinks: 1 plays at
+/// CodinGame's limits. Above 1 the bot is a teacher (E117), for an arena
+/// that gives it room (`--time-tolerance-ms`, the screening's
+/// `extra_tolerance_ms`); on CodinGame it would time out.
+const THINK_SCALE: f64 = 1.0;
+
 /// The share of the budget that the soft limit marks: the opening's choice
 /// stops 40% of the way from it to the hard limit, and the middle game's
 /// climbs 75% of the way (`search::CLIMB_SHARE`, E027; at it before), the
@@ -100,7 +106,7 @@ fn limit(start: Instant, turn: u32) -> Limit {
         };
     }
     // A scale beyond 100 is no use and could overflow the clock.
-    let scale = cg_core::time::time_scale().min(100.0);
+    let scale = (cg_core::time::time_scale() * THINK_SCALE).min(100.0);
     let ms = if turn == 1 {
         FIRST_BUDGET_MS
     } else {
