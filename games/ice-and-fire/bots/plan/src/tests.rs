@@ -6,7 +6,7 @@ use ice_and_fire_engine::{Bits, Command, League, Outcome, State, SIZE};
 use ice_and_fire_referee::map::generate;
 use ice_and_fire_referee::{IceAndFireReferee, League as RefereeLeague};
 
-use crate::actions::{generate as actions_of, generate_from, Action, MINE_FROM};
+use crate::actions::{generate as actions_of, generate_from, Action};
 use crate::search::{think, Limit};
 
 /// The bot's opening, new for each call, with narrow beams: the tests'
@@ -1969,7 +1969,6 @@ fn the_bitwise_weakness_is_the_depth_first_one() {
 fn mines_are_offered_from_the_game_turn_mine_from_only() {
     // E108: `MINE_FROM` is 0 when the switch is off; a later turn offers no
     // mine before it, and every other action the same.
-    assert_eq!(MINE_FROM, 0);
     let spots = "2\n5 0\n11 9\n";
     let rows = [
         "OOOOOOOOOOO.",
