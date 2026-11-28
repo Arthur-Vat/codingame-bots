@@ -23,7 +23,9 @@ mod table;
 #[cfg(test)]
 mod tests;
 
-pub use spending::{Buy, SpendTable, BUYS, ROWS, WIDTH};
+pub use spending::{Buy, SpendTable, WIDTH};
+#[cfg(feature = "analysis")]
+pub use spending::{BUYS, ROWS};
 
 /// The distance of a cell from land that is not there: no enemy cell, no
 /// joint, or no path.
