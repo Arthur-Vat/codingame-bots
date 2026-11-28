@@ -166,7 +166,7 @@ pub const EARLY_MINE_PER_CELLS: i64 = MINE_PER_CELLS;
 /// evaluation's pressure term and the standing threat count it, scaled to
 /// this percentage in every turn (E115, after E113 found that counting it
 /// less loses): 100, today's weights.
-pub const STRIKE_GOLD_PERCENT: i64 = 150;
+pub const STRIKE_GOLD_PERCENT: i64 = 200;
 /// The shared evaluation's bound on the pressure term
 /// (`ice_and_fire_tactics::eval`, `MAX_PRESSURE`).
 const PRESSURE_BOUND: i64 = 200;
