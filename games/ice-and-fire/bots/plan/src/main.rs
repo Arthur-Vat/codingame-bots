@@ -170,7 +170,7 @@ const OPENING_HORIZON: i64 = 18;
 /// unit whenever the gold pays one, on the free cell worth most next to our
 /// land (`Params::train_from`, `Params::train_to`, E108): `(0, 0)` never, as
 /// before E108; `(5, 6)` as zasmu trains at game turns 5 and 6.
-const OPENING_TRAIN_TURNS: (u32, u32) = (0, 0);
+const OPENING_TRAIN_TURNS: (u32, u32) = (5, 6);
 
 /// The cells a unit is expected to take after the territories meet
 /// (`Params::after_contact`, E056): 0 in v023.
