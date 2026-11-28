@@ -1,16 +1,16 @@
 ---
 id: E116
 date: 2026-11-28
-pull_request: "#NN"
+pull_request: "#411"
 parent: ice-and-fire-v034
 hypothesis: The evaluation's terms were tuned one at a time and their combination is not; their weights fitted jointly on the outcomes of v034's games against itself, a quarter of the way from today's, value land, working units and safe cells more and banked gold, units and towers less, and beat ice-and-fire-v034.
 change: Each of the evaluation's 17 terms gets a weight in percent (all 100 is v034's evaluation exactly); the release sets them a quarter of the way from 100 to a logistic fit of the game outcome on the terms.
 release: ice-and-fire-v035
-sprt: pending
-elo: pending
-pairs: pending
-full_time: pending
-decision: pending
+sprt: accepted
+elo: +7.9 [+1.8, +14.0]
+pairs: 4400
+full_time: +7.9 [+1.8, +14.0]
+decision: promoted
 cg_rank: not reported
 ---
 
@@ -106,4 +106,32 @@ fitted on, overshoots along it. The owner chose 25% as the candidate
 
 ## SPRT
 
-Pending.
+Accepted on the pull request
+([run 46169693373](https://github.com/Arthur-Vat/codingame-bots/actions/runs/46169693373),
+at 3e124d0), each runner calibrated to CodinGame's speed and real limit,
+in blocks of 10 pairs over 8 runners:
+
+```
+Smoke test against ice-and-fire-random: 200 wins in 200 games, no fault.
+ice-and-fire-v035 vs ice-and-fire-v034: 8800 games, 4400 complete pairs
+  ice-and-fire-v035: 4500 wins, 0 draws, 4300 losses (score 51.1%)
+  Elo of ice-and-fire-v035 over ice-and-fire-v034: +7.9 [+1.8, +14.0] (95%, from pairs)
+  pairs by ice-and-fire-v035's points (0, 1/2, 1, 3/2, 2): [717, 0, 2866, 0, 817]
+  ice-and-fire-v035 faults: 0 timeouts, 0 crashes, 0 invalid answers
+  ice-and-fire-v034 faults: 2 timeouts, 0 crashes, 0 invalid answers
+  slowest answer: ice-and-fire-v035 450.2 ms, ice-and-fire-v034 448.6 ms
+SPRT elo0=0 elo1=10 alpha=0.05 beta=0.05: LLR 3.03 (bounds -2.94, 2.94) after 4400 pairs
+Verdict: ACCEPTED: ice-and-fire-v035 is stronger than ice-and-fire-v034
+```
+
+## What was learned
+
+- The gain is real but smaller than the screenings said: +7.9 over 4,400
+  pairs, against +20.9 and +14.1 at 1,600 pairs each. Screening the best of
+  several points picks the luckiest run, so its figure runs high.
+- Fitting the terms jointly found a direction the one-at-a-time tuning had
+  missed (E111, E113, E115): land and units at work over banked gold,
+  units and towers. The fit's full step overshoots; a quarter of it gains.
+- Self-play's labels served better than CodinGame's: the CodinGame fit lost
+  −74.5. Fitting again from v035's own games is the next step of the same
+  method.
