@@ -34,8 +34,8 @@ pub struct Request {
     pub data: PathBuf,
     /// Our nickname, to find our seat when the index does not say.
     pub me: String,
-    /// The plan bot's analysis build.
-    pub judge: PathBuf,
+    /// The plan bot's analysis build; needed unless `bank` is set.
+    pub judge: Option<PathBuf>,
     /// Judge these players instead of the top of the snapshot.
     pub players: Vec<String>,
     /// Only our games played by this release (the index's `release`).
@@ -47,8 +47,12 @@ pub struct Request {
     pub limit: Option<usize>,
     pub jobs: usize,
     pub leaderboard: Option<PathBuf>,
-    /// The folder to write the files to, created if missing.
-    pub out: PathBuf,
+    /// The folder to write the files to, created if missing; needed unless
+    /// `bank` is set.
+    pub out: Option<PathBuf>,
+    /// Write the blocks of the chosen plies to this file, in the order they
+    /// are read, and stop: no bot runs and no report is written.
+    pub bank: Option<PathBuf>,
 }
 
 /// A score gap (ours less the played plan's) above which the played plan
@@ -290,6 +294,25 @@ pub fn run(request: &Request) -> Result<(), String> {
     }
     let total = all.len();
     let all = spread(all, request.limit);
+    if let Some(file) = &request.bank {
+        let text: String = all.iter().map(|item| item.block.as_str()).collect();
+        fs::write(file, text).map_err(|e| format!("{}: {e}", file.display()))?;
+        eprintln!(
+            "wrote {} of {total} plies of {} players to {}",
+            all.len(),
+            players.len(),
+            file.display()
+        );
+        return Ok(());
+    }
+    let judge = request
+        .judge
+        .as_ref()
+        .ok_or("codingame-judge needs --judge BIN, or --bank FILE")?;
+    let out = request
+        .out
+        .as_ref()
+        .ok_or("codingame-judge needs --out DIR, or --bank FILE")?;
     eprintln!(
         "judging {} of {total} plies of {} players",
         all.len(),
@@ -318,9 +341,7 @@ pub fn run(request: &Request) -> Result<(), String> {
     let results: Vec<Chunk> = std::thread::scope(|scope| {
         let handles: Vec<_> = chunks
             .iter()
-            .map(|(file, count)| {
-                scope.spawn(move || run_chunk(&request.judge, file, *count, request.tries))
-            })
+            .map(|(file, count)| scope.spawn(move || run_chunk(judge, file, *count, request.tries)))
             .collect();
         handles
             .into_iter()
@@ -347,7 +368,7 @@ pub fn run(request: &Request) -> Result<(), String> {
         return Err(format!(
             "the judge gave no judgement for {} positions (is {} the plan bot built with --features analysis?){}",
             all.len(),
-            request.judge.display(),
+            judge.display(),
             malformed
                 .first()
                 .map_or(String::new(), |m| format!("; first line it printed that is not one: {m}"))
@@ -401,7 +422,7 @@ pub fn run(request: &Request) -> Result<(), String> {
             malformed[0]
         ));
     }
-    fs::create_dir_all(&request.out).map_err(|e| format!("{}: {e}", request.out.display()))?;
+    fs::create_dir_all(out).map_err(|e| format!("{}: {e}", out.display()))?;
     let files = [
         ("judgements.csv", judgements_csv::<Hooks>(&judgements)),
         ("summary.csv", summary_csv::<Hooks>(&judgements)),
@@ -409,7 +430,7 @@ pub fn run(request: &Request) -> Result<(), String> {
         ("README.md", readme::<Hooks>(&notes)),
     ];
     for (name, text) in files {
-        let file = request.out.join(name);
+        let file = out.join(name);
         fs::write(&file, text).map_err(|e| format!("{}: {e}", file.display()))?;
     }
     Ok(())

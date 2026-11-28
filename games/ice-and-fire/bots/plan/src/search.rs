@@ -50,6 +50,9 @@ use crate::strategy::Guide;
 
 #[cfg(feature = "analysis")]
 pub mod judge;
+mod steer;
+
+use steer::Steer;
 
 /// Replies kept in the memory.
 const MEMORY_CAP: usize = 8;
@@ -75,6 +78,21 @@ pub const HANDOVER_IDLE: bool = false;
 /// The gold of a level-1 training.
 pub const HANDOVER_GOLD: i64 = 10;
 pub const HANDOVER_IDLE_FROM: u32 = 6;
+
+/// The number of the likeliest kinds of action (`types::Kind`, by the
+/// table of zasmu's games for the unit's key) whose moves our own climbs
+/// offer a unit (E106, stage 2 of
+/// `research/codingame/2026-11-28-type-planner.md`); a move of another kind
+/// is not offered. `None`: none removed. Trainings, buildings and macro
+/// actions are never removed, and the opponent's model is never pruned.
+pub const TYPE_KINDS: Option<usize> = None;
+/// Whether our climbs break ties of the last gain by the table's prior (E106):
+/// moves by their kind's prior, highest first, then the other actions in the
+/// order generated. `false`: the order generated.
+pub const TYPE_ORDER: bool = false;
+/// The game turn from which [`TYPE_KINDS`] and [`TYPE_ORDER`] apply, by the
+/// game turn of a climb's root (E106).
+pub const TYPE_FROM_TURN: u32 = 7;
 
 /// When the search stops.
 #[derive(Clone, Copy)]
@@ -142,6 +160,9 @@ type Gains = HashMap<u64, i64, BuildHasherDefault<DefaultHasher>>;
 
 struct Search {
     me: usize,
+    /// Whether this is the opponent's model, which the type switches never
+    /// touch (E106).
+    opponent: bool,
     limit: Limit,
     evals: u64,
     /// The best gain each action ever had in an earlier climb: where a new
@@ -382,6 +403,15 @@ impl Search {
         }
     }
 
+    /// The typing of a step of a climb from `root`, when [`TYPE_KINDS`] or
+    /// [`TYPE_ORDER`] apply to it (E106): ours only, from [`TYPE_FROM_TURN`].
+    fn steer(&self, root: &State, cur: &State) -> Option<Steer> {
+        let on = (TYPE_KINDS.is_some() || TYPE_ORDER)
+            && !self.opponent
+            && root.game_turn() >= TYPE_FROM_TURN;
+        on.then(|| Steer::new(cur))
+    }
+
     /// Adds the strategic turn's pieces to `actions` (E077).
     fn add_pieces(&self, actions: &mut Vec<Action>) {
         if let Some(guide) = &self.guide {
@@ -467,6 +497,10 @@ impl Search {
                 self.add_pieces(&mut actions);
             }
             blockers(&cur, memory, &mut actions);
+            let steer = self.steer(root, &cur);
+            if let (Some(steer), Some(k)) = (&steer, TYPE_KINDS) {
+                steer.filter(&cur, k, &mut actions);
+            }
             order.clear();
             for (index, action) in actions.iter().enumerate() {
                 let k = key(action.commands());
@@ -475,7 +509,18 @@ impl Search {
             }
             // Highest last gain first, new actions before all, then in the
             // order generated.
-            order.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
+            // With [`TYPE_ORDER`], ties go by the prior (E106).
+            match steer.as_ref().filter(|_| TYPE_ORDER) {
+                Some(steer) => {
+                    let priors: Vec<u8> = actions.iter().map(|a| steer.prior(&cur, a)).collect();
+                    order.sort_by(|a, b| {
+                        (b.0.cmp(&a.0))
+                            .then(priors[b.1].cmp(&priors[a.1]))
+                            .then(a.1.cmp(&b.1))
+                    });
+                }
+                None => order.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1))),
+            }
             let mut done = vec![false; actions.len()];
             if commands.is_empty() {
                 for (index, action) in actions.iter().enumerate() {
@@ -541,6 +586,7 @@ impl Search {
         // trainings and cuts, scored by the evaluation from its side.
         let mut theirs = Search {
             me: opponent,
+            opponent: true,
             limit: Limit {
                 max_evals: REPLY_EVALS,
                 ..self.limit
@@ -670,6 +716,7 @@ pub fn think_with(
     }
     let mut search = Search {
         me,
+        opponent: false,
         limit: Limit {
             soft: at(CLIMB_SHARE),
             ..limit
@@ -740,6 +787,10 @@ pub fn think_with(
                     exhausted = true;
                     forced = search.root_actions.clone().unwrap_or_default();
                     forced.retain(|a| !banned.contains(&key(a.commands())));
+                    let steer = search.steer(state, state);
+                    if let (Some(steer), Some(k)) = (&steer, TYPE_KINDS) {
+                        steer.filter(state, k, &mut forced);
+                    }
                     let gain = |a: &Action| {
                         search
                             .hints
@@ -749,7 +800,12 @@ pub fn think_with(
                     };
                     // Stable, so that ties keep the generator's order; the
                     // best gain last, since the climbs pop from the end.
-                    forced.sort_by_key(gain);
+                    match steer.as_ref().filter(|_| TYPE_ORDER) {
+                        Some(steer) => {
+                            forced.sort_by_key(|a| (gain(a), steer.prior(state, a)));
+                        }
+                        None => forced.sort_by_key(gain),
+                    }
                 }
             }
         }
