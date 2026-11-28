@@ -20,12 +20,17 @@
 //! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
 //!   types --positions FILE
 //! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
+//!   terms --positions FILE [--every K]
+//! cargo +1.90.0 run --release -p ice-and-fire-bot-plan --features analysis -- \
 //!   types-table --json FILE --out FILE
 //! ```
 //!
 //! `types` and `types-table` (the [`typing`] module) print the unit types of
 //! a bank's positions with the kind of action played, and write the table of
 //! zasmu's actions by type that the builder counted.
+//!
+//! `terms` (the [`terms`] module) prints the value of each term of the
+//! evaluation on each position of a bank, for fitting their weights (E116).
 //!
 //! `speed` (the [`speed`] module) times the search alone on a bank.
 //!
@@ -66,6 +71,7 @@ pub mod guide;
 pub mod judge;
 pub mod speed;
 pub mod surprise;
+pub mod terms;
 pub mod typing;
 
 #[cfg(test)]
@@ -283,6 +289,7 @@ pub fn plan(position: &Position, variant: Variant, tries: u64) -> Result<Vec<Com
         soft: None,
         hard: None,
         max_evals: tries,
+        deep: None,
     };
     let thought = think(&state, limit, &mut opening);
     set_variant(Variant::Full);
@@ -553,6 +560,18 @@ pub fn main_if_asked() {
             }
             Err(err) => {
                 eprintln!("plan judge: {err}");
+                std::process::exit(2);
+            }
+        }
+    }
+    if args.first().map(String::as_str) == Some("terms") {
+        match terms::run(&args[1..]) {
+            Ok(text) => {
+                print!("{text}");
+                std::process::exit(0);
+            }
+            Err(err) => {
+                eprintln!("plan terms: {err}");
                 std::process::exit(2);
             }
         }

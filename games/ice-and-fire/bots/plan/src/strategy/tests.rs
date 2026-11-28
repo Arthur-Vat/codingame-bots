@@ -745,6 +745,7 @@ fn the_search_plays_a_guide_that_starts_its_first_climb() {
         soft: None,
         hard: None,
         max_evals: 200,
+        deep: None,
     };
     let mut opening = crate::opening_of(2);
     opening.end();

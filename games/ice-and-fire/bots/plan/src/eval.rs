@@ -73,7 +73,7 @@
 
 use ice_and_fire_engine::{Bits, State, CELLS, HQ, SIZE};
 use ice_and_fire_tactics::chain::reach_within_moving;
-use ice_and_fire_tactics::eval::evaluate_with_movers;
+use ice_and_fire_tactics::eval::{evaluate_with_movers, pressure, side_parts};
 
 /// The lowest level of a unit whose moves count in [`exposed`] (E037): 1 to
 /// 3, or 4 for none (v016). Level 2 won the screening.
@@ -727,35 +727,83 @@ pub fn flank(state: &State, seat: usize) -> i64 {
     FLANK * (weaker_flank(state, seat) - weaker_flank(state, 1 - seat))
 }
 
+/// The number of terms of the score that [`WEIGHTS`] weighs.
+pub const TERMS: usize = 17;
+
+/// The weight of each term of the score, in percent (E116): 100 is the
+/// evaluation as it was, `term * weight / 100` what a term counts. In order,
+/// each term being ours less theirs: the shared evaluation's five parts of
+/// material (`ice_and_fire_tactics::eval::side_parts`): gold, 3 × income,
+/// 4 × active cells, units by training cost, 10 × active towers; its
+/// pressure term; the standing threat ([`standing`]); the debt of a side
+/// that cannot pay its upkeep, twice; [`shape`]; [`strong_units`]; the idle
+/// units ([`idle`]); the threatened cells (`THREAT_QUARTERS * threats / 4`);
+/// the [`mines`]; the [`wall`]; the [`goal`]; the [`voronoi`] term; the
+/// [`flank`] term. The threat of losing the HQ (`-WIN / 2`) and the finished
+/// games are not weighed. A quarter of the way from 100 to the weights
+/// fitted on the outcomes of 4,798 games of v034 against itself (E116): the
+/// fit itself lost, a quarter, a half and three quarters of the way won.
+pub const WEIGHTS: [i64; TERMS] = [
+    82, 110, 124, 86, 81, 97, 123, 92, 96, 107, 126, 121, 109, 88, 100, 100, 100,
+];
+
+/// `term` at `weight` percent.
+fn scaled(term: i64, weight: i64) -> i64 {
+    if weight == 100 {
+        term
+    } else {
+        term * weight / 100
+    }
+}
+
 /// The score of `state` for `seat`, higher is better for it.
 pub fn eval(state: &State, seat: usize) -> i64 {
+    eval_with(state, seat, &WEIGHTS)
+}
+
+/// [`eval`] with the term weights `w` rather than [`WEIGHTS`].
+#[inline(always)]
+pub fn eval_with(state: &State, seat: usize, w: &[i64; TERMS]) -> i64 {
     let movers = [
         movers_from(state, seat, MARGIN_MOVER_LEVEL),
         movers_from(state, 1 - seat, MARGIN_MOVER_LEVEL),
     ];
     let (score, margins) = evaluate_with_movers(state, seat, movers);
-    let score = score + standing(margins[0]) - standing(margins[1]);
+    let standing_diff = standing(margins[0]) - standing(margins[1]);
     if state.outcome().is_some() {
-        return score;
+        return score + standing_diff;
+    }
+    let mut score = score + scaled(standing_diff, w[6]);
+    if w[..6].iter().any(|&x| x != 100) {
+        let ours = side_parts(state, seat);
+        let theirs = side_parts(state, 1 - seat);
+        for i in 0..5 {
+            let part = ours[i] - theirs[i];
+            score += scaled(part, w[i]) - part;
+        }
+        let press = pressure(margins[0]) - pressure(margins[1]);
+        score += scaled(press, w[5]) - press;
     }
     #[cfg(feature = "analysis")]
     let score = score - crate::analysis::removed(state, seat);
     let ours = exposed(state, seat);
     let theirs = exposed(state, 1 - seat);
     let threats = i64::from(theirs.count()) - i64::from(ours.count());
-    score - 2 * debt(state, seat)
-        + 2 * debt(state, 1 - seat)
-        + shape(state, seat)
-        + strong_units(state, seat)
-        - strong_units(state, 1 - seat)
-        - idle(state, seat)
-        + idle(state, 1 - seat)
-        + THREAT_QUARTERS * threats / 4
-        + mines(state, seat, ours)
-        - mines(state, 1 - seat, theirs)
-        + wall(state, seat)
-        - wall(state, 1 - seat)
-        + goal(state, seat)
-        + voronoi(state, seat)
-        + flank(state, seat)
+    score
+        + scaled(-2 * debt(state, seat) + 2 * debt(state, 1 - seat), w[7])
+        + scaled(shape(state, seat), w[8])
+        + scaled(
+            strong_units(state, seat) - strong_units(state, 1 - seat),
+            w[9],
+        )
+        + scaled(-idle(state, seat) + idle(state, 1 - seat), w[10])
+        + scaled(THREAT_QUARTERS * threats / 4, w[11])
+        + scaled(
+            mines(state, seat, ours) - mines(state, 1 - seat, theirs),
+            w[12],
+        )
+        + scaled(wall(state, seat) - wall(state, 1 - seat), w[13])
+        + scaled(goal(state, seat), w[14])
+        + scaled(voronoi(state, seat), w[15])
+        + scaled(flank(state, seat), w[16])
 }

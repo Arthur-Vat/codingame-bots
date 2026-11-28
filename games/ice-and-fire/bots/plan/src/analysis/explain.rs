@@ -25,6 +25,7 @@ fn limit(tries: u64) -> Limit {
         soft: None,
         hard: None,
         max_evals: tries,
+        deep: None,
     }
 }
 

@@ -40,6 +40,7 @@ pub fn time(position: &Position, tries: u64, reps: u32) -> Result<Timed, String>
             soft: None,
             hard: None,
             max_evals: tries,
+            deep: None,
         };
         let start = Instant::now();
         let thought = think(&state, limit, &mut opening);

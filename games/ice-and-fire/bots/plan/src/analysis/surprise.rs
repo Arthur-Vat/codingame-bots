@@ -90,6 +90,7 @@ pub fn surprise(position: &Position, tries: u64) -> Result<Surprise, String> {
         soft: None,
         hard: None,
         max_evals: tries,
+        deep: None,
     };
     think(&state, limit, &mut opening);
     let judged = take().ok_or_else(|| {
