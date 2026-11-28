@@ -10,7 +10,7 @@ sprt: pending | accepted | rejected | inconclusive | smoke test failed
 elo: the SPRT's Elo estimate with its 95% interval
 pairs: pairs played by the SPRT
 full_time: the Elo with its 95% interval at CodinGame's limits: the SPRT's own since ADR 0020, the confirmation's before
-decision: pending | promoted | dropped
+decision: pending | waiting | promoted | dropped
 cg_rank: rank and league on CodinGame if read after a submission or reported by the owner, else not reported (none for a dropped experiment)
 ---
 
