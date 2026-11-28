@@ -117,6 +117,7 @@ fn a_cell_without_a_unit_of_the_side_has_no_key() {
     assert!(typing.key(&state, 5000).is_none(), "off the map");
 }
 
+#[cfg(feature = "analysis")]
 #[test]
 fn the_kinds_of_a_move_follow_the_distances_and_the_owners() {
     let state = line([0, 0], &[(0, 1, 1, 0, 6)]);
@@ -173,6 +174,7 @@ fn the_gold_bands_and_a_killing_turn() {
     assert_eq!(Typing::new(&line([0, 0], &[])).gold_band(), Gold::Under40);
 }
 
+#[cfg(feature = "analysis")]
 #[test]
 fn the_turn_bands() {
     let bands: Vec<&str> = [0, 4, 5, 6, 7, 8, 9, 12, 13, 20, 21, 90]
@@ -295,6 +297,7 @@ fn the_prior_comes_from_the_finest_level_that_has_the_key() {
     assert_eq!(more.prior(&other), a);
 }
 
+#[cfg(feature = "analysis")]
 #[test]
 fn likeliest_orders_by_probability_then_kind() {
     assert!(likeliest(&[0; KINDS]).is_empty());
