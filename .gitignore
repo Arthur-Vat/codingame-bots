@@ -10,3 +10,4 @@
 /studio/web/test-results/
 /studio/web/playwright-report/
 /studio/data/
+__pycache__/

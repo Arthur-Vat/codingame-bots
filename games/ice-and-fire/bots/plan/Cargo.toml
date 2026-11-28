@@ -11,6 +11,7 @@ rust-version.workspace = true
 
 [dependencies]
 cg-core.workspace = true
+cg-pack.workspace = true
 ice-and-fire-engine.workspace = true
 ice-and-fire-opening.workspace = true
 ice-and-fire-policy.workspace = true
@@ -24,6 +25,7 @@ analysis = []
 # Used by the tests only: the bot is played in-process against the referee.
 [dev-dependencies]
 cg-arena.workspace = true
+cg-packer.workspace = true
 ice-and-fire-referee.workspace = true
 
 [lints]
