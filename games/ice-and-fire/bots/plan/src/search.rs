@@ -93,6 +93,27 @@ pub const TYPE_ORDER: bool = false;
 /// The game turn from which [`TYPE_KINDS`] and [`TYPE_ORDER`] apply, by the
 /// game turn of a climb's root (E106).
 pub const TYPE_FROM_TURN: u32 = 7;
+/// No tower within this many steps of our own HQ offered to our climbs
+/// (never to the opponent's model) from game turn [`HQ_TOWER_FROM`] (E110:
+/// 1.3 towers a game near our HQ, rarely on the border later). `None`: none
+/// removed.
+pub const HQ_TOWER_BAN: Option<u8> = None;
+/// The game turn from which [`HQ_TOWER_BAN`] applies, by the climb's root.
+pub const HQ_TOWER_FROM: u32 = 15;
+
+/// Removes from `actions` every action that builds a tower within `radius`
+/// steps of `me`'s HQ (E110).
+pub(crate) fn ban_hq_towers(state: &State, me: usize, radius: u8, actions: &mut Vec<Action>) {
+    let map = state.map();
+    actions.retain(|action| {
+        !action.commands().iter().any(|c| match *c {
+            Command::BuildTower { x, y } => {
+                map.distance(usize::from(y) * SIZE + usize::from(x), HQ[me]) <= radius
+            }
+            _ => false,
+        })
+    });
+}
 
 /// When the search stops.
 #[derive(Clone, Copy)]
@@ -497,6 +518,11 @@ impl Search {
                 self.add_pieces(&mut actions);
             }
             blockers(&cur, memory, &mut actions);
+            if let Some(radius) =
+                HQ_TOWER_BAN.filter(|_| !self.opponent && root.game_turn() >= HQ_TOWER_FROM)
+            {
+                ban_hq_towers(&cur, self.me, radius, &mut actions);
+            }
             let steer = self.steer(root, &cur);
             if let (Some(steer), Some(k)) = (&steer, TYPE_KINDS) {
                 steer.filter(&cur, k, &mut actions);
@@ -787,6 +813,11 @@ pub fn think_with(
                     exhausted = true;
                     forced = search.root_actions.clone().unwrap_or_default();
                     forced.retain(|a| !banned.contains(&key(a.commands())));
+                    if let Some(radius) =
+                        HQ_TOWER_BAN.filter(|_| state.game_turn() >= HQ_TOWER_FROM)
+                    {
+                        ban_hq_towers(state, me, radius, &mut forced);
+                    }
                     let steer = search.steer(state, state);
                     if let (Some(steer), Some(k)) = (&steer, TYPE_KINDS) {
                         steer.filter(state, k, &mut forced);

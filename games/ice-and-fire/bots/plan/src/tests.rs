@@ -1964,3 +1964,27 @@ fn the_bitwise_weakness_is_the_depth_first_one() {
     }
     assert!(checked > 1000, "{checked}");
 }
+
+#[test]
+fn the_hq_tower_ban_removes_only_towers_near_our_hq() {
+    let state = positions(7, &[0]).remove(0);
+    let me = state.to_act();
+    let hq = ice_and_fire_engine::HQ[me];
+    let near = (hq + 1, hq + SIZE + 1);
+    let far = 5 * SIZE + 5;
+    let at = |c: usize| Command::BuildTower {
+        x: (c % SIZE) as u8,
+        y: (c / SIZE) as u8,
+    };
+    let mut actions = vec![
+        Action::One(at(near.0)),
+        Action::One(at(far)),
+        Action::Many(vec![Command::Wait, at(near.1)]),
+        Action::One(Command::Wait),
+    ];
+    crate::search::ban_hq_towers(&state, me, 3, &mut actions);
+    assert_eq!(actions.len(), 2);
+    assert!(actions
+        .iter()
+        .all(|a| !a.commands().contains(&at(near.0)) && !a.commands().contains(&at(near.1))));
+}
